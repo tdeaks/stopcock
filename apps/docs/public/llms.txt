@@ -1,0 +1,70 @@
+# stopcock
+
+> Type-safe functional utilities for TypeScript with pipeline fusion. `pipe` fuses consecutive array operations into single loops at runtime. Dual-form functions work both data-first and data-last. Subpath exports: `stopcock/fp`, `stopcock/img`, `stopcock/date`, etc.
+
+## Install
+
+```
+bun add stopcock
+```
+
+```typescript
+import { pipe, A, O, R } from 'stopcock/fp'
+```
+
+## Getting Started
+
+- [Getting Started](/getting-started): Install, pipe, flow, fusion, dual signatures, Option and Result
+- [Cookbook](/cookbook): 30+ copy-paste examples covering pipes, data transformation, error handling, lenses, and more
+
+## Concepts
+
+- [Fusion](/concepts/fusion): How pipe detects and fuses consecutive array operations into single loops
+- [Option & Result](/concepts/option-result): Types for missing values and errors, with constructors, transforms, extraction, and conversion
+
+## Core (stopcock/fp)
+
+- [fp](/libraries/fp): Overview of all fp modules, fusion mechanics, Option & Result
+
+### fp Modules
+
+- [A (Array)](/api/array): map, filter, reduce, sort, groupBy, zip, take, flatMap, uniq, set operations, and 30+ more. Fuseable in pipe.
+- [S (String)](/api/string): trim, split, replace, startsWith, endsWith, slice, repeat
+- [D (Dict)](/api/dict): map, filter, get, merge, keys, values, toEntries for Record<string, T>
+- [N (Number)](/api/number): sum, mean, median, variance, standardDeviation, min, max, percentile, clamp
+- [G (Guards)](/api/guards): Runtime type guards with TypeScript type predicates. isString, isNumber, isNil, isDeepEqual, etc.
+- [Obj (Object)](/api/object): pick, omit, path, assoc, dissoc, evolve, mergeDeepLeft, mergeDeepRight
+- [M (Math)](/api/math): add, subtract, multiply, divide, modulo, inc, dec, negate, product
+- [B (Boolean)](/api/boolean): not_, and_, or_, ifElse
+- [Logic](/api/logic): both, either, allPass, anyPass, equals, defaultTo, when_, unless, cond
+- [Lenses](/api/lenses): lens, lensProp, lensIndex, lensPath, view, set, over for immutable nested updates
+- [O (Option)](/api/option): Some/None type for nullable values. map, flatMap, filter, getOrElse, match, toResult.
+- [R (Result)](/api/result): Ok/Err type for error handling. map, mapErr, flatMap, tryCatch, getOrElse, match, toOption.
+
+## Libraries
+
+- [async](/libraries/async): Lazy Task type with concurrency, retry, timeout, cancellation, rate limiting
+- [stream](/libraries/stream): Lazy pull-based streams with dual-form operators. Infinite sequences with take.
+- [optics](/libraries/optics): Lens, Prism, Traversal, Iso for immutable data access and updates
+- [validate](/libraries/validate): Schema validation with type inference and JIT compilation. Similar API to zod.
+- [parse](/libraries/parse): Parser combinator library with typed composition and error reporting
+- [date](/libraries/date): Zero-allocation date utilities using branded number timestamps. Business days, timezones, intervals.
+- [struct](/libraries/struct): Persistent data structures: HashMap, SortedSet, Deque
+- [search](/libraries/search): Fuzzy search, Trie, Bloom filter, inverted index with BM25
+- [encoding](/libraries/encoding): Base64, Hex, MessagePack encoding
+- [zip](/libraries/zip): ZIP archives with builder and streaming APIs. Deflate or store compression.
+- [geo](/libraries/geo): 2D geometry, geodesic distance, point-in-polygon, spatial indexing
+- [img](/libraries/img): Image processing with dual-form filters, convolution, Hough lines, connected components
+- [rand](/libraries/rand): Seedable PRNGs (PCG, Xoshiro) and statistical distributions
+
+## Showcases
+
+- [Image Processing](/showcases/img): Interactive browser demo of img filters and analysis
+
+## Performance
+
+- [Benchmarks](/performance/benchmarks): stopcock vs lodash, ramda, remeda, rambda, ts-belt, and native JS
+
+## Optional
+
+- [Playground](/playground): Interactive REPL on StackBlitz

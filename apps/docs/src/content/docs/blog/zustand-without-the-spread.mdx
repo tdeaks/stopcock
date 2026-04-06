@@ -1,0 +1,241 @@
+---
+title: Zustand without the spread
+date: 2026-04-06
+authors:
+  - tom
+tags:
+  - react
+  - state-management
+  - lenses
+excerpt: Zustand is great until your state gets nested. Then every update becomes a spread sandwich. Lenses and optics fix that.
+---
+
+Zustand is probably the best state management library for React. Tiny API, no boilerplate, works how you'd expect. But it has the same problem as every immutable state solution: nested updates are ugly.
+
+Here's a store for a basic e-commerce app:
+
+```ts
+type State = {
+  user: {
+    name: string
+    address: {
+      street: string
+      city: string
+      postcode: string
+    }
+  }
+  cart: {
+    items: CartItem[]
+    discount: number | null
+  }
+  ui: {
+    sidebarOpen: boolean
+    theme: 'light' | 'dark'
+  }
+}
+```
+
+Now update the user's city:
+
+```ts
+setCity: (city) => set(state => ({
+  ...state,
+  user: {
+    ...state.user,
+    address: {
+      ...state.user.address,
+      city,
+    },
+  },
+}))
+```
+
+Three levels of spread for one field. And it gets worse. Every new action that touches nested state repeats the same pattern. You end up with a store file that's 80% spread operators.
+
+## Lenses fix this
+
+A lens is a pair of functions: one to read a value from a structure, one to write it back immutably. You define it once and reuse it everywhere.
+
+```ts
+import { path, set, over, view } from '@stopcock/fp'
+
+const city = path<State, 'user', 'address', 'city'>('user', 'address', 'city')
+```
+
+That `city` lens knows how to reach into `state.user.address.city` and how to produce a new state with that value changed. All the spreading happens inside the lens. You never write it again.
+
+```ts
+setCity: (c) => set(state => lensSet(city, c, state)),
+```
+
+One line. Any depth.
+
+## Setting up the store
+
+Here's a full Zustand store using optics. The pattern is simple: define your lenses outside the store, use them inside your actions.
+
+```ts
+import { create } from 'zustand'
+import {
+  prop, path, composeLens, view as lensView,
+  set as lensSet, over as lensOver,
+  each, filtered, modify,
+} from '@stopcock/fp'
+
+// Lenses. define once, use everywhere
+const user = prop<State, 'user'>('user')
+const city = path<State, 'user', 'address', 'city'>('user', 'address', 'city')
+const cartItems = path<State, 'cart', 'items'>('cart', 'items')
+const discount = path<State, 'cart', 'discount'>('cart', 'discount')
+const theme = path<State, 'ui', 'theme'>('ui', 'theme')
+const sidebar = path<State, 'ui', 'sidebarOpen'>('ui', 'sidebarOpen')
+
+const useStore = create<State & Actions>((set, get) => ({
+  user: {
+    name: 'Alice',
+    address: { street: '123 Main St', city: 'Portland', postcode: '97201' },
+  },
+  cart: { items: [], discount: null },
+  ui: { sidebarOpen: false, theme: 'light' },
+
+  // Simple field updates. one line each
+  setCity: (c) => set(s => lensSet(s, city, c)),
+  toggleSidebar: () => set(s => lensOver(s, sidebar, open => !open)),
+  setTheme: (t) => set(s => lensSet(s, theme, t)),
+  applyDiscount: (d) => set(s => lensSet(s, discount, d)),
+}))
+```
+
+Compare that to the spread version. Each action is one line instead of a nested object literal. And when your state shape changes, you update the lens definition, not every action that touches that path.
+
+## Real use cases
+
+### Cart operations
+
+Cart state is where spread hell really kicks in. You're updating items inside an array inside an object. With traversals, you can target items by condition.
+
+```ts
+import { each, filtered, modify } from '@stopcock/fp'
+
+// Bump quantity for a specific item
+const increaseQuantity = (id: string) => set(s => {
+  const items = lensView(s, cartItems)
+  return lensSet(s, cartItems,
+    items.map(item =>
+      item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+    )
+  )
+})
+
+// Mark all out-of-stock items
+const outOfStock = filtered<CartItem>(item => item.stock === 0)
+
+const markOutOfStock = () => set(s => {
+  const items = lensView(s, cartItems)
+  return lensSet(s, cartItems,
+    modify(items, outOfStock, item => ({ ...item, disabled: true }))
+  )
+})
+```
+
+The `filtered` traversal finds all matching items and applies the update. You're not writing `.map` with a ternary every time.
+
+### Form state
+
+Multi-step forms tend to have deeply nested state. Each section has its own fields and validation. Without lenses, updating a single field means spreading through every layer.
+
+```ts
+type FormState = {
+  steps: {
+    personal: { name: string; email: string }
+    shipping: { address: Address; sameAsBilling: boolean }
+    payment: { method: 'card' | 'paypal'; cardNumber: string | null }
+  }
+  currentStep: number
+  errors: Record<string, string[]>
+}
+
+const shippingAddress = path<FormState, 'steps', 'shipping', 'address'>(
+  'steps', 'shipping', 'address'
+)
+const paymentMethod = path<FormState, 'steps', 'payment', 'method'>(
+  'steps', 'payment', 'method'
+)
+const currentStep = prop<FormState, 'currentStep'>('currentStep')
+
+// Each action reads clearly
+const setShippingAddress = (addr: Address) =>
+  set(s => lensSet(s, shippingAddress, addr))
+
+const nextStep = () =>
+  set(s => lensOver(s, currentStep, step => step + 1))
+
+const selectPaypal = () =>
+  set(s => lensSet(s, paymentMethod, 'paypal'))
+```
+
+### Dashboard filters
+
+Dashboards accumulate state. Filters, selected rows, sort order, pagination, collapsed panels. Each one is a nested path that you're constantly reading and writing.
+
+```ts
+type DashboardState = {
+  filters: {
+    dateRange: { start: Date; end: Date }
+    status: ('active' | 'archived' | 'draft')[]
+    search: string
+  }
+  table: {
+    sortBy: string
+    sortOrder: 'asc' | 'desc'
+    page: number
+    selected: Set<string>
+  }
+}
+
+const dateRange = path<DashboardState, 'filters', 'dateRange'>('filters', 'dateRange')
+const statusFilter = path<DashboardState, 'filters', 'status'>('filters', 'status')
+const search = path<DashboardState, 'filters', 'search'>('filters', 'search')
+const sortBy = path<DashboardState, 'table', 'sortBy'>('table', 'sortBy')
+const sortOrder = path<DashboardState, 'table', 'sortOrder'>('table', 'sortOrder')
+const page = path<DashboardState, 'table', 'page'>('table', 'page')
+const selected = path<DashboardState, 'table', 'selected'>('table', 'selected')
+
+// Toggle sort direction
+const toggleSort = (column: string) => set(s => {
+  const current = lensView(s, sortBy)
+  if (current === column) {
+    return lensOver(s, sortOrder, o => o === 'asc' ? 'desc' : 'asc')
+  }
+  return lensSet(lensSet(s, sortBy, column), sortOrder, 'asc')
+})
+
+// Clear all filters at once
+const clearFilters = () => set(s =>
+  lensSet(
+    lensSet(
+      lensSet(s, search, ''),
+      statusFilter, [],
+    ),
+    dateRange, { start: defaultStart, end: defaultEnd },
+  )
+)
+```
+
+Chaining `lensSet` calls reads top to bottom. Each one returns a new state that feeds into the next. No intermediate variables, no spreading.
+
+## When you don't need this
+
+If your state is flat, you don't need lenses. Zustand already handles `{ count: 0, increment: () => set(s => ({ count: s.count + 1 })) }` perfectly. Don't add abstraction where there's no problem.
+
+Lenses pay off when:
+- State is 3+ levels deep
+- Multiple actions touch the same nested paths
+- You're tired of reading and reviewing spread sandwiches
+- You want to test state updates independently of the store
+
+That last point matters more than it seems. A lens is just a value. You can unit test it without Zustand, pass it around, compose it with other lenses. Try doing that with a spread expression.
+
+## Beyond lenses
+
+Everything in this post comes from `@stopcock/fp`. Lenses cover the common case of reaching into nested objects, but the same package also has prisms (for values that might not exist, like `Option` or `Result`), traversals (for updating multiple values at once), and cross-optic composition. If you're just doing simple nested updates in Zustand, lenses and `path` are enough. Reach for traversals when you need filtered batch updates, or prisms when you're chaining through optional state.

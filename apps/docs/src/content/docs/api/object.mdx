@@ -1,0 +1,59 @@
+---
+title: Obj (Object)
+description: pick, omit, path, evolve, mergeDeep. Immutable object transforms
+---
+
+## Property access (dual)
+
+```ts
+pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>
+omit<T, K extends keyof T>(obj: T, keys: K[]): Omit<T, K>
+path<T, P extends string>(obj: T, path: P): PathValue<T, P> | undefined
+pathOr<T, P extends string, D>(obj: T, path: P, defaultValue: D): PathValue<T, P> | D
+```
+
+## Property mutation (dual, immutable)
+
+```ts
+assoc<T, V>(obj: T, key: string, value: V): T & Record<string, V>
+dissoc<T>(obj: T, key: string): Partial<T>
+evolve<T>(obj: T, transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>): T
+```
+
+## Merging (dual)
+
+```ts
+mergeDeepLeft<T>(a: T, b: T): T
+mergeDeepRight<T>(a: T, b: T): T
+mergeWith<T, V>(a: T, b: T, resolver: (l: V, r: V) => V): T
+```
+
+## Examples
+
+```ts
+import { pipe, Obj } from '@stopcock/fp'
+
+// strip sensitive fields before sending to client
+const safe = pipe(user, Obj.omit(['password', 'ssn']))
+
+// extract fields for a form
+const formData = pipe(user, Obj.pick(['name', 'email', 'phone']))
+
+// safe nested access
+pipe(order, Obj.pathOr('shipping.address.zip', 'N/A'))
+
+// immutable update
+pipe(user, Obj.assoc('role', 'admin'))
+
+// transform multiple fields at once
+pipe(
+  config,
+  Obj.evolve({
+    port: (p: number) => p + 1,
+    host: (h: string) => h.toLowerCase(),
+  }),
+)
+
+// deep merge with priority
+const merged = Obj.mergeDeepRight(defaults, userPrefs)
+```

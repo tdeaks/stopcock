@@ -1,0 +1,96 @@
+---
+title: fp
+description: Pipe-based functional programming with pipeline fusion
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+```bash
+bun add @stopcock/fp
+```
+
+Everything you need for pipe-based FP. Arrays, strings, objects, numbers, and typed error handling. Chain array operations in `pipe` and they get fused into single loops at runtime.
+
+```ts
+import { pipe, A, O, R } from '@stopcock/fp'
+
+const topScorers = pipe(
+  players,
+  A.filter(p => p.active),
+  A.map(p => ({ name: p.name, score: p.score })),
+  A.sort((a, b) => b.score - a.score),
+  A.take(10),
+)
+```
+
+- `pipe(value, ...fns)` passes a value through functions left to right. Fuses consecutive `A.*` operations into a single loop.
+- Every function works **both ways**: `A.map(arr, fn)` (data-first) and `pipe(arr, A.map(fn))` (data-last).
+- `Option<A>` / `Result<A, E>` for nullable values and recoverable errors. Numeric `_tag` for fast branching.
+
+## Modules
+
+| Namespace | Module | What it does |
+|-----------|--------|-------------|
+| `A` | [Array](/api/array) | `map`, `filter`, `reduce`, `sort`, `groupBy`, `zip`, `take`, `flatMap` + 30 more |
+| `S` | [String](/api/string) | `split`, `trim`, `replace`, `startsWith`, `slice`, `padStart` |
+| `D` | [Dict](/api/dict) | `map`, `filter`, `get`, `merge`, `keys`, `values`, `toEntries` |
+| `N` | [Number](/api/number) | `clamp`, `round`, `isEven`, `inRange`, `toFixed` |
+| `G` | [Guards](/api/guards) | `isString`, `isNumber`, `isArray`, `isNullable`, `isRecord` |
+| `Obj` | [Object](/api/object) | `pick`, `omit`, `assoc`, `dissoc`, `mergeDeep`, `path`, `evolve` |
+| `M` | [Math](/api/math) | `sum`, `mean`, `median`, `stddev`, `min`, `max`, `clamp` |
+| `B` | [Boolean](/api/boolean) | `and`, `or`, `not`, `xor` |
+| `Logic` | [Logic](/api/logic) | `ifElse`, `when`, `unless`, `cond`, `allPass`, `anyPass` |
+| `Lens` | [Lenses](/api/lenses) | `view`, `set`, `over` for immutable nested updates |
+| `O` | [Option](/api/option) | `Some`, `None`, `map`, `flatMap`, `getOrElse`, `fromNullable` |
+| `R` | [Result](/api/result) | `Ok`, `Err`, `map`, `flatMap`, `getOrElse`, `tryCatch` |
+
+## Fusion
+
+Chain fuseable operations in `pipe` and they get compiled into a single loop:
+
+```ts
+// This looks like 3 passes over the array:
+const result = pipe(
+  users,                           // 100,000 users
+  A.filter(u => u.active),         // pass 1: filter
+  A.map(u => u.name),              // pass 2: map
+  A.take(10),                      // pass 3: slice
+)
+
+// But fusion compiles it into roughly:
+const result = []
+for (const u of users) {
+  if (!u.active) continue
+  result.push(u.name)
+  if (result.length >= 10) break   // early exit from take()
+}
+```
+
+<Aside type="tip">
+  Fuseable operations: `map`, `filter`, `flatMap`, `reduce`, `forEach`. `take` triggers early termination. `sort`, `reverse`, `groupBy` break the fusion chain because they need the full array.
+</Aside>
+
+## Option & Result
+
+```ts
+// Option: for values that might not exist
+const port = pipe(
+  O.fromNullable(process.env.PORT),
+  O.map(s => parseInt(s, 10)),
+  O.filter(n => n > 0 && n < 65536),
+  O.getOrElse(() => 3000),
+)
+
+// Result: for operations that might fail
+const config = pipe(
+  R.tryCatch(() => JSON.parse(rawConfig)),
+  R.map(obj => obj.settings),
+  R.getOrElse(() => defaults),
+)
+```
+
+<Aside type="note">
+  `Option` and `Result` use numeric `_tag` (0/1) instead of string tags. V8 handles numeric comparisons in a single CPU instruction.
+</Aside>
+
+Full docs on the [Option & Result page](/concepts/option-result), or have a look at the individual module pages in the sidebar.

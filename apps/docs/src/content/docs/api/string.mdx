@@ -1,0 +1,51 @@
+---
+title: S (String)
+description: trim, split, replace, startsWith, slice. String transforms for pipe
+---
+
+## Non-dual
+
+```ts
+trim(s: string): string
+trimStart(s: string): string
+trimEnd(s: string): string
+toLowerCase(s: string): string
+toUpperCase(s: string): string
+isEmpty(s: string): boolean
+length(s: string): number
+```
+
+## Dual
+
+```ts
+startsWith(s: string, search: string): boolean
+endsWith(s: string, search: string): boolean
+includes(s: string, search: string): boolean
+split(s: string, sep: string): string[]
+repeat(s: string, n: number): string
+slice(s: string, start: number, end: number): string
+replaceAll(s: string, search: string, replacement: string): string
+```
+
+## Examples
+
+```ts
+import { pipe, S } from '@stopcock/fp'
+
+// slug from title
+pipe('  Hello World!  ', S.trim, S.toLowerCase, S.replaceAll(' ', '-'), S.replaceAll('!', ''))
+// 'hello-world'
+
+// parse CSV header
+pipe('name,email,role', S.split(','))
+// ['name', 'email', 'role']
+
+// check file extension
+pipe('report.pdf', S.endsWith('.pdf'))  // true
+
+// template
+pipe('Hello, NAME!', S.replaceAll('NAME', user.name))
+
+// truncate
+const preview = pipe(description, S.slice(0, 100))
+```

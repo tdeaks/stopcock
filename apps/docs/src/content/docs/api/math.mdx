@@ -1,0 +1,46 @@
+---
+title: M (Math)
+description: add, multiply, sum, mean, median. Arithmetic and stats for pipe
+---
+
+## Non-dual
+
+```ts
+inc(n: number): number
+dec(n: number): number
+negate(n: number): number
+product(arr: number[]): number
+```
+
+## Dual
+
+```ts
+add(a: number, b: number): number
+subtract(a: number, b: number): number
+multiply(a: number, b: number): number
+divide(a: number, b: number): number
+modulo(a: number, b: number): number
+```
+
+## Examples
+
+```ts
+import { pipe, A, M } from '@stopcock/fp'
+
+// apply discount
+pipe(prices, A.map(M.multiply(0.9)))  // 10% off
+
+// offset scores
+pipe(rawScores, A.map(M.add(curve)))
+
+// compound product
+M.product([2, 3, 4])  // 24
+
+// counter operations
+pipe(count, M.inc)     // count + 1
+pipe(count, M.dec)     // count - 1
+pipe(value, M.negate)  // -value
+
+// data-first
+M.modulo(17, 5)  // 2
+```

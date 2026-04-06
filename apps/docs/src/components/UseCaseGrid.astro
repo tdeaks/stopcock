@@ -1,0 +1,162 @@
+---
+const categories = [
+  {
+    label: 'fp',
+    items: [
+      { ns: 'A', name: 'Array', href: '/api/array' },
+      { ns: 'S', name: 'String', href: '/api/string' },
+      { ns: 'D', name: 'Dict', href: '/api/dict' },
+      { ns: 'N', name: 'Number', href: '/api/number' },
+      { ns: 'Obj', name: 'Object', href: '/api/object' },
+      { ns: 'M', name: 'Math', href: '/api/math' },
+      { ns: 'G', name: 'Guards', href: '/api/guards' },
+      { ns: 'B', name: 'Boolean', href: '/api/boolean' },
+      { ns: 'Logic', name: 'Logic', href: '/api/logic' },
+      { ns: 'Lens', name: 'Lenses', href: '/api/lenses' },
+      { ns: 'O', name: 'Option', href: '/concepts/option-result' },
+      { ns: 'R', name: 'Result', href: '/concepts/option-result' },
+    ],
+  },
+  {
+    label: 'Data',
+    items: [
+      { name: 'validate', desc: 'Schema validation', href: '/libraries/validate' },
+      { name: 'parse', desc: 'Parser combinators', href: '/libraries/parse' },
+      { name: 'date', desc: 'Date utilities', href: '/libraries/date' },
+      { name: 'struct', desc: 'HashMap, SortedSet, Deque', href: '/libraries/struct' },
+      { name: 'search', desc: 'Fuzzy, Trie, Bloom', href: '/libraries/search' },
+      { name: 'df', desc: 'Typed dataframes', href: '/libraries/df' },
+      { name: 'diff', desc: 'Structural diffing', href: '/libraries/diff' },
+    ],
+  },
+  {
+    label: 'IO',
+    items: [
+      { name: 'encoding', desc: 'Base64, Hex, MsgPack', href: '/libraries/encoding' },
+      { name: 'zip', desc: 'ZIP archives', href: '/libraries/zip' },
+    ],
+  },
+  {
+    label: 'Compute',
+    items: [
+      { name: 'la', desc: 'Linear algebra', href: '/libraries/la' },
+      { name: 'signal', desc: 'FFT & filters', href: '/libraries/signal' },
+      { name: 'img', desc: 'Image processing', href: '/libraries/img' },
+      { name: 'color', desc: 'Color spaces & a11y', href: '/libraries/color' },
+      { name: 'geo', desc: 'Geospatial math', href: '/libraries/geo' },
+      { name: 'rand', desc: 'RNG & distributions', href: '/libraries/rand' },
+    ],
+  },
+  {
+    label: 'Control flow',
+    items: [
+      { name: 'match', desc: 'Pattern matching', href: '/libraries/match' },
+      { name: 'async', desc: 'Tasks & concurrency', href: '/libraries/async' },
+      { name: 'stream', desc: 'Lazy sequences', href: '/libraries/stream' },
+    ],
+  },
+]
+---
+
+<div class="use-case-grid">
+  {categories.map(cat => (
+    <section class="uc-category">
+      <h3 class="uc-label">{cat.label}</h3>
+      <div class="uc-items">
+        {cat.items.map(item => (
+          <a class="uc-card" href={item.href}>
+            {'ns' in item && item.ns
+              ? <span class="uc-ns">{item.ns}</span>
+              : <span class="uc-pkg">@stopcock/</span>
+            }
+            <span class="uc-name">{item.name}</span>
+            {'desc' in item && item.desc && <span class="uc-desc">{item.desc}</span>}
+          </a>
+        ))}
+      </div>
+    </section>
+  ))}
+</div>
+
+<style>
+  .use-case-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: start;
+    gap: 1.5rem;
+    margin: 2.5rem 0;
+  }
+
+  @media (max-width: 60rem) {
+    .use-case-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .uc-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--sl-color-gray-3, #6e6e82);
+    margin: 0 0 0.5rem 0;
+  }
+
+  .uc-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .uc-card {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.55rem 0.6rem;
+    background: var(--sl-color-gray-6, #141420);
+    border: 1px solid var(--sl-color-gray-5, #1e1e2e);
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .uc-card:hover {
+    border-color: var(--sl-color-accent, #00e5a0);
+  }
+
+  .uc-ns {
+    font-family: var(--sl-font-mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--sl-color-accent, #00e5a0);
+    min-width: 2.2rem;
+  }
+
+  .uc-pkg {
+    font-family: var(--sl-font-mono);
+    font-size: 0.7rem;
+    color: var(--sl-color-gray-4, #444460);
+  }
+
+  .uc-name {
+    font-family: var(--sl-font-mono);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--sl-color-text, #e0e0f0);
+  }
+
+  .uc-desc {
+    font-size: 0.7rem;
+    color: var(--sl-color-gray-3, #6e6e82);
+    margin-left: auto;
+  }
+
+  @media (max-width: 40rem) {
+    .use-case-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .uc-desc {
+      display: none;
+    }
+  }
+</style>

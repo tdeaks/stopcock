@@ -1,0 +1,77 @@
+---
+title: R (Result)
+description: Ok and Err for recoverable errors. map, flatMap, tryCatch, getOrElse, toOption
+---
+
+```ts
+type Err<E> = { readonly _tag: 0; readonly error: E }
+type Ok<A> = { readonly _tag: 1; readonly value: A }
+type Result<A, E> = Ok<A> | Err<E>
+```
+
+## Constructors
+
+```ts
+ok<A>(value: A): Result<A, never>
+err<E>(error: E): Result<never, E>
+tryCatch<A>(thunk: () => A): Result<A, unknown>
+fromNullable<E>(defaultError: E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
+```
+
+`tryCatch` wraps a function that might throw. Error comes back as `unknown`, narrow it yourself.
+
+## Transforms
+
+```ts
+map<A, B>(f: (a: A) => B): <E>(r: Result<A, E>) => Result<B, E>
+mapErr<E, F>(f: (e: E) => F): <A>(r: Result<A, E>) => Result<A, F>
+flatMap<A, B, E2>(f: (a: A) => Result<B, E2>): <E>(r: Result<A, E>) => Result<B, E | E2>
+tap<A>(f: (a: A) => void): <E>(r: Result<A, E>) => Result<A, E>
+tapErr<E>(f: (e: E) => void): <A>(r: Result<A, E>) => Result<A, E>
+```
+
+## Extraction
+
+```ts
+getOrElse<B>(onErr: () => B): <A, E>(r: Result<A, E>) => A | B
+match<E, B, A, C = B>(onErr: (e: E) => B, onOk: (a: A) => C): (r: Result<A, E>) => B | C
+toOption<A, E>(r: Result<A, E>): Option<A>
+```
+
+## Guards
+
+```ts
+isOk<A, E>(r: Result<A, E>): r is Ok<A>
+isErr<A, E>(r: Result<A, E>): r is Err<E>
+```
+
+## Examples
+
+```ts
+import { pipe, R } from '@stopcock/fp'
+
+// parse JSON safely
+const data = pipe(
+  R.tryCatch(() => JSON.parse(rawBody)),
+  R.map((body: { items: string[] }) => body.items),
+  R.getOrElse((): string[] => []),
+)
+
+// chain validations
+pipe(
+  R.ok(formData),
+  R.flatMap(d => d.name ? R.ok(d) : R.err('name required')),
+  R.flatMap(d => d.email ? R.ok(d) : R.err('email required')),
+  R.match(
+    err => ({ success: false as const, error: err }),
+    val => ({ success: true as const, data: val }),
+  ),
+)
+
+// log errors without changing the pipeline
+pipe(
+  R.tryCatch(() => connectToDb()),
+  R.tapErr(e => console.error('db connection failed:', e)),
+  R.getOrElse(() => fallbackDb),
+)
+```

@@ -1,0 +1,4135 @@
+# stopcock
+
+> Type-safe functional utilities for TypeScript with pipeline fusion. pipe fuses consecutive array operations into single loops at runtime. Dual-form functions work both data-first and data-last. Install: bun add stopcock
+
+---
+
+## Getting Started
+
+```bash
+bun add stopcock
+```
+
+## pipe
+
+Pass a value through functions, left to right. If you chain array operations, they get fused into single loops automatically.
+
+```ts
+type User = { name: string; active: boolean; score: number }
+
+const leaderboard = pipe(
+  users,
+  A.filter((u: User) => u.active && u.score > 0),
+  A.sortBy((a: User, b: User) => b.score - a.score),
+  A.take(10),
+  A.map((u: User) => u.name),
+)
+```
+
+`filter → map` fuses into a single loop. `take(10)` terminates early, so the loop stops after 10 results.
+
+## flow
+
+Same as `pipe` but gives you a reusable function instead of running straight away.
+
+```ts
+const activeNames = flow(
+  A.filter((u: User) => u.active),
+  A.map((u: User) => u.name),
+)
+
+activeNames(usersA)
+activeNames(usersB)
+```
+
+## Fusion
+
+`pipe` detects tagged array operations and fuses them into a single loop. `take` and `find` bail out early, so you're not iterating the whole thing.
+
+```ts
+const big = Array.from({ length: 1_000_000 }, (_, i) => i)
+
+// visits ~70 items, allocates nothing intermediate
+pipe(big, A.filter(x => x % 7 === 0), A.map(x => x * 2), A.take(10))
+```
+
+Operations that need the whole array (`sort`, `groupBy`, `uniq`) break the fusion chain. See [Fusion](/concepts/fusion) for the full picture.
+
+## Dual signatures
+
+Every function works both ways:
+
+```ts
+A.take(users, 5)       // data-first
+pipe(users, A.take(5)) // data-last
+```
+
+## Option and Result
+
+```ts
+pipe(
+  O.fromNullable(user.email),
+  O.map(e => e.split('@')[1]),
+  O.getWithDefault('unknown'),
+)
+
+pipe(
+  R.tryCatch(() => JSON.parse(input)),
+  R.map((obj: { value: number }) => obj.value),
+  R.getOrElse(() => null),
+)
+```
+
+See [Option & Result](/concepts/option-result) for the full API, or try the [Cookbook](/cookbook) for more patterns.
+
+---
+
+## Cookbook
+
+Copy-paste examples. Each one is self-contained.
+
+---
+
+## Pipes & composition
+
+### Parse an API response
+
+```ts
+
+type User = { id: number; name: string; role: string }
+
+const users = pipe(
+  R.tryCatch(() => JSON.parse(rawBody)),
+  R.map((body: { data: User[] }) => body.data),
+  R.map(A.filter((u: User) => u.role !== 'bot')),
+  R.getOrElse((): User[] => []),
+)
+```
+
+### Config with defaults
+
+```ts
+
+const port = pipe(
+  O.fromNullable(process.env.PORT),
+  O.map(s => parseInt(s, 10)),
+  O.filter(n => n > 0 && n < 65536),
+  O.getOrElse(() => 3000),
+)
+
+const dbUrl = pipe(
+  O.fromNullable(process.env.DATABASE_URL),
+  O.getOrElse(() => 'postgres://localhost:5432/dev'),
+)
+```
+
+### Reusable pipelines with flow
+
+`flow` returns a reusable function instead of applying immediately.
+
+```ts
+
+type Product = { name: string; price: number; inStock: boolean }
+
+const cheapestInStock = flow(
+  A.filter((p: Product) => p.inStock),
+  A.sortBy((a: Product, b: Product) => a.price - b.price),
+  A.take(5),
+)
+
+cheapestInStock(productsFromApiA)
+cheapestInStock(productsFromApiB)
+```
+
+### Conditional logic
+
+```ts
+
+const classify = Logic.cond([
+  [n => n >= 90, () => 'A'],
+  [n => n >= 80, () => 'B'],
+  [n => n >= 70, () => 'C'],
+  [() => true, () => 'F'],
+])
+
+const grade = classify(score)
+```
+
+---
+
+## Data transformation
+
+### Normalize and deduplicate
+
+```ts
+
+const clean = pipe(
+  rawTags,
+  A.map(S.trim),
+  A.map(S.toLowerCase),
+  A.filter(t => t.length > 0),
+  A.uniq,
+)
+```
+
+### Data pipeline
+
+Group orders by customer, compute totals, rank by spend.
+
+```ts
+
+type Order = { customerId: string; total: number; status: string }
+
+const revenueByCustomer = pipe(
+  orders,
+  A.filter((o: Order) => o.status === 'completed'),
+  A.groupBy(o => o.customerId),
+)
+
+const topCustomers = pipe(
+  Object.entries(revenueByCustomer),
+  A.map(([id, orders]) => ({
+    id,
+    total: orders.reduce((sum, o) => sum + o.total, 0),
+  })),
+  A.sortBy((a, b) => b.total - a.total),
+  A.take(5),
+)
+```
+
+### Shape data for the client
+
+Strip sensitive fields before sending to the browser.
+
+```ts
+
+type DbUser = { id: number; name: string; email: string; passwordHash: string; ssn: string }
+
+const toClientUsers = flow(
+  A.map((u: DbUser) => Obj.omit(u, ['passwordHash', 'ssn'])),
+  A.sortBy((a, b) => a.name.localeCompare(b.name)),
+)
+```
+
+### Transform object fields
+
+```ts
+
+type RawEvent = { timestamp_ms: number; event_name: string; user_id: string }
+
+const normalize = (raw: RawEvent) => pipe(
+  raw,
+  Obj.evolve({
+    timestamp_ms: (ms: number) => new Date(ms),
+    event_name: (s: string) => s.toLowerCase(),
+  }),
+)
+```
+
+### CSV row processing
+
+```ts
+
+const parseCSV = (raw: string) => pipe(
+  raw,
+  S.trim,
+  S.split('\n'),
+  A.map(S.split(',')),
+)
+
+const [header, ...rows] = parseCSV(csvText)
+
+const records = pipe(
+  rows,
+  A.map(row =>
+    Object.fromEntries(header.map((col, i) => [col, row[i]])),
+  ),
+)
+```
+
+### ETL: reshape records
+
+Migrate rows from an old schema to a new one.
+
+```ts
+
+type OldUser = { first_name: string; last_name: string; email: string | null; is_active: number }
+type NewUser = { fullName: string; email: string; active: boolean }
+
+const migrate = (rows: OldUser[]): NewUser[] => pipe(
+  rows,
+  A.filter(r => r.is_active === 1),
+  A.map(r => ({
+    fullName: `${r.first_name} ${r.last_name}`.trim(),
+    email: pipe(O.fromNullable(r.email), O.getWithDefault('')),
+    active: true,
+  })),
+  A.filter(r => r.email.length > 0),
+)
+```
+
+---
+
+## Collections & sorting
+
+### Slug generation
+
+```ts
+
+const slug = pipe(
+  title,
+  S.trim,
+  S.toLowerCase,
+  S.replaceAll(' ', '-'),
+  S.replaceAll('/', '-'),
+)
+```
+
+### Build a lookup table
+
+```ts
+
+type Product = { sku: string; name: string; price: number }
+
+const bySku = D.fromEntries(
+  products.map(p => [p.sku, p]),
+)
+
+const item = D.get(bySku, 'ABC-123')
+```
+
+### Paginate results
+
+```ts
+
+function paginate<T>(items: T[], page: number, perPage: number) {
+  return pipe(
+    items,
+    A.drop((page - 1) * perPage),
+    A.take(perPage),
+  )
+}
+
+const page3 = paginate(allResults, 3, 20)
+```
+
+### Build select options
+
+```ts
+
+type Country = { code: string; name: string; region: string }
+
+const optionsByRegion = pipe(
+  countries,
+  A.groupBy((c: Country) => c.region),
+  D.map(cs =>
+    A.map(cs, c => ({ value: c.code, label: c.name })),
+  ),
+)
+// { Europe: [{ value: 'DE', label: 'Germany' }, ...], Asia: [...] }
+```
+
+### Diff two lists
+
+```ts
+
+const added = A.difference(currentIds, previousIds)
+const removed = A.difference(previousIds, currentIds)
+const unchanged = A.intersection(currentIds, previousIds)
+```
+
+### Multi-field sort
+
+Sort by department first, then salary descending.
+
+```ts
+
+type Employee = { name: string; department: string; salary: number }
+
+const sorted = pipe(
+  employees,
+  A.sortBy((a, b) =>
+    a.department.localeCompare(b.department) || b.salary - a.salary
+  ),
+)
+```
+
+### Leaderboard with ties
+
+```ts
+
+type Player = { name: string; score: number }
+
+function leaderboard(players: Player[]) {
+  const sorted = pipe(players, A.sortBy((a, b) => b.score - a.score))
+  let rank = 0, prev = -1
+  return sorted.map((p, i) => {
+    if (p.score !== prev) { rank = i + 1; prev = p.score }
+    return { rank, name: p.name, score: p.score }
+  })
+}
+```
+
+### Extract unique values from nested arrays
+
+```ts
+
+type Post = { title: string; tags: string[] }
+
+const allTags = pipe(
+  posts,
+  A.flatMap((p: Post) => p.tags),
+  A.map(t => t.toLowerCase()),
+  A.uniq,
+  A.sortBy((a, b) => a.localeCompare(b)),
+)
+```
+
+### Sliding window average
+
+Smooth noisy time-series data.
+
+```ts
+
+function movingAverage(values: number[], windowSize: number) {
+  return pipe(
+    A.slidingWindow(values, windowSize),
+    A.map(N.mean),
+  )
+}
+
+movingAverage([10, 20, 30, 40, 50], 3)
+// [20, 30, 40]
+```
+
+---
+
+## Error handling & validation
+
+### Validate with Result
+
+Collect all errors instead of failing on the first.
+
+```ts
+
+function validateEmail(input: unknown): R.Result<string, string> {
+  if (!G.isString(input)) return R.err('expected string')
+  const trimmed = input.trim()
+  if (trimmed.length === 0) return R.err('empty')
+  if (!trimmed.includes('@')) return R.err('missing @')
+  return R.ok(trimmed)
+}
+
+const email = pipe(
+  validateEmail(formData.email),
+  R.map(e => e.toLowerCase()),
+  R.match(
+    err => ({ valid: false as const, error: err }),
+    val => ({ valid: true as const, value: val }),
+  ),
+)
+```
+
+### Error recovery chain
+
+```ts
+
+const fetchConfig = pipe(
+  R.tryCatch(() => readFileSync('/etc/app/config.json', 'utf-8')),
+  R.flatMap(raw => R.tryCatch(() => JSON.parse(raw))),
+  R.tapErr(e => logger.warn('config load failed, using defaults:', e)),
+  R.getOrElse(() => defaultConfig),
+)
+```
+
+### Safe property chain
+
+```ts
+
+type Order = { shipping?: { address?: { zip?: string } } }
+
+const zip = pipe(
+  O.fromNullable(order.shipping),
+  O.flatMap(s => O.fromNullable(s.address)),
+  O.flatMap(a => O.fromNullable(a.zip)),
+  O.getWithDefault('N/A'),
+)
+```
+
+### Validate a signup form
+
+```ts
+
+type SignupForm = { email: string; password: string; age: string }
+
+function validateSignup(form: SignupForm) {
+  const checks: [string, R.Result<unknown, string>][] = [
+    ['email', form.email.includes('@') ? R.ok(form.email) : R.err('invalid email')],
+    ['password', form.password.length >= 8 ? R.ok(form.password) : R.err('too short')],
+    ['age', Number(form.age) >= 18 ? R.ok(Number(form.age)) : R.err('must be 18+')],
+  ]
+
+  const errors = pipe(
+    checks,
+    A.filter(([, result]) => R.isErr(result)),
+    A.map(([field, result]) =>
+      R.match((e: string) => ({ field, message: e }), () => null)(result)
+    ),
+    A.filter(G.isNotNil),
+  )
+
+  return errors.length === 0
+    ? R.ok({ email: form.email, password: form.password, age: Number(form.age) })
+    : R.err(errors)
+}
+```
+
+### Process a webhook payload
+
+Stripe sends nested objects with nullable fields everywhere.
+
+```ts
+
+type StripeEvent = {
+  type: string
+  data: { object: { id: string; amount: number; customer: string | null; metadata?: Record<string, string> } }
+}
+
+function handleChargeSucceeded(raw: string) {
+  return pipe(
+    R.tryCatch((): StripeEvent => JSON.parse(raw)),
+    R.flatMap(evt =>
+      evt.type === 'charge.succeeded'
+        ? R.ok(evt.data.object)
+        : R.err(`unexpected event: ${evt.type}`)
+    ),
+    R.map(charge => ({
+      chargeId: charge.id,
+      amountCents: charge.amount,
+      customer: pipe(O.fromNullable(charge.customer), O.getWithDefault('guest')),
+      ref: pipe(
+        O.fromNullable(charge.metadata),
+        O.flatMap(m => O.fromNullable(m['order_ref'])),
+        O.getWithDefault('none'),
+      ),
+    })),
+  )
+}
+```
+
+---
+
+## Aggregation & analytics
+
+### Compute stats on a dataset
+
+```ts
+
+type Measurement = { sensorId: string; value: number; timestamp: number }
+
+const summary = (readings: Measurement[]) => {
+  const values = A.map(readings, r => r.value)
+  return {
+    count: A.length(values),
+    mean: N.mean(values),
+    median: N.median(values),
+    stdDev: N.standardDeviation(values),
+    range: N.minMax(values),
+  }
+}
+```
+
+### Shopping cart total
+
+```ts
+
+type CartItem = { name: string; price: number; qty: number; taxRate: number }
+
+function cartTotal(items: CartItem[]) {
+  const subtotal = pipe(
+    items,
+    A.map(i => i.price * i.qty),
+    N.sum,
+  )
+  const tax = pipe(
+    items,
+    A.map(i => i.price * i.qty * i.taxRate),
+    N.sum,
+  )
+  return { subtotal, tax, total: subtotal + tax }
+}
+```
+
+### Dashboard: percentage change
+
+```ts
+
+type DailyRevenue = { date: string; amount: number }
+
+function weekOverWeek(days: DailyRevenue[]) {
+  const thisWeek = pipe(days, A.take(7), A.map(d => d.amount), N.sum)
+  const lastWeek = pipe(days, A.drop(7), A.take(7), A.map(d => d.amount), N.sum)
+  return lastWeek === 0 ? null : ((thisWeek - lastWeek) / lastWeek) * 100
+}
+```
+
+### Aggregate logs by level
+
+```ts
+
+type LogEntry = { level: 'info' | 'warn' | 'error'; message: string; ts: number }
+
+function logSummary(logs: LogEntry[]) {
+  return pipe(
+    logs,
+    A.groupBy(l => l.level),
+    D.map(entries => ({
+      count: entries.length,
+      latest: pipe(entries, A.sortBy((a, b) => b.ts - a.ts), A.head),
+    })),
+  )
+}
+// { info: { count: 412, latest: {...} }, error: { count: 3, latest: {...} } }
+```
+
+### Deduplicate event stream
+
+Multiple sources emit events for the same entity. Keep the latest per entity.
+
+```ts
+
+type Event = { entityId: string; ts: number; payload: unknown }
+
+function dedup(events: Event[]) {
+  const sorted = pipe(events, A.sortBy((a, b) => b.ts - a.ts))
+  return pipe(
+    sorted,
+    A.uniqBy(e => e.entityId),
+  )
+}
+```
+
+### Build a notification digest
+
+Group by user, send one email per user.
+
+```ts
+
+type Notification = { userId: string; message: string; ts: number }
+
+function buildDigests(notifications: Notification[]) {
+  return pipe(
+    notifications,
+    A.sortBy((a, b) => a.ts - b.ts),
+    A.groupBy(n => n.userId),
+    D.map(notes => ({
+      count: notes.length,
+      messages: A.map(notes, n => n.message),
+      earliest: A.head(notes)!.ts,
+    })),
+  )
+}
+```
+
+---
+
+## Domain patterns
+
+### Permission check
+
+```ts
+
+type User = { roles: string[]; orgId: string; suspended: boolean }
+type Resource = { orgId: string; requiredRole: string }
+
+function canAccess(user: User, resource: Resource): boolean {
+  return Logic.allPass<[User, Resource]>([
+    ([u]) => !u.suspended,
+    ([u, r]) => u.orgId === r.orgId,
+    ([u, r]) => A.includes(u.roles, r.requiredRole),
+  ])([user, resource])
+}
+```
+
+### Filter with combined predicates
+
+```ts
+
+type User = { age: number; active: boolean; verified: boolean }
+
+const eligible = Logic.allPass<User>([
+  u => u.age >= 18,
+  u => u.active,
+  u => u.verified,
+])
+
+pipe(users, A.filter(eligible))
+```
+
+### Merge config layers
+
+```ts
+
+const config = Obj.mergeDeepRight(
+  Obj.mergeDeepRight(defaults, fileConfig),
+  envOverrides,
+)
+```
+
+### Search with ranking
+
+```ts
+
+type Contact = { name: string; email: string; company: string }
+
+function search(contacts: Contact[], query: string) {
+  const q = query.toLowerCase()
+  return pipe(
+    contacts,
+    A.map(c => {
+      const name = c.name.toLowerCase()
+      const score =
+        name === q ? 3 :
+        name.startsWith(q) ? 2 :
+        name.includes(q) || c.email.toLowerCase().includes(q) ? 1 : 0
+      return { contact: c, score }
+    }),
+    A.filter(r => r.score > 0),
+    A.sortBy((a, b) => b.score - a.score),
+    A.take(20),
+    A.map(r => r.contact),
+  )
+}
+```
+
+### Batch API requests
+
+```ts
+
+async function batchDelete(ids: string[], batchSize = 100) {
+  const batches = A.chunk(ids, batchSize)
+  for (const batch of batches) {
+    await db.deleteMany({ id: { $in: batch } })
+  }
+}
+```
+
+---
+
+## Lenses & immutable state
+
+Lenses replace spread-hell for nested immutable updates. Define the path once, then `view`, `set`, or `over` anywhere.
+
+### The problem: spread nesting
+
+```ts
+const next = {
+  ...state,
+  user: {
+    ...state.user,
+    preferences: {
+      ...state.user.preferences,
+      notifications: {
+        ...state.user.preferences.notifications,
+        email: false,
+      },
+    },
+  },
+}
+```
+
+### The fix: lensPath
+
+```ts
+
+type AppState = {
+  user: {
+    name: string
+    preferences: {
+      notifications: { email: boolean; push: boolean }
+      theme: 'light' | 'dark'
+    }
+  }
+}
+
+const emailNotifLens = lensPath<AppState, 'user.preferences.notifications.email'>(
+  'user.preferences.notifications.email'
+)
+const themeLens = lensPath<AppState, 'user.preferences.theme'>(
+  'user.preferences.theme'
+)
+
+pipe(state, view(emailNotifLens))                               // read
+pipe(state, set(emailNotifLens, false))                         // replace
+pipe(state, over(themeLens, t => t === 'dark' ? 'light' : 'dark'))  // transform
+```
+
+### useReducer with lenses
+
+```ts
+
+type State = {
+  count: number
+  todos: { id: string; text: string; done: boolean }[]
+  filter: 'all' | 'active' | 'done'
+}
+
+const countLens = lensProp<State, 'count'>('count')
+const todosLens = lensProp<State, 'todos'>('todos')
+const filterLens = lensProp<State, 'filter'>('filter')
+
+type Action =
+  | { type: 'increment' }
+  | { type: 'decrement' }
+  | { type: 'setFilter'; filter: State['filter'] }
+  | { type: 'addTodo'; todo: State['todos'][0] }
+  | { type: 'toggleTodo'; id: string }
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'increment':
+      return over(countLens, n => n + 1)(state)
+    case 'decrement':
+      return over(countLens, n => n - 1)(state)
+    case 'setFilter':
+      return set(filterLens, action.filter)(state)
+    case 'addTodo':
+      return over(todosLens, todos => [...todos, action.todo])(state)
+    case 'toggleTodo':
+      return over(todosLens, todos =>
+        todos.map(t => t.id === action.id ? { ...t, done: !t.done } : t)
+      )(state)
+  }
+}
+```
+
+### Form state management
+
+Each form field gets a lens. Input handlers become one-liners.
+
+```ts
+
+type ProfileForm = {
+  displayName: string
+  bio: string
+  website: string
+}
+
+const displayNameLens = lensProp<ProfileForm, 'displayName'>('displayName')
+const bioLens = lensProp<ProfileForm, 'bio'>('bio')
+const websiteLens = lensProp<ProfileForm, 'website'>('website')
+
+function handleChange<K extends keyof ProfileForm>(lens: Lens<ProfileForm, string>) {
+  return (e: { target: { value: string } }) =>
+    setForm(prev => set(lens, e.target.value)(prev))
+}
+
+// <input onChange={handleChange(displayNameLens)} value={view(displayNameLens)(form)} />
+```
+
+### Settings panel with nested toggles
+
+```ts
+
+type Settings = {
+  privacy: { shareUsage: boolean; shareLocation: boolean }
+  display: { compactMode: boolean; fontSize: number }
+}
+
+const shareUsageLens = lensPath<Settings, 'privacy.shareUsage'>('privacy.shareUsage')
+const compactLens = lensPath<Settings, 'display.compactMode'>('display.compactMode')
+const fontSizeLens = lensPath<Settings, 'display.fontSize'>('display.fontSize')
+
+const toggleShareUsage = over(shareUsageLens, v => !v)
+const toggleCompact = over(compactLens, v => !v)
+const bumpFontSize = over(fontSizeLens, n => Math.min(n + 2, 32))
+
+const updated = pipe(
+  settings,
+  toggleShareUsage,
+  bumpFontSize,
+)
+```
+
+### Undo/redo with lens snapshots
+
+Capture the value at a lens before mutating. Push to a history stack.
+
+```ts
+
+type History<S> = { past: S[]; present: S; future: S[] }
+
+function edit<S, A>(
+  history: History<S>,
+  lens: Lens<S, A>,
+  fn: (a: A) => A,
+): History<S> {
+  return {
+    past: [...history.past, history.present],
+    present: over(lens, fn)(history.present),
+    future: [],
+  }
+}
+
+function undo<S>(history: History<S>): History<S> {
+  const prev = history.past.at(-1)
+  if (!prev) return history
+  return {
+    past: history.past.slice(0, -1),
+    present: prev,
+    future: [history.present, ...history.future],
+  }
+}
+```
+
+### Normalized state: update an entity by ID
+
+```ts
+
+type Entity = { id: string; name: string; status: 'active' | 'archived' }
+type NormalizedState = {
+  ids: string[]
+  entities: Record<string, Entity>
+}
+
+const entityLens = (id: string) =>
+  lens<NormalizedState, Entity>(
+    s => s.entities[id],
+    (entity, s) => ({
+      ...s,
+      entities: { ...s.entities, [id]: entity },
+    }),
+  )
+
+const archiveEntity = (state: NormalizedState, id: string) =>
+  pipe(state, over(entityLens(id), e => ({ ...e, status: 'archived' as const })))
+```
+
+### Shopping cart: update quantity by SKU
+
+```ts
+
+type CartItem = { sku: string; name: string; qty: number; price: number }
+
+function updateQty(cart: CartItem[], sku: string, delta: number): CartItem[] {
+  const idx = A.findIndex(cart, item => item.sku === sku)
+  if (idx === undefined) return cart
+  return pipe(
+    cart,
+    over(lensIndex<CartItem>(idx), item => ({
+      ...item,
+      qty: Math.max(0, item.qty + delta),
+    })),
+  )
+}
+```
+
+---
+
+## Fusion
+
+When you chain array operations in `pipe`, it fuses them into a single loop.
+
+Without fusion:
+
+```
+data [100K] → filter → [50K] → map → [50K] → take(10) → [10]
+```
+
+Three passes. Two throwaway arrays.
+
+With fusion:
+
+```
+data [100K] → fused(filter + map + take) → [10]
+```
+
+One pass. `take(10)` breaks the loop after 10 results.
+
+## What fuses
+
+| Operation | Fuseable | |
+|-----------|----------|-|
+| `filter`, `map`, `flatMap` | yes | inlined into the loop |
+| `take`, `drop` | yes | `take` triggers early exit |
+| `reduce`, `find`, `every`, `some` | yes | terminals |
+| `sort`, `reverse`, `groupBy`, `uniq` | no | need the full array |
+
+Operations that need the whole array break the chain. Everything before them gets fused and runs first, then the non-fuseable op runs on that result:
+
+```ts
+pipe(
+  data,
+  A.filter(x => x > 3),  // ─┐ segment 1
+  A.map(x => x * 2),     // ─┘ materializes here
+  A.sortBy((a, b) => a - b), // runs on the materialized array
+  A.take(3),              // ── segment 2
+)
+```
+
+## Mechanics
+
+Every function created by `dual()` carries metadata: `_op`, `_fn`, `_args`. `pipe` reads these tags and compiles consecutive fuseable ops into a single `for` loop with inlined predicates. `take(n)` emits a `HALT` to break out early.
+
+Your own lambdas pass through unchanged. If nothing is fuseable, `pipe` just applies functions one after another like you'd expect.
+
+---
+
+## Option & Result
+
+If you've written a function that can fail and thought "should I throw? return null? return an object with a success flag?", these two types sort that out.
+
+`Option` is for values that might not exist. `Result` is for operations that can fail with an error you care about. Both force you to handle the unhappy path before you can use the value. The compiler won't let you forget.
+
+They use numeric `_tag` (0 for None/Err, 1 for Some/Ok) instead of strings. V8 can branch on numbers in a single CPU instruction.
+
+## Option
+
+```ts
+type None = { readonly _tag: 0 }
+type Some<A> = { readonly _tag: 1; readonly value: A }
+type Option<A> = None | Some<A>
+```
+
+Wraps a value that might not be there. `none` is a singleton.
+
+### Constructors
+
+```ts
+some<A>(value: A): Option<A>
+none: None
+fromNullable<A>(value: A | null | undefined): Option<NonNullable<A>>
+fromPredicate<A>(pred: (a: A) => boolean): (a: A) => Option<A>
+```
+
+### Transforms
+
+```ts
+map<A, B>(f: (a: A) => B): (o: Option<A>) => Option<B>
+flatMap<A, B>(f: (a: A) => Option<B>): (o: Option<A>) => Option<B>
+filter<A>(pred: (a: A) => boolean): (o: Option<A>) => Option<A>
+tap<A>(f: (a: A) => void): (o: Option<A>) => Option<A>
+```
+
+### Extraction
+
+```ts
+getOrElse<B>(onNone: () => B): <A>(o: Option<A>) => A | B
+getWithDefault<B>(value: B): <A>(o: Option<A>) => A | B
+match<B, A, C = B>(onNone: () => B, onSome: (a: A) => C): (o: Option<A>) => B | C
+toNullable<A>(o: Option<A>): A | null
+toUndefined<A>(o: Option<A>): A | undefined
+toResult<E>(defaultError: E): <A>(o: Option<A>) => Result<A, E>
+```
+
+### Guards
+
+```ts
+isSome<A>(o: Option<A>): o is Some<A>
+isNone<A>(o: Option<A>): o is None
+```
+
+```ts
+
+pipe(
+  O.fromNullable(config.port),
+  O.map(p => parseInt(p, 10)),
+  O.filter(p => p > 0 && p < 65536),
+  O.getOrElse(() => 3000),
+)
+
+pipe(
+  O.fromNullable(address),
+  O.flatMap(a => O.fromNullable(a.zip)),
+  O.match(() => 'no zip', zip => zip),
+)
+```
+
+---
+
+## Result
+
+```ts
+type Err<E> = { readonly _tag: 0; readonly error: E }
+type Ok<A> = { readonly _tag: 1; readonly value: A }
+type Result<A, E> = Ok<A> | Err<E>
+```
+
+### Constructors
+
+```ts
+ok<A>(value: A): Result<A, never>
+err<E>(error: E): Result<never, E>
+tryCatch<A>(thunk: () => A): Result<A, unknown>
+fromNullable<E>(defaultError: E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
+```
+
+`tryCatch` wraps a function that might throw. The error type comes back as `unknown` because JS can throw anything, so you'll need to narrow it yourself.
+
+### Transforms
+
+```ts
+map<A, B>(f: (a: A) => B): <E>(r: Result<A, E>) => Result<B, E>
+mapErr<E, F>(f: (e: E) => F): <A>(r: Result<A, E>) => Result<A, F>
+flatMap<A, B, E2>(f: (a: A) => Result<B, E2>): <E>(r: Result<A, E>) => Result<B, E | E2>
+tap<A>(f: (a: A) => void): <E>(r: Result<A, E>) => Result<A, E>
+tapErr<E>(f: (e: E) => void): <A>(r: Result<A, E>) => Result<A, E>
+```
+
+### Extraction
+
+```ts
+getOrElse<B>(onErr: () => B): <A, E>(r: Result<A, E>) => A | B
+match<E, B, A, C = B>(onErr: (e: E) => B, onOk: (a: A) => C): (r: Result<A, E>) => B | C
+toOption<A, E>(r: Result<A, E>): Option<A>
+```
+
+### Guards
+
+```ts
+isOk<A, E>(r: Result<A, E>): r is Ok<A>
+isErr<A, E>(r: Result<A, E>): r is Err<E>
+```
+
+```ts
+
+const parsed = R.tryCatch(() => JSON.parse(input))
+
+pipe(
+  parsed,
+  R.map((obj: { value: number }) => obj.value),
+  R.flatMap(v => v > 0 ? R.ok(v) : R.err('must be positive')),
+  R.match(
+    err => console.error(err),
+    val => console.log(val),
+  ),
+)
+```
+
+---
+
+## Converting
+
+```ts
+// Option → Result
+pipe(O.fromNullable(x), O.toResult('was null'))
+
+// Result → Option (discards error)
+pipe(R.ok('hello'), R.toOption)  // Some('hello')
+pipe(R.err('boom'), R.toOption)  // None
+```
+
+---
+
+## fp
+
+```bash
+bun add stopcock
+```
+
+Everything you need for pipe-based FP. Arrays, strings, objects, numbers, and typed error handling. Chain array operations in `pipe` and they get fused into single loops at runtime.
+
+```ts
+
+const topScorers = pipe(
+  players,
+  A.filter(p => p.active),
+  A.map(p => ({ name: p.name, score: p.score })),
+  A.sort((a, b) => b.score - a.score),
+  A.take(10),
+)
+```
+
+- `pipe(value, ...fns)` passes a value through functions left to right. Fuses consecutive `A.*` operations into a single loop.
+- Every function works **both ways**: `A.map(arr, fn)` (data-first) and `pipe(arr, A.map(fn))` (data-last).
+- `Option<A>` / `Result<A, E>` for nullable values and recoverable errors. Numeric `_tag` for fast branching.
+
+## Modules
+
+| Namespace | Module | What it does |
+|-----------|--------|-------------|
+| `A` | Array | `map`, `filter`, `reduce`, `sort`, `groupBy`, `zip`, `take`, `flatMap` + 30 more |
+| `S` | String | `split`, `trim`, `replace`, `startsWith`, `slice`, `padStart` |
+| `D` | Dict | `map`, `filter`, `get`, `merge`, `keys`, `values`, `toEntries` |
+| `N` | Number | `clamp`, `round`, `isEven`, `inRange`, `toFixed` |
+| `G` | Guards | `isString`, `isNumber`, `isArray`, `isNullable`, `isRecord` |
+| `Obj` | Object | `pick`, `omit`, `assoc`, `dissoc`, `mergeDeep`, `path`, `evolve` |
+| `M` | Math | `sum`, `mean`, `median`, `stddev`, `min`, `max`, `clamp` |
+| `B` | Boolean | `and`, `or`, `not`, `xor` |
+| `Logic` | Logic | `ifElse`, `when`, `unless`, `cond`, `allPass`, `anyPass` |
+| `Lens` | Lenses | `view`, `set`, `over` for immutable nested updates |
+| `O` | Option | `Some`, `None`, `map`, `flatMap`, `getOrElse`, `fromNullable` |
+| `R` | Result | `Ok`, `Err`, `map`, `flatMap`, `getOrElse`, `tryCatch` |
+
+## Fusion
+
+Chain fuseable operations in `pipe` and they get compiled into a single loop:
+
+```ts
+// This looks like 3 passes over the array:
+const result = pipe(
+  users,                           // 100,000 users
+  A.filter(u => u.active),         // pass 1: filter
+  A.map(u => u.name),              // pass 2: map
+  A.take(10),                      // pass 3: slice
+)
+
+// But fusion compiles it into roughly:
+const result = []
+for (const u of users) {
+  if (!u.active) continue
+  result.push(u.name)
+  if (result.length >= 10) break   // early exit from take()
+}
+```
+
+  Fuseable operations: `map`, `filter`, `flatMap`, `reduce`, `forEach`. `take` triggers early termination. `sort`, `reverse`, `groupBy` break the fusion chain because they need the full array.
+
+## Option & Result
+
+```ts
+// Option: for values that might not exist
+const port = pipe(
+  O.fromNullable(process.env.PORT),
+  O.map(s => parseInt(s, 10)),
+  O.filter(n => n > 0 && n < 65536),
+  O.getOrElse(() => 3000),
+)
+
+// Result: for operations that might fail
+const config = pipe(
+  R.tryCatch(() => JSON.parse(rawConfig)),
+  R.map(obj => obj.settings),
+  R.getOrElse(() => defaults),
+)
+```
+
+  `Option` and `Result` use numeric `_tag` (0/1) instead of string tags. V8 handles numeric comparisons in a single CPU instruction.
+
+Full docs on the [Option & Result page](/concepts/option-result), or have a look at the individual module pages in the sidebar.
+
+---
+
+## A (Array)
+
+Every function works both ways: `A.fn(arr, ...)` (data-first) and `pipe(arr, A.fn(...))` (data-last).
+
+## Accessors
+
+```ts
+head<A>(arr: A[]): A | undefined
+last<A>(arr: A[]): A | undefined
+first<A>(arr: A[]): A | undefined   // alias for head
+tail<A>(arr: A[]): A[]               // all except first
+init<A>(arr: A[]): A[]               // all except last
+length<A>(arr: A[]): number
+isEmpty<A>(arr: A[]): boolean
+```
+
+## Transforms
+
+```ts
+map<A, B>(arr: A[], f: (a: A) => B): B[]
+mapWithIndex<A, B>(arr: A[], f: (a: A, i: number) => B): B[]
+filter<A>(arr: A[], pred: (a: A) => boolean): A[]
+filterWithIndex<A>(arr: A[], pred: (a: A, i: number) => boolean): A[]
+flatMap<A, B>(arr: A[], f: (a: A) => B[]): B[]
+reduce<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
+reduceRight<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
+scan<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B[]
+forEach<A>(arr: A[], f: (a: A) => void): void
+forEachWithIndex<A>(arr: A[], f: (a: A, i: number) => void): void
+```
+
+All of these fuse in `pipe`.
+
+## Ordering
+
+```ts
+sort(arr: number[]): number[]
+sortBy<A>(arr: A[], cmp: (a: A, b: A) => number): A[]
+reverse<A>(arr: A[]): A[]
+```
+
+Not fuseable. They need the whole array.
+
+## Slicing
+
+```ts
+take<A>(arr: A[], n: number): A[]
+drop<A>(arr: A[], n: number): A[]
+takeWhile<A>(arr: A[], pred: (a: A) => boolean): A[]
+dropWhile<A>(arr: A[], pred: (a: A) => boolean): A[]
+chunk<A>(arr: A[], n: number): A[][]
+slidingWindow<A>(arr: A[], n: number): A[][]
+aperture<A>(arr: A[], n: number): A[][]
+```
+
+`take` bails out early in fused pipelines.
+
+## Search
+
+```ts
+find<A>(arr: A[], pred: (a: A) => boolean): A | undefined
+findIndex<A>(arr: A[], pred: (a: A) => boolean): number | undefined
+every<A>(arr: A[], pred: (a: A) => boolean): boolean
+some<A>(arr: A[], pred: (a: A) => boolean): boolean
+includes<A>(arr: A[], value: A): boolean
+```
+
+`find`, `every`, `some` fuse and bail out early.
+
+## Deduplication
+
+```ts
+uniq<A>(arr: A[]): A[]
+uniqBy<A, B>(arr: A[], f: (a: A) => B): A[]
+```
+
+## Set operations
+
+```ts
+intersection<A>(a: A[], b: A[]): A[]
+union<A>(a: A[], b: A[]): A[]
+difference<A>(a: A[], b: A[]): A[]
+symmetricDifference<A>(a: A[], b: A[]): A[]
+```
+
+## Combinators
+
+```ts
+zip<A, B>(a: A[], b: B[]): [A, B][]
+zipWith<A, B, C>(a: A[], b: B[], f: (a: A, b: B) => C): C[]
+xprod<A, B>(a: A[], b: B[]): [A, B][]
+groupBy<A>(arr: A[], f: (a: A) => string): Dict<A[]>
+partition<A>(arr: A[], pred: (a: A) => boolean): [A[], A[]]
+intersperse<A>(arr: A[], sep: A): A[]
+flatten<A>(arr: A[][]): A[]
+transpose<A>(arr: A[][]): A[][]
+```
+
+## Mutation (immutable)
+
+```ts
+adjust<A>(arr: A[], index: number, f: (a: A) => A): A[]
+update<A>(arr: A[], index: number, value: A): A[]
+insert<A>(arr: A[], index: number, value: A): A[]
+remove<A>(arr: A[], index: number, count: number): A[]
+```
+
+All return new arrays.
+
+## Constructors
+
+```ts
+range(start: number, end: number): number[]
+repeat<A>(value: A, n: number): A[]
+times<A>(f: (i: number) => A, n: number): A[]
+unfold<A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
+```
+
+## Examples
+
+```ts
+
+type Product = { name: string; price: number; category: string; inStock: boolean }
+
+// fused: filter → map → take runs in one loop
+const deals = pipe(
+  products,
+  A.filter((p: Product) => p.inStock && p.price < 50),
+  A.map(p => ({ name: p.name, price: p.price })),
+  A.take(10),
+)
+
+// group + count
+const byCategory = A.groupBy(products, p => p.category)
+// { electronics: [...], clothing: [...] }
+
+// rolling total
+A.scan([100, 200, 150, 300], (acc, x) => acc + x, 0)
+// [100, 300, 450, 750]
+
+// remove duplicates by key
+const uniqueCustomers = pipe(
+  orders,
+  A.uniqBy((o: { customerId: string }) => o.customerId),
+)
+
+// set operations
+const newUsers = A.difference(allUsers, existingUsers)
+const commonTags = A.intersection(tagsA, tagsB)
+
+// batch processing
+const batches = A.chunk(records, 100)
+```
+
+---
+
+## S (String)
+
+## Non-dual
+
+```ts
+trim(s: string): string
+trimStart(s: string): string
+trimEnd(s: string): string
+toLowerCase(s: string): string
+toUpperCase(s: string): string
+isEmpty(s: string): boolean
+length(s: string): number
+```
+
+## Dual
+
+```ts
+startsWith(s: string, search: string): boolean
+endsWith(s: string, search: string): boolean
+includes(s: string, search: string): boolean
+split(s: string, sep: string): string[]
+repeat(s: string, n: number): string
+slice(s: string, start: number, end: number): string
+replaceAll(s: string, search: string, replacement: string): string
+```
+
+## Examples
+
+```ts
+
+// slug from title
+pipe('  Hello World!  ', S.trim, S.toLowerCase, S.replaceAll(' ', '-'), S.replaceAll('!', ''))
+// 'hello-world'
+
+// parse CSV header
+pipe('name,email,role', S.split(','))
+// ['name', 'email', 'role']
+
+// check file extension
+pipe('report.pdf', S.endsWith('.pdf'))  // true
+
+// template
+pipe('Hello, NAME!', S.replaceAll('NAME', user.name))
+
+// truncate
+const preview = pipe(description, S.slice(0, 100))
+```
+
+---
+
+## D (Dict)
+
+`Dict<A>` is `Record<string, A>`.
+
+## Non-dual
+
+```ts
+keys<A>(d: Dict<A>): string[]
+values<A>(d: Dict<A>): A[]
+toEntries<A>(d: Dict<A>): [string, A][]
+fromEntries<A>(entries: [string, A][]): Dict<A>
+isEmpty<A>(d: Dict<A>): boolean
+```
+
+## Dual
+
+```ts
+get<A>(d: Dict<A>, key: string): A | undefined
+map<A, B>(d: Dict<A>, f: (a: A, key: string) => B): Dict<B>
+filter<A>(d: Dict<A>, pred: (a: A, key: string) => boolean): Dict<A>
+merge<A>(a: Dict<A>, b: Dict<A>): Dict<A>
+```
+
+## Examples
+
+```ts
+
+// count items per category
+const counts = pipe(
+  A.groupBy(products, p => p.category),
+  D.map(items => items.length),
+)
+// { electronics: 12, clothing: 8 }
+
+// merge config layers
+const config = pipe(
+  defaults,
+  D.merge(envOverrides),
+  D.merge(cliFlags),
+)
+
+// filter out empty groups
+pipe(
+  grouped,
+  D.filter(items => items.length > 0),
+)
+
+// build lookup table
+const byId = D.fromEntries(
+  users.map(u => [u.id, u]),
+)
+```
+
+---
+
+## N (Number)
+
+## Aggregation
+
+```ts
+sum(nums: number[]): number
+mean(nums: number[]): number
+median(nums: number[]): number
+variance(nums: number[]): number
+standardDeviation(nums: number[]): number
+min(nums: number[]): number
+max(nums: number[]): number
+minMax(nums: number[]): [number, number]
+```
+
+## Dual
+
+```ts
+percentile(nums: number[], p: number): number
+clamp(value: number, min: number, max: number): number
+dotProduct(a: number[], b: number[]): number
+```
+
+## Predicates
+
+```ts
+isEven(n: number): boolean
+isOdd(n: number): boolean
+```
+
+## Examples
+
+```ts
+
+// stats on response times
+const times = [120, 95, 200, 88, 150, 300, 110]
+N.mean(times)               // ~151.9
+N.median(times)             // 120
+N.standardDeviation(times)  // ~68.6
+N.percentile(times, 95)     // 300
+
+// clamp user input
+pipe(userAge, N.clamp(0, 150))
+
+// average score, ignoring zeros
+pipe(scores, A.filter(s => s > 0), N.mean)
+
+// feature vector similarity
+N.dotProduct([1, 0, 1], [0, 1, 1])  // 1
+```
+
+---
+
+## G (Guards)
+
+Runtime type checks that narrow the TypeScript type.
+
+## Type checks
+
+```ts
+isString(x: unknown): x is string
+isNumber(x: unknown): x is number
+isBoolean(x: unknown): x is boolean
+isBigInt(x: unknown): x is bigint
+isSymbol(x: unknown): x is symbol
+isFunction(x: unknown): x is Function
+isDate(x: unknown): x is Date
+isError(x: unknown): x is Error
+isPromise(x: unknown): x is Promise<unknown>
+isArray(x: unknown): x is unknown[]
+isObjectType(x: unknown): x is object
+isPlainObject(x: unknown): x is Record<string, unknown>
+```
+
+`isPlainObject` rejects arrays and class instances. `isObjectType` is just a `typeof` check.
+
+## Nullability
+
+```ts
+isNil(x: unknown): x is null | undefined
+isNotNil<T>(x: T | null | undefined): x is T
+isNull(x: unknown): x is null
+isUndefined(x: unknown): x is undefined
+isNullish(x: unknown): x is null | undefined
+isNonNull<T>(x: T | null): x is T
+isNonNullish<T>(x: T | null | undefined): x is T
+isDefined<T>(x: T | undefined): x is T
+```
+
+## Equality
+
+```ts
+isDeepEqual(a: unknown, b: unknown): boolean
+isShallowEqual(a: unknown, b: unknown): boolean
+isStrictEqual(a: unknown, b: unknown): boolean
+```
+
+## Other
+
+```ts
+isEmpty(x: unknown): boolean
+isEmptyish(x: unknown): boolean        // null, undefined, or empty
+isTruthy(x: unknown): boolean
+is<T>(ctor: new (...args: any[]) => T, val: unknown): val is T
+propIs<T>(ctor: new (...args: any[]) => T, prop: string, obj: Record<string, unknown>): boolean
+```
+
+## Examples
+
+```ts
+
+// narrow unknown API data
+const data: unknown[] = [1, 'hello', null, { a: 1 }]
+data.filter(G.isNumber)       // [1], typed as number[]
+data.filter(G.isNonNullish)   // [1, 'hello', { a: 1 }]
+
+// validate form field
+if (G.isString(input) && !G.isEmpty(input)) {
+  submit(input)
+}
+
+// filter mixed arrays in pipe
+pipe(
+  rawValues,
+  A.filter(G.isNumber),   // unknown[] → number[]
+  A.filter(n => n > 0),
+)
+
+// deep equality check
+G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] })  // true
+
+// check class instance
+G.is(Date, new Date())  // true
+G.is(Date, '2024-01-01')  // false
+```
+
+---
+
+## Obj (Object)
+
+## Property access (dual)
+
+```ts
+pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>
+omit<T, K extends keyof T>(obj: T, keys: K[]): Omit<T, K>
+path<T, P extends string>(obj: T, path: P): PathValue<T, P> | undefined
+pathOr<T, P extends string, D>(obj: T, path: P, defaultValue: D): PathValue<T, P> | D
+```
+
+## Property mutation (dual, immutable)
+
+```ts
+assoc<T, V>(obj: T, key: string, value: V): T & Record<string, V>
+dissoc<T>(obj: T, key: string): Partial<T>
+evolve<T>(obj: T, transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>): T
+```
+
+## Merging (dual)
+
+```ts
+mergeDeepLeft<T>(a: T, b: T): T
+mergeDeepRight<T>(a: T, b: T): T
+mergeWith<T, V>(a: T, b: T, resolver: (l: V, r: V) => V): T
+```
+
+## Examples
+
+```ts
+
+// strip sensitive fields before sending to client
+const safe = pipe(user, Obj.omit(['password', 'ssn']))
+
+// extract fields for a form
+const formData = pipe(user, Obj.pick(['name', 'email', 'phone']))
+
+// safe nested access
+pipe(order, Obj.pathOr('shipping.address.zip', 'N/A'))
+
+// immutable update
+pipe(user, Obj.assoc('role', 'admin'))
+
+// transform multiple fields at once
+pipe(
+  config,
+  Obj.evolve({
+    port: (p: number) => p + 1,
+    host: (h: string) => h.toLowerCase(),
+  }),
+)
+
+// deep merge with priority
+const merged = Obj.mergeDeepRight(defaults, userPrefs)
+```
+
+---
+
+## M (Math)
+
+## Non-dual
+
+```ts
+inc(n: number): number
+dec(n: number): number
+negate(n: number): number
+product(arr: number[]): number
+```
+
+## Dual
+
+```ts
+add(a: number, b: number): number
+subtract(a: number, b: number): number
+multiply(a: number, b: number): number
+divide(a: number, b: number): number
+modulo(a: number, b: number): number
+```
+
+## Examples
+
+```ts
+
+// apply discount
+pipe(prices, A.map(M.multiply(0.9)))  // 10% off
+
+// offset scores
+pipe(rawScores, A.map(M.add(curve)))
+
+// compound product
+M.product([2, 3, 4])  // 24
+
+// counter operations
+pipe(count, M.inc)     // count + 1
+pipe(count, M.dec)     // count - 1
+pipe(value, M.negate)  // -value
+
+// data-first
+M.modulo(17, 5)  // 2
+```
+
+---
+
+## B (Boolean)
+
+```ts
+not_(a: boolean): boolean
+and_(a: boolean, b: boolean): boolean      // dual
+or_(a: boolean, b: boolean): boolean       // dual
+ifElse<A>(cond: boolean, onTrue: () => A, onFalse: () => A): A  // dual
+```
+
+Trailing underscores avoid colliding with JS reserved words.
+
+## Examples
+
+```ts
+
+pipe(true, B.not_)           // false
+pipe(true, B.and_(false))    // false
+pipe(false, B.ifElse(() => 'yes', () => 'no'))  // 'no'
+
+// toggle a feature flag
+const toggled = pipe(isEnabled, B.not_)
+
+// both conditions must hold
+const canAccess = pipe(isAdmin, B.and_(isActive))
+```
+
+---
+
+## Logic
+
+## Predicate combinators
+
+```ts
+both<A>(p1: (a: A) => boolean, p2: (a: A) => boolean): (a: A) => boolean
+either<A>(p1: (a: A) => boolean, p2: (a: A) => boolean): (a: A) => boolean
+allPass<A>(preds: ((a: A) => boolean)[]): (a: A) => boolean
+anyPass<A>(preds: ((a: A) => boolean)[]): (a: A) => boolean
+```
+
+```ts
+
+const isAdult = (u: User) => u.age >= 18
+const isActive = (u: User) => u.active
+
+pipe(users, A.filter(Logic.both(isAdult, isActive)))
+```
+
+## Control flow (dual)
+
+```ts
+equals<A>(a: A, b: A): boolean
+defaultTo<A>(opt: A | undefined, fallback: A): A
+when_<A>(value: A, pred: (a: A) => boolean, f: (a: A) => A): A
+unless<A>(value: A, pred: (a: A) => boolean, f: (a: A) => A): A
+cond<A, B>(value: A, conditions: [(a: A) => boolean, (a: A) => B][]): B | undefined
+```
+
+```ts
+
+pipe(undefined, Logic.defaultTo(0))  // 0
+pipe(5, Logic.defaultTo(0))          // 5
+
+pipe(
+  score,
+  Logic.cond([
+    [s => s >= 90, () => 'A'],
+    [s => s >= 80, () => 'B'],
+    [s => s >= 70, () => 'C'],
+    [() => true,   () => 'F'],
+  ]),
+)
+```
+
+---
+
+## Lenses
+
+```ts
+type Lens<S, A> = {
+  get: (s: S) => A
+  set: (a: A, s: S) => S
+}
+```
+
+## Constructors
+
+```ts
+lens<S, A>(get: (s: S) => A, set: (a: A, s: S) => S): Lens<S, A>
+lensProp<S, K extends keyof S>(key: K): Lens<S, S[K]>
+lensIndex<A>(index: number): Lens<A[], A>
+lensPath<S, P extends string>(path: P): Lens<S, PathValue<S, P>>
+```
+
+## Operations
+
+```ts
+view<S, A>(l: Lens<S, A>): (s: S) => A
+set<S, A>(l: Lens<S, A>, value: A): (s: S) => S
+over<S, A>(l: Lens<S, A>, fn: (a: A) => A): (s: S) => S
+```
+
+`view` reads, `set` replaces, `over` transforms. All return new objects.
+
+```ts
+
+const nameLens = lensProp<User, 'name'>('name')
+
+pipe(user, view(nameLens))                    // 'Alice'
+pipe(user, set(nameLens, 'Bob'))              // { ...user, name: 'Bob' }
+pipe(user, over(nameLens, s => s.toUpperCase()))  // { ...user, name: 'ALICE' }
+
+const cityLens = lensPath<User, 'address.city'>('address.city')
+pipe(user, view(cityLens))                    // 'Portland'
+pipe(user, over(cityLens, s => s.toUpperCase()))
+```
+
+---
+
+## O (Option)
+
+```ts
+type None = { readonly _tag: 0 }
+type Some<A> = { readonly _tag: 1; readonly value: A }
+type Option<A> = None | Some<A>
+```
+
+Numeric `_tag` for fast branching. `none` is a singleton.
+
+## Constructors
+
+```ts
+some<A>(value: A): Option<A>
+none: None
+fromNullable<A>(value: A | null | undefined): Option<NonNullable<A>>
+fromPredicate<A>(pred: (a: A) => boolean): (a: A) => Option<A>
+```
+
+## Transforms
+
+```ts
+map<A, B>(f: (a: A) => B): (o: Option<A>) => Option<B>
+flatMap<A, B>(f: (a: A) => Option<B>): (o: Option<A>) => Option<B>
+filter<A>(pred: (a: A) => boolean): (o: Option<A>) => Option<A>
+tap<A>(f: (a: A) => void): (o: Option<A>) => Option<A>
+```
+
+## Extraction
+
+```ts
+getOrElse<B>(onNone: () => B): <A>(o: Option<A>) => A | B
+getWithDefault<B>(value: B): <A>(o: Option<A>) => A | B
+match<B, A, C = B>(onNone: () => B, onSome: (a: A) => C): (o: Option<A>) => B | C
+toNullable<A>(o: Option<A>): A | null
+toUndefined<A>(o: Option<A>): A | undefined
+toResult<E>(defaultError: E): <A>(o: Option<A>) => Result<A, E>
+```
+
+## Guards
+
+```ts
+isSome<A>(o: Option<A>): o is Some<A>
+isNone<A>(o: Option<A>): o is None
+```
+
+## Examples
+
+```ts
+
+// safe env variable with validation
+const port = pipe(
+  O.fromNullable(process.env.PORT),
+  O.map(s => parseInt(s, 10)),
+  O.filter(n => n > 0 && n < 65536),
+  O.getOrElse(() => 3000),
+)
+
+// chain nullable lookups
+pipe(
+  O.fromNullable(user.address),
+  O.flatMap(a => O.fromNullable(a.zip)),
+  O.match(() => 'no zip', zip => zip),
+)
+
+// convert to Result for error context
+pipe(
+  O.fromNullable(headers.authorization),
+  O.toResult('missing auth header'),
+)
+```
+
+---
+
+## R (Result)
+
+```ts
+type Err<E> = { readonly _tag: 0; readonly error: E }
+type Ok<A> = { readonly _tag: 1; readonly value: A }
+type Result<A, E> = Ok<A> | Err<E>
+```
+
+## Constructors
+
+```ts
+ok<A>(value: A): Result<A, never>
+err<E>(error: E): Result<never, E>
+tryCatch<A>(thunk: () => A): Result<A, unknown>
+fromNullable<E>(defaultError: E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
+```
+
+`tryCatch` wraps a function that might throw. Error comes back as `unknown`, narrow it yourself.
+
+## Transforms
+
+```ts
+map<A, B>(f: (a: A) => B): <E>(r: Result<A, E>) => Result<B, E>
+mapErr<E, F>(f: (e: E) => F): <A>(r: Result<A, E>) => Result<A, F>
+flatMap<A, B, E2>(f: (a: A) => Result<B, E2>): <E>(r: Result<A, E>) => Result<B, E | E2>
+tap<A>(f: (a: A) => void): <E>(r: Result<A, E>) => Result<A, E>
+tapErr<E>(f: (e: E) => void): <A>(r: Result<A, E>) => Result<A, E>
+```
+
+## Extraction
+
+```ts
+getOrElse<B>(onErr: () => B): <A, E>(r: Result<A, E>) => A | B
+match<E, B, A, C = B>(onErr: (e: E) => B, onOk: (a: A) => C): (r: Result<A, E>) => B | C
+toOption<A, E>(r: Result<A, E>): Option<A>
+```
+
+## Guards
+
+```ts
+isOk<A, E>(r: Result<A, E>): r is Ok<A>
+isErr<A, E>(r: Result<A, E>): r is Err<E>
+```
+
+## Examples
+
+```ts
+
+// parse JSON safely
+const data = pipe(
+  R.tryCatch(() => JSON.parse(rawBody)),
+  R.map((body: { items: string[] }) => body.items),
+  R.getOrElse((): string[] => []),
+)
+
+// chain validations
+pipe(
+  R.ok(formData),
+  R.flatMap(d => d.name ? R.ok(d) : R.err('name required')),
+  R.flatMap(d => d.email ? R.ok(d) : R.err('email required')),
+  R.match(
+    err => ({ success: false as const, error: err }),
+    val => ({ success: true as const, data: val }),
+  ),
+)
+
+// log errors without changing the pipeline
+pipe(
+  R.tryCatch(() => connectToDb()),
+  R.tapErr(e => console.error('db connection failed:', e)),
+  R.getOrElse(() => fallbackDb),
+)
+```
+
+---
+
+## async
+
+```bash
+bun add stopcock
+```
+
+`Task<A, E>` is a lazy, cancellable async computation. Nothing runs until you call `.run()`.
+
+Constructing a Task just describes the work. You can compose, retry, add timeouts, set concurrency limits, and chain multiple Tasks together before anything actually executes. Every Task accepts an `AbortSignal`, so cancellation propagates through the whole chain.
+
+```ts
+
+const fetchUser = pipe(
+  fromPromise(() => fetch('/api/user')),
+  flatMap(res => fromPromise(() => res.json())),
+  map(data => data.name),
+  retry({ attempts: 3 }),
+  timeout(5000),
+)
+
+const name = await run(fetchUser)
+```
+
+## Task type
+
+```ts
+type Task<A, E = never> = {
+  readonly _tag: 'Task'
+  readonly run: (signal?: AbortSignal) => Promise<A>
+}
+```
+
+## Constructors
+
+```ts
+of<A, E>(run: (signal?: AbortSignal) => Promise<A>): Task<A, E>
+resolve<A>(value: A): Task<A, never>
+reject<E>(error: E): Task<never, E>
+fromPromise<A>(f: () => Promise<A>): Task<A, unknown>
+fromResult<A, E>(result: Result<A, E>): Task<A, E>
+fromOption<A>(option: Option<A>, onNone: () => Error): Task<A, Error>
+delay(ms: number): Task<void, never>
+never: Task<never, never>
+```
+
+`fromPromise` wraps a thunk. The promise isn't created until `.run()` is called.
+
+## vs. raw Promises
+
+    ```ts
+    // Raw Promise: manual retry loop, easy to get wrong
+    async function fetchWithRetry(url: string, attempts = 3) {
+      for (let i = 0; i < attempts; i++) {
+        try { return await fetch(url) }
+        catch (e) {
+          if (i === attempts - 1) throw e
+          await new Promise(r => setTimeout(r, 100 * Math.pow(2, i)))
+        }
+      }
+    }
+
+    // stopcock: declarative, composable, cancellable
+    const fetchWithRetry = pipe(
+      fromPromise(() => fetch(url)),
+      retry({ attempts: 3, backoff: 'exponential' }),
+    )
+    ```
+
+    ```ts
+    // Raw: p-limit or manual semaphore
+    import pLimit from 'p-limit'
+    const limit = pLimit(4)
+    const results = await Promise.all(urls.map(url => limit(() => fetch(url))))
+
+    // stopcock: built-in, returns a Task you can compose further
+    const results = await pipe(
+      urls,
+      mapAsync(url => fetch(url), 4),
+      run,
+    )
+    ```
+
+    ```ts
+    // Raw: AbortController boilerplate
+    const controller = new AbortController()
+    const promise = fetch(url, { signal: controller.signal })
+    setTimeout(() => controller.abort(), 5000)
+
+    // stopcock: cancellation is built into the Task model
+    const [promise, cancel] = runWithCancel(
+      pipe(fromPromise(() => fetch(url)), timeout(5000))
+    )
+    // cancel() aborts immediately, signal propagates to fetch
+    ```
+
+## Real-world patterns
+
+### Paginated API fetch
+
+```ts
+const fetchAllPages = (baseUrl: string) => {
+  const fetchPage = (page: number) => pipe(
+    fromPromise(() => fetch(`${baseUrl}?page=${page}`)),
+    flatMap(res => fromPromise(() => res.json())),
+  )
+
+  return pipe(
+    of(async () => {
+      const results = []
+      let page = 1
+      while (true) {
+        const data = await fetchPage(page).run()
+        results.push(...data.items)
+        if (!data.hasMore) break
+        page++
+      }
+      return results
+    }),
+    timeout(30000),
+  )
+}
+```
+
+### Health check with fallback
+
+```ts
+const checkPrimary = pipe(
+  fromPromise(() => fetch('https://api.primary.com/health')),
+  map(res => res.ok),
+  timeout(2000),
+)
+
+const checkFallback = pipe(
+  fromPromise(() => fetch('https://api.fallback.com/health')),
+  map(res => res.ok),
+  timeout(2000),
+)
+
+const isHealthy = await pipe(
+  fallback(checkPrimary, checkFallback),
+  catchError(() => false),
+  run,
+)
+```
+
+### Rate-limited API client
+
+```ts
+const callApi = rateLimit(10, 1000, async (endpoint: string) => {
+  const res = await fetch(`https://api.example.com${endpoint}`)
+  return res.json()
+})
+
+// First 10 calls go through immediately, then queued at 10/sec
+const users = await Promise.all(
+  ids.map(id => callApi(`/users/${id}`))
+)
+```
+
+## Combinators
+
+All dual-form: data-first and data-last for `pipe`.
+
+```ts
+map<A, B, E>(task: Task<A, E>, f: (a: A) => B): Task<B, E>
+flatMap<A, B, E, E2>(task: Task<A, E>, f: (a: A) => Task<B, E2>): Task<B, E | E2>
+tap<A, E>(task: Task<A, E>, f: (a: A) => void): Task<A, E>
+mapError<A, E, E2>(task: Task<A, E>, f: (e: E) => E2): Task<A, E2>
+catchError<A, E>(task: Task<A, E>, f: (e: E) => A): Task<A, never>
+flatMapError<A, E, E2>(task: Task<A, E>, f: (e: E) => Task<A, E2>): Task<A, E2>
+match<A, E, B>(task: Task<A, E>, cases: { ok: (a: A) => B, err: (e: E) => B }): Task<B, never>
+```
+
+## Running
+
+```ts
+run<A>(task: Task<A, any>): Promise<A>
+runSafe<A, E>(task: Task<A, E>): Promise<Result<A, E>>
+runWithCancel<A>(task: Task<A, any>): [Promise<A>, () => void]
+```
+
+`runSafe` catches errors into a `Result` instead of throwing. `runWithCancel` returns a cancel function that aborts the signal.
+
+  `runSafe` catches errors into a `Result<A, E>` instead of throwing. Handy if you want to keep everything in the `R.map`, `R.flatMap` world.
+
+## Concurrency
+
+```ts
+all<A, E>(tasks: readonly Task<A, E>[]): Task<A[], E>
+allSettled<A, E>(tasks: readonly Task<A, E>[]): Task<Result<A, E>[], never>
+race<A, E>(tasks: readonly Task<A, E>[]): Task<A, E>
+any<A, E>(tasks: readonly Task<A, E>[]): Task<A, E[]>
+parallel(concurrency: number): <A, E>(tasks: readonly Task<A, E>[]) => Task<A[], E>
+sequential<A, E>(tasks: readonly Task<A, E>[]): Task<A[], E>
+```
+
+`parallel(n)` returns a function. Use it to run up to `n` tasks at a time:
+
+```ts
+const results = await pipe(
+  tasks,
+  parallel(4),
+  run,
+)
+```
+
+## Resilience
+
+```ts
+retry(opts: RetryOptions): <A, E>(task: Task<A, E>) => Task<A, E>
+timeout(ms: number): <A, E>(task: Task<A, E>) => Task<A, E | TimeoutError>
+fallback<A, E>(task: Task<A, E>, alt: Task<A, E>): Task<A, E>
+```
+
+```ts
+interface RetryOptions {
+  attempts: number
+  delay?: number           // default 100ms
+  backoff?: 'constant' | 'linear' | 'exponential'  // default exponential
+  jitter?: boolean         // default true
+  maxDelay?: number        // default 30000ms
+  retryIf?: (error: unknown, attempt: number) => boolean
+}
+```
+
+## Flow control
+
+```ts
+throttle<T extends (...args: any[]) => any>(ms: number, fn: T): T
+debounce<T extends (...args: any[]) => any>(ms: number, fn: T): T & { cancel: () => void }
+rateLimit<T extends (...args: any[]) => any>(count: number, windowMs: number, fn: T): T
+```
+
+## Array operations
+
+All return `Task` and support optional concurrency limits.
+
+```ts
+mapAsync<A, B>(arr: A[], fn: (a: A, signal?: AbortSignal) => Promise<B>, concurrency?: number): Task<B[], unknown>
+filterAsync<A>(arr: A[], fn: (a: A, signal?: AbortSignal) => Promise<boolean>, concurrency?: number): Task<A[], unknown>
+forEachAsync<A>(arr: A[], fn: (a: A, signal?: AbortSignal) => Promise<void>, concurrency?: number): Task<void, unknown>
+reduceAsync<A, B>(arr: A[], fn: (acc: B, a: A, signal?: AbortSignal) => Promise<B>, init: B): Task<B, unknown>
+collectAsync<A>(iter: AsyncIterable<A>): Task<A[], unknown>
+```
+
+All dual-form. Data-last works in `pipe`:
+
+```ts
+const results = await pipe(
+  urls,
+  mapAsync(url => fetch(url).then(r => r.json()), 4),
+  run,
+)
+```
+
+---
+
+## stream
+
+```bash
+bun add stopcock
+```
+
+Streams are lazy. Nothing runs until you pull values out with a terminal operation like `toArray` or `reduce`. Because of that, infinite sequences just work as long as you `take` from them.
+
+```ts
+
+const squares = pipe(
+  range(1, Infinity),
+  map(n => n * n),
+  filter(n => n % 2 === 0),
+  take(5),
+  toArray,
+)
+// [4, 16, 36, 64, 100]
+```
+
+## vs. Array chains
+
+```ts
+// Array: 3 full passes, 3 intermediate arrays allocated
+const result = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  .filter(n => n % 2 === 0)
+  .map(n => n * n)
+  .slice(0, 3)
+
+// Stream: single lazy pass, stops after 3 results
+const result = pipe(
+  from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+  filter(n => n % 2 === 0),
+  map(n => n * n),
+  take(3),
+  toArray,
+)
+```
+
+  With a million elements this actually matters. The Array version allocates three intermediate arrays. The Stream version touches exactly 6 elements and allocates nothing.
+
+## Real-world patterns
+
+### Processing a large CSV line-by-line
+
+```ts
+const lines = pipe(
+  from(file.split('\n')),
+  drop(1),                          // skip header
+  map(line => line.split(',')),
+  filter(cols => cols[2] !== ''),    // skip empty emails
+  map(([name, age, email]) => ({ name, age: +age, email })),
+  take(1000),                       // first 1000 valid rows
+  toArray,
+)
+```
+
+### Fibonacci sequence
+
+```ts
+const fibs = pipe(
+  iterate(([a, b]) => [b, a + b] as [number, number], [0, 1] as [number, number]),
+  map(([a]) => a),
+)
+
+pipe(fibs, take(10), toArray)  // [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+pipe(fibs, find(n => n > 1000))  // 1597
+```
+
+### Chunked batch processing
+
+```ts
+const ids = range(1, 10001)  // 10,000 IDs
+
+pipe(
+  ids,
+  chunk(100),   // groups of 100
+  forEach(batch => sendBatchRequest(toArray(batch))),
+)
+```
+
+## Stream type
+
+```ts
+interface Stream<A> {
+  [Symbol.iterator](): Iterator<A>
+}
+```
+
+Streams implement `Iterable`, so they work with `for...of` and spread.
+
+## Creators
+
+```ts
+from<A>(iterable: Iterable<A>): Stream<A>
+range(start: number, end: number): Stream<number>
+iterate<A>(f: (a: A) => A, seed: A): Stream<A>
+repeat<A>(value: A): Stream<A>
+empty<A = never>(): Stream<A>
+```
+
+`iterate` produces an infinite stream: `iterate(n => n * 2, 1)` yields `1, 2, 4, 8, ...`
+
+## Transformers
+
+All dual-form.
+
+```ts
+map<A, B>(stream: Stream<A>, f: (a: A) => B): Stream<B>
+filter<A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A>
+flatMap<A, B>(stream: Stream<A>, f: (a: A) => Stream<B>): Stream<B>
+take<A>(stream: Stream<A>, n: number): Stream<A>
+drop<A>(stream: Stream<A>, n: number): Stream<A>
+takeWhile<A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A>
+dropWhile<A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A>
+chunk<A>(stream: Stream<A>, n: number): Stream<A[]>
+scan<A, B>(stream: Stream<A>, f: (acc: B, a: A) => B, init: B): Stream<B>
+zip<A, B>(stream: Stream<A>, other: Stream<B>): Stream<[A, B]>
+concat<A>(stream: Stream<A>, other: Stream<A>): Stream<A>
+distinct<A>(stream: Stream<A>): Stream<A>
+distinctN<A>(stream: Stream<A>, maxSize: number): Stream<A>
+intersperse<A>(stream: Stream<A>, sep: A): Stream<A>
+```
+
+  `distinctN` limits the seen-set size. Useful for memory-bounded deduplication on large streams. When the set is full it clears and starts over, trading perfect dedup for bounded memory.
+
+## Terminals
+
+```ts
+toArray<A>(stream: Stream<A>): A[]
+collect<A>(stream: Stream<A>): A[]     // alias for toArray
+reduce<A, B>(stream: Stream<A>, f: (acc: B, a: A) => B, init: B): B
+first<A>(stream: Stream<A>): A | undefined
+last<A>(stream: Stream<A>): A | undefined
+count<A>(stream: Stream<A>): number
+every<A>(stream: Stream<A>, pred: (a: A) => boolean): boolean
+some<A>(stream: Stream<A>, pred: (a: A) => boolean): boolean
+find<A>(stream: Stream<A>, pred: (a: A) => boolean): A | undefined
+forEach<A>(stream: Stream<A>, f: (a: A) => void): void
+```
+
+`reduce`, `every`, `some`, `find`, `forEach` are dual-form.
+
+---
+
+## optics
+
+```bash
+bun add stopcock
+```
+
+Read and update deeply nested immutable data without spread hell.
+
+Four kinds of optic, each for a different shape of access: **Lens** for a single value on an object, **Prism** for a value that might not be there (like `Option` or `Result`), **Traversal** for multiple values at once (every item in an array, or a filtered subset), and **Iso** for lossless conversion between two representations.
+
+```ts
+
+const name = prop<User>()('name')
+const city = composeLens(prop<User>()('address'), prop<Address>()('city'))
+
+view(name, user)                  // "alice"
+set(city, 'London', user)        // new user with city = 'London'
+over(name, s => s.toUpperCase(), user)
+```
+
+## Real-world patterns
+
+### Updating nested state without spread hell
+
+```ts
+// Manual spread: gets worse with every level of nesting
+const updated = {
+  ...state,
+  user: {
+    ...state.user,
+    address: {
+      ...state.user.address,
+      city: 'London',
+    },
+  },
+}
+
+// Optics: one line, any depth
+
+const city = path<State, 'user', 'address', 'city'>('user', 'address', 'city')
+const updated = set(city, 'London', state)
+```
+
+### Updating all items matching a condition
+
+```ts
+
+const expiredItems = composeTraversal(
+  each<CartItem>(),
+  filtered(item => item.expiresAt < Date.now()),
+)
+
+const cart = modify(expiredItems, item => ({ ...item, status: 'expired' }), state.items)
+```
+
+### Optional chaining with Prism
+
+```ts
+
+const maybeDiscount = composePrism(some<User>(), some<number>())
+// Safely access user?.discount, returns Option<number>
+const discount = preview(maybeDiscount, currentUser)
+```
+
+## Lens
+
+Focus on a single value in a product type.
+
+```ts
+type Lens<S, A> = { get: (s: S) => A; set: (a: A, s: S) => S }
+
+lens<S, A>(get: (s: S) => A, set: (a: A, s: S) => S): Lens<S, A>
+prop<S>(): <K extends keyof S>(key: K) => Lens<S, S[K]>
+index<A>(i: number): Lens<A[], A>
+path<S, K1 extends keyof S>(k1: K1): Lens<S, S[K1]>
+view<S, A>(lens: Lens<S, A>, s: S): A
+set<S, A>(lens: Lens<S, A>, a: A, s: S): S
+over<S, A>(lens: Lens<S, A>, f: (a: A) => A, s: S): S
+composeLens<S, A, B>(outer: Lens<S, A>, inner: Lens<A, B>): Lens<S, B>
+```
+
+## Prism
+
+Focus on a value that may not exist (sum types, optionals).
+
+```ts
+type Prism<S, A> = { preview: (s: S) => A | undefined; set: (a: A, s: S) => S }
+
+prism<S, A>(preview: (s: S) => A | undefined, set: (a: A, s: S) => S): Prism<S, A>
+fromPredicate<A>(pred: (a: A) => boolean): Prism<A, A>
+some<A>(): Prism<A | undefined, A>
+ok<A, E>(): Prism<Result<A, E>, A>
+preview<S, A>(prism: Prism<S, A>, s: S): A | undefined
+composePrism<S, A, B>(outer: Prism<S, A>, inner: Prism<A, B>): Prism<S, B>
+```
+
+## Traversal
+
+Focus on multiple values at once.
+
+```ts
+type Traversal<S, A> = { toArray: (s: S) => A[]; modify: (f: (a: A) => A, s: S) => S }
+
+traversal<S, A>(toArray: (s: S) => A[], modify: (f: (a: A) => A, s: S) => S): Traversal<S, A>
+each<A>(): Traversal<A[], A>
+filtered<A>(pred: (a: A) => boolean): Traversal<A[], A>
+composeTraversal<S, A, B>(outer: Traversal<S, A>, inner: Traversal<A, B>): Traversal<S, B>
+toArray<S, A>(traversal: Traversal<S, A>, s: S): A[]
+modify<S, A>(traversal: Traversal<S, A>, f: (a: A) => A, s: S): S
+```
+
+## Iso
+
+Lossless bidirectional transformation.
+
+```ts
+type Iso<S, A> = { get: (s: S) => A; reverseGet: (a: A) => S }
+
+iso<S, A>(get: (s: S) => A, reverseGet: (a: A) => S): Iso<S, A>
+reverse<S, A>(iso: Iso<S, A>): Iso<A, S>
+composeIso<S, A, B>(outer: Iso<S, A>, inner: Iso<A, B>): Iso<S, B>
+```
+
+## Cross-optic composition
+
+```ts
+composeOptics(outer, inner): Optic
+```
+
+  `composeOptics` composes any combination of Lens, Prism, Traversal, and Iso. The result type is the weakest optic in the chain. Lens + Prism = Prism, anything + Traversal = Traversal.
+
+---
+
+## validate
+
+```bash
+bun add stopcock
+```
+
+Define a schema, get the TypeScript type for free with `Infer<typeof Schema>`. JIT-compile it with `compile()` if you're validating the same shape on every request.
+
+Errors come back as structured objects with `path`, `message`, and `value`, so you can render them next to form fields without faffing about with `.format()`. `V.transform(schema, fn)` lets you validate and convert in one step.
+
+```ts
+
+const User = V.object({
+  name: V.string().min(1),
+  email: V.string().email(),
+  age: V.number().int().min(0),
+  role: V.union(V.literal('admin'), V.literal('user')),
+})
+
+type User = Infer<typeof User>
+
+const result = User.validate(input)
+if (result.success) {
+  result.data // User
+} else {
+  result.errors // ValidationError[]
+}
+```
+
+## vs. zod
+
+    ```ts
+    // zod
+    import { z } from 'zod'
+    const User = z.object({
+      name: z.string().min(1),
+      email: z.string().email(),
+      age: z.number().int().min(0),
+      role: z.union([z.literal('admin'), z.literal('user')]),
+    })
+    type User = z.infer<typeof User>
+
+    // stopcock: same API shape, but with JIT compilation
+    import { V, compile, type Infer } from 'stopcock/validate'
+    const User = V.object({
+      name: V.string().min(1),
+      email: V.string().email(),
+      age: V.number().int().min(0),
+      role: V.union(V.literal('admin'), V.literal('user')),
+    })
+    type User = Infer<typeof User>
+    ```
+
+    ```ts
+    // zod
+    app.post('/users', (req) => {
+      const result = User.safeParse(req.body)
+      if (!result.success) return new Response(
+        JSON.stringify(result.error.format()), { status: 400 }
+      )
+      createUser(result.data)
+    })
+
+    // stopcock
+    import { json } from 'stopcock/serve'
+    const validateUser = compile(User)
+
+    export const POST = (ctx) => {
+      const result = validateUser(ctx.body)
+      if (!result.success) return json(result.errors, 400)
+      createUser(result.data)
+    }
+    ```
+
+  If you know zod, you already know 90% of this. The differences: `compile()` for JIT, structured error objects without `.format()`, and schemas are plain objects not class instances.
+
+## Real-world patterns
+
+### Environment variable validation
+
+```ts
+const Env = V.object({
+  PORT: V.transform(V.string(), s => parseInt(s, 10)),
+  DATABASE_URL: V.string().url(),
+  NODE_ENV: V.union(V.literal('development'), V.literal('production'), V.literal('test')),
+  API_KEY: V.string().min(32),
+  DEBUG: V.transform(V.optional(V.string()), s => s === 'true'),
+})
+
+const env = compile(Env)(process.env)
+if (!env.success) {
+  console.error('Invalid environment:', env.errors)
+  process.exit(1)
+}
+// env.data is fully typed: { PORT: number, DATABASE_URL: string, ... }
+```
+
+### Nested form validation with error display
+
+```ts
+const Address = V.object({
+  street: V.string().min(1),
+  city: V.string().min(1),
+  zip: V.string().regex(/^\d{5}$/),
+})
+
+const Order = V.object({
+  items: V.array(V.object({
+    sku: V.string(),
+    quantity: V.number().int().min(1),
+  })).min(1),
+  shipping: Address,
+  billing: V.optional(Address),
+})
+
+const result = Order.validate(formData)
+if (!result.success) {
+  // result.errors[0].path = ['shipping', 'zip']
+  // result.errors[0].message = 'string must match /^\d{5}$/'
+  // Render errors next to the right form fields
+}
+```
+
+### Transform pipeline
+
+```ts
+const SearchParams = V.object({
+  q: V.string().min(1),
+  page: V.transform(V.optional(V.string()), s => parseInt(s ?? '1', 10)),
+  limit: V.transform(V.optional(V.string()), s => Math.min(parseInt(s ?? '20', 10), 100)),
+  sort: V.optional(V.union(V.literal('asc'), V.literal('desc'))),
+})
+
+// Input: { q: "stopcock", page: "3", limit: "50" }
+// Output: { q: "stopcock", page: 3, limit: 50, sort: undefined }
+```
+
+## Types
+
+```ts
+type ValidationError = { path: string[]; message: string; value: unknown }
+type ValidationResult<A> = { success: true; data: A } | { success: false; errors: ValidationError[] }
+type Schema<A> = { validate: (input: unknown) => ValidationResult<A>; _def: SchemaDef }
+type Infer<S> = S extends Schema<infer T> ? T : never
+```
+
+## Primitives
+
+```ts
+V.string(): Schema<string> & { min(n): ...; max(n): ...; regex(r): ...; email(): ...; url(): ... }
+V.number(): Schema<number> & { min(n): ...; max(n): ...; int(): ...; positive(): ... }
+V.boolean(): Schema<boolean>
+V.literal<T>(value: T): Schema<T>
+V.enum<T>(values: T[]): Schema<T[number]>
+```
+
+String and number schemas are chainable:
+
+```ts
+V.string().min(3).max(100).email()
+V.number().int().min(0).max(100)
+```
+
+## Composites
+
+```ts
+V.object<S>(shape: S): Schema<InferShape<S>> & { strict(): ... }
+V.array<T>(element: Schema<T>): Schema<T[]> & { min(n): ...; max(n): ... }
+V.tuple<T>(...elements: T): Schema<[...inferred]>
+V.record<V>(key: Schema<string>, value: Schema<V>): Schema<Record<string, V>>
+V.union<T>(...variants: T): Schema<T[number]>
+V.optional<T>(inner: Schema<T>): Schema<T | undefined>
+V.nullable<T>(inner: Schema<T>): Schema<T | null>
+```
+
+`object` validates shape keys. `.strict()` rejects unknown keys.
+
+## Advanced
+
+```ts
+V.custom<T>(validate: (input: unknown) => boolean, message: string): Schema<T>
+V.transform<A, B>(inner: Schema<A>, fn: (a: A) => B): Schema<B>
+```
+
+`transform` validates, then maps the value. The output type changes:
+
+```ts
+const Port = V.transform(
+  V.string(),
+  s => parseInt(s, 10),
+)
+// Schema<number>
+```
+
+## Compilation
+
+```ts
+compile<A>(schema: Schema<A>): (input: unknown) => ValidationResult<A>
+```
+
+`compile` JIT-compiles the schema into a specialized validation function. Useful when validating the same schema on every request:
+
+```ts
+const validateUser = compile(User)
+const result = validateUser(body)  // faster than User.validate(body)
+```
+
+---
+
+## parse
+
+```bash
+bun add stopcock
+```
+
+Parser combinators. Parsers are just values, so you compose them with `seq`, `alt`, `map` like anything else.
+
+Types flow through composition: `seq(integer, string('='), integer)` infers `[number, string, number]`. Failed parses tell you what was expected and where. `lazy(() => parser)` handles recursive grammars.
+
+```ts
+
+const number = map(many1(digit), chars => parseInt(chars.join(''), 10))
+const assignment = seq(identifier, string(' = '), number)
+
+run(assignment, 'x = 42')
+// { success: true, value: ['x', ' = ', 42], rest: '' }
+```
+
+## vs. hand-written parsers
+
+```ts
+// Regex: fragile, no error messages, unreadable at scale
+const match = input.match(/^([a-z]+)\s*=\s*(\d+)/)
+if (!match) throw new Error('parse failed')
+const [, key, value] = match
+
+// Parser combinator: composable, typed, clear error reporting
+const assignment = pipe(
+  seq(identifier, many(whitespace), string('='), many(whitespace), integer),
+  map(([key, , , , value]) => ({ key, value })),
+)
+run(assignment, 'count = 42')
+// { success: true, value: { key: 'count', value: 42 } }
+```
+
+## Real-world patterns
+
+### CSV line parser
+
+```ts
+const quoted = between(char('"'), char('"'), regex(/[^"]*/))
+const unquoted = regex(/[^,\n]*/)
+const field = alt(quoted, unquoted)
+const csvLine = sepBy(field, char(','))
+
+run(csvLine, 'Alice,"New York",30')
+// { success: true, value: ['Alice', 'New York', '30'] }
+```
+
+### Key-value config file
+
+```ts
+const comment = seq(char('#'), regex(/[^\n]*/))
+const key = regex(/[a-zA-Z_][a-zA-Z0-9_]*/)
+const value = regex(/[^\n]+/)
+const entry = pipe(
+  seq(key, many(whitespace), char('='), many(whitespace), value),
+  map(([k, , , , v]) => [k, v.trim()] as const),
+)
+const config = many(alt(
+  pipe(comment, map(() => null)),
+  entry,
+))
+
+run(config, 'host = localhost\nport = 3000\n# comment')
+```
+
+### JSON subset (recursive)
+
+```ts
+const jsonValue: Parser<unknown> = lazy(() => alt(
+  map(quotedString, s => s),
+  float,
+  map(string('true'), () => true),
+  map(string('false'), () => false),
+  map(string('null'), () => null),
+  jsonArray,
+  jsonObject,
+))
+
+const jsonArray = between(
+  seq(char('['), many(whitespace)),
+  seq(many(whitespace), char(']')),
+  sepBy(jsonValue, seq(many(whitespace), char(','), many(whitespace))),
+)
+```
+
+  `lazy` breaks the circular reference. `jsonValue` references `jsonArray` which references `jsonValue`. Without it, you'd get a ReferenceError at definition time.
+
+## Types
+
+```ts
+type ParseResult<A> = { success: true; value: A; rest: string } | { success: false; expected: string; at: string }
+type Parser<A> = (input: string) => ParseResult<A>
+```
+
+## Primitives
+
+```ts
+string(s: string): Parser<string>
+char(c: string): Parser<string>
+regex(re: RegExp): Parser<string>
+digit: Parser<string>
+letter: Parser<string>
+whitespace: Parser<string>
+eof: Parser<void>
+```
+
+## Combinators
+
+```ts
+seq<T extends Parser<any>[]>(...parsers: T): Parser<[...inferred]>
+alt<T extends Parser<any>[]>(...parsers: T): Parser<T[number] extends Parser<infer U> ? U : never>
+many<A>(parser: Parser<A>): Parser<A[]>
+many1<A>(parser: Parser<A>): Parser<A[]>
+optional<A>(parser: Parser<A>): Parser<A | undefined>
+sepBy<A, S>(parser: Parser<A>, sep: Parser<S>): Parser<A[]>
+between<L, A, R>(left: Parser<L>, parser: Parser<A>, right: Parser<R>): Parser<A>
+map<A, B>(parser: Parser<A>, f: (a: A) => B): Parser<B>
+flatMap<A, B>(parser: Parser<A>, f: (a: A) => Parser<B>): Parser<B>
+lazy<A>(f: () => Parser<A>): Parser<A>
+```
+
+`lazy` is for recursive grammars. Delays parser construction to avoid circular references.
+
+## Built-in parsers
+
+```ts
+integer: Parser<number>
+float: Parser<number>
+quotedString: Parser<string>
+identifier: Parser<string>
+```
+
+## Running
+
+```ts
+run<A>(parser: Parser<A>, input: string): ParseResult<A>
+```
+
+---
+
+## date
+
+```bash
+bun add stopcock
+```
+
+Dates are branded numbers (Unix ms timestamps). No `Date` objects get allocated anywhere, it's all integer arithmetic. All multi-arg functions are dual-form.
+
+```ts
+
+const nextMonday = pipe(
+  now(),
+  startOf('week'),
+  add(7, 'day'),
+)
+
+format(nextMonday, 'YYYY-MM-DD')
+```
+
+- `Timestamp` is a branded `number` so you can't accidentally mix raw numbers with timestamps. Use `fromTimestamp()` for explicit conversion.
+- Every function works both ways: `add(7, 'day')` returns `(ts) => Timestamp` for `pipe`, or `add(ts, 7, 'day')` if you want data-first.
+- Business days, holidays, timezones, and interval merging are all built in.
+
+## Benchmarks
+
+Measured on Bun 1.3, batch operations over 10,000 timestamps.
+
+    | Operation | vs date-fns | vs moment | vs luxon |
+    |-----------|-------------|-----------|----------|
+    | **add days** | 1.6x faster | 4.5x faster | 8.6x faster |
+    | **add months** | 2.3x faster | 6.1x faster | 11.5x faster |
+    | **startOf day** | 1.5x faster | 3.6x faster | 6.4x faster |
+    | **startOf month** | 2.6x faster | 5.4x faster | 10x faster |
+    | **endOf year** | 3.2x faster | 5.5x faster | 48x faster |
+
+    | Operation | vs date-fns | vs moment | vs luxon |
+    |-----------|-------------|-----------|----------|
+    | **YYYY-MM-DD HH:mm:ss** | 7.3x faster | 3.2x faster | 5.9x faster |
+    | **ddd, DD MMM YYYY hh:mm A** | 8.4x faster | 3.4x faster | 6.7x faster |
+
+      `formatter(pattern)` pre-compiles the format string. The compiled formatter is ~9% faster than calling `format()` directly. Worth it in hot loops.
+
+    | Operation | vs date-fns | vs moment | vs luxon |
+    |-----------|-------------|-----------|----------|
+    | **diffInDays** | 73x faster | 45x faster | 308x faster |
+    | **diffInMonths** | 13x faster | 25x faster | 45x faster |
+    | **diffInYears** | 10x faster | 25x faster | 44x faster |
+
+      Native `(a - b) / 86400000` is still faster for simple day diffs, but it doesn't handle month/year boundaries or DST transitions. stopcock is the fastest *correct* implementation.
+
+## Comparisons
+
+    ```ts
+    // date-fns
+    import { addDays, format } from 'date-fns'
+    const result = format(addDays(new Date(), 7), 'yyyy-MM-dd')
+
+    // dayjs
+    import dayjs from 'dayjs'
+    const result = dayjs().add(7, 'day').format('YYYY-MM-DD')
+
+    // stopcock: no Date objects, pipes naturally
+    import { pipe } from 'stopcock/fp'
+    import { now, add, format } from 'stopcock/date'
+    const result = pipe(now(), add(7, 'day'), format('YYYY-MM-DD'))
+    ```
+
+    ```ts
+    // date-fns: needs date-fns-tz, separate adapter
+    import { toZonedTime } from 'date-fns-tz'
+    import { isWeekend } from 'date-fns'
+    isWeekend(toZonedTime(new Date(), 'Asia/Tokyo'))
+
+    // dayjs: needs timezone + utc plugins
+    import dayjs from 'dayjs'
+    import utc from 'dayjs/plugin/utc'
+    import tz from 'dayjs/plugin/timezone'
+    dayjs.extend(utc); dayjs.extend(tz)
+    dayjs().tz('Asia/Tokyo').day() === 0 || dayjs().tz('Asia/Tokyo').day() === 6
+
+    // stopcock: built-in, no plugins
+    import { Tz, now } from 'stopcock/date'
+    Tz.isWeekend(now(), 'Asia/Tokyo')
+    ```
+
+    ```ts
+    // date-fns: no built-in business day support
+    // You need date-fns-business-days or manual loops
+
+    // stopcock: built-in
+    import { now, addBusinessDaysWithHolidays, format, fromISO } from 'stopcock/date'
+
+    const holidays = [fromISO('2026-12-25'), fromISO('2026-01-01')]
+    const delivery = addBusinessDaysWithHolidays(now(), 10, holidays)
+    format(delivery, 'YYYY-MM-DD')
+    ```
+
+## Real-world patterns
+
+### Invoice due date
+
+```ts
+
+const invoiceDueDate = (issuedAt: string, netDays: number) => {
+  const due = pipe(fromISO(issuedAt), add(netDays, 'day'))
+  return isWeekend(due) ? nextBusinessDay(due) : due
+}
+
+const due = invoiceDueDate('2026-03-15', 30)
+const overdue = isBefore(due, now())
+format(due, 'DD MMM YYYY') // "14 Apr 2026"
+```
+
+### Calendar grid
+
+```ts
+
+const calendarMonth = (year: number, month: number) => {
+  const start = fromParts({ year, month })
+  const days = daysIn(startOf(start, 'month'), endOf(start, 'month'))
+
+  return A.map(days, day => ({
+    label: format(day, 'D'),
+    weekday: getWeekday(day),
+    today: isToday(day),
+    weekend: isWeekend(day),
+  }))
+}
+```
+
+### Time-ago formatting
+
+```ts
+
+const timeAgo = (ts: Timestamp) => {
+  const mins = diffInMinutes(now(), ts)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = diffInHours(now(), ts)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${diffInDays(now(), ts)}d ago`
+}
+```
+
+### Cross-timezone scheduling
+
+```ts
+
+const standup = pipe(
+  fromISO('2026-04-03'),
+  ts => Tz.add(ts, 9, 'hour', 'Europe/London'),
+)
+
+Tz.format(standup, 'HH:mm z', 'America/New_York')  // "04:00 EDT"
+Tz.format(standup, 'HH:mm z', 'Asia/Tokyo')         // "17:00 JST"
+```
+
+### Merging overlapping bookings
+
+```ts
+
+const bookings = [
+  [fromISO('2026-06-01'), fromISO('2026-06-05')],
+  [fromISO('2026-06-03'), fromISO('2026-06-08')],
+  [fromISO('2026-06-10'), fromISO('2026-06-12')],
+] as [Timestamp, Timestamp][]
+
+mergeIntervals(bookings)
+// [[Jun 1 → Jun 8], [Jun 10 → Jun 12]]
+```
+
+---
+
+## API reference
+
+### Types
+
+```ts
+type Timestamp = number & { readonly [TimestampBrand]: true }
+type Duration = number & { readonly [DurationBrand]: true }
+type DateUnit = 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond'
+type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
+type DateParts = { year: number; month: number; day?: number; hour?: number; minute?: number; second?: number; millisecond?: number }
+```
+
+### Creation
+
+```ts
+now(): Timestamp
+fromDate(date: Date): Timestamp
+toDate(ts: Timestamp): Date
+fromParts(parts: DateParts): Timestamp
+fromTimestamp(ms: number): Timestamp
+fromISO(iso: string): Timestamp
+toTimestamp(ts: Timestamp): number
+toISO(ts: Timestamp): string
+```
+
+### Extraction
+
+```ts
+getYear(ts): number              getMonth(ts): number         // 1-12
+getDay(ts): number                getWeekday(ts): Weekday      // 0=Sun
+getHours(ts): number              getMinutes(ts): number
+getSeconds(ts): number            getMilliseconds(ts): number
+getDayOfYear(ts): number          getWeekOfYear(ts): number
+getQuarter(ts): number            getDaysInMonth(ts): number
+getDaysInYear(ts): number         isLeapYear(ts): boolean
+```
+
+### Comparison & predicates
+
+```ts
+compare(a, b): number             min(...ts): Timestamp
+max(...ts): Timestamp             clamp(ts, lo, hi): Timestamp
+isBefore(a, b): boolean           isAfter(a, b): boolean
+isEqual(a, b): boolean            isSameDay(a, b): boolean
+isSameMonth(a, b): boolean        isSameYear(a, b): boolean
+isBetween(ts, start, end): boolean
+isWeekend(ts): boolean            isWeekday(ts): boolean
+isToday(ts): boolean              isPast(ts): boolean
+isFuture(ts): boolean             isValid(ts): boolean
+```
+
+### Arithmetic
+
+```ts
+add(ts, amount, unit): Timestamp
+subtract(ts, amount, unit): Timestamp
+startOf(ts, unit): Timestamp
+endOf(ts, unit): Timestamp
+setYear(ts, year): Timestamp      setMonth(ts, month): Timestamp
+setDay(ts, day): Timestamp        setHours(ts, hours): Timestamp
+setMinutes(ts, minutes): Timestamp setSeconds(ts, seconds): Timestamp
+```
+
+### Diff
+
+```ts
+diff(a, b, unit): number          diffInDays(a, b): number
+diffInHours(a, b): number         diffInMinutes(a, b): number
+diffInSeconds(a, b): number       diffInMonths(a, b): number
+diffInYears(a, b): number
+```
+
+### Rounding
+
+```ts
+roundTo(ts, unit): Timestamp      ceilTo(ts, unit): Timestamp
+floorTo(ts, unit): Timestamp      snapTo(ts, interval, unit): Timestamp
+```
+
+### Duration
+
+```ts
+duration(amount, unit): Duration
+addDuration(ts, d): Timestamp     subtractDuration(ts, d): Timestamp
+toDuration(ms): Duration          durationToUnit(d, unit): number
+scaleDuration(d, factor): Duration negateDuration(d): Duration
+```
+
+### Ranges & intervals
+
+```ts
+range(start, end, step, unit): Timestamp[]
+rangeBy(start, end, stepFn): Timestamp[]
+daysIn(start, end): Timestamp[]   weekdaysIn(start, end): Timestamp[]
+sequence(start, count, step, unit): Timestamp[]
+overlaps(a, b): boolean           contains(interval, ts): boolean
+intersection(a, b): [Timestamp, Timestamp] | null
+union(a, b): [Timestamp, Timestamp] | null
+gap(a, b): [Timestamp, Timestamp] | null
+mergeIntervals(intervals): [Timestamp, Timestamp][]
+```
+
+### Business days
+
+```ts
+isBusinessDay(ts): boolean
+addBusinessDays(ts, days): Timestamp
+subtractBusinessDays(ts, days): Timestamp
+businessDaysBetween(a, b): number
+nextBusinessDay(ts): Timestamp    prevBusinessDay(ts): Timestamp
+addBusinessDaysWithHolidays(ts, days, holidays): Timestamp
+```
+
+### Formatting & parsing
+
+```ts
+format(ts, pattern): string       formatter(pattern): (ts) => string
+parse(input, pattern): Timestamp  parser(pattern): (input) => Timestamp
+tryParse(input, pattern): Timestamp | null
+tryParser(pattern): (input) => Timestamp | null
+parseISO(input): Timestamp
+```
+
+### Timezone (`Tz` namespace)
+
+```ts
+Tz.utcToLocal(ts, zone): Timestamp
+Tz.localToUTC(localMs, zone): Timestamp
+Tz.startOf(ts, unit, zone): Timestamp
+Tz.endOf(ts, unit, zone): Timestamp
+Tz.add(ts, amount, unit, zone): Timestamp
+Tz.format(ts, pattern, zone): string
+Tz.diff(a, b, unit, zone): number
+Tz.isSameDay(a, b, zone): boolean
+Tz.isWeekend(ts, zone): boolean
+Tz.isToday(ts, zone): boolean
+Tz.getOffsetMinutes(ts, zone): number
+Tz.getOffsetString(ts, zone): string
+```
+
+  All `Tz` functions are dual-form. `Tz.format('YYYY-MM-DD', 'Europe/London')` returns `(ts) => string`.
+
+---
+
+## struct
+
+```bash
+bun add stopcock
+```
+
+Immutable data structures that return new instances on mutation. Old references stay valid, so they're good for undo/redo, time-travel debugging, and concurrent reads.
+
+  These are persistent (immutable) data structures. Every `set`, `add`, or `remove` returns a new structure. Structural sharing keeps this efficient.
+
+```ts
+
+const m = HashMap.of([['a', 1], ['b', 2]])
+const m2 = HashMap.set(m, 'c', 3)
+HashMap.get(m2, 'c')  // 3
+HashMap.get(m, 'c')   // undefined, original unchanged
+```
+
+## Real-world patterns
+
+### Immutable state updates
+
+```ts
+
+let state = HashMap.of([['count', 0], ['name', 'Alice']])
+
+// Each update returns a new map. Old state is preserved.
+const prev = state
+state = HashMap.set(state, 'count', 1)
+
+HashMap.get(prev, 'count')   // 0, unchanged
+HashMap.get(state, 'count')  // 1
+```
+
+### Priority queue with SortedSet
+
+```ts
+
+type Job = { id: string; priority: number }
+const byPriority = (a: Job, b: Job) => a.priority - b.priority
+
+let queue = SortedSet.of<Job>([], byPriority)
+queue = SortedSet.add(queue, { id: 'a', priority: 3 })
+queue = SortedSet.add(queue, { id: 'b', priority: 1 })
+queue = SortedSet.add(queue, { id: 'c', priority: 2 })
+
+SortedSet.min(queue)  // { id: 'b', priority: 1 }
+```
+
+### Sliding window with Deque
+
+```ts
+
+let window = Deque.empty<number>()
+for (const value of stream) {
+  window = Deque.pushBack(window, value)
+  if (Deque.size(window) > 100) {
+    const [, rest] = Deque.popFront(window)
+    window = rest
+  }
+}
+```
+
+## HashMap
+
+```ts
+HashMap.empty<K, V>(): HashMap<K, V>
+HashMap.of<K, V>(entries: [K, V][]): HashMap<K, V>
+HashMap.get<K, V>(map: HashMap<K, V>, key: K): V | undefined
+HashMap.set<K, V>(map: HashMap<K, V>, key: K, value: V): HashMap<K, V>
+HashMap.remove<K, V>(map: HashMap<K, V>, key: K): HashMap<K, V>
+HashMap.has<K, V>(map: HashMap<K, V>, key: K): boolean
+HashMap.size<K, V>(map: HashMap<K, V>): number
+HashMap.entries<K, V>(map: HashMap<K, V>): [K, V][]
+HashMap.keys<K, V>(map: HashMap<K, V>): K[]
+HashMap.values<K, V>(map: HashMap<K, V>): V[]
+HashMap.map<K, V, U>(map: HashMap<K, V>, f: (v: V, k: K) => U): HashMap<K, U>
+HashMap.filter<K, V>(map: HashMap<K, V>, pred: (v: V, k: K) => boolean): HashMap<K, V>
+HashMap.merge<K, V>(a: HashMap<K, V>, b: HashMap<K, V>): HashMap<K, V>
+```
+
+## SortedSet
+
+```ts
+SortedSet.empty<A>(cmp?: (a: A, b: A) => number): SortedSet<A>
+SortedSet.of<A>(items: A[], cmp?: (a: A, b: A) => number): SortedSet<A>
+SortedSet.add<A>(set: SortedSet<A>, value: A): SortedSet<A>
+SortedSet.remove<A>(set: SortedSet<A>, value: A): SortedSet<A>
+SortedSet.has<A>(set: SortedSet<A>, value: A): boolean
+SortedSet.size<A>(set: SortedSet<A>): number
+SortedSet.min<A>(set: SortedSet<A>): A | undefined
+SortedSet.max<A>(set: SortedSet<A>): A | undefined
+SortedSet.toArray<A>(set: SortedSet<A>): A[]
+SortedSet.union<A>(a: SortedSet<A>, b: SortedSet<A>): SortedSet<A>
+SortedSet.intersection<A>(a: SortedSet<A>, b: SortedSet<A>): SortedSet<A>
+SortedSet.difference<A>(a: SortedSet<A>, b: SortedSet<A>): SortedSet<A>
+```
+
+## Deque
+
+Double-ended queue with O(1) push/pop on both ends.
+
+```ts
+Deque.empty<A>(): Deque<A>
+Deque.of<A>(items: A[]): Deque<A>
+Deque.pushFront<A>(deque: Deque<A>, value: A): Deque<A>
+Deque.pushBack<A>(deque: Deque<A>, value: A): Deque<A>
+Deque.popFront<A>(deque: Deque<A>): [A | undefined, Deque<A>]
+Deque.popBack<A>(deque: Deque<A>): [A | undefined, Deque<A>]
+Deque.peekFront<A>(deque: Deque<A>): A | undefined
+Deque.peekBack<A>(deque: Deque<A>): A | undefined
+Deque.size<A>(deque: Deque<A>): number
+Deque.toArray<A>(deque: Deque<A>): A[]
+```
+
+---
+
+## search
+
+```bash
+bun add stopcock
+```
+
+Search data structures and algorithms. Fuzzy matching (Levenshtein, Jaro-Winkler, n-gram), a Trie for autocomplete, Bloom filters for probabilistic set membership, and an inverted index with BM25 ranking for full-text search.
+
+```ts
+
+const results = Fuzzy.search('react', ['react', 'preact', 'vue', 'svelte'])
+// [{ item: 'react', score: 1 }, { item: 'preact', score: 0.83 }]
+```
+
+## Real-world patterns
+
+### Autocomplete search box
+
+```ts
+
+// Build index once
+const trie = products.reduce((t, p) => Trie.insert(t, p.name), Trie.empty())
+
+// Fast prefix match (typing "mac" → "MacBook Pro", "Mac Mini")
+const prefixResults = Trie.startsWith(trie, query)
+
+// Fuzzy fallback for typos ("macbok" → "MacBook")
+const fuzzyResults = Fuzzy.searchBy(products, query, p => p.name, 0.6)
+```
+
+### Full-text search with BM25 ranking
+
+```ts
+
+const docs = articles.map(a => ({ id: a.slug, text: `${a.title} ${a.body}` }))
+const index = Index.buildIndex(docs)
+
+const results = Index.search(index, 'functional programming typescript', { limit: 10 })
+// [{ id: 'intro-to-fp', score: 4.2, text: '...' }, ...]
+```
+
+### Bloom filter for seen-URL dedup
+
+```ts
+
+let seen = Bloom.create(100_000, 0.01)  // 100k URLs, 1% false positive rate
+
+for (const url of crawlQueue) {
+  if (Bloom.has(seen, url)) continue    // probably seen, skip
+  seen = Bloom.add(seen, url)
+  await crawl(url)
+}
+```
+
+## Fuzzy
+
+Approximate string matching with scoring.
+
+```ts
+Fuzzy.search<T>(query: string, items: T[], opts?: FuzzyOptions<T>): FuzzyMatch<T>[]
+Fuzzy.match(query: string, target: string): number
+```
+
+## Binary
+
+Binary search on sorted arrays.
+
+```ts
+Binary.search<A>(arr: A[], target: A, cmp?: (a: A, b: A) => number): number
+Binary.lowerBound<A>(arr: A[], target: A, cmp?: (a: A, b: A) => number): number
+Binary.upperBound<A>(arr: A[], target: A, cmp?: (a: A, b: A) => number): number
+```
+
+## Trie
+
+Prefix tree for fast string lookup and autocomplete.
+
+```ts
+Trie.empty(): Trie
+Trie.insert(trie: Trie, word: string): Trie
+Trie.has(trie: Trie, word: string): boolean
+Trie.remove(trie: Trie, word: string): Trie
+Trie.startsWith(trie: Trie, prefix: string): string[]
+Trie.size(trie: Trie): number
+```
+
+## Bloom
+
+Probabilistic set membership. May return false positives, never false negatives.
+
+  A Bloom filter that says "no" is always right. A Bloom filter that says "yes" is *probably* right. The false positive rate is configurable at creation time.
+
+```ts
+Bloom.create(expectedSize: number, falsePositiveRate?: number): BloomFilter
+Bloom.add(filter: BloomFilter, item: string): BloomFilter
+Bloom.has(filter: BloomFilter, item: string): boolean
+```
+
+## Tokenize
+
+Text tokenization for indexing.
+
+```ts
+Tokenize.words(text: string): string[]
+Tokenize.ngrams(text: string, n: number): string[]
+Tokenize.stem(word: string): string
+```
+
+## Index
+
+Inverted index for full-text search.
+
+```ts
+Index.create<T>(): InvertedIndex<T>
+Index.add<T>(index: InvertedIndex<T>, id: T, text: string): InvertedIndex<T>
+Index.search<T>(index: InvertedIndex<T>, query: string): T[]
+```
+
+---
+
+## encoding
+
+```bash
+bun add stopcock
+```
+
+Base64, Hex, and MessagePack as namespaces.
+
+```ts
+
+Base64.encode(new Uint8Array([1, 2, 3]))  // "AQID"
+Base64.decode("AQID")                      // Uint8Array [1, 2, 3]
+```
+
+## Real-world patterns
+
+### File upload as Base64
+
+```ts
+
+const fileData = new Uint8Array(await file.arrayBuffer())
+const payload = JSON.stringify({ name: file.name, data: Base64.encode(fileData) })
+await fetch('/api/upload', { method: 'POST', body: payload })
+```
+
+### Binary protocol with MsgPack
+
+```ts
+
+// 40% smaller than JSON for structured data
+const packed = MsgPack.encode({ type: 'move', x: 142.5, y: 87.3, ts: Date.now() })
+websocket.send(packed)
+
+// On receive
+const msg = MsgPack.decode(new Uint8Array(event.data))
+```
+
+## Base64
+
+```ts
+Base64.encode(data: Uint8Array): string
+Base64.decode(str: string): Uint8Array
+```
+
+## Hex
+
+```ts
+Hex.encode(data: Uint8Array): string
+Hex.decode(str: string): Uint8Array
+```
+
+## MsgPack
+
+Binary serialization format. More compact than JSON for structured data.
+
+  MsgPack is typically 30-50% smaller than JSON for structured data, and faster to encode/decode. Good for WebSocket messages, caching, and binary protocols.
+
+```ts
+MsgPack.encode(value: unknown): Uint8Array
+MsgPack.decode(data: Uint8Array): unknown
+```
+
+---
+
+## zip
+
+```bash
+bun add stopcock
+```
+
+ZIP archives with DEFLATE or store compression. Three APIs: array, builder, streaming.
+
+```ts
+interface ZipEntry {
+  path: string
+  data: Uint8Array
+  method?: 'deflate' | 'store'  // default: 'deflate'
+  modified?: Date                // default: now
+}
+
+createZip(entries: ZipEntry[]): Uint8Array
+```
+
+## Array API
+
+```ts
+const zip = createZip([
+  { path: 'readme.txt', data: enc.encode('hello') },
+  { path: 'raw.bin', data: rawBytes, method: 'store' },
+])
+```
+
+## Builder API
+
+```ts
+const zip = Zip.create()
+  .add('readme.txt', enc.encode('hello'))
+  .add('raw.bin', rawBytes, { method: 'store' })
+  .build()
+```
+
+## Streaming
+
+Returns a `ReadableStream`. File data streams through immediately; only central directory metadata is buffered.
+
+```ts
+const stream = Zip.stream()
+  .add('big.csv', csvBytes)
+  .add('photo.jpg', photoBytes, { method: 'store' })
+  .finish()
+
+await Bun.write('archive.zip', stream)
+return new Response(stream, { headers: { 'Content-Type': 'application/zip' } })
+```
+
+`store` skips compression. Use for already-compressed data (images, videos).
+
+---
+
+## geo
+
+```bash
+bun add stopcock
+```
+
+2D geometry, geodesic distance, point-in-polygon, convex hulls, and a grid-based spatial index for proximity queries.
+
+```ts
+
+distance({ x: 0, y: 0 }, { x: 3, y: 4 })  // 5
+
+// Real-world distance between two coordinates
+haversine(
+  { x: -0.1276, y: 51.5074 },  // London
+  { x: 2.3522, y: 48.8566 },   // Paris
+)
+```
+
+## Real-world patterns
+
+### "Restaurants within 5km"
+
+```ts
+
+const grid = createGrid({ minX: -180, minY: -90, maxX: 180, maxY: 90 }, 0.05)
+for (const r of restaurants) insert(grid, { x: r.lon, y: r.lat }, r)
+
+const nearby = nearest(grid, { x: userLon, y: userLat }, 10)
+  .filter(r => haversine(userLat, userLon, r.data.lat, r.data.lon) < 5000)
+```
+
+### Point-in-polygon geofence
+
+```ts
+
+const deliveryZone = [
+  { x: -0.15, y: 51.50 },
+  { x: -0.08, y: 51.53 },
+  { x: -0.02, y: 51.50 },
+  { x: -0.08, y: 51.47 },
+]
+
+const canDeliver = contains(deliveryZone, { x: orderLon, y: orderLat })
+```
+
+### Convex hull of a point cloud
+
+```ts
+
+const hull = convexHull(sensorReadings.map(r => ({ x: r.lon, y: r.lat })))
+const coverage = area(hull)  // coverage area in coordinate units
+```
+
+## Types
+
+```ts
+type Point = { x: number; y: number }
+type Polygon = Point[]
+type Line = [Point, Point]
+type Circle = { center: Point; radius: number }
+type BBox = { min: Point; max: Point }
+```
+
+## Basic operations
+
+```ts
+distance(a: Point, b: Point): number
+midpoint(a: Point, b: Point): Point
+angle(a: Point, b: Point): number
+rotate(p: Point, origin: Point, radians: number): Point
+translate(p: Point, dx: number, dy: number): Point
+lerp(a: Point, b: Point, t: number): Point
+```
+
+## Polygon operations
+
+```ts
+area(polygon: Polygon): number
+perimeter(polygon: Polygon): number
+centroid(polygon: Polygon): Point
+contains(polygon: Polygon, point: Point): boolean
+isConvex(polygon: Polygon): boolean
+boundingBox(polygon: Polygon): BBox
+convexHull(points: Point[]): Polygon
+triangulate(polygon: Polygon): [Point, Point, Point][]
+```
+
+## Intersection
+
+```ts
+lineIntersection(a: Line, b: Line): Point | null
+segmentIntersection(a: Line, b: Line): Point | null
+circleContains(circle: Circle, point: Point): boolean
+circlesIntersect(a: Circle, b: Circle): boolean
+polygonsIntersect(a: Polygon, b: Polygon): boolean
+```
+
+## Spatial indexing
+
+Grid-based spatial index for efficient proximity queries.
+
+```ts
+type Grid<T> = { ... }
+type GridEntry<T> = { point: Point; data: T }
+
+createGrid<T>(cellSize: number): Grid<T>
+insert<T>(grid: Grid<T>, point: Point, data: T): Grid<T>
+query<T>(grid: Grid<T>, bbox: BBox): GridEntry<T>[]
+nearest<T>(grid: Grid<T>, point: Point, k?: number): GridEntry<T>[]
+```
+
+## Geodesic
+
+Great-circle calculations for real-world coordinates.
+
+```ts
+haversine(a: Point, b: Point): number     // distance in meters
+bearing(from: Point, to: Point): number    // bearing in degrees
+```
+
+  For geodesic functions, `x` is longitude, `y` is latitude. This matches the standard `(lon, lat)` convention used in GeoJSON, not the `(lat, lon)` order used by Google Maps.
+
+---
+
+## img
+
+```bash
+bun add stopcock
+```
+
+Pixel-level image manipulation on raw RGBA buffers. Filters, convolution, resize, crop, the usual. All parameterised functions are dual-form, so they work in `pipe` point-free.
+
+```ts
+
+pipe(
+  create(800, 600),
+  grayscale,
+  blur(3),
+  brightness(40),
+  resize(400, 300),
+)
+```
+
+## Real-world patterns
+
+### Thumbnail generation pipeline
+
+```ts
+
+const thumbnail = (data: Uint8ClampedArray, w: number, h: number) => pipe(
+  fromRGBA(data, w, h),
+  resize(200, 200),
+  sharpen,          // sharpen after downscale to recover detail
+  contrast(30),     // slight contrast boost
+)
+```
+
+### Batch image filter
+
+```ts
+
+const vintage = (img: Image) => pipe(img, grayscale, sepia, brightness(1.1))
+
+const processed = A.map(images, vintage)
+```
+
+### Edge detection for feature extraction
+
+```ts
+
+const edges = pipe(
+  image,
+  grayscale,          // convert to single channel
+  gaussianBlur(2),    // smooth out noise
+  edgeDetect,         // Sobel operator
+)
+```
+
+## Types
+
+```ts
+type Pixel = [r: number, g: number, b: number, a: number]  // 0-255 each
+type Image = {
+  width: number
+  height: number
+  data: Uint8ClampedArray  // RGBA pixel data
+}
+```
+
+## Creation
+
+```ts
+create(width: number, height: number): Image
+clone(img: Image): Image
+fromRGBA(data: Uint8ClampedArray, width: number, height: number): Image
+```
+
+## Color conversion
+
+```ts
+rgbToHsl(r: number, g: number, b: number): [h: number, s: number, l: number]
+hslToRgb(h: number, s: number, l: number): [r: number, g: number, b: number]
+rgbToGray(r: number, g: number, b: number): number
+grayscale(img: Image): Image
+```
+
+## Filters
+
+All parameterised filters are dual-form: `brightness(img, 40)` or `brightness(40)` for pipe.
+
+```ts
+brightness(img: Image, amount: number): Image
+contrast(img: Image, amount: number): Image
+invert(img: Image): Image
+threshold(img: Image, value: number): Image
+sepia(img: Image): Image
+saturate(img: Image, factor: number): Image
+```
+
+  All filter functions return a new `Image`. The original is never mutated. Chain them freely in `pipe`.
+
+## Convolution
+
+Dual-form where there are parameters. `convolve`, `blur`, `gaussianBlur`, `sharpen` all work in pipe.
+
+```ts
+convolve(img: Image, kernel: number[][], divisor?: number): Image
+blur(img: Image, radius: number): Image
+gaussianBlur(img: Image, radius: number, sigma?: number): Image
+sharpen(img: Image, amount?: number): Image
+edgeDetect(img: Image): Image
+```
+
+## Transforms
+
+`resize` and `crop` are dual-form. `flipH`, `flipV`, `rotate90` are arity-1 so they already work point-free.
+
+```ts
+resize(img: Image, width: number, height: number): Image
+crop(img: Image, x: number, y: number, w: number, h: number): Image
+flipH(img: Image): Image
+flipV(img: Image): Image
+rotate90(img: Image): Image
+```
+
+## Histogram
+
+```ts
+histogram(img: Image): { r: number[]; g: number[]; b: number[] }
+equalize(img: Image): Image
+```
+
+## Analysis
+
+For detecting structure in edge-detected / thresholded images.
+
+```ts
+houghLines(img: Image, options?: HoughOptions): DetectedLine[]
+lineToEndpoints(line: DetectedLine, width: number, height: number): [Point, Point]
+connectedComponents(img: Image): ComponentResult
+```
+
+`houghLines` finds straight lines using the Hough transform. Feed it a thresholded edge image and it returns lines sorted by vote count. `houghLines` is dual-form.
+
+`connectedComponents` labels contiguous foreground regions and returns their area, centroid, and bounding box. Good for finding blobs (obstructions, objects) after thresholding.
+
+```ts
+type DetectedLine = { rho: number; theta: number; votes: number }
+type Component = { id: number; area: number; centroid: { x: number; y: number }; bbox: { x: number; y: number; w: number; h: number } }
+type ComponentResult = { labels: Int32Array; width: number; height: number; components: Component[] }
+```
+
+---
+
+## rand
+
+```bash
+bun add stopcock
+```
+
+Deterministic random numbers. Same seed, same sequence, every time. Good for tests, simulations, and anything where you need reproducible results.
+
+```ts
+
+const rng = PCG.create(42)
+const [value, next] = PCG.next(rng)   // pure, returns new state
+
+normal(0, 1, rng)   // sample from N(0,1)
+shuffle([1, 2, 3, 4, 5], rng)
+```
+
+## Real-world patterns
+
+### Reproducible test data
+
+```ts
+
+// Same seed = same "random" data every time
+let rng = PCG.create(12345)
+
+const [shuffled, rng2] = shuffle(['Alice', 'Bob', 'Carol', 'Dave'], PCG, rng)
+// Always: ['Carol', 'Alice', 'Dave', 'Bob']
+
+const [score, rng3] = normal(PCG, 75, 10, rng2)
+// Always: 82.3 (or whatever the deterministic output is)
+```
+
+### Weighted loot drops
+
+```ts
+
+const loot = ['common', 'uncommon', 'rare', 'legendary']
+const weights = [70, 20, 8, 2]
+
+let rng = PCG.create(Date.now())
+const [drop, next] = weightedChoice(loot, weights, PCG, rng)
+```
+
+### Monte Carlo simulation
+
+```ts
+
+let rng = PCG.create(42)
+let inside = 0
+const N = 100_000
+
+for (let i = 0; i < N; i++) {
+  const [x, r1] = uniform(PCG, -1, 1, rng)
+  const [y, r2] = uniform(PCG, -1, 1, r1)
+  if (x * x + y * y <= 1) inside++
+  rng = r2
+}
+
+const pi = (4 * inside) / N  // ≈ 3.14159
+```
+
+## PRNGs
+
+Two generator algorithms, both seedable and pure (return new state).
+
+### PCG
+
+```ts
+PCG.create(seed: number): PCGState
+PCG.next(state: PCGState): [number, PCGState]     // [0, 1) float + new state
+PCG.nextInt(state: PCGState, min: number, max: number): [number, PCGState]
+```
+
+### Xoshiro
+
+```ts
+Xoshiro.create(seed: number): XoshiroState
+Xoshiro.next(state: XoshiroState): [number, XoshiroState]
+Xoshiro.nextInt(state: XoshiroState, min: number, max: number): [number, XoshiroState]
+```
+
+  PCG has better statistical properties. Xoshiro is faster. Use PCG for simulations where quality matters, Xoshiro for game dev or cases where speed is more important.
+
+## Distributions
+
+```ts
+uniform(min: number, max: number, rng: PCGState | XoshiroState): [number, State]
+normal(mean: number, stddev: number, rng: State): [number, State]
+exponential(lambda: number, rng: State): [number, State]
+poisson(lambda: number, rng: State): [number, State]
+bernoulli(p: number, rng: State): [boolean, State]
+```
+
+## Sampling
+
+```ts
+shuffle<A>(arr: A[], rng: State): [A[], State]
+sample<A>(arr: A[], k: number, rng: State): [A[], State]
+weightedChoice<A>(items: [A, number][], rng: State): [A, State]
+```
+
+  All functions are pure. They return `[result, newState]`. Thread the state through your computation and you get reproducible sequences every time. Same seed, same results, any platform.
+
+---
+
+## Image Processing
+
+Every filter runs right here in your browser. Same code as the library, no server involved. Click filters to build a pipeline, tweak the parameters, or drop in your own image. Click a filter again to remove it. Transforms (flip, rotate, resize, crop) go in the pipeline too. The histogram updates live.
+
+## What's happening
+
+Each filter takes an `Image` (a `Uint8ClampedArray` of RGBA pixels plus width/height) and returns a new one. Nothing gets mutated.
+
+Every parameterised filter is dual-form: `blur(img, 2)` works data-first, `blur(2)` returns `(img) => Image` for pipe. The no-param ones (`grayscale`, `sepia`, `invert`, `edgeDetect`, `equalize`) already have the right shape.
+
+```typescript
+
+pipe(img, grayscale, blur(2), sharpen(1.5), brightness(20))
+```
+
+Or data-first if you prefer:
+
+```typescript
+const grey = grayscale(img)
+const blurred = blur(img, 2)
+```
+
+## Filters
+
+| Filter | What it does |
+|--------|-------------|
+| `grayscale(img)` | Luminance-weighted conversion (0.299R + 0.587G + 0.114B) |
+| `sepia(img)` | Warm brown tone using fixed colour matrix |
+| `invert(img)` | Flips every channel: `255 - value` |
+| `brightness(img, amount)` | Adds `amount` to RGB channels. Negative darkens. |
+| `contrast(img, amount)` | Stretches or compresses values around the midpoint |
+| `saturate(img, factor)` | Multiplies saturation in HSL space. 0 = greyscale, 2 = vivid. |
+| `threshold(img, value)` | Binary: pixels brighter than `value` become white, rest black |
+| `equalize(img)` | Histogram equalization. Spreads tonal range across 0-255. |
+| `gaussianBlur(img, radius)` | Weighted Gaussian kernel. Softer than box blur at the same radius. |
+
+## Convolution
+
+`blur`, `gaussianBlur`, `sharpen`, and `edgeDetect` all use `convolve` underneath. You can pass your own kernel:
+
+```typescript
+
+// emboss kernel
+const embossed = convolve(img, [
+  [-2, -1, 0],
+  [-1,  1, 1],
+  [ 0,  1, 2],
+], 1)
+```
+
+`edgeDetect` runs two Sobel convolutions (horizontal and vertical) and combines them with `sqrt(gx² + gy²)` per channel. Good for finding boundaries in an image.
+
+## Transforms
+
+```typescript
+
+// data-first
+resize(img, 200, 150)       // bilinear interpolation
+crop(img, 10, 10, 100, 80)  // x, y, width, height
+
+// data-last in pipe
+pipe(img, resize(200, 150), flipH, rotate90)
+```
+
+## Analysis: lines and blobs
+
+`houghLines` finds straight lines in edge-detected images. `connectedComponents` finds contiguous regions. Together they're useful for structural analysis, like finding roof edges and obstructions in satellite imagery.
+
+```typescript
+
+  gaussianBlur, grayscale, edgeDetect, threshold,
+  houghLines, connectedComponents, lineToEndpoints,
+} from 'stopcock/img'
+
+// pre-process: smooth noise, detect edges, clean up
+const edges = pipe(img, gaussianBlur(1), grayscale, edgeDetect, threshold(180))
+
+// find straight lines (roof ridges, gutters, edges)
+const lines = houghLines(edges, { threshold: 40, maxLines: 20 })
+
+// find blobs (vents, skylights, chimneys)
+const { components } = connectedComponents(edges)
+const obstructions = components.filter(c => c.area > 50 && c.area < 5000)
+
+// draw results
+for (const line of lines) {
+  const [a, b] = lineToEndpoints(line, img.width, img.height)
+  ctx.strokeStyle = '#0f0'
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
+}
+for (const c of obstructions) {
+  ctx.strokeStyle = '#f00'
+  ctx.strokeRect(c.bbox.x, c.bbox.y, c.bbox.w, c.bbox.h)
+}
+```
+
+## Getting pixels in and out
+
+The `Image` type is just a plain object. If you're working with canvas:
+
+```typescript
+
+// canvas → Image
+const ctx = canvas.getContext('2d')
+const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+const img = fromRGBA(imageData.data, canvas.width, canvas.height)
+
+// Image → canvas
+const out = new ImageData(new Uint8ClampedArray(img.data), img.width, img.height)
+ctx.putImageData(out, 0, 0)
+```
+
+Full API reference on the [img library page](/libraries/img).
+
+---
+
+## Benchmarks
+
+[vitest bench](https://vitest.dev/guide/features.html#benchmarking), Apple Silicon, seeded PRNG. Array sizes: 100, 1K, 10K, 100K.
+
+---
+
+## Pipeline fusion
+
+### Fully fused: filter → map → take
+
+```ts
+pipe(data, A.filter(x => x > threshold), A.map(x => x * 2), A.take(10))
+```
+
+All three operations fuse into a single loop. `take(10)` halts after 10 results. The loop never visits the rest of the array.
+
+stopcock holds ~4M ops/s from n=100 to n=100K (the flat line). Every other library degrades linearly because they make three separate passes and allocate intermediate arrays. At 100K elements, native JS does 703 ops/s. Fusion does 4.2M.
+
+### Partial fusion: filter → map → sort → take
+
+```ts
+pipe(data, A.filter(x => x > 0), A.map(x => x * 2), A.sortBy((a, b) => a - b), A.take(5))
+```
+
+`sort` can't fuse because it needs the full array. `filter → map` fuses into one loop, materializes the result, then `sort` runs, then `take` slices.
+
+The advantage shrinks because `sort` dominates the runtime. But partial fusion still helps. The fused `filter → map` segment avoids an intermediate array and runs in one pass before handing off to `sort`.
+
+### Individual operations (no fusion)
+
+Outside of fused chains, stopcock still competes on raw single-op speed.
+
+---
+
+## Transforms
+
+### flatMap
+
+### reduce
+
+---
+
+## Search and slicing
+
+### find
+
+### every
+
+### take
+
+### drop
+
+---
+
+## Deduplication and set ops
+
+### uniq
+
+ts-belt falls over at n=10K. O(n²) implementation.
+
+### intersection
+
+### difference
+
+---
+
+## Sorting and grouping
+
+### sort
+
+### groupBy
+
+### partition
+
+---
+
+## Misc
+
+### flatten
+
+### chunk
+
+### reverse
+
+---
+
+## Statistics
+
+### sum
+
+### mean
+
+### median
+
+### standardDeviation
+

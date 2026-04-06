@@ -1,0 +1,885 @@
+---
+title: Cookbook
+description: Real-world patterns with stopcock
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+Copy-paste examples. Each one is self-contained. Most use [A (Array)](/api/array), [O (Option)](/api/option), [R (Result)](/api/result), and [Lenses](/api/lenses) from [fp](/libraries/fp). Array operations [fuse in pipe](/concepts/fusion) automatically.
+
+---
+
+## Pipes & composition
+
+### Parse an API response
+
+```ts
+import { pipe, R, A } from '@stopcock/fp'
+
+type User = { id: number; name: string; role: string }
+
+const users = pipe(
+  R.tryCatch(() => JSON.parse(rawBody)),
+  R.map((body: { data: User[] }) => body.data),
+  R.map(A.filter((u: User) => u.role !== 'bot')),
+  R.getOrElse((): User[] => []),
+)
+```
+
+### Config with defaults
+
+```ts
+import { pipe, O } from '@stopcock/fp'
+
+const port = pipe(
+  O.fromNullable(process.env.PORT),
+  O.map(s => parseInt(s, 10)),
+  O.filter(n => n > 0 && n < 65536),
+  O.getOrElse(() => 3000),
+)
+
+const dbUrl = pipe(
+  O.fromNullable(process.env.DATABASE_URL),
+  O.getOrElse(() => 'postgres://localhost:5432/dev'),
+)
+```
+
+### Reusable pipelines with flow
+
+`flow` returns a reusable function instead of applying immediately.
+
+```ts
+import { flow, A } from '@stopcock/fp'
+
+type Product = { name: string; price: number; inStock: boolean }
+
+const cheapestInStock = flow(
+  A.filter((p: Product) => p.inStock),
+  A.sortBy((a: Product, b: Product) => a.price - b.price),
+  A.take(5),
+)
+
+cheapestInStock(productsFromApiA)
+cheapestInStock(productsFromApiB)
+```
+
+### Conditional logic
+
+```ts
+import { pipe, Logic } from '@stopcock/fp'
+
+const classify = Logic.cond([
+  [n => n >= 90, () => 'A'],
+  [n => n >= 80, () => 'B'],
+  [n => n >= 70, () => 'C'],
+  [() => true, () => 'F'],
+])
+
+const grade = classify(score)
+```
+
+---
+
+## Data transformation
+
+### Normalize and deduplicate
+
+```ts
+import { pipe, A, S } from '@stopcock/fp'
+
+const clean = pipe(
+  rawTags,
+  A.map(S.trim),
+  A.map(S.toLowerCase),
+  A.filter(t => t.length > 0),
+  A.uniq,
+)
+```
+
+### Data pipeline
+
+Group orders by customer, compute totals, rank by spend.
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+type Order = { customerId: string; total: number; status: string }
+
+const revenueByCustomer = pipe(
+  orders,
+  A.filter((o: Order) => o.status === 'completed'),
+  A.groupBy(o => o.customerId),
+)
+
+const topCustomers = pipe(
+  Object.entries(revenueByCustomer),
+  A.map(([id, orders]) => ({
+    id,
+    total: orders.reduce((sum, o) => sum + o.total, 0),
+  })),
+  A.sortBy((a, b) => b.total - a.total),
+  A.take(5),
+)
+```
+
+### Shape data for the client
+
+Strip sensitive fields before sending to the browser.
+
+```ts
+import { pipe, A, Obj } from '@stopcock/fp'
+
+type DbUser = { id: number; name: string; email: string; passwordHash: string; ssn: string }
+
+const toClientUsers = flow(
+  A.map((u: DbUser) => Obj.omit(u, ['passwordHash', 'ssn'])),
+  A.sortBy((a, b) => a.name.localeCompare(b.name)),
+)
+```
+
+### Transform object fields
+
+```ts
+import { pipe, Obj } from '@stopcock/fp'
+
+type RawEvent = { timestamp_ms: number; event_name: string; user_id: string }
+
+const normalize = (raw: RawEvent) => pipe(
+  raw,
+  Obj.evolve({
+    timestamp_ms: (ms: number) => new Date(ms),
+    event_name: (s: string) => s.toLowerCase(),
+  }),
+)
+```
+
+### CSV row processing
+
+```ts
+import { pipe, A, S } from '@stopcock/fp'
+
+const parseCSV = (raw: string) => pipe(
+  raw,
+  S.trim,
+  S.split('\n'),
+  A.map(S.split(',')),
+)
+
+const [header, ...rows] = parseCSV(csvText)
+
+const records = pipe(
+  rows,
+  A.map(row =>
+    Object.fromEntries(header.map((col, i) => [col, row[i]])),
+  ),
+)
+```
+
+### ETL: reshape records
+
+Migrate rows from an old schema to a new one.
+
+```ts
+import { pipe, A, O, Obj } from '@stopcock/fp'
+
+type OldUser = { first_name: string; last_name: string; email: string | null; is_active: number }
+type NewUser = { fullName: string; email: string; active: boolean }
+
+const migrate = (rows: OldUser[]): NewUser[] => pipe(
+  rows,
+  A.filter(r => r.is_active === 1),
+  A.map(r => ({
+    fullName: `${r.first_name} ${r.last_name}`.trim(),
+    email: pipe(O.fromNullable(r.email), O.getWithDefault('')),
+    active: true,
+  })),
+  A.filter(r => r.email.length > 0),
+)
+```
+
+---
+
+## Collections & sorting
+
+### Slug generation
+
+```ts
+import { pipe, S } from '@stopcock/fp'
+
+const slug = pipe(
+  title,
+  S.trim,
+  S.toLowerCase,
+  S.replaceAll(' ', '-'),
+  S.replaceAll('/', '-'),
+)
+```
+
+### Build a lookup table
+
+```ts
+import { pipe, A, D } from '@stopcock/fp'
+
+type Product = { sku: string; name: string; price: number }
+
+const bySku = D.fromEntries(
+  products.map(p => [p.sku, p]),
+)
+
+const item = D.get(bySku, 'ABC-123')
+```
+
+### Paginate results
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+function paginate<T>(items: T[], page: number, perPage: number) {
+  return pipe(
+    items,
+    A.drop((page - 1) * perPage),
+    A.take(perPage),
+  )
+}
+
+const page3 = paginate(allResults, 3, 20)
+```
+
+### Build select options
+
+```ts
+import { pipe, A, D } from '@stopcock/fp'
+
+type Country = { code: string; name: string; region: string }
+
+const optionsByRegion = pipe(
+  countries,
+  A.groupBy((c: Country) => c.region),
+  D.map(cs =>
+    A.map(cs, c => ({ value: c.code, label: c.name })),
+  ),
+)
+// { Europe: [{ value: 'DE', label: 'Germany' }, ...], Asia: [...] }
+```
+
+### Diff two lists
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+const added = A.difference(currentIds, previousIds)
+const removed = A.difference(previousIds, currentIds)
+const unchanged = A.intersection(currentIds, previousIds)
+```
+
+### Multi-field sort
+
+Sort by department first, then salary descending.
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+type Employee = { name: string; department: string; salary: number }
+
+const sorted = pipe(
+  employees,
+  A.sortBy((a, b) =>
+    a.department.localeCompare(b.department) || b.salary - a.salary
+  ),
+)
+```
+
+### Leaderboard with ties
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+type Player = { name: string; score: number }
+
+function leaderboard(players: Player[]) {
+  const sorted = pipe(players, A.sortBy((a, b) => b.score - a.score))
+  let rank = 0, prev = -1
+  return sorted.map((p, i) => {
+    if (p.score !== prev) { rank = i + 1; prev = p.score }
+    return { rank, name: p.name, score: p.score }
+  })
+}
+```
+
+### Extract unique values from nested arrays
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+type Post = { title: string; tags: string[] }
+
+const allTags = pipe(
+  posts,
+  A.flatMap((p: Post) => p.tags),
+  A.map(t => t.toLowerCase()),
+  A.uniq,
+  A.sortBy((a, b) => a.localeCompare(b)),
+)
+```
+
+### Sliding window average
+
+Smooth noisy time-series data.
+
+```ts
+import { pipe, A, N } from '@stopcock/fp'
+
+function movingAverage(values: number[], windowSize: number) {
+  return pipe(
+    A.slidingWindow(values, windowSize),
+    A.map(N.mean),
+  )
+}
+
+movingAverage([10, 20, 30, 40, 50], 3)
+// [20, 30, 40]
+```
+
+---
+
+## Error handling & validation
+
+### Validate with Result
+
+Collect all errors instead of failing on the first.
+
+```ts
+import { pipe, R, G } from '@stopcock/fp'
+
+function validateEmail(input: unknown): R.Result<string, string> {
+  if (!G.isString(input)) return R.err('expected string')
+  const trimmed = input.trim()
+  if (trimmed.length === 0) return R.err('empty')
+  if (!trimmed.includes('@')) return R.err('missing @')
+  return R.ok(trimmed)
+}
+
+const email = pipe(
+  validateEmail(formData.email),
+  R.map(e => e.toLowerCase()),
+  R.match(
+    err => ({ valid: false as const, error: err }),
+    val => ({ valid: true as const, value: val }),
+  ),
+)
+```
+
+### Error recovery chain
+
+```ts
+import { pipe, R } from '@stopcock/fp'
+
+const fetchConfig = pipe(
+  R.tryCatch(() => readFileSync('/etc/app/config.json', 'utf-8')),
+  R.flatMap(raw => R.tryCatch(() => JSON.parse(raw))),
+  R.tapErr(e => logger.warn('config load failed, using defaults:', e)),
+  R.getOrElse(() => defaultConfig),
+)
+```
+
+### Safe property chain
+
+```ts
+import { pipe, O } from '@stopcock/fp'
+
+type Order = { shipping?: { address?: { zip?: string } } }
+
+const zip = pipe(
+  O.fromNullable(order.shipping),
+  O.flatMap(s => O.fromNullable(s.address)),
+  O.flatMap(a => O.fromNullable(a.zip)),
+  O.getWithDefault('N/A'),
+)
+```
+
+### Validate a signup form
+
+```ts
+import { pipe, R, A, G } from '@stopcock/fp'
+
+type SignupForm = { email: string; password: string; age: string }
+
+function validateSignup(form: SignupForm) {
+  const checks: [string, R.Result<unknown, string>][] = [
+    ['email', form.email.includes('@') ? R.ok(form.email) : R.err('invalid email')],
+    ['password', form.password.length >= 8 ? R.ok(form.password) : R.err('too short')],
+    ['age', Number(form.age) >= 18 ? R.ok(Number(form.age)) : R.err('must be 18+')],
+  ]
+
+  const errors = pipe(
+    checks,
+    A.filter(([, result]) => R.isErr(result)),
+    A.map(([field, result]) =>
+      R.match((e: string) => ({ field, message: e }), () => null)(result)
+    ),
+    A.filter(G.isNotNil),
+  )
+
+  return errors.length === 0
+    ? R.ok({ email: form.email, password: form.password, age: Number(form.age) })
+    : R.err(errors)
+}
+```
+
+### Process a webhook payload
+
+Stripe sends nested objects with nullable fields everywhere.
+
+```ts
+import { pipe, R, O, A } from '@stopcock/fp'
+
+type StripeEvent = {
+  type: string
+  data: { object: { id: string; amount: number; customer: string | null; metadata?: Record<string, string> } }
+}
+
+function handleChargeSucceeded(raw: string) {
+  return pipe(
+    R.tryCatch((): StripeEvent => JSON.parse(raw)),
+    R.flatMap(evt =>
+      evt.type === 'charge.succeeded'
+        ? R.ok(evt.data.object)
+        : R.err(`unexpected event: ${evt.type}`)
+    ),
+    R.map(charge => ({
+      chargeId: charge.id,
+      amountCents: charge.amount,
+      customer: pipe(O.fromNullable(charge.customer), O.getWithDefault('guest')),
+      ref: pipe(
+        O.fromNullable(charge.metadata),
+        O.flatMap(m => O.fromNullable(m['order_ref'])),
+        O.getWithDefault('none'),
+      ),
+    })),
+  )
+}
+```
+
+---
+
+## Aggregation & analytics
+
+### Compute stats on a dataset
+
+```ts
+import { pipe, A, N } from '@stopcock/fp'
+
+type Measurement = { sensorId: string; value: number; timestamp: number }
+
+const summary = (readings: Measurement[]) => {
+  const values = A.map(readings, r => r.value)
+  return {
+    count: A.length(values),
+    mean: N.mean(values),
+    median: N.median(values),
+    stdDev: N.standardDeviation(values),
+    range: N.minMax(values),
+  }
+}
+```
+
+### Shopping cart total
+
+```ts
+import { pipe, A, N, M } from '@stopcock/fp'
+
+type CartItem = { name: string; price: number; qty: number; taxRate: number }
+
+function cartTotal(items: CartItem[]) {
+  const subtotal = pipe(
+    items,
+    A.map(i => i.price * i.qty),
+    N.sum,
+  )
+  const tax = pipe(
+    items,
+    A.map(i => i.price * i.qty * i.taxRate),
+    N.sum,
+  )
+  return { subtotal, tax, total: subtotal + tax }
+}
+```
+
+### Dashboard: percentage change
+
+```ts
+import { pipe, A, N, M } from '@stopcock/fp'
+
+type DailyRevenue = { date: string; amount: number }
+
+function weekOverWeek(days: DailyRevenue[]) {
+  const thisWeek = pipe(days, A.take(7), A.map(d => d.amount), N.sum)
+  const lastWeek = pipe(days, A.drop(7), A.take(7), A.map(d => d.amount), N.sum)
+  return lastWeek === 0 ? null : ((thisWeek - lastWeek) / lastWeek) * 100
+}
+```
+
+### Aggregate logs by level
+
+```ts
+import { pipe, A, D } from '@stopcock/fp'
+
+type LogEntry = { level: 'info' | 'warn' | 'error'; message: string; ts: number }
+
+function logSummary(logs: LogEntry[]) {
+  return pipe(
+    logs,
+    A.groupBy(l => l.level),
+    D.map(entries => ({
+      count: entries.length,
+      latest: pipe(entries, A.sortBy((a, b) => b.ts - a.ts), A.head),
+    })),
+  )
+}
+// { info: { count: 412, latest: {...} }, error: { count: 3, latest: {...} } }
+```
+
+### Deduplicate event stream
+
+Multiple sources emit events for the same entity. Keep the latest per entity.
+
+```ts
+import { pipe, A, D } from '@stopcock/fp'
+
+type Event = { entityId: string; ts: number; payload: unknown }
+
+function dedup(events: Event[]) {
+  const sorted = pipe(events, A.sortBy((a, b) => b.ts - a.ts))
+  return pipe(
+    sorted,
+    A.uniqBy(e => e.entityId),
+  )
+}
+```
+
+### Build a notification digest
+
+Group by user, send one email per user.
+
+```ts
+import { pipe, A, D } from '@stopcock/fp'
+
+type Notification = { userId: string; message: string; ts: number }
+
+function buildDigests(notifications: Notification[]) {
+  return pipe(
+    notifications,
+    A.sortBy((a, b) => a.ts - b.ts),
+    A.groupBy(n => n.userId),
+    D.map(notes => ({
+      count: notes.length,
+      messages: A.map(notes, n => n.message),
+      earliest: A.head(notes)!.ts,
+    })),
+  )
+}
+```
+
+---
+
+## Domain patterns
+
+### Permission check
+
+```ts
+import { pipe, A, Logic } from '@stopcock/fp'
+
+type User = { roles: string[]; orgId: string; suspended: boolean }
+type Resource = { orgId: string; requiredRole: string }
+
+function canAccess(user: User, resource: Resource): boolean {
+  return Logic.allPass<[User, Resource]>([
+    ([u]) => !u.suspended,
+    ([u, r]) => u.orgId === r.orgId,
+    ([u, r]) => A.includes(u.roles, r.requiredRole),
+  ])([user, resource])
+}
+```
+
+### Filter with combined predicates
+
+```ts
+import { pipe, A, Logic } from '@stopcock/fp'
+
+type User = { age: number; active: boolean; verified: boolean }
+
+const eligible = Logic.allPass<User>([
+  u => u.age >= 18,
+  u => u.active,
+  u => u.verified,
+])
+
+pipe(users, A.filter(eligible))
+```
+
+### Merge config layers
+
+```ts
+import { Obj } from '@stopcock/fp'
+
+const config = Obj.mergeDeepRight(
+  Obj.mergeDeepRight(defaults, fileConfig),
+  envOverrides,
+)
+```
+
+### Search with ranking
+
+```ts
+import { pipe, A, S } from '@stopcock/fp'
+
+type Contact = { name: string; email: string; company: string }
+
+function search(contacts: Contact[], query: string) {
+  const q = query.toLowerCase()
+  return pipe(
+    contacts,
+    A.map(c => {
+      const name = c.name.toLowerCase()
+      const score =
+        name === q ? 3 :
+        name.startsWith(q) ? 2 :
+        name.includes(q) || c.email.toLowerCase().includes(q) ? 1 : 0
+      return { contact: c, score }
+    }),
+    A.filter(r => r.score > 0),
+    A.sortBy((a, b) => b.score - a.score),
+    A.take(20),
+    A.map(r => r.contact),
+  )
+}
+```
+
+### Batch API requests
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+async function batchDelete(ids: string[], batchSize = 100) {
+  const batches = A.chunk(ids, batchSize)
+  for (const batch of batches) {
+    await db.deleteMany({ id: { $in: batch } })
+  }
+}
+```
+
+---
+
+## Lenses & immutable state
+
+Lenses replace spread-hell for nested immutable updates. Define the path once, then `view`, `set`, or `over` anywhere.
+
+### The problem: spread nesting
+
+```ts
+const next = {
+  ...state,
+  user: {
+    ...state.user,
+    preferences: {
+      ...state.user.preferences,
+      notifications: {
+        ...state.user.preferences.notifications,
+        email: false,
+      },
+    },
+  },
+}
+```
+
+### The fix: path
+
+```ts
+import { pipe, path, composeLens, set, over, view } from '@stopcock/fp'
+
+type AppState = {
+  user: {
+    name: string
+    preferences: {
+      notifications: { email: boolean; push: boolean }
+      theme: 'light' | 'dark'
+    }
+  }
+}
+
+const emailNotifLens = composeLens(
+  path<AppState, 'user', 'preferences'>('user', 'preferences'),
+  path<AppState['user']['preferences'], 'notifications', 'email'>('notifications', 'email'),
+)
+const themeLens = path<AppState, 'user', 'preferences'>('user', 'preferences')
+
+pipe(state, view(emailNotifLens))                               // read
+pipe(state, set(emailNotifLens, false))                         // replace
+pipe(state, over(themeLens, p => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' })))
+```
+
+### useReducer with lenses
+
+```ts
+import { prop, set, over, type Lens } from '@stopcock/fp'
+
+type State = {
+  count: number
+  todos: { id: string; text: string; done: boolean }[]
+  filter: 'all' | 'active' | 'done'
+}
+
+const countLens = prop<State, 'count'>('count')
+const todosLens = prop<State, 'todos'>('todos')
+const filterLens = prop<State, 'filter'>('filter')
+
+type Action =
+  | { type: 'increment' }
+  | { type: 'decrement' }
+  | { type: 'setFilter'; filter: State['filter'] }
+  | { type: 'addTodo'; todo: State['todos'][0] }
+  | { type: 'toggleTodo'; id: string }
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'increment':
+      return over(countLens, n => n + 1)(state)
+    case 'decrement':
+      return over(countLens, n => n - 1)(state)
+    case 'setFilter':
+      return set(filterLens, action.filter)(state)
+    case 'addTodo':
+      return over(todosLens, todos => [...todos, action.todo])(state)
+    case 'toggleTodo':
+      return over(todosLens, todos =>
+        todos.map(t => t.id === action.id ? { ...t, done: !t.done } : t)
+      )(state)
+  }
+}
+```
+
+### Form state management
+
+Each form field gets a lens. Input handlers become one-liners.
+
+```ts
+import { prop, set, view, type Lens } from '@stopcock/fp'
+
+type ProfileForm = {
+  displayName: string
+  bio: string
+  website: string
+}
+
+const displayNameLens = prop<ProfileForm, 'displayName'>('displayName')
+const bioLens = prop<ProfileForm, 'bio'>('bio')
+const websiteLens = prop<ProfileForm, 'website'>('website')
+
+function handleChange<K extends keyof ProfileForm>(lens: Lens<ProfileForm, string>) {
+  return (e: { target: { value: string } }) =>
+    setForm(prev => set(lens, e.target.value)(prev))
+}
+
+// <input onChange={handleChange(displayNameLens)} value={view(displayNameLens)(form)} />
+```
+
+### Settings panel with nested toggles
+
+```ts
+import { pipe, path, over } from '@stopcock/fp'
+
+type Settings = {
+  privacy: { shareUsage: boolean; shareLocation: boolean }
+  display: { compactMode: boolean; fontSize: number }
+}
+
+const shareUsageLens = path<Settings, 'privacy', 'shareUsage'>('privacy', 'shareUsage')
+const compactLens = path<Settings, 'display', 'compactMode'>('display', 'compactMode')
+const fontSizeLens = path<Settings, 'display', 'fontSize'>('display', 'fontSize')
+
+const toggleShareUsage = over(shareUsageLens, v => !v)
+const toggleCompact = over(compactLens, v => !v)
+const bumpFontSize = over(fontSizeLens, n => Math.min(n + 2, 32))
+
+const updated = pipe(
+  settings,
+  toggleShareUsage,
+  bumpFontSize,
+)
+```
+
+### Undo/redo with lens snapshots
+
+Capture the value at a lens before mutating. Push to a history stack.
+
+```ts
+import { view, set, over, path, type Lens } from '@stopcock/fp'
+
+type History<S> = { past: S[]; present: S; future: S[] }
+
+function edit<S, A>(
+  history: History<S>,
+  lens: Lens<S, A>,
+  fn: (a: A) => A,
+): History<S> {
+  return {
+    past: [...history.past, history.present],
+    present: over(lens, fn)(history.present),
+    future: [],
+  }
+}
+
+function undo<S>(history: History<S>): History<S> {
+  const prev = history.past.at(-1)
+  if (!prev) return history
+  return {
+    past: history.past.slice(0, -1),
+    present: prev,
+    future: [history.present, ...history.future],
+  }
+}
+```
+
+### Normalized state: update an entity by ID
+
+```ts
+import { pipe, lens, over } from '@stopcock/fp'
+
+type Entity = { id: string; name: string; status: 'active' | 'archived' }
+type NormalizedState = {
+  ids: string[]
+  entities: Record<string, Entity>
+}
+
+const entityLens = (id: string) =>
+  lens<NormalizedState, Entity>(
+    s => s.entities[id],
+    (s, entity) => ({
+      ...s,
+      entities: { ...s.entities, [id]: entity },
+    }),
+  )
+
+const archiveEntity = (state: NormalizedState, id: string) =>
+  pipe(state, over(entityLens(id), e => ({ ...e, status: 'archived' as const })))
+```
+
+### Shopping cart: update quantity by SKU
+
+```ts
+import { pipe, A, index, over } from '@stopcock/fp'
+
+type CartItem = { sku: string; name: string; qty: number; price: number }
+
+function updateQty(cart: CartItem[], sku: string, delta: number): CartItem[] {
+  const idx = A.findIndex(cart, item => item.sku === sku)
+  if (idx === undefined) return cart
+  return pipe(
+    cart,
+    over(index<CartItem>(idx), item => ({
+      ...item,
+      qty: Math.max(0, item.qty + delta),
+    })),
+  )
+}
+```

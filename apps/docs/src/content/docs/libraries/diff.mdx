@@ -1,0 +1,223 @@
+---
+title: diff
+description: Structural diffing, patching, composition, and rebasing for objects and arrays
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components'
+
+```bash
+bun add @stopcock/diff
+```
+
+Compute a patch between two values, apply it, invert it for undo, compose sequential patches, or rebase concurrent edits with conflict detection. All functions are dual-form.
+
+```ts
+import { diff, apply, invert, compose } from '@stopcock/diff'
+
+const before = { name: 'Tom', scores: [10, 20] }
+const after = { name: 'Tom', scores: [10, 20, 30] }
+
+const patch = diff(before, after)
+// [{ op: 'add', path: ['scores', 2], value: 30 }]
+
+const restored = apply(after, invert(patch))
+// { name: 'Tom', scores: [10, 20] }
+```
+
+The diff algorithm walks objects recursively, uses Myers' LCS on arrays, and detects moves and renames so you get minimal, meaningful patches instead of brute-force replace operations.
+
+## Operations
+
+A `Patch` is a list of operations:
+
+```ts
+type Operation =
+  | { op: 'add'; path: Path; value: unknown }
+  | { op: 'remove'; path: Path; oldValue: unknown }
+  | { op: 'replace'; path: Path; oldValue: unknown; newValue: unknown }
+  | { op: 'move'; from: Path; path: Path }
+  | { op: 'rename'; path: Path; oldKey: string; newKey: string }
+  | { op: 'test'; path: Path; value: unknown }
+```
+
+`add`, `remove`, `replace` are the core three. `move` and `rename` are detected automatically when diffing. `test` is an assertion (used in JSON Patch for safety checks).
+
+## Diffing
+
+```ts
+diff(before, after): Patch
+diffWith(before, after, options): Patch
+```
+
+Options:
+- `eq` - custom equality function (default: `===`)
+- `detectMoves` - detect array element moves (default: `true`)
+- `detectRenames` - detect object key renames (default: `true`)
+
+```ts
+// Move detection
+diff(
+  { items: ['a', 'b', 'c'] },
+  { items: ['c', 'a', 'b'] },
+)
+// [{ op: 'move', from: ['items', 2], path: ['items', 0] }]
+
+// Rename detection
+diff(
+  { firstName: 'Tom' },
+  { name: 'Tom' },
+)
+// [{ op: 'rename', path: [], oldKey: 'firstName', newKey: 'name' }]
+```
+
+## Applying patches
+
+```ts
+apply(target, patch): Result<T, PatchError>
+applyUnsafe(target, patch): T
+```
+
+`apply` returns a `Result`. If an operation fails (path doesn't exist, index out of bounds), you get a `PatchError` with context. `applyUnsafe` throws instead.
+
+All application is immutable. Objects and arrays are shallow-copied at each level of the path.
+
+## Inversion
+
+```ts
+invert(patch): Patch
+```
+
+Reverses a patch. `add` becomes `remove`, `remove` becomes `add`, `replace` swaps values. Operations are also reversed in order so dependencies are satisfied.
+
+This is what powers undo in `@stopcock/state`.
+
+```ts
+const p = diff(a, b)
+apply(b, invert(p)) // back to a
+```
+
+## Composition
+
+```ts
+compose(p1, p2): Patch
+```
+
+Merges two sequential patches into one. Automatically simplifies:
+- `add` then `remove` at the same path cancels out
+- `replace` then `replace` at the same path merges into one
+- `add` then `replace` at the same path becomes a single `add`
+
+```ts
+const p1 = diff(a, b)
+const p2 = diff(b, c)
+const p3 = compose(p1, p2)
+
+// apply(a, p3) === apply(apply(a, p1), p2)
+```
+
+## Rebasing
+
+```ts
+rebase(localPatch, remotePatch): Result<Patch, ConflictError>
+```
+
+You and someone else both edited the same base state. The remote patch already landed. `rebase` transforms your local patch so it applies cleanly on top of the remote changes.
+
+```ts
+const base = { name: 'Tom', scores: [10, 20] }
+
+const local = diff(base, { name: 'Tom', scores: [10, 20, 30] })
+const remote = diff(base, { name: 'Tom', scores: [5, 10, 20] })
+
+const rebased = rebase(local, remote)
+// local's add at index 2 shifts to index 3
+```
+
+Array index adjustments happen automatically. If both sides replace the same path, you get a `ConflictError`. If the remote deletes a path your local patch touches, the local operation is dropped.
+
+<Aside type="tip">
+  `rebase` returns a `Result`. Check for conflicts before applying. This is the same `Result` type from `@stopcock/fp`.
+</Aside>
+
+## JSON Patch (RFC 6902)
+
+```ts
+toJsonPatch(patch): JsonPatchOperation[]
+fromJsonPatch(ops): Patch
+```
+
+Convert to and from the standard JSON Patch format. Useful for sending patches over the wire or storing them in a database.
+
+```ts
+const p = diff(before, after)
+const json = toJsonPatch(p)
+// [{ op: 'add', path: '/scores/2', value: 30 }]
+
+const roundTripped = fromJsonPatch(json)
+```
+
+<Aside type="note">
+  JSON Patch doesn't have `rename` or `oldValue` on removes, so the conversion is slightly lossy. Round-tripping through JSON Patch may lose information needed for inversion.
+</Aside>
+
+## Optics bridge
+
+If you're already using lenses from `@stopcock/fp`, you can convert between patches and lenses.
+
+```ts
+toLens(operation): Lens | null
+fromLens(source, lens, target): Patch | null
+fromTraversal(source, traversal, fn): Patch
+```
+
+---
+
+## API reference
+
+### Types
+
+```ts
+type PathSegment = string | number
+type Path = readonly PathSegment[]
+
+type Patch = { readonly _tag: 'Patch'; readonly ops: readonly Operation[] }
+type PatchError = { readonly _tag: 'PatchError'; message: string; op: Operation; path: Path }
+type ConflictError = { readonly _tag: 'ConflictError'; message: string; local: Operation; remote: Operation }
+```
+
+### Constructors
+
+```ts
+patch(ops: Operation[]): Patch
+empty(): Patch
+ops(p: Patch): Operation[]
+size(p: Patch): number
+isEmpty(p: Patch): boolean
+```
+
+### Core
+
+```ts
+diff(a, b): Patch
+diffWith(a, b, options: DiffOptions): Patch
+apply(target, patch): Result<T, PatchError>
+applyUnsafe(target, patch): T
+invert(patch): Patch
+compose(p1, p2): Patch
+rebase(local, remote): Result<Patch, ConflictError>
+```
+
+### JSON Patch
+
+```ts
+toJsonPatch(patch): JsonPatchOperation[]
+fromJsonPatch(ops: JsonPatchOperation[]): Patch
+```
+
+### Optics
+
+```ts
+toLens(op: Operation): Lens | null
+fromLens(source, lens, target): Patch | null
+fromTraversal(source, traversal, fn): Patch
+```

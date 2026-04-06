@@ -1,0 +1,107 @@
+---
+title: A TypeScript toolkit
+description: Fast, composable TypeScript. FP primitives, dates, async tasks, image processing.
+template: splash
+hero:
+  title: stopcock
+  tagline: "Fast, composable TypeScript."
+  actions:
+    - text: Get Started
+      link: /getting-started
+      icon: right-arrow
+      variant: primary
+    - text: GitHub
+      link: https://github.com/tdeaks/stopcock
+      icon: external
+      variant: minimal
+---
+
+import FusionSpotlight from '../../components/charts/FusionSpotlight.astro'
+import LibraryGrid from '../../components/LibraryGrid.astro'
+
+A handful of functional TypeScript packages that play nicely together. Pipeable utilities covering arrays, dates, async tasks, state management, diffing, and image processing, with more to come.
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+const top10 = pipe(
+  users,
+  A.filter(u => u.active),
+  A.map(u => ({ name: u.name, score: u.score })),
+  A.take(10),
+)
+```
+
+```ts
+import { pipe } from '@stopcock/fp'
+import { create, add, format } from '@stopcock/date'
+
+const nextWeek = pipe(
+  create.now(),
+  add('days', 7),
+  format('yyyy-MM-dd'),
+)
+```
+
+```ts
+import { pipe } from '@stopcock/fp'
+import { fromPromise, map, flatMap, retry, timeout, run } from '@stopcock/async'
+
+const fetchUser = pipe(
+  fromPromise(() => fetch('/api/user')),
+  flatMap(res => fromPromise(() => res.json())),
+  map(data => data.name),
+  retry({ attempts: 3 }),
+  timeout(5000),
+)
+
+const name = await run(fetchUser)
+```
+
+```ts
+import { diff, apply, invert } from '@stopcock/diff'
+
+const patch = diff(
+  { user: 'Tom', scores: [10, 20] },
+  { user: 'Tom', scores: [10, 20, 30] },
+)
+const restored = apply(patch.target, invert(patch))
+```
+
+```ts
+import { create, history } from '@stopcock/state'
+
+const store = create({ count: 0, name: 'Tom' })
+store.subscribe(s => s.count, (next) => console.log(next))
+store.set(s => s.count, 1)
+```
+
+```ts
+import { pipe } from '@stopcock/fp'
+import { fromRGBA, resize, sharpen, contrast } from '@stopcock/img'
+
+const thumbnail = (data: Uint8ClampedArray, w: number, h: number) => pipe(
+  fromRGBA(data, w, h),
+  resize(200, 200),
+  sharpen,
+  contrast(30),
+)
+```
+
+---
+
+<LibraryGrid />
+
+---
+
+## Array pipelines fuse automatically
+
+`pipe` detects chainable array operations and fuses them into a single loop. `take(10)` bails after 10 hits. On a million-element array, that's dozens of items touched instead of three full passes.
+
+<FusionSpotlight />
+
+---
+
+```bash
+bun add @stopcock/fp
+```
