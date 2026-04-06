@@ -198,6 +198,10 @@ function groupOps(ops: readonly Operation[]): string | null {
   return parts.join(', ')
 }
 
+export type HistoryOptions = {
+  maxDepth?: number
+}
+
 export type History<S extends object = any> = {
   readonly middleware: Middleware<S>
   readonly canUndo: boolean
@@ -206,7 +210,8 @@ export type History<S extends object = any> = {
   redo(store: Store<S>): void
 }
 
-export function history<S extends object = any>(): History<S> {
+export function history<S extends object = any>(options?: HistoryOptions): History<S> {
+  const max = options?.maxDepth ?? Infinity
   const undos: Patch[] = []
   const redos: Patch[] = []
   let silent = false
@@ -214,6 +219,7 @@ export function history<S extends object = any>(): History<S> {
     middleware: (patch) => {
       if (silent) return patch
       undos.push(patch)
+      if (undos.length > max) undos.shift()
       redos.length = 0
       return patch
     },

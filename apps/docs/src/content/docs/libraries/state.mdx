@@ -1,0 +1,318 @@
+---
+title: state
+description: Reactive state management with structural diffs, fine-grained subscriptions, and undo/redo
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components'
+
+```bash
+bun add @stopcock/state
+```
+
+A store holds your state. You read and write slices with plain accessor functions like `s => s.user.name`. Subscriptions only fire when the slice you're watching actually changes. Under the hood, every mutation produces a structural diff (via `@stopcock/diff`), so middleware can inspect, transform, or reject changes before they land.
+
+```ts
+import { pipe } from '@stopcock/fp'
+import { create, computed } from '@stopcock/state'
+
+const store = create({ user: { name: 'Tom' }, todos: [] as Todo[] })
+
+store.subscribe(s => s.user.name, (next, prev) => {
+  console.log(`${prev} -> ${next}`)
+})
+
+store.set(s => s.user.name, 'Alice') // logs "Tom -> Alice"
+store.set(s => s.todos, [])          // subscriber above doesn't fire
+```
+
+## How it works
+
+When you pass `s => s.user.name` to a store method, the store runs that function against a Proxy. The Proxy records which properties were accessed and builds a path: `['user', 'name']`. That path is compiled into a lens (from `@stopcock/fp`) and cached. Next time you pass the same function, it hits the cache.
+
+This means:
+- No string paths. No action constants. Just functions.
+- TypeScript validates the accessor. If the property doesn't exist, you get a type error.
+- The path is extracted once and reused for reads, writes, and subscription matching.
+
+When you call `set` or `over`, the store applies the lens to produce the next state, then diffs old vs new. The resulting patch tells each subscriber whether its slice was affected. Subscribers whose paths don't overlap with the patch are skipped entirely.
+
+## vs. other state managers
+
+<Tabs>
+  <TabItem label="Zustand">
+    ```ts
+    // Zustand: selectors are great, but mutations use spread
+    const useStore = create((set) => ({
+      user: { name: 'Tom', age: 30 },
+      setName: (name) => set((s) => ({
+        user: { ...s.user, name }
+      })),
+    }))
+
+    // stopcock: accessor function, no spread nesting
+    store.set(s => s.user.name, 'Alice')
+    ```
+  </TabItem>
+  <TabItem label="Redux Toolkit">
+    ```ts
+    // Redux Toolkit: slices, reducers, actions, selectors
+    const userSlice = createSlice({
+      name: 'user',
+      initialState: { name: 'Tom' },
+      reducers: {
+        setName: (state, action) => { state.name = action.payload },
+      },
+    })
+    dispatch(userSlice.actions.setName('Alice'))
+
+    // stopcock: just set the value
+    store.set(s => s.user.name, 'Alice')
+    ```
+  </TabItem>
+  <TabItem label="Jotai">
+    ```ts
+    // Jotai: atoms are great for fine-grained reactivity
+    const nameAtom = atom('Tom')
+    const [name, setName] = useAtom(nameAtom)
+
+    // stopcock: one store, same fine-grained subscriptions
+    // no atom-per-field boilerplate
+    store.subscribe(s => s.user.name, listener)
+    store.set(s => s.user.name, 'Alice')
+    ```
+  </TabItem>
+</Tabs>
+
+## Real-world patterns
+
+### Todo app
+
+```ts
+import { create, computed, history } from '@stopcock/state'
+
+type State = {
+  todos: { id: number; text: string; done: boolean }[]
+  filter: 'all' | 'active' | 'done'
+}
+
+const h = history<State>()
+const store = create<State>(
+  { todos: [], filter: 'all' },
+  { middleware: [h.middleware] },
+)
+
+const visible = computed(
+  store,
+  s => s.todos,
+  todos => todos.filter(t => !t.done).length,
+)
+
+// Add a todo
+store.over(s => s.todos, todos => [
+  ...todos, { id: Date.now(), text: 'Write docs', done: false },
+])
+
+// Toggle
+store.update(s => s.todos[0], draft => { draft.done = !draft.done })
+
+// Undo the toggle
+h.undo(store)
+```
+
+### Form state
+
+```ts
+const form = create({
+  fields: { email: '', password: '' },
+  errors: {} as Record<string, string>,
+  submitting: false,
+})
+
+form.subscribe(s => s.fields, (fields) => {
+  // re-validate on any field change
+  const errors: Record<string, string> = {}
+  if (!fields.email.includes('@')) errors.email = 'Invalid email'
+  if (fields.password.length < 8) errors.password = 'Too short'
+  form.set(s => s.errors, errors)
+})
+
+form.set(s => s.fields.email, 'tom@example.com')
+```
+
+### Async data loading
+
+```ts
+import { create } from '@stopcock/state'
+import { asyncAction } from '@stopcock/state/async'
+
+type State = {
+  users: User[]
+  loading: boolean
+  error: string | null
+}
+
+const store = create<State>({ users: [], loading: false, error: null })
+
+const load = asyncAction(store, {
+  task: { run: (signal) => fetch('/api/users', { signal }).then(r => r.json()) },
+  onStart: (s) => s.set(s => s.loading, true),
+  onSuccess: (s, users) => s.set(s => s.users, users),
+  onError: (s, err) => s.set(s => s.error, String(err)),
+  onFinally: (s) => s.set(s => s.loading, false),
+})
+
+await load.result
+// or: load.abort()
+```
+
+## Batching
+
+Multiple writes in a `batch` produce a single notification.
+
+```ts
+store.batch(() => {
+  store.set(s => s.user.name, 'Alice')
+  store.set(s => s.user.age, 31)
+})
+// subscribers notified once with the final state
+```
+
+Intermediate `get()` calls inside a batch see the updated state. If the callback throws, the state rolls back to where it was before the batch. Nested batches are fine. Only the outermost one triggers notifications.
+
+## Middleware
+
+Every state change produces a `Patch` (from `@stopcock/diff`). Middleware intercepts that patch before it's applied.
+
+```ts
+type Middleware<S> = (patch: Patch, state: S) => Patch | null
+```
+
+Return the patch to let it through, transform it, or return `null` to reject it.
+
+### logger
+
+```ts
+import { create, logger } from '@stopcock/state'
+
+const store = create(initial, {
+  middleware: [logger({ collapsed: true })],
+})
+```
+
+Logs every change to the console with color-coded operation types, formatted paths, and grouped output.
+
+### history (undo/redo)
+
+Built on patch inversion. Every change is recorded. `undo()` inverts the last patch and applies it backwards. `redo()` replays the forward patch.
+
+```ts
+import { create, history } from '@stopcock/state'
+
+const h = history<State>()
+const store = create(initial, { middleware: [h.middleware] })
+
+store.set(s => s.count, 1)
+store.set(s => s.count, 2)
+
+h.canUndo  // true
+h.undo(store)  // count back to 1
+h.redo(store)  // count back to 2
+```
+
+Making a new change after undo clears the redo stack.
+
+### devtools
+
+Connects to the Redux DevTools browser extension. Time travel, action tracking, state inspection.
+
+```ts
+import { create, devtools } from '@stopcock/state'
+
+const store = devtools(create(initial), 'MyStore')
+```
+
+---
+
+## API reference
+
+### Store
+
+```ts
+create<S>(initial: S, options?: StoreOptions<S>): Store<S>
+```
+
+```ts
+interface Store<S> {
+  get(): S
+  get<A>(accessor: Accessor<S, A>): A
+  set<A>(accessor: Accessor<S, A>, value: A): void
+  over<A>(accessor: Accessor<S, A>, fn: (a: A) => A): void
+  update(fn: (draft: S) => void): void
+  update<A>(accessor: Accessor<S, A>, fn: (draft: A) => void): void
+  replace(next: S): void
+  batch(fn: () => void): void
+  at<A>(path: readonly (string | number)[]): Handle<A>
+  subscribe(listener: Listener<S>): Unsubscribe
+  subscribe<A>(accessor: Accessor<S, A>, listener: Listener<A>): Unsubscribe
+  destroy(): void
+}
+```
+
+### Computed
+
+```ts
+computed<S, A, D>(
+  store: Store<S>,
+  accessor: Accessor<S, A>,
+  derive: (slice: A) => D,
+  eq?: (a: D, b: D) => boolean,
+): Computed<D>
+```
+
+Lazy derived state. Caches the result and only re-derives when the source slice changes. Custom equality function gates notifications.
+
+```ts
+interface Computed<D> {
+  get(): D
+  subscribe(listener: Listener<D>): Unsubscribe
+  destroy(): void
+}
+```
+
+### Middleware
+
+```ts
+logger<S>(options?: { collapsed?: boolean; table?: boolean }): Middleware<S>
+history<S>(): History<S>
+devtools<S>(store: Store<S>, name?: string | { name?: string; debounce?: number }): Store<S>
+```
+
+### Async
+
+```ts
+import { asyncAction } from '@stopcock/state/async'
+
+asyncAction<S, A>(store: Store<S>, config: {
+  task: { run: (signal?: AbortSignal) => Promise<A> }
+  onStart?: (store: Store<S>) => void
+  onSuccess: (store: Store<S>, result: A) => void
+  onError?: (store: Store<S>, error: unknown) => void
+  onFinally?: (store: Store<S>) => void
+}): { abort(): void; result: Promise<A> }
+```
+
+### Types
+
+```ts
+type Accessor<S, A> = (state: S) => A
+type Listener<A> = (next: A, prev: A) => void
+type Middleware<S> = (patch: Patch, state: S) => Patch | null
+type Unsubscribe = () => void
+
+interface Handle<A> {
+  get(): A
+  set(value: A): void
+  over(fn: (a: A) => A): void
+  subscribe(listener: Listener<A>): Unsubscribe
+}
+```

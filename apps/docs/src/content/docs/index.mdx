@@ -59,6 +59,24 @@ const name = await run(fetchUser)
 ```
 
 ```ts
+import { diff, apply, invert } from '@stopcock/diff'
+
+const patch = diff(
+  { user: 'Tom', scores: [10, 20] },
+  { user: 'Tom', scores: [10, 20, 30] },
+)
+const restored = apply(patch.target, invert(patch))
+```
+
+```ts
+import { create, history } from '@stopcock/state'
+
+const store = create({ count: 0, name: 'Tom' })
+store.subscribe(s => s.count, (next) => console.log(next))
+store.set(s => s.count, 1)
+```
+
+```ts
 import { pipe } from '@stopcock/fp'
 import { fromRGBA, resize, sharpen, contrast } from '@stopcock/img'
 
