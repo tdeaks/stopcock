@@ -1,0 +1,157 @@
+---
+title: A (Array)
+description: Filter, map, sort, group, and 30+ array functions that fuse in pipe
+---
+
+Every function works both ways: `A.fn(arr, ...)` (data-first) and `pipe(arr, A.fn(...))` (data-last). Most of these [fuse in pipe](/concepts/fusion) into single loops.
+
+## Accessors
+
+```ts
+head<A>(arr: A[]): A | undefined
+last<A>(arr: A[]): A | undefined
+first<A>(arr: A[]): A | undefined   // alias for head
+tail<A>(arr: A[]): A[]               // all except first
+init<A>(arr: A[]): A[]               // all except last
+length<A>(arr: A[]): number
+isEmpty<A>(arr: A[]): boolean
+```
+
+## Transforms
+
+```ts
+map<A, B>(arr: A[], f: (a: A) => B): B[]
+mapWithIndex<A, B>(arr: A[], f: (a: A, i: number) => B): B[]
+filter<A>(arr: A[], pred: (a: A) => boolean): A[]
+filterWithIndex<A>(arr: A[], pred: (a: A, i: number) => boolean): A[]
+flatMap<A, B>(arr: A[], f: (a: A) => B[]): B[]
+reduce<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
+reduceRight<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
+scan<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B[]
+forEach<A>(arr: A[], f: (a: A) => void): void
+forEachWithIndex<A>(arr: A[], f: (a: A, i: number) => void): void
+```
+
+All of these fuse in `pipe`.
+
+## Ordering
+
+```ts
+sort(arr: number[]): number[]
+sortBy<A>(arr: A[], cmp: (a: A, b: A) => number): A[]
+reverse<A>(arr: A[]): A[]
+```
+
+Not fuseable. They need the whole array.
+
+## Slicing
+
+```ts
+take<A>(arr: A[], n: number): A[]
+drop<A>(arr: A[], n: number): A[]
+takeWhile<A>(arr: A[], pred: (a: A) => boolean): A[]
+dropWhile<A>(arr: A[], pred: (a: A) => boolean): A[]
+chunk<A>(arr: A[], n: number): A[][]
+slidingWindow<A>(arr: A[], n: number): A[][]
+aperture<A>(arr: A[], n: number): A[][]
+```
+
+`take` bails out early in fused pipelines.
+
+## Search
+
+```ts
+find<A>(arr: A[], pred: (a: A) => boolean): A | undefined
+findIndex<A>(arr: A[], pred: (a: A) => boolean): number | undefined
+every<A>(arr: A[], pred: (a: A) => boolean): boolean
+some<A>(arr: A[], pred: (a: A) => boolean): boolean
+includes<A>(arr: A[], value: A): boolean
+```
+
+`find`, `every`, `some` fuse and bail out early.
+
+## Deduplication
+
+```ts
+uniq<A>(arr: A[]): A[]
+uniqBy<A, B>(arr: A[], f: (a: A) => B): A[]
+```
+
+## Set operations
+
+```ts
+intersection<A>(a: A[], b: A[]): A[]
+union<A>(a: A[], b: A[]): A[]
+difference<A>(a: A[], b: A[]): A[]
+symmetricDifference<A>(a: A[], b: A[]): A[]
+```
+
+## Combinators
+
+```ts
+zip<A, B>(a: A[], b: B[]): [A, B][]
+zipWith<A, B, C>(a: A[], b: B[], f: (a: A, b: B) => C): C[]
+xprod<A, B>(a: A[], b: B[]): [A, B][]
+groupBy<A>(arr: A[], f: (a: A) => string): Dict<A[]>
+partition<A>(arr: A[], pred: (a: A) => boolean): [A[], A[]]
+intersperse<A>(arr: A[], sep: A): A[]
+flatten<A>(arr: A[][]): A[]
+transpose<A>(arr: A[][]): A[][]
+```
+
+## Mutation (immutable)
+
+```ts
+adjust<A>(arr: A[], index: number, f: (a: A) => A): A[]
+update<A>(arr: A[], index: number, value: A): A[]
+insert<A>(arr: A[], index: number, value: A): A[]
+remove<A>(arr: A[], index: number, count: number): A[]
+```
+
+All return new arrays.
+
+## Constructors
+
+```ts
+range(start: number, end: number): number[]
+repeat<A>(value: A, n: number): A[]
+times<A>(f: (i: number) => A, n: number): A[]
+unfold<A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
+```
+
+## Examples
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+type Product = { name: string; price: number; category: string; inStock: boolean }
+
+// fused: filter → map → take runs in one loop
+const deals = pipe(
+  products,
+  A.filter((p: Product) => p.inStock && p.price < 50),
+  A.map(p => ({ name: p.name, price: p.price })),
+  A.take(10),
+)
+
+// group + count
+const byCategory = A.groupBy(products, p => p.category)
+// { electronics: [...], clothing: [...] }
+
+// rolling total
+A.scan([100, 200, 150, 300], (acc, x) => acc + x, 0)
+// [100, 300, 450, 750]
+
+// remove duplicates by key
+const uniqueCustomers = pipe(
+  orders,
+  A.uniqBy((o: { customerId: string }) => o.customerId),
+)
+
+// set operations
+const newUsers = A.difference(allUsers, existingUsers)
+const commonTags = A.intersection(tagsA, tagsB)
+
+// batch processing
+const batches = A.chunk(records, 100)
+```

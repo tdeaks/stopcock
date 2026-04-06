@@ -1,0 +1,159 @@
+---
+title: Benchmarks
+description: stopcock vs lodash, ramda, remeda, rambda, ts-belt, and native JS
+---
+
+import TabbedBarChart from '../../../components/charts/TabbedBarChart.astro'
+import TabbedScalingChart from '../../../components/charts/TabbedScalingChart.astro'
+import FusionSpotlight from '../../../components/charts/FusionSpotlight.astro'
+import RuntimeSelector from '../../../components/charts/RuntimeSelector.astro'
+
+[vitest bench](https://vitest.dev/guide/features.html#benchmarking), Apple Silicon, seeded PRNG. Array sizes: 100, 1K, 10K, 100K.
+
+<RuntimeSelector />
+
+---
+
+## Pipeline fusion
+
+### Fully fused: filter → map → take
+
+```ts
+pipe(data, A.filter(x => x > threshold), A.map(x => x * 2), A.take(10))
+```
+
+All three operations fuse into a single loop. `take(10)` halts after 10 results. The loop never visits the rest of the array.
+
+<FusionSpotlight />
+
+<TabbedScalingChart category="filter→map→take(10)" />
+
+stopcock holds ~4M ops/s from n=100 to n=100K (the flat line). Every other library degrades linearly because they make three separate passes and allocate intermediate arrays. At 100K elements, native JS does 703 ops/s. Fusion does 4.2M.
+
+### Partial fusion: filter → map → sort → take
+
+```ts
+pipe(data, A.filter(x => x > 0), A.map(x => x * 2), A.sortBy((a, b) => a - b), A.take(5))
+```
+
+`sort` can't fuse because it needs the full array. `filter → map` fuses into one loop, materializes the result, then `sort` runs, then `take` slices.
+
+<TabbedBarChart category="filter→map→sort→take(5)" arraySize={10000} />
+
+<TabbedScalingChart category="filter→map→sort→take(5)" />
+
+The advantage shrinks because `sort` dominates the runtime. But partial fusion still helps. The fused `filter → map` segment avoids an intermediate array and runs in one pass before handing off to `sort`.
+
+### Individual operations (no fusion)
+
+Outside of fused chains, stopcock still competes on raw single-op speed.
+
+<TabbedBarChart category="filter" arraySize={10000} />
+
+<TabbedBarChart category="map" arraySize={10000} />
+
+---
+
+## Transforms
+
+### flatMap
+
+<TabbedBarChart category="flatMap" arraySize={10000} />
+
+### reduce
+
+<TabbedBarChart category="reduce" arraySize={10000} />
+
+---
+
+## Search and slicing
+
+### find
+
+<TabbedBarChart category="find" arraySize={10000} />
+
+### every
+
+<TabbedBarChart category="every" arraySize={10000} />
+
+### take
+
+<TabbedBarChart category="take(10)" arraySize={10000} />
+
+### drop
+
+<TabbedBarChart category="drop(10)" arraySize={10000} />
+
+---
+
+## Deduplication and set ops
+
+### uniq
+
+<TabbedBarChart category="uniq" arraySize={10000} />
+
+<TabbedScalingChart category="uniq" />
+
+ts-belt falls over at n=10K. O(n²) implementation.
+
+### intersection
+
+<TabbedBarChart category="intersection" arraySize={10000} />
+
+### difference
+
+<TabbedBarChart category="difference" arraySize={10000} />
+
+---
+
+## Sorting and grouping
+
+### sort
+
+<TabbedBarChart category="sort" arraySize={10000} />
+
+### groupBy
+
+<TabbedBarChart category="groupBy" arraySize={10000} />
+
+### partition
+
+<TabbedBarChart category="partition" arraySize={10000} />
+
+---
+
+## Misc
+
+### flatten
+
+<TabbedBarChart category="flatten" arraySize={10000} />
+
+### chunk
+
+<TabbedBarChart category="chunk(10)" arraySize={10000} />
+
+### reverse
+
+<TabbedBarChart category="reverse" arraySize={10000} />
+
+---
+
+## Statistics
+
+### sum
+
+<TabbedBarChart category="sum" arraySize={10000} />
+
+### mean
+
+<TabbedBarChart category="mean" arraySize={10000} />
+
+<TabbedScalingChart category="mean" />
+
+### median
+
+<TabbedBarChart category="median" arraySize={1000} />
+
+### standardDeviation
+
+<TabbedBarChart category="standardDeviation" arraySize={1000} />

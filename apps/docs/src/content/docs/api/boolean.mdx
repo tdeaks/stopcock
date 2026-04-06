@@ -1,0 +1,29 @@
+---
+title: B (Boolean)
+description: not, and, or, ifElse. Boolean combinators for pipe
+---
+
+```ts
+not_(a: boolean): boolean
+and_(a: boolean, b: boolean): boolean      // dual
+or_(a: boolean, b: boolean): boolean       // dual
+ifElse<A>(cond: boolean, onTrue: () => A, onFalse: () => A): A  // dual
+```
+
+Trailing underscores avoid colliding with JS reserved words.
+
+## Examples
+
+```ts
+import { pipe, B } from '@stopcock/fp'
+
+pipe(true, B.not_)           // false
+pipe(true, B.and_(false))    // false
+pipe(false, B.ifElse(() => 'yes', () => 'no'))  // 'no'
+
+// toggle a feature flag
+const toggled = pipe(isEnabled, B.not_)
+
+// both conditions must hold
+const canAccess = pipe(isAdmin, B.and_(isActive))
+```

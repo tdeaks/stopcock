@@ -1,0 +1,240 @@
+---
+title: http
+description: Typed HTTP client with retry, timeout, dedup, and Task integration
+---
+
+```bash
+bun add @stopcock/http
+```
+
+A typed wrapper around `fetch`. Response type and error type flow through generics at the call site. Each request is internally a `Task` from `@stopcock/async`, so retry, timeout, and cancellation compose naturally.
+
+```ts
+import { createClient } from '@stopcock/http'
+
+const api = createClient({
+  baseUrl: 'https://api.example.com',
+  headers: () => ({ Authorization: `Bearer ${getToken()}` }),
+  timeout: 5000,
+  retry: { attempts: 3, backoff: 'exponential' },
+})
+
+const users = await api.get<User[]>('/users')
+const user = await api.post<User>('/users', { body: { name: 'Tom' } })
+```
+
+## Error handling
+
+Non-2xx responses throw an `HttpError` with the parsed response body. Cast the error to type the body.
+
+```ts
+try {
+  await api.get<User>('/users/999')
+} catch (e) {
+  if (e instanceof HttpError) {
+    e.status      // 404
+    e.statusText  // 'Not Found'
+    e.data        // parsed response body (unknown)
+  }
+}
+```
+
+If you want the error body typed at the call site, use the `task` methods. The second generic flows through `HttpError<E>`.
+
+```ts
+type ApiError = { code: string; message: string }
+
+const result = await api.task.get<User, ApiError>('/users/999').run()
+```
+
+## Path and query params
+
+```ts
+api.get('/users/:id', { params: { id: 42 } })
+// -> GET /users/42
+
+api.get('/users', { query: { role: 'admin', page: 2 } })
+// -> GET /users?role=admin&page=2
+```
+
+Arrays serialize as repeated keys: `{ tags: ['a', 'b'] }` becomes `tags=a&tags=b`. Undefined and null values are filtered out.
+
+## Headers
+
+Static headers or a function (sync or async) called per-request. Per-request headers override config headers.
+
+```ts
+const api = createClient({
+  headers: async () => ({
+    Authorization: `Bearer ${await refreshToken()}`,
+  }),
+})
+
+await api.get('/me', { headers: { 'X-Custom': 'value' } })
+```
+
+## Task escape hatch
+
+Every method has a `task` counterpart that returns a raw `Task` instead of a `Promise`. Compose with any `@stopcock/async` combinator.
+
+```ts
+import { pipe, retry, timeout, run } from '@stopcock/async'
+
+const task = api.task.get<User[]>('/users')
+
+const withFallback = pipe(
+  task,
+  retry({ attempts: 5, backoff: 'exponential' }),
+  timeout(10_000),
+)
+
+const users = await run(withFallback)
+```
+
+## Retry
+
+Config-level retry applies to all requests. Smart defaults: 5xx and 429 retry, 4xx doesn't, network errors retry.
+
+```ts
+const api = createClient({
+  retry: {
+    attempts: 3,
+    backoff: 'exponential',
+    delay: 1000,
+    retryIf: (error, attempt) => { /* custom logic */ },
+  },
+})
+```
+
+## Timeout
+
+Per-request or config-level. Uses `@stopcock/async`'s `timeout` combinator internally.
+
+```ts
+const api = createClient({ timeout: 5000 })
+
+// per-request override
+await api.get('/slow', { timeout: 30_000 })
+```
+
+## Dedup
+
+Concurrent identical GET requests share one fetch. Mutations invalidate matching cached paths.
+
+```ts
+const api = createClient({ dedup: true })
+
+// one network request, both resolve with the same data
+const [a, b] = await Promise.all([
+  api.get('/users'),
+  api.get('/users'),
+])
+```
+
+## Upload progress
+
+Pass `onProgress` to track upload progress. Falls back to `XMLHttpRequest` internally when a body and progress handler are both present.
+
+```ts
+await api.post('/upload', {
+  body: formData,
+  onProgress: (event) => {
+    const pct = Math.round((event.loaded / event.total) * 100)
+    console.log(`${pct}%`)
+  },
+})
+```
+
+## Cloning
+
+`with()` returns a new client with merged config. Fresh dedup cache. Headers merge (request-level wins).
+
+```ts
+const authed = api.with({
+  headers: { Authorization: `Bearer ${token}` },
+})
+```
+
+## Hooks
+
+`onRequest` and `onResponse` run on every request. Modify the request or response, or use for logging.
+
+```ts
+const api = createClient({
+  onRequest: (req) => {
+    console.log(`${req.method} ${req.url}`)
+    return req
+  },
+  onResponse: (res) => {
+    console.log(`${res.status} ${res.url}`)
+    return res
+  },
+})
+```
+
+## Resource integration
+
+Plugs directly into `@stopcock/state` resources.
+
+```ts
+import { create, resource } from '@stopcock/state'
+import { createClient } from '@stopcock/http'
+
+const api = createClient({ baseUrl: 'https://api.example.com' })
+const store = create({ search: '' })
+
+const users = resource({
+  deps: (get) => ({ q: get(store, s => s.search) }),
+  fetch: ({ q }, signal) => api.get<User[]>('/users', { query: { q }, signal }),
+})
+```
+
+The signal flows from resource through the HTTP client to fetch. When the resource aborts (dep change, destroy), it cancels the retry chain, timeout, and underlying request in one go.
+
+---
+
+## API reference
+
+```ts
+createClient(config?: HttpConfig): HttpClient
+
+interface HttpClient {
+  get<T>(path: string, options?: RequestOptions): Promise<T>
+  post<T>(path: string, options?: RequestOptionsWithBody): Promise<T>
+  put<T>(path: string, options?: RequestOptionsWithBody): Promise<T>
+  patch<T>(path: string, options?: RequestOptionsWithBody): Promise<T>
+  delete<T = void>(path: string, options?: RequestOptions): Promise<T>
+  head(path: string, options?: RequestOptions): Promise<Headers>
+  task: TaskMethods
+  with(overrides: Partial<HttpConfig>): HttpClient
+}
+
+// task methods return Task instead of Promise. typed error generic flows through
+type TaskMethods = {
+  get<T, E = unknown>(path: string, options?: RequestOptions): Task<T, HttpError<E>>
+  post<T, E = unknown>(path: string, options?: RequestOptionsWithBody): Task<T, HttpError<E>>
+  // put, patch, delete follow the same pattern
+}
+
+type RequestOptions = {
+  params?: Record<string, string | number>
+  query?: Record<string, string | number | boolean | undefined | null | Array<string | number | boolean>>
+  headers?: Record<string, string>
+  signal?: AbortSignal
+  responseType?: 'json' | 'text' | 'blob' | 'arrayBuffer'
+  transform?: (data: unknown) => unknown
+  timeout?: number
+}
+
+type RequestOptionsWithBody = RequestOptions & {
+  body?: unknown
+  onProgress?: (event: ProgressEvent) => void
+}
+
+class HttpError<E = unknown> extends Error {
+  status: number
+  statusText: string
+  data: E
+  request: { method: string; url: string }
+}
+```

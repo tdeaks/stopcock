@@ -1,0 +1,215 @@
+/* ── Shared ──────────────────────────────────────────────── */
+
+:root {
+  --sl-font: 'Inter Variable', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --sl-font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
+
+  --sl-text-h1: clamp(2rem, 4vw, 2.5rem);
+  --sl-text-h2: 1.5rem;
+  --sl-text-h3: 1.25rem;
+  --sl-text-body: 1.0625rem;
+  --sl-text-sm: 0.875rem;
+  --sl-text-xs: 0.75rem;
+  --sl-line-height: 1.7;
+  --sl-line-height-headings: 1.2;
+
+  --sl-content-width: 75ch;
+  --sl-sidebar-width: 18rem;
+  --sl-content-pad-x: 2.5rem;
+}
+
+/* ── Dark ────────────────────────────────────────────────── */
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #0f2418;
+  --sl-color-accent: #34d26a;
+  --sl-color-accent-high: #b8f0cb;
+
+  --sl-color-white: #e9ebe8;
+  --sl-color-gray-1: #c5c9c2;
+  --sl-color-gray-2: #959991;
+  --sl-color-gray-3: #636861;
+  --sl-color-gray-4: #363a35;
+  --sl-color-gray-5: #1f211e;
+  --sl-color-gray-6: #161816;
+  --sl-color-black: #0e100e;
+
+  --sl-color-bg-nav: #121412;
+  --sl-color-bg-sidebar: #0e100e;
+  --sl-color-hairline-light: #242824;
+  --sl-color-hairline: #1f211e;
+}
+
+/* ── Light ───────────────────────────────────────────────── */
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #e2f5e8;
+  --sl-color-accent: #1a8a3e;
+  --sl-color-accent-high: #0d5a26;
+
+  --sl-color-white: #1a1d1a;
+  --sl-color-gray-1: #33382f;
+  --sl-color-gray-2: #5c615a;
+  --sl-color-gray-3: #868b84;
+  --sl-color-gray-4: #c2c6bf;
+  --sl-color-gray-5: #e4e6e2;
+  --sl-color-gray-6: #f0f1ee;
+  --sl-color-black: #f8f8f6;
+
+  --sl-color-bg-nav: #f8f8f6;
+  --sl-color-bg-sidebar: #f8f8f6;
+  --sl-color-hairline-light: #e4e6e2;
+  --sl-color-hairline: #d5d8d2;
+}
+
+/* ── Typography ──────────────────────────────────────────── */
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+
+h1 { font-weight: 700; }
+
+/* ── Code ────────────────────────────────────────────────── */
+
+.expressive-code pre {
+  border-left: 2px solid var(--sl-color-gray-4);
+}
+
+:not(pre) > code {
+  background: var(--sl-color-gray-6);
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 3px;
+  padding: 0.15em 0.35em;
+  font-size: 0.9em;
+}
+
+/* ── Links ───────────────────────────────────────────────── */
+
+.sl-markdown-content a {
+  color: var(--sl-color-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.sl-markdown-content a:hover {
+  border-bottom-color: var(--sl-color-accent);
+}
+
+/* ── Charts ──────────────────────────────────────────────── */
+
+.chart-container {
+  width: 100%;
+  min-height: 300px;
+  margin: 2rem 0;
+}
+
+.chart-container svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+
+/* Sidebar: wider, more breathing room between items */
+nav.sidebar .sidebar-content {
+  padding-top: 1.5rem;
+}
+
+nav.sidebar a {
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: var(--sl-text-sm);
+}
+
+nav.sidebar a[aria-current="page"] {
+  border-left: 3px solid var(--sl-color-accent);
+  padding-left: calc(0.75rem - 3px);
+  font-weight: 600;
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-accent-high);
+}
+
+/* Sidebar group headings */
+nav.sidebar .top-level > li > details > summary,
+nav.sidebar .top-level > li > a {
+  font-weight: 600;
+  font-size: var(--sl-text-sm);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--sl-color-white);
+  padding-top: 1rem;
+  padding-bottom: 0.35rem;
+}
+
+/* Sidebar border separating it from content */
+nav.sidebar {
+  border-inline-end: 1px solid var(--sl-color-hairline);
+}
+
+/* Right sidebar (TOC): accent border on active item */
+.right-sidebar-panel starlight-toc a[aria-current="true"],
+.right-sidebar-panel starlight-toc a[aria-current="true"] span {
+  color: var(--sl-color-accent);
+  font-weight: 600;
+}
+
+.right-sidebar-panel starlight-toc li {
+  border-left: 2px solid transparent;
+  padding-left: 0.75rem;
+}
+
+.right-sidebar-panel starlight-toc li:has(> a[aria-current="true"]) {
+  border-left-color: var(--sl-color-accent);
+}
+
+/* Right sidebar border */
+.right-sidebar-container {
+  border-inline-start: 1px solid var(--sl-color-hairline);
+}
+
+/* Content area: more vertical breathing room */
+.content-panel + .content-panel {
+  padding-top: 0;
+}
+
+.sl-markdown-content > :first-child {
+  margin-top: 0.5rem;
+}
+
+.sl-markdown-content h2 {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--sl-color-hairline-light);
+}
+
+.sl-markdown-content h3 {
+  margin-top: 2rem;
+}
+
+/* Header: clean bottom border */
+header.header {
+  border-bottom: 1px solid var(--sl-color-hairline);
+}
+
+/* Wider bullet list spacing */
+.sl-markdown-content ul, .sl-markdown-content ol {
+  padding-left: 1.25rem;
+}
+
+.sl-markdown-content li + li {
+  margin-top: 0.5rem;
+}
+
+/* Table improvements */
+.sl-markdown-content table {
+  font-size: var(--sl-text-sm);
+}
+
+.sl-markdown-content th {
+  font-weight: 600;
+  text-align: left;
+}

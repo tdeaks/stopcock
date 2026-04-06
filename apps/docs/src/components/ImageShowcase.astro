@@ -1,0 +1,1534 @@
+---
+const id = 'img-showcase'
+---
+
+<div class="img-showcase" id={id}>
+  <div class="img-controls">
+    <div class="filter-buttons" id={`${id}-filters`}>
+      <button data-filter="grayscale">Grayscale</button>
+      <button data-filter="sepia">Sepia</button>
+      <button data-filter="invert">Invert</button>
+      <button data-filter="blur">Blur</button>
+      <button data-filter="gaussianBlur">Gaussian blur</button>
+      <button data-filter="sharpen">Sharpen</button>
+      <button data-filter="edgeDetect">Edge detect</button>
+      <button data-filter="brightness">Brightness</button>
+      <button data-filter="contrast">Contrast</button>
+      <button data-filter="saturate">Saturate</button>
+      <button data-filter="threshold">Threshold</button>
+      <button data-filter="equalize">Equalize</button>
+    </div>
+    <div class="transform-buttons" id={`${id}-transforms`}>
+      <span class="section-label">Transforms</span>
+      <button data-filter="flipH">Flip H</button>
+      <button data-filter="flipV">Flip V</button>
+      <button data-filter="rotate90">Rotate 90°</button>
+      <button data-filter="resize">Resize</button>
+      <button data-filter="crop">Crop</button>
+    </div>
+    <div class="pipeline-strip" id={`${id}-strip`}>
+      <span class="pipeline-empty">Click filters to build a pipeline</span>
+    </div>
+    <div class="sliders" id={`${id}-sliders`}></div>
+  </div>
+  <div class="canvas-row">
+    <div class="canvas-col">
+      <span class="canvas-label">Original</span>
+      <canvas id={`${id}-before`} width="320" height="240"></canvas>
+    </div>
+    <div class="canvas-col">
+      <span class="canvas-label" id={`${id}-after-label`}>Pipeline result</span>
+      <canvas id={`${id}-after`} width="320" height="240"></canvas>
+    </div>
+  </div>
+  <div class="histogram-section">
+    <span class="section-label">Histogram</span>
+    <canvas id={`${id}-histogram`} width="640" height="100"></canvas>
+  </div>
+  <div class="upload-row">
+    <label class="upload-btn">
+      Use your own image
+      <input type="file" id={`${id}-upload`} accept="image/*" style="display:none" />
+    </label>
+    <button class="reset-btn" id={`${id}-reset`}>Reset to generated</button>
+    <button class="reset-btn" id={`${id}-clear`}>Clear pipeline</button>
+  </div>
+  <div class="analysis-section">
+    <span class="analysis-heading">Analysis overlays</span>
+    <div class="analysis-buttons" id={`${id}-analysis`}>
+      <button data-analysis="houghLines">Hough lines</button>
+      <button data-analysis="components">Components</button>
+    </div>
+    <div class="sliders" id={`${id}-analysis-sliders`}></div>
+    <div class="analysis-stats" id={`${id}-stats`}></div>
+  </div>
+  <div class="pipeline-display" id={`${id}-pipeline`}>
+    <code>// click some filters</code>
+  </div>
+  <div class="blend-section">
+    <span class="section-label">Multi-pipeline blend</span>
+    <div class="blend-controls">
+      <button class="snapshot-btn" id={`${id}-snapshot`}>Snapshot pipeline</button>
+      <select id={`${id}-blend-mode`}>
+        <option value="max">Max (lighten)</option>
+        <option value="screen">Screen</option>
+        <option value="average">Average</option>
+        <option value="add">Add (clamp)</option>
+      </select>
+      <button class="reset-btn" id={`${id}-clear-snapshots`}>Clear</button>
+    </div>
+    <div class="snapshot-strip" id={`${id}-snapshots`}></div>
+    <div class="blend-result" id={`${id}-blend-result`} style="display:none">
+      <span class="canvas-label">Blend result</span>
+      <canvas id={`${id}-blend-canvas`} width="320" height="240"></canvas>
+    </div>
+  </div>
+  <div class="sweep-section">
+    <span class="section-label">Threshold sweep</span>
+    <p class="sweep-desc">Sweeps threshold values on the edge image, tracking which lines persist across levels and whether they pass through detected components.</p>
+    <button class="sweep-btn" id={`${id}-sweep`}>Run sweep</button>
+    <div class="sweep-results" id={`${id}-sweep-results`} style="display:none">
+      <div class="sweep-row">
+        <div class="sweep-col">
+          <span class="canvas-label">Persistence map</span>
+          <canvas id={`${id}-sweep-map`} width="320" height="240"></canvas>
+        </div>
+        <div class="sweep-col">
+          <span class="canvas-label">Detections by threshold</span>
+          <canvas id={`${id}-sweep-chart`} width="320" height="180"></canvas>
+        </div>
+      </div>
+      <div class="sweep-findings" id={`${id}-sweep-findings`}></div>
+    </div>
+  </div>
+</div>
+
+<script define:vars={{ id }}>
+  // Inline img functions (same as nihilistic/img, no imports needed)
+  const create = (w, h) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h })
+  const clamp = v => Math.max(0, Math.min(255, Math.round(v)))
+
+  const rgbToGray = (r, g, b) => Math.round(0.299 * r + 0.587 * g + 0.114 * b)
+  const rgbToHsl = (r, g, b) => {
+    r /= 255; g /= 255; b /= 255
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2
+    if (max === min) return [0, 0, l]
+    const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    let h = 0
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6
+    else if (max === g) h = ((b - r) / d + 2) / 6
+    else h = ((r - g) / d + 4) / 6
+    return [h, s, l]
+  }
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1; if (t > 1) t -= 1
+    if (t < 1/6) return p + (q - p) * 6 * t
+    if (t < 1/2) return q
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+    return p
+  }
+  const hslToRgb = (h, s, l) => {
+    if (s === 0) { const v = Math.round(l * 255); return [v, v, v] }
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q
+    return [Math.round(hue2rgb(p, q, h + 1/3) * 255), Math.round(hue2rgb(p, q, h) * 255), Math.round(hue2rgb(p, q, h - 1/3) * 255)]
+  }
+
+  const grayscale = img => {
+    const out = create(img.width, img.height)
+    for (let i = 0; i < img.data.length; i += 4) {
+      const g = rgbToGray(img.data[i], img.data[i+1], img.data[i+2])
+      out.data[i] = g; out.data[i+1] = g; out.data[i+2] = g; out.data[i+3] = img.data[i+3]
+    }
+    return out
+  }
+
+  const brightness = (img, amount) => {
+    const out = create(img.width, img.height)
+    for (let i = 0; i < img.data.length; i += 4) {
+      out.data[i] = clamp(img.data[i] + amount)
+      out.data[i+1] = clamp(img.data[i+1] + amount)
+      out.data[i+2] = clamp(img.data[i+2] + amount)
+      out.data[i+3] = img.data[i+3]
+    }
+    return out
+  }
+
+  const contrast = (img, amount) => {
+    const f = (259 * (amount + 255)) / (255 * (259 - amount))
+    const out = create(img.width, img.height)
+    for (let i = 0; i < img.data.length; i += 4) {
+      out.data[i] = clamp(f * (img.data[i] - 128) + 128)
+      out.data[i+1] = clamp(f * (img.data[i+1] - 128) + 128)
+      out.data[i+2] = clamp(f * (img.data[i+2] - 128) + 128)
+      out.data[i+3] = img.data[i+3]
+    }
+    return out
+  }
+
+  const invert = img => {
+    const out = create(img.width, img.height)
+    for (let i = 0; i < img.data.length; i += 4) {
+      out.data[i] = 255 - img.data[i]; out.data[i+1] = 255 - img.data[i+1]
+      out.data[i+2] = 255 - img.data[i+2]; out.data[i+3] = img.data[i+3]
+    }
+    return out
+  }
+
+  const sepia = img => {
+    const out = create(img.width, img.height)
+    for (let i = 0; i < img.data.length; i += 4) {
+      const r = img.data[i], g = img.data[i+1], b = img.data[i+2]
+      out.data[i] = clamp(0.393*r + 0.769*g + 0.189*b)
+      out.data[i+1] = clamp(0.349*r + 0.686*g + 0.168*b)
+      out.data[i+2] = clamp(0.272*r + 0.534*g + 0.131*b)
+      out.data[i+3] = img.data[i+3]
+    }
+    return out
+  }
+
+  const saturate = (img, amount) => {
+    const out = create(img.width, img.height)
+    for (let i = 0; i < img.data.length; i += 4) {
+      const [h, s, l] = rgbToHsl(img.data[i], img.data[i+1], img.data[i+2])
+      const [r, g, b] = hslToRgb(h, Math.min(1, Math.max(0, s * amount)), l)
+      out.data[i] = r; out.data[i+1] = g; out.data[i+2] = b; out.data[i+3] = img.data[i+3]
+    }
+    return out
+  }
+
+  const threshold = (img, value) => {
+    const out = create(img.width, img.height)
+    for (let i = 0; i < img.data.length; i += 4) {
+      const g = rgbToGray(img.data[i], img.data[i+1], img.data[i+2])
+      const v = g >= value ? 255 : 0
+      out.data[i] = v; out.data[i+1] = v; out.data[i+2] = v; out.data[i+3] = img.data[i+3]
+    }
+    return out
+  }
+
+  const convolve = (img, kernel, divisor) => {
+    const kh = kernel.length, kw = kernel[0].length
+    const hh = Math.floor(kh/2), hw = Math.floor(kw/2)
+    const div = divisor ?? (kernel.flat().reduce((a,b) => a+b, 0) || 1)
+    const out = create(img.width, img.height)
+    for (let y = 0; y < img.height; y++) {
+      for (let x = 0; x < img.width; x++) {
+        let r = 0, g = 0, b = 0
+        for (let ky = 0; ky < kh; ky++) {
+          for (let kx = 0; kx < kw; kx++) {
+            const sy = Math.min(img.height-1, Math.max(0, y+ky-hh))
+            const sx = Math.min(img.width-1, Math.max(0, x+kx-hw))
+            const i = (sy * img.width + sx) * 4, w = kernel[ky][kx]
+            r += img.data[i]*w; g += img.data[i+1]*w; b += img.data[i+2]*w
+          }
+        }
+        const oi = (y * img.width + x) * 4
+        out.data[oi] = clamp(r/div); out.data[oi+1] = clamp(g/div); out.data[oi+2] = clamp(b/div)
+        out.data[oi+3] = img.data[oi+3]
+      }
+    }
+    return out
+  }
+
+  const blur = (img, radius) => {
+    const size = radius * 2 + 1
+    return convolve(img, Array.from({length: size}, () => Array(size).fill(1)), size * size)
+  }
+
+  const sharpen = (img, amount = 1) => convolve(img, [
+    [0, -amount, 0], [-amount, 1 + 4*amount, -amount], [0, -amount, 0]
+  ], 1)
+
+  const edgeDetect = img => {
+    const gx = convolve(img, [[-1,0,1],[-2,0,2],[-1,0,1]], 1)
+    const gy = convolve(img, [[-1,-2,-1],[0,0,0],[1,2,1]], 1)
+    const out = create(img.width, img.height)
+    for (let i = 0; i < out.data.length; i += 4) {
+      for (let c = 0; c < 3; c++) out.data[i+c] = clamp(Math.sqrt(gx.data[i+c]**2 + gy.data[i+c]**2))
+      out.data[i+3] = img.data[i+3]
+    }
+    return out
+  }
+
+  const histogram = img => {
+    const r = new Array(256).fill(0), g = new Array(256).fill(0), b = new Array(256).fill(0)
+    for (let i = 0; i < img.data.length; i += 4) { r[img.data[i]]++; g[img.data[i+1]]++; b[img.data[i+2]]++ }
+    return { r, g, b }
+  }
+
+  const equalize = img => {
+    const h = histogram(img), total = img.width * img.height
+    const cdf = ch => { const c = []; let sum = 0; for (let i = 0; i < 256; i++) { sum += ch[i]; c[i] = sum } return c }
+    const mapCh = cdf => { const min = cdf.find(v => v > 0); return cdf.map(v => clamp(((v - min) / (total - min)) * 255)) }
+    const mr = mapCh(cdf(h.r)), mg = mapCh(cdf(h.g)), mb = mapCh(cdf(h.b))
+    const out = create(img.width, img.height)
+    for (let i = 0; i < img.data.length; i += 4) {
+      out.data[i] = mr[img.data[i]]; out.data[i+1] = mg[img.data[i+1]]
+      out.data[i+2] = mb[img.data[i+2]]; out.data[i+3] = img.data[i+3]
+    }
+    return out
+  }
+
+  // --- Transforms ---
+
+  const flipH = img => {
+    const out = create(img.width, img.height)
+    for (let y = 0; y < img.height; y++)
+      for (let x = 0; x < img.width; x++) {
+        const si = (y * img.width + x) * 4, di = (y * img.width + (img.width - 1 - x)) * 4
+        out.data[di] = img.data[si]; out.data[di+1] = img.data[si+1]
+        out.data[di+2] = img.data[si+2]; out.data[di+3] = img.data[si+3]
+      }
+    return out
+  }
+
+  const flipV = img => {
+    const out = create(img.width, img.height)
+    for (let y = 0; y < img.height; y++)
+      for (let x = 0; x < img.width; x++) {
+        const si = (y * img.width + x) * 4, di = ((img.height - 1 - y) * img.width + x) * 4
+        out.data[di] = img.data[si]; out.data[di+1] = img.data[si+1]
+        out.data[di+2] = img.data[si+2]; out.data[di+3] = img.data[si+3]
+      }
+    return out
+  }
+
+  const rotate90 = img => {
+    const out = create(img.height, img.width)
+    for (let y = 0; y < img.height; y++)
+      for (let x = 0; x < img.width; x++) {
+        const si = (y * img.width + x) * 4, di = (x * img.height + (img.height - 1 - y)) * 4
+        out.data[di] = img.data[si]; out.data[di+1] = img.data[si+1]
+        out.data[di+2] = img.data[si+2]; out.data[di+3] = img.data[si+3]
+      }
+    return out
+  }
+
+  const gaussianBlur = (img, radius) => {
+    const sigma = radius / 2, size = radius * 2 + 1, kernel = []
+    let sum = 0
+    for (let y = 0; y < size; y++) {
+      kernel[y] = []
+      for (let x = 0; x < size; x++) {
+        const dx = x - radius, dy = y - radius
+        const v = Math.exp(-(dx*dx + dy*dy) / (2 * sigma * sigma))
+        kernel[y][x] = v; sum += v
+      }
+    }
+    return convolve(img, kernel, sum)
+  }
+
+  const _resize = (img, nw, nh) => {
+    const out = create(nw, nh), xr = img.width / nw, yr = img.height / nh
+    for (let y = 0; y < nh; y++)
+      for (let x = 0; x < nw; x++) {
+        const sx = x * xr, sy = y * yr
+        const x0 = Math.floor(sx), y0 = Math.floor(sy)
+        const x1 = Math.min(x0 + 1, img.width - 1), y1 = Math.min(y0 + 1, img.height - 1)
+        const xd = sx - x0, yd = sy - y0
+        const i00 = (y0 * img.width + x0) * 4, i10 = (y0 * img.width + x1) * 4
+        const i01 = (y1 * img.width + x0) * 4, i11 = (y1 * img.width + x1) * 4
+        const oi = (y * nw + x) * 4
+        for (let c = 0; c < 4; c++)
+          out.data[oi+c] = clamp(img.data[i00+c]*(1-xd)*(1-yd) + img.data[i10+c]*xd*(1-yd) + img.data[i01+c]*(1-xd)*yd + img.data[i11+c]*xd*yd)
+      }
+    return out
+  }
+
+  const resizeFilter = (img, scale) => _resize(img, Math.max(1, Math.round(img.width * scale / 100)), Math.max(1, Math.round(img.height * scale / 100)))
+
+  const _crop = (img, cx, cy, cw, ch) => {
+    const out = create(cw, ch)
+    for (let y = 0; y < ch; y++)
+      for (let x = 0; x < cw; x++) {
+        const si = ((cy + y) * img.width + (cx + x)) * 4, di = (y * cw + x) * 4
+        out.data[di] = img.data[si]; out.data[di+1] = img.data[si+1]
+        out.data[di+2] = img.data[si+2]; out.data[di+3] = img.data[si+3]
+      }
+    return out
+  }
+
+  const cropFilter = (img, pct) => {
+    const cw = Math.max(1, Math.round(img.width * pct / 100)), ch = Math.max(1, Math.round(img.height * pct / 100))
+    return _crop(img, Math.round((img.width - cw) / 2), Math.round((img.height - ch) / 2), cw, ch)
+  }
+
+  // --- Blend functions ---
+
+  const blendMax = images => {
+    const out = create(images[0].width, images[0].height)
+    for (let i = 0; i < out.data.length; i += 4) {
+      for (let c = 0; c < 3; c++) {
+        let max = 0
+        for (const img of images) max = Math.max(max, img.data[i + c])
+        out.data[i + c] = max
+      }
+      out.data[i + 3] = 255
+    }
+    return out
+  }
+
+  const blendScreen = images => {
+    const out = create(images[0].width, images[0].height)
+    for (let i = 0; i < out.data.length; i += 4) {
+      for (let c = 0; c < 3; c++) {
+        let r = 0
+        for (const img of images) r = 1 - (1 - r) * (1 - img.data[i + c] / 255)
+        out.data[i + c] = clamp(r * 255)
+      }
+      out.data[i + 3] = 255
+    }
+    return out
+  }
+
+  const blendAverage = images => {
+    const n = images.length, out = create(images[0].width, images[0].height)
+    for (let i = 0; i < out.data.length; i += 4) {
+      for (let c = 0; c < 3; c++) {
+        let sum = 0
+        for (const img of images) sum += img.data[i + c]
+        out.data[i + c] = clamp(sum / n)
+      }
+      out.data[i + 3] = 255
+    }
+    return out
+  }
+
+  const blendAdd = images => {
+    const out = create(images[0].width, images[0].height)
+    for (let i = 0; i < out.data.length; i += 4) {
+      for (let c = 0; c < 3; c++) {
+        let sum = 0
+        for (const img of images) sum += img.data[i + c]
+        out.data[i + c] = clamp(sum)
+      }
+      out.data[i + 3] = 255
+    }
+    return out
+  }
+
+  const blendFns = { max: blendMax, screen: blendScreen, average: blendAverage, add: blendAdd }
+
+  // --- Analysis functions (same as nihilistic/img analysis.ts) ---
+
+  const isFg = (img, x, y) => {
+    const i = (y * img.width + x) * 4
+    return img.data[i] > 0 || img.data[i+1] > 0 || img.data[i+2] > 0
+  }
+
+  function houghLines(img, opts = {}) {
+    const { thetaSteps = 180, maxLines = 50 } = opts
+    const w = img.width, h = img.height
+    const diag = Math.ceil(Math.sqrt(w*w + h*h)), rhoMax = diag, rhoSteps = diag * 2
+    const sinT = new Float64Array(thetaSteps), cosT = new Float64Array(thetaSteps)
+    for (let t = 0; t < thetaSteps; t++) {
+      const th = (t / thetaSteps) * Math.PI; sinT[t] = Math.sin(th); cosT[t] = Math.cos(th)
+    }
+    const acc = new Int32Array(rhoSteps * thetaSteps)
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        if (!isFg(img, x, y)) continue
+        for (let t = 0; t < thetaSteps; t++) acc[(Math.round(x*cosT[t] + y*sinT[t]) + rhoMax) * thetaSteps + t]++
+      }
+    let maxV = 0
+    for (let i = 0; i < acc.length; i++) if (acc[i] > maxV) maxV = acc[i]
+    const thresh = opts.threshold ?? Math.floor(maxV * 0.5)
+    const lines = []
+    for (let r = 0; r < rhoSteps; r++)
+      for (let t = 0; t < thetaSteps; t++) {
+        const v = acc[r * thetaSteps + t]
+        if (v >= thresh) lines.push({ rho: r - rhoMax, theta: (t / thetaSteps) * Math.PI, votes: v })
+      }
+    lines.sort((a, b) => b.votes - a.votes)
+    return lines.slice(0, maxLines)
+  }
+
+  function lineToEndpoints(line, w, h) {
+    const cos = Math.cos(line.theta), sin = Math.sin(line.theta)
+    const x0 = cos * line.rho, y0 = sin * line.rho, len = Math.max(w, h)
+    return [{ x: Math.round(x0 - len*sin), y: Math.round(y0 + len*cos) }, { x: Math.round(x0 + len*sin), y: Math.round(y0 - len*cos) }]
+  }
+
+  function connectedComponents(img) {
+    const w = img.width, h = img.height
+    const labels = new Int32Array(w * h)
+    const parent = new Int32Array(w * h + 1)
+    const rank = new Uint8Array(w * h + 1)
+    for (let i = 0; i < parent.length; i++) parent[i] = i
+    const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x] } return x }
+    const union = (a, b) => {
+      const ra = find(a), rb = find(b)
+      if (ra === rb) return
+      if (rank[ra] < rank[rb]) parent[ra] = rb
+      else if (rank[ra] > rank[rb]) parent[rb] = ra
+      else { parent[rb] = ra; rank[ra]++ }
+    }
+    let nextLabel = 1
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        if (!isFg(img, x, y)) continue
+        const idx = y * w + x
+        const above = y > 0 && isFg(img, x, y-1) ? labels[(y-1)*w+x] : 0
+        const left = x > 0 && isFg(img, x-1, y) ? labels[y*w+x-1] : 0
+        if (!above && !left) labels[idx] = nextLabel++
+        else if (above && !left) labels[idx] = above
+        else if (!above && left) labels[idx] = left
+        else { labels[idx] = Math.min(above, left); if (above !== left) union(above, left) }
+      }
+    const remap = new Map()
+    let cid = 0
+    const stats = new Map()
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x
+        if (!labels[idx]) continue
+        const root = find(labels[idx])
+        if (!remap.has(root)) remap.set(root, ++cid)
+        const id = remap.get(root)
+        labels[idx] = id
+        let s = stats.get(id)
+        if (!s) { s = { area: 0, sumX: 0, sumY: 0, minX: x, minY: y, maxX: x, maxY: y }; stats.set(id, s) }
+        s.area++; s.sumX += x; s.sumY += y
+        if (x < s.minX) s.minX = x; if (y < s.minY) s.minY = y
+        if (x > s.maxX) s.maxX = x; if (y > s.maxY) s.maxY = y
+      }
+    const components = []
+    for (const [compId, s] of stats)
+      components.push({ id: compId, area: s.area, centroid: { x: Math.round(s.sumX/s.area), y: Math.round(s.sumY/s.area) }, bbox: { x: s.minX, y: s.minY, w: s.maxX-s.minX+1, h: s.maxY-s.minY+1 } })
+    components.sort((a, b) => b.area - a.area)
+    return { labels, width: w, height: h, components }
+  }
+
+  // Generate a colourful test image (gradient + shapes)
+  function generateTestImage(w, h) {
+    const img = create(w, h)
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4
+        // gradient background
+        const r = Math.round((x / w) * 200 + 30)
+        const g = Math.round((y / h) * 150 + 50)
+        const b = Math.round(((w - x) / w) * 180 + 40)
+        img.data[i] = r; img.data[i+1] = g; img.data[i+2] = b; img.data[i+3] = 255
+      }
+    }
+    // draw some circles for visual interest
+    const circles = [
+      { cx: w*0.25, cy: h*0.35, r: h*0.2, color: [255, 90, 60] },
+      { cx: w*0.6, cy: h*0.5, r: h*0.25, color: [50, 200, 120] },
+      { cx: w*0.4, cy: h*0.7, r: h*0.15, color: [80, 120, 255] },
+      { cx: w*0.8, cy: h*0.3, r: h*0.18, color: [255, 200, 50] },
+    ]
+    for (const c of circles) {
+      for (let y = Math.max(0, Math.floor(c.cy - c.r)); y < Math.min(h, Math.ceil(c.cy + c.r)); y++) {
+        for (let x = Math.max(0, Math.floor(c.cx - c.r)); x < Math.min(w, Math.ceil(c.cx + c.r)); x++) {
+          const dx = x - c.cx, dy = y - c.cy, dist = Math.sqrt(dx*dx + dy*dy)
+          if (dist < c.r) {
+            const i = (y * w + x) * 4
+            const t = 1 - dist / c.r // smooth falloff
+            img.data[i] = clamp(img.data[i] * (1-t) + c.color[0] * t)
+            img.data[i+1] = clamp(img.data[i+1] * (1-t) + c.color[1] * t)
+            img.data[i+2] = clamp(img.data[i+2] * (1-t) + c.color[2] * t)
+          }
+        }
+      }
+    }
+    return img
+  }
+
+  // Render an Image to a canvas
+  function renderToCanvas(canvas, img) {
+    canvas.width = img.width; canvas.height = img.height
+    const ctx = canvas.getContext('2d')
+    const imageData = new ImageData(new Uint8ClampedArray(img.data), img.width, img.height)
+    ctx.putImageData(imageData, 0, 0)
+  }
+
+  function renderHistogram(img) {
+    const hc = document.getElementById(`${id}-histogram`)
+    const ctx = hc.getContext('2d')
+    const w = hc.width, h = hc.height
+    ctx.fillStyle = '#161816'; ctx.fillRect(0, 0, w, h)
+    const hist = histogram(img)
+    const maxVal = Math.max(...hist.r, ...hist.g, ...hist.b)
+    if (maxVal === 0) return
+    const channels = [
+      { data: hist.r, color: 'rgba(239, 83, 80, 0.45)' },
+      { data: hist.g, color: 'rgba(52, 210, 106, 0.45)' },
+      { data: hist.b, color: 'rgba(66, 165, 245, 0.45)' },
+    ]
+    for (const ch of channels) {
+      ctx.fillStyle = ch.color
+      ctx.beginPath(); ctx.moveTo(0, h)
+      for (let i = 0; i < 256; i++) ctx.lineTo((i / 255) * w, h - (ch.data[i] / maxVal) * h * 0.95)
+      ctx.lineTo(w, h); ctx.closePath(); ctx.fill()
+    }
+  }
+
+  // Filter config
+  const filterConfig = {
+    grayscale:  { slider: false, code: 'grayscale' },
+    sepia:      { slider: false, code: 'sepia' },
+    invert:     { slider: false, code: 'invert' },
+    blur:       { slider: true, label: 'Radius', min: 1, max: 5, step: 1, initial: 2, code: v => `blur(${v})` },
+    sharpen:    { slider: true, label: 'Amount', min: 0.1, max: 3, step: 0.1, initial: 1, code: v => `sharpen(${v})` },
+    edgeDetect: { slider: false, code: 'edgeDetect' },
+    brightness: { slider: true, label: 'Amount', min: -100, max: 100, step: 5, initial: 40, code: v => `brightness(${v})` },
+    contrast:   { slider: true, label: 'Amount', min: -200, max: 200, step: 10, initial: 80, code: v => `contrast(${v})` },
+    saturate:   { slider: true, label: 'Factor', min: 0, max: 3, step: 0.1, initial: 1.8, code: v => `saturate(${v})` },
+    threshold:  { slider: true, label: 'Value', min: 0, max: 255, step: 5, initial: 128, code: v => `threshold(${v})` },
+    equalize:   { slider: false, code: 'equalize' },
+    gaussianBlur: { slider: true, label: 'Radius', min: 1, max: 5, step: 1, initial: 2, code: v => `gaussianBlur(${v})` },
+    flipH:      { slider: false, code: 'flipH' },
+    flipV:      { slider: false, code: 'flipV' },
+    rotate90:   { slider: false, code: 'rotate90' },
+    resize:     { slider: true, label: 'Scale %', min: 10, max: 200, step: 10, initial: 50, code: v => `resize(${Math.round(W*v/100)}, ${Math.round(H*v/100)})` },
+    crop:       { slider: true, label: 'Center %', min: 20, max: 100, step: 5, initial: 50, code: v => { const cw = Math.round(W*v/100), ch = Math.round(H*v/100); return `crop(${Math.round((W-cw)/2)}, ${Math.round((H-ch)/2)}, ${cw}, ${ch})` } },
+  }
+
+  const filterFns = { grayscale, sepia, invert, blur, gaussianBlur, sharpen, edgeDetect, brightness, contrast, saturate, threshold, equalize, flipH, flipV, rotate90, resize: resizeFilter, crop: cropFilter }
+
+  // State: ordered pipeline of { name, value }
+  const W = 320, H = 240
+  let sourceImg = generateTestImage(W, H)
+  let pipeline = []  // [{ name: 'blur', value: 2 }, { name: 'grayscale', value: null }, ...]
+
+  const beforeCanvas = document.getElementById(`${id}-before`)
+  const afterCanvas = document.getElementById(`${id}-after`)
+  const afterLabel = document.getElementById(`${id}-after-label`)
+  const pipelineCode = document.querySelector(`#${id}-pipeline code`)
+  const filtersEl = document.getElementById(`${id}-filters`)
+  const transformsEl = document.getElementById(`${id}-transforms`)
+  const stripEl = document.getElementById(`${id}-strip`)
+  const slidersEl = document.getElementById(`${id}-sliders`)
+  const uploadInput = document.getElementById(`${id}-upload`)
+  const resetBtn = document.getElementById(`${id}-reset`)
+  const clearBtn = document.getElementById(`${id}-clear`)
+  const analysisEl = document.getElementById(`${id}-analysis`)
+  const analysisSlidersEl = document.getElementById(`${id}-analysis-sliders`)
+  const statsEl = document.getElementById(`${id}-stats`)
+
+  // Analysis state
+  let showHough = false, showComponents = false
+  let houghThreshold = 50, componentMinArea = 30, componentMaxArea = 5000
+
+  // Blend state
+  let snapshots = [] // [{ img, label }]
+  let lastPipelineResult = null
+  const snapshotBtn = document.getElementById(`${id}-snapshot`)
+  const blendModeEl = document.getElementById(`${id}-blend-mode`)
+  const clearSnapshotsBtn = document.getElementById(`${id}-clear-snapshots`)
+  const snapshotsEl = document.getElementById(`${id}-snapshots`)
+  const blendResultEl = document.getElementById(`${id}-blend-result`)
+  const blendCanvas = document.getElementById(`${id}-blend-canvas`)
+
+  function applyPipeline() {
+    let img = sourceImg
+    for (const step of pipeline) {
+      const cfg = filterConfig[step.name]
+      img = cfg.slider ? filterFns[step.name](img, step.value) : filterFns[step.name](img)
+    }
+    lastPipelineResult = img
+    renderToCanvas(afterCanvas, img)
+    renderHistogram(img)
+
+    // analysis overlays
+    // analysis needs a binary edge image. If the pipeline doesn't already
+    // include edge detection + threshold, we run it automatically.
+    const ctx = afterCanvas.getContext('2d')
+    const statParts = []
+    let analysisImg = img
+
+    if (showHough || showComponents) {
+      const hasEdges = pipeline.some(s => s.name === 'edgeDetect')
+      const hasBinary = pipeline.some(s => s.name === 'threshold')
+      if (!hasEdges || !hasBinary) {
+        // auto-preprocess: gaussianBlur(1) → grayscale → edgeDetect → threshold(120)
+        let a = img
+        if (!hasEdges) {
+          a = blur(a, 1)
+          a = grayscale(a)
+          a = edgeDetect(a)
+        }
+        if (!hasBinary) a = threshold(a, 120)
+        analysisImg = a
+      }
+    }
+
+    if (showHough) {
+      const lines = houghLines(analysisImg, { threshold: houghThreshold, maxLines: 30 })
+      ctx.strokeStyle = '#34d26a'; ctx.lineWidth = 1; ctx.globalAlpha = 0.7
+      for (const line of lines) {
+        const [a, b] = lineToEndpoints(line, img.width, img.height)
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
+      }
+      ctx.globalAlpha = 1
+      statParts.push(`${lines.length} line${lines.length !== 1 ? 's' : ''}`)
+    }
+
+    if (showComponents) {
+      const { components } = connectedComponents(analysisImg)
+      const filtered = components.filter(c => c.area >= componentMinArea && c.area <= componentMaxArea)
+      ctx.strokeStyle = '#ef5350'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.9
+      for (const c of filtered) {
+        ctx.strokeRect(c.bbox.x, c.bbox.y, c.bbox.w, c.bbox.h)
+        ctx.fillStyle = '#ef5350'
+        ctx.beginPath(); ctx.arc(c.centroid.x, c.centroid.y, 2, 0, Math.PI * 2); ctx.fill()
+      }
+      ctx.globalAlpha = 1
+      statParts.push(`${filtered.length} component${filtered.length !== 1 ? 's' : ''} (of ${components.length} total)`)
+    }
+
+    statsEl.textContent = statParts.join(' · ')
+
+    // update code display
+    const codeSteps = pipeline.map(s => {
+      const cfg = filterConfig[s.name]
+      return typeof cfg.code === 'function' ? cfg.code(s.value) : cfg.code
+    })
+    if (showHough) codeSteps.push(`houghLines({ threshold: ${houghThreshold} })`)
+    if (showComponents) codeSteps.push(`connectedComponents`)
+
+    if (codeSteps.length === 0) {
+      pipelineCode.textContent = '// click some filters'
+    } else if (codeSteps.length === 1 && !showHough && !showComponents) {
+      const s = pipeline[0], cfg = filterConfig[s.name]
+      pipelineCode.textContent = typeof cfg.code === 'function' ? `${s.name}(img, ${s.value})` : `${cfg.code}(img)`
+    } else {
+      pipelineCode.textContent = `pipe(img, ${codeSteps.join(', ')})`
+    }
+
+    const n = pipeline.length + (showHough ? 1 : 0) + (showComponents ? 1 : 0)
+    afterLabel.textContent = n === 0 ? 'Original' : `${n} step${n > 1 ? 's' : ''}`
+  }
+
+  function renderStrip() {
+    if (pipeline.length === 0) {
+      stripEl.innerHTML = '<span class="pipeline-empty">Click filters to build a pipeline</span>'
+      return
+    }
+    stripEl.innerHTML = pipeline.map((step, i) =>
+      `<span class="pipeline-step" data-idx="${i}">${step.name}<button class="step-remove" data-idx="${i}">\u00d7</button></span>`
+    ).join('<span class="pipeline-arrow">\u2192</span>')
+  }
+
+  function renderSliders() {
+    const withSliders = pipeline.filter(s => filterConfig[s.name].slider)
+    if (withSliders.length === 0) { slidersEl.innerHTML = ''; return }
+    slidersEl.innerHTML = withSliders.map(step => {
+      const cfg = filterConfig[step.name]
+      const idx = pipeline.indexOf(step)
+      return `<div class="slider-row">
+        <label>${step.name}</label>
+        <input type="range" data-idx="${idx}" min="${cfg.min}" max="${cfg.max}" step="${cfg.step}" value="${step.value}" />
+        <span class="slider-value">${step.value}</span>
+      </div>`
+    }).join('')
+  }
+
+  function syncButtons() {
+    const active = new Set(pipeline.map(s => s.name))
+    filtersEl.querySelectorAll('button').forEach(b => b.classList.toggle('active', active.has(b.dataset.filter)))
+    transformsEl.querySelectorAll('button').forEach(b => b.classList.toggle('active', active.has(b.dataset.filter)))
+  }
+
+  function update() {
+    syncButtons()
+    renderStrip()
+    renderSliders()
+    applyPipeline()
+  }
+
+  // Add filter to pipeline (remove via strip × buttons)
+  filtersEl.addEventListener('click', e => {
+    const name = e.target.dataset?.filter
+    if (!name) return
+    const cfg = filterConfig[name]
+    pipeline.push({ name, value: cfg.slider ? cfg.initial : null })
+    update()
+  })
+
+  transformsEl.addEventListener('click', e => {
+    const name = e.target.dataset?.filter
+    if (!name) return
+    const cfg = filterConfig[name]
+    pipeline.push({ name, value: cfg.slider ? cfg.initial : null })
+    update()
+  })
+
+  // Remove step from strip
+  stripEl.addEventListener('click', e => {
+    const btn = e.target.closest('.step-remove')
+    if (!btn) return
+    pipeline.splice(parseInt(btn.dataset.idx), 1)
+    update()
+  })
+
+  // Slider changes
+  slidersEl.addEventListener('input', e => {
+    if (!e.target.dataset?.idx) return
+    const idx = parseInt(e.target.dataset.idx)
+    pipeline[idx].value = parseFloat(e.target.value)
+    e.target.nextElementSibling.textContent = e.target.value
+    applyPipeline()
+  })
+
+  uploadInput.addEventListener('change', e => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = W; canvas.height = H
+        const ctx = canvas.getContext('2d')
+        const scale = Math.min(W / img.width, H / img.height)
+        const sw = img.width * scale, sh = img.height * scale
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H)
+        ctx.drawImage(img, (W - sw) / 2, (H - sh) / 2, sw, sh)
+        const imageData = ctx.getImageData(0, 0, W, H)
+        sourceImg = { data: new Uint8ClampedArray(imageData.data), width: W, height: H }
+        renderToCanvas(beforeCanvas, sourceImg)
+        applyPipeline()
+      }
+      img.src = reader.result
+    }
+    reader.readAsDataURL(file)
+  })
+
+  resetBtn.addEventListener('click', () => {
+    sourceImg = generateTestImage(W, H)
+    renderToCanvas(beforeCanvas, sourceImg)
+    uploadInput.value = ''
+    applyPipeline()
+  })
+
+  clearBtn.addEventListener('click', () => {
+    pipeline = []
+    update()
+  })
+
+  // Analysis toggles
+  function renderAnalysisSliders() {
+    const parts = []
+    if (showHough) {
+      parts.push(`<div class="slider-row">
+        <label>line threshold</label>
+        <input type="range" data-aparam="houghThreshold" min="10" max="150" step="5" value="${houghThreshold}" />
+        <span class="slider-value">${houghThreshold}</span>
+      </div>`)
+    }
+    if (showComponents) {
+      parts.push(`<div class="slider-row">
+        <label>min area</label>
+        <input type="range" data-aparam="componentMinArea" min="5" max="500" step="5" value="${componentMinArea}" />
+        <span class="slider-value">${componentMinArea}</span>
+      </div>`)
+      parts.push(`<div class="slider-row">
+        <label>max area</label>
+        <input type="range" data-aparam="componentMaxArea" min="100" max="20000" step="100" value="${componentMaxArea}" />
+        <span class="slider-value">${componentMaxArea}</span>
+      </div>`)
+    }
+    analysisSlidersEl.innerHTML = parts.join('')
+  }
+
+  function syncAnalysisButtons() {
+    analysisEl.querySelectorAll('button').forEach(b => {
+      const name = b.dataset.analysis
+      b.classList.toggle('active', name === 'houghLines' ? showHough : showComponents)
+    })
+  }
+
+  analysisEl.addEventListener('click', e => {
+    const name = e.target.dataset?.analysis
+    if (!name) return
+    if (name === 'houghLines') showHough = !showHough
+    else if (name === 'components') showComponents = !showComponents
+    syncAnalysisButtons()
+    renderAnalysisSliders()
+    applyPipeline()
+  })
+
+  analysisSlidersEl.addEventListener('input', e => {
+    const param = e.target.dataset?.aparam
+    if (!param) return
+    const val = parseFloat(e.target.value)
+    if (param === 'houghThreshold') houghThreshold = val
+    else if (param === 'componentMinArea') componentMinArea = val
+    else if (param === 'componentMaxArea') componentMaxArea = val
+    e.target.nextElementSibling.textContent = val
+    applyPipeline()
+  })
+
+  // --- Blend / snapshot ---
+
+  function renderSnapshots() {
+    if (snapshots.length === 0) {
+      snapshotsEl.innerHTML = ''
+      blendResultEl.style.display = 'none'
+      return
+    }
+    snapshotsEl.innerHTML = snapshots.map((s, i) =>
+      `<div class="snapshot-thumb">
+        <canvas id="${id}-snap-${i}" width="80" height="60"></canvas>
+        <span class="snap-label">${s.label}</span>
+        <button class="snap-remove" data-snap="${i}">\u00d7</button>
+      </div>`
+    ).join('')
+    snapshots.forEach((s, i) => {
+      const c = document.getElementById(`${id}-snap-${i}`)
+      const thumb = _resize(s.img, 80, 60)
+      const ctx = c.getContext('2d')
+      ctx.putImageData(new ImageData(new Uint8ClampedArray(thumb.data), 80, 60), 0, 0)
+    })
+    snapshotsEl.querySelectorAll('.snap-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        snapshots.splice(parseInt(btn.dataset.snap), 1)
+        renderSnapshots()
+        doBlend()
+      })
+    })
+    doBlend()
+  }
+
+  function doBlend() {
+    if (snapshots.length < 2) {
+      if (snapshots.length === 1) {
+        blendResultEl.style.display = 'block'
+        renderToCanvas(blendCanvas, snapshots[0].img)
+      } else {
+        blendResultEl.style.display = 'none'
+      }
+      return
+    }
+    blendResultEl.style.display = 'block'
+    const target = snapshots[0].img
+    const aligned = snapshots.map(s =>
+      s.img.width === target.width && s.img.height === target.height ? s.img : _resize(s.img, target.width, target.height)
+    )
+    const result = blendFns[blendModeEl.value](aligned)
+    renderToCanvas(blendCanvas, result)
+  }
+
+  snapshotBtn.addEventListener('click', () => {
+    if (!lastPipelineResult) return
+    const img = { data: new Uint8ClampedArray(lastPipelineResult.data), width: lastPipelineResult.width, height: lastPipelineResult.height }
+    const label = pipelineCode.textContent.replace(/^pipe\(img, /, '').replace(/\)$/, '')
+    snapshots.push({ img, label })
+    renderSnapshots()
+  })
+
+  clearSnapshotsBtn.addEventListener('click', () => {
+    snapshots = []
+    renderSnapshots()
+  })
+
+  blendModeEl.addEventListener('change', doBlend)
+
+  // --- Threshold sweep ---
+
+  function linePassesThroughBbox(line, bbox, w, h) {
+    const [a, b] = lineToEndpoints(line, w, h)
+    for (let t = 0; t <= 60; t++) {
+      const f = t / 60
+      const px = a.x + (b.x - a.x) * f, py = a.y + (b.y - a.y) * f
+      if (px >= bbox.x && px < bbox.x + bbox.w && py >= bbox.y && py < bbox.y + bbox.h) return true
+    }
+    return false
+  }
+
+  function runThresholdSweep() {
+    // apply current pipeline
+    let img = sourceImg
+    for (const step of pipeline) {
+      const cfg = filterConfig[step.name]
+      img = cfg.slider ? filterFns[step.name](img, step.value) : filterFns[step.name](img)
+    }
+
+    // ensure edge image exists
+    let edgeImg = img
+    if (!pipeline.some(s => s.name === 'edgeDetect')) {
+      edgeImg = edgeDetect(grayscale(gaussianBlur(img, 2)))
+    }
+
+    // sweep thresholds
+    const thresholds = []
+    for (let t = 40; t <= 200; t += 10) thresholds.push(t)
+
+    const results = thresholds.map(t => {
+      const binary = threshold(edgeImg, t)
+      const lines = houghLines(binary, { threshold: 40, maxLines: 30 })
+      const { components: comps } = connectedComponents(binary)
+      return { threshold: t, lines, components: comps.filter(c => c.area >= 20 && c.area <= 10000) }
+    })
+
+    // group similar lines across thresholds by (rho, theta) proximity
+    const canonical = []
+    for (const r of results) {
+      for (const line of r.lines) {
+        const match = canonical.find(cl => Math.abs(cl.rho - line.rho) < 15 && Math.abs(cl.theta - line.theta) < 0.15)
+        if (match) { match.count++; match.totalVotes += line.votes }
+        else canonical.push({ rho: line.rho, theta: line.theta, count: 1, totalVotes: line.votes })
+      }
+    }
+
+    // persistent = appears in 30%+ of threshold levels
+    const persistent = canonical.filter(cl => cl.count >= thresholds.length * 0.3)
+
+    // classify components from mid-threshold: intersected by persistent line or not
+    const midComps = results[Math.floor(results.length / 2)].components
+    for (const c of midComps) {
+      c.intersected = persistent.some(line => linePassesThroughBbox(line, c.bbox, img.width, img.height))
+    }
+
+    // --- render persistence map ---
+    const mapCanvas = document.getElementById(`${id}-sweep-map`)
+    renderToCanvas(mapCanvas, img)
+    const mctx = mapCanvas.getContext('2d')
+
+    for (const cl of canonical) {
+      const p = cl.count / thresholds.length
+      if (p < 0.15) continue
+      const [a, b] = lineToEndpoints(cl, img.width, img.height)
+      mctx.strokeStyle = `rgba(52, 210, 106, ${Math.min(1, p * 1.5)})`
+      mctx.lineWidth = p > 0.5 ? 2 : 1
+      mctx.beginPath(); mctx.moveTo(a.x, a.y); mctx.lineTo(b.x, b.y); mctx.stroke()
+    }
+
+    mctx.lineWidth = 1.5
+    for (const c of midComps) {
+      mctx.strokeStyle = c.intersected ? '#ef5350' : '#42a5f5'
+      mctx.strokeRect(c.bbox.x, c.bbox.y, c.bbox.w, c.bbox.h)
+      mctx.fillStyle = c.intersected ? '#ef5350' : '#42a5f5'
+      mctx.font = '9px monospace'
+      mctx.fillText(c.intersected ? 'obstruction' : 'feature', c.bbox.x, c.bbox.y - 3)
+    }
+
+    // --- render chart ---
+    const chart = document.getElementById(`${id}-sweep-chart`)
+    const cctx = chart.getContext('2d')
+    const cw = chart.width, ch = chart.height
+    const pad = { t: 15, r: 10, b: 25, l: 35 }
+    const pw = cw - pad.l - pad.r, ph = ch - pad.t - pad.b
+
+    cctx.fillStyle = '#161816'; cctx.fillRect(0, 0, cw, ch)
+
+    const maxY = Math.max(...results.map(r => r.lines.length), ...results.map(r => r.components.length), 1)
+
+    cctx.strokeStyle = '#2a2c2a'; cctx.lineWidth = 0.5
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.t + ph * (1 - i / 4)
+      cctx.beginPath(); cctx.moveTo(pad.l, y); cctx.lineTo(pad.l + pw, y); cctx.stroke()
+    }
+
+    // lines count (green)
+    cctx.strokeStyle = '#34d26a'; cctx.lineWidth = 2; cctx.beginPath()
+    results.forEach((r, i) => {
+      const x = pad.l + (i / (results.length - 1)) * pw
+      const y = pad.t + ph * (1 - r.lines.length / maxY)
+      i === 0 ? cctx.moveTo(x, y) : cctx.lineTo(x, y)
+    })
+    cctx.stroke()
+
+    // components count (red)
+    cctx.strokeStyle = '#ef5350'; cctx.lineWidth = 2; cctx.beginPath()
+    results.forEach((r, i) => {
+      const x = pad.l + (i / (results.length - 1)) * pw
+      const y = pad.t + ph * (1 - r.components.length / maxY)
+      i === 0 ? cctx.moveTo(x, y) : cctx.lineTo(x, y)
+    })
+    cctx.stroke()
+
+    // axis labels
+    cctx.fillStyle = '#636861'; cctx.font = '10px monospace'; cctx.textAlign = 'center'
+    cctx.fillText(`${thresholds[0]}`, pad.l, ch - 5)
+    cctx.fillText(`${thresholds[thresholds.length - 1]}`, pad.l + pw, ch - 5)
+    cctx.fillText('threshold', pad.l + pw / 2, ch - 5)
+    cctx.textAlign = 'right'
+    cctx.fillText('0', pad.l - 4, pad.t + ph + 3)
+    cctx.fillText(`${maxY}`, pad.l - 4, pad.t + 10)
+    // legend
+    cctx.textAlign = 'left'
+    cctx.fillStyle = '#34d26a'; cctx.fillText('lines', pad.l + 5, pad.t + 10)
+    cctx.fillStyle = '#ef5350'; cctx.fillText('components', pad.l + 50, pad.t + 10)
+
+    // --- findings ---
+    const nOn = midComps.filter(c => c.intersected).length
+    const nOff = midComps.length - nOn
+    document.getElementById(`${id}-sweep-findings`).innerHTML =
+      `<strong>${persistent.length}</strong> persistent lines (structural edges) · ` +
+      `<strong>${nOn}</strong> components on edge paths (obstructions) · ` +
+      `<strong>${nOff}</strong> isolated components (standalone features)`
+
+    document.getElementById(`${id}-sweep-results`).style.display = 'block'
+  }
+
+  document.getElementById(`${id}-sweep`).addEventListener('click', runThresholdSweep)
+
+  // Initial render
+  renderToCanvas(beforeCanvas, sourceImg)
+  renderToCanvas(afterCanvas, sourceImg)
+  renderHistogram(sourceImg)
+</script>
+
+<style>
+  .img-showcase {
+    margin: 2rem 0;
+  }
+
+  .img-controls {
+    margin-bottom: 1rem;
+  }
+
+  .filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .filter-buttons button {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    background: var(--sl-color-gray-6, #161816);
+    color: var(--sl-color-gray-2, #959991);
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .filter-buttons button:hover {
+    border-color: var(--sl-color-gray-4, #363a35);
+    color: var(--sl-color-white, #e9ebe8);
+  }
+
+  .filter-buttons button.active {
+    border-color: var(--sl-color-accent, #34d26a);
+    color: var(--sl-color-accent, #34d26a);
+    background: var(--sl-color-accent-low, #0f2418);
+  }
+
+  .transform-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .transform-buttons button {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    background: var(--sl-color-gray-6, #161816);
+    color: var(--sl-color-gray-2, #959991);
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .transform-buttons button:hover {
+    border-color: var(--sl-color-gray-4, #363a35);
+    color: var(--sl-color-white, #e9ebe8);
+  }
+
+  .transform-buttons button.active {
+    border-color: var(--sl-color-accent, #34d26a);
+    color: var(--sl-color-accent, #34d26a);
+    background: var(--sl-color-accent-low, #0f2418);
+  }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-family: var(--sl-font-mono);
+    color: var(--sl-color-gray-3, #636861);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .histogram-section {
+    margin-bottom: 1rem;
+  }
+
+  .histogram-section .section-label {
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  .histogram-section canvas {
+    width: 100%;
+    height: 80px;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    display: block;
+  }
+
+  .pipeline-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.6rem;
+    min-height: 1.8rem;
+  }
+
+  .pipeline-empty {
+    font-size: 0.8rem;
+    color: var(--sl-color-gray-3, #636861);
+    font-family: var(--sl-font-mono);
+  }
+
+  .pipeline-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    background: var(--sl-color-accent-low, #0f2418);
+    border: 1px solid var(--sl-color-accent, #34d26a);
+    color: var(--sl-color-accent, #34d26a);
+    font-size: 0.75rem;
+    font-family: var(--sl-font-mono);
+  }
+
+  .step-remove {
+    background: none;
+    border: none;
+    color: var(--sl-color-gray-3, #636861);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.1s;
+  }
+
+  .step-remove:hover {
+    color: var(--sl-color-white, #e9ebe8);
+  }
+
+  .pipeline-arrow {
+    color: var(--sl-color-gray-3, #636861);
+    font-size: 0.75rem;
+  }
+
+  .sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--sl-color-gray-2, #959991);
+  }
+
+  .slider-row label {
+    font-family: var(--sl-font-mono);
+    min-width: 6rem;
+    font-size: 0.8rem;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--sl-color-accent, #34d26a);
+  }
+
+  .slider-value {
+    font-family: var(--sl-font-mono);
+    min-width: 3rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+  }
+
+  .canvas-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .canvas-col {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .canvas-label {
+    display: block;
+    font-size: 0.75rem;
+    font-family: var(--sl-font-mono);
+    color: var(--sl-color-gray-3, #636861);
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .canvas-col canvas {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    display: block;
+    image-rendering: auto;
+  }
+
+  .upload-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .upload-btn, .reset-btn {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    background: var(--sl-color-gray-6, #161816);
+    color: var(--sl-color-gray-2, #959991);
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .upload-btn:hover, .reset-btn:hover {
+    border-color: var(--sl-color-gray-4, #363a35);
+    color: var(--sl-color-white, #e9ebe8);
+  }
+
+  .analysis-section {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--sl-color-gray-5, #1f211e);
+  }
+
+  .analysis-heading {
+    display: block;
+    font-size: 0.7rem;
+    font-family: var(--sl-font-mono);
+    color: var(--sl-color-gray-3, #636861);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+  }
+
+  .analysis-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .analysis-buttons button {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    background: var(--sl-color-gray-6, #161816);
+    color: var(--sl-color-gray-2, #959991);
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .analysis-buttons button:hover {
+    border-color: var(--sl-color-gray-4, #363a35);
+    color: var(--sl-color-white, #e9ebe8);
+  }
+
+  .analysis-buttons button.active {
+    border-color: var(--sl-color-accent, #34d26a);
+    color: var(--sl-color-accent, #34d26a);
+    background: var(--sl-color-accent-low, #0f2418);
+  }
+
+  .analysis-stats {
+    font-family: var(--sl-font-mono);
+    font-size: 0.8rem;
+    color: var(--sl-color-gray-2, #959991);
+    min-height: 1.2rem;
+    margin-top: 0.3rem;
+  }
+
+  .pipeline-display {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--sl-color-gray-6, #161816);
+    border-left: 2px solid var(--sl-color-gray-4, #363a35);
+    font-family: var(--sl-font-mono);
+    font-size: 0.85rem;
+    color: var(--sl-color-accent, #34d26a);
+  }
+
+  .blend-section {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--sl-color-gray-5, #1f211e);
+  }
+
+  .blend-section > .section-label {
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+
+  .blend-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .snapshot-btn {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--sl-color-accent, #34d26a);
+    background: var(--sl-color-accent-low, #0f2418);
+    color: var(--sl-color-accent, #34d26a);
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .snapshot-btn:hover {
+    background: var(--sl-color-accent, #34d26a);
+    color: var(--sl-color-gray-6, #161816);
+  }
+
+  .blend-controls select {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    background: var(--sl-color-gray-6, #161816);
+    color: var(--sl-color-gray-2, #959991);
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono);
+  }
+
+  .snapshot-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .snapshot-thumb {
+    position: relative;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+  }
+
+  .snapshot-thumb canvas {
+    display: block;
+    width: 80px;
+    height: 60px;
+  }
+
+  .snap-label {
+    display: block;
+    font-size: 0.6rem;
+    font-family: var(--sl-font-mono);
+    color: var(--sl-color-gray-3, #636861);
+    padding: 0.15rem 0.3rem;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .snap-remove {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    background: rgba(0,0,0,0.6);
+    border: none;
+    color: var(--sl-color-gray-2, #959991);
+    font-size: 0.75rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 1px 4px;
+  }
+
+  .snap-remove:hover {
+    color: var(--sl-color-white, #e9ebe8);
+  }
+
+  .blend-result {
+    margin-top: 0.5rem;
+  }
+
+  .blend-result canvas {
+    width: 100%;
+    max-width: 640px;
+    height: auto;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    display: block;
+  }
+
+  .sweep-section {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--sl-color-gray-5, #1f211e);
+  }
+
+  .sweep-section > .section-label {
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .sweep-desc {
+    font-size: 0.8rem;
+    color: var(--sl-color-gray-3, #636861);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.4;
+  }
+
+  .sweep-btn {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--sl-color-accent, #34d26a);
+    background: var(--sl-color-accent-low, #0f2418);
+    color: var(--sl-color-accent, #34d26a);
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .sweep-btn:hover {
+    background: var(--sl-color-accent, #34d26a);
+    color: var(--sl-color-gray-6, #161816);
+  }
+
+  .sweep-row {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .sweep-col {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sweep-col canvas {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    display: block;
+  }
+
+  .sweep-findings {
+    font-family: var(--sl-font-mono);
+    font-size: 0.8rem;
+    color: var(--sl-color-gray-2, #959991);
+    margin-top: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .sweep-findings strong {
+    color: var(--sl-color-white, #e9ebe8);
+  }
+
+  @media (max-width: 640px) {
+    .canvas-row { flex-direction: column; }
+    .sweep-row { flex-direction: column; }
+  }
+</style>

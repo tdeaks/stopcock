@@ -1,0 +1,56 @@
+---
+title: D (Dict)
+description: Map, filter, merge, and traverse Record<string, T> dictionaries
+---
+
+`Dict<A>` is `Record<string, A>`.
+
+## Non-dual
+
+```ts
+keys<A>(d: Dict<A>): string[]
+values<A>(d: Dict<A>): A[]
+toEntries<A>(d: Dict<A>): [string, A][]
+fromEntries<A>(entries: [string, A][]): Dict<A>
+isEmpty<A>(d: Dict<A>): boolean
+```
+
+## Dual
+
+```ts
+get<A>(d: Dict<A>, key: string): A | undefined
+map<A, B>(d: Dict<A>, f: (a: A, key: string) => B): Dict<B>
+filter<A>(d: Dict<A>, pred: (a: A, key: string) => boolean): Dict<A>
+merge<A>(a: Dict<A>, b: Dict<A>): Dict<A>
+```
+
+## Examples
+
+```ts
+import { pipe, A, D } from '@stopcock/fp'
+
+// count items per category
+const counts = pipe(
+  A.groupBy(products, p => p.category),
+  D.map(items => items.length),
+)
+// { electronics: 12, clothing: 8 }
+
+// merge config layers
+const config = pipe(
+  defaults,
+  D.merge(envOverrides),
+  D.merge(cliFlags),
+)
+
+// filter out empty groups
+pipe(
+  grouped,
+  D.filter(items => items.length > 0),
+)
+
+// build lookup table
+const byId = D.fromEntries(
+  users.map(u => [u.id, u]),
+)
+```

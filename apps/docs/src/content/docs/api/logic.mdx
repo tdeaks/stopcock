@@ -1,0 +1,49 @@
+---
+title: Logic
+description: both, either, allPass, cond. Compose predicates and branch logic in pipe
+---
+
+## Predicate combinators
+
+```ts
+both<A>(p1: (a: A) => boolean, p2: (a: A) => boolean): (a: A) => boolean
+either<A>(p1: (a: A) => boolean, p2: (a: A) => boolean): (a: A) => boolean
+allPass<A>(preds: ((a: A) => boolean)[]): (a: A) => boolean
+anyPass<A>(preds: ((a: A) => boolean)[]): (a: A) => boolean
+```
+
+```ts
+import { pipe, A, Logic } from '@stopcock/fp'
+
+const isAdult = (u: User) => u.age >= 18
+const isActive = (u: User) => u.active
+
+pipe(users, A.filter(Logic.both(isAdult, isActive)))
+```
+
+## Control flow (dual)
+
+```ts
+equals<A>(a: A, b: A): boolean
+defaultTo<A>(opt: A | undefined, fallback: A): A
+when_<A>(value: A, pred: (a: A) => boolean, f: (a: A) => A): A
+unless<A>(value: A, pred: (a: A) => boolean, f: (a: A) => A): A
+cond<A, B>(value: A, conditions: [(a: A) => boolean, (a: A) => B][]): B | undefined
+```
+
+```ts
+import { pipe, Logic } from '@stopcock/fp'
+
+pipe(undefined, Logic.defaultTo(0))  // 0
+pipe(5, Logic.defaultTo(0))          // 5
+
+pipe(
+  score,
+  Logic.cond([
+    [s => s >= 90, () => 'A'],
+    [s => s >= 80, () => 'B'],
+    [s => s >= 70, () => 'C'],
+    [() => true,   () => 'F'],
+  ]),
+)
+```

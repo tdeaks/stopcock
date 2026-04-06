@@ -1,0 +1,84 @@
+---
+title: Getting Started
+description: Install stopcock and build your first pipe with fusion, Option, and Result
+---
+
+```bash
+bun add @stopcock/fp
+```
+
+```ts
+import { pipe, flow, A, S, N, O, R } from '@stopcock/fp'
+```
+
+## pipe
+
+Pass a value through functions, left to right. If you chain array operations, they get fused into single loops automatically.
+
+```ts
+type User = { name: string; active: boolean; score: number }
+
+const leaderboard = pipe(
+  users,
+  A.filter((u: User) => u.active && u.score > 0),
+  A.sortBy((a: User, b: User) => b.score - a.score),
+  A.take(10),
+  A.map((u: User) => u.name),
+)
+```
+
+`filter → map` fuses into a single loop. `take(10)` terminates early, so the loop stops after 10 results.
+
+## flow
+
+Same as `pipe` but gives you a reusable function instead of running straight away.
+
+```ts
+const activeNames = flow(
+  A.filter((u: User) => u.active),
+  A.map((u: User) => u.name),
+)
+
+activeNames(usersA)
+activeNames(usersB)
+```
+
+## Fusion
+
+`pipe` detects tagged array operations and fuses them into a single loop. `take` and `find` bail out early, so you're not iterating the whole thing.
+
+```ts
+const big = Array.from({ length: 1_000_000 }, (_, i) => i)
+
+// visits ~70 items, allocates nothing intermediate
+pipe(big, A.filter(x => x % 7 === 0), A.map(x => x * 2), A.take(10))
+```
+
+Operations that need the whole array (`sort`, `groupBy`, `uniq`) break the fusion chain. See [Fusion](/concepts/fusion) for the full picture.
+
+## Dual signatures
+
+Every function works both ways:
+
+```ts
+A.take(users, 5)       // data-first
+pipe(users, A.take(5)) // data-last
+```
+
+## Option and Result
+
+```ts
+pipe(
+  O.fromNullable(user.email),
+  O.map(e => e.split('@')[1]),
+  O.getWithDefault('unknown'),
+)
+
+pipe(
+  R.tryCatch(() => JSON.parse(input)),
+  R.map((obj: { value: number }) => obj.value),
+  R.getOrElse(() => null),
+)
+```
+
+See [Option & Result](/concepts/option-result) for the full API, or try the [Cookbook](/cookbook) for more patterns.
