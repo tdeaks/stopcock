@@ -1,0 +1,60 @@
+---
+const libraries = [
+  { name: 'fp', desc: 'Pipe, Option, Result, Array, String, lenses, and Stream. The core everything else builds on.', href: '/libraries/fp' },
+  { name: 'date', desc: 'Date arithmetic, formatting, parsing, timezones, and business day logic.', href: '/libraries/date' },
+  { name: 'async', desc: 'Lazy Task type with retry, timeout, concurrency limits, and cancellation via AbortSignal.', href: '/libraries/async' },
+  { name: 'img', desc: 'Pixel-level image processing. Filters, convolution, resize, crop.', href: '/libraries/img' },
+]
+---
+
+<div class="lib-grid">
+  {libraries.map(l => (
+    <a class="lib-card" href={l.href}>
+      <span class="lib-name">@stopcock/{l.name}</span>
+      <span class="lib-desc">{l.desc}</span>
+    </a>
+  ))}
+</div>
+
+<style>
+  .lib-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin: 2rem 0;
+  }
+
+  @media (max-width: 40rem) {
+    .lib-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .lib-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 1rem;
+    background: var(--sl-color-gray-6, #141420);
+    border: 1px solid var(--sl-color-gray-5, #1e1e2e);
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .lib-card:hover {
+    border-color: var(--sl-color-accent, #00e5a0);
+  }
+
+  .lib-name {
+    font-family: var(--sl-font-mono);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--sl-color-accent, #00e5a0);
+  }
+
+  .lib-desc {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--sl-color-gray-3, #6e6e82);
+  }
+</style>

@@ -1,0 +1,19 @@
+---
+import BenchmarkScalingChart from './BenchmarkScalingChart.astro'
+
+interface Props {
+  category: string
+}
+
+const { category } = Astro.props
+---
+
+<div class="bench-panel" data-rt="node">
+  <BenchmarkScalingChart {category} runtime="node" />
+</div>
+<div class="bench-panel" data-rt="bun" hidden>
+  <BenchmarkScalingChart {category} runtime="bun" />
+</div>
+<div class="bench-panel" data-rt="deno" hidden>
+  <BenchmarkScalingChart {category} runtime="deno" />
+</div>

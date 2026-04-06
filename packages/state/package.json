@@ -1,0 +1,26 @@
+{
+  "name": "@stopcock/state",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./async": { "types": "./dist/async.d.ts", "import": "./dist/async.js" }
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@stopcock/fp": "workspace:*",
+    "@stopcock/diff": "workspace:*"
+  },
+  "peerDependencies": {
+    "@stopcock/async": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@stopcock/async": { "optional": true }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  }
+}

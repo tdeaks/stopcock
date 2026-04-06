@@ -1,0 +1,127 @@
+---
+title: Image Processing
+description: Interactive demo of stopcock/img filters and transforms
+---
+
+import ImageShowcase from '../../../components/ImageShowcase.astro'
+
+Every filter runs right here in your browser. Same code as the library, no server involved. Click filters to build a pipeline, tweak the parameters, or drop in your own image. Click a filter again to remove it. Transforms (flip, rotate, resize, crop) go in the pipeline too. The histogram updates live.
+
+<ImageShowcase />
+
+## What's happening
+
+Each filter takes an `Image` (a `Uint8ClampedArray` of RGBA pixels plus width/height) and returns a new one. Nothing gets mutated.
+
+Every parameterised filter is dual-form: `blur(img, 2)` works data-first, `blur(2)` returns `(img) => Image` for pipe. The no-param ones (`grayscale`, `sepia`, `invert`, `edgeDetect`, `equalize`) already have the right shape.
+
+```typescript
+import { pipe } from '@stopcock/fp'
+import { grayscale, blur, sharpen, brightness } from '@stopcock/img'
+
+pipe(img, grayscale, blur(2), sharpen(1.5), brightness(20))
+```
+
+Or data-first if you prefer:
+
+```typescript
+const grey = grayscale(img)
+const blurred = blur(img, 2)
+```
+
+## Filters
+
+| Filter | What it does |
+|--------|-------------|
+| `grayscale(img)` | Luminance-weighted conversion (0.299R + 0.587G + 0.114B) |
+| `sepia(img)` | Warm brown tone using fixed colour matrix |
+| `invert(img)` | Flips every channel: `255 - value` |
+| `brightness(img, amount)` | Adds `amount` to RGB channels. Negative darkens. |
+| `contrast(img, amount)` | Stretches or compresses values around the midpoint |
+| `saturate(img, factor)` | Multiplies saturation in HSL space. 0 = greyscale, 2 = vivid. |
+| `threshold(img, value)` | Binary: pixels brighter than `value` become white, rest black |
+| `equalize(img)` | Histogram equalization. Spreads tonal range across 0-255. |
+| `gaussianBlur(img, radius)` | Weighted Gaussian kernel. Softer than box blur at the same radius. |
+
+## Convolution
+
+`blur`, `gaussianBlur`, `sharpen`, and `edgeDetect` all use `convolve` underneath. You can pass your own kernel:
+
+```typescript
+import { convolve } from '@stopcock/img'
+
+// emboss kernel
+const embossed = convolve(img, [
+  [-2, -1, 0],
+  [-1,  1, 1],
+  [ 0,  1, 2],
+], 1)
+```
+
+`edgeDetect` runs two Sobel convolutions (horizontal and vertical) and combines them with `sqrt(gx² + gy²)` per channel. Good for finding boundaries in an image.
+
+## Transforms
+
+```typescript
+import { pipe } from '@stopcock/fp'
+import { resize, crop, flipH, flipV, rotate90 } from '@stopcock/img'
+
+// data-first
+resize(img, 200, 150)       // bilinear interpolation
+crop(img, 10, 10, 100, 80)  // x, y, width, height
+
+// data-last in pipe
+pipe(img, resize(200, 150), flipH, rotate90)
+```
+
+## Analysis: lines and blobs
+
+`houghLines` finds straight lines in edge-detected images. `connectedComponents` finds contiguous regions. Together they're useful for structural analysis, like finding roof edges and obstructions in satellite imagery.
+
+```typescript
+import { pipe } from '@stopcock/fp'
+import {
+  gaussianBlur, grayscale, edgeDetect, threshold,
+  houghLines, connectedComponents, lineToEndpoints,
+} from '@stopcock/img'
+
+// pre-process: smooth noise, detect edges, clean up
+const edges = pipe(img, gaussianBlur(1), grayscale, edgeDetect, threshold(180))
+
+// find straight lines (roof ridges, gutters, edges)
+const lines = houghLines(edges, { threshold: 40, maxLines: 20 })
+
+// find blobs (vents, skylights, chimneys)
+const { components } = connectedComponents(edges)
+const obstructions = components.filter(c => c.area > 50 && c.area < 5000)
+
+// draw results
+for (const line of lines) {
+  const [a, b] = lineToEndpoints(line, img.width, img.height)
+  ctx.strokeStyle = '#0f0'
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
+}
+for (const c of obstructions) {
+  ctx.strokeStyle = '#f00'
+  ctx.strokeRect(c.bbox.x, c.bbox.y, c.bbox.w, c.bbox.h)
+}
+```
+
+## Getting pixels in and out
+
+The `Image` type is just a plain object. If you're working with canvas:
+
+```typescript
+import { fromRGBA } from '@stopcock/img'
+
+// canvas → Image
+const ctx = canvas.getContext('2d')
+const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+const img = fromRGBA(imageData.data, canvas.width, canvas.height)
+
+// Image → canvas
+const out = new ImageData(new Uint8ClampedArray(img.data), img.width, img.height)
+ctx.putImageData(out, 0, 0)
+```
+
+Full API reference on the [img library page](/libraries/img).

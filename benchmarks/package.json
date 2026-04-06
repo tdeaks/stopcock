@@ -1,0 +1,38 @@
+{
+  "name": "benchmarks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "vitest bench --run",
+    "bench:bun": "vitest bench --run",
+    "bench:node": "node --import=tsx node_modules/.bin/vitest bench --run",
+    "bench:dist": "vitest bench --run --config vitest.config.dist.ts",
+    "validate": "vitest run --config vitest.config.validate.ts",
+    "report:dist:bun": "vitest bench --run --config vitest.config.dist.ts 2>&1 | tee /tmp/bench-dist-bun.txt && cat /tmp/bench-dist-bun.txt | bun run generate-report.ts 'Bun 1.3 (dist)' --json > ../docs/benchmarks-bun-dist.md && echo '✓ docs/benchmarks-bun-dist.md written'",
+    "report:dist:node": "npx vitest bench --run --config vitest.config.dist.ts 2>&1 | tee /tmp/bench-dist-node.txt && cat /tmp/bench-dist-node.txt | bun run generate-report.ts 'Node.js v22 (dist)' --json > ../docs/benchmarks-node-dist.md && echo '✓ docs/benchmarks-node-dist.md written'",
+    "report:dist:deno": "deno run -A ../node_modules/.bin/vitest bench --run --config vitest.config.dist.ts 2>&1 | tee /tmp/bench-dist-deno.txt && cat /tmp/bench-dist-deno.txt | bun run generate-report.ts 'Deno (dist)' --json > ../docs/benchmarks-deno-dist.md && echo '✓ docs/benchmarks-deno-dist.md written'",
+    "report:bun": "vitest bench --run 2>&1 | tee /tmp/bench-bun.txt && cat /tmp/bench-bun.txt | bun run generate-report.ts 'Bun 1.3' --json > ../docs/benchmarks-bun.md && echo '✓ docs/benchmarks-bun.md + .json written'",
+    "report:node": "npx vitest bench --run 2>&1 | tee /tmp/bench-node.txt && cat /tmp/bench-node.txt | bun run generate-report.ts 'Node.js v22' --json > ../docs/benchmarks-node.md && echo '✓ docs/benchmarks-node.md + .json written'",
+    "bench:deno": "deno run -A ../node_modules/.bin/vitest bench --run",
+    "report:deno": "deno run -A ../node_modules/.bin/vitest bench --run 2>&1 | tee /tmp/bench-deno.txt && cat /tmp/bench-deno.txt | bun run generate-report.ts 'Deno' --json > ../docs/benchmarks-deno.md && echo '✓ docs/benchmarks-deno.md + .json written'"
+  },
+  "dependencies": {
+    "@stopcock/fp": "workspace:*",
+    "@stopcock/date": "workspace:*",
+    "@stopcock/img": "workspace:*",
+    "moment": "latest",
+    "luxon": "latest",
+    "date-fns": "latest",
+    "remeda": "latest",
+    "lodash-es": "latest",
+    "ramda": "latest",
+    "rambda": "latest",
+    "@mobily/ts-belt": "latest"
+  },
+  "devDependencies": {
+    "@types/ramda": "latest",
+    "@types/lodash-es": "latest",
+    "@types/luxon": "latest",
+    "tsx": "latest"
+  }
+}

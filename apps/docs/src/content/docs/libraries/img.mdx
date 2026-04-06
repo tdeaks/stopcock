@@ -1,0 +1,160 @@
+---
+title: img
+description: Image processing, filters, convolution, transforms
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+```bash
+bun add @stopcock/img
+```
+
+Pixel-level image manipulation on raw RGBA buffers. Filters, convolution, resize, crop, the usual. All parameterised functions are dual-form, so they work in `pipe` point-free.
+
+```ts
+import { create, grayscale, blur, resize, brightness } from '@stopcock/img'
+
+pipe(
+  create(800, 600),
+  grayscale,
+  blur(3),
+  brightness(40),
+  resize(400, 300),
+)
+```
+
+## Real-world patterns
+
+### Thumbnail generation pipeline
+
+```ts
+import { pipe } from '@stopcock/fp'
+import { fromRGBA, resize, sharpen, contrast } from '@stopcock/img'
+
+const thumbnail = (data: Uint8ClampedArray, w: number, h: number) => pipe(
+  fromRGBA(data, w, h),
+  resize(200, 200),
+  sharpen,          // sharpen after downscale to recover detail
+  contrast(30),     // slight contrast boost
+)
+```
+
+### Batch image filter
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+import { fromRGBA, grayscale, sepia, brightness } from '@stopcock/img'
+
+const vintage = (img: Image) => pipe(img, grayscale, sepia, brightness(1.1))
+
+const processed = A.map(images, vintage)
+```
+
+### Edge detection for feature extraction
+
+```ts
+import { grayscale, gaussianBlur, edgeDetect } from '@stopcock/img'
+
+const edges = pipe(
+  image,
+  grayscale,          // convert to single channel
+  gaussianBlur(2),    // smooth out noise
+  edgeDetect,         // Sobel operator
+)
+```
+
+## Types
+
+```ts
+type Pixel = [r: number, g: number, b: number, a: number]  // 0-255 each
+type Image = {
+  width: number
+  height: number
+  data: Uint8ClampedArray  // RGBA pixel data
+}
+```
+
+## Creation
+
+```ts
+create(width: number, height: number): Image
+clone(img: Image): Image
+fromRGBA(data: Uint8ClampedArray, width: number, height: number): Image
+```
+
+## Color conversion
+
+```ts
+rgbToHsl(r: number, g: number, b: number): [h: number, s: number, l: number]
+hslToRgb(h: number, s: number, l: number): [r: number, g: number, b: number]
+rgbToGray(r: number, g: number, b: number): number
+grayscale(img: Image): Image
+```
+
+## Filters
+
+All parameterised filters are dual-form: `brightness(img, 40)` or `brightness(40)` for pipe.
+
+```ts
+brightness(img: Image, amount: number): Image
+contrast(img: Image, amount: number): Image
+invert(img: Image): Image
+threshold(img: Image, value: number): Image
+sepia(img: Image): Image
+saturate(img: Image, factor: number): Image
+```
+
+<Aside type="tip">
+  All filter functions return a new `Image`. The original is never mutated. Chain them freely in `pipe`.
+</Aside>
+
+## Convolution
+
+Dual-form where there are parameters. `convolve`, `blur`, `gaussianBlur`, `sharpen` all work in pipe.
+
+```ts
+convolve(img: Image, kernel: number[][], divisor?: number): Image
+blur(img: Image, radius: number): Image
+gaussianBlur(img: Image, radius: number, sigma?: number): Image
+sharpen(img: Image, amount?: number): Image
+edgeDetect(img: Image): Image
+```
+
+## Transforms
+
+`resize` and `crop` are dual-form. `flipH`, `flipV`, `rotate90` are arity-1 so they already work point-free.
+
+```ts
+resize(img: Image, width: number, height: number): Image
+crop(img: Image, x: number, y: number, w: number, h: number): Image
+flipH(img: Image): Image
+flipV(img: Image): Image
+rotate90(img: Image): Image
+```
+
+## Histogram
+
+```ts
+histogram(img: Image): { r: number[]; g: number[]; b: number[] }
+equalize(img: Image): Image
+```
+
+## Analysis
+
+For detecting structure in edge-detected / thresholded images.
+
+```ts
+houghLines(img: Image, options?: HoughOptions): DetectedLine[]
+lineToEndpoints(line: DetectedLine, width: number, height: number): [Point, Point]
+connectedComponents(img: Image): ComponentResult
+```
+
+`houghLines` finds straight lines using the Hough transform. Feed it a thresholded edge image and it returns lines sorted by vote count. `houghLines` is dual-form.
+
+`connectedComponents` labels contiguous foreground regions and returns their area, centroid, and bounding box. Good for finding blobs (obstructions, objects) after thresholding.
+
+```ts
+type DetectedLine = { rho: number; theta: number; votes: number }
+type Component = { id: number; area: number; centroid: { x: number; y: number }; bbox: { x: number; y: number; w: number; h: number } }
+type ComponentResult = { labels: Int32Array; width: number; height: number; components: Component[] }
+```

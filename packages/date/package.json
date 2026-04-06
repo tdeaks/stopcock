@@ -1,0 +1,16 @@
+{
+  "name": "@stopcock/date",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "files": ["dist"],
+  "dependencies": { "@stopcock/fp": "workspace:*" },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  }
+}

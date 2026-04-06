@@ -1,0 +1,17 @@
+{
+  "name": "@stopcock/la",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./primitives": { "types": "./dist/primitives.d.ts", "import": "./dist/primitives.js" }
+  },
+  "files": ["dist"],
+  
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  }
+}

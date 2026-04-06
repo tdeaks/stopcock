@@ -1,0 +1,84 @@
+---
+import nodeData from '../../data/benchmarks-node.json'
+import bunData from '../../data/benchmarks-bun.json'
+import denoData from '../../data/benchmarks-deno.json'
+import { COLORS, libraryColor, formatOps } from './chart-utils'
+
+interface Props {
+  category: string
+  arraySize: number
+  runtime?: 'node' | 'bun' | 'deno'
+}
+
+const { category, arraySize, runtime = 'node' } = Astro.props
+const data = runtime === 'bun' ? bunData : runtime === 'deno' ? denoData : nodeData
+const suite = data.suites.find(s => s.category === category && s.arraySize === arraySize)
+const sorted = [...(suite?.entries ?? [])].sort((a, b) => b.opsPerSec - a.opsPerSec)
+const id = `bar-${category}-${arraySize}-${runtime}`.replace(/[^a-z0-9-]/gi, '_')
+
+const colorMap = Object.fromEntries(COLORS.libraries)
+---
+
+<div class="chart-container" id={id} />
+
+<noscript>
+  <table class="benchmark-table">
+    <thead><tr><th>Library</th><th>ops/sec</th><th>vs fastest</th></tr></thead>
+    <tbody>
+      {sorted.map(e => (
+        <tr>
+          <td style={e.library === 'stopcock' ? `color:${COLORS.accent};font-weight:600` : ''}>
+            {e.library}
+          </td>
+          <td>{e.opsPerSec.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
+          <td>{e.diff}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</noscript>
+
+<script define:vars={{ id, sorted, colorMap, accent: COLORS.accent, barDefault: COLORS.barDefault }}>
+  const el = document.getElementById(id)
+  if (el && sorted.length > 0) {
+    const margin = { top: 8, right: 90, bottom: 8, left: 120 }
+    const barH = 28, gap = 5
+    const w = el.clientWidth || 600
+    const h = margin.top + margin.bottom + sorted.length * (barH + gap)
+    const maxOps = Math.max(...sorted.map(d => d.opsPerSec))
+    const cw = w - margin.left - margin.right
+
+    const ns = 'http://www.w3.org/2000/svg'
+    const svg = document.createElementNS(ns, 'svg')
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`)
+    svg.setAttribute('width', '100%')
+
+    sorted.forEach((e, i) => {
+      const y = margin.top + i * (barH + gap)
+      const bw = (e.opsPerSec / maxOps) * cw
+      const color = colorMap[e.library] ?? barDefault
+      const hl = e.library === 'stopcock'
+
+      const label = document.createElementNS(ns, 'text')
+      Object.entries({ x: margin.left - 8, y: y + barH / 2 + 1, 'text-anchor': 'end', 'dominant-baseline': 'middle', fill: hl ? accent : '#a0a0b0', 'font-size': 13, 'font-weight': hl ? 600 : 400, 'font-family': "'Inter Variable', sans-serif" }).forEach(([k, v]) => label.setAttribute(k, String(v)))
+      label.textContent = e.library
+      svg.appendChild(label)
+
+      const rect = document.createElementNS(ns, 'rect')
+      Object.entries({ x: margin.left, y, height: barH, rx: 2, fill: color, width: 0 }).forEach(([k, v]) => rect.setAttribute(k, String(v)))
+      rect.style.transition = 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+      svg.appendChild(rect)
+
+      const val = document.createElementNS(ns, 'text')
+      Object.entries({ x: margin.left + bw + 8, y: y + barH / 2 + 1, 'dominant-baseline': 'middle', fill: hl ? accent : '#c8c8d8', 'font-size': 12, 'font-weight': hl ? 600 : 400, 'font-family': "'JetBrains Mono Variable', monospace", 'font-variant-numeric': 'tabular-nums' }).forEach(([k, v]) => val.setAttribute(k, String(v)))
+      const ops = e.opsPerSec
+      val.textContent = ops >= 1e6 ? (ops / 1e6).toFixed(1) + 'M' : ops >= 1e3 ? (ops / 1e3).toFixed(1) + 'K' : ops.toFixed(0)
+      svg.appendChild(val)
+
+      requestAnimationFrame(() => requestAnimationFrame(() => rect.setAttribute('width', String(bw))))
+    })
+
+    el.innerHTML = ''
+    el.appendChild(svg)
+  }
+</script>

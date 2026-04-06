@@ -1,0 +1,134 @@
+---
+import nodeData from '../../data/benchmarks-node.json'
+import bunData from '../../data/benchmarks-bun.json'
+import denoData from '../../data/benchmarks-deno.json'
+import { COLORS } from './chart-utils'
+
+function getSpotlight(data: typeof nodeData) {
+  const suite = data.suites.find(
+    s => s.category === 'filter→map→take(10)' && s.arraySize === 100000
+  )
+  const entries = suite?.entries ?? []
+  const sorted = [...entries].sort((a, b) => b.opsPerSec - a.opsPerSec)
+  const ours = sorted.find(e => e.library === 'stopcock')
+  const rest = sorted.filter(e => e.library !== 'stopcock')
+  const speedup = ours && rest.length > 0
+    ? Math.round(ours.opsPerSec / Math.max(...rest.map(e => e.opsPerSec)))
+    : null
+  return { sorted, speedup }
+}
+
+const runtimes = {
+  node: getSpotlight(nodeData),
+  bun: getSpotlight(bunData),
+  deno: getSpotlight(denoData),
+}
+
+const colorMap = Object.fromEntries(COLORS.libraries)
+---
+
+{Object.entries(runtimes).map(([rt, { sorted, speedup }]) => (
+  <div class={`bench-panel fusion-spotlight`} data-rt={rt} hidden={rt !== 'node'}>
+    <div class="fusion-chart-area" data-id={`fusion-spotlight-${rt}`} />
+    {speedup && (
+      <div class="fusion-callout">
+        <span class="speedup-value">{speedup.toLocaleString()}x</span>
+        <span class="speedup-context">filter→map→take(10) on 100K elements</span>
+      </div>
+    )}
+  </div>
+))}
+
+<script define:vars={{ runtimes, colorMap, accent: COLORS.accent, barDefault: COLORS.barDefault }}>
+  Object.entries(runtimes).forEach(([rt, { sorted }]) => {
+    const el = document.querySelector(`[data-id="fusion-spotlight-${rt}"]`)
+    if (!el || sorted.length === 0) return
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      observer.disconnect()
+
+      const margin = { top: 8, right: 90, bottom: 8, left: 120 }
+      const barH = 24, gap = 4
+      const w = el.clientWidth || 600
+      const h = margin.top + margin.bottom + sorted.length * (barH + gap)
+      const maxOps = Math.max(...sorted.map(d => d.opsPerSec))
+      const minOps = Math.min(...sorted.filter(d => d.opsPerSec > 0).map(d => d.opsPerSec))
+      const cw = w - margin.left - margin.right
+
+      const logScale = v => {
+        const lo = Math.log10(minOps * 0.5), hi = Math.log10(maxOps * 1.5)
+        return ((Math.log10(v) - lo) / (hi - lo)) * cw
+      }
+
+      const ns = 'http://www.w3.org/2000/svg'
+      const svg = document.createElementNS(ns, 'svg')
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`)
+      svg.setAttribute('width', '100%')
+
+      sorted.forEach((e, i) => {
+        const y = margin.top + i * (barH + gap)
+        const bw = Math.max(2, logScale(e.opsPerSec))
+        const color = colorMap[e.library] ?? barDefault
+        const hl = e.library === 'stopcock'
+
+        const label = document.createElementNS(ns, 'text')
+        Object.entries({ x: margin.left - 8, y: y + barH / 2 + 1, 'text-anchor': 'end', 'dominant-baseline': 'middle', fill: hl ? accent : '#6e6e82', 'font-size': 12, 'font-weight': hl ? 600 : 400, 'font-family': "'Inter Variable', sans-serif" }).forEach(([k, v]) => label.setAttribute(k, String(v)))
+        label.textContent = e.library
+        svg.appendChild(label)
+
+        const rect = document.createElementNS(ns, 'rect')
+        Object.entries({ x: margin.left, y, height: barH, rx: 2, fill: color, width: 0 }).forEach(([k, v]) => rect.setAttribute(k, String(v)))
+        rect.style.transition = 'width 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
+        svg.appendChild(rect)
+
+        const val = document.createElementNS(ns, 'text')
+        Object.entries({ x: margin.left + bw + 8, y: y + barH / 2 + 1, 'dominant-baseline': 'middle', fill: hl ? accent : '#a0a0b0', 'font-size': 11, 'font-weight': hl ? 600 : 400, 'font-family': "'JetBrains Mono Variable', monospace", 'font-variant-numeric': 'tabular-nums' }).forEach(([k, v]) => val.setAttribute(k, String(v)))
+        const ops = e.opsPerSec
+        val.textContent = ops >= 1e6 ? (ops / 1e6).toFixed(1) + 'M' : ops >= 1e3 ? (ops / 1e3).toFixed(1) + 'K' : ops.toFixed(0)
+        svg.appendChild(val)
+
+        requestAnimationFrame(() => requestAnimationFrame(() => rect.setAttribute('width', String(bw))))
+      })
+
+      el.appendChild(svg)
+    }, { threshold: 0.2 })
+
+    observer.observe(el)
+  })
+</script>
+
+<style>
+  .fusion-spotlight {
+    margin: 2rem 0;
+    padding: 1.5rem 2rem;
+    background: var(--sl-color-gray-6, #141420);
+    border: 1px solid var(--sl-color-gray-5, #1e1e2e);
+  }
+
+  .fusion-chart-area {
+    min-height: 180px;
+  }
+
+  .fusion-callout {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--sl-color-gray-5, #1e1e2e);
+  }
+
+  .speedup-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--sl-color-accent, #00e5a0);
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .speedup-context {
+    font-size: 0.85rem;
+    color: var(--sl-color-gray-3, #6e6e82);
+  }
+</style>

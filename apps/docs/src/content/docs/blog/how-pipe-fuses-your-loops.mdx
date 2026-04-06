@@ -1,0 +1,118 @@
+---
+title: How pipe() fuses your loops
+date: 2026-04-06
+authors:
+  - tom
+tags:
+  - internals
+  - performance
+excerpt: Every time you chain filter, map, and take in a pipe, stopcock compiles them into a single for loop. Here's how that works, and why it matters more than you'd think.
+---
+
+You've probably written something like this:
+
+```ts
+const result = users
+  .filter(u => u.active)
+  .map(u => u.name)
+  .slice(0, 10)
+```
+
+Three passes over the array. Two intermediate arrays that get thrown away immediately. If `users` has 100K entries, you're doing 100K + 50K + 50K iterations to get 10 names.
+
+stopcock's `pipe` does this instead:
+
+```ts
+import { pipe, A } from '@stopcock/fp'
+
+const result = pipe(
+  users,
+  A.filter(u => u.active),
+  A.map(u => u.name),
+  A.take(10),
+)
+```
+
+One loop. No intermediate arrays. It stops after finding 10 matches.
+
+## What actually happens
+
+Every array function in stopcock carries a hidden `_op` tag. When you call `A.filter(fn)`, the returned function has `_op: 2` (the opcode for filter). `A.map(fn)` has `_op: 1`. `A.take(10)` has `_op: 3`.
+
+When `pipe` receives its arguments, it checks each function for this tag:
+
+```ts
+const _hasOp = (fn: any): boolean =>
+  typeof fn._op === 'number' && fn._op > 0
+```
+
+If consecutive functions are tagged, `pipe` doesn't call them one by one. It hands the whole sequence to the fusion engine, which compiles them into a single loop.
+
+## The JIT compiler
+
+The fusion engine generates a specialized `for` loop at runtime using `new Function()`. For the filter/map/take example above, it produces something like:
+
+```ts
+// Simplified version of what the JIT emits
+function fused(src, fns) {
+  var f0 = fns[0] // filter predicate
+  var f1 = fns[1] // map transform
+  var c2 = 0      // take counter
+  var r = []
+  for (var i = 0; i < src.length; i++) {
+    var v = src[i]
+    if (!f0(v)) continue      // filter
+    v = f1(v)                 // map
+    r.push(v); if (++c2 >= 10) break  // take(10)
+  }
+  return r
+}
+```
+
+One loop. Filter skips with `continue`. Take breaks with `break`. The generated code is cached by opcode pattern, so the same chain shape only compiles once.
+
+## Callback inlining
+
+It goes further. If your callback is a simple arrow function like `x => x * 2`, the engine parses the function's `toString()` output, validates it's safe (no side effects, no closed-over variables), and inlines the expression directly into the generated loop body.
+
+Instead of `v = f1(v)`, the generated code becomes `v = v * 2`. No function call overhead at all.
+
+The safety checks are strict. The engine rejects anything with `new`, `delete`, `throw`, `await`, `import`, or `eval`. It rejects any identifier that isn't the parameter name or a known global like `Math` or `Array`. If the callback can't be inlined, it falls back to a normal function call. Nothing breaks, you just don't get the extra speed.
+
+## What fuses and what doesn't
+
+Operations that can run item-by-item fuse together: `filter`, `map`, `flatMap`, `take`, `drop`, `takeWhile`, `dropWhile`.
+
+Terminal operations like `reduce`, `find`, `every`, `some`, and `count` also fuse. They become the final step of the loop instead of a separate pass.
+
+Operations that need the full array don't fuse: `sort`, `reverse`, `groupBy`, `uniq`. These force the preceding fused segment to materialize its result first. Then a new segment can start after them.
+
+```ts
+pipe(
+  data,
+  A.filter(x => x > 3),       // ─┐ fused segment 1
+  A.map(x => x * 2),          // ─┘ materializes here
+  A.sortBy((a, b) => a - b),  // runs on materialized array
+  A.take(3),                  // segment 2 (take on sorted result)
+)
+```
+
+There's one exception. `sort` followed immediately by `take(k)` gets a special optimization: quickselect. Instead of sorting the whole array and slicing, it partitions to find just the top k elements and only sorts those. O(n + k log k) instead of O(n log n).
+
+## When it doesn't matter
+
+For small arrays (under ~100 items), fusion doesn't buy you much. The overhead of native method calls is negligible at that scale, and V8 is very good at optimizing simple chains.
+
+Fusion pays off when:
+- Your arrays are large (1K+ items)
+- You have early-exit operations like `take` or `find`
+- You're chaining 3+ operations
+- You're in a hot path that runs frequently
+
+The filter/map/take pattern on 100K items runs at ~4M ops/s with fusion vs ~700 ops/s with native chaining. That's not a typo. Most of the gain comes from `take(10)` breaking out of the loop after 10 results instead of processing all 100K items first.
+
+## The fallback
+
+If `new Function()` isn't available (CSP restrictions, some edge runtimes), the engine falls back to an interpreted loop that does the same thing without code generation. Same fusion, same early exits, just without the inlining optimizations.
+
+And if none of your functions have opcodes (plain functions, not stopcock's array ops), `pipe` just calls them left to right like you'd expect. Zero overhead in that path.

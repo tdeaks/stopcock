@@ -1,0 +1,62 @@
+---
+const modules = [
+  { ns: 'A', name: 'Array', href: '/api/array' },
+  { ns: 'S', name: 'String', href: '/api/string' },
+  { ns: 'D', name: 'Dict', href: '/api/dict' },
+  { ns: 'N', name: 'Number', href: '/api/number' },
+  { ns: 'G', name: 'Guards', href: '/api/guards' },
+  { ns: 'Obj', name: 'Object', href: '/api/object' },
+  { ns: 'M', name: 'Math', href: '/api/math' },
+  { ns: 'B', name: 'Boolean', href: '/api/boolean' },
+  { ns: 'Logic', name: 'Logic', href: '/api/logic' },
+  { ns: 'Lens', name: 'Lenses', href: '/api/lenses' },
+  { ns: 'O', name: 'Option', href: '/concepts/option-result' },
+  { ns: 'R', name: 'Result', href: '/concepts/option-result' },
+]
+---
+
+<div class="module-grid">
+  {modules.map(m => (
+    <a class="module-card" href={m.href}>
+      <span class="module-ns">{m.ns}</span>
+      <span class="module-name">{m.name}</span>
+    </a>
+  ))}
+</div>
+
+<style>
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    gap: 0.5rem;
+    margin: 2rem 0;
+  }
+
+  .module-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem 0.5rem;
+    background: var(--sl-color-gray-6, #141420);
+    border: 1px solid var(--sl-color-gray-5, #1e1e2e);
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .module-card:hover {
+    border-color: var(--sl-color-accent, #00e5a0);
+  }
+
+  .module-ns {
+    font-family: var(--sl-font-mono);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--sl-color-accent, #00e5a0);
+  }
+
+  .module-name {
+    font-size: 0.8rem;
+    color: var(--sl-color-gray-3, #6e6e82);
+  }
+</style>

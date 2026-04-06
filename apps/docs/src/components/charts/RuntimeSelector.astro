@@ -1,0 +1,80 @@
+---
+const runtimes = [
+  { id: 'node', label: 'Node.js' },
+  { id: 'bun', label: 'Bun' },
+  { id: 'deno', label: 'Deno' },
+]
+---
+
+<runtime-selector>
+  <div class="runtime-tabs">
+    {runtimes.map(rt => (
+      <button data-rt={rt.id} class={rt.id === 'node' ? 'active' : ''}>
+        {rt.label}
+      </button>
+    ))}
+  </div>
+</runtime-selector>
+
+<script>
+  class RuntimeSelector extends HTMLElement {
+    connectedCallback() {
+      const saved = localStorage.getItem('bench-runtime') ?? 'node'
+      this.select(saved)
+
+      this.querySelectorAll('button[data-rt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.select((btn as HTMLElement).dataset.rt!)
+        })
+      })
+    }
+
+    select(rt: string) {
+      this.querySelectorAll('button[data-rt]').forEach(b => {
+        b.classList.toggle('active', (b as HTMLElement).dataset.rt === rt)
+      })
+
+      document.querySelectorAll('.bench-panel').forEach(p => {
+        (p as HTMLElement).hidden = (p as HTMLElement).dataset.rt !== rt
+      })
+
+      localStorage.setItem('bench-runtime', rt)
+    }
+  }
+
+  customElements.define('runtime-selector', RuntimeSelector)
+</script>
+
+<style>
+  .runtime-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--sl-color-gray-5, #1f211e);
+    width: fit-content;
+  }
+
+  button {
+    padding: 0.45rem 1rem;
+    min-width: 5rem;
+    text-align: center;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--sl-color-gray-2, #959991);
+    font-family: var(--sl-font-mono);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-bottom: -1px;
+  }
+
+  button:hover {
+    color: var(--sl-color-white, #e9ebe8);
+  }
+
+  button.active {
+    border-bottom-color: var(--sl-color-accent, #34d26a);
+    color: var(--sl-color-accent, #34d26a);
+  }
+</style>

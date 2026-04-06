@@ -1,0 +1,13 @@
+{
+  "name": "stopcock",
+  "sources": [{ "dir": "src/fp", "subdirs": false }],
+  "package-specs": [{ "module": "esmodule", "in-source": true }],
+  "suffix": ".res.js",
+  "dependencies": ["@rescript/core"],
+  "compiler-flags": ["-open RescriptCore"],
+  "gentypeconfig": {
+    "module": "esmodule",
+    "moduleResolution": "bundler",
+    "generatedFileExtension": ".gen.tsx"
+  }
+}

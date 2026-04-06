@@ -1,0 +1,110 @@
+---
+import nodeData from '../../data/benchmarks-node.json'
+import bunData from '../../data/benchmarks-bun.json'
+import denoData from '../../data/benchmarks-deno.json'
+import { COLORS } from './chart-utils'
+
+interface Props {
+  category: string
+  runtime?: 'node' | 'bun' | 'deno'
+}
+
+const { category, runtime = 'node' } = Astro.props
+const data = runtime === 'bun' ? bunData : runtime === 'deno' ? denoData : nodeData
+const suites = data.suites.filter(s => s.category === category && s.arraySize !== null)
+const sizes = [...new Set(suites.map(s => s.arraySize!))].sort((a, b) => a - b)
+
+const libraryMap: Record<string, { size: number; ops: number }[]> = {}
+for (const suite of suites) {
+  for (const entry of suite.entries) {
+    ;(libraryMap[entry.library] ??= []).push({ size: suite.arraySize!, ops: entry.opsPerSec })
+  }
+}
+
+const colorMap = Object.fromEntries(COLORS.libraries)
+const id = `scaling-${category}-${runtime}`.replace(/[^a-z0-9-]/gi, '_')
+---
+
+<div class="chart-container" id={id} style="min-height: 350px" />
+
+<script define:vars={{ id, seriesData: libraryMap, sizes, colorMap, accent: COLORS.accent, barDefault: COLORS.barDefault }}>
+  const el = document.getElementById(id)
+  if (!el) throw null
+
+  const margin = { top: 16, right: 120, bottom: 40, left: 70 }
+  const w = el.clientWidth || 600, h = 350
+  const cw = w - margin.left - margin.right, ch = h - margin.top - margin.bottom
+
+  const allOps = Object.values(seriesData).flat().map(d => d.ops)
+  const [minOps, maxOps] = [Math.min(...allOps), Math.max(...allOps)]
+  const [minS, maxS] = [Math.min(...sizes), Math.max(...sizes)]
+
+  const lx = v => margin.left + (Math.log10(v) - Math.log10(minS)) / (Math.log10(maxS) - Math.log10(minS)) * cw
+  const ly = v => margin.top + ch - (Math.log10(v) - Math.log10(minOps * 0.5)) / (Math.log10(maxOps * 2) - Math.log10(minOps * 0.5)) * ch
+
+  const ns = 'http://www.w3.org/2000/svg'
+  const svg = document.createElementNS(ns, 'svg')
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`)
+  svg.setAttribute('width', '100%')
+
+  // grid
+  for (let p = Math.floor(Math.log10(minOps * 0.5)); p <= Math.ceil(Math.log10(maxOps * 2)); p++) {
+    const val = 10 ** p, y = ly(val)
+    if (y < margin.top || y > margin.top + ch) continue
+    const line = document.createElementNS(ns, 'line')
+    Object.entries({ x1: margin.left, x2: margin.left + cw, y1: y, y2: y, stroke: '#1e1e2e', 'stroke-dasharray': '4,4' }).forEach(([k, v]) => line.setAttribute(k, String(v)))
+    svg.appendChild(line)
+    const t = document.createElementNS(ns, 'text')
+    Object.entries({ x: margin.left - 8, y: y + 1, 'text-anchor': 'end', 'dominant-baseline': 'middle', fill: '#a0a0b0', 'font-size': 11, 'font-family': "'JetBrains Mono Variable', monospace" }).forEach(([k, v]) => t.setAttribute(k, String(v)))
+    t.textContent = val >= 1e6 ? val / 1e6 + 'M' : val >= 1e3 ? val / 1e3 + 'K' : String(val)
+    svg.appendChild(t)
+  }
+
+  // x axis
+  sizes.forEach(s => {
+    const t = document.createElementNS(ns, 'text')
+    Object.entries({ x: lx(s), y: margin.top + ch + 20, 'text-anchor': 'middle', fill: '#a0a0b0', 'font-size': 11, 'font-family': "'JetBrains Mono Variable', monospace" }).forEach(([k, v]) => t.setAttribute(k, String(v)))
+    t.textContent = s >= 1000 ? s / 1000 + 'K' : String(s)
+    svg.appendChild(t)
+  })
+
+  // series — draw stopcock last so it's on top
+  const libs = Object.keys(seriesData).sort((a, b) => (a === 'stopcock') - (b === 'stopcock'))
+
+  libs.forEach(lib => {
+    const pts = seriesData[lib].sort((a, b) => a.size - b.size)
+    const hl = lib === 'stopcock'
+    const color = colorMap[lib] ?? barDefault
+
+    if (hl && pts.length > 1) {
+      const poly = document.createElementNS(ns, 'polygon')
+      const top = pts.map(p => `${lx(p.size)},${ly(p.ops)}`).join(' ')
+      poly.setAttribute('points', `${top} ${lx(pts.at(-1).size)},${margin.top + ch} ${lx(pts[0].size)},${margin.top + ch}`)
+      poly.setAttribute('fill', 'rgba(0, 229, 160, 0.06)')
+      svg.appendChild(poly)
+    }
+
+    if (pts.length > 1) {
+      const path = document.createElementNS(ns, 'path')
+      path.setAttribute('d', pts.map((p, i) => `${i ? 'L' : 'M'}${lx(p.size)},${ly(p.ops)}`).join(' '))
+      Object.entries({ fill: 'none', stroke: color, 'stroke-width': hl ? 2.5 : 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }).forEach(([k, v]) => path.setAttribute(k, String(v)))
+      svg.appendChild(path)
+    }
+
+    pts.forEach(p => {
+      const c = document.createElementNS(ns, 'circle')
+      Object.entries({ cx: lx(p.size), cy: ly(p.ops), r: hl ? 3.5 : 2, fill: color }).forEach(([k, v]) => c.setAttribute(k, String(v)))
+      svg.appendChild(c)
+    })
+
+    const last = pts.at(-1)
+    if (last) {
+      const t = document.createElementNS(ns, 'text')
+      Object.entries({ x: lx(last.size) + 8, y: ly(last.ops) + 1, 'dominant-baseline': 'middle', fill: color, 'font-size': hl ? 12 : 10, 'font-weight': hl ? 600 : 400, 'font-family': "'Inter Variable', sans-serif" }).forEach(([k, v]) => t.setAttribute(k, String(v)))
+      t.textContent = lib
+      svg.appendChild(t)
+    }
+  })
+
+  el.appendChild(svg)
+</script>

@@ -1,0 +1,20 @@
+---
+import BenchmarkBarChart from './BenchmarkBarChart.astro'
+
+interface Props {
+  category: string
+  arraySize: number
+}
+
+const { category, arraySize } = Astro.props
+---
+
+<div class="bench-panel" data-rt="node">
+  <BenchmarkBarChart {category} {arraySize} runtime="node" />
+</div>
+<div class="bench-panel" data-rt="bun" hidden>
+  <BenchmarkBarChart {category} {arraySize} runtime="bun" />
+</div>
+<div class="bench-panel" data-rt="deno" hidden>
+  <BenchmarkBarChart {category} {arraySize} runtime="deno" />
+</div>

@@ -1,0 +1,54 @@
+---
+title: N (Number)
+description: clamp, sum, mean, percentile. Numeric transforms for pipe
+---
+
+## Aggregation
+
+```ts
+sum(nums: number[]): number
+mean(nums: number[]): number
+median(nums: number[]): number
+variance(nums: number[]): number
+standardDeviation(nums: number[]): number
+min(nums: number[]): number
+max(nums: number[]): number
+minMax(nums: number[]): [number, number]
+```
+
+## Dual
+
+```ts
+percentile(nums: number[], p: number): number
+clamp(value: number, min: number, max: number): number
+dotProduct(a: number[], b: number[]): number
+```
+
+## Predicates
+
+```ts
+isEven(n: number): boolean
+isOdd(n: number): boolean
+```
+
+## Examples
+
+```ts
+import { pipe, A, N } from '@stopcock/fp'
+
+// stats on response times
+const times = [120, 95, 200, 88, 150, 300, 110]
+N.mean(times)               // ~151.9
+N.median(times)             // 120
+N.standardDeviation(times)  // ~68.6
+N.percentile(times, 95)     // 300
+
+// clamp user input
+pipe(userAge, N.clamp(0, 150))
+
+// average score, ignoring zeros
+pipe(scores, A.filter(s => s > 0), N.mean)
+
+// feature vector similarity
+N.dotProduct([1, 0, 1], [0, 1, 1])  // 1
+```

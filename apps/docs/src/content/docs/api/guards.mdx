@@ -1,0 +1,86 @@
+---
+title: G (Guards)
+description: isString, isNumber, isNil, isDeepEqual and more. Runtime type guards with TypeScript predicates
+---
+
+Runtime type checks that narrow the TypeScript type.
+
+## Type checks
+
+```ts
+isString(x: unknown): x is string
+isNumber(x: unknown): x is number
+isBoolean(x: unknown): x is boolean
+isBigInt(x: unknown): x is bigint
+isSymbol(x: unknown): x is symbol
+isFunction(x: unknown): x is Function
+isDate(x: unknown): x is Date
+isError(x: unknown): x is Error
+isPromise(x: unknown): x is Promise<unknown>
+isArray(x: unknown): x is unknown[]
+isObjectType(x: unknown): x is object
+isPlainObject(x: unknown): x is Record<string, unknown>
+```
+
+`isPlainObject` rejects arrays and class instances. `isObjectType` is just a `typeof` check.
+
+## Nullability
+
+```ts
+isNil(x: unknown): x is null | undefined
+isNotNil<T>(x: T | null | undefined): x is T
+isNull(x: unknown): x is null
+isUndefined(x: unknown): x is undefined
+isNullish(x: unknown): x is null | undefined
+isNonNull<T>(x: T | null): x is T
+isNonNullish<T>(x: T | null | undefined): x is T
+isDefined<T>(x: T | undefined): x is T
+```
+
+## Equality
+
+```ts
+isDeepEqual(a: unknown, b: unknown): boolean
+isShallowEqual(a: unknown, b: unknown): boolean
+isStrictEqual(a: unknown, b: unknown): boolean
+```
+
+## Other
+
+```ts
+isEmpty(x: unknown): boolean
+isEmptyish(x: unknown): boolean        // null, undefined, or empty
+isTruthy(x: unknown): boolean
+is<T>(ctor: new (...args: any[]) => T, val: unknown): val is T
+propIs<T>(ctor: new (...args: any[]) => T, prop: string, obj: Record<string, unknown>): boolean
+```
+
+## Examples
+
+```ts
+import { pipe, A, G } from '@stopcock/fp'
+
+// narrow unknown API data
+const data: unknown[] = [1, 'hello', null, { a: 1 }]
+data.filter(G.isNumber)       // [1], typed as number[]
+data.filter(G.isNonNullish)   // [1, 'hello', { a: 1 }]
+
+// validate form field
+if (G.isString(input) && !G.isEmpty(input)) {
+  submit(input)
+}
+
+// filter mixed arrays in pipe
+pipe(
+  rawValues,
+  A.filter(G.isNumber),   // unknown[] → number[]
+  A.filter(n => n > 0),
+)
+
+// deep equality check
+G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] })  // true
+
+// check class instance
+G.is(Date, new Date())  // true
+G.is(Date, '2024-01-01')  // false
+```

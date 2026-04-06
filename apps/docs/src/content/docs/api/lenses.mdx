@@ -1,0 +1,137 @@
+---
+title: Lenses & Optics
+description: Lens, Prism, Traversal, Iso. Immutable nested reads and updates
+---
+
+## Lens
+
+Focus on a single value in an object. Read it, replace it, or transform it. All immutably.
+
+```ts
+type Lens<S, A> = {
+  _tag: 'Lens'
+  get: (s: S) => A
+  set: (s: S, a: A) => S
+}
+```
+
+### Constructors
+
+```ts
+lens<S, A>(get: (s: S) => A, set: (s: S, a: A) => S): Lens<S, A>
+prop<S, K extends keyof S>(key: K): Lens<S, S[K]>
+index<A>(i: number): Lens<A[], A>
+path<S, K1 extends keyof S>(k1: K1): Lens<S, S[K1]>
+path<S, K1, K2>(k1: K1, k2: K2): Lens<S, S[K1][K2]>
+path<S, K1, K2, K3>(k1: K1, k2: K2, k3: K3): Lens<S, S[K1][K2][K3]>
+```
+
+### Operations
+
+All operations are dual (data-first and data-last).
+
+```ts
+view<S, A>(s: S, lens: Lens<S, A>): A
+view<S, A>(lens: Lens<S, A>): (s: S) => A
+
+set<S, A>(s: S, lens: Lens<S, A>, a: A): S
+set<S, A>(lens: Lens<S, A>, a: A): (s: S) => S
+
+over<S, A>(s: S, lens: Lens<S, A>, f: (a: A) => A): S
+over<S, A>(lens: Lens<S, A>, f: (a: A) => A): (s: S) => S
+```
+
+```ts
+import { pipe, prop, path, view, set, over } from '@stopcock/fp'
+
+const nameLens = prop<User, 'name'>('name')
+
+// Data-first
+view(user, nameLens)                          // 'Alice'
+set(user, nameLens, 'Bob')                    // { ...user, name: 'Bob' }
+over(user, nameLens, s => s.toUpperCase())    // { ...user, name: 'ALICE' }
+
+// Data-last (works in pipe)
+pipe(user, view(nameLens))                    // 'Alice'
+pipe(user, set(nameLens, 'Bob'))              // { ...user, name: 'Bob' }
+pipe(user, over(nameLens, s => s.toUpperCase()))
+
+// Nested paths
+const cityLens = path<User, 'address', 'city'>('address', 'city')
+view(user, cityLens)                          // 'Portland'
+set(user, cityLens, 'London')
+```
+
+## Prism
+
+Focus on a value that may not exist (optionals, sum types).
+
+```ts
+type Prism<S, A> = {
+  _tag: 'Prism'
+  getOption: (s: S) => Option<A>
+  set: (s: S, a: A) => S
+}
+```
+
+```ts
+import { somePrism, okPrism, preview, setPrism, overPrism } from '@stopcock/fp'
+
+const p = somePrism<number>()
+preview(optSome(42), p)     // Some(42)
+preview(none, p)            // None
+setPrism(optSome(42), p, 99) // Some(99)
+setPrism(none, p, 99)        // None (unchanged)
+```
+
+## Traversal
+
+Focus on multiple values at once.
+
+```ts
+type Traversal<S, A> = {
+  _tag: 'Traversal'
+  getAll: (s: S) => A[]
+  modify: (s: S, f: (a: A) => A) => S
+}
+```
+
+```ts
+import { each, filtered, toArray, modify } from '@stopcock/fp'
+
+const evens = filtered<number>(n => n % 2 === 0)
+toArray([1, 2, 3, 4], evens)                  // [2, 4]
+modify([1, 2, 3, 4], evens, x => x * 10)      // [1, 20, 3, 40]
+
+const all = each<number>()
+modify([1, 2, 3], all, x => x + 1)            // [2, 3, 4]
+```
+
+## Iso
+
+Lossless bidirectional transformation.
+
+```ts
+type Iso<S, A> = {
+  _tag: 'Iso'
+  get: (s: S) => A
+  reverseGet: (a: A) => S
+}
+```
+
+```ts
+import { iso, reverse } from '@stopcock/fp'
+
+const celsiusToF = iso<number, number>(c => c * 9/5 + 32, f => (f - 32) * 5/9)
+celsiusToF.get(100)          // 212
+celsiusToF.reverseGet(212)   // 100
+reverse(celsiusToF).get(212) // 100
+```
+
+## Composition
+
+```ts
+import { composeLens, composePrism, composeTraversal, composeIso, composeOptics } from '@stopcock/fp'
+```
+
+Each `compose*` function combines two optics of the same kind. `composeOptics` composes any combination. The result type is the weakest optic in the chain: Lens + Prism = Prism, anything + Traversal = Traversal.
