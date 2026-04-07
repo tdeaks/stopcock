@@ -12,7 +12,6 @@
     "@stopcock/fp": "workspace:*"
   },
   "scripts": {
-    "build": "tsup",
-    "test": "vitest run"
+    "build": "tsup"
   }
 }

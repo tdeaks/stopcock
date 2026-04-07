@@ -20,7 +20,6 @@
     "@stopcock/async": { "optional": true }
   },
   "scripts": {
-    "build": "tsup",
-    "test": "vitest run"
+    "build": "tsup"
   }
 }

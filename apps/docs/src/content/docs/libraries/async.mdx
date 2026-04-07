@@ -117,20 +117,16 @@ const fetchAllPages = (baseUrl: string) => {
     flatMap(res => fromPromise(() => res.json())),
   )
 
-  return pipe(
-    of(async () => {
-      const results = []
-      let page = 1
-      while (true) {
-        const data = await fetchPage(page).run()
-        results.push(...data.items)
-        if (!data.hasMore) break
-        page++
-      }
-      return results
-    }),
-    timeout(30000),
+  const go = (page: number, acc: unknown[]): Task<unknown[], unknown> => pipe(
+    fetchPage(page),
+    map(data => ({ items: [...acc, ...data.items], more: data.hasMore })),
+    flatMap(({ items, more }) => pipe(
+      more,
+      B.ifElse(() => go(page + 1, items), () => resolve(items)),
+    )),
   )
+
+  return pipe(go(1, []), timeout(30000))
 }
 ```
 

@@ -1,4 +1,4 @@
-import { view, set as lensSet, over as lensOver, type Lens } from '@stopcock/fp'
+import { view, set as lensSet, type Lens } from '@stopcock/fp'
 import { diff, applyUnsafe, compose, patch as mkPatch, type Patch } from '@stopcock/diff'
 import { compile, buildLens, overlaps } from './compile.js'
 import type { Accessor, Handle, Listener, Middleware, Store, StoreOptions, Unsubscribe } from './types.js'
@@ -114,16 +114,26 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
     }
   }
 
-  // TODO: implement commitDirect — the fast path for set/over
-  // where we already have both the patch AND the precomputed next state.
-  //
-  // This is where the key design decision lives:
-  // - If no middleware, skip applyUnsafe entirely and use `precomputed`.
-  // - If middleware returns the patch unchanged, still use `precomputed`.
-  // - If middleware transforms or rejects the patch, fall back to applyUnsafe.
-  // - During a batch, accumulate the patch and use precomputed state.
-  //
-  // function commitDirect(p: Patch, precomputed: S): void { ... }
+  /** Fast path: we already have the patch and the precomputed next state */
+  function commitDirect(p: Patch, precomputed: S) {
+    if (p.ops.length === 0) return
+    if (batchDepth > 0) {
+      batchPatches.push(p)
+      state = precomputed
+      return
+    }
+    if (mw.length === 0) {
+      const prev = state
+      state = precomputed
+      notify(prev, state, p)
+      return
+    }
+    const final = runMiddleware(p, state)
+    if (!final || final.ops.length === 0) return
+    const prev = state
+    state = final === p ? precomputed : applyUnsafe(prev, final)
+    notify(prev, state, final)
+  }
 
   /** Slow path: used by replace() and update() where we don't have a precomputed state */
   function commitFull(p: Patch) {
@@ -150,11 +160,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
       const { lens, path } = compile(accessor)
       const oldVal = view(state, lens)
       if (oldVal === value) return
-      const p = replacePatch(path, oldVal, value)
-      const precomputed = lensSet(state, lens, value)
-      // TODO: call commitDirect(p, precomputed) once implemented.
-      // For now, fall back to the full path:
-      commitFull(p)
+      commitDirect(replacePatch(path, oldVal, value), lensSet(state, lens, value))
     },
 
     over(accessor: Accessor<S, any>, fn: (a: any) => any) {
@@ -162,10 +168,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
       const oldVal = view(state, lens)
       const newVal = fn(oldVal)
       if (oldVal === newVal) return
-      const p = replacePatch(path, oldVal, newVal)
-      const precomputed = lensSet(state, lens, newVal)
-      // TODO: call commitDirect(p, precomputed) once implemented
-      commitFull(p)
+      commitDirect(replacePatch(path, oldVal, newVal), lensSet(state, lens, newVal))
     },
 
     update(accessorOrFn: any, maybeFn?: any) {
@@ -207,8 +210,10 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
       const prev = batchPrev!
       batchPrev = null
       // compose accumulated patches instead of diffing the whole tree
-      let composed = batchPatches.reduce((a, b) => compose(a, b))
+      const patches = batchPatches
       batchPatches = []
+      if (patches.length === 0) { state = prev; return }
+      let composed = patches.reduce((a, b) => compose(a, b))
       if (composed.ops.length === 0) { state = prev; return }
       const final = runMiddleware(composed, prev)
       if (!final || final.ops.length === 0) { state = prev; return }
@@ -230,17 +235,13 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         set: (value: A) => {
           const oldVal = view(state, lens) as unknown
           if (oldVal === value) return
-          const p = replacePatch(path, oldVal, value)
-          // TODO: call commitDirect(p, lensSet(state, lens, value)) once implemented
-          commitFull(p)
+          commitDirect(replacePatch(path, oldVal, value), lensSet(state, lens, value))
         },
         over: (fn: (a: A) => A) => {
           const oldVal = view(state, lens) as unknown
           const newVal = fn(oldVal as A)
           if (oldVal === newVal) return
-          const p = replacePatch(path, oldVal, newVal)
-          // TODO: call commitDirect(p, lensSet(state, lens, newVal)) once implemented
-          commitFull(p)
+          commitDirect(replacePatch(path, oldVal, newVal), lensSet(state, lens, newVal))
         },
         subscribe: (listener: Listener<A>) => {
           const sub: Sub = { path, lens, listener, idx: 0 }

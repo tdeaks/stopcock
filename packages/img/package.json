@@ -10,7 +10,6 @@
   "files": ["dist"],
   "dependencies": { "@stopcock/la": "workspace:*" },
   "scripts": {
-    "build": "tsup",
-    "test": "vitest run"
+    "build": "tsup"
   }
 }
