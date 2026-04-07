@@ -5,6 +5,7 @@ export { CancelledError, TimeoutError } from './types'
 export {
   of, resolve, reject, fromPromise, fromResult, fromOption, delay, never,
   map, flatMap, tap, mapError, catchError, flatMapError, match,
+  unfold,
   run, runSafe, runWithCancel,
 } from './task'
 

@@ -3,6 +3,7 @@ import { pipe, ok, err, some, none } from '@stopcock/fp'
 import {
   of, resolve, reject, fromPromise, fromResult, fromOption, delay, never,
   map, flatMap, tap, mapError, catchError, flatMapError, match,
+  unfold,
   run, runSafe, runWithCancel,
 } from '../task'
 import { CancelledError } from '../types'
@@ -254,5 +255,42 @@ describe('never', () => {
     const promise = never.run(controller.signal)
     controller.abort()
     await expect(promise).rejects.toBeDefined()
+  })
+})
+
+describe('unfold', () => {
+  it('collects items until step returns undefined', async () => {
+    const task = unfold(
+      (page: number) => resolve(
+        page <= 3 ? [[`page${page}`], page + 1] as [string[], number] : undefined,
+      ),
+      1,
+    )
+    const result = await run(pipe(task, map(pages => pages.flat())))
+    expect(result).toEqual(['page1', 'page2', 'page3'])
+  })
+
+  it('returns empty array when first step returns undefined', async () => {
+    const task = unfold(
+      () => resolve(undefined),
+      0,
+    )
+    expect(await run(task)).toEqual([])
+  })
+
+  it('respects cancellation signal', async () => {
+    let calls = 0
+    const task = unfold(
+      (n: number) => of(async (signal?) => {
+        calls++
+        signal?.throwIfAborted()
+        return [n, n + 1] as [number, number]
+      }),
+      0,
+    )
+    const controller = new AbortController()
+    controller.abort()
+    await expect(task.run(controller.signal)).rejects.toBeDefined()
+    expect(calls).toBeLessThanOrEqual(1)
   })
 })

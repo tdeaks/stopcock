@@ -133,6 +133,22 @@ export const match: {
   },
 }))
 
+// --- Constructors (recursive) ---
+
+export const unfold = <A, B>(f: (seed: B) => Task<[A, B] | [A] | undefined>, seed: B): Task<A[]> => of(async (signal?) => {
+  const results: A[] = []
+  let current = seed
+  while (true) {
+    signal?.throwIfAborted()
+    const step = await f(current).run(signal)
+    if (step === undefined) break
+    results.push(step[0])
+    if (step.length < 2) break
+    current = (step as [A, B])[1]
+  }
+  return results
+})
+
 // --- Terminals ---
 
 export const run = <A, E>(task: Task<A, E>): Promise<A> => task.run()

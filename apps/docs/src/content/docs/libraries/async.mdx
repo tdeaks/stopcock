@@ -118,17 +118,14 @@ const fetchAllPages = (baseUrl: string) => {
   )
 
   return pipe(
-    of(async () => {
-      const results = []
-      let page = 1
-      while (true) {
-        const data = await fetchPage(page).run()
-        results.push(...data.items)
-        if (!data.hasMore) break
-        page++
-      }
-      return results
-    }),
+    unfold(
+      (page: number) => pipe(
+        fetchPage(page),
+        map(data => data.hasMore ? [data.items, page + 1] : [data.items]),
+      ),
+      1,
+    ),
+    map(pages => pages.flat()),
     timeout(30000),
   )
 }
