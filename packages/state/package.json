@@ -6,7 +6,11 @@
   "sideEffects": false,
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./async": { "types": "./dist/async.d.ts", "import": "./dist/async.js" }
+    "./async": { "types": "./dist/async.d.ts", "import": "./dist/async.js" },
+    "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js" },
+    "./svelte": { "types": "./dist/svelte.d.ts", "import": "./dist/svelte.js" },
+    "./vue": { "types": "./dist/vue.d.ts", "import": "./dist/vue.js" },
+    "./persist": { "types": "./dist/persist.d.ts", "import": "./dist/persist.js" }
   },
   "files": ["dist"],
   "dependencies": {
@@ -14,10 +18,16 @@
     "@stopcock/diff": "workspace:*"
   },
   "peerDependencies": {
-    "@stopcock/async": "workspace:*"
+    "@stopcock/async": "workspace:*",
+    "react": ">=18.0.0",
+    "svelte": ">=3.0.0",
+    "vue": ">=3.0.0"
   },
   "peerDependenciesMeta": {
-    "@stopcock/async": { "optional": true }
+    "@stopcock/async": { "optional": true },
+    "react": { "optional": true },
+    "svelte": { "optional": true },
+    "vue": { "optional": true }
   },
   "scripts": {
     "build": "tsup"

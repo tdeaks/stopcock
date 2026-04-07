@@ -251,3 +251,237 @@ describe('destroy', () => {
     expect(listener).not.toHaveBeenCalled()
   })
 })
+
+describe('trie pruning', () => {
+  it('unsubscribing and re-subscribing to same path works correctly', () => {
+    const store = create(initial())
+    const spy = vi.fn()
+    const unsub = store.subscribe(s => s.user.name, spy)
+    unsub()
+    const spy2 = vi.fn()
+    store.subscribe(s => s.user.name, spy2)
+    store.set(s => s.user.name, 'Alice')
+    expect(spy).not.toHaveBeenCalled()
+    expect(spy2).toHaveBeenCalledWith('Alice', 'Tom')
+  })
+
+  it('partial unsub does not prune shared parent', () => {
+    const store = create(initial())
+    const nameSpy = vi.fn()
+    const emailSpy = vi.fn()
+    const nameUnsub = store.subscribe(s => s.user.name, nameSpy)
+    store.subscribe(s => s.user.email, emailSpy)
+    nameUnsub()
+    store.set(s => s.user.email, 'new@test.com')
+    expect(emailSpy).toHaveBeenCalledTimes(1)
+    expect(nameSpy).not.toHaveBeenCalled()
+  })
+
+  it('many subscribe/unsubscribe cycles work correctly', () => {
+    const store = create(initial())
+    for (let i = 0; i < 1000; i++) {
+      const unsub = store.subscribe(s => s.user.name, () => {})
+      unsub()
+    }
+    const spy = vi.fn()
+    store.subscribe(s => s.user.name, spy)
+    store.set(s => s.user.name, 'Alice')
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('re-entrancy', () => {
+  it('subscriber that calls set() during notify fires each listener once', () => {
+    const store = create(initial())
+    const nameListener = vi.fn()
+    store.subscribe(s => s.count, () => {
+      store.set(s => s.user.name, 'Alice')
+    })
+    store.subscribe(s => s.user.name, nameListener)
+    store.set(s => s.count, 1)
+    expect(nameListener).toHaveBeenCalledTimes(1)
+    expect(nameListener).toHaveBeenCalledWith('Alice', 'Tom')
+    expect(store.get(s => s.user.name)).toBe('Alice')
+  })
+
+  it('subscriber that unsubscribes another during notify does not corrupt iteration', () => {
+    const store = create(initial())
+    const spy = vi.fn()
+    let unsub: () => void
+    store.subscribe(s => s.count, () => { unsub() })
+    unsub = store.subscribe(s => s.count, spy)
+    store.set(s => s.count, 1)
+    // spy may or may not fire (depends on iteration order), but no crash
+    expect(store.get(s => s.count)).toBe(1)
+  })
+
+  it('nested re-entrant sets all produce correct final state', () => {
+    const store = create(initial())
+    store.subscribe(s => s.count, (next) => {
+      if (next === 1) store.set(s => s.user.name, 'Alice')
+    })
+    store.subscribe(s => s.user.name, (next) => {
+      if (next === 'Alice') store.set(s => s.user.email, 'alice@test.com')
+    })
+    store.set(s => s.count, 1)
+    expect(store.get(s => s.count)).toBe(1)
+    expect(store.get(s => s.user.name)).toBe('Alice')
+    expect(store.get(s => s.user.email)).toBe('alice@test.com')
+  })
+
+  it('re-entrant set sees updated state via get()', () => {
+    const store = create(initial())
+    let observed: number | undefined
+    store.subscribe(s => s.count, () => {
+      store.set(s => s.user.name, 'Alice')
+      observed = store.get(s => s.count)
+    })
+    store.set(s => s.count, 42)
+    expect(observed).toBe(42)
+  })
+
+  it('re-entrant set during batch notification is queued', () => {
+    const store = create(initial())
+    const emailSpy = vi.fn()
+    store.subscribe(s => s.count, () => {
+      store.set(s => s.user.email, 'new@test.com')
+    })
+    store.subscribe(s => s.user.email, emailSpy)
+    store.batch(() => {
+      store.set(s => s.count, 1)
+      store.set(s => s.user.name, 'Alice')
+    })
+    expect(emailSpy).toHaveBeenCalledTimes(1)
+    expect(store.get(s => s.user.email)).toBe('new@test.com')
+  })
+})
+
+describe('merge', () => {
+  it('applies partial state', () => {
+    const store = create(initial())
+    store.merge({ count: 42 })
+    expect(store.get(s => s.count)).toBe(42)
+    expect(store.get(s => s.user.name)).toBe('Tom') // untouched
+  })
+
+  it('notifies affected subscribers', () => {
+    const store = create(initial())
+    const spy = vi.fn()
+    store.subscribe(s => s.count, spy)
+    store.merge({ count: 5 })
+    expect(spy).toHaveBeenCalledWith(5, 0)
+  })
+
+  it('does not notify unaffected subscribers', () => {
+    const store = create(initial())
+    const spy = vi.fn()
+    store.subscribe(s => s.user.name, spy)
+    store.merge({ count: 99 })
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('works inside batch', () => {
+    const store = create(initial())
+    const spy = vi.fn()
+    store.subscribe(spy)
+    store.batch(() => {
+      store.merge({ count: 1 })
+      store.merge({ count: 2 })
+    })
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(store.get(s => s.count)).toBe(2)
+  })
+
+  it('middleware can reject merge', () => {
+    const store = create(initial(), { middleware: [() => null] })
+    store.merge({ count: 99 })
+    expect(store.get(s => s.count)).toBe(0)
+  })
+})
+
+describe('array mutations via update', () => {
+  it('splice removes and inserts correctly', () => {
+    const store = create({ items: ['a', 'b', 'c', 'd'] })
+    store.update(s => s.items, draft => { draft.splice(1, 2, 'x') })
+    expect(store.get(s => s.items)).toEqual(['a', 'x', 'd'])
+  })
+
+  it('sort produces correct final state', () => {
+    const store = create({ nums: [3, 1, 4, 1, 5, 9] })
+    store.update(s => s.nums, draft => { draft.sort((a, b) => a - b) })
+    expect(store.get(s => s.nums)).toEqual([1, 1, 3, 4, 5, 9])
+  })
+
+  it('reverse produces correct final state', () => {
+    const store = create({ items: ['a', 'b', 'c'] })
+    store.update(s => s.items, draft => { draft.reverse() })
+    expect(store.get(s => s.items)).toEqual(['c', 'b', 'a'])
+  })
+
+  it('sort + history undo restores original order', () => {
+    const h = history<{ nums: number[] }>()
+    const store = create({ nums: [3, 1, 2] }, { middleware: [h.middleware] })
+    store.update(s => s.nums, draft => { draft.sort((a, b) => a - b) })
+    expect(store.get(s => s.nums)).toEqual([1, 2, 3])
+    h.undo(store)
+    expect(store.get(s => s.nums)).toEqual([3, 1, 2])
+  })
+
+  it('batch with array mutations produces single notification', () => {
+    const store = create({ items: [1, 2, 3] })
+    const spy = vi.fn()
+    store.subscribe(spy)
+    store.batch(() => {
+      store.update(s => s.items, draft => { draft.push(4) })
+      store.update(s => s.items, draft => { draft.push(5) })
+    })
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(store.get(s => s.items)).toEqual([1, 2, 3, 4, 5])
+  })
+})
+
+describe('error isolation', () => {
+
+  it('global subscriber throwing does not break other subscribers', () => {
+    const store = create(initial())
+    const spy = vi.fn()
+    store.subscribe(() => { throw new Error('global boom') })
+    store.subscribe(s => s.count, spy)
+    expect(() => store.set(s => s.count, 1)).toThrow('global boom')
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it('all subscribers fire even when one throws', () => {
+    const store = create(initial())
+    const spy = vi.fn()
+    store.subscribe(s => s.count, () => { throw new Error('boom') })
+    store.subscribe(s => s.count, spy)
+    expect(() => store.set(s => s.count, 1)).toThrow('boom')
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it('first error is rethrown when no onError handler', () => {
+    const store = create(initial())
+    store.subscribe(s => s.count, () => { throw new Error('first') })
+    store.subscribe(s => s.count, () => { throw new Error('second') })
+    expect(() => store.set(s => s.count, 1)).toThrow('first')
+  })
+
+  it('onError receives each error and suppresses rethrow', () => {
+    const errors: unknown[] = []
+    const store = create(initial(), { onError: (e) => errors.push(e) })
+    store.subscribe(s => s.count, () => { throw new Error('a') })
+    store.subscribe(s => s.count, () => { throw new Error('b') })
+    store.set(s => s.count, 1) // should not throw
+    expect(errors).toHaveLength(2)
+    expect((errors[0] as Error).message).toBe('a')
+    expect((errors[1] as Error).message).toBe('b')
+  })
+
+  it('state is committed even when subscriber throws', () => {
+    const store = create(initial())
+    store.subscribe(s => s.count, () => { throw new Error('boom') })
+    try { store.set(s => s.count, 99) } catch {}
+    expect(store.get(s => s.count)).toBe(99)
+  })
+})

@@ -13,8 +13,12 @@ export type Unsubscribe = () => void
  */
 export type Middleware<S> = (patch: Patch, state: S) => Patch | null
 
+export type OnCommit<S> = (patch: Patch, prev: S, next: S) => void
+
 export type StoreOptions<S> = {
   readonly middleware?: Middleware<S>[]
+  readonly onCommit?: OnCommit<S>
+  readonly onError?: (error: unknown) => void
 }
 
 export interface Handle<A> {
@@ -32,6 +36,7 @@ export interface Store<S> {
   update(fn: (draft: S) => void): void
   update<A>(accessor: Accessor<S, A>, fn: (draft: A) => void): void
   replace(next: S): void
+  merge(partial: Partial<S>): void
   batch(fn: () => void): void
   at<A = unknown>(path: readonly (string | number)[]): Handle<A>
   subscribe(listener: Listener<S>): Unsubscribe

@@ -1,6 +1,5 @@
-import { invert, diff, applyUnsafe, type Patch, type Operation } from '@stopcock/diff'
-import { compile } from './compile.js'
-import type { Middleware, Store, Accessor } from './types.js'
+import { invert, applyUnsafe, type Patch, type Operation } from '@stopcock/diff'
+import type { Middleware, Store, StoreOptions, OnCommit } from './types.js'
 
 const OP_COLORS: Record<string, string> = {
   replace: '#6cb6ff',
@@ -62,14 +61,24 @@ export type DevtoolsOptions = {
   debounce?: number
 }
 
-export function devtools<S extends object>(store: Store<S>, options?: string | DevtoolsOptions): Store<S> {
+/**
+ * Returns an `onCommit` callback for use in `StoreOptions`.
+ * Connects to Redux DevTools and receives patches directly from
+ * the store's commit path — no re-diffing.
+ *
+ * Usage:
+ *   const dt = devtools<State>('MyStore')
+ *   const store = create(initial, { onCommit: dt.onCommit })
+ *   // dt.connect(store) to enable time travel
+ */
+export function devtools<S extends object>(options?: string | DevtoolsOptions) {
   const opts = typeof options === 'string' ? { name: options } : options ?? {}
   const ext = typeof window !== 'undefined' && (window as any).__REDUX_DEVTOOLS_EXTENSION__
-  if (!ext) return store
+
+  // no-op if devtools extension isn't present
+  if (!ext) return { onCommit: (() => {}) as OnCommit<S>, connect(_store: Store<S>) {} }
 
   const conn = ext.connect({ name: opts.name ?? 'Store' })
-  conn.init(store.get())
-
   let silent = false
   let pending: { label: string; state: S } | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -82,80 +91,40 @@ export function devtools<S extends object>(store: Store<S>, options?: string | D
     timer = null
   }
 
-  function send(label: string) {
+  function send(label: string, state: S) {
     if (silent) return
     if (debounceMs <= 0) {
-      conn.send({ type: label }, store.get())
+      conn.send({ type: label }, state)
       return
     }
-    pending = { label, state: store.get() }
+    pending = { label, state }
     if (!timer) timer = setTimeout(flush, debounceMs)
   }
 
-  function describeDiff(prev: S, next: S, method: string): string {
-    const patch = diff(prev, next)
-    if (patch.ops.length === 0) return method
-    if (patch.ops.length === 1) return describeOp(patch.ops[0])
-    const grouped = groupOps(patch.ops)
-    if (grouped) return `${method} ${grouped}`
-    return patch.ops.map(describeOp).join('; ')
+  function describePatch(p: Patch): string {
+    if (p.ops.length === 1) return describeOp(p.ops[0])
+    return groupOps(p.ops) ?? p.ops.map(describeOp).join('; ')
   }
 
-  conn.subscribe((msg: any) => {
-    if (msg.type === 'DISPATCH' && msg.state) {
-      const { type } = msg.payload ?? {}
-      if (type === 'JUMP_TO_STATE' || type === 'JUMP_TO_ACTION') {
-        silent = true
-        store.replace(JSON.parse(msg.state))
-        silent = false
+  const onCommit: OnCommit<S> = (patch, _prev, next) => {
+    send(describePatch(patch), next)
+  }
+
+  function connect(store: Store<S>) {
+    conn.init(store.get())
+    conn.subscribe((msg: any) => {
+      if (msg.type === 'DISPATCH' && msg.state) {
+        const { type } = msg.payload ?? {}
+        if (type === 'JUMP_TO_STATE' || type === 'JUMP_TO_ACTION') {
+          silent = true
+          store.replace(JSON.parse(msg.state))
+          silent = false
+        }
       }
-    }
-  })
-
-  return {
-    get: store.get.bind(store),
-    subscribe: store.subscribe.bind(store),
-    destroy() {
-      if (timer) clearTimeout(timer)
-      store.destroy()
-    },
-
-    set(accessor: any, value: any) {
-      const prev = store.get()
-      store.set(accessor, value)
-      const next = store.get()
-      if (next !== prev) send(describeDiff(prev, next, 'set'))
-    },
-
-    over(accessor: any, fn: any) {
-      const prev = store.get()
-      store.over(accessor, fn)
-      const next = store.get()
-      if (next !== prev) send(describeDiff(prev, next, 'over'))
-    },
-
-    update(accessorOrFn: any, maybeFn?: any) {
-      const prev = store.get()
-      if (maybeFn) store.update(accessorOrFn, maybeFn)
-      else store.update(accessorOrFn)
-      const next = store.get()
-      if (next !== prev) send(describeDiff(prev, next, 'update'))
-    },
-
-    replace(next: S) {
-      store.replace(next)
-      send('\u23EA time travel')
-    },
-
-    batch(fn: () => void) {
-      const prev = store.get()
-      store.batch(fn)
-      const next = store.get()
-      if (next !== prev) send(describeDiff(prev, next, 'batch'))
-    },
-
-    at: store.at.bind(store),
+    })
   }
+
+  return { onCommit, connect }
 }
 
 function formatPath(segments: readonly (string | number)[]): string {
@@ -196,6 +165,41 @@ function groupOps(ops: readonly Operation[]): string | null {
     else parts.push(`${key} (${group.length} changes)`)
   }
   return parts.join(', ')
+}
+
+/**
+ * One-liner devtools setup. Returns StoreOptions with onCommit wired up.
+ * After creating the store, call the returned `connect` to enable time travel.
+ *
+ *   const opts = withDevtools<State>('MyStore')
+ *   const store = create(initial, opts)
+ *   opts.connect(store)
+ */
+export function withDevtools<S extends object>(
+  options?: string | DevtoolsOptions,
+  base?: StoreOptions<S>,
+): StoreOptions<S> & { connect: (store: Store<S>) => void } {
+  const dt = devtools<S>(options)
+  const baseOnCommit = base?.onCommit
+  return {
+    ...base,
+    onCommit: baseOnCommit
+      ? (patch, prev, next) => { baseOnCommit(patch, prev, next); dt.onCommit(patch, prev, next) }
+      : dt.onCommit,
+    connect: dt.connect,
+  }
+}
+
+/** Compose multiple middleware into one. Runs left to right, short-circuits on null. */
+export function composeMiddleware<S>(...mws: Middleware<S>[]): Middleware<S> {
+  return (patch, state) => {
+    let current: Patch | null = patch
+    for (let i = 0; i < mws.length; i++) {
+      if (!current) return null
+      current = mws[i](current, state)
+    }
+    return current
+  }
 }
 
 export type HistoryOptions = {

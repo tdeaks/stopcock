@@ -118,4 +118,14 @@ describe('computed', () => {
     expect(calls).toBe(1)
     expect(c.get()).toBe(4)
   })
+
+  it('subscriber throwing does not break other subscribers', () => {
+    const store = create(initial())
+    const c = computed(store, s => s.todos, ts => ts.length)
+    const spy = vi.fn()
+    c.subscribe(() => { throw new Error('boom') })
+    c.subscribe(spy)
+    store.over(s => s.todos, ts => [...ts, { text: 'new', done: false }])
+    expect(spy).toHaveBeenCalledWith(4, 3)
+  })
 })

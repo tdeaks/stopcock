@@ -24,7 +24,9 @@ export function computed<S extends object, A, D>(
     cached = derive(store.get(accessor))
     dirty = false
     if (!eq(prev, cached)) {
-      for (const fn of listeners) fn(cached, prev)
+      for (const fn of listeners) {
+        try { fn(cached, prev) } catch {}
+      }
     }
   })
 

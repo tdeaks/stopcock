@@ -1,5 +1,6 @@
 export { create } from './store.js'
 export { compile, clearCache } from './compile.js'
 export { computed, type Computed } from './computed.js'
-export { logger, history, devtools, type History, type HistoryOptions, type DevtoolsOptions, type LoggerOptions } from './middleware.js'
-export type { Store, Handle, Accessor, Listener, Middleware, StoreOptions, Unsubscribe } from './types.js'
+export { logger, history, devtools, withDevtools, composeMiddleware, type History, type HistoryOptions, type DevtoolsOptions, type LoggerOptions } from './middleware.js'
+export { resource, mutation, type Resource, type Mutation, type ResourceState, type ResourceStatus, type MutationState, type MutationStatus, type Get } from './resource.js'
+export type { Store, Handle, Accessor, Listener, Middleware, StoreOptions, OnCommit, Unsubscribe } from './types.js'

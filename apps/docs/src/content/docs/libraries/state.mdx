@@ -9,7 +9,7 @@ import { Tabs, TabItem, Aside } from '@astrojs/starlight/components'
 bun add @stopcock/state
 ```
 
-A store holds your state. You read and write slices with plain accessor functions like `s => s.user.name`. Subscriptions only fire when the slice you're watching actually changes. Under the hood, every mutation produces a structural diff (via `@stopcock/diff`), so middleware can inspect, transform, or reject changes before they land.
+A store holds your state. You read and write slices with plain accessor functions like `s => s.user.name`. Subscriptions only fire when the slice you're watching actually changes. Every mutation produces a `Patch` (from `@stopcock/diff`), so middleware can inspect, transform, or reject changes before they land.
 
 ```ts
 import { pipe } from '@stopcock/fp'
@@ -34,54 +34,22 @@ This means:
 - TypeScript validates the accessor. If the property doesn't exist, you get a type error.
 - The path is extracted once and reused for reads, writes, and subscription matching.
 
-When you call `set` or `over`, the store applies the lens to produce the next state, then diffs old vs new. The resulting patch tells each subscriber whether its slice was affected. Subscribers whose paths don't overlap with the patch are skipped entirely.
+When you call `set` or `over`, the store constructs a `replace` patch directly from the compiled path. No diffing. The lens produces the next state, and the patch tells each subscriber whether its slice was affected. `update` uses a recording proxy that captures your mutations as patch ops without cloning or diffing. Only `replace()` does a full structural diff, since it swaps the entire state and needs to figure out what changed.
 
-## vs. other state managers
+## Why this over Zustand / Redux / Jotai?
 
-<Tabs>
-  <TabItem label="Zustand">
-    ```ts
-    // Zustand: selectors are great, but mutations use spread
-    const useStore = create((set) => ({
-      user: { name: 'Tom', age: 30 },
-      setName: (name) => set((s) => ({
-        user: { ...s.user, name }
-      })),
-    }))
+Every mutation produces a `Patch`. That's the core difference. The store doesn't just update state and re-run selectors. It knows exactly what changed, as structured operations, and routes those operations through middleware before applying them.
 
-    // stopcock: accessor function, no spread nesting
-    store.set(s => s.user.name, 'Alice')
-    ```
-  </TabItem>
-  <TabItem label="Redux Toolkit">
-    ```ts
-    // Redux Toolkit: slices, reducers, actions, selectors
-    const userSlice = createSlice({
-      name: 'user',
-      initialState: { name: 'Tom' },
-      reducers: {
-        setName: (state, action) => { state.name = action.payload },
-      },
-    })
-    dispatch(userSlice.actions.setName('Alice'))
+For `set` and `over`, the store constructs the patch directly from the accessor path. No diffing. For `update` and `replace`, where you mutate a draft or swap the whole tree, it diffs to figure out what you touched. Either way, middleware sees the same thing: a patch it can inspect, transform, or reject.
 
-    // stopcock: just set the value
-    store.set(s => s.user.name, 'Alice')
-    ```
-  </TabItem>
-  <TabItem label="Jotai">
-    ```ts
-    // Jotai: atoms are great for fine-grained reactivity
-    const nameAtom = atom('Tom')
-    const [name, setName] = useAtom(nameAtom)
+That means undo/redo, logging, devtools, and change rejection aren't bolted-on features. They're just middleware that reads the patch. `history()` records patches and inverts them. `logger()` prints them. `devtools()` sends them to Redux DevTools. You can write your own in a few lines. When there's no middleware, the store skips that step entirely.
 
-    // stopcock: one store, same fine-grained subscriptions
-    // no atom-per-field boilerplate
-    store.subscribe(s => s.user.name, listener)
-    store.set(s => s.user.name, 'Alice')
-    ```
-  </TabItem>
-</Tabs>
+Other things that fall out of this:
+
+- **Subscriptions skip work.** Each subscriber declares a path (`s => s.user.name`). Subscribers are indexed by their root key, so when a patch touches `user`, only subscribers under `user` are checked. The rest aren't iterated at all. Within that set, the store checks path overlap before comparing values. Zustand and Redux re-run every selector on every update. Jotai avoids this with atoms, but you need an atom per value.
+- **No spread nesting.** `store.set(s => s.a.b.c, value)` handles the immutable update for you. No `{ ...state, a: { ...state.a, b: { ...state.b } } }`.
+- **Batching is transactional.** Writes inside a `batch` accumulate patches and compose them at the end into a single notification. If the callback throws, state rolls back to where it was before the batch started.
+- **Patches are data.** You can serialize them, send them over the wire, compose them, rebase concurrent edits. The whole `@stopcock/diff` package is the foundation.
 
 ## Real-world patterns
 
@@ -223,12 +191,14 @@ Making a new change after undo clears the redo stack.
 
 ### devtools
 
-Connects to the Redux DevTools browser extension. Time travel, action tracking, state inspection.
+Connects to the Redux DevTools browser extension via the `onCommit` hook. The store emits the patch it already computed, so devtools sees every change without re-diffing.
 
 ```ts
 import { create, devtools } from '@stopcock/state'
 
-const store = devtools(create(initial), 'MyStore')
+const dt = devtools<State>('MyStore')
+const store = create(initial, { onCommit: dt.onCommit })
+dt.connect(store) // enables time travel
 ```
 
 ---
@@ -238,7 +208,7 @@ const store = devtools(create(initial), 'MyStore')
 ### Store
 
 ```ts
-create<S>(initial: S, options?: StoreOptions<S>): Store<S>
+create<S extends object>(initial: S, options?: StoreOptions<S>): Store<S>
 ```
 
 ```ts
@@ -269,7 +239,7 @@ computed<S, A, D>(
 ): Computed<D>
 ```
 
-Lazy derived state. Caches the result and only re-derives when the source slice changes. Custom equality function gates notifications.
+Derived state. Computes the initial value eagerly, then caches it. Only re-derives when the source slice changes. Custom equality function gates notifications.
 
 ```ts
 interface Computed<D> {
@@ -283,8 +253,8 @@ interface Computed<D> {
 
 ```ts
 logger<S>(options?: { collapsed?: boolean; table?: boolean }): Middleware<S>
-history<S>(): History<S>
-devtools<S>(store: Store<S>, name?: string | { name?: string; debounce?: number }): Store<S>
+history<S>(options?: { maxDepth?: number }): History<S>
+devtools<S>(options?: string | { name?: string; debounce?: number }): { onCommit: OnCommit<S>; connect: (store: Store<S>) => void }
 ```
 
 ### Async
@@ -292,7 +262,7 @@ devtools<S>(store: Store<S>, name?: string | { name?: string; debounce?: number 
 ```ts
 import { asyncAction } from '@stopcock/state/async'
 
-asyncAction<S, A>(store: Store<S>, config: {
+asyncAction<S extends object, A>(store: Store<S>, config: {
   task: { run: (signal?: AbortSignal) => Promise<A> }
   onStart?: (store: Store<S>) => void
   onSuccess: (store: Store<S>, result: A) => void
