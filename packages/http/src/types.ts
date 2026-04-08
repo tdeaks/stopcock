@@ -35,6 +35,7 @@ export type RequestOptions = {
 
 export type RequestOptionsWithBody = RequestOptions & {
   readonly body?: unknown
+  readonly onProgress?: (event: ProgressEvent) => void
 }
 
 export type HttpConfig = {

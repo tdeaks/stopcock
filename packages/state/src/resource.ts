@@ -1,4 +1,4 @@
-import type { Store, Accessor, Unsubscribe } from './types.js'
+import type { Store, Accessor, Handle, Unsubscribe } from './types.js'
 
 // --- Types ---
 
@@ -34,6 +34,10 @@ export interface Get {
   <T>(resource: Resource<T>): T | undefined
 }
 
+export function idle<T>(): ResourceState<T> {
+  return { status: 'idle', data: undefined, error: undefined }
+}
+
 export type ResourceOptions<T> = {
   initialData?: T
   lazy?: boolean
@@ -43,6 +47,7 @@ export type ResourceOptions<T> = {
   refetchOnReconnect?: boolean
   retry?: number
   retryDelay?: number | ((attempt: number) => number)
+  into?: Handle<ResourceState<T>>
   onSuccess?: (data: T) => void
   onError?: (error: unknown) => void
 }
@@ -65,7 +70,7 @@ function isStore(x: unknown): x is Store<any> {
 export function resource<T>(config: { fetch: (signal: AbortSignal) => Promise<T> } & ResourceOptions<T>): Resource<T>
 export function resource<D, T>(config: { deps: (get: Get) => D | null; fetch: (deps: D, signal: AbortSignal) => Promise<T> } & ResourceOptions<T>): Resource<T>
 export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
-  const { deps: depsFn, retry: retryCount = 0, retryDelay = 1000, onSuccess, onError } = config
+  const { deps: depsFn, retry: retryCount = 0, retryDelay = 1000, into, onSuccess, onError } = config
   const fetchFn = config.fetch as (deps: any, signal: AbortSignal) => Promise<T>
 
   let state: ResourceState<T> = config.initialData !== undefined
@@ -90,6 +95,7 @@ export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
     if (destroyed) return
     const prev = state
     state = next
+    into?.set(next)
     guardedNotify(() => {
       for (const fn of listeners) {
         try { fn(state, prev) } catch {}

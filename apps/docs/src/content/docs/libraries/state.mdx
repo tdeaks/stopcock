@@ -257,19 +257,120 @@ history<S>(options?: { maxDepth?: number }): History<S>
 devtools<S>(options?: string | { name?: string; debounce?: number }): { onCommit: OnCommit<S>; connect: (store: Store<S>) => void }
 ```
 
-### Async
+### Resource
+
+Reactive async data fetching. Declares what to fetch and what it depends on. Refetches automatically when dependencies change.
 
 ```ts
-import { asyncAction } from '@stopcock/state/async'
+import { resource, idle } from '@stopcock/state'
 
-asyncAction<S extends object, A>(store: Store<S>, config: {
-  task: { run: (signal?: AbortSignal) => Promise<A> }
-  onStart?: (store: Store<S>) => void
-  onSuccess: (store: Store<S>, result: A) => void
-  onError?: (store: Store<S>, error: unknown) => void
-  onFinally?: (store: Store<S>) => void
-}): { abort(): void; result: Promise<A> }
+// standalone
+const users = resource({
+  fetch: (signal) => fetch('/api/users', { signal }).then(r => r.json()),
+})
+
+// with store deps — refetches when search changes
+const filtered = resource({
+  deps: (get) => ({ q: get(store, s => s.search) }),
+  fetch: ({ q }, signal) => fetch(`/api/users?q=${q}`, { signal }).then(r => r.json()),
+})
+
+// with resource deps — waits for parent to resolve
+const posts = resource({
+  deps: (get) => {
+    const user = get(selectedUser)
+    if (!user) return null  // don't fetch yet
+    return { userId: user.id }
+  },
+  fetch: ({ userId }, signal) => fetch(`/api/posts?userId=${userId}`, { signal }).then(r => r.json()),
+})
 ```
+
+`deps` returns `null` to pause fetching. When the dependency that caused `null` changes, `deps` re-runs. No `enabled` flag needed.
+
+Rapid dependency changes are coalesced via microtask. The resource aborts in-flight requests on dep change and uses a generation counter to discard stale responses.
+
+```ts
+resource({
+  fetch: (signal) => fetchUsers(signal),
+  initialData: [],           // skip loading state on first render
+  lazy: true,                // don't fetch until first subscriber
+  staleTime: 30_000,         // skip refetch if data is fresh
+  refetchInterval: 60_000,   // poll every 60s
+  refetchOnFocus: true,      // refetch when tab becomes visible
+  refetchOnReconnect: true,  // refetch when network reconnects
+  retry: 3,                  // retry failed fetches
+  retryDelay: (n) => Math.min(1000 * 2 ** n, 30_000),
+  into: store.at(['users']), // mirror state into a store slot
+})
+```
+
+```ts
+interface Resource<T> {
+  get(): ResourceState<T>
+  readonly data: T | undefined
+  readonly status: 'idle' | 'loading' | 'ok' | 'error'
+  readonly error: unknown
+  readonly isLoading: boolean
+  readonly isOk: boolean
+  readonly isError: boolean
+  readonly isIdle: boolean
+  refetch(): void
+  abort(): void
+  update(fn: (prev: T | undefined) => T): void
+  subscribe(listener): Unsubscribe
+  destroy(): void
+}
+```
+
+### Mutation
+
+Imperative async writes. Invalidates resources on success. Supports optimistic updates.
+
+```ts
+import { mutation } from '@stopcock/state'
+
+const addUser = mutation({
+  fn: (input: { name: string }, signal) =>
+    fetch('/api/users', { method: 'POST', body: JSON.stringify(input), signal }).then(r => r.json()),
+  invalidates: [users],
+  optimistic: (input) => {
+    users.update(prev => [...(prev ?? []), { ...input, id: 'temp' }])
+  },
+})
+
+await addUser.run({ name: 'Alice' })
+```
+
+On success, all resources in `invalidates` refetch. If `optimistic` is set and the mutation fails, the invalidated resources refetch to revert to server state.
+
+```ts
+interface Mutation<I, O> {
+  run(input: I): Promise<O>
+  get(): MutationState<O>
+  readonly state: MutationState<O>
+  readonly isRunning: boolean
+  readonly error: unknown
+  abort(): void
+  reset(): void
+  subscribe(listener): Unsubscribe
+}
+```
+
+### React
+
+```ts
+import { useStore, useResource, useMutation } from '@stopcock/state/react'
+
+function UserList() {
+  const search = useStore(store, s => s.search)
+  const { data, isLoading, refetch } = useResource(users)
+  const { status, run } = useMutation(addUser)
+  // ...
+}
+```
+
+`useResource` re-renders only when the resource state changes. `useMutation` re-renders on status transitions (idle -> running -> ok/error). Both use `useSyncExternalStore`.
 
 ### Types
 

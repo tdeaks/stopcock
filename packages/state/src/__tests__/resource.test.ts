@@ -439,6 +439,48 @@ describe('mutation (reactivity)', () => {
   })
 })
 
+describe('resource (into store)', () => {
+  it('writes resource state into store handle', async () => {
+    const { idle } = await import('../resource.js')
+    type RS = import('../resource.js').ResourceState<string>
+    const store = create({ data: idle<string>() as RS })
+    const handle = store.at<RS>(['data'])
+
+    const r = resource({
+      fetch: () => delay(5).then(() => 'hello'),
+      into: handle,
+    })
+
+    expect(store.get(s => s.data).status).toBe('loading')
+    await delay(10)
+    expect(store.get(s => s.data).status).toBe('ok')
+    expect(store.get(s => s.data).data).toBe('hello')
+    r.destroy()
+  })
+
+  it('store subscribers see resource state changes', async () => {
+    const { idle } = await import('../resource.js')
+    type RS = import('../resource.js').ResourceState<number>
+    const store = create({ result: idle<number>() as RS })
+    const handle = store.at<RS>(['result'])
+    const spy = vi.fn()
+    store.subscribe(s => s.result, spy)
+
+    const r = resource({
+      fetch: () => delay(5).then(() => 42),
+      into: handle,
+    })
+
+    await delay(10)
+    // should have been notified for loading and ok transitions
+    expect(spy).toHaveBeenCalled()
+    const lastState = spy.mock.calls[spy.mock.calls.length - 1][0] as RS
+    expect(lastState.status).toBe('ok')
+    expect(lastState.data).toBe(42)
+    r.destroy()
+  })
+})
+
 describe('resource + HTTP integration', () => {
   it('resource refetches via HTTP client when store dep changes', async () => {
     const { createClient } = await import('../../../http/src/client')

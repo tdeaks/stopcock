@@ -73,18 +73,52 @@ export function createClient(config: HttpConfig = {}): HttpClient {
     }) as Task<T, HttpError<E>>
   }
 
+  function xhrFetch(
+    resolved: { method: string; url: string; headers: Record<string, string>; body?: BodyInit | null; signal?: AbortSignal },
+    onProgress: (event: ProgressEvent) => void,
+  ): Promise<Response> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open(resolved.method, resolved.url)
+      for (const [k, v] of Object.entries(resolved.headers)) xhr.setRequestHeader(k, v)
+      xhr.upload.onprogress = onProgress
+      xhr.onload = () => {
+        const headers = new Headers()
+        const rawHeaders = xhr.getAllResponseHeaders().trim()
+        if (rawHeaders) {
+          for (const line of rawHeaders.split('\r\n')) {
+            const idx = line.indexOf(': ')
+            if (idx > 0) headers.set(line.slice(0, idx), line.slice(idx + 2))
+          }
+        }
+        resolve(new Response(xhr.response, { status: xhr.status, statusText: xhr.statusText, headers }))
+      }
+      xhr.onerror = () => reject(new TypeError('Network error'))
+      if (resolved.signal) {
+        if (resolved.signal.aborted) { xhr.abort(); reject(new DOMException('Aborted', 'AbortError')); return }
+        resolved.signal.addEventListener('abort', () => { xhr.abort(); reject(new DOMException('Aborted', 'AbortError')) }, { once: true })
+      }
+      xhr.send(resolved.body as XMLHttpRequestBodyInit | null | undefined)
+    })
+  }
+
   async function doFetch<T, E>(
     resolved: { method: string; url: string; headers: Record<string, string>; body?: BodyInit | null; signal?: AbortSignal },
     method: string,
     url: string,
-    options?: RequestOptions,
+    options?: RequestOptions | RequestOptionsWithBody,
   ): Promise<T> {
-    let response = await fetchFn(resolved.url, {
-      method: resolved.method,
-      headers: resolved.headers,
-      body: resolved.body,
-      signal: resolved.signal,
-    })
+    const onProgress = options && 'onProgress' in options ? (options as RequestOptionsWithBody).onProgress : undefined
+    const useXhr = onProgress && resolved.body && typeof XMLHttpRequest !== 'undefined'
+
+    let response = useXhr
+      ? await xhrFetch(resolved, onProgress!)
+      : await fetchFn(resolved.url, {
+          method: resolved.method,
+          headers: resolved.headers,
+          body: resolved.body,
+          signal: resolved.signal,
+        })
 
     if (config.onResponse) {
       const modified = config.onResponse(response)

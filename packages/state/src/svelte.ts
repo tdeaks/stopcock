@@ -1,4 +1,5 @@
 import type { Store, Accessor } from './types.js'
+import type { Resource, ResourceState, Mutation, MutationState } from './resource.js'
 
 type SvelteReadable<T> = { subscribe: (fn: (value: T) => void) => () => void }
 
@@ -26,6 +27,24 @@ export function readable<S extends object>(store: Store<S>): SvelteReadable<S> {
     subscribe(fn: (value: S) => void) {
       fn(store.get())
       return store.subscribe((next) => fn(next))
+    },
+  }
+}
+
+export function resourceStore<T>(r: Resource<T>): SvelteReadable<ResourceState<T>> {
+  return {
+    subscribe(fn: (value: ResourceState<T>) => void) {
+      fn(r.get())
+      return r.subscribe((next) => fn(next))
+    },
+  }
+}
+
+export function mutationStore<I, O>(m: Mutation<I, O>): SvelteReadable<MutationState<O>> {
+  return {
+    subscribe(fn: (value: MutationState<O>) => void) {
+      fn(m.get())
+      return m.subscribe((next) => fn(next))
     },
   }
 }
