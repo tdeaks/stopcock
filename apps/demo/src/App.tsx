@@ -119,7 +119,7 @@ function UserDetail() {
       </h3>
 
       {isLoading && !posts && <div style={{ color: '#888' }}>Loading posts...</div>}
-      {error && <div style={{ color: '#f85149' }}>Failed to load posts</div>}
+      {error ? <div style={{ color: '#f85149' }}>Failed to load posts</div> : null}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {posts?.map(post => (
