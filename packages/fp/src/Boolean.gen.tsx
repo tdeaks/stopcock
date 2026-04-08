@@ -1,4 +1,5 @@
 /* TypeScript file generated from Boolean.res by genType. */
+// @ts-nocheck
 
 /* eslint-disable */
 /* tslint:disable */

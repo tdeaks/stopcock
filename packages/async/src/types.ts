@@ -5,7 +5,11 @@ export class CancelledError extends Error {
 
 export class TimeoutError extends Error {
   readonly _tag = 'TimeoutError' as const
-  constructor(readonly ms: number) { super(`Task timed out after ${ms}ms`) }
+  readonly ms: number
+  constructor(ms: number) {
+    super(`Task timed out after ${ms}ms`)
+    this.ms = ms
+  }
 }
 
 export type BackoffStrategy = 'constant' | 'linear' | 'exponential'

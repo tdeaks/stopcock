@@ -47,7 +47,6 @@ function takeSorted(arr: any[], k: number, cmp: (a: any, b: any) => number): any
 
 const isTagged = (fn: any): boolean => typeof fn._op === 'number' && fn._op > 0
 
-type Step = { op: number; fn: any; args?: any[] }
 type CompiledRunner = (source: any[], fns: any[], a1s: any[]) => any
 
 const compiledCache = new Map<number, CompiledRunner>()
@@ -55,12 +54,6 @@ const compiledCache = new Map<number, CompiledRunner>()
 // CSP check — can we use new Function()?
 let canJIT = true
 try { new Function('return 1')() } catch { canJIT = false }
-
-function getOpsKey(ops: number[], len: number): number {
-  let key = 0
-  for (let i = 0; i < len; i++) key = key * 16 + ops[i]
-  return key
-}
 
 // Callback opcode for introspection — 0 means "no opcode, call the function"
 function callbackOp(fn: any): number {

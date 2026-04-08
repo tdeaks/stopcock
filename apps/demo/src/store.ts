@@ -58,7 +58,7 @@ users.subscribe(() => {
   // (computed is bound to store.search, so we trigger it indirectly)
 })
 
-export const userPosts = resource({
+export const userPosts = resource<{ userId: number }, Post[]>({
   deps: (get) => {
     const id = get(store, s => s.selectedUserId)
     if (id === null) return null

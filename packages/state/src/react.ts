@@ -28,6 +28,10 @@ export function useStore<S extends object, A>(store: Store<S>, accessor?: Access
 }
 
 export function useResource<T>(resource: Resource<T>): ResourceState<T> & {
+  isLoading: boolean
+  isOk: boolean
+  isError: boolean
+  isIdle: boolean
   refetch: () => void
   abort: () => void
 } {
@@ -38,6 +42,10 @@ export function useResource<T>(resource: Resource<T>): ResourceState<T> & {
 
   return {
     ...state,
+    isLoading: state.status === 'loading',
+    isOk: state.status === 'ok',
+    isError: state.status === 'error',
+    isIdle: state.status === 'idle',
     refetch: resource.refetch,
     abort: resource.abort,
   }

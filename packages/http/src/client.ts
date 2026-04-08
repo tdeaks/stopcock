@@ -1,4 +1,4 @@
-import { of, run, retry as asyncRetry, timeout as asyncTimeout, type Task } from '@stopcock/async'
+import { of, retry as asyncRetry, timeout as asyncTimeout, type Task } from '@stopcock/async'
 import { pipe } from '@stopcock/fp'
 import type { HttpClient, HttpConfig, RequestOptions, RequestOptionsWithBody, TaskMethods } from './types.js'
 import { HttpError } from './error.js'
@@ -59,7 +59,7 @@ export function createClient(config: HttpConfig = {}): HttpClient {
         const existing = dedup.get(key)
         if (existing) return existing as Promise<T>
 
-        const promise = doFetch<T, E>(resolved, method, url, options)
+        const promise = doFetch<T>(resolved, method, url, options)
         dedup.set(key, promise)
         return promise
       }
@@ -69,7 +69,7 @@ export function createClient(config: HttpConfig = {}): HttpClient {
         dedup.invalidate(url)
       }
 
-      return doFetch<T, E>(resolved, method, url, options)
+      return doFetch<T>(resolved, method, url, options)
     }) as Task<T, HttpError<E>>
   }
 
@@ -102,7 +102,7 @@ export function createClient(config: HttpConfig = {}): HttpClient {
     })
   }
 
-  async function doFetch<T, E>(
+  async function doFetch<T>(
     resolved: { method: string; url: string; headers: Record<string, string>; body?: BodyInit | null; signal?: AbortSignal },
     method: string,
     url: string,

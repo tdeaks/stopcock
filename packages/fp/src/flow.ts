@@ -1,4 +1,4 @@
-import { fuse, tryCompileFlow } from './fuse'
+import { tryCompileFlow } from './fuse'
 
 export function flow<A, B>(f1: (a: A) => B): (a: A) => B
 export function flow<A, B, C>(f1: (a: A) => B, f2: (b: B) => C): (a: A) => C

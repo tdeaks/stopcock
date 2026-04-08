@@ -1,8 +1,8 @@
-import { view, set as lensSet, type Lens } from '@stopcock/fp'
+import { type Lens } from '@stopcock/fp'
 import { diff, applyUnsafe, compose, patch as mkPatch, type Patch } from '@stopcock/diff'
 import { compile, buildLens } from './compile.js'
 import { recordMutations } from './draft.js'
-import type { Accessor, Handle, Listener, Middleware, Store, StoreOptions, Unsubscribe } from './types.js'
+import type { Accessor, Handle, Listener, Store, StoreOptions, Unsubscribe } from './types.js'
 import type { Path } from '@stopcock/diff'
 
 type Sub = {

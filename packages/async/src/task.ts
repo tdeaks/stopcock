@@ -4,6 +4,7 @@ import { abortableDelay } from './internals'
 export type Task<A, E = never> = {
   readonly _tag: 'Task'
   readonly run: (signal?: AbortSignal) => Promise<A>
+  readonly _E?: E
 }
 
 // --- Constructors ---

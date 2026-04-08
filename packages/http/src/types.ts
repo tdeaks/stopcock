@@ -60,11 +60,11 @@ export type TaskMethods = {
 }
 
 export interface HttpClient {
-  get<T, E = unknown>(path: string, options?: RequestOptions): Promise<T>
-  post<T, E = unknown>(path: string, options?: RequestOptionsWithBody): Promise<T>
-  put<T, E = unknown>(path: string, options?: RequestOptionsWithBody): Promise<T>
-  patch<T, E = unknown>(path: string, options?: RequestOptionsWithBody): Promise<T>
-  delete<T = void, E = unknown>(path: string, options?: RequestOptions): Promise<T>
+  get<T>(path: string, options?: RequestOptions): Promise<T>
+  post<T>(path: string, options?: RequestOptionsWithBody): Promise<T>
+  put<T>(path: string, options?: RequestOptionsWithBody): Promise<T>
+  patch<T>(path: string, options?: RequestOptionsWithBody): Promise<T>
+  delete<T = void>(path: string, options?: RequestOptions): Promise<T>
   head(path: string, options?: RequestOptions): Promise<Headers>
   readonly task: TaskMethods
   with(overrides: Partial<HttpConfig>): HttpClient
