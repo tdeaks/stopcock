@@ -42,19 +42,19 @@ type Dict<A> = Record<string, A>
 import { sum as nSum, min as nMin, max as nMax } from './number'
 
 // Arity 1 — tagged for fusion engine (accessor ops get inlined in pipe)
-export const head: <A>(arr: A[]) => A | undefined = /* @__PURE__ */ (() => {
+export const head: <A>(arr: readonly A[]) => A | undefined = /* @__PURE__ */ (() => {
   const _f: any = function head(a: any) { return a[0] }
   _f._op = 30
   return _f
 })()
 
-export const last: <A>(arr: A[]) => A | undefined = /* @__PURE__ */ (() => {
+export const last: <A>(arr: readonly A[]) => A | undefined = /* @__PURE__ */ (() => {
   const _f: any = function last(a: any) { return a[a.length - 1] }
   _f._op = 31
   return _f
 })()
 
-export const tail: <A>(arr: A[]) => A[] = /* @__PURE__ */ (() => {
+export const tail: <A>(arr: readonly A[]) => A[] = /* @__PURE__ */ (() => {
   const _f: any = function tail(arr: any) { if (arr.length <= 1) {
     return [];
   } else {
@@ -64,7 +64,7 @@ export const tail: <A>(arr: A[]) => A[] = /* @__PURE__ */ (() => {
   return _f
 })()
 
-export const init: <A>(arr: A[]) => A[] = /* @__PURE__ */ (() => {
+export const init: <A>(arr: readonly A[]) => A[] = /* @__PURE__ */ (() => {
   const _f: any = function init(arr: any) { let len = arr.length;
   if (len <= 1) {
     return [];
@@ -75,19 +75,19 @@ export const init: <A>(arr: A[]) => A[] = /* @__PURE__ */ (() => {
   return _f
 })()
 
-export const isEmpty: <A>(arr: A[]) => boolean = /* @__PURE__ */ (() => {
+export const isEmpty: <A>(arr: readonly A[]) => boolean = /* @__PURE__ */ (() => {
   const _f: any = function isEmpty(arr: any) { return arr.length === 0; }
   _f._op = 33
   return _f
 })()
 
-export const length: <A>(arr: A[]) => number = /* @__PURE__ */ (() => {
+export const length: <A>(arr: readonly A[]) => number = /* @__PURE__ */ (() => {
   const _f: any = function length(arr: any) { return arr.length; }
   _f._op = 32
   return _f
 })()
 
-export const reverse: <A>(arr: A[]) => A[] = /* @__PURE__ */ (() => {
+export const reverse: <A>(arr: readonly A[]) => A[] = /* @__PURE__ */ (() => {
   const _f: any = function reverse(arr: any) { var len = arr.length, out = new Array(len);
     for (var i = 0; i < len; i++) out[i] = arr[len - 1 - i];
     return out; }
@@ -95,7 +95,7 @@ export const reverse: <A>(arr: A[]) => A[] = /* @__PURE__ */ (() => {
   return _f
 })()
 
-export const flatten: <A>(arr: A[][]) => A[] = /* @__PURE__ */ (() => {
+export const flatten: <A>(arr: readonly A[][]) => A[] = /* @__PURE__ */ (() => {
   const _f: any = function flatten(arr: any) { var out = [];
     for (var i = 0; i < arr.length; i++) {
       var inner = arr[i];
@@ -106,7 +106,7 @@ export const flatten: <A>(arr: A[][]) => A[] = /* @__PURE__ */ (() => {
   return _f
 })()
 
-export const first: <A>(arr: A[]) => A | undefined = /* @__PURE__ */ (() => {
+export const first: <A>(arr: readonly A[]) => A | undefined = /* @__PURE__ */ (() => {
   const _f: any = function first(a: any) { return a[0] }
   _f._op = 30
   return _f
@@ -115,13 +115,13 @@ export const first: <A>(arr: A[]) => A | undefined = /* @__PURE__ */ (() => {
 
 // Standalone generators (no dual)
 export const range: (start: number, end: number) => number[] = RS.range
-export const sort: (arr: number[]) => number[] = /* @__PURE__ */ (() => {
+export const sort: (arr: readonly number[]) => number[] = /* @__PURE__ */ (() => {
   const _f: any = RS.sort
   _f._op = 21
   return _f
 })()
 
-export const transpose: <A>(arr: A[][]) => A[][] = RS.transpose
+export const transpose: <A>(arr: readonly A[][]) => A[][] = RS.transpose
 
 export const repeat: {
   <A>(value: A, n: number): A[]
@@ -175,8 +175,8 @@ export const unfold: {
 
 
 export const xprod: {
-  <A, B>(a: A[], b: B[]): [A, B][]
-  <B>(b: B[]): <A>(a: A[]) => [A, B][]
+  <A, B>(a: readonly A[], b: readonly B[]): [A, B][]
+  <B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
 } = function xprod() {
   if (arguments.length >= 2) {
     const a = arguments[0], b = arguments[1]
@@ -223,8 +223,8 @@ export const xprod: {
 
 // Arity 2
 export const map: {
-  <A, B>(arr: A[], f: (a: A) => B): B[]
-  <A, B>(f: (a: A) => B): (arr: A[]) => B[]
+  <A, B>(arr: readonly A[], f: (a: A) => B): B[]
+  <A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
 } = function map() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -246,8 +246,8 @@ export const map: {
 
 
 export const mapWithIndex: {
-  <A, B>(arr: A[], f: (a: A, i: number) => B): B[]
-  <A, B>(f: (a: A, i: number) => B): (arr: A[]) => B[]
+  <A, B>(arr: readonly A[], f: (a: A, i: number) => B): B[]
+  <A, B>(f: (a: A, i: number) => B): (arr: readonly A[]) => B[]
 } = function mapWithIndex() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -267,8 +267,8 @@ export const mapWithIndex: {
 
 
 export const filter: {
-  <A>(arr: A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: A[]) => A[]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
 } = function filter() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -296,8 +296,8 @@ export const filter: {
 
 
 export const filterWithIndex: {
-  <A>(arr: A[], pred: (a: A, i: number) => boolean): A[]
-  <A>(pred: (a: A, i: number) => boolean): (arr: A[]) => A[]
+  <A>(arr: readonly A[], pred: (a: A, i: number) => boolean): A[]
+  <A>(pred: (a: A, i: number) => boolean): (arr: readonly A[]) => A[]
 } = function filterWithIndex() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -323,8 +323,8 @@ export const filterWithIndex: {
 
 
 export const flatMap: {
-  <A, B>(arr: A[], f: (a: A) => B[]): B[]
-  <A, B>(f: (a: A) => B[]): (arr: A[]) => B[]
+  <A, B>(arr: readonly A[], f: (a: A) => B[]): B[]
+  <A, B>(f: (a: A) => B[]): (arr: readonly A[]) => B[]
 } = function flatMap() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -352,8 +352,8 @@ export const flatMap: {
 
 
 export const find: {
-  <A>(arr: A[], pred: (a: A) => boolean): A | undefined
-  <A>(pred: (a: A) => boolean): (arr: A[]) => A | undefined
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
 } = function find() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -379,8 +379,8 @@ export const find: {
 
 
 export const findIndex: {
-  <A>(arr: A[], pred: (a: A) => boolean): number | undefined
-  <A>(pred: (a: A) => boolean): (arr: A[]) => number | undefined
+  <A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
 } = function findIndex() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -404,8 +404,8 @@ export const findIndex: {
 
 
 export const every: {
-  <A>(arr: A[], pred: (a: A) => boolean): boolean
-  <A>(pred: (a: A) => boolean): (arr: A[]) => boolean
+  <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
 } = function every() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -429,8 +429,8 @@ export const every: {
 
 
 export const some: {
-  <A>(arr: A[], pred: (a: A) => boolean): boolean
-  <A>(pred: (a: A) => boolean): (arr: A[]) => boolean
+  <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
 } = function some() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -454,8 +454,8 @@ export const some: {
 
 
 export const includes: {
-  <A>(arr: A[], value: A): boolean
-  <A>(value: A): (arr: A[]) => boolean
+  <A>(arr: readonly A[], value: A): boolean
+  <A>(value: A): (arr: readonly A[]) => boolean
 } = function includes() {
   if (arguments.length >= 2) {
     const arr = arguments[0], value = arguments[1]
@@ -471,8 +471,8 @@ export const includes: {
 
 
 export const sortBy: {
-  <A>(arr: A[], cmp: (a: A, b: A) => number): A[]
-  <A>(cmp: (a: A, b: A) => number): (arr: A[]) => A[]
+  <A>(arr: readonly A[], cmp: (a: A, b: A) => number): A[]
+  <A>(cmp: (a: A, b: A) => number): (arr: readonly A[]) => A[]
 } = function sortBy() {
   if (arguments.length >= 2) return RS.sortBy(arguments[0], arguments[1])
   const _a0 = arguments[0]
@@ -484,8 +484,8 @@ export const sortBy: {
 
 
 export const takeSortedBy: {
-  <A>(arr: A[], k: number, cmp: (a: A, b: A) => number): A[]
-  <A>(k: number, cmp: (a: A, b: A) => number): (arr: A[]) => A[]
+  <A>(arr: readonly A[], k: number, cmp: (a: A, b: A) => number): A[]
+  <A>(k: number, cmp: (a: A, b: A) => number): (arr: readonly A[]) => A[]
 } = function takeSortedBy() {
   if (arguments.length >= 3) {
     const arr = arguments[0], k = arguments[1], cmp = arguments[2]
@@ -544,7 +544,7 @@ export const takeSortedBy: {
 } as any
 
 
-export const uniq: <A>(arr: A[]) => A[] = /* @__PURE__ */ (() => {
+export const uniq: <A>(arr: readonly A[]) => A[] = /* @__PURE__ */ (() => {
   const _f: any = function uniq(arr: any) { return Array.from(new Set(arr)) }
   _f._op = 38
   return _f
@@ -552,8 +552,8 @@ export const uniq: <A>(arr: A[]) => A[] = /* @__PURE__ */ (() => {
 
 
 export const uniqBy: {
-  <A, B>(arr: A[], f: (a: A) => B): A[]
-  <A, B>(f: (a: A) => B): (arr: A[]) => A[]
+  <A, B>(arr: readonly A[], f: (a: A) => B): A[]
+  <A, B>(f: (a: A) => B): (arr: readonly A[]) => A[]
 } = function uniqBy() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -579,8 +579,8 @@ export const uniqBy: {
 
 
 export const take: {
-  <A>(arr: A[], n: number): A[]
-  (n: number): <A>(arr: A[]) => A[]
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
 } = function take() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -608,8 +608,8 @@ export const take: {
 
 
 export const drop: {
-  <A>(arr: A[], n: number): A[]
-  (n: number): <A>(arr: A[]) => A[]
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
 } = function drop() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -641,8 +641,8 @@ export const drop: {
 
 
 export const takeWhile: {
-  <A>(arr: A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: A[]) => A[]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
 } = function takeWhile() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -670,8 +670,8 @@ export const takeWhile: {
 
 
 export const dropWhile: {
-  <A>(arr: A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: A[]) => A[]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
 } = function dropWhile() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -695,8 +695,8 @@ export const dropWhile: {
 
 
 export const chunk: {
-  <A>(arr: A[], n: number): A[][]
-  (n: number): <A>(arr: A[]) => A[][]
+  <A>(arr: readonly A[], n: number): A[][]
+  (n: number): <A>(arr: readonly A[]) => A[][]
 } = function chunk() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -726,8 +726,8 @@ export const chunk: {
 
 
 export const slidingWindow: {
-  <A>(arr: A[], n: number): A[][]
-  (n: number): <A>(arr: A[]) => A[][]
+  <A>(arr: readonly A[], n: number): A[][]
+  (n: number): <A>(arr: readonly A[]) => A[][]
 } = function slidingWindow() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -769,8 +769,8 @@ export const slidingWindow: {
 
 
 export const intersperse: {
-  <A>(arr: A[], sep: A): A[]
-  <A>(sep: A): (arr: A[]) => A[]
+  <A>(arr: readonly A[], sep: A): A[]
+  <A>(sep: A): (arr: readonly A[]) => A[]
 } = function intersperse() {
   if (arguments.length >= 2) {
     const arr = arguments[0], sep = arguments[1]
@@ -810,8 +810,8 @@ export const intersperse: {
 
 
 export const forEach: {
-  <A>(arr: A[], f: (a: A) => void): void
-  <A>(f: (a: A) => void): (arr: A[]) => void
+  <A>(arr: readonly A[], f: (a: A) => void): void
+  <A>(f: (a: A) => void): (arr: readonly A[]) => void
 } = function forEach() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -829,8 +829,8 @@ export const forEach: {
 
 
 export const forEachWithIndex: {
-  <A>(arr: A[], f: (a: A, i: number) => void): void
-  <A>(f: (a: A, i: number) => void): (arr: A[]) => void
+  <A>(arr: readonly A[], f: (a: A, i: number) => void): void
+  <A>(f: (a: A, i: number) => void): (arr: readonly A[]) => void
 } = function forEachWithIndex() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -846,8 +846,8 @@ export const forEachWithIndex: {
 
 
 export const groupBy: {
-  <A>(arr: A[], f: (a: A) => string): Dict<A[]>
-  <A>(f: (a: A) => string): (arr: A[]) => Dict<A[]>
+  <A>(arr: readonly A[], f: (a: A) => string): Dict<A[]>
+  <A>(f: (a: A) => string): (arr: readonly A[]) => Dict<A[]>
 } = function groupBy() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -877,8 +877,8 @@ export const groupBy: {
 
 
 export const partition: {
-  <A>(arr: A[], pred: (a: A) => boolean): [A[], A[]]
-  <A>(pred: (a: A) => boolean): (arr: A[]) => [A[], A[]]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): [A[], A[]]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => [A[], A[]]
 } = function partition() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -934,8 +934,8 @@ export const partition: {
 
 
 export const aperture: {
-  <A>(arr: A[], n: number): A[][]
-  (n: number): <A>(arr: A[]) => A[][]
+  <A>(arr: readonly A[], n: number): A[][]
+  (n: number): <A>(arr: readonly A[]) => A[][]
 } = function aperture() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -977,8 +977,8 @@ export const aperture: {
 
 
 export const intersection: {
-  <A>(a: A[], b: A[]): A[]
-  <A>(b: A[]): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
 } = function intersection() {
   if (arguments.length >= 2) {
     const a = arguments[0], b = arguments[1]
@@ -996,8 +996,8 @@ export const intersection: {
 
 
 export const union: {
-  <A>(a: A[], b: A[]): A[]
-  <A>(b: A[]): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
 } = function union() {
   if (arguments.length >= 2) {
     const a = arguments[0], b = arguments[1]
@@ -1039,8 +1039,8 @@ export const union: {
 
 
 export const difference: {
-  <A>(a: A[], b: A[]): A[]
-  <A>(b: A[]): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
 } = function difference() {
   if (arguments.length >= 2) {
     const a = arguments[0], b = arguments[1]
@@ -1084,8 +1084,8 @@ export const difference: {
 
 
 export const symmetricDifference: {
-  <A>(a: A[], b: A[]): A[]
-  <A>(b: A[]): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
 } = function symmetricDifference() {
   if (arguments.length >= 2) {
     const a = arguments[0], b = arguments[1]
@@ -1134,8 +1134,8 @@ export const symmetricDifference: {
 
 // Arity 3
 export const reduce: {
-  <A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
-  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: A[]) => B
+  <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
+  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
 } = function reduce() {
   if (arguments.length >= 3) {
     const arr = arguments[0], f = arguments[1], init = arguments[2]
@@ -1158,8 +1158,8 @@ export const reduce: {
 
 
 export const reduceRight: {
-  <A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
-  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: A[]) => B
+  <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
+  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
 } = function reduceRight() {
   if (arguments.length >= 3) {
     const arr = arguments[0], f = arguments[1], init = arguments[2]
@@ -1179,8 +1179,8 @@ export const reduceRight: {
 
 
 export const zip: {
-  <A, B>(a: A[], b: B[]): [A, B][]
-  <B>(b: B[]): <A>(a: A[]) => [A, B][]
+  <A, B>(a: readonly A[], b: readonly B[]): [A, B][]
+  <B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
 } = function zip() {
   if (arguments.length >= 2) {
     const a = arguments[0], b = arguments[1]
@@ -1202,8 +1202,8 @@ export const zip: {
 
 
 export const zipWith: {
-  <A, B, C>(a: A[], b: B[], f: (a: A, b: B) => C): C[]
-  <A, B, C>(b: B[], f: (a: A, b: B) => C): (a: A[]) => C[]
+  <A, B, C>(a: readonly A[], b: readonly B[], f: (a: A, b: B) => C): C[]
+  <A, B, C>(b: readonly B[], f: (a: A, b: B) => C): (a: readonly A[]) => C[]
 } = function zipWith() {
   if (arguments.length >= 3) {
     const a = arguments[0], b = arguments[1], f = arguments[2]
@@ -1233,8 +1233,8 @@ export const zipWith: {
 
 
 export const adjust: {
-  <A>(arr: A[], index: number, f: (a: A) => A): A[]
-  <A>(index: number, f: (a: A) => A): (arr: A[]) => A[]
+  <A>(arr: readonly A[], index: number, f: (a: A) => A): A[]
+  <A>(index: number, f: (a: A) => A): (arr: readonly A[]) => A[]
 } = function adjust() {
   if (arguments.length >= 3) {
     const arr = arguments[0], index = arguments[1], f = arguments[2]
@@ -1262,8 +1262,8 @@ export const adjust: {
 
 
 export const update: {
-  <A>(arr: A[], index: number, value: A): A[]
-  <A>(index: number, value: A): (arr: A[]) => A[]
+  <A>(arr: readonly A[], index: number, value: A): A[]
+  <A>(index: number, value: A): (arr: readonly A[]) => A[]
 } = function update() {
   if (arguments.length >= 3) {
     const arr = arguments[0], index = arguments[1], value = arguments[2]
@@ -1287,8 +1287,8 @@ export const update: {
 
 
 export const insert: {
-  <A>(arr: A[], index: number, value: A): A[]
-  <A>(index: number, value: A): (arr: A[]) => A[]
+  <A>(arr: readonly A[], index: number, value: A): A[]
+  <A>(index: number, value: A): (arr: readonly A[]) => A[]
 } = function insert() {
   if (arguments.length >= 3) {
     const arr = arguments[0], index = arguments[1], value = arguments[2]
@@ -1328,8 +1328,8 @@ export const insert: {
 
 
 export const remove: {
-  <A>(arr: A[], index: number, count: number): A[]
-  (index: number, count: number): <A>(arr: A[]) => A[]
+  <A>(arr: readonly A[], index: number, count: number): A[]
+  (index: number, count: number): <A>(arr: readonly A[]) => A[]
 } = function remove() {
   if (arguments.length >= 3) {
     const arr = arguments[0], index = arguments[1], count = arguments[2]
@@ -1371,8 +1371,8 @@ export const remove: {
 
 
 export const scan: {
-  <A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B[]
-  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: A[]) => B[]
+  <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B[]
+  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B[]
 } = function scan() {
   if (arguments.length >= 3) {
     const arr = arguments[0], f = arguments[1], init = arguments[2]
@@ -1404,19 +1404,19 @@ export const scan: {
 
 
 // Array numeric terminals (JIT-inlined in pipe)
-export const sum: (arr: number[]) => number = /* @__PURE__ */ (() => {
+export const sum: (arr: readonly number[]) => number = /* @__PURE__ */ (() => {
   const _f: any = nSum
   _f._op = 41
   return _f
 })()
 
-export const min: (arr: number[]) => number = /* @__PURE__ */ (() => {
+export const min: (arr: readonly number[]) => number = /* @__PURE__ */ (() => {
   const _f: any = nMin
   _f._op = 42
   return _f
 })()
 
-export const max: (arr: number[]) => number = /* @__PURE__ */ (() => {
+export const max: (arr: readonly number[]) => number = /* @__PURE__ */ (() => {
   const _f: any = nMax
   _f._op = 43
   return _f
@@ -1424,13 +1424,13 @@ export const max: (arr: number[]) => number = /* @__PURE__ */ (() => {
 
 
 // Sort specializations (JIT-inlined in pipe)
-export const sortAsc: (arr: number[]) => number[] = /* @__PURE__ */ (() => {
+export const sortAsc: (arr: readonly number[]) => number[] = /* @__PURE__ */ (() => {
   const _f: any = function sortAsc(arr: any) { return [...arr].sort((a, b) => a - b) }
   _f._op = 90
   return _f
 })()
 
-export const sortDesc: (arr: number[]) => number[] = /* @__PURE__ */ (() => {
+export const sortDesc: (arr: readonly number[]) => number[] = /* @__PURE__ */ (() => {
   const _f: any = function sortDesc(arr: any) { return [...arr].sort((a, b) => b - a) }
   _f._op = 91
   return _f
@@ -1440,21 +1440,21 @@ export const sortDesc: (arr: number[]) => number[] = /* @__PURE__ */ (() => {
 // --- Newly exposed from Array.res ---
 
 // Arity 1
-export const dropRepeats: <A>(arr: A[]) => A[] = /* @__PURE__ */ (() => {
+export const dropRepeats: <A>(arr: readonly A[]) => A[] = /* @__PURE__ */ (() => {
   const _f: any = RS.dropRepeats
   _f._op = 0
   return _f
 })()
 
-export const shuffle: <A>(arr: A[]) => A[] = RS.shuffle
-export const only: <A>(arr: A[]) => A | undefined = RS.only
-export const mergeAll: <A>(arr: A[]) => A = RS.mergeAll
-export const unnest: <A>(arr: A[][]) => A[] = RS.unnest
+export const shuffle: <A>(arr: readonly A[]) => A[] = RS.shuffle
+export const only: <A>(arr: readonly A[]) => A | undefined = RS.only
+export const mergeAll: <A>(arr: readonly A[]) => A = RS.mergeAll
+export const unnest: <A>(arr: readonly A[][]) => A[] = RS.unnest
 
 // Arity 2 — fuseable
 export const reject: {
-  <A>(arr: A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: A[]) => A[]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
 } = function reject() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -1476,8 +1476,8 @@ export const reject: {
 
 
 export const none: {
-  <A>(arr: A[], pred: (a: A) => boolean): boolean
-  <A>(pred: (a: A) => boolean): (arr: A[]) => boolean
+  <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
 } = function none() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -1497,8 +1497,8 @@ export const none: {
 
 
 export const count: {
-  <A>(arr: A[], pred: (a: A) => boolean): number
-  <A>(pred: (a: A) => boolean): (arr: A[]) => number
+  <A>(arr: readonly A[], pred: (a: A) => boolean): number
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number
 } = function count() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -1531,8 +1531,8 @@ export const count: {
 
 // Arity 2 — non-fuseable
 export const append: {
-  <A>(arr: A[], value: A): A[]
-  <A>(value: A): (arr: A[]) => A[]
+  <A>(arr: readonly A[], value: A): A[]
+  <A>(value: A): (arr: readonly A[]) => A[]
 } = function append() {
   if (arguments.length >= 2) {
     const arr = arguments[0], value = arguments[1]
@@ -1560,8 +1560,8 @@ export const append: {
 
 
 export const prepend: {
-  <A>(arr: A[], value: A): A[]
-  <A>(value: A): (arr: A[]) => A[]
+  <A>(arr: readonly A[], value: A): A[]
+  <A>(value: A): (arr: readonly A[]) => A[]
 } = function prepend() {
   if (arguments.length >= 2) {
     const arr = arguments[0], value = arguments[1]
@@ -1589,8 +1589,8 @@ export const prepend: {
 
 
 export const concat: {
-  <A>(a: A[], b: A[]): A[]
-  <A>(b: A[]): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
 } = function concat() {
   if (arguments.length >= 2) {
     const a = arguments[0], b = arguments[1]
@@ -1606,8 +1606,8 @@ export const concat: {
 
 
 export const nth: {
-  <A>(arr: A[], index: number): A | undefined
-  (index: number): <A>(arr: A[]) => A | undefined
+  <A>(arr: readonly A[], index: number): A | undefined
+  (index: number): <A>(arr: readonly A[]) => A | undefined
 } = function nth() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -1625,8 +1625,8 @@ export const nth: {
 
 
 export const indexOf: {
-  <A>(arr: A[], value: A): number | undefined
-  <A>(value: A): (arr: A[]) => number | undefined
+  <A>(arr: readonly A[], value: A): number | undefined
+  <A>(value: A): (arr: readonly A[]) => number | undefined
 } = function indexOf() {
   if (arguments.length >= 2) {
     const arr = arguments[0], val = arguments[1]
@@ -1644,8 +1644,8 @@ export const indexOf: {
 
 
 export const lastIndexOf: {
-  <A>(arr: A[], value: A): number | undefined
-  <A>(value: A): (arr: A[]) => number | undefined
+  <A>(arr: readonly A[], value: A): number | undefined
+  <A>(value: A): (arr: readonly A[]) => number | undefined
 } = function lastIndexOf() {
   if (arguments.length >= 2) {
     const arr = arguments[0], val = arguments[1]
@@ -1663,8 +1663,8 @@ export const lastIndexOf: {
 
 
 export const findLast: {
-  <A>(arr: A[], pred: (a: A) => boolean): A | undefined
-  <A>(pred: (a: A) => boolean): (arr: A[]) => A | undefined
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
 } = function findLast() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -1682,8 +1682,8 @@ export const findLast: {
 
 
 export const findLastIndex: {
-  <A>(arr: A[], pred: (a: A) => boolean): number | undefined
-  <A>(pred: (a: A) => boolean): (arr: A[]) => number | undefined
+  <A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
 } = function findLastIndex() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -1701,8 +1701,8 @@ export const findLastIndex: {
 
 
 export const without: {
-  <A>(arr: A[], values: A[]): A[]
-  <A>(values: A[]): (arr: A[]) => A[]
+  <A>(arr: readonly A[], values: readonly A[]): A[]
+  <A>(values: readonly A[]): (arr: readonly A[]) => A[]
 } = function without() {
   if (arguments.length >= 2) {
     const arr = arguments[0], values = arguments[1]
@@ -1734,8 +1734,8 @@ export const without: {
 
 
 export const pluck: {
-  <A, B>(arr: A[], key: string): B[]
-  (key: string): <A, B>(arr: A[]) => B[]
+  <A, B>(arr: readonly A[], key: string): B[]
+  (key: string): <A, B>(arr: readonly A[]) => B[]
 } = function pluck() {
   if (arguments.length >= 2) {
     const arr = arguments[0], key = arguments[1]
@@ -1751,8 +1751,8 @@ export const pluck: {
 
 
 export const dropRepeatsBy: {
-  <A, B>(arr: A[], f: (a: A) => B): A[]
-  <A, B>(f: (a: A) => B): (arr: A[]) => A[]
+  <A, B>(arr: readonly A[], f: (a: A) => B): A[]
+  <A, B>(f: (a: A) => B): (arr: readonly A[]) => A[]
 } = function dropRepeatsBy() {
   if (arguments.length >= 2) return RS.dropRepeatsBy(arguments[0], arguments[1])
   const _a0 = arguments[0]
@@ -1762,8 +1762,8 @@ export const dropRepeatsBy: {
 
 
 export const dropRepeatsWith: {
-  <A>(arr: A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(eq: (a: A, b: A) => boolean): (arr: A[]) => A[]
+  <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(eq: (a: A, b: A) => boolean): (arr: readonly A[]) => A[]
 } = function dropRepeatsWith() {
   if (arguments.length >= 2) {
     const arr = arguments[0], eq = arguments[1]
@@ -1801,8 +1801,8 @@ export const dropRepeatsWith: {
 
 
 export const dropLast: {
-  <A>(arr: A[], n: number): A[]
-  (n: number): <A>(arr: A[]) => A[]
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
 } = function dropLast() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -1842,8 +1842,8 @@ export const dropLast: {
 
 
 export const dropLastWhile: {
-  <A>(arr: A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: A[]) => A[]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
 } = function dropLastWhile() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -1891,8 +1891,8 @@ export const dropLastWhile: {
 
 
 export const takeLast: {
-  <A>(arr: A[], n: number): A[]
-  (n: number): <A>(arr: A[]) => A[]
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
 } = function takeLast() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -1932,8 +1932,8 @@ export const takeLast: {
 
 
 export const takeLastWhile: {
-  <A>(arr: A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: A[]) => A[]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
 } = function takeLastWhile() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -1983,8 +1983,8 @@ export const takeLastWhile: {
 
 
 export const splitAt: {
-  <A>(arr: A[], index: number): [A[], A[]]
-  (index: number): <A>(arr: A[]) => [A[], A[]]
+  <A>(arr: readonly A[], index: number): [A[], A[]]
+  (index: number): <A>(arr: readonly A[]) => [A[], A[]]
 } = function splitAt() {
   if (arguments.length >= 2) {
     const arr = arguments[0], index = arguments[1]
@@ -2002,8 +2002,8 @@ export const splitAt: {
 
 
 export const splitWhen: {
-  <A>(arr: A[], pred: (a: A) => boolean): [A[], A[]]
-  <A>(pred: (a: A) => boolean): (arr: A[]) => [A[], A[]]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): [A[], A[]]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => [A[], A[]]
 } = function splitWhen() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -2039,8 +2039,8 @@ export const splitWhen: {
 
 
 export const splitWhenever: {
-  <A>(arr: A[], pred: (a: A) => boolean): A[][]
-  <A>(pred: (a: A) => boolean): (arr: A[]) => A[][]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[][]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[][]
 } = function splitWhenever() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -2088,8 +2088,8 @@ export const splitWhenever: {
 
 
 export const join: {
-  (arr: string[], sep: string): string
-  (sep: string): (arr: string[]) => string
+  (arr: readonly string[], sep: string): string
+  (sep: string): (arr: readonly string[]) => string
 } = function join() {
   if (arguments.length >= 2) {
     const arr = arguments[0], sep = arguments[1]
@@ -2105,8 +2105,8 @@ export const join: {
 
 
 export const uniqWith: {
-  <A>(arr: A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(eq: (a: A, b: A) => boolean): (arr: A[]) => A[]
+  <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(eq: (a: A, b: A) => boolean): (arr: readonly A[]) => A[]
 } = function uniqWith() {
   if (arguments.length >= 2) {
     const arr = arguments[0], eq = arguments[1]
@@ -2152,8 +2152,8 @@ export const uniqWith: {
 
 
 export const groupWith: {
-  <A>(arr: A[], eq: (a: A, b: A) => boolean): A[][]
-  <A>(eq: (a: A, b: A) => boolean): (arr: A[]) => A[][]
+  <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[][]
+  <A>(eq: (a: A, b: A) => boolean): (arr: readonly A[]) => A[][]
 } = function groupWith() {
   if (arguments.length >= 2) {
     const arr = arguments[0], eq = arguments[1]
@@ -2201,8 +2201,8 @@ export const groupWith: {
 
 
 export const indexBy: {
-  <A>(arr: A[], f: (a: A) => string): Dict<A>
-  <A>(f: (a: A) => string): (arr: A[]) => Dict<A>
+  <A>(arr: readonly A[], f: (a: A) => string): Dict<A>
+  <A>(f: (a: A) => string): (arr: readonly A[]) => Dict<A>
 } = function indexBy() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -2230,8 +2230,8 @@ export const indexBy: {
 
 
 export const collectBy: {
-  <A>(arr: A[], f: (a: A) => string): A[][]
-  <A>(f: (a: A) => string): (arr: A[]) => A[][]
+  <A>(arr: readonly A[], f: (a: A) => string): A[][]
+  <A>(f: (a: A) => string): (arr: readonly A[]) => A[][]
 } = function collectBy() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -2295,8 +2295,8 @@ export const collectBy: {
 
 
 export const sample: {
-  <A>(arr: A[], n: number): A[]
-  (n: number): <A>(arr: A[]) => A[]
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
 } = function sample() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -2312,8 +2312,8 @@ export const sample: {
 
 
 export const hasAtLeast: {
-  <A>(arr: A[], n: number): boolean
-  (n: number): <A>(arr: A[]) => boolean
+  <A>(arr: readonly A[], n: number): boolean
+  (n: number): <A>(arr: readonly A[]) => boolean
 } = function hasAtLeast() {
   if (arguments.length >= 2) {
     const arr = arguments[0], n = arguments[1]
@@ -2329,8 +2329,8 @@ export const hasAtLeast: {
 
 
 export const meanBy: {
-  <A>(arr: A[], f: (a: A) => number): number
-  <A>(f: (a: A) => number): (arr: A[]) => number
+  <A>(arr: readonly A[], f: (a: A) => number): number
+  <A>(f: (a: A) => number): (arr: readonly A[]) => number
 } = function meanBy() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -2362,8 +2362,8 @@ export const meanBy: {
 
 
 export const sumBy: {
-  <A>(arr: A[], f: (a: A) => number): number
-  <A>(f: (a: A) => number): (arr: A[]) => number
+  <A>(arr: readonly A[], f: (a: A) => number): number
+  <A>(f: (a: A) => number): (arr: readonly A[]) => number
 } = function sumBy() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -2389,8 +2389,8 @@ export const sumBy: {
 
 
 export const mapToObj: {
-  <A, B>(arr: A[], f: (a: A) => [string, B]): Dict<B>
-  <A, B>(f: (a: A) => [string, B]): (arr: A[]) => Dict<B>
+  <A, B>(arr: readonly A[], f: (a: A) => [string, B]): Dict<B>
+  <A, B>(f: (a: A) => [string, B]): (arr: readonly A[]) => Dict<B>
 } = function mapToObj() {
   if (arguments.length >= 2) {
     const arr = arguments[0], f = arguments[1]
@@ -2418,8 +2418,8 @@ export const mapToObj: {
 
 
 export const zipObj: {
-  <A>(keys: string[], values: A[]): Dict<A>
-  <A>(values: A[]): (keys: string[]) => Dict<A>
+  <A>(keys: readonly string[], values: readonly A[]): Dict<A>
+  <A>(values: readonly A[]): (keys: readonly string[]) => Dict<A>
 } = function zipObj() {
   if (arguments.length >= 2) {
     const keys = arguments[0], values = arguments[1]
@@ -2449,8 +2449,8 @@ export const zipObj: {
 
 
 export const groupByProp: {
-  <A>(arr: A[], prop: string): Dict<A[]>
-  (prop: string): <A>(arr: A[]) => Dict<A[]>
+  <A>(arr: readonly A[], prop: string): Dict<A[]>
+  (prop: string): <A>(arr: readonly A[]) => Dict<A[]>
 } = function groupByProp() {
   if (arguments.length >= 2) {
     const arr = arguments[0], prop = arguments[1]
@@ -2466,8 +2466,8 @@ export const groupByProp: {
 
 
 export const arrayStartsWith: {
-  <A>(arr: A[], prefix: A[]): boolean
-  <A>(prefix: A[]): (arr: A[]) => boolean
+  <A>(arr: readonly A[], prefix: readonly A[]): boolean
+  <A>(prefix: readonly A[]): (arr: readonly A[]) => boolean
 } = function arrayStartsWith() {
   if (arguments.length >= 2) return RS.arrayStartsWith(arguments[0], arguments[1])
   const _a0 = arguments[0]
@@ -2477,8 +2477,8 @@ export const arrayStartsWith: {
 
 
 export const arrayEndsWith: {
-  <A>(arr: A[], suffix: A[]): boolean
-  <A>(suffix: A[]): (arr: A[]) => boolean
+  <A>(arr: readonly A[], suffix: readonly A[]): boolean
+  <A>(suffix: readonly A[]): (arr: readonly A[]) => boolean
 } = function arrayEndsWith() {
   if (arguments.length >= 2) return RS.arrayEndsWith(arguments[0], arguments[1])
   const _a0 = arguments[0]
@@ -2487,16 +2487,16 @@ export const arrayEndsWith: {
 } as any
 
 
-export const sortedIndex: (arr: number[], value: number) => number = RS.sortedIndex
+export const sortedIndex: (arr: readonly number[], value: number) => number = RS.sortedIndex
 
-export const sortedLastIndex: (arr: number[], value: number) => number = RS.sortedLastIndex
+export const sortedLastIndex: (arr: readonly number[], value: number) => number = RS.sortedLastIndex
 
 export const pair: <A, B>(a: A, b: B) => [A, B] = RS.pair
 
 // Arity 3
 export const withoutBy: {
-  <A>(arr: A[], values: A[], f: (a: A) => string): A[]
-  <A>(values: A[], f: (a: A) => string): (arr: A[]) => A[]
+  <A>(arr: readonly A[], values: readonly A[], f: (a: A) => string): A[]
+  <A>(values: readonly A[], f: (a: A) => string): (arr: readonly A[]) => A[]
 } = function withoutBy() {
   if (arguments.length >= 3) {
     const arr = arguments[0], values = arguments[1], f = arguments[2]
@@ -2534,8 +2534,8 @@ export const withoutBy: {
 
 
 export const slice: {
-  <A>(arr: A[], start: number, end: number): A[]
-  (start: number, end: number): <A>(arr: A[]) => A[]
+  <A>(arr: readonly A[], start: number, end: number): A[]
+  (start: number, end: number): <A>(arr: readonly A[]) => A[]
 } = function slice() {
   if (arguments.length >= 3) {
     const arr = arguments[0], start = arguments[1], end_ = arguments[2]
@@ -2589,8 +2589,8 @@ export const slice: {
 
 
 export const swap: {
-  <A>(arr: A[], i: number, j: number): A[]
-  (i: number, j: number): <A>(arr: A[]) => A[]
+  <A>(arr: readonly A[], i: number, j: number): A[]
+  (i: number, j: number): <A>(arr: readonly A[]) => A[]
 } = function swap() {
   if (arguments.length >= 3) {
     const arr = arguments[0], i = arguments[1], j = arguments[2]
@@ -2620,8 +2620,8 @@ export const swap: {
 
 
 export const insertAll: {
-  <A>(arr: A[], index: number, values: A[]): A[]
-  <A>(index: number, values: A[]): (arr: A[]) => A[]
+  <A>(arr: readonly A[], index: number, values: readonly A[]): A[]
+  <A>(index: number, values: readonly A[]): (arr: readonly A[]) => A[]
 } = function insertAll() {
   if (arguments.length >= 3) {
     const arr = arguments[0], index = arguments[1], values = arguments[2]
@@ -2667,8 +2667,8 @@ export const insertAll: {
 
 
 export const unionBy: {
-  <A>(a: A[], b: A[], f: (a: A) => string): A[]
-  <A>(b: A[], f: (a: A) => string): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
+  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
 } = function unionBy() {
   if (arguments.length >= 3) {
     const a = arguments[0], b = arguments[1], f = arguments[2]
@@ -2720,8 +2720,8 @@ export const unionBy: {
 
 
 export const unionWith: {
-  <A>(a: A[], b: A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(b: A[], eq: (a: A, b: A) => boolean): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(b: readonly A[], eq: (a: A, b: A) => boolean): (a: readonly A[]) => A[]
 } = function unionWith() {
   if (arguments.length >= 3) {
     const a = arguments[0], b = arguments[1], eq = arguments[2]
@@ -2779,8 +2779,8 @@ export const unionWith: {
 
 
 export const intersectionBy: {
-  <A>(a: A[], b: A[], f: (a: A) => string): A[]
-  <A>(b: A[], f: (a: A) => string): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
+  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
 } = function intersectionBy() {
   if (arguments.length >= 3) {
     const a = arguments[0], b = arguments[1], f = arguments[2]
@@ -2824,8 +2824,8 @@ export const intersectionBy: {
 
 
 export const differenceBy: {
-  <A>(a: A[], b: A[], f: (a: A) => string): A[]
-  <A>(b: A[], f: (a: A) => string): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
+  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
 } = function differenceBy() {
   if (arguments.length >= 3) {
     const a = arguments[0], b = arguments[1], f = arguments[2]
@@ -2869,8 +2869,8 @@ export const differenceBy: {
 
 
 export const differenceWith: {
-  <A>(a: A[], b: A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(b: A[], eq: (a: A, b: A) => boolean): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(b: readonly A[], eq: (a: A, b: A) => boolean): (a: readonly A[]) => A[]
 } = function differenceWith() {
   if (arguments.length >= 3) {
     const a = arguments[0], b = arguments[1], eq = arguments[2]
@@ -2916,8 +2916,8 @@ export const differenceWith: {
 
 
 export const symmetricDifferenceBy: {
-  <A>(a: A[], b: A[], f: (a: A) => string): A[]
-  <A>(b: A[], f: (a: A) => string): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
+  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
 } = function symmetricDifferenceBy() {
   if (arguments.length >= 3) {
     const a = arguments[0], b = arguments[1], f = arguments[2]
@@ -2985,8 +2985,8 @@ export const symmetricDifferenceBy: {
 
 
 export const symmetricDifferenceWith: {
-  <A>(a: A[], b: A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(b: A[], eq: (a: A, b: A) => boolean): (a: A[]) => A[]
+  <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(b: readonly A[], eq: (a: A, b: A) => boolean): (a: readonly A[]) => A[]
 } = function symmetricDifferenceWith() {
   if (arguments.length >= 3) {
     const a = arguments[0], b = arguments[1], eq = arguments[2]
@@ -3060,8 +3060,8 @@ export const symmetricDifferenceWith: {
 
 
 export const sortedIndexBy: {
-  <A>(arr: A[], value: A, f: (a: A) => number): number
-  <A>(value: A, f: (a: A) => number): (arr: A[]) => number
+  <A>(arr: readonly A[], value: A, f: (a: A) => number): number
+  <A>(value: A, f: (a: A) => number): (arr: readonly A[]) => number
 } = function sortedIndexBy() {
   if (arguments.length >= 3) {
     const arr = arguments[0], value = arguments[1], f = arguments[2]
@@ -3099,8 +3099,8 @@ export const sortedIndexBy: {
 
 
 export const sortedIndexWith: {
-  <A>(arr: A[], pred: (a: A) => boolean): number
-  <A>(pred: (a: A) => boolean): (arr: A[]) => number
+  <A>(arr: readonly A[], pred: (a: A) => boolean): number
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number
 } = function sortedIndexWith() {
   if (arguments.length >= 2) {
     const arr = arguments[0], pred = arguments[1]
@@ -3136,8 +3136,8 @@ export const sortedIndexWith: {
 
 
 export const sortedLastIndexBy: {
-  <A>(arr: A[], value: A, f: (a: A) => number): number
-  <A>(value: A, f: (a: A) => number): (arr: A[]) => number
+  <A>(arr: readonly A[], value: A, f: (a: A) => number): number
+  <A>(value: A, f: (a: A) => number): (arr: readonly A[]) => number
 } = function sortedLastIndexBy() {
   if (arguments.length >= 3) {
     const arr = arguments[0], value = arguments[1], f = arguments[2]
@@ -3175,8 +3175,8 @@ export const sortedLastIndexBy: {
 
 
 export const mapAccum: {
-  <A, B, C>(arr: A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
-  <A, B, C>(f: (acc: B, a: A) => [B, C], init: B): (arr: A[]) => [B, C[]]
+  <A, B, C>(arr: readonly A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
+  <A, B, C>(f: (acc: B, a: A) => [B, C], init: B): (arr: readonly A[]) => [B, C[]]
 } = function mapAccum() {
   if (arguments.length >= 3) {
     const arr = arguments[0], f = arguments[1], init = arguments[2]
@@ -3214,8 +3214,8 @@ export const mapAccum: {
 
 
 export const mapAccumRight: {
-  <A, B, C>(arr: A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
-  <A, B, C>(f: (acc: B, a: A) => [B, C], init: B): (arr: A[]) => [B, C[]]
+  <A, B, C>(arr: readonly A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
+  <A, B, C>(f: (acc: B, a: A) => [B, C], init: B): (arr: readonly A[]) => [B, C[]]
 } = function mapAccumRight() {
   if (arguments.length >= 3) {
     const arr = arguments[0], f = arguments[1], init = arguments[2]
@@ -3256,8 +3256,8 @@ export const mapAccumRight: {
 
 // Arity 4
 export const reduceBy: {
-  <A, B>(arr: A[], keyFn: (a: A) => string, reducer: (acc: B, a: A) => B, init: B): Dict<B>
-  <A, B>(keyFn: (a: A) => string, reducer: (acc: B, a: A) => B, init: B): (arr: A[]) => Dict<B>
+  <A, B>(arr: readonly A[], keyFn: (a: A) => string, reducer: (acc: B, a: A) => B, init: B): Dict<B>
+  <A, B>(keyFn: (a: A) => string, reducer: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => Dict<B>
 } = function reduceBy() {
   if (arguments.length >= 4) return RS.reduceBy(arguments[0], arguments[1], arguments[2], arguments[3])
   const _a0 = arguments[0]; const _a1 = arguments[1]; const _a2 = arguments[2]
@@ -3267,8 +3267,8 @@ export const reduceBy: {
 
 
 export const reduceWhile: {
-  <A, B>(arr: A[], pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B): B
-  <A, B>(pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B): (arr: A[]) => B
+  <A, B>(arr: readonly A[], pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B): B
+  <A, B>(pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
 } = function reduceWhile() {
   if (arguments.length >= 4) {
     const arr = arguments[0], pred = arguments[1], f = arguments[2], init = arguments[3]
@@ -3310,8 +3310,8 @@ export const reduceWhile: {
 
 
 export const splice: {
-  <A>(arr: A[], start: number, deleteCount: number, items: A[]): A[]
-  <A>(start: number, deleteCount: number, items: A[]): (arr: A[]) => A[]
+  <A>(arr: readonly A[], start: number, deleteCount: number, items: readonly A[]): A[]
+  <A>(start: number, deleteCount: number, items: readonly A[]): (arr: readonly A[]) => A[]
 } = function splice() {
   if (arguments.length >= 4) {
     const arr = arguments[0], start = arguments[1], deleteCount = arguments[2], items = arguments[3]
