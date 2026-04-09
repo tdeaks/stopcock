@@ -1,39 +1,55 @@
 import { describe, it, expect, afterAll } from 'vitest'
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { createClient } from '../client.js'
 import { HttpError } from '../error.js'
 
 let attempts = 0
 
-const server = Bun.serve({
-  port: 0,
-  fetch(req) {
-    const url = new URL(req.url)
-    if (url.pathname === '/json') return Response.json({ ok: true })
-    if (url.pathname === '/text') return new Response('hello', { headers: { 'content-type': 'text/plain' } })
-    if (url.pathname === '/echo') {
-      return req.json().then((body: unknown) => Response.json(body))
-    }
-    if (url.pathname === '/error') return Response.json({ code: 'BAD', message: 'invalid' }, { status: 422 })
-    if (url.pathname === '/slow') {
-      return new Promise(r => setTimeout(() => r(Response.json({ slow: true })), 2000))
-    }
-    if (url.pathname === '/fail-then-ok') {
-      attempts++
-      if (attempts < 3) return Response.json({ error: 'down' }, { status: 500 })
-      return Response.json({ attempt: attempts })
-    }
-    if (url.pathname === '/headers') {
-      const auth = req.headers.get('authorization') ?? 'none'
-      return Response.json({ auth })
-    }
-    if (url.pathname === '/empty') return new Response(null, { status: 204 })
-    return new Response('Not found', { status: 404 })
-  },
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve) => {
+    let data = ''
+    req.on('data', (chunk: Buffer) => { data += chunk })
+    req.on('end', () => resolve(data))
+  })
+}
+
+function json(res: ServerResponse, data: unknown, status = 200) {
+  res.writeHead(status, { 'content-type': 'application/json' })
+  res.end(JSON.stringify(data))
+}
+
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url!, `http://localhost`)
+  if (url.pathname === '/json') return json(res, { ok: true })
+  if (url.pathname === '/text') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('hello') }
+  if (url.pathname === '/echo') {
+    const body = await readBody(req)
+    return json(res, JSON.parse(body))
+  }
+  if (url.pathname === '/error') return json(res, { code: 'BAD', message: 'invalid' }, 422)
+  if (url.pathname === '/slow') {
+    return setTimeout(() => json(res, { slow: true }), 2000)
+  }
+  if (url.pathname === '/fail-then-ok') {
+    attempts++
+    if (attempts < 3) return json(res, { error: 'down' }, 500)
+    return json(res, { attempt: attempts })
+  }
+  if (url.pathname === '/headers') {
+    const auth = req.headers['authorization'] ?? 'none'
+    return json(res, { auth })
+  }
+  if (url.pathname === '/empty') { res.writeHead(204); return res.end() }
+  res.writeHead(404); res.end('Not found')
 })
 
-afterAll(() => server.stop())
+const port = await new Promise<number>((resolve) => {
+  server.listen(0, () => resolve((server.address() as { port: number }).port))
+})
 
-const baseUrl = `http://localhost:${server.port}`
+afterAll(() => server.close())
+
+const baseUrl = `http://localhost:${port}`
 const api = createClient({ baseUrl })
 
 describe('real HTTP integration', () => {
