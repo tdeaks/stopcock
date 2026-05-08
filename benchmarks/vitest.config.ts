@@ -10,11 +10,7 @@ export default defineConfig({
     alias: {
       '@stopcock/fp': src('fp'),
       '@stopcock/la': src('la'),
-      '@stopcock/signal': src('signal'),
       '@stopcock/img': src('img'),
-      '@stopcock/compress': src('compress'),
-      '@stopcock/hash': src('hash'),
-      '@stopcock/search': src('search'),
       '@stopcock/date': src('date'),
     },
   },

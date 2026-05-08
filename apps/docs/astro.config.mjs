@@ -112,6 +112,7 @@ export default defineConfig({
         },
         { label: 'date', slug: 'libraries/date' },
         { label: 'async', slug: 'libraries/async' },
+        { label: 'http', slug: 'libraries/http' },
         { label: 'diff', slug: 'libraries/diff' },
         { label: 'state', slug: 'libraries/state' },
         {

@@ -4170,40 +4170,6 @@
       ]
     },
     {
-      "category": "Generate.sine",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "256 samples",
-          "opsPerSec": 435843.89,
-          "margin": "±2.24%",
-          "runs": 217922,
-          "diff": "fastest"
-        },
-        {
-          "library": "1,024 samples",
-          "opsPerSec": 105212.75,
-          "margin": "±6.28%",
-          "runs": 52607,
-          "diff": "-75.86%"
-        },
-        {
-          "library": "4,096 samples",
-          "opsPerSec": 27298.96,
-          "margin": "±1.91%",
-          "runs": 13650,
-          "diff": "-93.74%"
-        },
-        {
-          "library": "16,384 samples",
-          "opsPerSec": 6982.82,
-          "margin": "±2.57%",
-          "runs": 3492,
-          "diff": "-98.40%"
-        }
-      ]
-    },
-    {
       "category": "Mat.determinant",
       "arraySize": null,
       "entries": [
@@ -4423,26 +4389,6 @@
       ]
     },
     {
-      "category": "Generate.chirp",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1,024 samples",
-          "opsPerSec": 86790.65,
-          "margin": "±5.03%",
-          "runs": 43396,
-          "diff": "fastest"
-        },
-        {
-          "library": "16,384 samples",
-          "opsPerSec": 5918.83,
-          "margin": "±2.21%",
-          "runs": 2960,
-          "diff": "-93.18%"
-        }
-      ]
-    },
-    {
       "category": "startOf day (batch)",
       "arraySize": 100,
       "entries": [
@@ -4572,26 +4518,6 @@
       ]
     },
     {
-      "category": "Generate.noise",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1,024 samples",
-          "opsPerSec": 133836.79,
-          "margin": "±4.38%",
-          "runs": 66919,
-          "diff": "fastest"
-        },
-        {
-          "library": "16,384 samples",
-          "opsPerSec": 7069.43,
-          "margin": "±14.94%",
-          "runs": 3535,
-          "diff": "-94.72%"
-        }
-      ]
-    },
-    {
       "category": "Mat.inverse",
       "arraySize": null,
       "entries": [
@@ -4680,40 +4606,6 @@
       ]
     },
     {
-      "category": "FFT.fft",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "256",
-          "opsPerSec": 265050.42,
-          "margin": "±4.60%",
-          "runs": 132526,
-          "diff": "fastest"
-        },
-        {
-          "library": "1,024",
-          "opsPerSec": 54042.89,
-          "margin": "±8.41%",
-          "runs": 27094,
-          "diff": "-79.61%"
-        },
-        {
-          "library": "4,096",
-          "opsPerSec": 10227.23,
-          "margin": "±15.67%",
-          "runs": 5114,
-          "diff": "-96.14%"
-        },
-        {
-          "library": "16,384",
-          "opsPerSec": 2499.82,
-          "margin": "±7.04%",
-          "runs": 1250,
-          "diff": "-99.06%"
-        }
-      ]
-    },
-    {
       "category": "Mat.lu",
       "arraySize": null,
       "entries": [
@@ -4771,33 +4663,6 @@
           "margin": "±26.71%",
           "runs": 36,
           "diff": "-99.86%"
-        }
-      ]
-    },
-    {
-      "category": "FFT.ifft",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "256",
-          "opsPerSec": 128029.36,
-          "margin": "±16.61%",
-          "runs": 64015,
-          "diff": "fastest"
-        },
-        {
-          "library": "1,024",
-          "opsPerSec": 50008.11,
-          "margin": "±7.86%",
-          "runs": 25407,
-          "diff": "-60.94%"
-        },
-        {
-          "library": "4,096",
-          "opsPerSec": 9463.82,
-          "margin": "±11.61%",
-          "runs": 4732,
-          "diff": "-92.61%"
         }
       ]
     },
@@ -5368,33 +5233,6 @@
       ]
     },
     {
-      "category": "FFT.magnitude",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "256",
-          "opsPerSec": 1234516.03,
-          "margin": "±11.75%",
-          "runs": 617259,
-          "diff": "fastest"
-        },
-        {
-          "library": "1,024",
-          "opsPerSec": 476966.71,
-          "margin": "±8.09%",
-          "runs": 238484,
-          "diff": "-61.36%"
-        },
-        {
-          "library": "4,096",
-          "opsPerSec": 170219.21,
-          "margin": "±9.38%",
-          "runs": 85110,
-          "diff": "-86.21%"
-        }
-      ]
-    },
-    {
       "category": "Mat.eigenvalues",
       "arraySize": null,
       "entries": [
@@ -5431,33 +5269,6 @@
           "margin": "±9.50%",
           "runs": 105,
           "diff": "-96.12%"
-        }
-      ]
-    },
-    {
-      "category": "FFT.powerSpectrum",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "256",
-          "opsPerSec": 227425.07,
-          "margin": "±5.41%",
-          "runs": 113713,
-          "diff": "fastest"
-        },
-        {
-          "library": "1,024",
-          "opsPerSec": 58625.12,
-          "margin": "±2.67%",
-          "runs": 29313,
-          "diff": "-74.22%"
-        },
-        {
-          "library": "4,096",
-          "opsPerSec": 11873.31,
-          "margin": "±5.99%",
-          "runs": 5937,
-          "diff": "-94.78%"
         }
       ]
     },
@@ -5708,33 +5519,6 @@
       ]
     },
     {
-      "category": "Window.hann",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "256",
-          "opsPerSec": 401077.27,
-          "margin": "±9.40%",
-          "runs": 200539,
-          "diff": "fastest"
-        },
-        {
-          "library": "1,024",
-          "opsPerSec": 97595.31,
-          "margin": "±22.04%",
-          "runs": 49171,
-          "diff": "-75.67%"
-        },
-        {
-          "library": "4,096",
-          "opsPerSec": 31865.83,
-          "margin": "±7.11%",
-          "runs": 15933,
-          "diff": "-92.05%"
-        }
-      ]
-    },
-    {
       "category": "convolve 5x5",
       "arraySize": null,
       "entries": [
@@ -5751,26 +5535,6 @@
           "margin": "±10.00%",
           "runs": 97,
           "diff": "-92.08%"
-        }
-      ]
-    },
-    {
-      "category": "Window.apply",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1,024",
-          "opsPerSec": 524147.03,
-          "margin": "±11.16%",
-          "runs": 262074,
-          "diff": "fastest"
-        },
-        {
-          "library": "4,096",
-          "opsPerSec": 236061.23,
-          "margin": "±3.95%",
-          "runs": 118031,
-          "diff": "-54.96%"
         }
       ]
     },
@@ -5900,33 +5664,6 @@
           "margin": "±5.60%",
           "runs": 84,
           "diff": "-91.63%"
-        }
-      ]
-    },
-    {
-      "category": "Filter.lowpass",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "256 @ 1kHz",
-          "opsPerSec": 117027.72,
-          "margin": "±3.86%",
-          "runs": 58514,
-          "diff": "fastest"
-        },
-        {
-          "library": "1,024 @ 1kHz",
-          "opsPerSec": 28041.73,
-          "margin": "±5.35%",
-          "runs": 14021,
-          "diff": "-76.04%"
-        },
-        {
-          "library": "4,096 @ 1kHz",
-          "opsPerSec": 5425.5,
-          "margin": "±8.40%",
-          "runs": 2713,
-          "diff": "-95.36%"
         }
       ]
     },
@@ -6083,26 +5820,6 @@
           "margin": "±10.01%",
           "runs": 4589,
           "diff": "-76.22%"
-        }
-      ]
-    },
-    {
-      "category": "Filter.bandpass",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1,024 200-2kHz",
-          "opsPerSec": 21149.94,
-          "margin": "±10.71%",
-          "runs": 10575,
-          "diff": "fastest"
-        },
-        {
-          "library": "4,096 200-2kHz",
-          "opsPerSec": 5497.3,
-          "margin": "±11.71%",
-          "runs": 2749,
-          "diff": "-74.01%"
         }
       ]
     },
@@ -6267,33 +5984,6 @@
           "margin": "±5.83%",
           "runs": 65,
           "diff": "-69.55%"
-        }
-      ]
-    },
-    {
-      "category": "Filter.convolve",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1,024 * kernel32",
-          "opsPerSec": 39602.85,
-          "margin": "±11.82%",
-          "runs": 19802,
-          "diff": "fastest"
-        },
-        {
-          "library": "4,096 * kernel32",
-          "opsPerSec": 9321.98,
-          "margin": "±9.10%",
-          "runs": 4661,
-          "diff": "-76.46%"
-        },
-        {
-          "library": "4,096 * kernel128",
-          "opsPerSec": 2043.49,
-          "margin": "±5.34%",
-          "runs": 1022,
-          "diff": "-94.84%"
         }
       ]
     },
@@ -6489,26 +6179,6 @@
       ]
     },
     {
-      "category": "Analysis.autocorrelation",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "256",
-          "opsPerSec": 54541.9,
-          "margin": "±5.60%",
-          "runs": 27271,
-          "diff": "fastest"
-        },
-        {
-          "library": "1,024",
-          "opsPerSec": 13946.45,
-          "margin": "±3.48%",
-          "runs": 6974,
-          "diff": "-74.43%"
-        }
-      ]
-    },
-    {
       "category": "resize",
       "arraySize": null,
       "entries": [
@@ -6532,26 +6202,6 @@
           "margin": "±5.17%",
           "runs": 52,
           "diff": "-96.87%"
-        }
-      ]
-    },
-    {
-      "category": "Analysis.crossCorrelation",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "256 x 256",
-          "opsPerSec": 37970.88,
-          "margin": "±3.15%",
-          "runs": 18986,
-          "diff": "fastest"
-        },
-        {
-          "library": "1,024 x 256",
-          "opsPerSec": 9220.54,
-          "margin": "±3.19%",
-          "runs": 4611,
-          "diff": "-75.72%"
         }
       ]
     },
@@ -6862,40 +6512,6 @@
       ]
     },
     {
-      "category": "Analysis.energy + rms",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "energy 1,024",
-          "opsPerSec": 791835.24,
-          "margin": "±14.25%",
-          "runs": 395918,
-          "diff": "-23.09%"
-        },
-        {
-          "library": "energy 16,384",
-          "opsPerSec": 69226.93,
-          "margin": "±10.67%",
-          "runs": 34614,
-          "diff": "-93.28%"
-        },
-        {
-          "library": "rms 1,024",
-          "opsPerSec": 1029511.22,
-          "margin": "±15.97%",
-          "runs": 514756,
-          "diff": "fastest"
-        },
-        {
-          "library": "rms 16,384",
-          "opsPerSec": 82537.21,
-          "margin": "±3.04%",
-          "runs": 41316,
-          "diff": "-91.98%"
-        }
-      ]
-    },
-    {
       "category": "getYear (batch)",
       "arraySize": 100,
       "entries": [
@@ -7014,26 +6630,6 @@
           "margin": "±7.84%",
           "runs": 34,
           "diff": "-96.68%"
-        }
-      ]
-    },
-    {
-      "category": "Analysis.zeroCrossings",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1,024",
-          "opsPerSec": 841409.86,
-          "margin": "±3.02%",
-          "runs": 420705,
-          "diff": "fastest"
-        },
-        {
-          "library": "16,384",
-          "opsPerSec": 56587.9,
-          "margin": "±2.14%",
-          "runs": 28294,
-          "diff": "-93.27%"
         }
       ]
     },
@@ -7244,26 +6840,6 @@
           "margin": "±10.29%",
           "runs": 1305,
           "diff": "-71.61%"
-        }
-      ]
-    },
-    {
-      "category": "Analysis.peakDetect",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1,024",
-          "opsPerSec": 991691.77,
-          "margin": "±5.01%",
-          "runs": 495846,
-          "diff": "fastest"
-        },
-        {
-          "library": "16,384",
-          "opsPerSec": 62090.55,
-          "margin": "±3.74%",
-          "runs": 31046,
-          "diff": "-93.74%"
         }
       ]
     },
@@ -7558,47 +7134,6 @@
           "margin": "±7.03%",
           "runs": 73,
           "diff": "-99.90%"
-        }
-      ]
-    },
-    {
-      "category": "sha256",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "64B",
-          "opsPerSec": 579414.16,
-          "margin": "±0.79%",
-          "runs": 289708,
-          "diff": "fastest"
-        },
-        {
-          "library": "1K",
-          "opsPerSec": 90603.2,
-          "margin": "±3.01%",
-          "runs": 45302,
-          "diff": "-84.36%"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 9529.11,
-          "margin": "±9.69%",
-          "runs": 4765,
-          "diff": "-98.36%"
-        },
-        {
-          "library": "100K",
-          "opsPerSec": 1009.89,
-          "margin": "±4.20%",
-          "runs": 506,
-          "diff": "-99.83%"
-        },
-        {
-          "library": "1M",
-          "opsPerSec": 104.76,
-          "margin": "±3.28%",
-          "runs": 53,
-          "diff": "-99.98%"
         }
       ]
     },
@@ -8007,47 +7542,6 @@
           "margin": "±5.46%",
           "runs": 111,
           "diff": "-98.41%"
-        }
-      ]
-    },
-    {
-      "category": "md5",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "64B",
-          "opsPerSec": 1068245.12,
-          "margin": "±2.79%",
-          "runs": 534123,
-          "diff": "fastest"
-        },
-        {
-          "library": "1K",
-          "opsPerSec": 243452.64,
-          "margin": "±1.96%",
-          "runs": 121727,
-          "diff": "-77.21%"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 24818.39,
-          "margin": "±3.92%",
-          "runs": 12410,
-          "diff": "-97.68%"
-        },
-        {
-          "library": "100K",
-          "opsPerSec": 2832.21,
-          "margin": "±2.14%",
-          "runs": 1417,
-          "diff": "-99.73%"
-        },
-        {
-          "library": "1M",
-          "opsPerSec": 193.62,
-          "margin": "±13.84%",
-          "runs": 97,
-          "diff": "-99.98%"
         }
       ]
     },
@@ -8658,47 +8152,6 @@
       ]
     },
     {
-      "category": "xxhash32",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "64B",
-          "opsPerSec": 9606064.77,
-          "margin": "±2.75%",
-          "runs": 4803033,
-          "diff": "fastest"
-        },
-        {
-          "library": "1K",
-          "opsPerSec": 4401707.98,
-          "margin": "±3.68%",
-          "runs": 2200854,
-          "diff": "-54.18%"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 905492.86,
-          "margin": "±1.27%",
-          "runs": 452747,
-          "diff": "-90.57%"
-        },
-        {
-          "library": "100K",
-          "opsPerSec": 96361.9,
-          "margin": "±1.43%",
-          "runs": 48181,
-          "diff": "-99.00%"
-        },
-        {
-          "library": "1M",
-          "opsPerSec": 8902.56,
-          "margin": "±3.53%",
-          "runs": 4452,
-          "diff": "-99.91%"
-        }
-      ]
-    },
-    {
       "category": "diffInYears (batch)",
       "arraySize": 100,
       "entries": [
@@ -9253,60 +8706,6 @@
       ]
     },
     {
-      "category": "crc32",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "64B",
-          "opsPerSec": 5816176.62,
-          "margin": "±2.59%",
-          "runs": 2908089,
-          "diff": "fastest"
-        },
-        {
-          "library": "1K",
-          "opsPerSec": 474542.17,
-          "margin": "±1.09%",
-          "runs": 237272,
-          "diff": "-91.84%"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 47321,
-          "margin": "±1.22%",
-          "runs": 23661,
-          "diff": "-99.19%"
-        },
-        {
-          "library": "100K",
-          "opsPerSec": 4885.24,
-          "margin": "±0.84%",
-          "runs": 2443,
-          "diff": "-99.92%"
-        },
-        {
-          "library": "1M",
-          "opsPerSec": 460.92,
-          "margin": "±2.42%",
-          "runs": 231,
-          "diff": "-99.99%"
-        }
-      ]
-    },
-    {
-      "category": "toHex",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "32B (sha256 output)",
-          "opsPerSec": 1888322.06,
-          "margin": "±6.04%",
-          "runs": 944162,
-          "diff": "fastest"
-        }
-      ]
-    },
-    {
       "category": "min/max (batch)",
       "arraySize": 100,
       "entries": [
@@ -9363,46 +8762,6 @@
           "margin": "±16.31%",
           "runs": 129,
           "diff": "-99.63%"
-        }
-      ]
-    },
-    {
-      "category": "toBase64",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "32B",
-          "opsPerSec": 2676557.21,
-          "margin": "±6.03%",
-          "runs": 1338279,
-          "diff": "fastest"
-        },
-        {
-          "library": "1K",
-          "opsPerSec": 130664.93,
-          "margin": "±5.81%",
-          "runs": 65459,
-          "diff": "-95.12%"
-        }
-      ]
-    },
-    {
-      "category": "hmac-sha256",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "64B",
-          "opsPerSec": 169671.62,
-          "margin": "±11.71%",
-          "runs": 84836,
-          "diff": "fastest"
-        },
-        {
-          "library": "1K",
-          "opsPerSec": 61379.36,
-          "margin": "±11.62%",
-          "runs": 30690,
-          "diff": "-63.82%"
         }
       ]
     },
@@ -11296,33 +10655,6 @@
       ]
     },
     {
-      "category": "RLE.encode",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1K repetitive",
-          "opsPerSec": 86979.42,
-          "margin": "±5.09%",
-          "runs": 43509,
-          "diff": "-3.25%"
-        },
-        {
-          "library": "10K repetitive",
-          "opsPerSec": 6770.84,
-          "margin": "±8.91%",
-          "runs": 3391,
-          "diff": "-92.47%"
-        },
-        {
-          "library": "1K mixed",
-          "opsPerSec": 89897.71,
-          "margin": "±13.41%",
-          "runs": 44949,
-          "diff": "fastest"
-        }
-      ]
-    },
-    {
       "category": "dropRepeats",
       "arraySize": 100,
       "entries": [
@@ -11596,26 +10928,6 @@
           "margin": "±4.24%",
           "runs": 2599619,
           "diff": "fastest"
-        }
-      ]
-    },
-    {
-      "category": "RLE.decode",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1K",
-          "opsPerSec": 164559.23,
-          "margin": "±3.64%",
-          "runs": 82280,
-          "diff": "fastest"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 17372.25,
-          "margin": "±2.71%",
-          "runs": 8690,
-          "diff": "-89.44%"
         }
       ]
     },
@@ -11939,33 +11251,6 @@
       ]
     },
     {
-      "category": "LZ77.encode",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1K",
-          "opsPerSec": 26486.44,
-          "margin": "±1.20%",
-          "runs": 13244,
-          "diff": "fastest"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 7743.53,
-          "margin": "±2.06%",
-          "runs": 3872,
-          "diff": "-70.76%"
-        },
-        {
-          "library": "100K",
-          "opsPerSec": 1492.43,
-          "margin": "±1.81%",
-          "runs": 747,
-          "diff": "-94.37%"
-        }
-      ]
-    },
-    {
       "category": "intersperse",
       "arraySize": 100,
       "entries": [
@@ -12068,26 +11353,6 @@
       ]
     },
     {
-      "category": "LZ77.decode",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1K",
-          "opsPerSec": 906997.75,
-          "margin": "±4.03%",
-          "runs": 453499,
-          "diff": "fastest"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 126025.98,
-          "margin": "±1.08%",
-          "runs": 63014,
-          "diff": "-86.11%"
-        }
-      ]
-    },
-    {
       "category": "Result.map chain",
       "arraySize": null,
       "entries": [
@@ -12097,26 +11362,6 @@
           "margin": "±6.95%",
           "runs": 3706412,
           "diff": "fastest"
-        }
-      ]
-    },
-    {
-      "category": "Huffman.encode",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1K",
-          "opsPerSec": 8152.5,
-          "margin": "±2.51%",
-          "runs": 4077,
-          "diff": "fastest"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 913.77,
-          "margin": "±4.85%",
-          "runs": 457,
-          "diff": "-88.79%"
         }
       ]
     },
@@ -12245,66 +11490,6 @@
           "margin": "±4.21%",
           "runs": 10,
           "diff": "-100.00%"
-        }
-      ]
-    },
-    {
-      "category": "Huffman.decode",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1K",
-          "opsPerSec": 25489.82,
-          "margin": "±2.64%",
-          "runs": 12747,
-          "diff": "fastest"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 2049.06,
-          "margin": "±4.01%",
-          "runs": 1025,
-          "diff": "-91.96%"
-        }
-      ]
-    },
-    {
-      "category": "Deflate.compress",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1K",
-          "opsPerSec": 10441.55,
-          "margin": "±3.51%",
-          "runs": 5221,
-          "diff": "fastest"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 5266.97,
-          "margin": "±0.71%",
-          "runs": 2634,
-          "diff": "-49.56%"
-        }
-      ]
-    },
-    {
-      "category": "Deflate.decompress",
-      "arraySize": null,
-      "entries": [
-        {
-          "library": "1K",
-          "opsPerSec": 65264.94,
-          "margin": "±0.93%",
-          "runs": 32633,
-          "diff": "fastest"
-        },
-        {
-          "library": "10K",
-          "opsPerSec": 42286.4,
-          "margin": "±0.68%",
-          "runs": 21144,
-          "diff": "-35.21%"
         }
       ]
     },

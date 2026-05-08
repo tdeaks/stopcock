@@ -1,6 +1,6 @@
 # stopcock
 
-Type-safe functional utilities for TypeScript. Pipe, array fusion, Option, Result, and 20+ standalone packages.
+Type-safe functional utilities for TypeScript. Pipe, array fusion, Option, Result, and a handful of focused packages built on the same primitives.
 
 ```typescript
 import { pipe, A } from '@stopcock/fp'
@@ -30,19 +30,11 @@ Each package is installable independently — grab only what you need.
 | `@stopcock/fp` | pipe, flow, Array, String, Dict, Number, Guards, Object, Math, Boolean, Logic, Option, Result, Lenses, Optics |
 | `@stopcock/async` | Lazy Task type with concurrency, retry, timeout, cancellation |
 | `@stopcock/date` | Zero-allocation date utilities with branded timestamps, timezones, business days |
-| `@stopcock/validate` | Schema validation with type inference and JIT compilation |
-| `@stopcock/stream` | Lazy pull-based streams, infinite sequences |
+| `@stopcock/diff` | Myers diff plus patch apply, invert, compose, rebase |
+| `@stopcock/http` | Typed HTTP client with retry, caching, and request composition |
 | `@stopcock/img` | Image filters, convolution, Hough lines, connected components |
-| `@stopcock/parse` | Parser combinators with typed composition |
-| `@stopcock/search` | Fuzzy search, Trie, Bloom filter, inverted index |
-| `@stopcock/struct` | Persistent HashMap, SortedSet, Deque |
-| `@stopcock/match` | Pattern matching |
-| `@stopcock/encoding` | Base64, Hex, MessagePack |
-| `@stopcock/geo` | 2D geometry, geodesic distance, spatial indexing |
-| `@stopcock/rand` | Seedable PRNGs and statistical distributions |
-| `@stopcock/la` | Linear algebra — vectors and matrices |
-| `@stopcock/signal` | FFT, filters, windowing, signal analysis |
-| `@stopcock/zip` | In-memory ZIP archive creation |
+| `@stopcock/la` | Linear algebra. Vectors and matrices |
+| `@stopcock/state` | Proxy-compiled accessors, patch middleware, batching, computed, history |
 
 Every function works data-first and data-last. Import only what you use — each package treeshakes independently.
 
