@@ -44,9 +44,10 @@ jobs:
       - run: bun run build
       - uses: changesets/action@v1
         with:
-          publish: bunx changeset publish --provenance
+          publish: bunx changeset publish
           version: bunx changeset version
           title: 'chore: version packages'
           commit: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
