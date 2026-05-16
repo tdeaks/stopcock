@@ -1,4 +1,4 @@
-import { dual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
 import type { Task } from './task'
 import { of } from './task'
 import { linkedController, abortableDelay } from './internals'

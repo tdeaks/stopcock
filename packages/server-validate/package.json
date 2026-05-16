@@ -1,0 +1,17 @@
+{
+  "name": "@stopcock/server-validate",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "files": ["dist"],
+  "peerDependencies": {
+    "@stopcock/server": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsup"
+  }
+}

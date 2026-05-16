@@ -1,4 +1,6 @@
-import { dual, ok, err, type Result, isSome, type Option } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
+import { ok, err, type Result } from '@stopcock/fp/result'
+import { isSome, type Option } from '@stopcock/fp/option'
 import { abortableDelay } from './internals'
 
 export type Task<A, E = never> = {
