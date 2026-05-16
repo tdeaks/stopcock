@@ -43,6 +43,10 @@
       "version": "0.0.0",
       "dependencies": {
         "@stopcock/server": "workspace:*",
+        "@stopcock/server-bearer": "workspace:*",
+        "@stopcock/server-cors": "workspace:*",
+        "@stopcock/server-openapi": "workspace:*",
+        "@stopcock/server-validate": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^22.0.0",

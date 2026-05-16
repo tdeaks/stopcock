@@ -1,7 +1,7 @@
 import { defineModule } from '@stopcock/server'
+import { bearer } from '@stopcock/server-bearer'
 import { DbModule } from '../../infra/db.module'
 import { AuthModule } from '../auth/auth.module'
-import { makeWithAuth } from '../auth/auth.middleware'
 import { makePostsRepo } from './posts.repo'
 import { makePostsService } from './posts.service'
 import { makePostsController } from './posts.controller'
@@ -24,6 +24,11 @@ export const PostsModule = defineModule({
   }),
   routes: ({ posts, auth }) => postsRoutes({
     controller: makePostsController({ posts }),
-    withAuth: makeWithAuth({ auth }),
+    withAuth: bearer({
+      verify: async (token) => {
+        const userId = auth.lookupToken(token)
+        return userId ? { userId } : null
+      },
+    }),
   }),
 })

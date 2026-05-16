@@ -7,15 +7,15 @@
  * to change what a route does.
  */
 import { route, defineRoutes } from '@stopcock/server'
-import type { Middleware } from '@stopcock/server'
-import type { DomainError } from '../../errors/domain'
+import type { RoutePlugin } from '@stopcock/server'
+import { openapiMeta } from '@stopcock/server-openapi'
 import { withBody } from '../../middleware/with-body'
 import { parseCreatePost } from './posts.schema'
 import type { PostsController } from './posts.controller'
 
 export type PostsRoutesDeps = {
   controller: PostsController
-  withAuth: Middleware<{ userId: string }, DomainError>
+  withAuth: RoutePlugin<{ auth: { userId: string }; token: string }, unknown>
 }
 
 export const postsRoutes = defineRoutes('posts', ({ controller, withAuth }: PostsRoutesDeps) => [
@@ -27,8 +27,13 @@ export const postsRoutes = defineRoutes('posts', ({ controller, withAuth }: Post
     .handler((ctx) => controller.find(ctx.params.id)),
 
   route.post('/posts')
+    .meta(openapiMeta({
+      summary: 'Create post',
+      tags: ['Posts'],
+      responses: { 200: { description: 'Created post' } },
+    }))
     .use(withAuth)
     .use(withBody(parseCreatePost))
-    .handler((ctx) => controller.create(ctx.userId, ctx.body)),
+    .handler((ctx) => controller.create(ctx.auth.userId, ctx.body)),
 
 ])

@@ -6,6 +6,8 @@
  * Services, controllers, repos all wire themselves through module imports.
  */
 import { defineModule, defineApp, route } from '@stopcock/server'
+import { cors } from '@stopcock/server-cors'
+import { openapi } from '@stopcock/server-openapi'
 import { renderDomain } from './errors/domain'
 import { PostsModule } from './modules/posts/posts.module'
 import { AuthModule } from './modules/auth/auth.module'
@@ -26,6 +28,14 @@ const ApiV1Module = defineModule({
 const app = defineApp({
   renderError: renderDomain,
   modules: [HealthModule, ApiV1Module],
+  plugins: [
+    cors(),
+    openapi({
+      path: '/openapi.json',
+      docsPath: '/docs',
+      info: { title: 'Stopcock Blog API', version: '0.0.1' },
+    }),
+  ],
 })
 
 declare const Bun: { serve: (opts: { port: number; fetch: (req: Request) => Promise<Response> }) => unknown }
