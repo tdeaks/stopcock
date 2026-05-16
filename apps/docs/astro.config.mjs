@@ -113,6 +113,19 @@ export default defineConfig({
         { label: 'date', slug: 'libraries/date' },
         { label: 'async', slug: 'libraries/async' },
         { label: 'http', slug: 'libraries/http' },
+        {
+          label: 'server',
+          items: [
+            { label: 'Overview', slug: 'libraries/server' },
+            { label: 'Plugins', slug: 'server/plugins' },
+            { label: 'OpenAPI', slug: 'server/openapi' },
+            { label: 'CORS', slug: 'server/cors' },
+            { label: 'Bearer Auth', slug: 'server/bearer' },
+            { label: 'Cookies', slug: 'server/cookies' },
+            { label: 'Server Timing', slug: 'server/timing' },
+            { label: 'Static Files', slug: 'server/static' },
+          ],
+        },
         { label: 'diff', slug: 'libraries/diff' },
         { label: 'state', slug: 'libraries/state' },
         {

@@ -1,6 +1,6 @@
 # @stopcock/server
 
-Functional HTTP framework. Module-graph DI, typed-error middleware, AOT matcher with build-time codegen.
+Functional HTTP framework. Module-graph DI, typed route plugins, lifecycle hooks, typed-error middleware, AOT matcher with build-time codegen.
 
 ```bash
 bun add @stopcock/server
@@ -34,7 +34,13 @@ const PostsModule = defineModule({
   ],
 })
 
-const app = defineApp({ modules: [PostsModule] })
+const app = defineApp({
+  modules: [PostsModule],
+  plugins: [
+    cors(),
+    openapi({ path: '/openapi.json' }),
+  ],
+})
 
 Bun.serve({ port: 3000, fetch: toBunFetch(app) })
 ```
@@ -43,8 +49,9 @@ Bun.serve({ port: 3000, fetch: toBunFetch(app) })
 
 - **defineModule / defineApp** — module-graph DI. `provides` is memoised across importers; cycle detection at startup.
 - **defineRepository / defineService / defineController / defineRoutes** — layered factories with `LAYER_KIND` / `LAYER_NAME` symbols for tooling introspection.
-- **route.<method>(path).use(mw).handler(fn)** — typed builder chain. Path params inferred onto ctx; middleware-added fields flow through `.use()`.
+- **route.<method>(path).use(mwOrPlugin).meta(meta).handler(fn)** — typed builder chain. Path params inferred onto ctx; middleware/plugin-added fields flow through `.use()`.
 - **defineMiddleware\<Provides, E\>** — write a plain `async (ctx) => Provides`. Returns a `Handler -> Handler` transform with typed errors.
+- **defineRoutePlugin / defineLifecycle / definePlugin** — route plugins, lifecycle hooks, and app plugins without hiding handler dependencies from TypeScript.
 - **AOT matcher codegen** — `emitMatcher(routes, 'matcher.gen.ts')` produces a Workers-safe static matcher.
 - **Adapters** — `toBunFetch`, `toNodeListener`. uWebSockets.js via `@stopcock/server-uws`.
 

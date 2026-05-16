@@ -1,0 +1,21 @@
+---
+title: Cookies
+description: Typed cookie route plugin
+---
+
+```bash
+bun add @stopcock/server-cookie
+```
+
+```ts
+import { cookies } from '@stopcock/server-cookie'
+
+route.get('/settings')
+  .use(cookies())
+  .handler((ctx) => {
+    ctx.cookies.set('theme', 'dark', { path: '/', httpOnly: true })
+    return { theme: ctx.cookies.get('theme') }
+  })
+```
+
+The plugin parses the request `Cookie` header before the handler and commits pending `Set-Cookie` headers in an `after` lifecycle hook.
