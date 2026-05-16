@@ -5,6 +5,18 @@ export {
 } from './define/layers'
 export { route, defineHandler, type RouteDef, type RouteChain, type Method } from './define/handler'
 export { defineMiddleware, type Middleware, type MiddlewareMeta } from './middleware/define'
+export {
+  defineLifecycle,
+  definePlugin,
+  defineRoutePlugin,
+  type EdgeHook,
+  type LifecycleHook,
+  type PluginContribution,
+  type PluginContext,
+  type RouteMeta,
+  type RoutePlugin,
+  type ServerPlugin,
+} from './plugin'
 export type { Handler, Ctx } from './router/types'
 export type { Params } from './router/routing'
 export type { App } from './router/router'

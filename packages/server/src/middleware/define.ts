@@ -1,5 +1,6 @@
 import { of } from '@stopcock/async'
 import type { Handler, Ctx } from '../router/types'
+import type { RouteMeta } from '../plugin'
 
 /**
  * Open metadata bag for middlewares. Plugins namespace their entries by a
@@ -7,7 +8,7 @@ import type { Handler, Ctx } from '../router/types'
  * can coexist without collision. Codegen walks `RouteDef.middlewares` and
  * narrows by key.
  */
-export type MiddlewareMeta = Readonly<Record<string, unknown>>
+export type MiddlewareMeta = RouteMeta
 
 export type Middleware<Provides extends object, E = never> = {
   <C extends Ctx & Provides, R, E2>(
@@ -26,7 +27,8 @@ const makeMiddleware = <Provides extends object, E>(
       of(async (signal) => {
         const base = ctx as unknown as Ctx
         const provided = await run(base)
-        return inner({ ...base, ...provided } as unknown as C).run(signal)
+        Object.assign(base, provided)
+        return inner(base as unknown as C).run(signal)
       })) as Middleware<Provides, E>
 
   Object.assign(mw, {

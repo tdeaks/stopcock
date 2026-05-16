@@ -1,6 +1,7 @@
 import { createApp, type App } from '../router/router'
 import type { Handler } from '../router/types'
 import type { RouteDef } from './handler'
+import { mergeMeta, type EdgeHook, type LifecycleHook, type RouteMeta, type ServerPlugin } from '../plugin'
 
 /**
  * A module knows its name, what it imports, what it provides to importers,
@@ -75,10 +76,9 @@ export function defineModule<
  */
 export function defineApp(config: {
   modules: ReadonlyArray<Module<any>>
+  plugins?: ReadonlyArray<ServerPlugin>
   renderError?: (e: any) => Response
 }): App {
-  let app = createApp()
-
   const providedFor = new Map<Module<any>, any>()
   const inProgress  = new Set<Module<any>>()
   const resolve = (mod: Module<any>): any => {
@@ -95,6 +95,7 @@ export function defineApp(config: {
   }
 
   const visited = new Set<Module<any>>()
+  const routes: RouteDef[] = []
   const walk = (mod: Module<any>, parentPrefix: string): void => {
     if (visited.has(mod)) return
     visited.add(mod)
@@ -103,15 +104,39 @@ export function defineApp(config: {
       const provided = resolve(mod)
       for (const route of mod.routes(provided)) {
         const path = prefix + route.path
-        const render = route.render ?? config.renderError
-        const register = (app as unknown as Record<string, (path: string, h: Handler<any, any, any>, r?: (e: any) => Response) => App>)[route.method.toLowerCase()]
-        if (!register) throw new Error(`unknown method ${route.method} on ${mod.name}:${path}`)
-        app = register.call(app, path, route.handler, render)
+        routes.push({ ...route, path })
       }
     }
     for (const imp of mod.imports) walk(imp, prefix)
   }
 
   for (const mod of config.modules) walk(mod, '')
+
+  const edge: EdgeHook[] = []
+  const hooks: LifecycleHook[] = []
+  let meta: RouteMeta | undefined
+  for (const plugin of config.plugins ?? []) {
+    const contribution = plugin.setup?.({ routes, meta: meta ?? {} }) ?? {}
+    if (contribution.routes) routes.push(...contribution.routes)
+    if (contribution.edge) edge.push(...contribution.edge)
+    if (contribution.hooks) hooks.push(...contribution.hooks)
+    meta = mergeMeta(meta, contribution.meta)
+  }
+
+  let app = createApp({ edge, hooks, meta })
+  for (const route of routes) {
+    const render = route.render ?? config.renderError
+    const register = (app as unknown as Record<string, (
+      path: string,
+      h: Handler<any, any, any>,
+      r?: (e: any) => Response,
+      options?: { hooks?: readonly LifecycleHook[]; meta?: RouteMeta },
+    ) => App>)[route.method.toLowerCase()]
+    if (!register) throw new Error(`unknown method ${route.method}:${route.path}`)
+    app = register.call(app, route.path, route.handler, render, {
+      hooks: route.hooks,
+      meta: route.meta,
+    })
+  }
   return app
 }
