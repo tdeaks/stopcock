@@ -1,7 +1,14 @@
 import { createApp, type App } from '../router/router'
 import type { Handler } from '../router/types'
 import type { RouteDef } from './handler'
-import { mergeMeta, type EdgeHook, type LifecycleHook, type RouteMeta, type ServerPlugin } from '../plugin'
+import {
+  SERVER_PLUGIN_ROUTE_META_KEY,
+  mergeMeta,
+  type EdgeHook,
+  type LifecycleHook,
+  type RouteMeta,
+  type ServerPlugin,
+} from '../plugin'
 
 /**
  * A module knows its name, what it imports, what it provides to importers,
@@ -117,7 +124,12 @@ export function defineApp(config: {
   let meta: RouteMeta | undefined
   for (const plugin of config.plugins ?? []) {
     const contribution = plugin.setup?.({ routes, meta: meta ?? {} }) ?? {}
-    if (contribution.routes) routes.push(...contribution.routes)
+    if (contribution.routes) {
+      routes.push(...contribution.routes.map((route) => ({
+        ...route,
+        meta: mergeMeta(route.meta, { [SERVER_PLUGIN_ROUTE_META_KEY]: plugin.name }),
+      })))
+    }
     if (contribution.edge) edge.push(...contribution.edge)
     if (contribution.hooks) hooks.push(...contribution.hooks)
     meta = mergeMeta(meta, contribution.meta)

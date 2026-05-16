@@ -4,6 +4,8 @@ import type { Ctx } from './router/types'
 
 export type RouteMeta = Readonly<Record<string, unknown>>
 
+export const SERVER_PLUGIN_ROUTE_META_KEY = 'stopcock.pluginRoute' as const
+
 export type LifecycleHook<C extends Ctx = Ctx> = {
   readonly before?: (ctx: C) => void | Promise<void>
   readonly after?: (ctx: C, response: Response) => Response | Promise<Response>

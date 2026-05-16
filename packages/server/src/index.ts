@@ -9,6 +9,7 @@ export {
   defineLifecycle,
   definePlugin,
   defineRoutePlugin,
+  SERVER_PLUGIN_ROUTE_META_KEY,
   type EdgeHook,
   type LifecycleHook,
   type PluginContribution,
