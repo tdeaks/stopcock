@@ -2,6 +2,11 @@
   "name": "@stopcock/la",
   "version": "0.0.2",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tdeaks/stopcock",
+    "directory": "packages/la"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
