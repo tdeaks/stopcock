@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/img",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -8,7 +8,7 @@
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
   },
   "files": ["dist"],
-  "dependencies": { "@stopcock/la": "workspace:*" },
+  "dependencies": { "@stopcock/la": "0.0.2" },
   "scripts": {
     "build": "tsup"
   }

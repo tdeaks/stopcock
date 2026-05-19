@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/state",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -14,11 +14,11 @@
   },
   "files": ["dist"],
   "dependencies": {
-    "@stopcock/fp": "workspace:*",
-    "@stopcock/diff": "workspace:*"
+    "@stopcock/fp": "0.0.2",
+    "@stopcock/diff": "0.0.2"
   },
   "peerDependencies": {
-    "@stopcock/async": "workspace:*",
+    "@stopcock/async": "0.0.2",
     "react": ">=18.0.0",
     "svelte": ">=3.0.0",
     "vue": ">=3.0.0"

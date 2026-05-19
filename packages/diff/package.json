@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/diff",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -9,7 +9,7 @@
   },
   "files": ["dist"],
   "dependencies": {
-    "@stopcock/fp": "0.0.1"
+    "@stopcock/fp": "0.0.2"
   },
   "scripts": {
     "build": "tsup"

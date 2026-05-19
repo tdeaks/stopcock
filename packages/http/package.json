@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/http",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -9,8 +9,8 @@
   },
   "files": ["dist"],
   "dependencies": {
-    "@stopcock/async": "workspace:*",
-    "@stopcock/fp": "workspace:*"
+    "@stopcock/async": "0.0.2",
+    "@stopcock/fp": "0.0.2"
   },
   "scripts": {
     "build": "tsup"
