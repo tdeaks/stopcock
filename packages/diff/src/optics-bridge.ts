@@ -1,4 +1,4 @@
-import { lens, type Lens, path as lensPath, isDeepEqual, type Traversal } from '@stopcock/fp'
+import { lens, type Lens, lensPath, isDeepEqual, type Traversal } from '@stopcock/fp'
 import type { Operation, Patch } from './types'
 import { patch } from './patch'
 

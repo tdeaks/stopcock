@@ -9,7 +9,7 @@
   },
   "files": ["dist"],
   "dependencies": {
-    "@stopcock/fp": "workspace:*"
+    "@stopcock/fp": "0.0.1"
   },
   "scripts": {
     "build": "tsup"

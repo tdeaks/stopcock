@@ -8,7 +8,7 @@
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
   },
   "files": ["dist"],
-  "dependencies": { "@stopcock/fp": "workspace:*" },
+  "dependencies": { "@stopcock/fp": "0.0.1" },
   "scripts": {
     "build": "tsup"
   }

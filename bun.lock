@@ -76,21 +76,21 @@
       "name": "@stopcock/async",
       "version": "0.0.1",
       "dependencies": {
-        "@stopcock/fp": "workspace:*",
+        "@stopcock/fp": "0.0.1",
       },
     },
     "packages/date": {
       "name": "@stopcock/date",
       "version": "0.0.1",
       "dependencies": {
-        "@stopcock/fp": "workspace:*",
+        "@stopcock/fp": "0.0.1",
       },
     },
     "packages/diff": {
       "name": "@stopcock/diff",
       "version": "0.0.1",
       "dependencies": {
-        "@stopcock/fp": "workspace:*",
+        "@stopcock/fp": "0.0.1",
       },
     },
     "packages/fp": {

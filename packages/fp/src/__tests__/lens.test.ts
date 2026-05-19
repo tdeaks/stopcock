@@ -1,7 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import fc from 'fast-check'
 import { pipe } from '../pipe'
-import { lens, prop, index, path, view, set, over, compose } from '../lens'
+import {
+  lens,
+  prop,
+  index,
+  path,
+  lensProp,
+  lensIndex,
+  lensPath,
+  view,
+  set,
+  over,
+  compose,
+} from '../lens'
 
 type User = { name: string; age: number; address: { city: string; zip: string } }
 
@@ -86,6 +98,14 @@ describe('Lens', () => {
       const composed = compose(addrLens, cityLens)
       expect(view(user, composed)).toBe('NYC')
       expect(set(user, composed, 'SF').address.city).toBe('SF')
+    })
+  })
+
+  describe('backwards-compatible aliases', () => {
+    it('exports lensProp, lensIndex, and lensPath aliases', () => {
+      expect(view(user, lensProp<User, 'name'>('name'))).toBe('Alice')
+      expect(view([10, 20, 30], lensIndex<number>(1))).toBe(20)
+      expect(view(user, lensPath<User, 'address', 'city'>('address', 'city'))).toBe('NYC')
     })
   })
 

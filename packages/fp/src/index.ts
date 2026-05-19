@@ -92,7 +92,20 @@ import * as M from './math'
 import * as Stream from './stream'
 export { O, R, G, A, S, D, N, B, Obj, Logic, M, Stream }
 
-export { type Lens, lens, prop, index, path, view, set, over, compose as composeLens } from './lens'
+export {
+  type Lens,
+  lens,
+  prop,
+  index,
+  path,
+  lensProp,
+  lensIndex,
+  lensPath,
+  view,
+  set,
+  over,
+  compose as composeLens,
+} from './lens'
 export { type Prism, prism, fromPredicate as prismFromPredicate, some as somePrism, ok as okPrism, preview, set as setPrism, over as overPrism, compose as composePrism } from './prism'
 export { type Traversal, traversal, each, filtered, compose as composeTraversal, toArray, modify, set as setTraversal } from './traversal'
 export { type Iso, iso, reverse, compose as composeIso } from './iso'

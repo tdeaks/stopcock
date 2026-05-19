@@ -42,6 +42,10 @@ export function path(...keys: string[]): Lens<any, any> {
   )
 }
 
+export const lensProp = prop
+export const lensIndex = index
+export const lensPath = path
+
 export const view: {
   <S, A>(s: S, lens: Lens<S, A>): A
   <S, A>(lens: Lens<S, A>): (s: S) => A
