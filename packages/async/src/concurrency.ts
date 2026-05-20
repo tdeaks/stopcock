@@ -1,4 +1,4 @@
-import { ok, err, type Result } from '@stopcock/fp'
+import { ok, err, type Result } from '@stopcock/fp/result'
 import type { Task } from './task'
 import { of } from './task'
 import { linkedController, Semaphore } from './internals'
