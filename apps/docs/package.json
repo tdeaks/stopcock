@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@astrojs/starlight": "^0.38.2",
+    "@stopcock/color": "workspace:*",
     "astro": "^6.1.1",
     "sharp": "^0.33.0",
     "starlight-blog": "^0.26.1"

@@ -35,6 +35,11 @@ Each package is installable independently — grab only what you need.
 | `@stopcock/img` | Image filters, convolution, Hough lines, connected components |
 | `@stopcock/la` | Linear algebra. Vectors and matrices |
 | `@stopcock/state` | Proxy-compiled accessors, patch middleware, batching, computed, history |
+| `@stopcock/server` | Functional HTTP framework. Module-graph DI, typed route plugins, lifecycle hooks, AOT matcher. Built-in plugins: `/bearer`, `/cookie`, `/cors`, `/openapi`, `/static`, `/timing`, `/validate` |
+| `@stopcock/server-uws` | uWebSockets.js adapter for `@stopcock/server` (Node-only) |
+| `@stopcock/server-validate-zod` | Zod adapter for `@stopcock/server/validate` |
+| `@stopcock/server-validate-arktype` | ArkType adapter for `@stopcock/server/validate` |
+| `@stopcock/server-validate-typebox` | TypeBox adapter for `@stopcock/server/validate` |
 
 Every function works data-first and data-last. Import only what you use — each package treeshakes independently.
 

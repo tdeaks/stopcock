@@ -1,6 +1,10 @@
 import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
 import starlightBlog from 'starlight-blog'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   site: 'https://stopcock.dev',
@@ -113,6 +117,19 @@ export default defineConfig({
         { label: 'date', slug: 'libraries/date' },
         { label: 'async', slug: 'libraries/async' },
         { label: 'http', slug: 'libraries/http' },
+        {
+          label: 'server',
+          items: [
+            { label: 'Overview', slug: 'libraries/server' },
+            { label: 'Plugins', slug: 'server/plugins' },
+            { label: 'OpenAPI', slug: 'server/openapi' },
+            { label: 'CORS', slug: 'server/cors' },
+            { label: 'Bearer Auth', slug: 'server/bearer' },
+            { label: 'Cookies', slug: 'server/cookies' },
+            { label: 'Server Timing', slug: 'server/timing' },
+            { label: 'Static Files', slug: 'server/static' },
+          ],
+        },
         { label: 'diff', slug: 'libraries/diff' },
         { label: 'state', slug: 'libraries/state' },
         {
@@ -122,9 +139,31 @@ export default defineConfig({
             { label: 'Showcase', slug: 'showcases/img' },
           ],
         },
+        {
+          label: 'color',
+          items: [
+            { label: 'Overview', slug: 'libraries/color' },
+            { label: 'Showcase', slug: 'showcases/color' },
+          ],
+        },
+        {
+          label: 'svg',
+          items: [
+            { label: 'Overview', slug: 'libraries/svg' },
+          ],
+        },
         { label: 'Benchmarks', slug: 'performance/benchmarks' },
       ],
     }),
   ],
   output: 'static',
+  vite: {
+    resolve: {
+      alias: {
+        '@stopcock/color': path.resolve(__dirname, '../../packages/color/src/index.ts'),
+        '@stopcock/fp': path.resolve(__dirname, '../../packages/fp/src/index.ts'),
+        '@stopcock/svg': path.resolve(__dirname, '../../packages/svg/src/index.ts'),
+      },
+    },
+  },
 })
