@@ -1,0 +1,259 @@
+---
+title: color
+description: Color as a first-class value — 11 spaces, perceptual ops, WCAG contrast, CVD simulation
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+```bash
+bun add @stopcock/color
+```
+
+A color algebra in pure TypeScript. 11 color spaces with lossless conversions (CSS Color 4 matrices), perceptually-uniform adjustments via OKLCh, WCAG contrast, CIEDE2000 perceptual distance, gamut mapping, and color-vision-deficiency simulation. Every transformation is dual-form so it composes with `pipe`.
+
+```ts
+import { pipe } from '@stopcock/fp'
+import { fromHex, lighten, desaturate, adjustHue, toHex } from '@stopcock/color'
+
+pipe(
+  fromHex('#2563eb'),
+  lighten(0.1),
+  desaturate(0.2),
+  adjustHue(15),
+  toHex,
+)
+// => '#647dd1'
+```
+
+Try it live in the [interactive showcase](/showcases/color/).
+
+## Why OKLCh
+
+The package routes every perceptual operation (`lighten`, `darken`, `saturate`, `mix`) through OKLCh by default. OKLCh is a polar form of OKLab, which is the most accurate perceptual color space currently published (Ottosson, 2020). Compared to HSL:
+
+- Lightening blue in HSL turns it pink. Lightening blue in OKLCh keeps it blue.
+- Equal lightness steps in OKLCh look like equal lightness steps. HSL's lightness is just `(max + min) / 2` in sRGB — heavily biased.
+- Mixing two colors in OKLab avoids the muddy gray middle that sRGB interpolation produces.
+
+You can still operate in any space explicitly with `convert(c, 'hsl')` or `mixIn(a, b, 'hsl', t)` when you need legacy behavior.
+
+## Representation
+
+```ts
+type ColorSpace =
+  | 'srgb' | 'linear-srgb' | 'hsl' | 'hwb'
+  | 'lab' | 'lch' | 'oklab' | 'oklch'
+  | 'p3' | 'xyz-d50' | 'xyz-d65'
+
+type Color = {
+  readonly space: ColorSpace
+  readonly channels: Float64Array  // always length 3
+  readonly alpha: number           // 0-1
+}
+```
+
+Alpha lives outside the channels array because it's orthogonal to color-space conversion — converting sRGB to OKLab does not touch alpha.
+
+## Construction
+
+```ts
+rgb(r, g, b, alpha?)         // 0-1 each
+rgb255(r, g, b, alpha?)      // 0-255 each
+hsl(h, s, l, alpha?)         // h: 0-360, s/l: 0-1
+oklch(l, c, h, alpha?)
+oklab(l, a, b, alpha?)
+lab(l, a, b, alpha?)
+lch(l, c, h, alpha?)
+p3(r, g, b, alpha?)
+xyz(x, y, z, alpha?)         // xyz-d65
+fromHex('#2563eb')
+fromCSS('oklch(0.7 0.15 250)')
+```
+
+## Conversion
+
+Dual-form. Routes through a hub-and-spoke graph (XYZ-D65 at the center) with memoized BFS — pay the graph walk once per unique pair, O(1) after.
+
+```ts
+convert(color: Color, target: ColorSpace): Color
+convert(target: ColorSpace): (c: Color) => Color
+```
+
+Arity-1 convenience aliases that pipe directly:
+
+```ts
+toSRGB, toLinearRGB, toHSL, toHWB,
+toLab, toLCh, toOKLab, toOKLCh,
+toP3, toXYZ, toXYZ50
+```
+
+## Batch buffers
+
+For image-sized workloads, use the batch API instead of looping over `Color` objects. A channel buffer is a `Float64Array` packed as RGB triples:
+
+```ts
+import { convertBuffer, simulateBuffer, applyMatrix3x3 } from '@stopcock/color'
+
+const rgb = new Float64Array([
+  1, 0, 0,
+  0, 1, 0,
+  0, 0, 1,
+])
+
+const oklab = convertBuffer(rgb, 'srgb', 'oklab')
+const simulated = simulateBuffer(rgb, 'srgb', 'deuteranopia', 1)
+const transformed = applyMatrix3x3(new Float64Array([
+  1, 0, 0,
+  0, 1, 0,
+  0, 0, 1,
+]), rgb)
+```
+
+Alpha stays out-of-band. `@stopcock/img` handles RGBA byte splitting and recombination for whole-image filters.
+
+## Adjustments
+
+All route through OKLCh, then return to the source space. Dual-form.
+
+```ts
+lighten(c: Color, amount: number): Color
+darken(c: Color, amount: number): Color
+saturate(c: Color, amount: number): Color
+desaturate(c: Color, amount: number): Color
+adjustHue(c: Color, degrees: number): Color
+adjustAlpha(c: Color, alpha: number): Color
+```
+
+## Mixing
+
+```ts
+mix(a: Color, b: Color, t?: number): Color           // OKLab, t defaults to 0.5
+mixIn(a: Color, b: Color, space: ColorSpace, t?): Color  // explicit space
+hueInterpolate(h1: number, h2: number, t: number): number  // shorter-arc
+```
+
+<Aside type="tip">
+  Mixing in OKLab gives smooth, perceptually-uniform gradients. The `mixIn` form lets you pick a different space — useful when you want HSL-style chroma preservation or sRGB-compatible output.
+</Aside>
+
+## Palettes
+
+```ts
+complementary(c): Color
+triadic(c): [Color, Color, Color]
+tetradic(c): [Color, Color, Color, Color]
+splitComplementary(c): [Color, Color, Color]
+analogous(c: Color, count?: number, angle?: number): Color[]
+analogous(count?, angle?): (c: Color) => Color[]   // curried for pipe
+```
+
+Harmony palettes rotate the hue in OKLCh and project back to the source space, so the resulting colors share lightness/chroma — they "go together."
+
+## Channels
+
+```ts
+red(c), green(c), blue(c)                  // sRGB 0-1
+lightness(c), chroma(c), hue(c)            // OKLCh
+alpha(c)
+```
+
+## Formatting
+
+```ts
+toHex(c): string             // '#rrggbb' or '#rrggbbaa'
+toCSS(c): string             // 'oklch(L C H / a)'
+toRGBString(c): string       // 'rgb(r g b / a)'
+toHSLString(c): string
+```
+
+## Contrast and distance
+
+```ts
+luminance(c): number                              // WCAG relative luminance
+contrastRatio(a, b): number                       // WCAG ratio
+meetsAA(a, b): boolean                            // ratio >= 4.5
+meetsAAA(a, b): boolean                           // ratio >= 7
+meetsAALarge(a, b): boolean                       // ratio >= 3
+deltaE(a, b): number                              // CIEDE2000 perceptual distance
+deltaEOK(a, b): number                            // Euclidean distance in OKLab
+```
+
+## Gamut mapping
+
+```ts
+inGamut(c: Color, target: ColorSpace): boolean
+toGamut(c: Color, target: ColorSpace): Color
+```
+
+`toGamut` uses the CSS Color 4 algorithm: binary search in OKLCh chroma, preserving lightness and hue, until the result is in the target gamut and within JND (`deltaEOK < 0.02`) of the clipped variant. Better than naive RGB clipping, which shifts the hue.
+
+## Color vision deficiency
+
+Simulate how a color appears to a viewer with a CVD condition, using Machado et al. (2009) matrices.
+
+```ts
+type CVDType = 'protanopia' | 'deuteranopia' | 'tritanopia' | 'achromatopsia'
+simulate(c: Color, type: CVDType, severity?: number): Color
+```
+
+`severity` is `0` (normal) to `1` (full dichromacy); intermediate values blend between identity and the full matrix. Ignored for achromatopsia.
+
+```ts
+import { simulate } from '@stopcock/color'
+
+const asProtan = simulate(myBrand, 'protanopia')
+const partialDeutan = simulate(myBrand, 'deuteranopia', 0.5)
+```
+
+<Aside type="caution">
+  Around 8% of men and 0.5% of women have some form of CVD. Designs that rely on hue alone (red = bad, green = good) fail for them. Pair color with lightness, shape, or text to stay accessible.
+</Aside>
+
+### Accessibility helpers
+
+```ts
+paletteContrastMatrix(palette: Color[]): ContrastCell[][]
+minDistinguishableDistance(palette: Color[], type: CVDType, severity?): number
+
+type ContrastCell = { ratio: number; aa: boolean; aaLarge: boolean; aaa: boolean }
+```
+
+`paletteContrastMatrix` returns the full N×N pairwise contrast grid — pick foreground/background pairs visually.
+
+`minDistinguishableDistance` simulates a palette under a given CVD condition and reports the smallest pairwise distance. A high minimum means every color in your palette stays distinct under that CVD.
+
+## Real-world patterns
+
+### Theme generation
+
+```ts
+import { pipe } from '@stopcock/fp'
+import { fromHex, toOKLCh, lighten, darken, toHex } from '@stopcock/color'
+
+const brand = fromHex('#2563eb')
+const theme = {
+  primary: toHex(brand),
+  primaryHover: toHex(lighten(brand, 0.05)),
+  primaryActive: toHex(darken(brand, 0.05)),
+  primaryMuted: toHex(pipe(brand, lighten(0.4))),
+}
+```
+
+### Picking accessible text on any background
+
+```ts
+import { contrastRatio, fromHex, rgb } from '@stopcock/color'
+
+const onBg = (bg: Color) =>
+  contrastRatio(rgb(1, 1, 1), bg) >= 4.5 ? rgb(1, 1, 1) : rgb(0, 0, 0)
+```
+
+### Building a colorblind-safe categorical palette
+
+```ts
+import { analogous, fromHex, minDistinguishableDistance } from '@stopcock/color'
+
+const candidate = analogous(fromHex('#2563eb'), 8, 45)
+const safety = minDistinguishableDistance(candidate, 'deuteranopia')
+// If safety is too low, widen the hue angle.
+```

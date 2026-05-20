@@ -1,0 +1,711 @@
+---
+const id = 'color-showcase'
+---
+
+<div class="color-showcase" id={id} data-id={id}>
+  <!-- Live region toast for "Copied #xxxxxx" announcements -->
+  <div class={`${id}-toast toast`} role="status" aria-live="polite"></div>
+
+  <!-- 1 · Base color input -->
+  <section class="cs-card" aria-labelledby={`${id}-pickerlabel`}>
+    <div class="cs-row">
+      <div class="cs-col">
+        <label for={`${id}-picker`} id={`${id}-pickerlabel`}>Pick</label>
+        <input type="color" id={`${id}-picker`} value="#2563eb" aria-label="Base color picker" />
+      </div>
+      <div class="cs-col">
+        <label for={`${id}-text`}>CSS color string</label>
+        <input type="text" id={`${id}-text`} value="#2563eb" spellcheck="false" autocomplete="off" aria-label="Base color as CSS string" />
+      </div>
+    </div>
+  </section>
+
+  <h3>Accessibility lens</h3>
+  <section class="cs-card">
+    <p class="cs-label" style="margin-top:0;margin-bottom:10px">
+      View every swatch below as it appears under the selected condition.
+      The lens is for simulation only — your actual base color does not change.
+    </p>
+    <div class="cs-radio-group" role="radiogroup" aria-label="Color vision deficiency lens" id={`${id}-lens`}></div>
+    <p class="cs-note">
+      Roughly 8% of men and 0.5% of women have some form of color vision deficiency.
+      Designs that rely on hue alone fail for them.
+    </p>
+  </section>
+
+  <h3>1 · The same color in every space</h3>
+  <section class="cs-card">
+    <div class="cs-spaces" id={`${id}-spaces`} aria-live="polite"></div>
+  </section>
+
+  <h3>2 · Lightness scale — OKLCh vs HSL</h3>
+  <section class="cs-card">
+    <div class="cs-palette">
+      <div class="cs-label">OKLCh L stepped</div>
+      <div class="cs-swatches" id={`${id}-oklch-scale`} role="list" aria-label="OKLCh lightness scale"></div>
+    </div>
+    <div class="cs-palette">
+      <div class="cs-label">HSL L stepped</div>
+      <div class="cs-swatches" id={`${id}-hsl-scale`} role="list" aria-label="HSL lightness scale"></div>
+    </div>
+  </section>
+
+  <h3>3 · Harmony palettes</h3>
+  <section class="cs-card" id={`${id}-palettes`}></section>
+
+  <h3>4 · Mix gradients across spaces</h3>
+  <section class="cs-card" id={`${id}-mix`}></section>
+
+  <h3>5 · WCAG contrast checker</h3>
+  <section class="cs-card" id={`${id}-contrast`}></section>
+
+  <h3>6 · Pairwise contrast matrix</h3>
+  <section class="cs-card" id={`${id}-matrix`}></section>
+
+  <h3>7 · Gamut mapping</h3>
+  <section class="cs-card" id={`${id}-gamut`}></section>
+</div>
+
+<script>
+  import {
+    rgb, fromHex, fromCSS,
+    convert, toSRGB, toOKLCh, toOKLab, toHSL, toLab, toP3,
+    toHex, toCSS, toRGBString, toHSLString,
+    mixIn,
+    contrastRatio, meetsAA, meetsAAA, meetsAALarge,
+    inGamut, toGamut,
+    analogous, complementary, triadic, tetradic, splitComplementary,
+    simulate, paletteContrastMatrix,
+  } from '@stopcock/color'
+  import type { Color, ColorSpace, CVDType } from '@stopcock/color'
+
+  // ────────────────────────────────────────────────────────────────
+  // The showcase id is on the root data-id attribute. We scope all
+  // queries to that root so multiple instances on a page wouldn't conflict.
+  // ────────────────────────────────────────────────────────────────
+
+  const root = document.querySelector('.color-showcase') as HTMLElement
+  if (!root) throw new Error('ColorShowcase root not found')
+  const id = root.dataset.id ?? 'color-showcase'
+  const $ = (sel: string) => root.querySelector(sel) as HTMLElement
+
+  let _uid = 0
+  const uid = (p: string) => `${id}-uid-${++_uid}-${p}`
+
+  const h = <T extends HTMLElement = HTMLElement>(tag: string, attrs: Record<string, any> = {}, ...children: (Node | string)[]): T => {
+    const el = document.createElement(tag) as T
+    for (const k in attrs) {
+      if (attrs[k] === undefined || attrs[k] === null) continue
+      if (k === 'style' && typeof attrs[k] === 'object') Object.assign(el.style, attrs[k])
+      else if (k === 'className') el.className = attrs[k]
+      else if (k.startsWith('on') && typeof attrs[k] === 'function') el.addEventListener(k.slice(2), attrs[k])
+      else el.setAttribute(k, String(attrs[k]))
+    }
+    for (const c of children) el.append(c)
+    return el
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // State + subscribers
+  // ────────────────────────────────────────────────────────────────
+
+  let base: Color = fromHex('#2563eb')
+  let lens: CVDType | 'none' = 'none'
+  let mixTarget: Color = fromHex('#facc15')
+  let contrastPartner: Color = fromHex('#ffffff')
+
+  const viewed = (c: Color): Color => lens === 'none' ? c : simulate(c, lens, 1)
+  const bg = (c: Color): string => toHex(viewed(c))
+
+  const subscribers: Array<() => void> = []
+  const setBase = (c: Color) => { base = c; refreshAll() }
+  const setLens = (l: CVDType | 'none') => { lens = l; refreshAll() }
+  const refreshAll = () => { for (const s of subscribers) s() }
+  const onChange = (fn: () => void) => { subscribers.push(fn); fn() }
+
+  // ────────────────────────────────────────────────────────────────
+  // Toast
+  // ────────────────────────────────────────────────────────────────
+
+  const toast = root.querySelector('.toast') as HTMLElement
+  let toastTimer: number | undefined
+  const showToast = (msg: string) => {
+    toast.textContent = msg
+    toast.classList.add('visible')
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = window.setTimeout(() => toast.classList.remove('visible'), 1600)
+  }
+  const copyHex = async (hex: string) => {
+    try { await navigator.clipboard.writeText(hex); showToast(`Copied ${hex}`) }
+    catch { showToast('Copy failed') }
+  }
+
+  const buildPill = (c: Color, ariaLabel?: string) => {
+    const hex = toHex(c)
+    return h<HTMLButtonElement>('button', {
+      className: 'cs-pill',
+      type: 'button',
+      style: { background: bg(c) },
+      title: `${hex} — click to copy`,
+      'aria-label': ariaLabel ?? `Color ${hex}, click to copy`,
+      onclick: () => copyHex(hex),
+    }, h('span', { className: 'cs-pill-hex', 'aria-hidden': 'true' }, hex))
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Section 1 · Input
+  // ────────────────────────────────────────────────────────────────
+
+  const picker = $(`#${id}-picker`) as HTMLInputElement
+  const text = $(`#${id}-text`) as HTMLInputElement
+  picker.addEventListener('input', () => {
+    text.value = picker.value
+    setBase(fromHex(picker.value))
+  })
+  text.addEventListener('change', () => {
+    try {
+      const c = text.value.startsWith('#') ? fromHex(text.value) : fromCSS(text.value)
+      picker.value = toHex(c).slice(0, 7)
+      setBase(c)
+    } catch { /* ignore parse errors */ }
+  })
+  onChange(() => {
+    const hex = toHex(base)
+    if (text.value !== hex) text.value = hex
+    if (picker.value !== hex.slice(0, 7)) picker.value = hex.slice(0, 7)
+  })
+
+  // ────────────────────────────────────────────────────────────────
+  // CVD lens radio group
+  // ────────────────────────────────────────────────────────────────
+
+  const lensGroup = $(`#${id}-lens`)
+  const lensName = `${id}-lens-group`
+  const lensOptions: Array<{ label: string; value: CVDType | 'none' }> = [
+    { label: 'Normal vision', value: 'none' },
+    { label: 'Protanopia', value: 'protanopia' },
+    { label: 'Deuteranopia', value: 'deuteranopia' },
+    { label: 'Tritanopia', value: 'tritanopia' },
+    { label: 'Achromatopsia', value: 'achromatopsia' },
+  ]
+  for (const opt of lensOptions) {
+    const optId = uid('lens')
+    const input = h<HTMLInputElement>('input', { type: 'radio', name: lensName, id: optId, value: opt.value })
+    if (opt.value === lens) input.checked = true
+    input.addEventListener('change', () => { if (input.checked) setLens(opt.value) })
+    lensGroup.append(input, h('label', { className: 'cs-radio-label', for: optId }, opt.label))
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Section 2 · Space breakdown
+  // ────────────────────────────────────────────────────────────────
+
+  const fmtFn = (name: string, c: Color, frac: number, close = ')') =>
+    `${name}(${[...c.channels].map((x) => Number(x.toFixed(frac))).join(' ')}${close}`
+
+  const spaces: { name: string; render: (c: Color) => string }[] = [
+    { name: 'hex',         render: (c) => toHex(c) },
+    { name: 'srgb',        render: (c) => toRGBString(c) },
+    { name: 'hsl',         render: (c) => toHSLString(c) },
+    { name: 'oklch',       render: (c) => toCSS(c) },
+    { name: 'oklab',       render: (c) => fmtFn('oklab', toOKLab(c), 4) },
+    { name: 'lab',         render: (c) => fmtFn('lab',   toLab(c),   2) },
+    { name: 'p3',          render: (c) => fmtFn('color(display-p3', toP3(c), 4, ')') },
+    { name: 'linear-srgb', render: (c) => fmtFn('color(srgb-linear', convert(c, 'linear-srgb'), 4, ')') },
+  ]
+  const spacesGrid = $(`#${id}-spaces`)
+  onChange(() => {
+    spacesGrid.replaceChildren()
+    for (const s of spaces) {
+      spacesGrid.append(
+        h('div', { className: 'cs-space-name' }, s.name),
+        h('div', { className: 'cs-space-value' }, s.render(base)),
+        h('div', { className: 'cs-space-swatch', 'aria-hidden': 'true', style: { background: bg(base) } }),
+      )
+    }
+  })
+
+  // ────────────────────────────────────────────────────────────────
+  // Section 3 · Lightness scale
+  // ────────────────────────────────────────────────────────────────
+
+  const okScale = $(`#${id}-oklch-scale`)
+  const hslScale = $(`#${id}-hsl-scale`)
+  onChange(() => {
+    okScale.replaceChildren()
+    hslScale.replaceChildren()
+    const ok = toOKLCh(base)
+    const hsl = toHSL(base)
+    for (let i = 1; i <= 9; i++) {
+      const t = i / 10
+      const okStep: Color = { space: 'oklch', channels: new Float64Array([t, ok.channels[1], ok.channels[2]]), alpha: 1 }
+      const hslStep: Color = { space: 'hsl', channels: new Float64Array([hsl.channels[0], hsl.channels[1], t]), alpha: 1 }
+      okScale.append(buildPill(okStep, `OKLCh lightness ${Math.round(t * 100)}%`))
+      hslScale.append(buildPill(hslStep, `HSL lightness ${Math.round(t * 100)}%`))
+    }
+  })
+
+  // ────────────────────────────────────────────────────────────────
+  // Section 4 · Palettes
+  // ────────────────────────────────────────────────────────────────
+
+  const palettesContainer = $(`#${id}-palettes`)
+  const paletteRows: Array<{ label: string; fn: (c: Color) => Color[] }> = [
+    { label: 'Analogous (5)', fn: (c) => analogous(c, 5) },
+    { label: 'Complementary', fn: (c) => [c, complementary(c)] },
+    { label: 'Triadic',       fn: (c) => [...triadic(c)] },
+    { label: 'Tetradic',      fn: (c) => [...tetradic(c)] },
+    { label: 'Split-comp.',   fn: (c) => [...splitComplementary(c)] },
+  ]
+  onChange(() => {
+    palettesContainer.replaceChildren(
+      ...paletteRows.map((r) =>
+        h('div', { className: 'cs-palette' },
+          h('div', { className: 'cs-label' }, r.label),
+          h('div', { className: 'cs-swatches', role: 'list', 'aria-label': r.label },
+            ...r.fn(base).map((p) => buildPill(p)),
+          ),
+        ),
+      ),
+    )
+  })
+
+  // ────────────────────────────────────────────────────────────────
+  // Section 5 · Mix
+  // ────────────────────────────────────────────────────────────────
+
+  const mixContainer = $(`#${id}-mix`)
+  const mixTargetId = uid('mix')
+  const mixTargetPicker = h<HTMLInputElement>('input', { type: 'color', id: mixTargetId, value: '#facc15', 'aria-label': 'Mix target color' })
+  mixTargetPicker.addEventListener('input', () => { mixTarget = fromHex(mixTargetPicker.value); refreshMix() })
+
+  const STEPS = 13
+  const buildGradient = (space: ColorSpace, label: string) => {
+    const row = h('div', { className: 'cs-gradient', role: 'img', 'aria-label': label })
+    for (let i = 0; i < STEPS; i++) {
+      const t = i / (STEPS - 1)
+      const stop = mixIn(base, mixTarget, space, t)
+      row.append(h('div', { 'aria-hidden': 'true', style: { background: bg(stop) } }))
+    }
+    return row
+  }
+  const refreshMix = () => {
+    mixContainer.replaceChildren(
+      h('div', { className: 'cs-row', style: { marginBottom: '16px' } },
+        h('div', { className: 'cs-col' },
+          h('label', {}, 'A'),
+          h('div', { className: 'cs-space-swatch', 'aria-label': `Color A: ${toHex(base)}`, style: { background: bg(base), width: '56px', height: '56px', borderRadius: '10px' } }),
+        ),
+        h('span', { style: { color: 'var(--sl-color-gray-2)' }, 'aria-hidden': 'true' }, '→'),
+        h('div', { className: 'cs-col' }, h('label', { for: mixTargetId }, 'B'), mixTargetPicker),
+      ),
+      h('div', { className: 'cs-gradient-row' }, h('label', {}, 'sRGB'),  buildGradient('srgb',  'Gradient mixed in sRGB')),
+      h('div', { className: 'cs-gradient-row' }, h('label', {}, 'HSL'),   buildGradient('hsl',   'Gradient mixed in HSL')),
+      h('div', { className: 'cs-gradient-row' }, h('label', {}, 'OKLab'), buildGradient('oklab', 'Gradient mixed in OKLab')),
+      h('div', { className: 'cs-gradient-row' }, h('label', {}, 'OKLCh'), buildGradient('oklch', 'Gradient mixed in OKLCh')),
+    )
+  }
+  onChange(refreshMix)
+
+  // ────────────────────────────────────────────────────────────────
+  // Section 6 · Contrast
+  // ────────────────────────────────────────────────────────────────
+
+  const contrastContainer = $(`#${id}-contrast`)
+  const contrastBgId = uid('contrast-bg')
+  const contrastPicker = h<HTMLInputElement>('input', { type: 'color', id: contrastBgId, value: '#ffffff', 'aria-label': 'Background color' })
+  contrastPicker.addEventListener('input', () => { contrastPartner = fromHex(contrastPicker.value); refreshContrast() })
+
+  const refreshContrast = () => {
+    const ratio = contrastRatio(base, contrastPartner)
+    const checks: Array<[string, boolean]> = [
+      ['AA', meetsAA(base, contrastPartner)],
+      ['AAA', meetsAAA(base, contrastPartner)],
+      ['AA Large', meetsAALarge(base, contrastPartner)],
+    ]
+    contrastContainer.replaceChildren(
+      h('div', { className: 'cs-row', style: { marginBottom: '16px' } },
+        h('div', { className: 'cs-col' }, h('label', { for: contrastBgId }, 'Background'), contrastPicker),
+        h('span', { style: { color: 'var(--sl-color-gray-2)' }, 'aria-hidden': 'true' }, '·'),
+        h('div', { className: 'cs-col' }, h('label', {}, 'Foreground = base color')),
+      ),
+      h('div', { className: 'cs-contrast-preview', style: { background: bg(contrastPartner), color: bg(base) } },
+        h('div', {}, 'The quick brown fox'),
+        h('div', { className: 'cs-contrast-small' }, `contrast ratio: ${ratio.toFixed(2)} : 1`),
+      ),
+      h('div', { className: 'cs-badges', role: 'list', 'aria-label': 'WCAG contrast results' },
+        ...checks.map(([label, ok]) =>
+          h('span', { className: `cs-badge ${ok ? 'pass' : 'fail'}`, role: 'listitem' }, `${ok ? '✓' : '✗'} ${label}`),
+        ),
+      ),
+    )
+  }
+  onChange(refreshContrast)
+
+  // ────────────────────────────────────────────────────────────────
+  // Section 7 · Contrast matrix
+  // ────────────────────────────────────────────────────────────────
+
+  const matrixContainer = $(`#${id}-matrix`)
+  onChange(() => {
+    const palette = [base, ...analogous(base, 5).filter((c) => toHex(c) !== toHex(base))]
+    const matrix = paletteContrastMatrix(palette)
+    const n = palette.length
+    const grid = h('div', {
+      className: 'cs-matrix',
+      role: 'table',
+      'aria-label': 'Pairwise contrast matrix',
+      style: { gridTemplateColumns: `repeat(${n}, 1fr)` },
+    })
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        const cell = matrix[i][j]
+        const fg = palette[i], bgC = palette[j]
+        grid.append(
+          h('div', {
+            className: 'cs-matrix-cell',
+            role: 'cell',
+            style: { background: bg(bgC), color: bg(fg) },
+            'aria-label': `${toHex(fg)} on ${toHex(bgC)}: ${cell.ratio.toFixed(1)} ratio, ${cell.aa ? 'passes AA' : cell.aaLarge ? 'passes AA Large only' : 'fails AA'}`,
+            title: `${cell.ratio.toFixed(1)}:1 — AA ${cell.aa ? '✓' : '✗'}  AAA ${cell.aaa ? '✓' : '✗'}`,
+          }, cell.ratio.toFixed(1)),
+        )
+      }
+    }
+    matrixContainer.replaceChildren(
+      h('p', { className: 'cs-label', style: { marginTop: '0' } },
+        'Pairwise WCAG contrast ratios across the base color plus its analogous palette. Diagonal is always 1:1 (color on itself).'),
+      grid,
+    )
+  })
+
+  // ────────────────────────────────────────────────────────────────
+  // Section 8 · Gamut mapping
+  // ────────────────────────────────────────────────────────────────
+
+  const gamutContainer = $(`#${id}-gamut`)
+  const chromaId = uid('chroma')
+  const chromaSlider = h<HTMLInputElement>('input', {
+    type: 'range', id: chromaId,
+    min: '0', max: '0.4', step: '0.005', value: '0.25',
+    'aria-label': 'OKLCh chroma',
+  })
+  const chromaValue = h('span', { className: 'cs-space-name', 'aria-live': 'polite' }, '0.250')
+  const cellNaive = h('div', { className: 'cs-gamut-cell' })
+  const cellMapped = h('div', { className: 'cs-gamut-cell' })
+
+  const refreshGamut = () => {
+    const ok = toOKLCh(base)
+    const C = parseFloat(chromaSlider.value)
+    chromaValue.textContent = C.toFixed(3)
+    const wide: Color = { space: 'oklch', channels: new Float64Array([ok.channels[0], C, ok.channels[2]]), alpha: 1 }
+    const naive = toSRGB(wide)
+    const mapped = toGamut(wide, 'srgb')
+    const within = inGamut(wide, 'srgb')
+    cellNaive.style.background = bg(naive)
+    cellNaive.replaceChildren(h('span', { className: 'cs-gamut-label' }, `naive ${within ? '· in gamut' : '· clipped'}`))
+    cellMapped.style.background = bg(mapped)
+    cellMapped.replaceChildren(h('span', { className: 'cs-gamut-label' }, 'toGamut(srgb)'))
+  }
+  chromaSlider.addEventListener('input', refreshGamut)
+
+  gamutContainer.replaceChildren(
+    h('div', { className: 'cs-row', style: { marginBottom: '16px' } },
+      h('label', { for: chromaId }, 'OKLCh chroma:'), chromaSlider, chromaValue,
+    ),
+    h('div', { className: 'cs-gamut-comparison' }, cellNaive, cellMapped),
+  )
+  onChange(refreshGamut)
+</script>
+
+<style is:global>
+  .color-showcase {
+    --cs-bg: var(--sl-color-gray-6);
+    --cs-bg-elev: var(--sl-color-gray-5);
+    --cs-fg: var(--sl-color-white);
+    --cs-fg-muted: var(--sl-color-gray-2);
+    --cs-accent: var(--sl-color-accent-high);
+    --cs-border: var(--sl-color-gray-4);
+    --cs-focus: var(--sl-color-accent);
+    --cs-pass: oklch(0.82 0.18 145);
+    --cs-fail: oklch(0.74 0.22 25);
+    font-size: 0.9375rem;
+  }
+  .color-showcase * { box-sizing: border-box; }
+  /* Starlight applies a vertical-rhythm margin-top to consecutive siblings inside .sl-markdown-content.
+     That rule cascades into our interactive widgets and breaks flex alignment. We compose our own
+     spacing via gap/margin on the surrounding containers, so opt out here. */
+  .color-showcase .cs-card *,
+  .color-showcase .cs-swatches > *,
+  .color-showcase .cs-spaces > *,
+  .color-showcase .cs-gradient > *,
+  .color-showcase .cs-matrix > *,
+  .color-showcase .cs-row > *,
+  .color-showcase .cs-col > *,
+  .color-showcase .cs-radio-group > * { margin-top: 0; }
+
+  .color-showcase .cs-card {
+    background: var(--cs-bg-elev);
+    border: 1px solid var(--cs-border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  .color-showcase h3 {
+    margin: 36px 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cs-fg-muted);
+  }
+
+  .color-showcase .cs-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .color-showcase .cs-col { display: flex; flex-direction: column; gap: 4px; }
+  .color-showcase label { color: var(--cs-fg-muted); font-size: 12px; font-weight: 500; font-family: var(--sl-font); }
+
+  .color-showcase :focus-visible {
+    outline: 3px solid var(--cs-focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .color-showcase input[type="color"] {
+    appearance: none;
+    width: 48px; height: 48px;
+    border: 1px solid var(--cs-border);
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    padding: 3px;
+  }
+  .color-showcase input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  .color-showcase input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+
+  .color-showcase input[type="text"] {
+    background: var(--cs-bg);
+    border: 1px solid var(--cs-border);
+    border-radius: 6px;
+    color: var(--cs-fg);
+    padding: 8px 10px;
+    font-family: var(--sl-font-mono);
+    font-size: 13px;
+    min-width: 160px;
+  }
+  .color-showcase input[type="range"] {
+    accent-color: var(--cs-accent);
+    flex: 1;
+    min-width: 120px;
+  }
+
+  /* Radio group for lens */
+  .color-showcase .cs-radio-group {
+    display: flex; gap: 0;
+    border: 1px solid var(--cs-border);
+    border-radius: 8px;
+    overflow: hidden;
+    flex-wrap: wrap;
+  }
+  .color-showcase .cs-radio-group input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .color-showcase .cs-radio-label {
+    padding: 8px 14px;
+    cursor: pointer;
+    border-right: 1px solid var(--cs-border);
+    background: var(--cs-bg);
+    color: var(--cs-fg);
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.12s, color 0.12s;
+  }
+  .color-showcase .cs-radio-label:last-child { border-right: none; }
+  .color-showcase .cs-radio-group input[type="radio"]:checked + .cs-radio-label {
+    background: var(--cs-accent);
+    color: var(--sl-color-black);
+  }
+  .color-showcase .cs-radio-group input[type="radio"]:focus-visible + .cs-radio-label {
+    outline: 3px solid var(--cs-focus);
+    outline-offset: 2px;
+  }
+
+  /* Space breakdown grid */
+  .color-showcase .cs-spaces {
+    display: grid;
+    grid-template-columns: 100px 1fr 80px;
+    gap: 6px 14px;
+    font-family: var(--sl-font-mono);
+    font-size: 12px;
+    align-items: center;
+  }
+  .color-showcase .cs-space-name { color: var(--cs-accent); }
+  .color-showcase .cs-space-value { color: var(--cs-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .color-showcase .cs-space-swatch { height: 26px; border-radius: 5px; border: 1px solid var(--cs-border); }
+
+  /* Palettes */
+  .color-showcase .cs-palette {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .color-showcase .cs-label { font-size: 12px; color: var(--cs-fg-muted); }
+  .color-showcase .cs-swatches {
+    display: flex;
+    gap: 5px;
+    flex-wrap: nowrap;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .color-showcase button.cs-pill {
+    height: 50px;
+    flex: 1 1 0;
+    min-width: 0;
+    border-radius: 8px;
+    border: 1px solid var(--cs-border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 4px 6px;
+    cursor: pointer;
+    transition: transform 0.08s;
+    color: inherit;
+    font: inherit;
+  }
+  .color-showcase button.cs-pill:hover { transform: translateY(-2px); }
+  .color-showcase .cs-pill-hex {
+    mix-blend-mode: difference;
+    color: white;
+    opacity: 0.85;
+    font-family: var(--sl-font-mono);
+    font-size: 10px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .color-showcase *, .color-showcase *::before, .color-showcase *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+    .color-showcase button.cs-pill:hover { transform: none; }
+  }
+
+  /* Toast */
+  .color-showcase .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--cs-accent);
+    color: var(--sl-color-black);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-family: var(--sl-font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 1000;
+  }
+  .color-showcase .toast.visible { opacity: 1; }
+
+  .color-showcase .cs-note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--cs-fg-muted);
+    font-style: italic;
+  }
+
+  /* Mix gradients */
+  .color-showcase .cs-gradient-row {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .color-showcase .cs-gradient-row label { font-family: var(--sl-font-mono); }
+  .color-showcase .cs-gradient {
+    height: 36px;
+    border-radius: 6px;
+    border: 1px solid var(--cs-border);
+    display: flex;
+    overflow: hidden;
+  }
+  .color-showcase .cs-gradient > div { flex: 1; }
+
+  /* Contrast preview */
+  .color-showcase .cs-contrast-preview {
+    border-radius: 8px;
+    padding: 24px;
+    font-size: 22px;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid var(--cs-border);
+  }
+  .color-showcase .cs-contrast-small { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+  .color-showcase .cs-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .color-showcase .cs-badge {
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-family: var(--sl-font-mono);
+    border: 1px solid var(--cs-border);
+  }
+  .color-showcase .cs-badge.pass {
+    background: color-mix(in oklab, var(--cs-pass), transparent 80%);
+    color: var(--cs-pass);
+    border-color: var(--cs-pass);
+  }
+  .color-showcase .cs-badge.fail {
+    background: color-mix(in oklab, var(--cs-fail), transparent 85%);
+    color: var(--cs-fail);
+    border-color: var(--cs-fail);
+  }
+
+  /* Contrast matrix: container is square; cells fill it */
+  .color-showcase .cs-matrix {
+    display: grid;
+    gap: 3px;
+    font-family: var(--sl-font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 12px;
+    aspect-ratio: 1;
+    max-width: 480px;
+  }
+  .color-showcase .cs-matrix-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    border: 1px solid var(--cs-border);
+    min-height: 0;
+  }
+
+  /* Gamut */
+  .color-showcase .cs-gamut-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .color-showcase .cs-gamut-cell {
+    border-radius: 8px;
+    height: 120px;
+    border: 1px solid var(--cs-border);
+    display: flex;
+    align-items: flex-end;
+    padding: 10px;
+    font-family: var(--sl-font-mono);
+    font-size: 11px;
+  }
+  .color-showcase .cs-gamut-label {
+    color: white;
+    mix-blend-mode: difference;
+    opacity: 0.85;
+  }
+</style>
