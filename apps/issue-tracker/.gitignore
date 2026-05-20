@@ -1,0 +1,4 @@
+node_modules
+db/migrations/meta
+dist
+.env

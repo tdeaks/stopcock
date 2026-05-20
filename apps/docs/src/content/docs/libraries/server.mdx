@@ -1,0 +1,88 @@
+---
+title: server
+description: Functional HTTP framework with typed route plugins, module DI, lifecycle hooks, and AOT routing
+---
+
+```bash
+bun add @stopcock/server
+```
+
+`@stopcock/server` is the HTTP layer for Stopcock apps. It keeps the wiring explicit: modules provide dependencies, routes declare what they need, and plugins add behavior without hiding handler requirements from TypeScript.
+
+```ts
+import { defineApp, defineModule, route } from '@stopcock/server'
+import { cors } from '@stopcock/server/cors'
+import { openapi, openapiMeta } from '@stopcock/server/openapi'
+import { bearer } from '@stopcock/server/bearer'
+
+const withAuth = bearer({
+  verify: async (token) => ({ userId: token }),
+})
+
+const PostsModule = defineModule({
+  name: 'posts',
+  routes: () => [
+    route.get('/posts/:id')
+      .use(withAuth)
+      .meta(openapiMeta({ summary: 'Find post', tags: ['Posts'] }))
+      .handler((ctx) => ({ id: ctx.params.id, userId: ctx.auth.userId })),
+  ],
+})
+
+export const app = defineApp({
+  modules: [PostsModule],
+  plugins: [
+    cors(),
+    openapi({ path: '/openapi.json', docsPath: '/docs' }),
+  ],
+})
+```
+
+## Type safety
+
+Plugins are typed at the route boundary. A route plugin that provides `{ auth }` makes `ctx.auth` available only after `.use(plugin)`. Lifecycle-only plugins do not add fields to `ctx`.
+
+```ts
+route.get('/me')
+  .use(withAuth)
+  .handler((ctx) => ctx.auth.userId)
+```
+
+Path params are inferred from the route string for every HTTP method, including `HEAD` and `OPTIONS`.
+
+```ts
+route.head('/users/:id').handler((ctx) => ctx.params.id)
+```
+
+## Modules
+
+Modules own dependency wiring and routes. `defineApp` walks the module graph once, memoises `provides`, applies prefixes, and then installs app plugins.
+
+```ts
+const DbModule = defineModule({
+  name: 'db',
+  provides: () => ({ db: makeDb() }),
+})
+
+const ApiModule = defineModule({
+  name: 'api',
+  prefix: '/api/v1',
+  imports: [DbModule],
+  routes: ({ db }) => [
+    route.get('/health').handler(() => ({ ok: true, db: db.ready })),
+  ],
+})
+```
+
+## Plugins
+
+App plugins run at the application edge or contribute routes. Route plugins add typed context, route metadata, or lifecycle behavior.
+
+```ts
+route.post('/posts')
+  .use(validate.body(PostInput))
+  .use(withAuth)
+  .handler((ctx) => createPost(ctx.auth.userId, ctx.body))
+```
+
+See [Plugins](/server/plugins) for the lifecycle model and first-party plugin list.

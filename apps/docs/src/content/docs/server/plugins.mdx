@@ -1,0 +1,54 @@
+---
+title: Plugins
+description: App plugins, route plugins, metadata, and lifecycle hooks in @stopcock/server
+---
+
+Stopcock plugins are deliberately split into two shapes.
+
+App plugins are installed once:
+
+```ts
+defineApp({
+  modules: [ApiModule],
+  plugins: [cors(), openapi(), serverTiming()],
+})
+```
+
+Route plugins are explicit at the handler boundary:
+
+```ts
+route.get('/me')
+  .use(bearer({ verify }))
+  .handler((ctx) => ctx.auth.userId)
+```
+
+## Why explicit route plugins?
+
+TypeScript can only prove `ctx.auth`, `ctx.body`, or `ctx.cookies` exists when the route declares the plugin that provides it. App plugins can add edge behavior, global lifecycle hooks, routes, and metadata, but they should not invisibly add fields that handlers depend on.
+
+## Lifecycle order
+
+For a matched route:
+
+1. edge hooks run before routing
+2. global `before` hooks run
+3. route `before` hooks run
+4. handler and route middleware run
+5. route `onError` hooks may handle errors
+6. global `onError` hooks may handle errors
+7. renderer handles unhandled errors
+8. route `after` hooks run
+9. global `after` hooks run
+
+`after` hooks receive a `Response`, so plugins can add headers without changing handler return values.
+
+## Metadata
+
+Plugin metadata is namespaced:
+
+```ts
+route.get('/posts')
+  .meta({ 'stopcock.openapi': { summary: 'List posts' } })
+```
+
+Validation, OpenAPI, auth, RPC, and docs generation all read the same route metadata.

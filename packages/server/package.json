@@ -1,0 +1,25 @@
+{
+  "name": "@stopcock/server",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".":          { "types": "./dist/index.d.ts",    "import": "./dist/index.js" },
+    "./bearer":   { "types": "./dist/bearer.d.ts",   "import": "./dist/bearer.js" },
+    "./cookie":   { "types": "./dist/cookie.d.ts",   "import": "./dist/cookie.js" },
+    "./cors":     { "types": "./dist/cors.d.ts",     "import": "./dist/cors.js" },
+    "./openapi":  { "types": "./dist/openapi.d.ts",  "import": "./dist/openapi.js" },
+    "./static":   { "types": "./dist/static.d.ts",   "import": "./dist/static.js" },
+    "./timing":   { "types": "./dist/timing.d.ts",   "import": "./dist/timing.js" },
+    "./validate": { "types": "./dist/validate.d.ts", "import": "./dist/validate.js" }
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@stopcock/async": "workspace:*",
+    "@stopcock/fp": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsup"
+  }
+}

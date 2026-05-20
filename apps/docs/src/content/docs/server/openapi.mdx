@@ -1,0 +1,25 @@
+---
+title: OpenAPI
+description: Generate OpenAPI from Stopcock route, validation, and auth metadata
+---
+
+```bash
+bun add @stopcock/server
+```
+
+```ts
+import { openapi, openapiMeta } from '@stopcock/server/openapi'
+
+const app = defineApp({
+  modules: [ApiModule],
+  plugins: [openapi({ path: '/openapi.json', docsPath: '/docs' })],
+})
+
+route.post('/posts')
+  .meta(openapiMeta({ summary: 'Create post', tags: ['Posts'] }))
+  .handler(createPost)
+```
+
+The plugin reads `stopcock.validate` metadata from validation middleware and `stopcock.auth` metadata from auth plugins.
+
+By default, plugin-generated routes are excluded from the document. Set `includePluginRoutes: true` when you want those endpoints listed too.

@@ -1,0 +1,21 @@
+---
+title: Static Files
+description: Serve static assets from Node or Bun
+---
+
+```bash
+bun add @stopcock/server
+```
+
+```ts
+import { staticFiles } from '@stopcock/server/static'
+
+defineApp({
+  modules: [ApiModule],
+  plugins: [
+    staticFiles({ dir: 'public', prefix: '/assets' }),
+  ],
+})
+```
+
+The static plugin runs as an edge hook before route matching. It serves files from the configured directory and blocks path traversal.
