@@ -10,6 +10,19 @@ export const dot3 = (a: Float64Array, b: Float64Array): number =>
 export const dot4 = (a: Float64Array, b: Float64Array): number =>
   a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
 
+export const mul3vec = (
+  m: Float64Array,
+  x: number,
+  y: number,
+  z: number,
+  out: Float64Array,
+): Float64Array => {
+  out[0] = m[0] * x + m[1] * y + m[2] * z
+  out[1] = m[3] * x + m[4] * y + m[5] * z
+  out[2] = m[6] * x + m[7] * y + m[8] * z
+  return out
+}
+
 export const mul2x2 = (a: Float64Array, b: Float64Array, out: Float64Array): void => {
   const a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3]
   const b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3]

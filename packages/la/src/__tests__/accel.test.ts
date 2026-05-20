@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accelerate, decelerate, isAccelerated, getDot, getAxpy, getMatmul, getConvolve1d, getColorMatrix3x3 } from '../accel'
+import { accelerate, decelerate, isAccelerated, getDot, getAxpy, getMatmul, getConvolve1d, getColorMatrix3x3, getColorMatrix3x3Float } from '../accel'
 
 describe('accel', () => {
   it('starts unaccelerated', () => {
@@ -13,6 +13,7 @@ describe('accel', () => {
     expect(getMatmul()).toBeNull()
     expect(getConvolve1d()).toBeNull()
     expect(getColorMatrix3x3()).toBeNull()
+    expect(getColorMatrix3x3Float()).toBeNull()
   })
 
   it('accelerate enables and decelerate disables', () => {
@@ -22,6 +23,7 @@ describe('accel', () => {
       matmul: () => {},
       convolve1d: () => {},
       colorMatrix3x3: () => {},
+      colorMatrix3x3Float: () => {},
     } as any
     accelerate(fake)
     expect(isAccelerated()).toBe(true)
@@ -30,6 +32,7 @@ describe('accel', () => {
     expect(getMatmul()).toBe(fake.matmul)
     expect(getConvolve1d()).toBe(fake.convolve1d)
     expect(getColorMatrix3x3()).toBe(fake.colorMatrix3x3)
+    expect(getColorMatrix3x3Float()).toBe(fake.colorMatrix3x3Float)
     decelerate()
     expect(isAccelerated()).toBe(false)
     expect(getDot()).toBeNull()
