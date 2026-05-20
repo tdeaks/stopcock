@@ -102,11 +102,22 @@ invert(img: Image): Image
 threshold(img: Image, value: number): Image
 sepia(img: Image): Image
 saturate(img: Image, factor: number): Image
+colorize(img: Image, target: Color): Image
+duotone(img: Image, dark: Color, light: Color): Image
+simulateCVD(img: Image, type: CVDType, severity?: number): Image
+tonemapToGamut(img: Image, srcSpace: ColorSpace, targetSpace: ColorSpace): Image
 ```
 
 <Aside type="tip">
   All filter functions return a new `Image`. The original is never mutated. Chain them freely in `pipe`.
 </Aside>
+
+The color-aware filters use `@stopcock/color`'s packed `Float64Array` batch API internally:
+
+- `colorize` preserves each pixel's OKLCh lightness and replaces hue/chroma with the target color.
+- `duotone` maps OKLab lightness between a dark and light color.
+- `simulateCVD` applies Machado color-vision-deficiency matrices once across the whole image.
+- `tonemapToGamut` gamut-maps wide-gamut pixel data into a target color space.
 
 ## Convolution
 

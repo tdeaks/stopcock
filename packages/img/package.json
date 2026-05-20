@@ -13,7 +13,10 @@
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
   },
   "files": ["dist"],
-  "dependencies": { "@stopcock/la": "0.0.2" },
+  "dependencies": {
+    "@stopcock/color": "workspace:*",
+    "@stopcock/la": "0.0.2"
+  },
   "scripts": {
     "build": "tsup"
   }
