@@ -1,0 +1,24 @@
+{
+  "name": "@stopcock/svg",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tdeaks/stopcock",
+    "directory": "packages/svg"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./la": { "types": "./dist/la/index.d.ts", "import": "./dist/la/index.js" }
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@stopcock/color": "workspace:*",
+    "@stopcock/la": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsup"
+  }
+}

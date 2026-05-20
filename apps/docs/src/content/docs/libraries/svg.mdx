@@ -1,0 +1,130 @@
+---
+title: svg
+description: Pipe-native procedural SVG with typed nodes, defs hoisting, filters, and linear-algebra helpers
+---
+
+```bash
+bun add @stopcock/svg
+```
+
+`@stopcock/svg` builds SVG as typed pipeable values. User code works with shapes, paints, paths, filters, and transforms; the renderer owns XML, ids, escaping, and `<defs>` hoisting.
+
+```ts
+import { rgb } from '@stopcock/color'
+import { circle, fill, render, rotate, stroke, translate, viewBox } from '@stopcock/svg'
+
+const badge = viewBox(0, 0, 100, 100)(
+  stroke(rgb(0, 0, 0), 2)(
+    fill(rgb(1, 0, 0))(
+      rotate(15)(
+        translate(50, 50)(
+          circle(32),
+        ),
+      ),
+    ),
+  ),
+)
+
+render(badge)
+```
+
+## Core model
+
+```ts
+type Mat = readonly [number, number, number, number, number, number]
+
+circle(r)
+rect(w, h)
+ellipse(rx, ry)
+line(x1, y1, x2, y2)
+text(value, size?)
+group(children)
+use(target)
+viewBox(x, y, w, h)
+render(node)
+```
+
+Operators return `Node => Node`, so they compose naturally in `pipe`:
+
+```ts
+fill(paint)
+stroke(paint, width, opts?)
+opacity(alpha)
+translate(dx, dy)
+rotate(degrees, cx?, cy?)
+scale(sx, sy?)
+skewX(degrees)
+skewY(degrees)
+```
+
+## Paint and defs
+
+Gradients, patterns, clips, masks, filters, and symbols are hoisted into `<defs>` by reference equality. Reuse a `const` to reuse a definition; allocate a new value to get a distinct definition.
+
+```ts
+import { linear, rect, circle, fill, group, render } from '@stopcock/svg'
+import { rgb } from '@stopcock/color'
+
+const brand = linear([
+  { offset: 0, color: rgb(1, 0, 0) },
+  { offset: 1, color: rgb(0, 0, 1) },
+])
+
+render(group([
+  fill(brand)(rect(20, 20)),
+  fill(brand)(circle(8)),
+]))
+```
+
+## Paths
+
+```ts
+import { path, render } from '@stopcock/svg'
+
+const triangle = path.toNode()(
+  path.close()(
+    path.lineTo(50, 80)(
+      path.lineTo(100, 0)(
+        path.start(0, 0),
+      ),
+    ),
+  ),
+)
+
+render(triangle)
+```
+
+## Filters
+
+```ts
+import { filter, rect, render } from '@stopcock/svg'
+
+const identity = [
+  1, 0, 0, 0, 0,
+  0, 1, 0, 0, 0,
+  0, 0, 1, 0, 0,
+  0, 0, 0, 1, 0,
+] as const
+
+render(
+  filter(filter.compose([
+    filter.blur(2),
+    filter.colorMatrix(identity),
+  ]))(rect(100, 40)),
+)
+```
+
+`filter.colorMatrix` accepts a row-major 4x5 SVG color matrix: 20 numbers for RGBA plus bias.
+
+## Linear algebra helpers
+
+Import from `@stopcock/svg/la` when you want helpers backed by `@stopcock/la`.
+
+```ts
+import { rect } from '@stopcock/svg'
+import { toQuad, lerpTransform, symmetry } from '@stopcock/svg/la'
+
+const warped = toQuad([[0, 0], [120, 10], [100, 80], [10, 90]])(rect(1, 1))
+const halfway = lerpTransform([1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 100, 0], 0.5)
+const repeated = symmetry(warped, 8, halfway)
+```
