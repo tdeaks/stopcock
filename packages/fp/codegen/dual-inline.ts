@@ -10,8 +10,8 @@ import { pipe, flow, A } from '../src'
 import { OP_CODES } from '../src/opcodes'
 import {
   type Parser, type ParseResult,
-  seq, map, optional, regex, string as pStr, char, alt, run,
-} from '@stopcock/parse'
+  seq, map, string as pStr, char, run,
+} from './parse'
 import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 

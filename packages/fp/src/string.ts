@@ -4,43 +4,43 @@
 
 
 // Arity 1. Tagged for scalar JIT
-export const isEmpty = /* @__PURE__ */ (() => {
+export const isEmpty: (s: string) => boolean = /* @__PURE__ */ (() => {
   const _f: any = function isEmpty(s: any) { return s === '' }
   _f._op = 57
   return _f
 })()
 
-export const length = /* @__PURE__ */ (() => {
+export const length: (s: string) => number = /* @__PURE__ */ (() => {
   const _f: any = function length(s: any) { return s.length }
   _f._op = 56
   return _f
 })()
 
-export const trim = /* @__PURE__ */ (() => {
+export const trim: (s: string) => string = /* @__PURE__ */ (() => {
   const _f: any = function trim(s: any) { return s.trim() }
   _f._op = 50
   return _f
 })()
 
-export const trimStart = /* @__PURE__ */ (() => {
+export const trimStart: (s: string) => string = /* @__PURE__ */ (() => {
   const _f: any = function trimStart(s: any) { return s.trimStart() }
   _f._op = 53
   return _f
 })()
 
-export const trimEnd = /* @__PURE__ */ (() => {
+export const trimEnd: (s: string) => string = /* @__PURE__ */ (() => {
   const _f: any = function trimEnd(s: any) { return s.trimEnd() }
   _f._op = 54
   return _f
 })()
 
-export const toLowerCase = /* @__PURE__ */ (() => {
+export const toLowerCase: (s: string) => string = /* @__PURE__ */ (() => {
   const _f: any = function toLowerCase(s: any) { return s.toLowerCase() }
   _f._op = 51
   return _f
 })()
 
-export const toUpperCase = /* @__PURE__ */ (() => {
+export const toUpperCase: (s: string) => string = /* @__PURE__ */ (() => {
   const _f: any = function toUpperCase(s: any) { return s.toUpperCase() }
   _f._op = 52
   return _f
