@@ -28,6 +28,46 @@ export const flatMap =
   <E>(r: Result<A, E>): Result<B, E | E2> =>
     r._tag === 1 ? f(r.value) : r
 
+export const andThen = flatMap
+
+export const flatten = <A, E, E2>(r: Result<Result<A, E2>, E>): Result<A, E | E2> =>
+  r._tag === 1 ? r.value : r
+
+export const orElse =
+  <B, F>(that: Result<B, F>) =>
+  <A, E>(r: Result<A, E>): Result<A | B, F> =>
+    r._tag === 1 ? r : that
+
+export const orElseWith =
+  <E, B, F>(onErr: (e: E) => Result<B, F>) =>
+  <A>(r: Result<A, E>): Result<A | B, F> =>
+    r._tag === 1 ? r : onErr(r.error)
+
+export const and =
+  <B, F>(that: Result<B, F>) =>
+  <A, E>(r: Result<A, E>): Result<B, E | F> =>
+    r._tag === 1 ? that : r
+
+export const zip =
+  <B, F>(that: Result<B, F>) =>
+  <A, E>(r: Result<A, E>): Result<[A, B], E | F> =>
+    r._tag === 0 ? r : that._tag === 0 ? that : ok([r.value, that.value])
+
+export const zipWith =
+  <A, B, C, F>(that: Result<B, F>, f: (a: A, b: B) => C) =>
+  <E>(r: Result<A, E>): Result<C, E | F> =>
+    r._tag === 0 ? r : that._tag === 0 ? that : ok(f(r.value, that.value))
+
+export const contains =
+  <A>(value: A) =>
+  <B, E>(r: Result<A | B, E>): boolean =>
+    r._tag === 1 && Object.is(r.value, value)
+
+export const exists =
+  <A>(predicate: (a: A) => boolean) =>
+  <E>(r: Result<A, E>): boolean =>
+    r._tag === 1 && predicate(r.value)
+
 export const getOrElse =
   <B>(onErr: LazyValue<B>) =>
   <A, E>(r: Result<A, E>): A | B =>
@@ -43,6 +83,21 @@ export function tryCatch<A, E>(thunk: () => A, onError: (e: unknown) => E): Resu
 export function tryCatch<A, E>(thunk: () => A, onError?: (e: unknown) => E): Result<A, E | unknown> {
   try {
     return ok(thunk())
+  } catch (e) {
+    return err(onError ? onError(e) : e)
+  }
+}
+
+export const fromThrowable = tryCatch
+
+export async function tryCatchAsync<A>(thunk: () => Promise<A>): Promise<Result<A, unknown>>
+export async function tryCatchAsync<A, E>(thunk: () => Promise<A>, onError: (e: unknown) => E): Promise<Result<A, E>>
+export async function tryCatchAsync<A, E>(
+  thunk: () => Promise<A>,
+  onError?: (e: unknown) => E,
+): Promise<Result<A, E | unknown>> {
+  try {
+    return ok(await thunk())
   } catch (e) {
     return err(onError ? onError(e) : e)
   }

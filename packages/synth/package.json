@@ -1,0 +1,36 @@
+{
+  "name": "@stopcock/synth",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tdeaks/stopcock",
+    "directory": "packages/synth"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@stopcock/fp": "workspace:*",
+    "@stopcock/signal": "workspace:*"
+  },
+  "scripts": {
+    "build": "bun run build:wasm && tsup",
+    "build:wasm": "cargo build --manifest-path Cargo.toml --release --target wasm32-unknown-unknown --package stopcock_synth_wasm --target-dir wasm/target && bun run scripts/embed-wasm.ts",
+    "bench:triggered": "bun run scripts/bench-triggered-wasm.ts",
+    "test:wasm": "cargo test --manifest-path Cargo.toml --workspace",
+    "test": "bun run test:wasm && bun run build:wasm && vitest run"
+  }
+}

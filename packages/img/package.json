@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/img",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,12 +10,17 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
-    "@stopcock/color": "workspace:*",
-    "@stopcock/la": "0.0.2"
+    "@stopcock/color": "0.0.2",
+    "@stopcock/la": "0.0.3"
   },
   "scripts": {
     "build": "tsup"

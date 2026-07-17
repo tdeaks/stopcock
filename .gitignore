@@ -6,12 +6,15 @@
 .vscode/
 node_modules/
 coverage/
+target/
 
 *.log
 *.tsbuildinfo
 
 dist/
 lib/
+!apps/docs/src/lib/
+!apps/docs/src/lib/**
 playground/
 
 .merlin

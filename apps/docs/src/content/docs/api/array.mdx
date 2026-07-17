@@ -1,21 +1,23 @@
 ---
 title: A (Array)
-description: Filter, map, sort, group, and 30+ array functions that fuse in pipe
+description: Filter, map, sort, group, and 30+ array functions for pipe
 ---
 
-Every function works both ways: `A.fn(arr, ...)` (data-first) and `pipe(arr, A.fn(...))` (data-last). Most of these [fuse in pipe](/concepts/fusion) into single loops.
+Every function works both ways: `A.fn(arr, ...)` (data-first) and `pipe(arr, A.fn(...))` (data-last). Streaming operations such as `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, and `dropWhile` [fuse in pipe](/concepts/fusion) into single loops. Terminal folds, accessor terminals, and materializing operations have different boundaries.
 
 ## Accessors
 
 ```ts
 head<A>(arr: A[]): A | undefined
 last<A>(arr: A[]): A | undefined
-first<A>(arr: A[]): A | undefined   // alias for head
-tail<A>(arr: A[]): A[]               // all except first
-init<A>(arr: A[]): A[]               // all except last
+first<A>(arr: A[]): A | undefined // alias for head
+tail<A>(arr: A[]): A[]             // all except first
+init<A>(arr: A[]): A[]             // all except last
 length<A>(arr: A[]): number
 isEmpty<A>(arr: A[]): boolean
 ```
+
+`head`, `last`, `length`, and `isEmpty` are accessor terminals in fused chains.
 
 ## Transforms
 
@@ -32,7 +34,7 @@ forEach<A>(arr: A[], f: (a: A) => void): void
 forEachWithIndex<A>(arr: A[], f: (a: A, i: number) => void): void
 ```
 
-All of these fuse in `pipe`.
+`map`, `mapWithIndex`, `filter`, `filterWithIndex`, and `flatMap` stream in fused `pipe` chains. `reduce` is a terminal fold. `forEach` is terminal side-effect traversal. `scan` returns an intermediate array.
 
 ## Ordering
 
@@ -42,7 +44,7 @@ sortBy<A>(arr: A[], cmp: (a: A, b: A) => number): A[]
 reverse<A>(arr: A[]): A[]
 ```
 
-Not fuseable. They need the whole array.
+Materialization boundaries. They need the whole array, except the special `sortBy -> take(k)` and `sort -> take(k)` top-k optimization.
 
 ## Slicing
 
@@ -56,7 +58,7 @@ slidingWindow<A>(arr: A[], n: number): A[][]
 aperture<A>(arr: A[], n: number): A[][]
 ```
 
-`take` bails out early in fused pipelines.
+`take`, `drop`, `takeWhile`, and `dropWhile` can stream in fused pipelines. `take` and `takeWhile` can stop early.
 
 ## Search
 
@@ -68,7 +70,7 @@ some<A>(arr: A[], pred: (a: A) => boolean): boolean
 includes<A>(arr: A[], value: A): boolean
 ```
 
-`find`, `every`, `some` fuse and bail out early.
+`find`, `every`, and `some` are terminal predicates/searches. They can run as the final step of a fused pass and bail out early.
 
 ## Deduplication
 
@@ -76,6 +78,8 @@ includes<A>(arr: A[], value: A): boolean
 uniq<A>(arr: A[]): A[]
 uniqBy<A, B>(arr: A[], f: (a: A) => B): A[]
 ```
+
+Deduplication needs seen-value state and returns a materialized array.
 
 ## Set operations
 
@@ -98,6 +102,8 @@ intersperse<A>(arr: A[], sep: A): A[]
 flatten<A>(arr: A[][]): A[]
 transpose<A>(arr: A[][]): A[][]
 ```
+
+`groupBy` is a materialization boundary because it needs the whole grouped result.
 
 ## Mutation (immutable)
 
@@ -124,9 +130,14 @@ unfold<A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
 ```ts
 import { pipe, A } from '@stopcock/fp'
 
-type Product = { name: string; price: number; category: string; inStock: boolean }
+type Product = {
+  name: string
+  price: number
+  category: string
+  inStock: boolean
+}
 
-// fused: filter → map → take runs in one loop
+// fused: filter -> map -> take runs in one loop
 const deals = pipe(
   products,
   A.filter((p: Product) => p.inStock && p.price < 50),

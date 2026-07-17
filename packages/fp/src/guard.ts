@@ -1,3 +1,9 @@
+export type Predicate<A> = (a: A) => boolean
+export type Refinement<A, B extends A> = (a: A) => a is B
+export type Brand<T, B extends string> = T & { readonly __brand: B }
+
+const hasOwn = Object.prototype.hasOwnProperty
+
 export const is = <T>(ctor: new (...args: any[]) => T, val: unknown): val is T =>
   val instanceof ctor
 
@@ -101,7 +107,7 @@ export const isShallowEqual = (a: unknown, b: unknown): boolean => {
   if (keysA.length !== Object.keys(b as Record<string, unknown>).length) return false
   for (let i = 0; i < keysA.length; i++) {
     const k = keysA[i]
-    if ((a as any)[k] !== (b as any)[k]) return false
+    if (!hasOwn.call(b, k) || (a as any)[k] !== (b as any)[k]) return false
   }
   return true
 }
@@ -113,3 +119,31 @@ export const isString = (val: unknown): val is string => typeof val === 'string'
 export const isSymbol = (val: unknown): val is symbol => typeof val === 'symbol'
 
 export const isTruthy = (val: unknown): boolean => !!val
+
+export function and<A, B extends A, C extends A>(
+  left: Refinement<A, B>,
+  right: Refinement<A, C>,
+): Refinement<A, B & C>
+export function and<A, B extends A, C extends B>(
+  left: Refinement<A, B>,
+  right: Refinement<B, C>,
+): Refinement<A, C>
+export function and<A>(left: Predicate<A>, right: Predicate<A>): Predicate<A>
+export function and<A>(left: Predicate<A>, right: Predicate<A>): Predicate<A> {
+  return (a: A) => left(a) && right(a)
+}
+
+export function or<A, B extends A, C extends A>(
+  left: Refinement<A, B>,
+  right: Refinement<A, C>,
+): Refinement<A, B | C>
+export function or<A>(left: Predicate<A>, right: Predicate<A>): Predicate<A>
+export function or<A>(left: Predicate<A>, right: Predicate<A>): Predicate<A> {
+  return (a: A) => left(a) || right(a)
+}
+
+export function not<A, B extends A>(refinement: Refinement<A, B>): Refinement<A, Exclude<A, B>>
+export function not<A>(predicate: Predicate<A>): Predicate<A>
+export function not<A>(predicate: Predicate<A>): Predicate<A> {
+  return (a: A) => !predicate(a)
+}

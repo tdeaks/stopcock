@@ -40,10 +40,12 @@ for (let i = 0; i < 50; i++) {
   large50B[`k${i}`] = i
 }
 
+const hasOwn = Object.prototype.hasOwnProperty
+
 const shallowManual = (a: Record<string, unknown>, b: Record<string, unknown>): boolean => {
   const ka = Object.keys(a)
   if (ka.length !== Object.keys(b).length) return false
-  for (const k of ka) if (a[k] !== b[k]) return false
+  for (const k of ka) if (!hasOwn.call(b, k) || a[k] !== b[k]) return false
   return true
 }
 

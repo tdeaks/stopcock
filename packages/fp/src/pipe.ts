@@ -1,14 +1,73 @@
-import { fuse, fuseArray } from './fuse'
+import { fuse, fuseArray, tryInlineSource } from './fuse'
+import { OP_MAP, OP_TAKE_UNTIL } from './opcodes'
 
 // Fast tag check. Inlined to avoid function call overhead in hot path
 const _hasOp = (fn: any): boolean => typeof fn._op === 'number' && fn._op > 0
 
-// Fast array-op check: fuseable (1-7,16), terminal (8-13,17-18), accessor (30-43)
+// Fast array-op check: fuseable/terminal array ops, accessor terminals. Keep
+// sort opcodes out; they are materialization boundaries handled by fuse().
 const _isArrayOp = (op: number): boolean =>
-  (op >= 1 && op <= 18) || (op >= 30 && op <= 43)
+  (op >= 1 && op <= 19) || op === 22 || (op >= 30 && op <= 43)
 
 // Shared buffer for general path. Avoids per-call array allocation
 const _pipeBuf: any[] = new Array(32)
+
+type _MapTakeUntilRunner = (
+  src: readonly any[],
+) => any[]
+
+type _MapTakeUntilFallback = (
+  src: readonly any[],
+  mapFn: (value: any) => any,
+  pred: (value: any) => boolean,
+) => any[]
+
+let _mapTakeUntilMapFn: Function | null = null
+let _mapTakeUntilPred: Function | null = null
+let _mapTakeUntilRunner: _MapTakeUntilRunner | null = null
+
+const _runArrayMapTakeUntilFallback: _MapTakeUntilFallback = (src, mapFn, pred) => {
+  const out: any[] = []
+  let count = 0
+  for (let i = 0, len = src.length; i < len; i++) {
+    const value = mapFn(src[i])
+    if (pred(value)) break
+    out[count++] = value
+  }
+  return out
+}
+
+const _getArrayMapTakeUntilRunner = (
+  mapFn: (value: any) => any,
+  pred: (value: any) => boolean,
+): _MapTakeUntilRunner => {
+  if (mapFn === _mapTakeUntilMapFn && pred === _mapTakeUntilPred && _mapTakeUntilRunner) {
+    return _mapTakeUntilRunner
+  }
+
+  const mapSrc = tryInlineSource(mapFn)
+  const predSrc = tryInlineSource(pred)
+  let runner: _MapTakeUntilRunner = (src) => _runArrayMapTakeUntilFallback(src, mapFn, pred)
+
+  if (mapSrc && predSrc) {
+    try {
+      runner = new Function(
+        'src',
+        `var out=[];var count=0;for(var i=0,len=src.length;i<len;i++){var v=src[i];v=${mapSrc};if(${predSrc})break;out[count++]=v}return out`,
+      ) as _MapTakeUntilRunner
+    } catch {
+      runner = (src) => _runArrayMapTakeUntilFallback(src, mapFn, pred)
+    }
+  }
+
+  _mapTakeUntilMapFn = mapFn
+  _mapTakeUntilPred = pred
+  _mapTakeUntilRunner = runner
+  return runner
+}
+
+const _runArrayMapTakeUntil = (src: readonly any[], mapFn: (value: any) => any, pred: (value: any) => boolean): any[] =>
+  _getArrayMapTakeUntilRunner(mapFn, pred)(src)
 
 export function pipe<A, B>(a: A, f1: (a: A) => B): B
 export function pipe<A, B, C>(a: A, f1: (a: A) => B, f2: (b: B) => C): C
@@ -41,6 +100,9 @@ export function pipe(): unknown {
   const f2 = arguments[2]
   if (argc === 3) {
     if (!_hasOp(f1) && !_hasOp(f2)) return f2(f1(a))
+    if (Array.isArray(a) && f1._op === OP_MAP && f2._op === OP_TAKE_UNTIL) {
+      return _runArrayMapTakeUntil(a, f1._fn, f2._fn)
+    }
     return fuse(a, [f1, f2])
   }
   const f3 = arguments[3]

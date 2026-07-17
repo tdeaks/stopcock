@@ -87,14 +87,14 @@ h1 { font-weight: 700; }
 
 /* ── Links ───────────────────────────────────────────────── */
 
-.sl-markdown-content a {
+.sl-markdown-content a:not(:where(.not-content *)) {
   color: var(--sl-color-accent);
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: border-color 0.15s ease;
 }
 
-.sl-markdown-content a:hover {
+.sl-markdown-content a:hover:not(:where(.not-content *)) {
   border-bottom-color: var(--sl-color-accent);
 }
 
@@ -176,17 +176,17 @@ nav.sidebar {
   padding-top: 0;
 }
 
-.sl-markdown-content > :first-child {
+.sl-markdown-content > :first-child:not(.not-content) {
   margin-top: 0.5rem;
 }
 
-.sl-markdown-content h2 {
+.sl-markdown-content h2:not(:where(.not-content *)) {
   margin-top: 3rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--sl-color-hairline-light);
 }
 
-.sl-markdown-content h3 {
+.sl-markdown-content h3:not(:where(.not-content *)) {
   margin-top: 2rem;
 }
 
@@ -196,20 +196,21 @@ header.header {
 }
 
 /* Wider bullet list spacing */
-.sl-markdown-content ul, .sl-markdown-content ol {
+.sl-markdown-content ul:not(:where(.not-content *)),
+.sl-markdown-content ol:not(:where(.not-content *)) {
   padding-left: 1.25rem;
 }
 
-.sl-markdown-content li + li {
+.sl-markdown-content li + li:not(:where(.not-content *)) {
   margin-top: 0.5rem;
 }
 
 /* Table improvements */
-.sl-markdown-content table {
+.sl-markdown-content table:not(:where(.not-content *)) {
   font-size: var(--sl-text-sm);
 }
 
-.sl-markdown-content th {
+.sl-markdown-content th:not(:where(.not-content *)) {
   font-weight: 600;
   text-align: left;
 }

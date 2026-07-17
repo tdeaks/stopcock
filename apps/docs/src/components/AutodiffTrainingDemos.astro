@@ -1,0 +1,1230 @@
+---
+const id = 'autodiff-training-demos'
+---
+
+<div class="adt-demo" id={id} data-autodiff-training-demos>
+  <div class="adt-head">
+    <div>
+      <h2>Training labs</h2>
+      <p>Two small optimizers driven by live reverse-mode gradients.</p>
+    </div>
+    <div class="adt-tabs" role="tablist" aria-label="Autodiff demos">
+      <button type="button" id={`${id}-fit-tab`} data-lab="fit" role="tab" aria-controls={`${id}-fit-panel`}>
+        Vector fit
+      </button>
+      <button type="button" id={`${id}-surface-tab`} data-lab="surface" role="tab" aria-controls={`${id}-surface-panel`}>
+        Contours
+      </button>
+    </div>
+  </div>
+
+  <section id={`${id}-fit-panel`} data-lab-panel="fit" role="tabpanel" aria-labelledby={`${id}-fit-tab`}>
+    <section class="adt-explainer" aria-label="What the vector fit demo shows">
+      <strong>Vector fit</strong>
+      <p>
+        The line has two trainable numbers: slope and intercept. Autodiff
+        computes the gradient of mean squared error with respect to both at
+        once, then the demo nudges them until the line fits the sample points.
+      </p>
+      <p>
+        The lower strip is the loss over time. The outlier preset shows the
+        tradeoff a least-squares model makes when one point fights the trend.
+      </p>
+    </section>
+
+    <div class="adt-layout">
+      <section class="adt-panel adt-controls" aria-label="Vector fit controls">
+        <div class="adt-group">
+          <span class="adt-label">Dataset</span>
+          <div class="adt-segments" id={`${id}-fit-datasets`} role="radiogroup" aria-label="Dataset"></div>
+        </div>
+
+        <label class="adt-control" for={`${id}-fit-slope`}>
+          <span>Start slope</span>
+          <output id={`${id}-fit-slope-value`}></output>
+          <input id={`${id}-fit-slope`} type="range" min="-2" max="2" step="0.02" value="-0.8" />
+        </label>
+
+        <label class="adt-control" for={`${id}-fit-intercept`}>
+          <span>Start intercept</span>
+          <output id={`${id}-fit-intercept-value`}></output>
+          <input id={`${id}-fit-intercept`} type="range" min="-2" max="2" step="0.02" value="1.2" />
+        </label>
+
+        <label class="adt-control" for={`${id}-fit-rate`}>
+          <span>Learning rate</span>
+          <output id={`${id}-fit-rate-value`}></output>
+          <input id={`${id}-fit-rate`} type="range" min="0.002" max="0.12" step="0.002" value="0.035" />
+        </label>
+
+        <label class="adt-control" for={`${id}-fit-steps`}>
+          <span>Steps</span>
+          <output id={`${id}-fit-steps-value`}></output>
+          <input id={`${id}-fit-steps`} type="range" min="0" max="160" step="1" value="72" />
+        </label>
+
+        <div class="adt-actions">
+          <button type="button" id={`${id}-fit-run`}>Run</button>
+          <button type="button" id={`${id}-fit-reset`}>Reset</button>
+        </div>
+      </section>
+
+      <section class="adt-panel adt-chart-panel" aria-label="Vector fit chart">
+        <div class="adt-chart-wrap">
+          <svg id={`${id}-fit-chart`} viewBox="0 0 640 350" role="img" aria-labelledby={`${id}-fit-chart-title`}>
+            <title id={`${id}-fit-chart-title`}>Autodiff vector fit chart</title>
+          </svg>
+        </div>
+        <div class="adt-mini-wrap">
+          <svg id={`${id}-fit-loss-chart`} viewBox="0 0 640 90" role="img" aria-labelledby={`${id}-fit-loss-title`}>
+            <title id={`${id}-fit-loss-title`}>Loss over training steps</title>
+          </svg>
+        </div>
+        <div class="adt-legend" aria-hidden="true">
+          <span><i class="adt-key adt-key-points"></i>Samples</span>
+          <span><i class="adt-key adt-key-model"></i>Fit</span>
+          <span><i class="adt-key adt-key-loss"></i>Loss</span>
+        </div>
+      </section>
+    </div>
+
+    <section class="adt-readout" aria-label="Vector fit result">
+      <div>
+        <span>slope</span>
+        <output id={`${id}-fit-out-slope`}></output>
+      </div>
+      <div>
+        <span>intercept</span>
+        <output id={`${id}-fit-out-intercept`}></output>
+      </div>
+      <div>
+        <span>loss</span>
+        <output id={`${id}-fit-out-loss`}></output>
+      </div>
+      <div>
+        <span>|gradient|</span>
+        <output id={`${id}-fit-out-grad`}></output>
+      </div>
+    </section>
+  </section>
+
+  <section id={`${id}-surface-panel`} data-lab-panel="surface" role="tabpanel" aria-labelledby={`${id}-surface-tab`} hidden>
+    <section class="adt-explainer" aria-label="What the contour demo shows">
+      <strong>Contours</strong>
+      <p>
+        This is gradient descent with two variables instead of one. The colored
+        field is the loss surface; the orange path follows the negative gradient
+        in <code>x</code> and <code>y</code>.
+      </p>
+      <p>
+        Basin is easy, Banana has a narrow curved valley, and Ripple can trap
+        the search in local minima.
+      </p>
+    </section>
+
+    <div class="adt-layout">
+      <section class="adt-panel adt-controls" aria-label="Contour descent controls">
+        <div class="adt-group">
+          <span class="adt-label">Surface</span>
+          <div class="adt-segments" id={`${id}-surface-functions`} role="radiogroup" aria-label="Surface"></div>
+        </div>
+
+        <label class="adt-control" for={`${id}-surface-x`}>
+          <span>Start x</span>
+          <output id={`${id}-surface-x-value`}></output>
+          <input id={`${id}-surface-x`} type="range" min="-3" max="3" step="0.05" value="-2.25" />
+        </label>
+
+        <label class="adt-control" for={`${id}-surface-y`}>
+          <span>Start y</span>
+          <output id={`${id}-surface-y-value`}></output>
+          <input id={`${id}-surface-y`} type="range" min="-3" max="3" step="0.05" value="1.8" />
+        </label>
+
+        <label class="adt-control" for={`${id}-surface-rate`}>
+          <span>Learning rate</span>
+          <output id={`${id}-surface-rate-value`}></output>
+          <input id={`${id}-surface-rate`} type="range" min="0.005" max="0.14" step="0.005" value="0.055" />
+        </label>
+
+        <label class="adt-control" for={`${id}-surface-steps`}>
+          <span>Steps</span>
+          <output id={`${id}-surface-steps-value`}></output>
+          <input id={`${id}-surface-steps`} type="range" min="0" max="120" step="1" value="54" />
+        </label>
+
+        <div class="adt-actions">
+          <button type="button" id={`${id}-surface-run`}>Run</button>
+          <button type="button" id={`${id}-surface-reset`}>Reset</button>
+        </div>
+      </section>
+
+      <section class="adt-panel adt-chart-panel" aria-label="Contour descent chart">
+        <div class="adt-chart-wrap adt-contour-wrap">
+          <svg id={`${id}-surface-chart`} viewBox="0 0 640 350" role="img" aria-labelledby={`${id}-surface-chart-title`}>
+            <title id={`${id}-surface-chart-title`}>Autodiff contour descent chart</title>
+          </svg>
+        </div>
+        <div class="adt-equation">
+          <span>f(x, y)</span>
+          <code id={`${id}-surface-formula`}></code>
+        </div>
+      </section>
+    </div>
+
+    <section class="adt-readout" aria-label="Contour descent result">
+      <div>
+        <span>x</span>
+        <output id={`${id}-surface-out-x`}></output>
+      </div>
+      <div>
+        <span>y</span>
+        <output id={`${id}-surface-out-y`}></output>
+      </div>
+      <div>
+        <span>loss</span>
+        <output id={`${id}-surface-out-loss`}></output>
+      </div>
+      <div>
+        <span>|gradient|</span>
+        <output id={`${id}-surface-out-grad`}></output>
+      </div>
+    </section>
+  </section>
+</div>
+
+<script>
+  import {
+    add,
+    cos,
+    differentiable,
+    mul,
+    sin,
+    square,
+    sub,
+    vecDot,
+    type Var,
+    type Vec,
+  } from '@stopcock/autodiff'
+
+  const root = document.querySelector('[data-autodiff-training-demos]') as HTMLElement
+  if (!root) throw new Error('AutodiffTrainingDemos root not found')
+
+  const id = root.id
+  const $ = <T extends HTMLElement | SVGElement = HTMLElement>(suffix: string): T => {
+    const el = root.querySelector(`#${id}-${suffix}`) as T | null
+    if (!el) throw new Error(`AutodiffTrainingDemos missing ${suffix}`)
+    return el
+  }
+
+  type Point = readonly [number, number]
+  type FitDatasetKey = keyof typeof fitDatasets
+  type SurfaceKey = keyof typeof surfaces
+
+  const fitDatasets = {
+    clean: {
+      label: 'Clean',
+      points: [
+        [-2.2, -2.05],
+        [-1.45, -1.3],
+        [-0.7, -0.45],
+        [0.2, 0.55],
+        [0.95, 1.15],
+        [1.7, 2.05],
+        [2.35, 2.65],
+      ] as readonly Point[],
+      defaults: { slope: -0.8, intercept: 1.2, rate: 0.035, steps: 72 },
+    },
+    noisy: {
+      label: 'Noisy',
+      points: [
+        [-2.4, 2.1],
+        [-1.8, 1.25],
+        [-1.05, 0.95],
+        [-0.35, 0.08],
+        [0.5, -0.15],
+        [1.15, -0.72],
+        [1.9, -1.65],
+        [2.5, -1.95],
+      ] as readonly Point[],
+      defaults: { slope: 1.1, intercept: -1.2, rate: 0.03, steps: 94 },
+    },
+    outlier: {
+      label: 'Outlier',
+      points: [
+        [-2.25, -0.9],
+        [-1.55, -0.45],
+        [-0.8, -0.1],
+        [-0.05, 0.18],
+        [0.85, 0.72],
+        [1.45, 1.08],
+        [2.1, 1.45],
+        [2.45, -1.45],
+      ] as readonly Point[],
+      defaults: { slope: -1.05, intercept: 1.6, rate: 0.026, steps: 116 },
+    },
+  } as const
+
+  const surfaces = {
+    basin: {
+      label: 'Basin',
+      formula: '(x - 1.2)^2 + 0.7(y + 0.6)^2 + 0.25xy',
+      xDomain: [-3, 3],
+      yDomain: [-3, 3],
+      defaults: { x: -2.25, y: 1.8, rate: 0.055, steps: 54 },
+      fn: differentiable((x: Var<number>, y: Var<number>) =>
+        add(
+          add(square(sub(x, 1.2)), mul(0.7, square(add(y, 0.6)))),
+          mul(0.25, mul(x, y))
+        )
+      ),
+    },
+    banana: {
+      label: 'Banana',
+      formula: '(1 - x)^2 + 0.45(y - x^2)^2',
+      xDomain: [-2.2, 2.2],
+      yDomain: [-1.1, 3.3],
+      defaults: { x: -1.55, y: 2.55, rate: 0.018, steps: 86 },
+      fn: differentiable((x: Var<number>, y: Var<number>) =>
+        add(square(sub(1, x)), mul(0.45, square(sub(y, square(x)))))
+      ),
+    },
+    ripple: {
+      label: 'Ripple',
+      formula: '0.18(x^2 + y^2) + sin(1.6x) + 0.7cos(1.4y)',
+      xDomain: [-3, 3],
+      yDomain: [-3, 3],
+      defaults: { x: 2.35, y: -1.8, rate: 0.05, steps: 72 },
+      fn: differentiable((x: Var<number>, y: Var<number>) =>
+        add(
+          add(mul(0.18, add(square(x), square(y))), sin(mul(1.6, x))),
+          mul(0.7, cos(mul(1.4, y)))
+        )
+      ),
+    },
+  } as const
+
+  const fmt = (n: number) => {
+    if (!Number.isFinite(n)) return String(n)
+    const abs = Math.abs(n)
+    if (abs !== 0 && abs < 0.001) return n.toExponential(2)
+    return n.toFixed(abs >= 10 ? 2 : 4)
+  }
+
+  const clamp = (x: number, min: number, max: number) => Math.max(min, Math.min(max, x))
+
+  const makeSvg = (tag: string, attrs: Record<string, string | number>) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag)
+    for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value))
+    return el
+  }
+
+  const pathFrom = (points: Array<{ x: number; y: number }>) =>
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ')
+
+  const pointsWithFeatures = (points: readonly Point[]) =>
+    points.map(([x, y]) => ({
+      x,
+      y,
+      feature: new Float64Array([x, 1]),
+    }))
+
+  const fitLoss = (points: ReturnType<typeof pointsWithFeatures>) =>
+    differentiable((w: Var<Vec>) => {
+      let total: Var<number> | number = 0
+      for (const point of points) {
+        total = add(total, square(sub(vecDot(w, point.feature), point.y)))
+      }
+      return mul(total, 1 / points.length)
+    })
+
+  const fitEls = {
+    datasets: $('fit-datasets'),
+    slope: $('fit-slope') as HTMLInputElement,
+    intercept: $('fit-intercept') as HTMLInputElement,
+    rate: $('fit-rate') as HTMLInputElement,
+    steps: $('fit-steps') as HTMLInputElement,
+    slopeValue: $('fit-slope-value') as HTMLOutputElement,
+    interceptValue: $('fit-intercept-value') as HTMLOutputElement,
+    rateValue: $('fit-rate-value') as HTMLOutputElement,
+    stepsValue: $('fit-steps-value') as HTMLOutputElement,
+    run: $('fit-run') as HTMLButtonElement,
+    reset: $('fit-reset') as HTMLButtonElement,
+    chart: $('fit-chart') as unknown as SVGSVGElement,
+    lossChart: $('fit-loss-chart') as unknown as SVGSVGElement,
+    outSlope: $('fit-out-slope') as HTMLOutputElement,
+    outIntercept: $('fit-out-intercept') as HTMLOutputElement,
+    outLoss: $('fit-out-loss') as HTMLOutputElement,
+    outGrad: $('fit-out-grad') as HTMLOutputElement,
+  }
+
+  const surfaceEls = {
+    functions: $('surface-functions'),
+    x: $('surface-x') as HTMLInputElement,
+    y: $('surface-y') as HTMLInputElement,
+    rate: $('surface-rate') as HTMLInputElement,
+    steps: $('surface-steps') as HTMLInputElement,
+    xValue: $('surface-x-value') as HTMLOutputElement,
+    yValue: $('surface-y-value') as HTMLOutputElement,
+    rateValue: $('surface-rate-value') as HTMLOutputElement,
+    stepsValue: $('surface-steps-value') as HTMLOutputElement,
+    run: $('surface-run') as HTMLButtonElement,
+    reset: $('surface-reset') as HTMLButtonElement,
+    chart: $('surface-chart') as unknown as SVGSVGElement,
+    formula: $('surface-formula') as HTMLElement,
+    outX: $('surface-out-x') as HTMLOutputElement,
+    outY: $('surface-out-y') as HTMLOutputElement,
+    outLoss: $('surface-out-loss') as HTMLOutputElement,
+    outGrad: $('surface-out-grad') as HTMLOutputElement,
+  }
+
+  let activeFit: FitDatasetKey = 'clean'
+  let activeSurface: SurfaceKey = 'basin'
+  let fitFrame = 0
+  let surfaceFrame = 0
+  let fitLastTick = 0
+  let surfaceLastTick = 0
+  let fitRunning = false
+  let surfaceRunning = false
+  let fitTarget = fitDatasets.clean.defaults.steps
+  let surfaceTarget = surfaces.basin.defaults.steps
+
+  const stopFit = () => {
+    fitRunning = false
+    fitEls.run.textContent = 'Run'
+    if (fitFrame) cancelAnimationFrame(fitFrame)
+    fitFrame = 0
+  }
+
+  const stopSurface = () => {
+    surfaceRunning = false
+    surfaceEls.run.textContent = 'Run'
+    if (surfaceFrame) cancelAnimationFrame(surfaceFrame)
+    surfaceFrame = 0
+  }
+
+  const selectButtons = (group: HTMLElement, key: string) => {
+    for (const button of group.querySelectorAll<HTMLButtonElement>('button')) {
+      const selected = button.dataset.key === key
+      button.classList.toggle('is-active', selected)
+      button.setAttribute('aria-checked', String(selected))
+    }
+  }
+
+  const setLab = (lab: string) => {
+    for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-lab]')) {
+      const selected = tab.dataset.lab === lab
+      tab.classList.toggle('is-active', selected)
+      tab.setAttribute('aria-selected', String(selected))
+      tab.tabIndex = selected ? 0 : -1
+    }
+    for (const panel of root.querySelectorAll<HTMLElement>('[data-lab-panel]')) {
+      panel.hidden = panel.dataset.labPanel !== lab
+    }
+    stopFit()
+    stopSurface()
+  }
+
+  const currentFit = () => fitDatasets[activeFit]
+  const currentSurface = () => surfaces[activeSurface]
+
+  const setFitDataset = (key: FitDatasetKey, useDefaults = true) => {
+    activeFit = key
+    const dataset = currentFit()
+    if (useDefaults) {
+      fitEls.slope.value = String(dataset.defaults.slope)
+      fitEls.intercept.value = String(dataset.defaults.intercept)
+      fitEls.rate.value = String(dataset.defaults.rate)
+      fitEls.steps.value = String(dataset.defaults.steps)
+    }
+    selectButtons(fitEls.datasets, key)
+    renderFit()
+  }
+
+  const setSurface = (key: SurfaceKey, useDefaults = true) => {
+    activeSurface = key
+    const surface = currentSurface()
+    surfaceEls.x.min = String(surface.xDomain[0])
+    surfaceEls.x.max = String(surface.xDomain[1])
+    surfaceEls.y.min = String(surface.yDomain[0])
+    surfaceEls.y.max = String(surface.yDomain[1])
+    if (useDefaults) {
+      surfaceEls.x.value = String(surface.defaults.x)
+      surfaceEls.y.value = String(surface.defaults.y)
+      surfaceEls.rate.value = String(surface.defaults.rate)
+      surfaceEls.steps.value = String(surface.defaults.steps)
+    } else {
+      surfaceEls.x.value = String(clamp(Number(surfaceEls.x.value), surface.xDomain[0], surface.xDomain[1]))
+      surfaceEls.y.value = String(clamp(Number(surfaceEls.y.value), surface.yDomain[0], surface.yDomain[1]))
+    }
+    selectButtons(surfaceEls.functions, key)
+    renderSurface()
+  }
+
+  const fitTrace = () => {
+    const dataset = pointsWithFeatures(currentFit().points)
+    const loss = fitLoss(dataset)
+    const rate = Number(fitEls.rate.value)
+    const maxSteps = Number(fitEls.steps.value)
+    let weights = new Float64Array([Number(fitEls.slope.value), Number(fitEls.intercept.value)])
+    const trace: Array<{ weights: Float64Array; loss: number; grad: Vec; gradNorm: number }> = []
+
+    for (let i = 0; i <= maxSteps; i++) {
+      const result = loss.valueAndGradient(weights)
+      const grad = result.gradient
+      const gradNorm = Math.hypot(grad[0], grad[1])
+      trace.push({ weights: new Float64Array(weights), loss: result.value, grad: new Float64Array(grad), gradNorm })
+      if (i === maxSteps || !Number.isFinite(result.value) || !Number.isFinite(gradNorm)) break
+      weights = new Float64Array([
+        clamp(weights[0] - rate * grad[0], -8, 8),
+        clamp(weights[1] - rate * grad[1], -8, 8),
+      ])
+    }
+
+    return trace
+  }
+
+  const fitDomains = (points: readonly Point[], trace: ReturnType<typeof fitTrace>) => {
+    const xs = points.map(([x]) => x)
+    const rawMinX = Math.min(...xs)
+    const rawMaxX = Math.max(...xs)
+    const lineYs = trace.flatMap(({ weights }) => [
+      weights[0] * rawMinX + weights[1],
+      weights[0] * rawMaxX + weights[1],
+    ])
+    const ys = [...points.map(([, y]) => y), ...lineYs].filter(Number.isFinite)
+    const minX = rawMinX - 0.35
+    const maxX = rawMaxX + 0.35
+    const minY = Math.min(...ys) - 0.75
+    const maxY = Math.max(...ys) + 0.75
+    return { minX, maxX, minY, maxY }
+  }
+
+  const renderFitChart = (trace: ReturnType<typeof fitTrace>) => {
+    const dataset = currentFit()
+    const points = dataset.points
+    const { minX, maxX, minY, maxY } = fitDomains(points, trace)
+    const width = 640
+    const height = 350
+    const pad = { l: 42, r: 22, t: 18, b: 38 }
+    const sx = (x: number) => pad.l + ((x - minX) / (maxX - minX)) * (width - pad.l - pad.r)
+    const sy = (y: number) => pad.t + ((maxY - y) / (maxY - minY)) * (height - pad.t - pad.b)
+    const lineEndpoints = (weights: Float64Array) => [
+      { x: sx(minX), y: sy(weights[0] * minX + weights[1]) },
+      { x: sx(maxX), y: sy(weights[0] * maxX + weights[1]) },
+    ]
+
+    fitEls.chart.replaceChildren()
+    fitEls.chart.append(makeSvg('rect', { x: 0, y: 0, width, height, rx: 4, fill: 'var(--adt-chart-bg)' }))
+
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.t + (i / 4) * (height - pad.t - pad.b)
+      fitEls.chart.append(makeSvg('line', {
+        x1: pad.l,
+        y1: y,
+        x2: width - pad.r,
+        y2: y,
+        stroke: 'var(--adt-grid)',
+        'stroke-width': 1,
+      }))
+    }
+
+    if (minY < 0 && maxY > 0) {
+      fitEls.chart.append(makeSvg('line', {
+        x1: pad.l,
+        y1: sy(0),
+        x2: width - pad.r,
+        y2: sy(0),
+        stroke: 'var(--adt-axis)',
+        'stroke-width': 1.3,
+      }))
+    }
+
+    const ghostCount = Math.min(5, Math.max(0, trace.length - 2))
+    for (let i = 1; i <= ghostCount; i++) {
+      const idx = Math.floor((i / (ghostCount + 1)) * (trace.length - 1))
+      fitEls.chart.append(makeSvg('path', {
+        d: pathFrom(lineEndpoints(trace[idx].weights)),
+        fill: 'none',
+        stroke: 'var(--adt-ghost)',
+        'stroke-width': 1.5,
+        'stroke-dasharray': '5 6',
+      }))
+    }
+
+    const last = trace[trace.length - 1]
+    fitEls.chart.append(makeSvg('path', {
+      d: pathFrom(lineEndpoints(last.weights)),
+      fill: 'none',
+      stroke: 'var(--adt-model)',
+      'stroke-width': 3,
+      'stroke-linecap': 'round',
+    }))
+
+    for (const [x, y] of points) {
+      fitEls.chart.append(makeSvg('circle', {
+        cx: sx(x),
+        cy: sy(y),
+        r: 5,
+        fill: 'var(--adt-points)',
+        stroke: 'var(--adt-chart-bg)',
+        'stroke-width': 2,
+      }))
+    }
+  }
+
+  const renderFitLoss = (trace: ReturnType<typeof fitTrace>) => {
+    const width = 640
+    const height = 90
+    const pad = { l: 42, r: 22, t: 12, b: 24 }
+    const losses = trace.map(p => p.loss).filter(Number.isFinite)
+    const minLoss = Math.min(...losses)
+    const maxLoss = Math.max(...losses)
+    const span = Math.max(0.0001, maxLoss - minLoss)
+    const sx = (i: number) => pad.l + (i / Math.max(1, trace.length - 1)) * (width - pad.l - pad.r)
+    const sy = (loss: number) => pad.t + ((maxLoss - loss) / span) * (height - pad.t - pad.b)
+
+    fitEls.lossChart.replaceChildren()
+    fitEls.lossChart.append(makeSvg('rect', { x: 0, y: 0, width, height, rx: 4, fill: 'var(--adt-mini-bg)' }))
+    fitEls.lossChart.append(makeSvg('path', {
+      d: pathFrom(trace.map((p, i) => ({ x: sx(i), y: sy(p.loss) }))),
+      fill: 'none',
+      stroke: 'var(--adt-loss)',
+      'stroke-width': 2.5,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+    }))
+  }
+
+  const renderFit = () => {
+    const trace = fitTrace()
+    const last = trace[trace.length - 1]
+    fitEls.slopeValue.value = fmt(Number(fitEls.slope.value))
+    fitEls.interceptValue.value = fmt(Number(fitEls.intercept.value))
+    fitEls.rateValue.value = fmt(Number(fitEls.rate.value))
+    fitEls.stepsValue.value = fitEls.steps.value
+    fitEls.outSlope.value = fmt(last.weights[0])
+    fitEls.outIntercept.value = fmt(last.weights[1])
+    fitEls.outLoss.value = fmt(last.loss)
+    fitEls.outGrad.value = fmt(last.gradNorm)
+    renderFitChart(trace)
+    renderFitLoss(trace)
+  }
+
+  const surfaceTrace = () => {
+    const surface = currentSurface()
+    const rate = Number(surfaceEls.rate.value)
+    const maxSteps = Number(surfaceEls.steps.value)
+    let x = Number(surfaceEls.x.value)
+    let y = Number(surfaceEls.y.value)
+    const trace: Array<{ x: number; y: number; value: number; grad: readonly [number, number]; nextX: number; nextY: number; gradNorm: number }> = []
+
+    for (let i = 0; i <= maxSteps; i++) {
+      const value = surface.fn.forward(x, y)
+      const grad = surface.fn.gradient(x, y) as readonly [number, number]
+      const gradNorm = Math.hypot(grad[0], grad[1])
+      const nextX = clamp(x - rate * grad[0], surface.xDomain[0], surface.xDomain[1])
+      const nextY = clamp(y - rate * grad[1], surface.yDomain[0], surface.yDomain[1])
+      trace.push({ x, y, value, grad, nextX, nextY, gradNorm })
+      if (!Number.isFinite(value) || !Number.isFinite(gradNorm)) break
+      x = nextX
+      y = nextY
+    }
+
+    return trace
+  }
+
+  const heatColor = (t: number) => {
+    const hue = 205 - t * 170
+    const light = 13 + t * 23
+    return `hsl(${hue.toFixed(0)} 62% ${light.toFixed(0)}%)`
+  }
+
+  const renderSurfaceChart = (trace: ReturnType<typeof surfaceTrace>) => {
+    const surface = currentSurface()
+    const [minX, maxX] = surface.xDomain
+    const [minY, maxY] = surface.yDomain
+    const width = 640
+    const height = 350
+    const pad = { l: 38, r: 20, t: 18, b: 30 }
+    const sx = (x: number) => pad.l + ((x - minX) / (maxX - minX)) * (width - pad.l - pad.r)
+    const sy = (y: number) => pad.t + ((maxY - y) / (maxY - minY)) * (height - pad.t - pad.b)
+    const cols = 42
+    const rows = 28
+    const cells: Array<{ x: number; y: number; value: number }> = []
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = minX + ((col + 0.5) / cols) * (maxX - minX)
+        const y = minY + ((row + 0.5) / rows) * (maxY - minY)
+        cells.push({ x, y, value: surface.fn.forward(x, y) })
+      }
+    }
+
+    const values = cells.map(cell => cell.value).filter(Number.isFinite)
+    const minValue = Math.min(...values)
+    const maxValue = Math.max(...values)
+    const span = Math.max(0.0001, maxValue - minValue)
+    const plotW = width - pad.l - pad.r
+    const plotH = height - pad.t - pad.b
+
+    surfaceEls.chart.replaceChildren()
+    surfaceEls.chart.append(makeSvg('rect', { x: 0, y: 0, width, height, rx: 4, fill: 'var(--adt-chart-bg)' }))
+
+    for (const cell of cells) {
+      const t = Math.sqrt((cell.value - minValue) / span)
+      surfaceEls.chart.append(makeSvg('rect', {
+        x: sx(cell.x) - plotW / cols / 2,
+        y: sy(cell.y) - plotH / rows / 2,
+        width: plotW / cols + 0.5,
+        height: plotH / rows + 0.5,
+        fill: heatColor(t),
+      }))
+    }
+
+    if (minX < 0 && maxX > 0) {
+      surfaceEls.chart.append(makeSvg('line', {
+        x1: sx(0),
+        y1: pad.t,
+        x2: sx(0),
+        y2: height - pad.b,
+        stroke: 'var(--adt-axis)',
+        'stroke-width': 1.3,
+      }))
+    }
+
+    if (minY < 0 && maxY > 0) {
+      surfaceEls.chart.append(makeSvg('line', {
+        x1: pad.l,
+        y1: sy(0),
+        x2: width - pad.r,
+        y2: sy(0),
+        stroke: 'var(--adt-axis)',
+        'stroke-width': 1.3,
+      }))
+    }
+
+    if (trace.length > 1) {
+      surfaceEls.chart.append(makeSvg('path', {
+        d: pathFrom(trace.map(p => ({ x: sx(p.x), y: sy(p.y) }))),
+        fill: 'none',
+        stroke: 'var(--adt-path)',
+        'stroke-width': 2.4,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      }))
+    }
+
+    for (let i = 0; i < trace.length; i++) {
+      const p = trace[i]
+      const isLast = i === trace.length - 1
+      surfaceEls.chart.append(makeSvg('circle', {
+        cx: sx(p.x),
+        cy: sy(p.y),
+        r: isLast ? 5.8 : 3.2,
+        fill: isLast ? 'var(--adt-current)' : 'var(--adt-path)',
+        stroke: 'var(--adt-chart-bg)',
+        'stroke-width': 2,
+      }))
+    }
+
+    const last = trace[trace.length - 1]
+    if (last && Number.isFinite(last.nextX) && Number.isFinite(last.nextY)) {
+      surfaceEls.chart.append(makeSvg('line', {
+        x1: sx(last.x),
+        y1: sy(last.y),
+        x2: sx(last.nextX),
+        y2: sy(last.nextY),
+        stroke: 'var(--adt-current)',
+        'stroke-width': 3,
+        'stroke-linecap': 'round',
+      }))
+      surfaceEls.chart.append(makeSvg('circle', {
+        cx: sx(last.nextX),
+        cy: sy(last.nextY),
+        r: 3.5,
+        fill: 'var(--adt-current)',
+      }))
+    }
+  }
+
+  const renderSurface = () => {
+    const surface = currentSurface()
+    const trace = surfaceTrace()
+    const last = trace[trace.length - 1]
+    surfaceEls.formula.textContent = surface.formula
+    surfaceEls.xValue.value = fmt(Number(surfaceEls.x.value))
+    surfaceEls.yValue.value = fmt(Number(surfaceEls.y.value))
+    surfaceEls.rateValue.value = fmt(Number(surfaceEls.rate.value))
+    surfaceEls.stepsValue.value = surfaceEls.steps.value
+    surfaceEls.outX.value = fmt(last.x)
+    surfaceEls.outY.value = fmt(last.y)
+    surfaceEls.outLoss.value = fmt(last.value)
+    surfaceEls.outGrad.value = fmt(last.gradNorm)
+    renderSurfaceChart(trace)
+  }
+
+  const fitTick = (time: number) => {
+    if (!fitRunning) return
+    if (time - fitLastTick > 45) {
+      fitLastTick = time
+      const current = Number(fitEls.steps.value)
+      if (current >= fitTarget) {
+        stopFit()
+        return
+      }
+      fitEls.steps.value = String(current + 1)
+      renderFit()
+    }
+    fitFrame = requestAnimationFrame(fitTick)
+  }
+
+  const surfaceTick = (time: number) => {
+    if (!surfaceRunning) return
+    if (time - surfaceLastTick > 55) {
+      surfaceLastTick = time
+      const current = Number(surfaceEls.steps.value)
+      if (current >= surfaceTarget) {
+        stopSurface()
+        return
+      }
+      surfaceEls.steps.value = String(current + 1)
+      renderSurface()
+    }
+    surfaceFrame = requestAnimationFrame(surfaceTick)
+  }
+
+  for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-lab]')) {
+    tab.addEventListener('click', () => setLab(tab.dataset.lab ?? 'fit'))
+  }
+
+  for (const [key, dataset] of Object.entries(fitDatasets) as Array<[FitDatasetKey, typeof fitDatasets[FitDatasetKey]]>) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.setAttribute('role', 'radio')
+    button.dataset.key = key
+    button.textContent = dataset.label
+    button.addEventListener('click', () => {
+      stopFit()
+      setFitDataset(key)
+    })
+    fitEls.datasets.append(button)
+  }
+
+  for (const [key, surface] of Object.entries(surfaces) as Array<[SurfaceKey, typeof surfaces[SurfaceKey]]>) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.setAttribute('role', 'radio')
+    button.dataset.key = key
+    button.textContent = surface.label
+    button.addEventListener('click', () => {
+      stopSurface()
+      setSurface(key)
+    })
+    surfaceEls.functions.append(button)
+  }
+
+  for (const input of [fitEls.slope, fitEls.intercept, fitEls.rate, fitEls.steps]) {
+    input.addEventListener('input', () => {
+      stopFit()
+      renderFit()
+    })
+  }
+
+  for (const input of [surfaceEls.x, surfaceEls.y, surfaceEls.rate, surfaceEls.steps]) {
+    input.addEventListener('input', () => {
+      stopSurface()
+      renderSurface()
+    })
+  }
+
+  fitEls.run.addEventListener('click', () => {
+    if (fitRunning) {
+      stopFit()
+      return
+    }
+    fitTarget = Number(fitEls.steps.value) || currentFit().defaults.steps
+    fitEls.steps.value = '0'
+    fitRunning = true
+    fitEls.run.textContent = 'Stop'
+    fitLastTick = 0
+    renderFit()
+    fitFrame = requestAnimationFrame(fitTick)
+  })
+
+  surfaceEls.run.addEventListener('click', () => {
+    if (surfaceRunning) {
+      stopSurface()
+      return
+    }
+    surfaceTarget = Number(surfaceEls.steps.value) || currentSurface().defaults.steps
+    surfaceEls.steps.value = '0'
+    surfaceRunning = true
+    surfaceEls.run.textContent = 'Stop'
+    surfaceLastTick = 0
+    renderSurface()
+    surfaceFrame = requestAnimationFrame(surfaceTick)
+  })
+
+  fitEls.reset.addEventListener('click', () => {
+    stopFit()
+    setFitDataset(activeFit)
+  })
+
+  surfaceEls.reset.addEventListener('click', () => {
+    stopSurface()
+    setSurface(activeSurface)
+  })
+
+  setLab('fit')
+  setFitDataset(activeFit)
+  setSurface(activeSurface)
+</script>
+
+<style is:global>
+  .adt-demo {
+    --adt-bg: color-mix(in srgb, var(--sl-color-gray-6) 82%, transparent);
+    --adt-panel: color-mix(in srgb, var(--sl-color-gray-6) 95%, var(--sl-color-accent-low));
+    --adt-border: var(--sl-color-gray-5);
+    --adt-muted: var(--sl-color-gray-2);
+    --adt-chart-bg: color-mix(in srgb, var(--sl-color-black) 58%, var(--sl-color-gray-6));
+    --adt-mini-bg: color-mix(in srgb, var(--sl-color-black) 50%, var(--sl-color-gray-6));
+    --adt-grid: color-mix(in srgb, var(--sl-color-gray-4) 50%, transparent);
+    --adt-axis: color-mix(in srgb, var(--sl-color-gray-3) 74%, transparent);
+    --adt-points: #f4a261;
+    --adt-model: #58c4dd;
+    --adt-loss: #d2c166;
+    --adt-path: #f4a261;
+    --adt-current: #70e189;
+    --adt-ghost: color-mix(in srgb, var(--sl-color-gray-2) 72%, transparent);
+
+    margin: 2rem 0;
+    border: 1px solid var(--adt-border);
+    background: var(--adt-bg);
+    padding: 1rem;
+  }
+
+  .adt-demo [hidden] {
+    display: none !important;
+  }
+
+  .adt-demo .adt-head > *,
+  .adt-demo .adt-tabs > *,
+  .adt-demo .adt-explainer > *,
+  .adt-demo .adt-layout > *,
+  .adt-demo .adt-controls > *,
+  .adt-demo .adt-group > *,
+  .adt-demo .adt-control > *,
+  .adt-demo .adt-segments > *,
+  .adt-demo .adt-actions > *,
+  .adt-demo .adt-chart-panel > *,
+  .adt-demo .adt-chart-wrap > *,
+  .adt-demo .adt-mini-wrap > *,
+  .adt-demo .adt-legend > *,
+  .adt-demo .adt-equation > *,
+  .adt-demo .adt-readout > *,
+  .adt-demo .adt-readout div > * {
+    margin-top: 0;
+  }
+
+  .adt-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+  }
+
+  .adt-head h2 {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1.2rem;
+  }
+
+  .adt-head p {
+    margin: 0.25rem 0 0;
+    color: var(--adt-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .adt-tabs {
+    display: inline-grid;
+    grid-template-columns: repeat(2, minmax(6rem, 1fr));
+    border: 1px solid var(--adt-border);
+    min-width: min(18rem, 100%);
+  }
+
+  .adt-tabs button,
+  .adt-segments button,
+  .adt-actions button {
+    min-height: 2.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--sl-color-gray-1);
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+
+  .adt-tabs button + button,
+  .adt-segments button + button {
+    border-left: 1px solid var(--adt-border);
+  }
+
+  .adt-tabs button.is-active,
+  .adt-segments button.is-active {
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-accent-high);
+    font-weight: 700;
+  }
+
+  .adt-explainer {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--adt-model);
+    padding-left: 0.85rem;
+    color: var(--adt-muted);
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  .adt-explainer strong {
+    color: var(--sl-color-white);
+    font-size: 0.78rem;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .adt-explainer p {
+    margin: 0;
+  }
+
+  .adt-explainer code {
+    color: var(--sl-color-white);
+  }
+
+  .adt-layout {
+    display: grid;
+    grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: stretch;
+  }
+
+  .adt-panel,
+  .adt-readout {
+    border: 1px solid var(--adt-border);
+    background: var(--adt-panel);
+  }
+
+  .adt-controls {
+    display: grid;
+    align-content: start;
+    gap: 1rem;
+    padding: 0.85rem;
+  }
+
+  .adt-group,
+  .adt-control {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .adt-label,
+  .adt-control span,
+  .adt-equation span,
+  .adt-readout span {
+    color: var(--adt-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .adt-segments {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid var(--adt-border);
+  }
+
+  .adt-control {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .adt-control input {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--sl-color-accent);
+  }
+
+  .adt-control output,
+  .adt-readout output {
+    color: var(--sl-color-white);
+    font-family: var(--sl-font-mono);
+  }
+
+  .adt-control output {
+    font-size: 0.78rem;
+  }
+
+  .adt-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .adt-actions button {
+    border: 1px solid var(--adt-border);
+    background: var(--sl-color-gray-6);
+  }
+
+  .adt-actions button:first-child {
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    font-weight: 700;
+  }
+
+  .adt-chart-panel {
+    min-width: 0;
+    padding: 0.75rem;
+  }
+
+  .adt-chart-wrap {
+    width: 100%;
+    aspect-ratio: 64 / 35;
+    min-height: 16rem;
+  }
+
+  .adt-mini-wrap {
+    width: 100%;
+    aspect-ratio: 64 / 9;
+    min-height: 4rem;
+    margin-top: 0.5rem;
+  }
+
+  .adt-chart-wrap svg,
+  .adt-mini-wrap svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .adt-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    color: var(--adt-muted);
+    font-size: 0.78rem;
+  }
+
+  .adt-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .adt-key {
+    width: 1.1rem;
+    height: 0.22rem;
+    display: inline-block;
+  }
+
+  .adt-key-points { background: var(--adt-points); }
+  .adt-key-model { background: var(--adt-model); }
+  .adt-key-loss { background: var(--adt-loss); }
+
+  .adt-equation {
+    display: grid;
+    gap: 0.25rem;
+    margin-top: 0.65rem;
+    color: var(--adt-muted);
+    font-size: 0.75rem;
+  }
+
+  .adt-equation code {
+    white-space: normal;
+    line-height: 1.45;
+    color: var(--sl-color-white);
+  }
+
+  .adt-readout {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 0.85rem;
+  }
+
+  .adt-readout div {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.8rem;
+  }
+
+  .adt-readout div + div {
+    border-left: 1px solid var(--adt-border);
+  }
+
+  .adt-readout output {
+    overflow-wrap: anywhere;
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 54rem) {
+    .adt-head,
+    .adt-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .adt-tabs {
+      width: 100%;
+    }
+
+    .adt-readout {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .adt-readout div:nth-child(odd) {
+      border-left: 0;
+    }
+
+    .adt-readout div:nth-child(n + 3) {
+      border-top: 1px solid var(--adt-border);
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .adt-demo {
+      padding: 0.75rem;
+    }
+
+    .adt-segments {
+      grid-template-columns: 1fr;
+    }
+
+    .adt-segments button + button {
+      border-left: 0;
+      border-top: 1px solid var(--adt-border);
+    }
+
+    .adt-chart-wrap {
+      min-height: 13rem;
+    }
+
+    .adt-mini-wrap {
+      min-height: 3.4rem;
+    }
+
+    .adt-readout {
+      grid-template-columns: 1fr;
+    }
+
+    .adt-readout div + div {
+      border-left: 0;
+      border-top: 1px solid var(--adt-border);
+    }
+  }
+</style>

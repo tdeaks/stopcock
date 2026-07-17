@@ -1,0 +1,324 @@
+---
+title: signal
+description: Deterministic DSP kernels over typed arrays
+---
+
+import { Aside } from '@astrojs/starlight/components'
+import SignalDemo from '../../../components/SignalDemo.astro'
+
+```bash
+bun add @stopcock/signal
+```
+
+`@stopcock/signal` is the low-level DSP toolkit for FFTs, filters,
+convolution, resampling, windows, and spectral analysis. It sits below the
+pipe-clean value layers: renderers allocate state and workspaces once, then call
+signal kernels in tight typed-array loops.
+
+For a complete browser demo, open the [Spectral Optimizer](/showcases/spectral-optimizer/):
+signal checks the real synth render against an autodiff-trained target spectrum.
+
+<SignalDemo />
+
+## Core shape
+
+Hot-path functions take caller-owned buffers. The mutable things are explicit:
+`out`, filter `state`, or a reusable FFT/convolution plan.
+
+```ts
+import { biquad, analysis } from '@stopcock/signal'
+
+const buf = new Float32Array(128)
+const out = new Float32Array(buf.length)
+const coeffs = biquad.design({
+  kind: 'lowpass',
+  freq: 1800,
+  q: 0.9,
+  sampleRate: 44100,
+})
+const state = biquad.state()
+
+biquad.process(buf, coeffs, state, out)
+
+analysis.rms(out)
+analysis.peak(out)
+```
+
+<Aside type="tip">
+  One-shot helpers such as `fft.rfft()` and `convolve.direct()` allocate by
+  design. Use the `Into` and `plan` forms when a renderer owns scratch memory.
+</Aside>
+
+## Modules
+
+| Module | Purpose |
+| --- | --- |
+| `window` | Hann, Hamming, Blackman, Blackman-Harris, triangular, and elementwise apply |
+| `fft` | Complex FFT, real FFT, inverse real FFT, magnitude, phase, power |
+| `biquad` | RBJ cookbook filters plus stateful block processing and response analysis |
+| `onepole` | Cheap low-pass and high-pass smoothing kernels |
+| `fir` | Windowed-sinc FIR design and streaming FIR processing with history |
+| `convolve` | Direct convolution and overlap-add plans with explicit flush |
+| `resample` | Linear, windowed-sinc, and one-shot polyphase resampling |
+| `analysis` | RMS, peak, zero crossings, centroid, flatness, rolloff |
+
+## Examples
+
+### AudioWorklet-style block filter
+
+Allocate state and output once, then reuse them for every block. The processor
+mutates `state` and fills `out`; the input block is left alone.
+
+```ts
+import { biquad } from '@stopcock/signal'
+
+const sampleRate = 48000
+const blockSize = 128
+const out = new Float32Array(blockSize)
+const state = biquad.state()
+let coeffs = biquad.design({
+  kind: 'lowpass',
+  freq: 2400,
+  q: 0.707,
+  sampleRate,
+})
+
+export function setCutoff(freq: number) {
+  coeffs = biquad.design({ kind: 'lowpass', freq, q: 0.707, sampleRate })
+}
+
+export function processBlock(input: Float32Array) {
+  biquad.process(input, coeffs, state, out)
+  return out
+}
+```
+
+### Envelope follower for modulation
+
+`onepole` is handy for cheap control-rate smoothing. Rectify the signal, then
+smooth the absolute value.
+
+```ts
+import { onepole } from '@stopcock/signal'
+
+const coeffs = onepole.lp(35, 48000)
+const state = onepole.state()
+const rectified = new Float32Array(128)
+const envelope = new Float32Array(128)
+
+export function followEnvelope(block: Float32Array) {
+  for (let i = 0; i < block.length; i++) {
+    rectified[i] = Math.abs(block[i])
+  }
+
+  onepole.process(rectified, coeffs, state, envelope)
+  return envelope
+}
+```
+
+### Windowed spectrum meter
+
+For a live meter, keep the FFT plan, window, bins, and magnitude buffers around.
+Each call only copies the current frame and writes into existing buffers.
+
+```ts
+import { analysis, fft, window } from '@stopcock/signal'
+
+const fftSize = 2048
+const plan = fft.plan(fftSize)
+const win = window.hann(fftSize)
+const frame = new Float32Array(fftSize)
+const bins = new Float64Array(2 * (fftSize / 2 + 1))
+const magnitudes = new Float32Array(fftSize / 2 + 1)
+
+export function analyze(input: Float32Array, sampleRate: number) {
+  frame.fill(0)
+  frame.set(input.subarray(0, Math.min(input.length, frame.length)))
+  window.apply(frame, win, frame)
+
+  fft.rfftInto(frame, plan, bins)
+  fft.magnitude(bins, magnitudes)
+
+  const spectrum = analysis.spectrum(magnitudes, fftSize, sampleRate)
+  return {
+    centroid: analysis.spectralCentroid(spectrum),
+    rolloff: analysis.spectralRolloff(spectrum, 0.85),
+    flatness: analysis.spectralFlatness(spectrum),
+  }
+}
+```
+
+### Spectral gate that is safe on silence
+
+The spectral analyzers return `0` on zero-energy spectra. That makes gates and
+classifiers easier to write because silence does not leak `NaN`.
+
+```ts
+import { analysis, type Spectrum } from '@stopcock/signal'
+
+export function shouldSuppressNoise(spectrum: Spectrum) {
+  const flatness = analysis.spectralFlatness(spectrum)
+  const centroid = analysis.spectralCentroid(spectrum)
+
+  return flatness > 0.72 && centroid > 2500
+}
+```
+
+### FIR low-pass with explicit history
+
+`fir.process()` emits one output sample for each input sample. Feed zeros after
+the final real block when you want the convolution tail.
+
+```ts
+import { fir } from '@stopcock/signal'
+
+const taps = fir.design({
+  kind: 'lowpass',
+  freq: 1200,
+  sampleRate: 48000,
+  taps: 63,
+  window: 'blackman',
+})
+const state = fir.state(taps.length)
+
+export function filterBlock(block: Float32Array) {
+  const out = new Float32Array(block.length)
+  fir.process(block, taps, state, out)
+  return out
+}
+
+export function flushFir() {
+  const tail = new Float32Array(taps.length - 1)
+  fir.process(new Float32Array(tail.length), taps, state, tail)
+  return tail
+}
+```
+
+### Offline convolution with partial final blocks
+
+`overlapAdd()` requires full blocks. Pad the final block, flush once, then trim
+to the full convolution length.
+
+```ts
+import { convolve } from '@stopcock/signal'
+
+export function convolveStreaming(
+  signal: Float32Array,
+  kernel: Float32Array,
+  blockSize = 128,
+) {
+  const plan = convolve.plan(kernel, blockSize)
+  const state = convolve.state(plan)
+  const chunks: Float32Array[] = []
+
+  for (let offset = 0; offset < signal.length; offset += blockSize) {
+    const block = new Float32Array(blockSize)
+    block.set(signal.subarray(offset, offset + blockSize))
+
+    const out = new Float32Array(blockSize)
+    convolve.overlapAdd(block, plan, state, out)
+    chunks.push(out)
+  }
+
+  const tail = new Float32Array(plan.tailLength)
+  convolve.flush(plan, state, tail)
+  chunks.push(tail)
+
+  const full = new Float32Array(chunks.reduce((n, chunk) => n + chunk.length, 0))
+  let write = 0
+  for (const chunk of chunks) {
+    full.set(chunk, write)
+    write += chunk.length
+  }
+
+  return full.subarray(0, signal.length + kernel.length - 1)
+}
+```
+
+### One-shot resampling
+
+The resamplers are stateless in v0. Size `out` first, call the resampler, and
+keep streaming polyphase for a later stateful wrapper.
+
+```ts
+import { resample } from '@stopcock/signal'
+
+const input = new Float32Array([0, 0.5, 1, 0.5, 0])
+
+const linearOut = new Float32Array(resample.outputLength(input.length, 1.5))
+resample.linear(input, 1.5, linearOut)
+
+const sincOut = new Float32Array(resample.outputLength(input.length, 0.75))
+resample.sinc(input, 0.75, {
+  width: 8,
+  window: 'hann',
+  out: sincOut,
+})
+
+const polyphaseOut = new Float32Array(Math.floor(input.length * 2 / 1))
+resample.polyphase(input, 2, 1, new Float32Array([1, 0]), polyphaseOut)
+```
+
+### Frequency response preview
+
+Use `biquad.freqResponse()` when a UI needs to draw the shape of a filter before
+processing any samples.
+
+```ts
+import { biquad } from '@stopcock/signal'
+
+const sampleRate = 48000
+const coeffs = biquad.design({
+  kind: 'peak',
+  freq: 1600,
+  q: 1.2,
+  gainDb: 4,
+  sampleRate,
+})
+
+const freqs = new Float32Array([60, 120, 250, 500, 1000, 2000, 4000, 8000])
+const mag = new Float32Array(freqs.length)
+const phase = new Float32Array(freqs.length)
+
+biquad.freqResponse(coeffs, freqs, sampleRate, mag, phase)
+```
+
+## Streaming convolution
+
+Long kernels are handled with an explicit overlap-add plan. The plan owns FFT
+scratch buffers; the caller owns the tail state.
+
+```ts
+import { convolve } from '@stopcock/signal'
+
+const plan = convolve.plan(kernel, 128)
+const state = convolve.state(plan)
+const out = new Float32Array(plan.blockSize)
+
+for (const block of blocks) {
+  convolve.overlapAdd(block, plan, state, out)
+  // write out somewhere
+}
+
+const tail = new Float32Array(plan.tailLength)
+convolve.flush(plan, state, tail)
+```
+
+## Spectral analysis
+
+Analysis functions take a one-sided spectrum so bin-to-Hz math stays explicit.
+
+```ts
+import { fft, analysis } from '@stopcock/signal'
+
+const bins = fft.rfft(buf)
+const magnitudes = new Float32Array(bins.length / 2)
+fft.magnitude(bins, magnitudes)
+
+const spectrum = analysis.spectrum(magnitudes, buf.length, 44100)
+analysis.spectralCentroid(spectrum)
+analysis.spectralRolloff(spectrum, 0.85)
+```
+
+Zero-energy spectra return `0` for centroid, rolloff, and flatness rather than
+leaking `NaN` into downstream control logic.

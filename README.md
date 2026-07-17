@@ -13,7 +13,7 @@ const top10 = pipe(
 )
 ```
 
-`pipe` fuses `filter`, `map`, and `take` into a single loop. `take(10)` bails out after 10 hits. On a million elements, that means touching a few dozen items instead of three full passes.
+`pipe` fuses streaming operations like `filter`, `map`, and `take` into a single loop. `take(10)` bails out after 10 matching results, while materializing operations such as `sort`, `sortBy`, `reverse`, `groupBy`, and `uniq` run on a completed array boundary.
 
 ## Install
 
@@ -21,27 +21,22 @@ const top10 = pipe(
 bun add @stopcock/fp
 ```
 
-Each package is installable independently — grab only what you need.
+Each package is installable independently. Grab only what you need.
 
 ## Packages
 
 | Package | What |
 |---------|------|
 | `@stopcock/fp` | pipe, flow, Array, String, Dict, Number, Guards, Object, Math, Boolean, Logic, Option, Result, Lenses, Optics |
-| `@stopcock/async` | Lazy Task type with concurrency, retry, timeout, cancellation |
-| `@stopcock/date` | Zero-allocation date utilities with branded timestamps, timezones, business days |
+| `@stopcock/async` | Lazy Task type for concurrency, retry, timeout, cancellation |
+| `@stopcock/date` | Zero-allocation date utilities for branded timestamps, timezones, business days |
 | `@stopcock/diff` | Myers diff plus patch apply, invert, compose, rebase |
-| `@stopcock/http` | Typed HTTP client with retry, caching, and request composition |
+| `@stopcock/http` | Typed HTTP client with retry, caching, request composition |
 | `@stopcock/img` | Image filters, convolution, Hough lines, connected components |
 | `@stopcock/la` | Linear algebra. Vectors and matrices |
 | `@stopcock/state` | Proxy-compiled accessors, patch middleware, batching, computed, history |
-| `@stopcock/server` | Functional HTTP framework. Module-graph DI, typed route plugins, lifecycle hooks, AOT matcher. Built-in plugins: `/bearer`, `/cookie`, `/cors`, `/openapi`, `/static`, `/timing`, `/validate` |
-| `@stopcock/server-uws` | uWebSockets.js adapter for `@stopcock/server` (Node-only) |
-| `@stopcock/server-validate-zod` | Zod adapter for `@stopcock/server/validate` |
-| `@stopcock/server-validate-arktype` | ArkType adapter for `@stopcock/server/validate` |
-| `@stopcock/server-validate-typebox` | TypeBox adapter for `@stopcock/server/validate` |
 
-Every function works data-first and data-last. Import only what you use — each package treeshakes independently.
+Every function works data-first and data-last. Import only what you use; each package treeshakes independently.
 
 ## Docs
 
@@ -49,10 +44,10 @@ Every function works data-first and data-last. Import only what you use — each
 
 ## Monorepo structure
 
-```
-packages/       Individual library packages (@stopcock/*)
-apps/docs/      Astro + Starlight docs site
-benchmarks/     vitest bench suites
+```text
+packages/    Individual library packages (@stopcock/*)
+apps/docs/   Astro + Starlight docs site
+benchmarks/  vitest bench suites
 ```
 
 ## License

@@ -28,7 +28,7 @@ const colorMap = Object.fromEntries(COLORS.libraries)
 ---
 
 {Object.entries(runtimes).map(([rt, { sorted, speedup }]) => (
-  <div class={`bench-panel fusion-spotlight`} data-rt={rt} hidden={rt !== 'node'}>
+  <div class={`bench-panel fusion-spotlight not-content`} data-rt={rt} hidden={rt !== 'node'}>
     <div class="fusion-chart-area" data-id={`fusion-spotlight-${rt}`} />
     {speedup && (
       <div class="fusion-callout">

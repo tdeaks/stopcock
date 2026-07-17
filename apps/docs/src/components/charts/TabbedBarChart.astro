@@ -9,12 +9,12 @@ interface Props {
 const { category, arraySize } = Astro.props
 ---
 
-<div class="bench-panel" data-rt="node">
+<div class="bench-panel not-content" data-rt="node">
   <BenchmarkBarChart {category} {arraySize} runtime="node" />
 </div>
-<div class="bench-panel" data-rt="bun" hidden>
+<div class="bench-panel not-content" data-rt="bun" hidden>
   <BenchmarkBarChart {category} {arraySize} runtime="bun" />
 </div>
-<div class="bench-panel" data-rt="deno" hidden>
+<div class="bench-panel not-content" data-rt="deno" hidden>
   <BenchmarkBarChart {category} {arraySize} runtime="deno" />
 </div>

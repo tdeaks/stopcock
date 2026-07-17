@@ -2,7 +2,7 @@
 const id = 'img-showcase'
 ---
 
-<div class="img-showcase" id={id}>
+<div class="img-showcase not-content" id={id}>
   <div class="img-controls">
     <div class="filter-buttons" id={`${id}-filters`}>
       <button data-filter="grayscale">Grayscale</button>
@@ -1077,23 +1077,6 @@ const id = 'img-showcase'
   .img-showcase {
     margin: 2rem 0;
   }
-
-  /* Starlight applies a vertical-rhythm margin-top to consecutive siblings inside
-     .sl-markdown-content. That rule cascades into our flex/grid rows and pushes
-     every child but the first downward by 16px, misaligning button rows.
-     The showcase manages its own spacing via gap/margin on containers, so opt out. */
-  .img-showcase .filter-buttons > *,
-  .img-showcase .transform-buttons > *,
-  .img-showcase .pipeline-strip > *,
-  .img-showcase .analysis-buttons > *,
-  .img-showcase .sliders > *,
-  .img-showcase .canvas-row > *,
-  .img-showcase .canvas-col > *,
-  .img-showcase .histogram-section > *,
-  .img-showcase .upload-row > *,
-  .img-showcase .analysis-section > *,
-  .img-showcase .blend-result > *,
-  .img-showcase .sweep-results > * { margin-top: 0; }
 
   .img-controls {
     margin-bottom: 1rem;

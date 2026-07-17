@@ -6,6 +6,7 @@ import {
   isBigInt, isDate, isEmpty, isEmptyish, isError, isPromise,
   isShallowEqual, isSymbol, isTruthy, isObjectType,
   isDeepEqual, isStrictEqual, isNil, isNotNil,
+  and, or, not,
 } from '../guard'
 
 describe('guard', () => {
@@ -90,8 +91,10 @@ describe('guard', () => {
   describe('isShallowEqual', () => {
     it('equal objects', () => expect(isShallowEqual({ a: 1, b: 2 }, { a: 1, b: 2 })).toBe(true))
     it('unequal objects', () => expect(isShallowEqual({ a: 1 }, { a: 2 })).toBe(false))
-    it('different key counts', () => expect(isShallowEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false))
-    it('same reference', () => { const o = { a: 1 }; expect(isShallowEqual(o, o)).toBe(true) })
+  it('different key counts', () => expect(isShallowEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false))
+  it('different keys with undefined values', () =>
+    expect(isShallowEqual({ a: undefined }, { b: undefined })).toBe(false))
+  it('same reference', () => { const o = { a: 1 }; expect(isShallowEqual(o, o)).toBe(true) })
     it('primitives', () => expect(isShallowEqual(1, 1)).toBe(true))
     it('different primitives', () => expect(isShallowEqual(1, 2)).toBe(false))
     it('null vs object', () => expect(isShallowEqual(null, { a: 1 })).toBe(false))
@@ -255,6 +258,42 @@ describe('guard', () => {
 
     it('RegExp where b is not RegExp', () => {
       expect(isDeepEqual(/foo/, {})).toBe(false)
+    })
+  })
+
+  describe('refinement combinators', () => {
+    type User = { type: 'user'; active: boolean; name: string }
+    type Admin = User & { role: 'admin' }
+    type Guest = { type: 'guest'; name: string }
+    type Account = User | Admin | Guest
+
+    const isUser = (value: Account): value is User | Admin => value.type === 'user'
+    const isAdmin = (value: User | Admin): value is Admin => 'role' in value
+    const isGuest = (value: Account): value is Guest => value.type === 'guest'
+
+    it('and composes refinements left-to-right', () => {
+      const isUserAdmin = and(isUser, isAdmin)
+
+      expect(isUserAdmin({ type: 'user', active: true, name: 'Ada', role: 'admin' })).toBe(true)
+      expect(isUserAdmin({ type: 'user', active: true, name: 'Grace' })).toBe(false)
+      expect(isUserAdmin({ type: 'guest', name: 'Linus' })).toBe(false)
+    })
+
+    it('or accepts either refinement', () => {
+      const isKnownAccount = or(isUser, isGuest)
+
+      expect(isKnownAccount({ type: 'user', active: false, name: 'Ada' })).toBe(true)
+      expect(isKnownAccount({ type: 'guest', name: 'Grace' })).toBe(true)
+    })
+
+    it('not negates refinements and predicates', () => {
+      const isNotGuest = not(isGuest)
+      const isNotEmpty = not((value: string) => value.length === 0)
+
+      expect(isNotGuest({ type: 'user', active: true, name: 'Ada' })).toBe(true)
+      expect(isNotGuest({ type: 'guest', name: 'Grace' })).toBe(false)
+      expect(isNotEmpty('fp')).toBe(true)
+      expect(isNotEmpty('')).toBe(false)
     })
   })
 })

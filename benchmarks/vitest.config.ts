@@ -9,6 +9,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@stopcock/fp': src('fp'),
+      '@stopcock/autodiff/tape': path.resolve(__dirname, '../packages/autodiff/src/tape.ts'),
+      '@stopcock/autodiff': src('autodiff'),
       '@stopcock/la/accel': path.resolve(__dirname, '../packages/la/src/accel.ts'),
       '@stopcock/la/fast': path.resolve(__dirname, '../packages/la/src/fast.ts'),
       '@stopcock/la/primitives': path.resolve(__dirname, '../packages/la/src/primitives.ts'),
@@ -16,6 +18,10 @@ export default defineConfig({
       '@stopcock/img': src('img'),
       '@stopcock/date': src('date'),
       '@stopcock/color': src('color'),
+      '@stopcock/signal': src('signal'),
+      '@stopcock/synth': src('synth'),
+      '@stopcock/diff': src('diff'),
+      '@stopcock/state': src('state'),
     },
   },
   test: {

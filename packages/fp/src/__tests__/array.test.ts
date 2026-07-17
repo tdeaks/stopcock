@@ -3,6 +3,18 @@ import { pipe } from '../pipe'
 import * as A from '../array'
 
 describe('array', () => {
+  describe('operator construction', () => {
+    it('reuses map data-last operator for the same callback', () => {
+      const double = (x: number) => x * 2
+      const op = A.map(double)
+
+      expect(A.map(double)).toBe(op)
+      expect((op as any)._op).toBe(1)
+      expect((op as any)._fn).toBe(double)
+      expect(pipe([1, 2, 3], op)).toEqual([2, 4, 6])
+    })
+  })
+
   describe('arity 1 re-exports', () => {
     it('head', () => expect(A.head([1, 2, 3])).toBe(1))
     it('last', () => expect(A.last([1, 2, 3])).toBe(3))
@@ -186,6 +198,42 @@ describe('array', () => {
 
     it('count data-first', () => expect(A.count([1, 2, 3, 4], x => x % 2 === 0)).toBe(2))
     it('count curried', () => expect(pipe([1, 2, 3, 4], A.count(x => x % 2 === 0))).toBe(2))
+
+    it('filterMap data-first', () => expect(A.filterMap([1, 2, 3, 4], x => x % 2 === 0 ? String(x) : undefined)).toEqual(['2', '4']))
+    it('filterMap curried', () => expect(pipe([1, 2, 3, 4], A.filterMap(x => x % 2 === 0 ? x * 10 : undefined))).toEqual([20, 40]))
+    it('findMap data-first stops at first mapped value', () => {
+      let visited = 0
+      const result = A.findMap([1, 2, 3, 4], x => {
+        visited++
+        return x > 2 ? String(x) : undefined
+      })
+
+      expect(result).toBe('3')
+      expect(visited).toBe(3)
+    })
+    it('findMap curried', () => expect(pipe([1, 2, 3], A.findMap(x => x > 1 ? String(x) : undefined))).toBe('2'))
+    it('mapWhile data-first stops at first nullish result', () => {
+      let visited = 0
+      const result = A.mapWhile([1, 2, 3, 4], x => {
+        visited++
+        return x < 3 ? x * 2 : undefined
+      })
+
+      expect(result).toEqual([2, 4])
+      expect(visited).toBe(3)
+    })
+    it('mapWhile curried', () => expect(pipe([1, 2, 3, 4], A.mapWhile(x => x < 4 ? String(x) : undefined))).toEqual(['1', '2', '3']))
+    it('takeUntil data-first stops before first match', () => {
+      let visited = 0
+      const result = A.takeUntil([1, 2, 3, 4], x => {
+        visited++
+        return x >= 3
+      })
+
+      expect(result).toEqual([1, 2])
+      expect(visited).toBe(3)
+    })
+    it('takeUntil curried', () => expect(pipe([1, 2, 3, 4], A.takeUntil(x => x > 2))).toEqual([1, 2]))
 
     it('append data-first', () => expect(A.append([1, 2], 3)).toEqual([1, 2, 3]))
     it('append curried', () => expect(pipe([1, 2], A.append(3))).toEqual([1, 2, 3]))

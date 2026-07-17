@@ -1,0 +1,698 @@
+---
+const id = 'autodiff-demo'
+---
+
+<div class="ad-demo not-content" id={id} data-autodiff-demo>
+  <div class="ad-head">
+    <div>
+      <h2>Gradient descent playground</h2>
+      <p>Pick a scalar function and watch reverse-mode AD steer each update.</p>
+    </div>
+    <div class="ad-equation" aria-live="polite">
+      <span>f(x)</span>
+      <code id={`${id}-formula`}></code>
+    </div>
+  </div>
+
+  <section class="ad-explainer" aria-label="What the gradient descent demo shows">
+    <strong>What this shows</strong>
+    <p>
+      The green curve is the function. Each orange point is a new guess for
+      <code>x</code>, made by asking autodiff for <code>df/dx</code> and moving
+      in the direction that should lower <code>f(x)</code>.
+    </p>
+    <p>
+      Small learning rates creep toward a valley. Large learning rates can
+      overshoot, bounce, or jump between valleys, which is the same failure mode
+      real optimizers hit.
+    </p>
+  </section>
+
+  <div class="ad-layout">
+    <section class="ad-panel ad-controls" aria-label="Autodiff controls">
+      <div class="ad-group">
+        <span class="ad-label">Function</span>
+        <div class="ad-segments" id={`${id}-functions`} role="radiogroup" aria-label="Function"></div>
+      </div>
+
+      <label class="ad-control" for={`${id}-start`}>
+        <span>Start x</span>
+        <output id={`${id}-start-value`}></output>
+        <input id={`${id}-start`} type="range" min="-4" max="4" step="0.05" value="-3" />
+      </label>
+
+      <label class="ad-control" for={`${id}-rate`}>
+        <span>Learning rate</span>
+        <output id={`${id}-rate-value`}></output>
+        <input id={`${id}-rate`} type="range" min="0.005" max="0.2" step="0.005" value="0.06" />
+      </label>
+
+      <label class="ad-control" for={`${id}-steps`}>
+        <span>Steps</span>
+        <output id={`${id}-steps-value`}></output>
+        <input id={`${id}-steps`} type="range" min="0" max="80" step="1" value="22" />
+      </label>
+
+      <div class="ad-actions">
+        <button type="button" id={`${id}-run`}>Run</button>
+        <button type="button" id={`${id}-reset`}>Reset</button>
+      </div>
+    </section>
+
+    <section class="ad-panel ad-chart-panel" aria-label="Gradient descent chart">
+      <div class="ad-chart-wrap">
+        <svg id={`${id}-chart`} viewBox="0 0 640 320" role="img" aria-labelledby={`${id}-chart-title`}>
+          <title id={`${id}-chart-title`}>Autodiff gradient descent chart</title>
+        </svg>
+      </div>
+      <div class="ad-legend" aria-hidden="true">
+        <span><i class="ad-key ad-key-function"></i>Function</span>
+        <span><i class="ad-key ad-key-trail"></i>Updates</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="ad-readout" aria-label="Current autodiff result">
+    <div>
+      <span>x</span>
+      <output id={`${id}-x`}></output>
+    </div>
+    <div>
+      <span>f(x)</span>
+      <output id={`${id}-fx`}></output>
+    </div>
+    <div>
+      <span>gradient</span>
+      <output id={`${id}-grad`}></output>
+    </div>
+    <div>
+      <span>next x</span>
+      <output id={`${id}-next`}></output>
+    </div>
+  </section>
+</div>
+
+<script>
+  import {
+    add,
+    differentiable,
+    mul,
+    pow,
+    sin,
+    square,
+    sub,
+    type Var,
+  } from '@stopcock/autodiff'
+
+  const root = document.querySelector('[data-autodiff-demo]') as HTMLElement
+  if (!root) throw new Error('AutodiffDemo root not found')
+
+  const id = root.id
+  const $ = <T extends HTMLElement | SVGElement = HTMLElement>(suffix: string): T => {
+    const el = root.querySelector(`#${id}-${suffix}`) as T | null
+    if (!el) throw new Error(`AutodiffDemo missing ${suffix}`)
+    return el
+  }
+
+  const examples = {
+    bowl: {
+      label: 'Bowl',
+      formula: '(x - 1.8)^2 + 0.2',
+      domain: [-4, 4],
+      defaults: { start: -3, rate: 0.06, steps: 22 },
+      fn: differentiable((x: Var<number>) => add(square(sub(x, 1.8)), 0.2)),
+    },
+    wave: {
+      label: 'Wave',
+      formula: 'sin(x^2 + 3) + 0.12x',
+      domain: [-3.2, 3.2],
+      defaults: { start: -2.6, rate: 0.045, steps: 34 },
+      fn: differentiable((x: Var<number>) => add(sin(add(square(x), 3)), mul(0.12, x))),
+    },
+    double: {
+      label: 'Double well',
+      formula: '0.08x^4 - 0.65x^2 + 0.15x',
+      domain: [-3.4, 3.4],
+      defaults: { start: 2.8, rate: 0.035, steps: 42 },
+      fn: differentiable((x: Var<number>) =>
+        add(sub(mul(0.08, pow(x, 4)), mul(0.65, square(x))), mul(0.15, x))
+      ),
+    },
+  } as const
+
+  type ExampleKey = keyof typeof examples
+
+  const functionGroup = $('functions')
+  const formula = $('formula')
+  const start = $('start') as HTMLInputElement
+  const rate = $('rate') as HTMLInputElement
+  const steps = $('steps') as HTMLInputElement
+  const startValue = $('start-value') as HTMLOutputElement
+  const rateValue = $('rate-value') as HTMLOutputElement
+  const stepsValue = $('steps-value') as HTMLOutputElement
+  const runButton = $('run') as HTMLButtonElement
+  const resetButton = $('reset') as HTMLButtonElement
+  const chart = $('chart') as unknown as SVGSVGElement
+  const outX = $('x') as HTMLOutputElement
+  const outFx = $('fx') as HTMLOutputElement
+  const outGrad = $('grad') as HTMLOutputElement
+  const outNext = $('next') as HTMLOutputElement
+
+  let active: ExampleKey = 'bowl'
+  let frame = 0
+  let lastTick = 0
+  let running = false
+  let animationTarget = examples.bowl.defaults.steps
+
+  const fmt = (n: number) => {
+    if (!Number.isFinite(n)) return String(n)
+    const abs = Math.abs(n)
+    if (abs !== 0 && abs < 0.001) return n.toExponential(2)
+    return n.toFixed(abs >= 10 ? 2 : 4)
+  }
+
+  const clamp = (x: number, min: number, max: number) => Math.max(min, Math.min(max, x))
+
+  const makeSvg = (tag: string, attrs: Record<string, string | number>) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag)
+    for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value))
+    return el
+  }
+
+  const pathFrom = (points: Array<{ x: number; y: number }>) =>
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ')
+
+  const currentExample = () => examples[active]
+
+  const setExample = (key: ExampleKey, useDefaults = true) => {
+    active = key
+    const ex = currentExample()
+    start.min = String(ex.domain[0])
+    start.max = String(ex.domain[1])
+    if (useDefaults) {
+      start.value = String(ex.defaults.start)
+      rate.value = String(ex.defaults.rate)
+      steps.value = String(ex.defaults.steps)
+    } else {
+      start.value = String(clamp(Number(start.value), ex.domain[0], ex.domain[1]))
+    }
+    for (const button of functionGroup.querySelectorAll<HTMLButtonElement>('button')) {
+      const selected = button.dataset.fn === key
+      button.classList.toggle('is-active', selected)
+      button.setAttribute('aria-checked', String(selected))
+    }
+    render()
+  }
+
+  const descent = () => {
+    const ex = currentExample()
+    const rateValue = Number(rate.value)
+    const maxSteps = Number(steps.value)
+    let x = Number(start.value)
+    const points: Array<{ x: number; value: number; grad: number; next: number }> = []
+
+    for (let i = 0; i <= maxSteps; i++) {
+      const value = ex.fn.forward(x)
+      const grad = ex.fn.gradient(x)
+      const next = clamp(x - rateValue * grad, ex.domain[0], ex.domain[1])
+      points.push({ x, value, grad, next })
+      if (!Number.isFinite(next) || !Number.isFinite(grad)) break
+      x = next
+    }
+
+    return points
+  }
+
+  const renderChart = (trail: ReturnType<typeof descent>) => {
+    const ex = currentExample()
+    const [minX, maxX] = ex.domain
+    const samples: Array<{ x: number; value: number }> = []
+    const sampleCount = 180
+
+    for (let i = 0; i < sampleCount; i++) {
+      const x = minX + (i / (sampleCount - 1)) * (maxX - minX)
+      samples.push({ x, value: ex.fn.forward(x) })
+    }
+
+    const yValues = [...samples.map(p => p.value), ...trail.map(p => p.value)]
+      .filter(Number.isFinite)
+    const rawMinY = Math.min(...yValues)
+    const rawMaxY = Math.max(...yValues)
+    const padY = Math.max(0.25, (rawMaxY - rawMinY) * 0.12)
+    const minY = rawMinY - padY
+    const maxY = rawMaxY + padY
+    const width = 640
+    const height = 320
+    const pad = { l: 36, r: 20, t: 18, b: 34 }
+    const sx = (x: number) => pad.l + ((x - minX) / (maxX - minX)) * (width - pad.l - pad.r)
+    const sy = (y: number) => pad.t + ((maxY - y) / (maxY - minY)) * (height - pad.t - pad.b)
+
+    chart.replaceChildren()
+    chart.append(makeSvg('rect', {
+      x: 0,
+      y: 0,
+      width,
+      height,
+      rx: 4,
+      fill: 'var(--ad-chart-bg)',
+    }))
+
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.t + (i / 4) * (height - pad.t - pad.b)
+      chart.append(makeSvg('line', {
+        x1: pad.l,
+        y1: y,
+        x2: width - pad.r,
+        y2: y,
+        stroke: 'var(--ad-grid)',
+        'stroke-width': 1,
+      }))
+    }
+
+    if (minY < 0 && maxY > 0) {
+      chart.append(makeSvg('line', {
+        x1: pad.l,
+        y1: sy(0),
+        x2: width - pad.r,
+        y2: sy(0),
+        stroke: 'var(--ad-axis)',
+        'stroke-width': 1.4,
+      }))
+    }
+
+    if (minX < 0 && maxX > 0) {
+      chart.append(makeSvg('line', {
+        x1: sx(0),
+        y1: pad.t,
+        x2: sx(0),
+        y2: height - pad.b,
+        stroke: 'var(--ad-axis)',
+        'stroke-width': 1.4,
+      }))
+    }
+
+    chart.append(makeSvg('path', {
+      d: pathFrom(samples.map(p => ({ x: sx(p.x), y: sy(p.value) }))),
+      fill: 'none',
+      stroke: 'var(--ad-function)',
+      'stroke-width': 2.5,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+    }))
+
+    if (trail.length > 1) {
+      chart.append(makeSvg('path', {
+        d: pathFrom(trail.map(p => ({ x: sx(p.x), y: sy(p.value) }))),
+        fill: 'none',
+        stroke: 'var(--ad-trail)',
+        'stroke-width': 2,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-dasharray': '4 5',
+      }))
+    }
+
+    for (let i = 0; i < trail.length; i++) {
+      const p = trail[i]
+      const isLast = i === trail.length - 1
+      chart.append(makeSvg('circle', {
+        cx: sx(p.x),
+        cy: sy(p.value),
+        r: isLast ? 5.5 : 3.5,
+        fill: isLast ? 'var(--ad-current)' : 'var(--ad-trail)',
+        stroke: 'var(--ad-chart-bg)',
+        'stroke-width': 2,
+      }))
+    }
+  }
+
+  const render = () => {
+    const ex = currentExample()
+    const trail = descent()
+    const last = trail[trail.length - 1]
+
+    formula.textContent = ex.formula
+    startValue.value = fmt(Number(start.value))
+    rateValue.value = fmt(Number(rate.value))
+    stepsValue.value = steps.value
+    outX.value = fmt(last.x)
+    outFx.value = fmt(last.value)
+    outGrad.value = fmt(last.grad)
+    outNext.value = fmt(last.next)
+    renderChart(trail)
+  }
+
+  const stop = () => {
+    running = false
+    runButton.textContent = 'Run'
+    if (frame) cancelAnimationFrame(frame)
+    frame = 0
+  }
+
+  const tick = (time: number) => {
+    if (!running) return
+    if (time - lastTick > 70) {
+      lastTick = time
+      const current = Number(steps.value)
+      if (current >= animationTarget) {
+        stop()
+        return
+      }
+      steps.value = String(current + 1)
+      render()
+    }
+    frame = requestAnimationFrame(tick)
+  }
+
+  for (const [key, ex] of Object.entries(examples) as Array<[ExampleKey, typeof examples[ExampleKey]]>) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.setAttribute('role', 'radio')
+    button.dataset.fn = key
+    button.textContent = ex.label
+    button.addEventListener('click', () => {
+      stop()
+      setExample(key)
+    })
+    functionGroup.append(button)
+  }
+
+  for (const input of [start, rate, steps]) {
+    input.addEventListener('input', () => {
+      stop()
+      render()
+    })
+  }
+
+  runButton.addEventListener('click', () => {
+    if (running) {
+      stop()
+      return
+    }
+    animationTarget = Number(steps.value) || currentExample().defaults.steps
+    steps.value = '0'
+    running = true
+    runButton.textContent = 'Stop'
+    lastTick = 0
+    render()
+    frame = requestAnimationFrame(tick)
+  })
+
+  resetButton.addEventListener('click', () => {
+    stop()
+    setExample(active)
+  })
+
+  setExample(active)
+</script>
+
+<style is:global>
+  .ad-demo {
+    --ad-bg: color-mix(in srgb, var(--sl-color-gray-6) 82%, transparent);
+    --ad-panel: color-mix(in srgb, var(--sl-color-gray-6) 95%, var(--sl-color-accent-low));
+    --ad-border: var(--sl-color-gray-5);
+    --ad-muted: var(--sl-color-gray-2);
+    --ad-chart-bg: color-mix(in srgb, var(--sl-color-black) 58%, var(--sl-color-gray-6));
+    --ad-grid: color-mix(in srgb, var(--sl-color-gray-4) 55%, transparent);
+    --ad-axis: color-mix(in srgb, var(--sl-color-gray-3) 70%, transparent);
+    --ad-function: var(--sl-color-accent);
+    --ad-trail: #f4a261;
+    --ad-current: #58c4dd;
+
+    margin: 2rem 0;
+    border: 1px solid var(--ad-border);
+    background: var(--ad-bg);
+    padding: 1rem;
+  }
+
+  .ad-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+  }
+
+  .ad-head h2 {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1.2rem;
+  }
+
+  .ad-head p {
+    margin: 0.25rem 0 0;
+    color: var(--ad-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .ad-equation {
+    display: grid;
+    gap: 0.25rem;
+    min-width: min(18rem, 100%);
+    color: var(--ad-muted);
+    font-size: 0.75rem;
+  }
+
+  .ad-equation code {
+    white-space: normal;
+    line-height: 1.45;
+    color: var(--sl-color-white);
+  }
+
+  .ad-explainer {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--ad-function);
+    padding-left: 0.85rem;
+    color: var(--ad-muted);
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  .ad-explainer strong {
+    color: var(--sl-color-white);
+    font-size: 0.78rem;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .ad-explainer p {
+    margin: 0;
+  }
+
+  .ad-explainer code {
+    color: var(--sl-color-white);
+  }
+
+  .ad-layout {
+    display: grid;
+    grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: stretch;
+  }
+
+  .ad-panel,
+  .ad-readout {
+    border: 1px solid var(--ad-border);
+    background: var(--ad-panel);
+  }
+
+  .ad-controls {
+    display: grid;
+    align-content: start;
+    gap: 1rem;
+    padding: 0.85rem;
+  }
+
+  .ad-group,
+  .ad-control {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .ad-label,
+  .ad-control span,
+  .ad-readout span {
+    color: var(--ad-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+
+  .ad-segments {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid var(--ad-border);
+  }
+
+  .ad-segments button,
+  .ad-actions button {
+    min-height: 2.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--sl-color-gray-1);
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+
+  .ad-segments button + button {
+    border-left: 1px solid var(--ad-border);
+  }
+
+  .ad-segments button.is-active {
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-accent-high);
+    font-weight: 700;
+  }
+
+  .ad-control {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .ad-control input {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--sl-color-accent);
+  }
+
+  .ad-control output {
+    font-family: var(--sl-font-mono);
+    font-size: 0.78rem;
+    color: var(--sl-color-white);
+  }
+
+  .ad-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .ad-actions button {
+    border: 1px solid var(--ad-border);
+    background: var(--sl-color-gray-6);
+  }
+
+  .ad-actions button:first-child {
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    font-weight: 700;
+  }
+
+  .ad-chart-panel {
+    min-width: 0;
+    padding: 0.75rem;
+  }
+
+  .ad-chart-wrap {
+    width: 100%;
+    aspect-ratio: 2 / 1;
+    min-height: 16rem;
+  }
+
+  .ad-chart-wrap svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .ad-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    color: var(--ad-muted);
+    font-size: 0.78rem;
+  }
+
+  .ad-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .ad-key {
+    width: 1.1rem;
+    height: 0.2rem;
+    display: inline-block;
+  }
+
+  .ad-key-function { background: var(--ad-function); }
+  .ad-key-trail { background: var(--ad-trail); }
+
+  .ad-readout {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 0.85rem;
+  }
+
+  .ad-readout div {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.8rem;
+  }
+
+  .ad-readout div + div {
+    border-left: 1px solid var(--ad-border);
+  }
+
+  .ad-readout output {
+    overflow-wrap: anywhere;
+    color: var(--sl-color-white);
+    font-family: var(--sl-font-mono);
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 54rem) {
+    .ad-head,
+    .ad-layout {
+      grid-template-columns: 1fr;
+      display: grid;
+    }
+
+    .ad-readout {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ad-readout div:nth-child(odd) {
+      border-left: 0;
+    }
+
+    .ad-readout div:nth-child(n + 3) {
+      border-top: 1px solid var(--ad-border);
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .ad-demo {
+      padding: 0.75rem;
+    }
+
+    .ad-segments {
+      grid-template-columns: 1fr;
+    }
+
+    .ad-segments button + button {
+      border-left: 0;
+      border-top: 1px solid var(--ad-border);
+    }
+
+    .ad-chart-wrap {
+      min-height: 13rem;
+    }
+
+    .ad-readout {
+      grid-template-columns: 1fr;
+    }
+
+    .ad-readout div + div {
+      border-left: 0;
+      border-top: 1px solid var(--ad-border);
+    }
+  }
+</style>

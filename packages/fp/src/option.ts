@@ -31,6 +31,51 @@ export const flatMap =
   (o: Option<A>): Option<B> =>
     o._tag === 1 ? f(o.value) : none
 
+export const andThen = flatMap
+
+export const flatten = <A>(o: Option<Option<A>>): Option<A> =>
+  o._tag === 1 ? o.value : none
+
+export const orElse =
+  <B>(that: Option<B>) =>
+  <A>(o: Option<A>): Option<A | B> =>
+    o._tag === 1 ? o : that
+
+export const orElseWith =
+  <B>(onNone: LazyValue<Option<B>>) =>
+  <A>(o: Option<A>): Option<A | B> =>
+    o._tag === 1 ? o : onNone()
+
+export const and =
+  <B>(that: Option<B>) =>
+  <A>(o: Option<A>): Option<B> =>
+    o._tag === 1 ? that : none
+
+export const zip =
+  <B>(that: Option<B>) =>
+  <A>(o: Option<A>): Option<[A, B]> =>
+    o._tag === 1 && that._tag === 1 ? some([o.value, that.value]) : none
+
+export const zipWith =
+  <A, B, C>(that: Option<B>, f: (a: A, b: B) => C) =>
+  (o: Option<A>): Option<C> =>
+    o._tag === 1 && that._tag === 1 ? some(f(o.value, that.value)) : none
+
+export const contains =
+  <A>(value: A) =>
+  <B>(o: Option<A | B>): boolean =>
+    o._tag === 1 && Object.is(o.value, value)
+
+export const exists =
+  <A>(predicate: (a: A) => boolean) =>
+  (o: Option<A>): boolean =>
+    o._tag === 1 && predicate(o.value)
+
+export const mapNullable =
+  <A, B>(f: (a: A) => B | null | undefined) =>
+  (o: Option<A>): Option<NonNullable<B>> =>
+    o._tag === 1 ? fromNullable(f(o.value)) : none
+
 export const filter =
   <A>(predicate: (a: A) => boolean) =>
   (o: Option<A>): Option<A> =>

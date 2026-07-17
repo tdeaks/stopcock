@@ -3,14 +3,17 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const dist = (mod: string) => path.resolve(__dirname, `../packages/stopcock/dist/${mod}.js`)
+const fpDist = (subpath = 'index') => path.resolve(__dirname, `../packages/fp/dist/${subpath}.js`)
+const stopcockDist = (mod: string) => path.resolve(__dirname, `../packages/stopcock/dist/${mod}.js`)
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@stopcock/fp': dist('fp'),
-      '@stopcock/date': dist('date'),
-    },
+    alias: [
+      // Subpath aliases expect extensionless imports like @stopcock/fp/lens.
+      { find: /^@stopcock\/fp\/(.+)$/, replacement: fpDist('$1') },
+      { find: '@stopcock/fp', replacement: fpDist() },
+      { find: '@stopcock/date', replacement: stopcockDist('date') },
+    ],
   },
   test: {
     benchmark: {

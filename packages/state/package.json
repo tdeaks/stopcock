@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/state",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,29 +10,57 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./async": { "types": "./dist/async.d.ts", "import": "./dist/async.js" },
-    "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js" },
-    "./svelte": { "types": "./dist/svelte.d.ts", "import": "./dist/svelte.js" },
-    "./vue": { "types": "./dist/vue.d.ts", "import": "./dist/vue.js" },
-    "./persist": { "types": "./dist/persist.d.ts", "import": "./dist/persist.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./async": {
+      "types": "./dist/async.d.ts",
+      "import": "./dist/async.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./svelte": {
+      "types": "./dist/svelte.d.ts",
+      "import": "./dist/svelte.js"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.js"
+    },
+    "./persist": {
+      "types": "./dist/persist.d.ts",
+      "import": "./dist/persist.js"
+    }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
-    "@stopcock/fp": "0.0.2",
-    "@stopcock/diff": "0.0.2"
+    "@stopcock/fp": "0.0.3",
+    "@stopcock/diff": "0.0.3"
   },
   "peerDependencies": {
-    "@stopcock/async": "0.0.2",
+    "@stopcock/async": "0.0.3",
     "react": ">=18.0.0",
     "svelte": ">=3.0.0",
     "vue": ">=3.0.0"
   },
   "peerDependenciesMeta": {
-    "@stopcock/async": { "optional": true },
-    "react": { "optional": true },
-    "svelte": { "optional": true },
-    "vue": { "optional": true }
+    "@stopcock/async": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
   },
   "scripts": {
     "build": "tsup"

@@ -1,0 +1,178 @@
+---
+title: autodiff
+description: Reverse-mode automatic differentiation for scalar, vector, and matrix values
+---
+
+import AutodiffDemo from '../../../components/AutodiffDemo.astro'
+import AutodiffDesignDemos from '../../../components/AutodiffDesignDemos.astro'
+import AutodiffNeuralDemo from '../../../components/AutodiffNeuralDemo.astro'
+import AutodiffTrainingDemos from '../../../components/AutodiffTrainingDemos.astro'
+
+```bash
+bun add @stopcock/autodiff
+```
+
+`@stopcock/autodiff` makes stopcock pipelines differentiable. Each operation
+records its forward value and local derivative to a scoped tape; `gradient()`
+walks the tape backwards and accumulates gradients with the chain rule.
+
+For the full stack version, try the [Spectral Optimizer](/showcases/spectral-optimizer/):
+autodiff tunes a synth patch, signal verifies the FFT, and svg/color render the
+resulting artifact.
+
+```ts
+import { pipe } from '@stopcock/fp'
+import { differentiable, sin, square, add, type Var } from '@stopcock/autodiff'
+
+const f = differentiable((x: Var<number>) =>
+  pipe(x, square, add(3), sin)
+)
+
+f.forward(2)   // Math.sin(7)
+f.gradient(2)  // Math.cos(7) * 4
+```
+
+This first example shows the core idea: write the calculation once, then ask for
+either its forward value or its derivative at a specific input. The derivative is
+computed from the same composed pipeline, not from a hand-written formula.
+
+<AutodiffDemo />
+
+<AutodiffTrainingDemos />
+
+<AutodiffNeuralDemo />
+
+<AutodiffDesignDemos />
+
+## Why it works with pipe
+
+Stopcock's regular pipeline fusion compiles tagged operations into imperative
+loops. Autodiff ops are intentionally untagged, so `pipe()` uses its direct call
+path and every stage can record to the active tape.
+
+## The API
+
+```ts
+const f = differentiable((x: Var<number>, y: Var<number>) =>
+  add(mul(x, y), square(x))
+)
+
+f.forward(2, 3)          // 10
+f.gradient(2, 3)         // [7, 2]
+f.valueAndGradient(2, 3) // { value: 10, gradient: [7, 2] }
+```
+
+This example shows how multi-input gradients are returned: one derivative per
+input, in the same order as the callback parameters.
+
+Callback parameters must be annotated as `Var<...>`. TypeScript cannot infer
+the input tuple from inside the callback body, but once the parameter is
+annotated the returned function is fully typed.
+
+## Scalar ops
+
+```ts
+import {
+  add,
+  sub,
+  mul,
+  div,
+  neg,
+  square,
+  pow,
+  sin,
+  cos,
+  tan,
+  exp,
+  log,
+  sqrt,
+  abs,
+  tanh,
+  sigmoid,
+  relu,
+  leakyRelu,
+  softplus,
+} from '@stopcock/autodiff'
+```
+
+Binary operations support both data-first and data-last forms:
+
+```ts
+add(x, 3)
+pipe(x, square, add(3), sin)
+```
+
+## Vectors
+
+Vectors are `Float64Array` values.
+
+```ts
+import { differentiable, sub, square, vecDot, type Var, type Vec } from '@stopcock/autodiff'
+
+const x = new Float64Array([1, 2, 3])
+
+const loss = differentiable((w: Var<Vec>) =>
+  square(sub(vecDot(w, x), 1))
+)
+
+loss.gradient(new Float64Array([0, 0, 0]))
+```
+
+This example shows a tiny linear model. `vecDot(w, x)` predicts a value,
+`square(...)` measures the error, and `gradient(...)` returns a vector shaped
+like `w`, telling each weight how to move.
+
+Vector operations include `vecAdd`, `vecSub`, `vecScale`, `vecDot`, `vecNorm`,
+and `vecSum`.
+
+## Matrices
+
+Matrices use the same shape as `@stopcock/la`:
+
+```ts
+type Mat = { data: Float64Array; rows: number; cols: number }
+```
+
+```ts
+import { differentiable, matMul, matNormSquared, matSub, type Mat, type Var } from '@stopcock/autodiff'
+
+const target: Mat = { rows: 2, cols: 1, data: new Float64Array([1, -1]) }
+
+const loss = differentiable((w: Var<Mat>, x: Var<Mat>) =>
+  matNormSquared(matSub(matMul(x, w), target))
+)
+```
+
+This example shows differentiation through matrix multiplication. The loss is a
+scalar, but the gradients keep the original matrix shapes, so callers can update
+model matrices directly.
+
+Matrix operations include `matMul`, `matAdd`, `matSub`, `matScale`,
+`matTranspose`, `matSum`, `matMean`, and `matNormSquared`.
+
+## Tape primitives
+
+Use the lower-level API when you need to control the tape scope yourself:
+
+```ts
+import { withTape, variable, backward, gradOf, square } from '@stopcock/autodiff'
+
+withTape((tape) => {
+  const x = variable(3)
+  const y = square(x)
+  backward(y, tape)
+  return gradOf(x, tape)
+})
+```
+
+This example shows what `differentiable(...)` wraps for you: create a variable,
+record operations on a tape, walk the tape backwards, and read the gradient from
+the original input.
+
+## Constraints
+
+- Outputs are scalar in v1.
+- Operations are synchronous; do not `await` inside a differentiable callback.
+- Vector and matrix ops throw `ShapeError` on incompatible shapes.
+- Non-differentiable scalar points use the documented subgradient convention:
+  `abs(0) = 0`, `relu(0) = 0`, and `leakyRelu(0, alpha) = alpha`.

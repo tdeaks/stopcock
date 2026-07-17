@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/fp",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,16 +10,74 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./lens": { "types": "./dist/lens.d.ts", "import": "./dist/lens.js" },
-    "./dual": { "types": "./dist/dual-lite.d.ts", "import": "./dist/dual-lite.js" },
-    "./guard": { "types": "./dist/guard.d.ts", "import": "./dist/guard.js" },
-    "./result": { "types": "./dist/result.d.ts", "import": "./dist/result.js" },
-    "./option": { "types": "./dist/option.d.ts", "import": "./dist/option.js" },
-    "./stream": { "types": "./dist/stream.d.ts", "import": "./dist/stream.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./lens": {
+      "types": "./dist/lens.d.ts",
+      "import": "./dist/lens.js"
+    },
+    "./dual": {
+      "types": "./dist/dual-lite.d.ts",
+      "import": "./dist/dual-lite.js"
+    },
+    "./guard": {
+      "types": "./dist/guard.d.ts",
+      "import": "./dist/guard.js"
+    },
+    "./result": {
+      "types": "./dist/result.d.ts",
+      "import": "./dist/result.js"
+    },
+    "./option": {
+      "types": "./dist/option.d.ts",
+      "import": "./dist/option.js"
+    },
+    "./stream": {
+      "types": "./dist/stream.d.ts",
+      "import": "./dist/stream.js"
+    },
+    "./array": {
+      "types": "./dist/array.d.ts",
+      "import": "./dist/array.js"
+    },
+    "./object": {
+      "types": "./dist/object.d.ts",
+      "import": "./dist/object.js"
+    },
+    "./dict": {
+      "types": "./dist/dict.d.ts",
+      "import": "./dist/dict.js"
+    },
+    "./string": {
+      "types": "./dist/string.d.ts",
+      "import": "./dist/string.js"
+    },
+    "./number": {
+      "types": "./dist/number.d.ts",
+      "import": "./dist/number.js"
+    },
+    "./math": {
+      "types": "./dist/math.d.ts",
+      "import": "./dist/math.js"
+    },
+    "./boolean": {
+      "types": "./dist/boolean.d.ts",
+      "import": "./dist/boolean.js"
+    },
+    "./logic": {
+      "types": "./dist/logic.d.ts",
+      "import": "./dist/logic.js"
+    },
+    "./function": {
+      "types": "./dist/function.d.ts",
+      "import": "./dist/function.js"
+    }
   },
-  "files": ["dist"],
-  
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@rescript/runtime": "^12.0.0"
   },

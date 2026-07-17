@@ -1,0 +1,895 @@
+---
+const id = 'autodiff-neural-demo'
+---
+
+<div class="adn-demo" id={id} data-autodiff-neural-demo>
+  <div class="adn-head">
+    <div>
+      <h2>Neural classifier</h2>
+      <p>A 4-neuron hidden layer trained live from reverse-mode gradients.</p>
+    </div>
+    <div class="adn-badge">
+      <span>parameters</span>
+      <strong>17</strong>
+    </div>
+  </div>
+
+  <section class="adn-explainer" aria-label="What the neural classifier demo shows">
+    <strong>What this shows</strong>
+    <p>
+      The model turns each <code>(x, y)</code> point into a yes/no probability.
+      The colored field is every prediction the model would make across the
+      plane, while the dots are the examples it is trying to classify.
+    </p>
+    <p>
+      Each training step uses autodiff to measure how all 17 parameters affected
+      the error, then updates them together. XOR and Ring need curved decision
+      boundaries, so a straight line cannot solve them.
+    </p>
+  </section>
+
+  <div class="adn-layout">
+    <section class="adn-panel adn-controls" aria-label="Neural classifier controls">
+      <div class="adn-group">
+        <span class="adn-label">Dataset</span>
+        <div class="adn-segments adn-segments-two" id={`${id}-datasets`} role="radiogroup" aria-label="Dataset"></div>
+      </div>
+
+      <div class="adn-group">
+        <span class="adn-label">Seed</span>
+        <div class="adn-segments" id={`${id}-seeds`} role="radiogroup" aria-label="Seed"></div>
+      </div>
+
+      <label class="adn-control" for={`${id}-rate`}>
+        <span>Learning rate</span>
+        <output id={`${id}-rate-value`}></output>
+        <input id={`${id}-rate`} type="range" min="0.05" max="2.4" step="0.05" value="1.2" />
+      </label>
+
+      <label class="adn-control" for={`${id}-steps`}>
+        <span>Steps</span>
+        <output id={`${id}-steps-value`}></output>
+        <input id={`${id}-steps`} type="range" min="0" max="900" step="5" value="420" />
+      </label>
+
+      <div class="adn-actions">
+        <button type="button" id={`${id}-run`}>Run</button>
+        <button type="button" id={`${id}-reset`}>Reset</button>
+      </div>
+    </section>
+
+    <section class="adn-panel adn-chart-panel" aria-label="Neural classifier chart">
+      <div class="adn-chart-wrap">
+        <svg id={`${id}-field`} viewBox="0 0 640 390" role="img" aria-labelledby={`${id}-field-title`}>
+          <title id={`${id}-field-title`}>Neural classifier decision field</title>
+        </svg>
+      </div>
+      <div class="adn-loss-wrap">
+        <svg id={`${id}-loss`} viewBox="0 0 640 96" role="img" aria-labelledby={`${id}-loss-title`}>
+          <title id={`${id}-loss-title`}>Neural classifier loss over steps</title>
+        </svg>
+      </div>
+      <div class="adn-legend" aria-hidden="true">
+        <span><i class="adn-key adn-key-zero"></i>Class 0</span>
+        <span><i class="adn-key adn-key-one"></i>Class 1</span>
+        <span><i class="adn-key adn-key-loss"></i>Loss</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="adn-readout" aria-label="Neural classifier result">
+    <div>
+      <span>loss</span>
+      <output id={`${id}-out-loss`}></output>
+    </div>
+    <div>
+      <span>accuracy</span>
+      <output id={`${id}-out-accuracy`}></output>
+    </div>
+    <div>
+      <span>|gradient|</span>
+      <output id={`${id}-out-grad`}></output>
+    </div>
+    <div>
+      <span>confidence</span>
+      <output id={`${id}-out-confidence`}></output>
+    </div>
+  </section>
+</div>
+
+<script>
+  import {
+    add,
+    differentiable,
+    mul,
+    sigmoid,
+    square,
+    sub,
+    tanh,
+    type Var,
+  } from '@stopcock/autodiff'
+
+  const root = document.querySelector('[data-autodiff-neural-demo]') as HTMLElement
+  if (!root) throw new Error('AutodiffNeuralDemo root not found')
+
+  const id = root.id
+  const $ = <T extends HTMLElement | SVGElement = HTMLElement>(suffix: string): T => {
+    const el = root.querySelector(`#${id}-${suffix}`) as T | null
+    if (!el) throw new Error(`AutodiffNeuralDemo missing ${suffix}`)
+    return el
+  }
+
+  type Sample = { readonly x: number; readonly y: number; readonly target: 0 | 1 }
+  type Weights = [
+    number, number, number,
+    number, number, number,
+    number, number, number,
+    number, number, number,
+    number, number, number, number,
+    number,
+  ]
+  type VarWeights = [
+    Var<number>, Var<number>, Var<number>,
+    Var<number>, Var<number>, Var<number>,
+    Var<number>, Var<number>, Var<number>,
+    Var<number>, Var<number>, Var<number>,
+    Var<number>, Var<number>, Var<number>, Var<number>,
+    Var<number>,
+  ]
+
+  type NeuralDataset = {
+    readonly label: string
+    readonly samples: readonly Sample[]
+    readonly defaults: { readonly rate: number; readonly steps: number }
+  }
+
+  const hiddenCount = 4
+
+  const ringSamples = (): Sample[] => {
+    const samples: Sample[] = []
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2
+      samples.push({ x: Math.cos(angle) * 0.58, y: Math.sin(angle) * 0.58, target: 1 })
+      samples.push({ x: Math.cos(angle) * 1.35, y: Math.sin(angle) * 1.35, target: 0 })
+    }
+    return samples
+  }
+
+  const neuralDatasets = {
+    xor: {
+      label: 'XOR',
+      samples: [
+        { x: -1, y: -1, target: 0 },
+        { x: -1, y: 1, target: 1 },
+        { x: 1, y: -1, target: 1 },
+        { x: 1, y: 1, target: 0 },
+        { x: -0.55, y: -1, target: 0 },
+        { x: -1, y: -0.55, target: 0 },
+        { x: -0.55, y: 1, target: 1 },
+        { x: -1, y: 0.55, target: 1 },
+        { x: 0.55, y: -1, target: 1 },
+        { x: 1, y: -0.55, target: 1 },
+        { x: 0.55, y: 1, target: 0 },
+        { x: 1, y: 0.55, target: 0 },
+      ],
+      defaults: { rate: 1.2, steps: 420 },
+    },
+    ring: {
+      label: 'Ring',
+      samples: ringSamples(),
+      defaults: { rate: 1.05, steps: 760 },
+    },
+  } satisfies Record<string, NeuralDataset>
+
+  const seeds = {
+    calm: {
+      label: 'Calm',
+      weights: [
+        0.75, -0.35, 0.08,
+        -0.45, 0.9, -0.22,
+        0.5, 0.55, 0.18,
+        -0.7, 0.25, 0.34,
+        0.8, -0.65, 0.55, -0.45,
+        0.05,
+      ] as Weights,
+    },
+    skew: {
+      label: 'Skew',
+      weights: [
+        -0.2, 0.95, -0.28,
+        0.8, 0.18, 0.45,
+        -0.9, -0.5, 0.12,
+        0.36, -0.75, -0.35,
+        -0.62, 0.88, -0.42, 0.56,
+        -0.18,
+      ] as Weights,
+    },
+    sharp: {
+      label: 'Sharp',
+      weights: [
+        1.2, -0.85, 0.2,
+        -1.0, -0.38, 0.52,
+        0.32, 1.15, -0.15,
+        -0.65, 0.72, -0.48,
+        1.1, -0.95, 0.78, -0.7,
+        0.12,
+      ] as Weights,
+    },
+  } satisfies Record<string, { readonly label: string; readonly weights: Weights }>
+
+  type DatasetKey = keyof typeof neuralDatasets
+  type SeedKey = keyof typeof seeds
+
+  const els = {
+    datasets: $('datasets'),
+    seeds: $('seeds'),
+    rate: $('rate') as HTMLInputElement,
+    steps: $('steps') as HTMLInputElement,
+    rateValue: $('rate-value') as HTMLOutputElement,
+    stepsValue: $('steps-value') as HTMLOutputElement,
+    run: $('run') as HTMLButtonElement,
+    reset: $('reset') as HTMLButtonElement,
+    field: $('field') as unknown as SVGSVGElement,
+    loss: $('loss') as unknown as SVGSVGElement,
+    outLoss: $('out-loss') as HTMLOutputElement,
+    outAccuracy: $('out-accuracy') as HTMLOutputElement,
+    outGrad: $('out-grad') as HTMLOutputElement,
+    outConfidence: $('out-confidence') as HTMLOutputElement,
+  }
+
+  let activeDataset: DatasetKey = 'xor'
+  let activeSeed: SeedKey = 'calm'
+  let frame = 0
+  let lastTick = 0
+  let running = false
+  let animationTarget = neuralDatasets.xor.defaults.steps
+
+  const fmt = (n: number) => {
+    if (!Number.isFinite(n)) return String(n)
+    const abs = Math.abs(n)
+    if (abs !== 0 && abs < 0.001) return n.toExponential(2)
+    return n.toFixed(abs >= 10 ? 2 : 4)
+  }
+
+  const clamp = (x: number, min: number, max: number) => Math.max(min, Math.min(max, x))
+
+  const makeSvg = (tag: string, attrs: Record<string, string | number>) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag)
+    for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value))
+    return el
+  }
+
+  const pathFrom = (points: Array<{ x: number; y: number }>) =>
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ')
+
+  const sigmoidValue = (x: number) => {
+    if (x >= 0) {
+      const z = Math.exp(-x)
+      return 1 / (1 + z)
+    }
+    const z = Math.exp(x)
+    return z / (1 + z)
+  }
+
+  const copyWeights = (weights: Weights): Weights => [...weights] as Weights
+
+  const hiddenVar = (x: number, y: number, params: VarWeights, index: number) => {
+    const offset = index * 3
+    return tanh(add(add(mul(params[offset], x), mul(params[offset + 1], y)), params[offset + 2]))
+  }
+
+  const predictVar = (x: number, y: number, params: VarWeights) => {
+    const hidden = Array.from({ length: hiddenCount }, (_, index) => hiddenVar(x, y, params, index))
+    let logit: Var<number> | number = params[16]
+    for (let index = 0; index < hiddenCount; index++) {
+      logit = add(logit, mul(params[12 + index], hidden[index]))
+    }
+    return sigmoid(logit)
+  }
+
+  const predict = (x: number, y: number, weights: Weights) => {
+    let logit = weights[16]
+    for (let index = 0; index < hiddenCount; index++) {
+      const offset = index * 3
+      const hidden = Math.tanh(weights[offset] * x + weights[offset + 1] * y + weights[offset + 2])
+      logit += weights[12 + index] * hidden
+    }
+    return sigmoidValue(logit)
+  }
+
+  const makeLoss = (samples: readonly Sample[]) =>
+    differentiable((...params: VarWeights) => {
+      let total: Var<number> | number = 0
+      for (const sample of samples) {
+        total = add(total, square(sub(predictVar(sample.x, sample.y, params), sample.target)))
+      }
+      return mul(total, 1 / samples.length)
+    })
+
+  const losses = {
+    xor: makeLoss(neuralDatasets.xor.samples),
+    ring: makeLoss(neuralDatasets.ring.samples),
+  } satisfies Record<DatasetKey, ReturnType<typeof makeLoss>>
+
+  const currentDataset = () => neuralDatasets[activeDataset]
+  const currentSeed = () => seeds[activeSeed]
+
+  const selectButtons = (group: HTMLElement, key: string) => {
+    for (const button of group.querySelectorAll<HTMLButtonElement>('button')) {
+      const selected = button.dataset.key === key
+      button.classList.toggle('is-active', selected)
+      button.setAttribute('aria-checked', String(selected))
+    }
+  }
+
+  const updateWeights = (weights: Weights, gradient: Weights, rate: number): Weights =>
+    weights.map((weight, index) => clamp(weight - rate * gradient[index], -9, 9)) as Weights
+
+  const metrics = (samples: readonly Sample[], weights: Weights) => {
+    let correct = 0
+    let confidence = 0
+    for (const sample of samples) {
+      const prob = predict(sample.x, sample.y, weights)
+      if ((prob >= 0.5 ? 1 : 0) === sample.target) correct++
+      confidence += Math.abs(prob - 0.5) * 2
+    }
+    return {
+      accuracy: correct / samples.length,
+      confidence: confidence / samples.length,
+    }
+  }
+
+  const trainTrace = () => {
+    const loss = losses[activeDataset]
+    const rate = Number(els.rate.value)
+    const maxSteps = Number(els.steps.value)
+    let weights = copyWeights(currentSeed().weights)
+    const trace: Array<{ weights: Weights; loss: number; gradient: Weights; gradNorm: number }> = []
+
+    for (let step = 0; step <= maxSteps; step++) {
+      const result = loss.valueAndGradient(...weights)
+      const gradient = result.gradient as Weights
+      const gradNorm = Math.hypot(...gradient)
+      trace.push({ weights: copyWeights(weights), loss: result.value, gradient: copyWeights(gradient), gradNorm })
+      if (step === maxSteps || !Number.isFinite(result.value) || !Number.isFinite(gradNorm)) break
+      weights = updateWeights(weights, gradient, rate)
+    }
+
+    return trace
+  }
+
+  const probColor = (prob: number) => {
+    const t = clamp(prob, 0, 1)
+    const hue = 24 + t * 150
+    const light = 16 + Math.abs(t - 0.5) * 24
+    return `hsl(${hue.toFixed(0)} 58% ${light.toFixed(0)}%)`
+  }
+
+  const renderField = (weights: Weights) => {
+    const samples = currentDataset().samples
+    const width = 640
+    const height = 390
+    const pad = { l: 36, r: 24, t: 18, b: 34 }
+    const min = -1.75
+    const max = 1.75
+    const plotW = width - pad.l - pad.r
+    const plotH = height - pad.t - pad.b
+    const grid = 42
+    const sx = (x: number) => pad.l + ((x - min) / (max - min)) * plotW
+    const sy = (y: number) => pad.t + ((max - y) / (max - min)) * plotH
+
+    els.field.replaceChildren()
+    els.field.append(makeSvg('rect', { x: 0, y: 0, width, height, rx: 4, fill: 'var(--adn-chart-bg)' }))
+
+    for (let row = 0; row < grid; row++) {
+      for (let col = 0; col < grid; col++) {
+        const x = min + ((col + 0.5) / grid) * (max - min)
+        const y = min + ((row + 0.5) / grid) * (max - min)
+        els.field.append(makeSvg('rect', {
+          x: sx(x) - plotW / grid / 2,
+          y: sy(y) - plotH / grid / 2,
+          width: plotW / grid + 0.5,
+          height: plotH / grid + 0.5,
+          fill: probColor(predict(x, y, weights)),
+        }))
+      }
+    }
+
+    els.field.append(makeSvg('line', {
+      x1: sx(0),
+      y1: pad.t,
+      x2: sx(0),
+      y2: height - pad.b,
+      stroke: 'var(--adn-axis)',
+      'stroke-width': 1.4,
+    }))
+    els.field.append(makeSvg('line', {
+      x1: pad.l,
+      y1: sy(0),
+      x2: width - pad.r,
+      y2: sy(0),
+      stroke: 'var(--adn-axis)',
+      'stroke-width': 1.4,
+    }))
+
+    for (const sample of samples) {
+      els.field.append(makeSvg('circle', {
+        cx: sx(sample.x),
+        cy: sy(sample.y),
+        r: 6.2,
+        fill: sample.target === 1 ? 'var(--adn-one)' : 'var(--adn-zero)',
+        stroke: 'var(--adn-point-stroke)',
+        'stroke-width': 2.2,
+      }))
+    }
+  }
+
+  const renderLoss = (trace: ReturnType<typeof trainTrace>) => {
+    const width = 640
+    const height = 96
+    const pad = { l: 36, r: 24, t: 12, b: 24 }
+    const losses = trace.map(point => point.loss).filter(Number.isFinite)
+    const minLoss = Math.min(...losses)
+    const maxLoss = Math.max(...losses)
+    const span = Math.max(0.0001, maxLoss - minLoss)
+    const sx = (index: number) => pad.l + (index / Math.max(1, trace.length - 1)) * (width - pad.l - pad.r)
+    const sy = (loss: number) => pad.t + ((maxLoss - loss) / span) * (height - pad.t - pad.b)
+
+    els.loss.replaceChildren()
+    els.loss.append(makeSvg('rect', { x: 0, y: 0, width, height, rx: 4, fill: 'var(--adn-mini-bg)' }))
+    els.loss.append(makeSvg('path', {
+      d: pathFrom(trace.map((point, index) => ({ x: sx(index), y: sy(point.loss) }))),
+      fill: 'none',
+      stroke: 'var(--adn-loss)',
+      'stroke-width': 2.6,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+    }))
+  }
+
+  const render = () => {
+    const trace = trainTrace()
+    const last = trace[trace.length - 1]
+    const stats = metrics(currentDataset().samples, last.weights)
+
+    els.rateValue.value = fmt(Number(els.rate.value))
+    els.stepsValue.value = els.steps.value
+    els.outLoss.value = fmt(last.loss)
+    els.outAccuracy.value = `${Math.round(stats.accuracy * 100)}%`
+    els.outGrad.value = fmt(last.gradNorm)
+    els.outConfidence.value = `${Math.round(stats.confidence * 100)}%`
+    renderField(last.weights)
+    renderLoss(trace)
+  }
+
+  const stop = () => {
+    running = false
+    els.run.textContent = 'Run'
+    if (frame) cancelAnimationFrame(frame)
+    frame = 0
+  }
+
+  const setDataset = (key: DatasetKey, useDefaults = true) => {
+    activeDataset = key
+    const dataset = currentDataset()
+    if (useDefaults) {
+      els.rate.value = String(dataset.defaults.rate)
+      els.steps.value = String(dataset.defaults.steps)
+    }
+    selectButtons(els.datasets, key)
+    render()
+  }
+
+  const setSeed = (key: SeedKey) => {
+    activeSeed = key
+    selectButtons(els.seeds, key)
+    render()
+  }
+
+  const tick = (time: number) => {
+    if (!running) return
+    if (time - lastTick > 35) {
+      lastTick = time
+      const current = Number(els.steps.value)
+      if (current >= animationTarget) {
+        stop()
+        return
+      }
+      const increment = Math.max(1, Math.ceil(animationTarget / 160))
+      els.steps.value = String(Math.min(animationTarget, current + increment))
+      render()
+    }
+    frame = requestAnimationFrame(tick)
+  }
+
+  for (const [key, dataset] of Object.entries(neuralDatasets) as Array<[DatasetKey, NeuralDataset]>) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.setAttribute('role', 'radio')
+    button.dataset.key = key
+    button.textContent = dataset.label
+    button.addEventListener('click', () => {
+      stop()
+      setDataset(key)
+    })
+    els.datasets.append(button)
+  }
+
+  for (const [key, seed] of Object.entries(seeds) as Array<[SeedKey, typeof seeds[SeedKey]]>) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.setAttribute('role', 'radio')
+    button.dataset.key = key
+    button.textContent = seed.label
+    button.addEventListener('click', () => {
+      stop()
+      setSeed(key)
+    })
+    els.seeds.append(button)
+  }
+
+  for (const input of [els.rate, els.steps]) {
+    input.addEventListener('input', () => {
+      stop()
+      render()
+    })
+  }
+
+  els.run.addEventListener('click', () => {
+    if (running) {
+      stop()
+      return
+    }
+    animationTarget = Number(els.steps.value) || currentDataset().defaults.steps
+    els.steps.value = '0'
+    running = true
+    els.run.textContent = 'Stop'
+    lastTick = 0
+    render()
+    frame = requestAnimationFrame(tick)
+  })
+
+  els.reset.addEventListener('click', () => {
+    stop()
+    setDataset(activeDataset)
+    setSeed(activeSeed)
+  })
+
+  setDataset(activeDataset)
+  setSeed(activeSeed)
+</script>
+
+<style is:global>
+  .adn-demo {
+    --adn-bg: color-mix(in srgb, var(--sl-color-gray-6) 82%, transparent);
+    --adn-panel: color-mix(in srgb, var(--sl-color-gray-6) 95%, var(--sl-color-accent-low));
+    --adn-border: var(--sl-color-gray-5);
+    --adn-muted: var(--sl-color-gray-2);
+    --adn-chart-bg: color-mix(in srgb, var(--sl-color-black) 58%, var(--sl-color-gray-6));
+    --adn-mini-bg: color-mix(in srgb, var(--sl-color-black) 50%, var(--sl-color-gray-6));
+    --adn-axis: color-mix(in srgb, var(--sl-color-gray-2) 64%, transparent);
+    --adn-zero: #f4a261;
+    --adn-one: #70e189;
+    --adn-loss: #d2c166;
+    --adn-point-stroke: color-mix(in srgb, var(--sl-color-black) 70%, transparent);
+
+    margin: 2rem 0;
+    border: 1px solid var(--adn-border);
+    background: var(--adn-bg);
+    padding: 1rem;
+  }
+
+  .adn-demo .adn-head > *,
+  .adn-demo .adn-badge > *,
+  .adn-demo .adn-explainer > *,
+  .adn-demo .adn-layout > *,
+  .adn-demo .adn-controls > *,
+  .adn-demo .adn-group > *,
+  .adn-demo .adn-control > *,
+  .adn-demo .adn-segments > *,
+  .adn-demo .adn-actions > *,
+  .adn-demo .adn-chart-panel > *,
+  .adn-demo .adn-chart-wrap > *,
+  .adn-demo .adn-loss-wrap > *,
+  .adn-demo .adn-legend > *,
+  .adn-demo .adn-readout > *,
+  .adn-demo .adn-readout div > * {
+    margin-top: 0;
+  }
+
+  .adn-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+  }
+
+  .adn-head h2 {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1.2rem;
+  }
+
+  .adn-head p {
+    margin: 0.25rem 0 0;
+    color: var(--adn-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .adn-badge {
+    display: grid;
+    justify-items: end;
+    min-width: 6rem;
+    color: var(--adn-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+
+  .adn-badge strong {
+    color: var(--sl-color-white);
+    font-family: var(--sl-font-mono);
+    font-size: 1.4rem;
+    line-height: 1.1;
+  }
+
+  .adn-explainer {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--adn-one);
+    padding-left: 0.85rem;
+    color: var(--adn-muted);
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  .adn-explainer strong {
+    color: var(--sl-color-white);
+    font-size: 0.78rem;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .adn-explainer p {
+    margin: 0;
+  }
+
+  .adn-explainer code {
+    color: var(--sl-color-white);
+  }
+
+  .adn-layout {
+    display: grid;
+    grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: stretch;
+  }
+
+  .adn-panel,
+  .adn-readout {
+    border: 1px solid var(--adn-border);
+    background: var(--adn-panel);
+  }
+
+  .adn-controls {
+    display: grid;
+    align-content: start;
+    gap: 1rem;
+    padding: 0.85rem;
+  }
+
+  .adn-group,
+  .adn-control {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .adn-label,
+  .adn-control span,
+  .adn-readout span {
+    color: var(--adn-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .adn-segments {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid var(--adn-border);
+  }
+
+  .adn-segments-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adn-segments button,
+  .adn-actions button {
+    min-height: 2.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--sl-color-gray-1);
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+
+  .adn-segments button + button {
+    border-left: 1px solid var(--adn-border);
+  }
+
+  .adn-segments button.is-active {
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-accent-high);
+    font-weight: 700;
+  }
+
+  .adn-control {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .adn-control input {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--sl-color-accent);
+  }
+
+  .adn-control output,
+  .adn-readout output {
+    color: var(--sl-color-white);
+    font-family: var(--sl-font-mono);
+  }
+
+  .adn-control output {
+    font-size: 0.78rem;
+  }
+
+  .adn-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .adn-actions button {
+    border: 1px solid var(--adn-border);
+    background: var(--sl-color-gray-6);
+  }
+
+  .adn-actions button:first-child {
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    font-weight: 700;
+  }
+
+  .adn-chart-panel {
+    min-width: 0;
+    padding: 0.75rem;
+  }
+
+  .adn-chart-wrap {
+    width: 100%;
+    aspect-ratio: 64 / 39;
+    min-height: 17rem;
+  }
+
+  .adn-loss-wrap {
+    width: 100%;
+    aspect-ratio: 20 / 3;
+    min-height: 4.25rem;
+    margin-top: 0.5rem;
+  }
+
+  .adn-chart-wrap svg,
+  .adn-loss-wrap svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .adn-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    color: var(--adn-muted);
+    font-size: 0.78rem;
+  }
+
+  .adn-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .adn-key {
+    width: 1.1rem;
+    height: 0.22rem;
+    display: inline-block;
+  }
+
+  .adn-key-zero { background: var(--adn-zero); }
+  .adn-key-one { background: var(--adn-one); }
+  .adn-key-loss { background: var(--adn-loss); }
+
+  .adn-readout {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 0.85rem;
+  }
+
+  .adn-readout div {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.8rem;
+  }
+
+  .adn-readout div + div {
+    border-left: 1px solid var(--adn-border);
+  }
+
+  .adn-readout output {
+    overflow-wrap: anywhere;
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 54rem) {
+    .adn-head,
+    .adn-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .adn-badge {
+      justify-items: start;
+    }
+
+    .adn-readout {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .adn-readout div:nth-child(odd) {
+      border-left: 0;
+    }
+
+    .adn-readout div:nth-child(n + 3) {
+      border-top: 1px solid var(--adn-border);
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .adn-demo {
+      padding: 0.75rem;
+    }
+
+    .adn-segments {
+      grid-template-columns: 1fr;
+    }
+
+    .adn-segments button + button {
+      border-left: 0;
+      border-top: 1px solid var(--adn-border);
+    }
+
+    .adn-chart-wrap {
+      min-height: 13rem;
+    }
+
+    .adn-loss-wrap {
+      min-height: 3.5rem;
+    }
+
+    .adn-readout {
+      grid-template-columns: 1fr;
+    }
+
+    .adn-readout div + div {
+      border-left: 0;
+      border-top: 1px solid var(--adn-border);
+    }
+  }
+</style>

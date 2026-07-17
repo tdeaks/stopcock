@@ -16,11 +16,15 @@ export const OP_FIND = 12
 export const OP_FIND_INDEX = 13
 
 // Fuseable stream ops (extended)
+export const OP_FILTER_MAP = 14
+export const OP_MAP_WHILE = 15
 export const OP_REJECT = 16
+export const OP_TAKE_UNTIL = 19
 
 // Fuseable terminal ops (extended)
 export const OP_NONE = 17
 export const OP_COUNT = 18
+export const OP_FIND_MAP = 22
 
 // Non-fuseable but recognized (for pattern matching at boundaries)
 export const OP_SORT_BY = 20
@@ -87,9 +91,10 @@ export const OP_CODES: Record<string, number> = {
   // Array stream
   map: OP_MAP, filter: OP_FILTER, take: OP_TAKE, drop: OP_DROP,
   takeWhile: OP_TAKE_WHILE, dropWhile: OP_DROP_WHILE, flatMap: OP_FLAT_MAP, reject: OP_REJECT,
+  filterMap: OP_FILTER_MAP, mapWhile: OP_MAP_WHILE, takeUntil: OP_TAKE_UNTIL,
   // Array terminal
   reduce: OP_REDUCE, forEach: OP_FOR_EACH, every: OP_EVERY, some: OP_SOME,
-  find: OP_FIND, findIndex: OP_FIND_INDEX, none: OP_NONE, count: OP_COUNT,
+  find: OP_FIND, findIndex: OP_FIND_INDEX, none: OP_NONE, count: OP_COUNT, findMap: OP_FIND_MAP,
   // Array accessor
   head: OP_HEAD, last: OP_LAST, length: OP_LENGTH, isEmpty: OP_IS_EMPTY,
   tail: OP_TAIL, init: OP_INIT, reverse: OP_REVERSE, uniq: OP_UNIQ_INLINE,
@@ -113,10 +118,17 @@ export const OP_CODES: Record<string, number> = {
 
 // Fast range checks
 export const isFuseableOp = (op: number): boolean =>
-  (op >= OP_MAP && op <= OP_FLAT_MAP) || op === OP_REJECT
+  (op >= OP_MAP && op <= OP_FLAT_MAP) ||
+  op === OP_FILTER_MAP ||
+  op === OP_MAP_WHILE ||
+  op === OP_REJECT ||
+  op === OP_TAKE_UNTIL
 
 export const isTerminalOp = (op: number): boolean =>
-  (op >= OP_REDUCE && op <= OP_FIND_INDEX) || op === OP_NONE || op === OP_COUNT
+  (op >= OP_REDUCE && op <= OP_FIND_INDEX) ||
+  op === OP_NONE ||
+  op === OP_COUNT ||
+  op === OP_FIND_MAP
 
 export const isAccessorOp = (op: number): boolean =>
   op >= OP_HEAD && op <= OP_MAX

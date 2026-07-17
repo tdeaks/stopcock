@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/svg",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,13 +10,21 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./la": { "types": "./dist/la/index.d.ts", "import": "./dist/la/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./la": {
+      "types": "./dist/la/index.d.ts",
+      "import": "./dist/la/index.js"
+    }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
-    "@stopcock/color": "workspace:*",
-    "@stopcock/la": "workspace:*"
+    "@stopcock/color": "0.0.2",
+    "@stopcock/la": "0.0.3"
   },
   "scripts": {
     "build": "tsup"

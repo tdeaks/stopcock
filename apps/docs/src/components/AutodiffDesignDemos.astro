@@ -1,0 +1,1118 @@
+---
+const id = 'autodiff-design-demos'
+---
+
+<div class="ads-demo" id={id} data-autodiff-design-demos>
+  <div class="ads-head">
+    <div>
+      <h2>Differentiable design tools</h2>
+      <p>Turn a visual goal into parameters by following gradients.</p>
+    </div>
+    <div class="ads-tabs" role="tablist" aria-label="Differentiable design demos">
+      <button type="button" id={`${id}-arm-tab`} data-lab="arm" role="tab" aria-controls={`${id}-arm-panel`}>
+        Robot arm
+      </button>
+      <button type="button" id={`${id}-curve-tab`} data-lab="curve" role="tab" aria-controls={`${id}-curve-panel`}>
+        Curve fit
+      </button>
+    </div>
+  </div>
+
+  <section id={`${id}-arm-panel`} data-lab-panel="arm" role="tabpanel" aria-labelledby={`${id}-arm-tab`}>
+    <section class="ads-explainer" aria-label="What the robot arm demo shows">
+      <strong>Robot arm</strong>
+      <p>
+        This is inverse kinematics. The target is a point in space, and the
+        trainable numbers are the shoulder and elbow angles. Autodiff tells the
+        arm which way to rotate each joint to reduce the wrist-to-target distance.
+      </p>
+      <p>
+        The dotted trail is the wrist's search path. Move the target or starting
+        angles to see the same objective settle into different valid poses.
+      </p>
+    </section>
+
+    <div class="ads-layout">
+      <section class="ads-panel ads-controls" aria-label="Robot arm controls">
+        <label class="ads-control" for={`${id}-arm-x`}>
+          <span>Target x</span>
+          <output id={`${id}-arm-x-value`}></output>
+          <input id={`${id}-arm-x`} type="range" min="-1.7" max="1.7" step="0.05" value="1.05" />
+        </label>
+
+        <label class="ads-control" for={`${id}-arm-y`}>
+          <span>Target y</span>
+          <output id={`${id}-arm-y-value`}></output>
+          <input id={`${id}-arm-y`} type="range" min="-1.25" max="1.7" step="0.05" value="0.9" />
+        </label>
+
+        <label class="ads-control" for={`${id}-arm-shoulder`}>
+          <span>Start shoulder</span>
+          <output id={`${id}-arm-shoulder-value`}></output>
+          <input id={`${id}-arm-shoulder`} type="range" min="-3.14" max="3.14" step="0.02" value="-1.5" />
+        </label>
+
+        <label class="ads-control" for={`${id}-arm-elbow`}>
+          <span>Start elbow</span>
+          <output id={`${id}-arm-elbow-value`}></output>
+          <input id={`${id}-arm-elbow`} type="range" min="-3.14" max="3.14" step="0.02" value="1.15" />
+        </label>
+
+        <label class="ads-control" for={`${id}-arm-rate`}>
+          <span>Learning rate</span>
+          <output id={`${id}-arm-rate-value`}></output>
+          <input id={`${id}-arm-rate`} type="range" min="0.02" max="0.36" step="0.01" value="0.18" />
+        </label>
+
+        <label class="ads-control" for={`${id}-arm-steps`}>
+          <span>Steps</span>
+          <output id={`${id}-arm-steps-value`}></output>
+          <input id={`${id}-arm-steps`} type="range" min="0" max="180" step="1" value="84" />
+        </label>
+
+        <div class="ads-actions">
+          <button type="button" id={`${id}-arm-run`}>Run</button>
+          <button type="button" id={`${id}-arm-reset`}>Reset</button>
+        </div>
+      </section>
+
+      <section class="ads-panel ads-chart-panel" aria-label="Robot arm chart">
+        <div class="ads-chart-wrap">
+          <svg id={`${id}-arm-chart`} viewBox="0 0 640 390" role="img" aria-labelledby={`${id}-arm-title`}>
+            <title id={`${id}-arm-title`}>Robot arm inverse kinematics chart</title>
+          </svg>
+        </div>
+        <div class="ads-legend" aria-hidden="true">
+          <span><i class="ads-key ads-key-model"></i>Arm</span>
+          <span><i class="ads-key ads-key-goal"></i>Target</span>
+          <span><i class="ads-key ads-key-trail"></i>Search</span>
+        </div>
+      </section>
+    </div>
+
+    <section class="ads-readout" aria-label="Robot arm result">
+      <div>
+        <span>shoulder</span>
+        <output id={`${id}-arm-out-shoulder`}></output>
+      </div>
+      <div>
+        <span>elbow</span>
+        <output id={`${id}-arm-out-elbow`}></output>
+      </div>
+      <div>
+        <span>distance</span>
+        <output id={`${id}-arm-out-distance`}></output>
+      </div>
+      <div>
+        <span>|gradient|</span>
+        <output id={`${id}-arm-out-grad`}></output>
+      </div>
+    </section>
+  </section>
+
+  <section id={`${id}-curve-panel`} data-lab-panel="curve" role="tabpanel" aria-labelledby={`${id}-curve-tab`} hidden>
+    <section class="ads-explainer" aria-label="What the curve fit demo shows">
+      <strong>Curve fit</strong>
+      <p>
+        The orange dots are target samples. The blue cubic curve has two
+        trainable control points, and autodiff computes how each control
+        coordinate changes the total curve error.
+      </p>
+      <p>
+        Press Run to watch the handles slide into a shape that best explains the
+        samples. This is the same idea as fitting model weights, but applied to
+        a visual design object.
+      </p>
+    </section>
+
+    <div class="ads-layout">
+      <section class="ads-panel ads-controls" aria-label="Curve fit controls">
+        <div class="ads-group">
+          <span class="ads-label">Target</span>
+          <div class="ads-segments" id={`${id}-curve-targets`} role="radiogroup" aria-label="Curve target"></div>
+        </div>
+
+        <label class="ads-control" for={`${id}-curve-rate`}>
+          <span>Learning rate</span>
+          <output id={`${id}-curve-rate-value`}></output>
+          <input id={`${id}-curve-rate`} type="range" min="0.02" max="0.5" step="0.01" value="0.16" />
+        </label>
+
+        <label class="ads-control" for={`${id}-curve-steps`}>
+          <span>Steps</span>
+          <output id={`${id}-curve-steps-value`}></output>
+          <input id={`${id}-curve-steps`} type="range" min="0" max="260" step="1" value="130" />
+        </label>
+
+        <div class="ads-actions">
+          <button type="button" id={`${id}-curve-run`}>Run</button>
+          <button type="button" id={`${id}-curve-reset`}>Reset</button>
+        </div>
+      </section>
+
+      <section class="ads-panel ads-chart-panel" aria-label="Curve fit chart">
+        <div class="ads-chart-wrap">
+          <svg id={`${id}-curve-chart`} viewBox="0 0 640 390" role="img" aria-labelledby={`${id}-curve-title`}>
+            <title id={`${id}-curve-title`}>Differentiable Bezier curve fit chart</title>
+          </svg>
+        </div>
+        <div class="ads-legend" aria-hidden="true">
+          <span><i class="ads-key ads-key-target"></i>Target points</span>
+          <span><i class="ads-key ads-key-model"></i>Curve</span>
+          <span><i class="ads-key ads-key-control"></i>Controls</span>
+        </div>
+      </section>
+    </div>
+
+    <section class="ads-readout" aria-label="Curve fit result">
+      <div>
+        <span>control 1</span>
+        <output id={`${id}-curve-out-c1`}></output>
+      </div>
+      <div>
+        <span>control 2</span>
+        <output id={`${id}-curve-out-c2`}></output>
+      </div>
+      <div>
+        <span>loss</span>
+        <output id={`${id}-curve-out-loss`}></output>
+      </div>
+      <div>
+        <span>|gradient|</span>
+        <output id={`${id}-curve-out-grad`}></output>
+      </div>
+    </section>
+  </section>
+</div>
+
+<script>
+  import {
+    add,
+    cos,
+    differentiable,
+    mul,
+    sin,
+    square,
+    sub,
+    type Var,
+  } from '@stopcock/autodiff'
+
+  const root = document.querySelector('[data-autodiff-design-demos]') as HTMLElement
+  if (!root) throw new Error('AutodiffDesignDemos root not found')
+
+  const id = root.id
+  const $ = <T extends HTMLElement | SVGElement = HTMLElement>(suffix: string): T => {
+    const el = root.querySelector(`#${id}-${suffix}`) as T | null
+    if (!el) throw new Error(`AutodiffDesignDemos missing ${suffix}`)
+    return el
+  }
+
+  type Point = { readonly x: number; readonly y: number }
+  type CurveKey = keyof typeof curveTargets
+
+  const linkA = 1
+  const linkB = 0.78
+
+  const curveTargets = {
+    sweep: {
+      label: 'Sweep',
+      defaults: { c1: { x: -1.35, y: 1.1 }, c2: { x: 1.1, y: -1.25 }, rate: 0.16, steps: 130 },
+      points: [
+        { x: -1.55, y: -0.75 },
+        { x: -1.1, y: 0.35 },
+        { x: -0.45, y: 0.95 },
+        { x: 0.28, y: 0.72 },
+        { x: 0.95, y: -0.1 },
+        { x: 1.45, y: 0.78 },
+      ] as const,
+    },
+    arch: {
+      label: 'Arch',
+      defaults: { c1: { x: -1.5, y: -1.15 }, c2: { x: 1.45, y: -1.0 }, rate: 0.14, steps: 150 },
+      points: [
+        { x: -1.55, y: -0.95 },
+        { x: -1.05, y: 0.15 },
+        { x: -0.48, y: 0.78 },
+        { x: 0.4, y: 0.72 },
+        { x: 1.02, y: 0.1 },
+        { x: 1.55, y: -0.95 },
+      ] as const,
+    },
+    hook: {
+      label: 'Hook',
+      defaults: { c1: { x: 0.35, y: 1.35 }, c2: { x: -1.2, y: -1.15 }, rate: 0.18, steps: 140 },
+      points: [
+        { x: -1.5, y: 0.75 },
+        { x: -0.82, y: 1.0 },
+        { x: -0.08, y: 0.55 },
+        { x: 0.12, y: -0.18 },
+        { x: -0.55, y: -0.82 },
+        { x: 1.45, y: -0.72 },
+      ] as const,
+    },
+  } as const
+
+  const armEls = {
+    x: $('arm-x') as HTMLInputElement,
+    y: $('arm-y') as HTMLInputElement,
+    shoulder: $('arm-shoulder') as HTMLInputElement,
+    elbow: $('arm-elbow') as HTMLInputElement,
+    rate: $('arm-rate') as HTMLInputElement,
+    steps: $('arm-steps') as HTMLInputElement,
+    xValue: $('arm-x-value') as HTMLOutputElement,
+    yValue: $('arm-y-value') as HTMLOutputElement,
+    shoulderValue: $('arm-shoulder-value') as HTMLOutputElement,
+    elbowValue: $('arm-elbow-value') as HTMLOutputElement,
+    rateValue: $('arm-rate-value') as HTMLOutputElement,
+    stepsValue: $('arm-steps-value') as HTMLOutputElement,
+    run: $('arm-run') as HTMLButtonElement,
+    reset: $('arm-reset') as HTMLButtonElement,
+    chart: $('arm-chart') as unknown as SVGSVGElement,
+    outShoulder: $('arm-out-shoulder') as HTMLOutputElement,
+    outElbow: $('arm-out-elbow') as HTMLOutputElement,
+    outDistance: $('arm-out-distance') as HTMLOutputElement,
+    outGrad: $('arm-out-grad') as HTMLOutputElement,
+  }
+
+  const curveEls = {
+    targets: $('curve-targets'),
+    rate: $('curve-rate') as HTMLInputElement,
+    steps: $('curve-steps') as HTMLInputElement,
+    rateValue: $('curve-rate-value') as HTMLOutputElement,
+    stepsValue: $('curve-steps-value') as HTMLOutputElement,
+    run: $('curve-run') as HTMLButtonElement,
+    reset: $('curve-reset') as HTMLButtonElement,
+    chart: $('curve-chart') as unknown as SVGSVGElement,
+    outC1: $('curve-out-c1') as HTMLOutputElement,
+    outC2: $('curve-out-c2') as HTMLOutputElement,
+    outLoss: $('curve-out-loss') as HTMLOutputElement,
+    outGrad: $('curve-out-grad') as HTMLOutputElement,
+  }
+
+  let activeCurve: CurveKey = 'sweep'
+  let armFrame = 0
+  let curveFrame = 0
+  let armLastTick = 0
+  let curveLastTick = 0
+  let armRunning = false
+  let curveRunning = false
+  let armTargetSteps = Number(armEls.steps.value)
+  let curveTargetSteps = curveTargets.sweep.defaults.steps
+
+  const fmt = (n: number) => {
+    if (!Number.isFinite(n)) return String(n)
+    const abs = Math.abs(n)
+    if (abs !== 0 && abs < 0.001) return n.toExponential(2)
+    return n.toFixed(abs >= 10 ? 2 : 4)
+  }
+
+  const degrees = (radians: number) => `${fmt((radians * 180) / Math.PI)} deg`
+  const clamp = (x: number, min: number, max: number) => Math.max(min, Math.min(max, x))
+  const wrapAngle = (x: number) => Math.atan2(Math.sin(x), Math.cos(x))
+
+  const makeSvg = (tag: string, attrs: Record<string, string | number>) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag)
+    for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value))
+    return el
+  }
+
+  const pathFrom = (points: Array<{ x: number; y: number }>) =>
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ')
+
+  const armForward = (shoulder: number, elbow: number) => {
+    const elbowPoint = {
+      x: linkA * Math.cos(shoulder),
+      y: linkA * Math.sin(shoulder),
+    }
+    const wrist = {
+      x: elbowPoint.x + linkB * Math.cos(shoulder + elbow),
+      y: elbowPoint.y + linkB * Math.sin(shoulder + elbow),
+    }
+    return { elbow: elbowPoint, wrist }
+  }
+
+  const armLoss = (targetX: number, targetY: number) =>
+    differentiable((shoulder: Var<number>, elbow: Var<number>) => {
+      const elbowX = mul(linkA, cos(shoulder))
+      const elbowY = mul(linkA, sin(shoulder))
+      const wristX = add(elbowX, mul(linkB, cos(add(shoulder, elbow))))
+      const wristY = add(elbowY, mul(linkB, sin(add(shoulder, elbow))))
+      return add(square(sub(wristX, targetX)), square(sub(wristY, targetY)))
+    })
+
+  const armTrace = () => {
+    const targetX = Number(armEls.x.value)
+    const targetY = Number(armEls.y.value)
+    const loss = armLoss(targetX, targetY)
+    const rate = Number(armEls.rate.value)
+    const maxSteps = Number(armEls.steps.value)
+    let shoulder = Number(armEls.shoulder.value)
+    let elbow = Number(armEls.elbow.value)
+    const trace: Array<{ shoulder: number; elbow: number; loss: number; grad: readonly [number, number]; gradNorm: number; wrist: Point }> = []
+
+    for (let step = 0; step <= maxSteps; step++) {
+      const result = loss.valueAndGradient(shoulder, elbow)
+      const grad = result.gradient as readonly [number, number]
+      const gradNorm = Math.hypot(grad[0], grad[1])
+      trace.push({ shoulder, elbow, loss: result.value, grad, gradNorm, wrist: armForward(shoulder, elbow).wrist })
+      if (step === maxSteps || !Number.isFinite(result.value) || !Number.isFinite(gradNorm)) break
+      shoulder = wrapAngle(shoulder - rate * grad[0])
+      elbow = wrapAngle(elbow - rate * grad[1])
+    }
+
+    return trace
+  }
+
+  const drawCircle = (svg: SVGSVGElement, attrs: Record<string, string | number>) => {
+    svg.append(makeSvg('circle', attrs))
+  }
+
+  const renderArmChart = (trace: ReturnType<typeof armTrace>) => {
+    const width = 640
+    const height = 390
+    const origin = { x: 320, y: 214 }
+    const scale = 142
+    const target = { x: Number(armEls.x.value), y: Number(armEls.y.value) }
+    const toScreen = (p: Point) => ({ x: origin.x + p.x * scale, y: origin.y - p.y * scale })
+    const last = trace[trace.length - 1]
+    const pose = armForward(last.shoulder, last.elbow)
+    const elbow = toScreen(pose.elbow)
+    const wrist = toScreen(pose.wrist)
+    const goal = toScreen(target)
+
+    armEls.chart.replaceChildren()
+    armEls.chart.append(makeSvg('rect', { x: 0, y: 0, width, height, rx: 4, fill: 'var(--ads-chart-bg)' }))
+    armEls.chart.append(makeSvg('circle', {
+      cx: origin.x,
+      cy: origin.y,
+      r: (linkA + linkB) * scale,
+      fill: 'none',
+      stroke: 'var(--ads-grid)',
+      'stroke-width': 1,
+      'stroke-dasharray': '4 7',
+    }))
+    armEls.chart.append(makeSvg('line', {
+      x1: origin.x - 250,
+      y1: origin.y,
+      x2: origin.x + 250,
+      y2: origin.y,
+      stroke: 'var(--ads-axis)',
+      'stroke-width': 1.2,
+    }))
+    armEls.chart.append(makeSvg('line', {
+      x1: origin.x,
+      y1: origin.y - 175,
+      x2: origin.x,
+      y2: origin.y + 150,
+      stroke: 'var(--ads-axis)',
+      'stroke-width': 1.2,
+    }))
+
+    if (trace.length > 1) {
+      armEls.chart.append(makeSvg('path', {
+        d: pathFrom(trace.map(point => toScreen(point.wrist))),
+        fill: 'none',
+        stroke: 'var(--ads-trail)',
+        'stroke-width': 2,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-dasharray': '4 6',
+      }))
+    }
+
+    armEls.chart.append(makeSvg('line', {
+      x1: goal.x - 14,
+      y1: goal.y,
+      x2: goal.x + 14,
+      y2: goal.y,
+      stroke: 'var(--ads-goal)',
+      'stroke-width': 2,
+    }))
+    armEls.chart.append(makeSvg('line', {
+      x1: goal.x,
+      y1: goal.y - 14,
+      x2: goal.x,
+      y2: goal.y + 14,
+      stroke: 'var(--ads-goal)',
+      'stroke-width': 2,
+    }))
+    drawCircle(armEls.chart, {
+      cx: goal.x,
+      cy: goal.y,
+      r: 18,
+      fill: 'none',
+      stroke: 'var(--ads-goal)',
+      'stroke-width': 1.4,
+      'stroke-dasharray': '5 5',
+    })
+
+    armEls.chart.append(makeSvg('path', {
+      d: pathFrom([{ x: origin.x, y: origin.y }, elbow, wrist]),
+      fill: 'none',
+      stroke: 'var(--ads-model)',
+      'stroke-width': 10,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+    }))
+
+    for (const point of [{ x: origin.x, y: origin.y }, elbow, wrist]) {
+      drawCircle(armEls.chart, {
+        cx: point.x,
+        cy: point.y,
+        r: 9,
+        fill: 'var(--ads-current)',
+        stroke: 'var(--ads-chart-bg)',
+        'stroke-width': 3,
+      })
+    }
+  }
+
+  const renderArm = () => {
+    const trace = armTrace()
+    const last = trace[trace.length - 1]
+    armEls.xValue.value = fmt(Number(armEls.x.value))
+    armEls.yValue.value = fmt(Number(armEls.y.value))
+    armEls.shoulderValue.value = degrees(Number(armEls.shoulder.value))
+    armEls.elbowValue.value = degrees(Number(armEls.elbow.value))
+    armEls.rateValue.value = fmt(Number(armEls.rate.value))
+    armEls.stepsValue.value = armEls.steps.value
+    armEls.outShoulder.value = degrees(last.shoulder)
+    armEls.outElbow.value = degrees(last.elbow)
+    armEls.outDistance.value = fmt(Math.sqrt(last.loss))
+    armEls.outGrad.value = fmt(last.gradNorm)
+    renderArmChart(trace)
+  }
+
+  const bezierPoint = (t: number, c1: Point, c2: Point) => {
+    const p0 = currentCurve().points[0]
+    const p3 = currentCurve().points[currentCurve().points.length - 1]
+    const mt = 1 - t
+    const a = mt * mt * mt
+    const b = 3 * mt * mt * t
+    const c = 3 * mt * t * t
+    const d = t * t * t
+    return {
+      x: a * p0.x + b * c1.x + c * c2.x + d * p3.x,
+      y: a * p0.y + b * c1.y + c * c2.y + d * p3.y,
+    }
+  }
+
+  const bezierVar = (t: number, c1x: Var<number>, c1y: Var<number>, c2x: Var<number>, c2y: Var<number>) => {
+    const p0 = currentCurve().points[0]
+    const p3 = currentCurve().points[currentCurve().points.length - 1]
+    const mt = 1 - t
+    const a = mt * mt * mt
+    const b = 3 * mt * mt * t
+    const c = 3 * mt * t * t
+    const d = t * t * t
+    return {
+      x: add(add(mul(a, p0.x), mul(b, c1x)), add(mul(c, c2x), mul(d, p3.x))),
+      y: add(add(mul(a, p0.y), mul(b, c1y)), add(mul(c, c2y), mul(d, p3.y))),
+    }
+  }
+
+  const currentCurve = () => curveTargets[activeCurve]
+
+  const curveLoss = () =>
+    differentiable((c1x: Var<number>, c1y: Var<number>, c2x: Var<number>, c2y: Var<number>) => {
+      const points = currentCurve().points
+      let total: Var<number> | number = 0
+      for (let i = 0; i < points.length; i++) {
+        const t = i / (points.length - 1)
+        const predicted = bezierVar(t, c1x, c1y, c2x, c2y)
+        total = add(total, add(square(sub(predicted.x, points[i].x)), square(sub(predicted.y, points[i].y))))
+      }
+      return mul(total, 1 / points.length)
+    })
+
+  const curveTrace = () => {
+    const loss = curveLoss()
+    const defaults = currentCurve().defaults
+    const rate = Number(curveEls.rate.value)
+    const maxSteps = Number(curveEls.steps.value)
+    let c1 = { ...defaults.c1 }
+    let c2 = { ...defaults.c2 }
+    const trace: Array<{ c1: Point; c2: Point; loss: number; grad: readonly [number, number, number, number]; gradNorm: number }> = []
+
+    for (let step = 0; step <= maxSteps; step++) {
+      const result = loss.valueAndGradient(c1.x, c1.y, c2.x, c2.y)
+      const grad = result.gradient as readonly [number, number, number, number]
+      const gradNorm = Math.hypot(...grad)
+      trace.push({ c1: { ...c1 }, c2: { ...c2 }, loss: result.value, grad, gradNorm })
+      if (step === maxSteps || !Number.isFinite(result.value) || !Number.isFinite(gradNorm)) break
+      c1 = { x: clamp(c1.x - rate * grad[0], -2.2, 2.2), y: clamp(c1.y - rate * grad[1], -1.7, 1.7) }
+      c2 = { x: clamp(c2.x - rate * grad[2], -2.2, 2.2), y: clamp(c2.y - rate * grad[3], -1.7, 1.7) }
+    }
+
+    return trace
+  }
+
+  const renderCurveChart = (trace: ReturnType<typeof curveTrace>) => {
+    const curve = currentCurve()
+    const last = trace[trace.length - 1]
+    const width = 640
+    const height = 390
+    const pad = { l: 46, r: 36, t: 26, b: 34 }
+    const minX = -1.9
+    const maxX = 1.9
+    const minY = -1.45
+    const maxY = 1.35
+    const sx = (x: number) => pad.l + ((x - minX) / (maxX - minX)) * (width - pad.l - pad.r)
+    const sy = (y: number) => pad.t + ((maxY - y) / (maxY - minY)) * (height - pad.t - pad.b)
+    const toScreen = (p: Point) => ({ x: sx(p.x), y: sy(p.y) })
+    const curveSamples = Array.from({ length: 100 }, (_, i) => bezierPoint(i / 99, last.c1, last.c2)).map(toScreen)
+    const p0 = toScreen(curve.points[0])
+    const p3 = toScreen(curve.points[curve.points.length - 1])
+    const c1 = toScreen(last.c1)
+    const c2 = toScreen(last.c2)
+
+    curveEls.chart.replaceChildren()
+    curveEls.chart.append(makeSvg('rect', { x: 0, y: 0, width, height, rx: 4, fill: 'var(--ads-chart-bg)' }))
+
+    for (let i = 1; i <= 4; i++) {
+      const y = pad.t + (i / 5) * (height - pad.t - pad.b)
+      curveEls.chart.append(makeSvg('line', {
+        x1: pad.l,
+        y1: y,
+        x2: width - pad.r,
+        y2: y,
+        stroke: 'var(--ads-grid)',
+        'stroke-width': 1,
+      }))
+    }
+
+    for (const idx of [Math.floor(trace.length * 0.28), Math.floor(trace.length * 0.56)]) {
+      const item = trace[idx]
+      if (!item) continue
+      curveEls.chart.append(makeSvg('path', {
+        d: pathFrom(Array.from({ length: 80 }, (_, i) => bezierPoint(i / 79, item.c1, item.c2)).map(toScreen)),
+        fill: 'none',
+        stroke: 'var(--ads-ghost)',
+        'stroke-width': 1.5,
+        'stroke-dasharray': '5 7',
+      }))
+    }
+
+    curveEls.chart.append(makeSvg('path', {
+      d: pathFrom([p0, c1, c2, p3]),
+      fill: 'none',
+      stroke: 'var(--ads-control)',
+      'stroke-width': 1.8,
+      'stroke-dasharray': '6 6',
+    }))
+
+    curveEls.chart.append(makeSvg('path', {
+      d: pathFrom(curveSamples),
+      fill: 'none',
+      stroke: 'var(--ads-model)',
+      'stroke-width': 4,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+    }))
+
+    for (const point of curve.points) {
+      drawCircle(curveEls.chart, {
+        cx: sx(point.x),
+        cy: sy(point.y),
+        r: 5,
+        fill: 'var(--ads-target)',
+        stroke: 'var(--ads-chart-bg)',
+        'stroke-width': 2,
+      })
+    }
+
+    for (const point of [c1, c2]) {
+      drawCircle(curveEls.chart, {
+        cx: point.x,
+        cy: point.y,
+        r: 6,
+        fill: 'var(--ads-current)',
+        stroke: 'var(--ads-chart-bg)',
+        'stroke-width': 2,
+      })
+    }
+  }
+
+  const renderCurve = () => {
+    const trace = curveTrace()
+    const last = trace[trace.length - 1]
+    curveEls.rateValue.value = fmt(Number(curveEls.rate.value))
+    curveEls.stepsValue.value = curveEls.steps.value
+    curveEls.outC1.value = `${fmt(last.c1.x)}, ${fmt(last.c1.y)}`
+    curveEls.outC2.value = `${fmt(last.c2.x)}, ${fmt(last.c2.y)}`
+    curveEls.outLoss.value = fmt(last.loss)
+    curveEls.outGrad.value = fmt(last.gradNorm)
+    renderCurveChart(trace)
+  }
+
+  const stopArm = () => {
+    armRunning = false
+    armEls.run.textContent = 'Run'
+    if (armFrame) cancelAnimationFrame(armFrame)
+    armFrame = 0
+  }
+
+  const stopCurve = () => {
+    curveRunning = false
+    curveEls.run.textContent = 'Run'
+    if (curveFrame) cancelAnimationFrame(curveFrame)
+    curveFrame = 0
+  }
+
+  const selectButtons = (group: HTMLElement, key: string) => {
+    for (const button of group.querySelectorAll<HTMLButtonElement>('button')) {
+      const selected = button.dataset.key === key
+      button.classList.toggle('is-active', selected)
+      button.setAttribute('aria-checked', String(selected))
+    }
+  }
+
+  const setLab = (lab: string) => {
+    for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-lab]')) {
+      const selected = tab.dataset.lab === lab
+      tab.classList.toggle('is-active', selected)
+      tab.setAttribute('aria-selected', String(selected))
+      tab.tabIndex = selected ? 0 : -1
+    }
+    for (const panel of root.querySelectorAll<HTMLElement>('[data-lab-panel]')) {
+      panel.hidden = panel.dataset.labPanel !== lab
+    }
+    stopArm()
+    stopCurve()
+  }
+
+  const setCurve = (key: CurveKey) => {
+    activeCurve = key
+    const defaults = currentCurve().defaults
+    curveEls.rate.value = String(defaults.rate)
+    curveEls.steps.value = String(defaults.steps)
+    selectButtons(curveEls.targets, key)
+    renderCurve()
+  }
+
+  const armTick = (time: number) => {
+    if (!armRunning) return
+    if (time - armLastTick > 45) {
+      armLastTick = time
+      const current = Number(armEls.steps.value)
+      if (current >= armTargetSteps) {
+        stopArm()
+        return
+      }
+      armEls.steps.value = String(current + 1)
+      renderArm()
+    }
+    armFrame = requestAnimationFrame(armTick)
+  }
+
+  const curveTick = (time: number) => {
+    if (!curveRunning) return
+    if (time - curveLastTick > 38) {
+      curveLastTick = time
+      const current = Number(curveEls.steps.value)
+      if (current >= curveTargetSteps) {
+        stopCurve()
+        return
+      }
+      curveEls.steps.value = String(current + 1)
+      renderCurve()
+    }
+    curveFrame = requestAnimationFrame(curveTick)
+  }
+
+  for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-lab]')) {
+    tab.addEventListener('click', () => setLab(tab.dataset.lab ?? 'arm'))
+  }
+
+  for (const [key, target] of Object.entries(curveTargets) as Array<[CurveKey, typeof curveTargets[CurveKey]]>) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.setAttribute('role', 'radio')
+    button.dataset.key = key
+    button.textContent = target.label
+    button.addEventListener('click', () => {
+      stopCurve()
+      setCurve(key)
+    })
+    curveEls.targets.append(button)
+  }
+
+  for (const input of [armEls.x, armEls.y, armEls.shoulder, armEls.elbow, armEls.rate, armEls.steps]) {
+    input.addEventListener('input', () => {
+      stopArm()
+      renderArm()
+    })
+  }
+
+  for (const input of [curveEls.rate, curveEls.steps]) {
+    input.addEventListener('input', () => {
+      stopCurve()
+      renderCurve()
+    })
+  }
+
+  armEls.run.addEventListener('click', () => {
+    if (armRunning) {
+      stopArm()
+      return
+    }
+    armTargetSteps = Number(armEls.steps.value) || 84
+    armEls.steps.value = '0'
+    armRunning = true
+    armEls.run.textContent = 'Stop'
+    armLastTick = 0
+    renderArm()
+    armFrame = requestAnimationFrame(armTick)
+  })
+
+  curveEls.run.addEventListener('click', () => {
+    if (curveRunning) {
+      stopCurve()
+      return
+    }
+    curveTargetSteps = Number(curveEls.steps.value) || currentCurve().defaults.steps
+    curveEls.steps.value = '0'
+    curveRunning = true
+    curveEls.run.textContent = 'Stop'
+    curveLastTick = 0
+    renderCurve()
+    curveFrame = requestAnimationFrame(curveTick)
+  })
+
+  armEls.reset.addEventListener('click', () => {
+    stopArm()
+    armEls.x.value = '1.05'
+    armEls.y.value = '0.9'
+    armEls.shoulder.value = '-1.5'
+    armEls.elbow.value = '1.15'
+    armEls.rate.value = '0.18'
+    armEls.steps.value = '84'
+    renderArm()
+  })
+
+  curveEls.reset.addEventListener('click', () => {
+    stopCurve()
+    setCurve(activeCurve)
+  })
+
+  setLab('arm')
+  setCurve(activeCurve)
+  renderArm()
+</script>
+
+<style is:global>
+  .ads-demo {
+    --ads-bg: color-mix(in srgb, var(--sl-color-gray-6) 82%, transparent);
+    --ads-panel: color-mix(in srgb, var(--sl-color-gray-6) 95%, var(--sl-color-accent-low));
+    --ads-border: var(--sl-color-gray-5);
+    --ads-muted: var(--sl-color-gray-2);
+    --ads-chart-bg: color-mix(in srgb, var(--sl-color-black) 58%, var(--sl-color-gray-6));
+    --ads-grid: color-mix(in srgb, var(--sl-color-gray-4) 54%, transparent);
+    --ads-axis: color-mix(in srgb, var(--sl-color-gray-3) 68%, transparent);
+    --ads-model: #58c4dd;
+    --ads-goal: #70e189;
+    --ads-trail: #f4a261;
+    --ads-target: #f4a261;
+    --ads-current: #d2c166;
+    --ads-control: color-mix(in srgb, #f4a261 84%, var(--sl-color-white));
+    --ads-ghost: color-mix(in srgb, var(--sl-color-gray-2) 65%, transparent);
+
+    margin: 2rem 0;
+    border: 1px solid var(--ads-border);
+    background: var(--ads-bg);
+    padding: 1rem;
+  }
+
+  .ads-demo [hidden] {
+    display: none !important;
+  }
+
+  .ads-demo .ads-head > *,
+  .ads-demo .ads-tabs > *,
+  .ads-demo .ads-explainer > *,
+  .ads-demo .ads-layout > *,
+  .ads-demo .ads-controls > *,
+  .ads-demo .ads-group > *,
+  .ads-demo .ads-control > *,
+  .ads-demo .ads-segments > *,
+  .ads-demo .ads-actions > *,
+  .ads-demo .ads-chart-panel > *,
+  .ads-demo .ads-chart-wrap > *,
+  .ads-demo .ads-legend > *,
+  .ads-demo .ads-readout > *,
+  .ads-demo .ads-readout div > * {
+    margin-top: 0;
+  }
+
+  .ads-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+  }
+
+  .ads-head h2 {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1.2rem;
+  }
+
+  .ads-head p {
+    margin: 0.25rem 0 0;
+    color: var(--ads-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .ads-tabs {
+    display: inline-grid;
+    grid-template-columns: repeat(2, minmax(6rem, 1fr));
+    border: 1px solid var(--ads-border);
+    min-width: min(18rem, 100%);
+  }
+
+  .ads-tabs button,
+  .ads-segments button,
+  .ads-actions button {
+    min-height: 2.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--sl-color-gray-1);
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+
+  .ads-tabs button + button,
+  .ads-segments button + button {
+    border-left: 1px solid var(--ads-border);
+  }
+
+  .ads-tabs button.is-active,
+  .ads-segments button.is-active {
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-accent-high);
+    font-weight: 700;
+  }
+
+  .ads-explainer {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--ads-goal);
+    padding-left: 0.85rem;
+    color: var(--ads-muted);
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  .ads-explainer strong {
+    color: var(--sl-color-white);
+    font-size: 0.78rem;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .ads-explainer p {
+    margin: 0;
+  }
+
+  .ads-layout {
+    display: grid;
+    grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: stretch;
+  }
+
+  .ads-panel,
+  .ads-readout {
+    border: 1px solid var(--ads-border);
+    background: var(--ads-panel);
+  }
+
+  .ads-controls {
+    display: grid;
+    align-content: start;
+    gap: 1rem;
+    padding: 0.85rem;
+  }
+
+  .ads-group,
+  .ads-control {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .ads-label,
+  .ads-control span,
+  .ads-readout span {
+    color: var(--ads-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .ads-segments {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid var(--ads-border);
+  }
+
+  .ads-control {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .ads-control input {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--sl-color-accent);
+  }
+
+  .ads-control output,
+  .ads-readout output {
+    color: var(--sl-color-white);
+    font-family: var(--sl-font-mono);
+  }
+
+  .ads-control output {
+    font-size: 0.78rem;
+  }
+
+  .ads-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .ads-actions button {
+    border: 1px solid var(--ads-border);
+    background: var(--sl-color-gray-6);
+  }
+
+  .ads-actions button:first-child {
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    font-weight: 700;
+  }
+
+  .ads-chart-panel {
+    min-width: 0;
+    padding: 0.75rem;
+  }
+
+  .ads-chart-wrap {
+    width: 100%;
+    aspect-ratio: 64 / 39;
+    min-height: 17rem;
+  }
+
+  .ads-chart-wrap svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .ads-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    color: var(--ads-muted);
+    font-size: 0.78rem;
+  }
+
+  .ads-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .ads-key {
+    width: 1.1rem;
+    height: 0.22rem;
+    display: inline-block;
+  }
+
+  .ads-key-model { background: var(--ads-model); }
+  .ads-key-goal { background: var(--ads-goal); }
+  .ads-key-trail { background: var(--ads-trail); }
+  .ads-key-target { background: var(--ads-target); }
+  .ads-key-control { background: var(--ads-control); }
+
+  .ads-readout {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 0.85rem;
+  }
+
+  .ads-readout div {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.8rem;
+  }
+
+  .ads-readout div + div {
+    border-left: 1px solid var(--ads-border);
+  }
+
+  .ads-readout output {
+    overflow-wrap: anywhere;
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 54rem) {
+    .ads-head,
+    .ads-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .ads-tabs {
+      width: 100%;
+    }
+
+    .ads-readout {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ads-readout div:nth-child(odd) {
+      border-left: 0;
+    }
+
+    .ads-readout div:nth-child(n + 3) {
+      border-top: 1px solid var(--ads-border);
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .ads-demo {
+      padding: 0.75rem;
+    }
+
+    .ads-segments {
+      grid-template-columns: 1fr;
+    }
+
+    .ads-segments button + button {
+      border-left: 0;
+      border-top: 1px solid var(--ads-border);
+    }
+
+    .ads-chart-wrap {
+      min-height: 13rem;
+    }
+
+    .ads-readout {
+      grid-template-columns: 1fr;
+    }
+
+    .ads-readout div + div {
+      border-left: 0;
+      border-top: 1px solid var(--ads-border);
+    }
+  }
+</style>

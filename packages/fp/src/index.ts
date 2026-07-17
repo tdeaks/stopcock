@@ -1,6 +1,7 @@
 export type { Fn, LazyValue } from './types'
 export { pipe } from './pipe'
 export { flow } from './flow'
+export { type FusionExplanation, type FusionMode, type FusionStats, explainFusion, getFusionMode, getFusionStats, resetFusionStats, setFusionMode } from './fuse'
 export { dual } from './dual'
 
 export {
@@ -15,6 +16,16 @@ export {
   isNone,
   map as mapOption,
   flatMap as flatMapOption,
+  andThen as andThenOption,
+  flatten as flattenOption,
+  orElse as orElseOption,
+  orElseWith as orElseWithOption,
+  and as andOption,
+  zip as zipOption,
+  zipWith as zipWithOption,
+  contains as containsOption,
+  exists as existsOption,
+  mapNullable,
   filter as filterOption,
   getOrElse as getOrElseOption,
   getWithDefault,
@@ -36,9 +47,20 @@ export {
   map as mapResult,
   mapErr,
   flatMap as flatMapResult,
+  andThen as andThenResult,
+  flatten as flattenResult,
+  orElse as orElseResult,
+  orElseWith as orElseWithResult,
+  and as andResult,
+  zip as zipResult,
+  zipWith as zipWithResult,
+  contains as containsResult,
+  exists as existsResult,
   getOrElse as getOrElseResult,
   match as matchResult,
   tryCatch,
+  fromThrowable,
+  tryCatchAsync,
   fromNullable as resultFromNullable,
   toOption,
   tap as tapResult,
@@ -46,6 +68,9 @@ export {
 } from './result'
 
 export {
+  type Predicate,
+  type Refinement,
+  type Brand,
   is,
   isNil,
   isNotNil,
@@ -72,6 +97,9 @@ export {
   isString,
   isSymbol,
   isTruthy,
+  and,
+  or,
+  not,
 } from './guard'
 
 export {

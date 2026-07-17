@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import fc from 'fast-check'
 import {
   some, none, fromNullable, fromPredicate,
-  isSome, isNone, map, flatMap, filter,
+  isSome, isNone, map, flatMap, andThen, flatten, filter,
+  orElse, orElseWith, and, zip, zipWith,
+  contains, exists, mapNullable,
   getOrElse, getWithDefault, match, tap,
   toNullable, toUndefined, toResult,
 } from '../option'
@@ -59,6 +61,74 @@ describe('Option', () => {
       expect(pipe(some(4), flatMap(half))).toEqual(some(2))
       expect(pipe(some(3), flatMap(half))).toBe(none)
       expect(pipe(none, flatMap(half))).toBe(none)
+    })
+
+    it('andThen aliases flatMap', () => {
+      const half = (n: number) => n % 2 === 0 ? some(n / 2) : none
+      expect(pipe(some(4), andThen(half))).toEqual(some(2))
+      expect(pipe(none, andThen(half))).toBe(none)
+    })
+
+    it('orElse returns the fallback only for None', () => {
+      expect(pipe(some(1), orElse(some(2)))).toEqual(some(1))
+      expect(pipe(none, orElse(some(2)))).toEqual(some(2))
+    })
+
+    it('orElseWith lazily returns the fallback only for None', () => {
+      let calls = 0
+      const fallback = () => {
+        calls += 1
+        return some(2)
+      }
+
+      expect(pipe(some(1), orElseWith(fallback))).toEqual(some(1))
+      expect(calls).toBe(0)
+      expect(pipe(none, orElseWith(fallback))).toEqual(some(2))
+      expect(calls).toBe(1)
+    })
+
+    it('and returns the second option only when the first is Some', () => {
+      expect(pipe(some(1), and(some('a')))).toEqual(some('a'))
+      expect(pipe(some(1), and(none))).toBe(none)
+      expect(pipe(none, and(some('a')))).toBe(none)
+    })
+
+    it('flatten unwraps nested options', () => {
+      expect(flatten(some(some(1)))).toEqual(some(1))
+      expect(flatten(some(none))).toBe(none)
+      expect(flatten(none)).toBe(none)
+    })
+
+    it('zip combines two Some values', () => {
+      expect(pipe(some(1), zip(some('a')))).toEqual(some([1, 'a']))
+      expect(pipe(some(1), zip(none))).toBe(none)
+      expect(pipe(none, zip(some('a')))).toBe(none)
+    })
+
+    it('zipWith combines two Some values with a function', () => {
+      expect(pipe(some(1), zipWith(some(2), (a, b) => a + b))).toEqual(some(3))
+      expect(pipe(some(1), zipWith(none, (a, b: number) => a + b))).toBe(none)
+      expect(pipe(none, zipWith(some(2), (a: number, b) => a + b))).toBe(none)
+    })
+
+    it('contains checks Some values with Object.is semantics', () => {
+      expect(pipe(some(1), contains(1))).toBe(true)
+      expect(pipe(some(1), contains(2))).toBe(false)
+      expect(pipe(none, contains(1))).toBe(false)
+      expect(pipe(some(Number.NaN), contains(Number.NaN))).toBe(true)
+    })
+
+    it('exists checks predicates only for Some', () => {
+      expect(pipe(some(2), exists((n) => n > 1))).toBe(true)
+      expect(pipe(some(0), exists((n) => n > 1))).toBe(false)
+      expect(pipe(none, exists((n: number) => n > 1))).toBe(false)
+    })
+
+    it('mapNullable maps nullish results to None', () => {
+      const positiveLabel = (n: number) => n > 0 ? String(n) : null
+      expect(pipe(some(1), mapNullable(positiveLabel))).toEqual(some('1'))
+      expect(pipe(some(0), mapNullable(positiveLabel))).toBe(none)
+      expect(pipe(none, mapNullable(positiveLabel))).toBe(none)
     })
 
     it('filter keeps matching Some, drops non-matching', () => {

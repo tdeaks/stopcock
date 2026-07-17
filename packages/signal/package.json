@@ -1,0 +1,61 @@
+{
+  "name": "@stopcock/signal",
+  "version": "0.0.2",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tdeaks/stopcock",
+    "directory": "packages/signal"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./analysis": {
+      "types": "./dist/analysis.d.ts",
+      "import": "./dist/analysis.js"
+    },
+    "./biquad": {
+      "types": "./dist/biquad.d.ts",
+      "import": "./dist/biquad.js"
+    },
+    "./convolve": {
+      "types": "./dist/convolve.d.ts",
+      "import": "./dist/convolve.js"
+    },
+    "./fft": {
+      "types": "./dist/fft.d.ts",
+      "import": "./dist/fft.js"
+    },
+    "./fir": {
+      "types": "./dist/fir.d.ts",
+      "import": "./dist/fir.js"
+    },
+    "./onepole": {
+      "types": "./dist/onepole.d.ts",
+      "import": "./dist/onepole.js"
+    },
+    "./resample": {
+      "types": "./dist/resample.d.ts",
+      "import": "./dist/resample.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    },
+    "./window": {
+      "types": "./dist/window.d.ts",
+      "import": "./dist/window.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  }
+}

@@ -25,7 +25,7 @@ const colorMap = Object.fromEntries(COLORS.libraries)
 const id = `scaling-${category}-${runtime}`.replace(/[^a-z0-9-]/gi, '_')
 ---
 
-<div class="chart-container" id={id} style="min-height: 350px" />
+<div class="chart-container not-content" id={id} style="min-height: 350px" />
 
 <script define:vars={{ id, seriesData: libraryMap, sizes, colorMap, accent: COLORS.accent, barDefault: COLORS.barDefault }}>
   const el = document.getElementById(id)

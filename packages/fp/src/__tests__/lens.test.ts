@@ -76,13 +76,41 @@ describe('Lens', () => {
 
   describe('path', () => {
     const cityLens = path<User, 'address', 'city'>('address', 'city')
+    const tupleCityLens = path<User, readonly ['address', 'city']>(['address', 'city'] as const)
 
     it('view', () => expect(view(user, cityLens)).toBe('NYC'))
+  it('tuple view', () => expect(view(user, tupleCityLens)).toBe('NYC'))
+  it('tuple view returns undefined for missing optional intermediate', () => {
+    type OptionalUser = { meta?: { active: boolean } }
+    const activeLens = path<OptionalUser, readonly ['meta', 'active']>(['meta', 'active'] as const)
+    expect(view({}, activeLens)).toBeUndefined()
+  })
 
     it('set', () => {
       const updated = set(user, cityLens, 'LA')
       expect(updated.address.city).toBe('LA')
       expect(updated.name).toBe('Alice')
+    })
+  it('tuple set', () => {
+    const updated = set(user, tupleCityLens, 'LA')
+    expect(updated.address.city).toBe('LA')
+    expect(updated.name).toBe('Alice')
+    expect(updated.address).not.toBe(user.address)
+  })
+  it('tuple set preserves arrays along numeric paths', () => {
+    type Inventory = { items: { name: string }[] }
+    const inventory: Inventory = { items: [{ name: 'a' }] }
+    const itemNameLens = path<Inventory, readonly ['items', 0, 'name']>(['items', 0, 'name'] as const)
+    const updated = set(inventory, itemNameLens, 'b')
+    expect(updated).toEqual({ items: [{ name: 'b' }] })
+    expect(Array.isArray(updated.items)).toBe(true)
+    expect(updated.items).not.toBe(inventory.items)
+    expect(updated.items[0]).not.toBe(inventory.items[0])
+  })
+    it('tuple over', () => {
+      const updated = over(user, tupleCityLens, city => city.toLowerCase())
+      expect(updated.address.city).toBe('nyc')
+      expect(user.address.city).toBe('NYC')
     })
 
     it('immutability', () => {
@@ -106,6 +134,7 @@ describe('Lens', () => {
       expect(view(user, lensProp<User, 'name'>('name'))).toBe('Alice')
       expect(view([10, 20, 30], lensIndex<number>(1))).toBe(20)
       expect(view(user, lensPath<User, 'address', 'city'>('address', 'city'))).toBe('NYC')
+      expect(view(user, lensPath<User, readonly ['address', 'city']>(['address', 'city'] as const))).toBe('NYC')
     })
   })
 

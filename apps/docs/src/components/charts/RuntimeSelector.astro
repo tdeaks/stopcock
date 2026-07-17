@@ -6,7 +6,7 @@ const runtimes = [
 ]
 ---
 
-<runtime-selector>
+<runtime-selector class="not-content">
   <div class="runtime-tabs">
     {runtimes.map(rt => (
       <button data-rt={rt.id} class={rt.id === 'node' ? 'active' : ''}>

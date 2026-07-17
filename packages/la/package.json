@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/la",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,13 +10,26 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./accel": { "types": "./dist/accel.d.ts", "import": "./dist/accel.js" },
-    "./fast": { "types": "./dist/fast.d.ts", "import": "./dist/fast.js" },
-    "./primitives": { "types": "./dist/primitives.d.ts", "import": "./dist/primitives.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./accel": {
+      "types": "./dist/accel.d.ts",
+      "import": "./dist/accel.js"
+    },
+    "./fast": {
+      "types": "./dist/fast.d.ts",
+      "import": "./dist/fast.js"
+    },
+    "./primitives": {
+      "types": "./dist/primitives.d.ts",
+      "import": "./dist/primitives.js"
+    }
   },
-  "files": ["dist"],
-  
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup"
   }

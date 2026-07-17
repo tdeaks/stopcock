@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest'
 import fc from 'fast-check'
 import {
   ok, err, isOk, isErr,
-  map, mapErr, flatMap, getOrElse, match,
-  toOption, tryCatch, fromNullable, tap, tapErr,
+  map, mapErr, flatMap, andThen, flatten, getOrElse, match,
+  orElse, orElseWith, and, zip, zipWith, contains, exists,
+  toOption, tryCatch, fromThrowable, tryCatchAsync, fromNullable, tap, tapErr,
 } from '../result'
 import { some, none } from '../option'
 import { pipe } from '../pipe'
@@ -46,6 +47,61 @@ describe('Result', () => {
       expect(pipe(err('x'), flatMap(half))).toEqual(err('x'))
     })
 
+    it('andThen aliases flatMap', () => {
+      const half = (n: number) => n % 2 === 0 ? ok(n / 2) : err('odd')
+      expect(pipe(ok(4), andThen(half))).toEqual(ok(2))
+      expect(pipe(err('x'), andThen(half))).toEqual(err('x'))
+    })
+
+    it('orElse returns fallback only for Err', () => {
+      expect(pipe(ok(1), orElse(ok(2)))).toEqual(ok(1))
+      expect(pipe(err('x'), orElse(ok(2)))).toEqual(ok(2))
+      expect(pipe(err('x'), orElse(err('y')))).toEqual(err('y'))
+    })
+
+    it('orElseWith recovers from Err with access to the error', () => {
+      const recover = (error: string) => ok(error.length)
+      expect(pipe(ok(1), orElseWith(recover))).toEqual(ok(1))
+      expect(pipe(err('fail'), orElseWith(recover))).toEqual(ok(4))
+    })
+
+    it('and returns the second result only when the first is Ok', () => {
+      expect(pipe(ok(1), and(ok('a')))).toEqual(ok('a'))
+      expect(pipe(ok(1), and(err('y')))).toEqual(err('y'))
+      expect(pipe(err('x'), and(ok('a')))).toEqual(err('x'))
+    })
+
+    it('flatten unwraps nested results', () => {
+      expect(flatten(ok(ok(1)))).toEqual(ok(1))
+      expect(flatten(ok(err('inner')))).toEqual(err('inner'))
+      expect(flatten(err('outer'))).toEqual(err('outer'))
+    })
+
+    it('zip combines two Ok values', () => {
+      expect(pipe(ok(1), zip(ok('a')))).toEqual(ok([1, 'a']))
+      expect(pipe(ok(1), zip(err('y')))).toEqual(err('y'))
+      expect(pipe(err('x'), zip(ok('a')))).toEqual(err('x'))
+    })
+
+    it('zipWith combines two Ok values with a function', () => {
+      expect(pipe(ok(1), zipWith(ok(2), (a, b) => a + b))).toEqual(ok(3))
+      expect(pipe(ok(1), zipWith(err('y'), (a, b: number) => a + b))).toEqual(err('y'))
+      expect(pipe(err('x'), zipWith(ok(2), (a: number, b) => a + b))).toEqual(err('x'))
+    })
+
+    it('contains checks Ok values with Object.is semantics', () => {
+      expect(pipe(ok(1), contains(1))).toBe(true)
+      expect(pipe(ok(1), contains(2))).toBe(false)
+      expect(pipe(err('x'), contains(1))).toBe(false)
+      expect(pipe(ok(Number.NaN), contains(Number.NaN))).toBe(true)
+    })
+
+    it('exists checks predicates only for Ok', () => {
+      expect(pipe(ok(2), exists((n) => n > 1))).toBe(true)
+      expect(pipe(ok(0), exists((n) => n > 1))).toBe(false)
+      expect(pipe(err('x'), exists((n: number) => n > 1))).toBe(false)
+    })
+
     it('getOrElse returns value or lazy default', () => {
       expect(pipe(ok(1), getOrElse(() => 99))).toBe(1)
       expect(pipe(err('x'), getOrElse(() => 99))).toBe(99)
@@ -61,6 +117,20 @@ describe('Result', () => {
       expect(tryCatch(() => 42)).toEqual(ok(42))
       const result = tryCatch(() => { throw new Error('boom') })
       expect(isErr(result)).toBe(true)
+    })
+
+    it('fromThrowable aliases tryCatch', () => {
+      expect(fromThrowable(() => 42)).toEqual(ok(42))
+      expect(fromThrowable(() => { throw new Error('boom') }, () => 'boom')).toEqual(err('boom'))
+    })
+
+    it('tryCatchAsync captures resolved and rejected promises', async () => {
+      await expect(tryCatchAsync(async () => 42)).resolves.toEqual(ok(42))
+      await expect(
+        tryCatchAsync(async () => {
+          throw new Error('boom')
+        }, (e) => e instanceof Error ? e.message : 'unknown'),
+      ).resolves.toEqual(err('boom'))
     })
 
     it('fromNullable lifts values', () => {

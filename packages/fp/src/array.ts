@@ -38,6 +38,7 @@ function groupByPropRaw(arr, prop) {
     return dict;
 }
 
+import { tryInlineSource } from './fuse'
 type Dict<A> = Record<string, A>
 import { sum as nSum, min as nMin, max as nMax } from './number'
 
@@ -222,28 +223,63 @@ export const xprod: {
 
 
 // Arity 2
-export const map: {
-  <A, B>(arr: readonly A[], f: (a: A) => B): B[]
-  <A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
-} = function map() {
-  if (arguments.length >= 2) {
-    const arr = arguments[0], f = arguments[1]
-    const len = arr.length, out = new Array(len)
+type MapRunner = (arr: readonly any[], f: (value: any) => any) => any[]
+
+let mapRunnerFn: Function | null = null
+let mapRunner: MapRunner | null = null
+let mapOperatorFn: Function | null = null
+let mapOperator: any = null
+
+const runMapFallback: MapRunner = (arr, f) => {
+  const len = arr.length, out = new Array(len)
   for (let i = 0; i < len; i++) out[i] = f(arr[i])
   return out
+}
+
+const getMapRunner = (f: (value: any) => any): MapRunner => {
+  if (f === mapRunnerFn && mapRunner) return mapRunner
+
+  const src = tryInlineSource(f)
+  let runner = runMapFallback
+
+  if (src) {
+    try {
+      runner = new Function(
+        'arr',
+        'f',
+        `var len=arr.length,out=new Array(len);for(var i=0;i<len;i++){var v=arr[i];out[i]=${src}}return out`,
+      ) as MapRunner
+    } catch {
+      runner = runMapFallback
+    }
+  }
+
+  mapRunnerFn = f
+  mapRunner = runner
+  return runner
+}
+
+export function map<A, B>(arr: readonly A[], f: (a: A) => B): B[]
+export function map<A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
+export function map(): any {
+  if (arguments.length >= 2) {
+    const _a0 = arguments[0]
+    const _a1 = arguments[1]
+    return getMapRunner(_a1)(_a0, _a1)
   }
   const _a0 = arguments[0]
+  if (_a0 === mapOperatorFn && mapOperator) return mapOperator
+  const runner = getMapRunner(_a0)
   const _dl: any = function(data: any) {
     const arr = data, f = _a0
-    const len = arr.length, out = new Array(len)
-  for (let i = 0; i < len; i++) out[i] = f(arr[i])
-  return out
+    return runner(arr, f)
   }
-    _dl._op = 1
-    _dl._fn = _a0
+  _dl._op = 1
+  _dl._fn = _a0
+  mapOperatorFn = _a0
+  mapOperator = _dl
   return _dl
-} as any
-
+}
 
 export const mapWithIndex: {
   <A, B>(arr: readonly A[], f: (a: A, i: number) => B): B[]
@@ -1524,6 +1560,124 @@ export const count: {
   return c;
   }
     _dl._op = 18
+    _dl._fn = _a0
+  return _dl
+} as any
+
+
+export const filterMap: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
+} = function filterMap() {
+  if (arguments.length >= 2) {
+    const arr = arguments[0], f = arguments[1]
+    const out: any[] = []
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const mapped = f(arr[i])
+    if (mapped != null) out.push(mapped)
+  }
+  return out
+  }
+  const _a0 = arguments[0]
+  const _dl: any = function(data: any) {
+    const arr = data, f = _a0
+    const out: any[] = []
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const mapped = f(arr[i])
+    if (mapped != null) out.push(mapped)
+  }
+  return out
+  }
+    _dl._op = 14
+    _dl._fn = _a0
+  return _dl
+} as any
+
+
+export const findMap: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B | undefined
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B | undefined
+} = function findMap() {
+  if (arguments.length >= 2) {
+    const arr = arguments[0], f = arguments[1]
+    for (let i = 0, len = arr.length; i < len; i++) {
+    const mapped = f(arr[i])
+    if (mapped != null) return mapped
+  }
+  return undefined
+  }
+  const _a0 = arguments[0]
+  const _dl: any = function(data: any) {
+    const arr = data, f = _a0
+    for (let i = 0, len = arr.length; i < len; i++) {
+    const mapped = f(arr[i])
+    if (mapped != null) return mapped
+  }
+  return undefined
+  }
+    _dl._op = 22
+    _dl._fn = _a0
+  return _dl
+} as any
+
+
+export const mapWhile: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
+} = function mapWhile() {
+  if (arguments.length >= 2) {
+    const arr = arguments[0], f = arguments[1]
+    const out: any[] = []
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const mapped = f(arr[i])
+    if (mapped == null) break
+    out.push(mapped)
+  }
+  return out
+  }
+  const _a0 = arguments[0]
+  const _dl: any = function(data: any) {
+    const arr = data, f = _a0
+    const out: any[] = []
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const mapped = f(arr[i])
+    if (mapped == null) break
+    out.push(mapped)
+  }
+  return out
+  }
+    _dl._op = 15
+    _dl._fn = _a0
+  return _dl
+} as any
+
+
+export const takeUntil: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+} = function takeUntil() {
+  if (arguments.length >= 2) {
+    const arr = arguments[0], pred = arguments[1]
+    const out: any[] = []
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const value = arr[i]
+    if (pred(value)) break
+    out.push(value)
+  }
+  return out
+  }
+  const _a0 = arguments[0]
+  const _dl: any = function(data: any) {
+    const arr = data, pred = _a0
+    const out: any[] = []
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const value = arr[i]
+    if (pred(value)) break
+    out.push(value)
+  }
+  return out
+  }
+    _dl._op = 19
     _dl._fn = _a0
   return _dl
 } as any

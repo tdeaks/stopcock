@@ -37,7 +37,48 @@ function isPlainObject(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v)
 }
 
-import type { PathValue } from './types'
+import type { PathSegments, PathValue, PathValueOrDefault } from './types'
+
+type RuntimePath = string | PathSegments
+
+const pathSegmentCache = new Map<string, readonly PropertyKey[]>()
+
+function pathSegments(path: RuntimePath): readonly PropertyKey[] {
+  if (typeof path !== 'string') return path
+  const cached = pathSegmentCache.get(path)
+  if (cached) return cached
+  const segments = path.split('.')
+  pathSegmentCache.set(path, segments)
+  return segments
+}
+
+function readPath(obj: any, path: RuntimePath) {
+  if (typeof path === 'string' && path.indexOf('.') === -1) {
+    return obj == null ? undefined : obj[path]
+  }
+  const segments = pathSegments(path)
+  if (segments.length === 1) {
+    return obj == null ? undefined : obj[segments[0]]
+  }
+  if (segments.length === 2) {
+    if (obj == null) return undefined
+    const next = obj[segments[0]]
+    return next == null ? undefined : next[segments[1]]
+  }
+  if (segments.length === 3) {
+    if (obj == null) return undefined
+    const next = obj[segments[0]]
+    if (next == null) return undefined
+    const last = next[segments[1]]
+    return last == null ? undefined : last[segments[2]]
+  }
+  let current = obj
+  for (const seg of segments) {
+    if (current == null) return undefined
+    current = current[seg]
+  }
+  return current
+}
 
 // ReScript wrappers, arity 2
 export const pick: {
@@ -174,20 +215,19 @@ export const assoc: {
 } = function assoc() {
   if (arguments.length >= 3) {
     const obj = arguments[0], key = arguments[1], value = arguments[2]
-    let out = Object.assign(emptyObj(), obj);
-  out[key] = value;
-  return out;
+    const out = { ...obj }
+    out[key] = value
+    return out
   }
   const _a0 = arguments[0]; const _a1 = arguments[1]
   const _dl: any = function(data: any) {
     const obj = data, key = _a0, value = _a1
-    let out = Object.assign(emptyObj(), obj);
-  out[key] = value;
-  return out;
+    const out = { ...obj }
+    out[key] = value
+    return out
   }
   return _dl
 } as any
-
 
 export const mergeWith: {
   <T, V>(a: T, b: T, resolver: (l: V, r: V) => V): T
@@ -229,52 +269,43 @@ export const mergeWith: {
 // Pure TypeScript: path
 export const path: {
   <T, P extends string>(obj: T, path: P): PathValue<T, P> | undefined
-  <T, P extends string>(path: P): (obj: T) => PathValue<T, P> | undefined
+  <T, P extends PathSegments>(obj: T, path: P): PathValue<T, P> | undefined
+  <P extends string>(path: P): <T>(obj: T) => PathValue<T, P> | undefined
+  <P extends PathSegments>(path: P): <T>(obj: T) => PathValue<T, P> | undefined
 } = function path() {
   if (arguments.length >= 2) {
     const obj = arguments[0], p = arguments[1]
-    const segments = p.split('.')
-  let current = obj
-  for (const seg of segments) {
-    if (current == null) return undefined
-    current = current[seg]
-  }
-  return current
+    return readPath(obj, p)
   }
   const _a0 = arguments[0]
+  const segments = pathSegments(_a0)
   const _dl: any = function(data: any) {
-    const obj = data, p = _a0
-    const segments = p.split('.')
-  let current = obj
-  for (const seg of segments) {
-    if (current == null) return undefined
-    current = current[seg]
-  }
-  return current
+    return readPath(data, segments)
   }
   return _dl
 } as any
-
 
 // Pure TypeScript: pathOr
 export const pathOr: {
-  <T, P extends string, D>(obj: T, path: P, defaultValue: D): PathValue<T, P> | D
-  <T, P extends string, D>(path: P, defaultValue: D): (obj: T) => PathValue<T, P> | D
+  <T, P extends string, D>(obj: T, path: P, defaultValue: D): PathValueOrDefault<T, P, D>
+  <T, P extends PathSegments, D>(obj: T, path: P, defaultValue: D): PathValueOrDefault<T, P, D>
+  <P extends string, D>(path: P, defaultValue: D): <T>(obj: T) => PathValueOrDefault<T, P, D>
+  <P extends PathSegments, D>(path: P, defaultValue: D): <T>(obj: T) => PathValueOrDefault<T, P, D>
 } = function pathOr() {
   if (arguments.length >= 3) {
     const obj = arguments[0], p = arguments[1], defaultValue = arguments[2]
-    const result = path(obj, p)
-  return result === undefined ? defaultValue : result
+    const result = readPath(obj, p)
+    return result === undefined ? defaultValue : result
   }
   const _a0 = arguments[0]; const _a1 = arguments[1]
+  const segments = pathSegments(_a0)
   const _dl: any = function(data: any) {
-    const obj = data, p = _a0, defaultValue = _a1
-    const result = path(obj, p)
-  return result === undefined ? defaultValue : result
+    const defaultValue = _a1
+    const result = readPath(data, segments)
+    return result === undefined ? defaultValue : result
   }
   return _dl
 } as any
-
 
 // Pure TypeScript: evolve
 export const evolve: {

@@ -1,4 +1,5 @@
 import { dual } from './dual-lite'
+import type { PathSegments, PathValue } from './types'
 
 export type Lens<S, A> = {
   readonly _tag: 'Lens'
@@ -24,17 +25,41 @@ export function index<A>(i: number): Lens<A[], A> {
 export function path<S, K1 extends keyof S>(k1: K1): Lens<S, S[K1]>
 export function path<S, K1 extends keyof S, K2 extends keyof S[K1]>(k1: K1, k2: K2): Lens<S, S[K1][K2]>
 export function path<S, K1 extends keyof S, K2 extends keyof S[K1], K3 extends keyof S[K1][K2]>(k1: K1, k2: K2, k3: K3): Lens<S, S[K1][K2][K3]>
-export function path(...keys: string[]): Lens<any, any> {
+export function path<S, P extends PathSegments>(keys: P): Lens<S, PathValue<S, P>>
+export function path(...keysOrPath: Array<PropertyKey | PathSegments>): Lens<any, any> {
+  const keys = (
+    keysOrPath.length === 1 && Array.isArray(keysOrPath[0])
+      ? keysOrPath[0]
+      : keysOrPath
+  ) as readonly PropertyKey[]
+  const cloneContainer = (value: any, nextKey?: PropertyKey) => {
+    if (Array.isArray(value)) return value.slice()
+    if (value != null && typeof value === 'object') return { ...value }
+    return typeof nextKey === 'number' ? [] : {}
+  }
+
   return lens(
-    s => keys.reduce((acc, k) => acc[k], s),
+    s => {
+      let current: any = s
+      for (const key of keys) {
+        if (current == null) return undefined
+        current = current[key]
+      }
+      return current
+    },
     (s, a) => {
       if (keys.length === 0) return a
-      if (keys.length === 1) return { ...s, [keys[0]]: a }
-      const root = { ...s }
+      if (keys.length === 1) {
+        const root = cloneContainer(s)
+        root[keys[0]] = a
+        return root
+      }
+      const root = cloneContainer(s, keys[0])
       let parent: any = root
       for (let i = 0; i < keys.length - 1; i++) {
-        parent[keys[i]] = { ...parent[keys[i]] }
-        parent = parent[keys[i]]
+        const key = keys[i]
+        parent[key] = cloneContainer(parent[key], keys[i + 1])
+        parent = parent[key]
       }
       parent[keys[keys.length - 1]] = a
       return root

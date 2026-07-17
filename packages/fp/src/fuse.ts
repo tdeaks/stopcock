@@ -1,8 +1,9 @@
 import { aotCache } from './aot-compiled'
 import {
   OP_MAP, OP_FILTER, OP_TAKE, OP_DROP, OP_TAKE_WHILE, OP_DROP_WHILE, OP_FLAT_MAP,
-  OP_REJECT, OP_REDUCE, OP_FOR_EACH, OP_EVERY, OP_SOME, OP_FIND, OP_FIND_INDEX,
-  OP_NONE, OP_COUNT, OP_SORT_BY, OP_SORT,
+  OP_REJECT, OP_FILTER_MAP, OP_MAP_WHILE, OP_TAKE_UNTIL,
+  OP_REDUCE, OP_FOR_EACH, OP_EVERY, OP_SOME, OP_FIND, OP_FIND_INDEX,
+  OP_NONE, OP_COUNT, OP_FIND_MAP, OP_SORT_BY, OP_SORT,
   OP_HEAD, OP_LAST, OP_LENGTH, OP_IS_EMPTY, OP_TAIL, OP_INIT,
   OP_REVERSE, OP_SORT_INLINE, OP_UNIQ_INLINE, OP_JOIN, OP_FLATTEN,
   OP_SUM, OP_MIN, OP_MAX,
@@ -13,7 +14,7 @@ import {
   OP_MATH_NEGATE, OP_MATH_INC, OP_MATH_DEC,
   OP_GUARD_IS_NUMBER, OP_GUARD_IS_STRING, OP_GUARD_IS_BOOLEAN,
   OP_GUARD_IS_NIL, OP_GUARD_IS_ARRAY, OP_GUARD_IS_OBJECT, OP_GUARD_IS_FUNCTION,
-  OP_SORT_ASC, OP_SORT_DESC,
+  OP_SORT_ASC, OP_SORT_DESC, OP_CODES,
   isFuseableOrTerminal, isTerminalOp, isAccessorOp, isFuseableOp, isScalarOp,
 } from './opcodes'
 
@@ -55,6 +56,137 @@ const compiledCache = new Map<number, CompiledRunner>()
 let canJIT = true
 try { new Function('return 1')() } catch { canJIT = false }
 
+export type FusionMode = 'auto' | 'jit' | 'no-jit'
+
+export interface FusionStats {
+  readonly mode: FusionMode
+  readonly jitAvailable: boolean
+  readonly segmentsRun: number
+  readonly scalarRuns: number
+  readonly jitCompiles: number
+  readonly specializedCompiles: number
+  readonly interpretedCompiles: number
+  readonly jitFallbacks: number
+  readonly scalarJitCompiles: number
+  readonly scalarFallbackCompiles: number
+  readonly aotCacheHits: number
+}
+
+export interface FusionExplanation {
+  readonly mode: FusionMode
+  readonly jitAvailable: boolean
+  readonly willUseJit: boolean
+  readonly fuseable: boolean
+  readonly operations: readonly string[]
+  readonly opcodes: readonly number[]
+  readonly reason: string
+}
+
+let fusionMode: FusionMode = 'auto'
+
+const fusionStats = {
+  segmentsRun: 0,
+  scalarRuns: 0,
+  jitCompiles: 0,
+  specializedCompiles: 0,
+  interpretedCompiles: 0,
+  jitFallbacks: 0,
+  scalarJitCompiles: 0,
+  scalarFallbackCompiles: 0,
+  aotCacheHits: 0,
+}
+
+const OP_NAMES = new Map<number, string>(
+  Object.entries(OP_CODES).map(([name, opcode]) => [opcode, name]),
+)
+
+function shouldAttemptJIT(): boolean {
+  if (fusionMode === 'no-jit') return false
+  if (fusionMode === 'auto') return canJIT
+  return true
+}
+
+function clearFusionCaches(): void {
+  compiledCache.clear()
+  inlinedCache.clear()
+  scalarCache.clear()
+  _mruLen = 0
+  _mruRunner = null
+}
+
+export function setFusionMode(mode: FusionMode): void {
+  if (mode !== 'auto' && mode !== 'jit' && mode !== 'no-jit') {
+    throw new Error(`Invalid fusion mode: ${String(mode)}`)
+  }
+  if (fusionMode !== mode) {
+    fusionMode = mode
+    clearFusionCaches()
+  }
+}
+
+export function getFusionMode(): FusionMode {
+  return fusionMode
+}
+
+export function getFusionStats(): Readonly<FusionStats> {
+  return Object.freeze({
+    mode: fusionMode,
+    jitAvailable: canJIT,
+    ...fusionStats,
+  })
+}
+
+export function resetFusionStats(): void {
+  fusionStats.segmentsRun = 0
+  fusionStats.scalarRuns = 0
+  fusionStats.jitCompiles = 0
+  fusionStats.specializedCompiles = 0
+  fusionStats.interpretedCompiles = 0
+  fusionStats.jitFallbacks = 0
+  fusionStats.scalarJitCompiles = 0
+  fusionStats.scalarFallbackCompiles = 0
+  fusionStats.aotCacheHits = 0
+}
+
+export function explainFusion(...input: Array<((x: unknown) => unknown) | Array<(x: unknown) => unknown>>): Readonly<FusionExplanation> {
+  const fns = (input.length === 1 && Array.isArray(input[0]))
+    ? input[0] as Array<(x: unknown) => unknown>
+    : input as Array<(x: unknown) => unknown>
+  const opcodes: number[] = []
+  let fuseable = true
+  let reason = 'fuseable'
+
+  if (fns.length === 0) {
+    fuseable = false
+    reason = 'empty pipeline'
+  }
+
+  for (let i = 0; i < fns.length; i++) {
+    const op = (fns[i] as any)._op
+    if (typeof op !== 'number' || op <= 0) {
+      fuseable = false
+      reason = `function at index ${i} is not tagged`
+      break
+    }
+    if (!isFuseableOrTerminal(op)) {
+      fuseable = false
+      reason = `operation at index ${i} is a materialization boundary`
+      break
+    }
+    opcodes.push(op)
+  }
+
+  return Object.freeze({
+    mode: fusionMode,
+    jitAvailable: canJIT,
+    willUseJit: fuseable && shouldAttemptJIT(),
+    fuseable,
+    operations: Object.freeze(opcodes.map(op => OP_NAMES.get(op) ?? `op:${op}`)),
+    opcodes: Object.freeze(opcodes.slice()),
+    reason,
+  })
+}
+
 // Callback opcode for introspection. 0 means "no opcode, call the function"
 function callbackOp(fn: any): number {
   return (fn && typeof fn._op === 'number' && fn._op > 0) ? fn._op : 0
@@ -72,7 +204,7 @@ const ALLOWED_IDENTS = new Set([
 
 const DANGEROUS_RE = /\b(new|delete|throw|await|yield|import|eval)\b/
 
-function tryInlineSource(fn: any): string | null {
+export function tryInlineSource(fn: any): string | null {
   if (typeof fn !== 'function') return null
   const cached = INLINE_CACHE.get(fn)
   if (cached !== undefined) return cached
@@ -201,11 +333,17 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
   const hasAccessor = isAccessorOp(lastOp)
   const streamLen = (hasTerminal || hasAccessor) ? len - 1 : len
 
+  if (!shouldAttemptJIT()) {
+    fusionStats.interpretedCompiles++
+    return interpretedFallback(ops, len)
+  }
+
   // Detect all-maps → function composition
   let allMaps = !hasTerminal && !hasAccessor
   if (allMaps) { for (let i = 0; i < len; i++) { if (ops[i] !== OP_MAP) { allMaps = false; break } } }
   if (allMaps && len > 1) {
     const n = len
+    fusionStats.specializedCompiles++
     return (src, fns) => {
       let composed = fns[0]
       for (let k = 1; k < n; k++) {
@@ -217,8 +355,6 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
       return r
     }
   }
-
-  if (!canJIT) return interpretedFallback(ops, len)
 
   const hasReduce = hasTerminal && lastOp === OP_REDUCE
   const params: string[] = hasReduce ? ['src', 'fns', 'init'] : ['src', 'fns']
@@ -253,7 +389,7 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
     if (ops[i] === OP_TAKE) cond += '&&c' + i + '<f' + i
   }
 
-  lines.push('for(var i=0;' + cond + ';i++){')
+  lines.push('outer:for(var i=0;' + cond + ';i++){')
   lines.push('var v=src[i]')
 
   // Track flatMap nesting depth
@@ -271,17 +407,34 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
       case OP_REJECT:
         lines.push(emitRejectInline(cbOps ? cbOps[i] : 0, 'f' + i, inlineSrcs?.[i]))
         break
-      case OP_TAKE:
-        lines.push('c' + i + '++')
+      case OP_FILTER_MAP: {
+        const s = inlineSrcs?.[i]
+        lines.push(s ? 'v=' + s : 'v=f' + i + '(v)')
+        lines.push('if(v==null)continue')
         break
+      }
+    case OP_MAP_WHILE: {
+      const s = inlineSrcs?.[i]
+      lines.push(s ? 'v=' + s : 'v=f' + i + '(v)')
+      lines.push('if(v==null)break outer')
+      break
+    }
+    case OP_TAKE_UNTIL: {
+      const s = inlineSrcs?.[i]
+      lines.push(s ? 'if(' + s + ')break outer' : 'if(f' + i + '(v))break outer')
+      break
+    }
+    case OP_TAKE:
+      lines.push('if(c' + i + '>=f' + i + ')break outer;c' + i + '++')
+      break
       case OP_DROP:
         lines.push('if(d' + i + '<f' + i + '){d' + i + '++;continue}')
         break
-      case OP_TAKE_WHILE: {
-        const s = inlineSrcs?.[i]
-        lines.push(s ? 'if(!(' + s + '))break' : 'if(!f' + i + '(v))break')
-        break
-      }
+    case OP_TAKE_WHILE: {
+      const s = inlineSrcs?.[i]
+      lines.push(s ? 'if(!(' + s + '))break outer' : 'if(!f' + i + '(v))break outer')
+      break
+    }
       case OP_DROP_WHILE: {
         const s = inlineSrcs?.[i]
         lines.push(s
@@ -339,6 +492,12 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
       case OP_FIND: {
         const s = inlineSrcs?.[ti]
         lines.push(s ? 'if(' + s + ')return v' : 'if(f' + ti + '(v))return v')
+        break
+      }
+      case OP_FIND_MAP: {
+        const s = inlineSrcs?.[ti]
+        lines.push(s ? 'var fm=' + s : 'var fm=f' + ti + '(v)')
+        lines.push('if(fm!=null)return fm')
         break
       }
       case OP_FIND_INDEX: {
@@ -409,6 +568,7 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
       case OP_EVERY:      lines.push('return ev'); break
       case OP_SOME:       lines.push('return sm'); break
       case OP_FIND:       lines.push('return undefined'); break
+      case OP_FIND_MAP:   lines.push('return undefined'); break
       case OP_FIND_INDEX: lines.push('return undefined'); break
       case OP_NONE:       lines.push('return !nn'); break
       case OP_COUNT:      lines.push('return cnt'); break
@@ -416,7 +576,16 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
   }
 
   const code = lines.join(';')
-  const jitFn = new Function(...params, code)
+  let jitFn: Function
+  try {
+    jitFn = new Function(...params, code)
+    fusionStats.jitCompiles++
+  } catch {
+    canJIT = false
+    fusionStats.jitFallbacks++
+    fusionStats.interpretedCompiles++
+    return interpretedFallback(ops, len)
+  }
 
   return hasReduce
     ? (source: any[], fns: any[], a1s: any[]) => jitFn(source, fns, a1s[len - 1])
@@ -454,6 +623,17 @@ function interpretedFallback(ops: number[], len: number): CompiledRunner {
           case OP_MAP: val = fns[s](val); break
           case OP_FILTER: if (!fns[s](val)) continue outer; break
           case OP_REJECT: if (fns[s](val)) continue outer; break
+          case OP_FILTER_MAP:
+            val = fns[s](val)
+            if (val == null) continue outer
+            break
+          case OP_MAP_WHILE:
+            val = fns[s](val)
+            if (val == null) break outer
+            break
+          case OP_TAKE_UNTIL:
+            if (fns[s](val)) break outer
+            break
           case OP_MATH_ADD: val = val + fns[s]; break
           case OP_MATH_SUBTRACT: val = val - fns[s]; break
           case OP_MATH_MULTIPLY: val = val * fns[s]; break
@@ -470,11 +650,22 @@ function interpretedFallback(ops: number[], len: number): CompiledRunner {
             for (let j = 0; j < items.length; j++) {
               let v = items[j]
               for (let s2 = s + 1; s2 < streamLen; s2++) {
-                switch (ops[s2]) {
-                  case OP_MAP: v = fns[s2](v); break
-                  case OP_FILTER: if (!fns[s2](v)) { v = HALT; break } break
-                  case OP_TAKE: if (state[s2] >= fns[s2]) break outer; state[s2]++; break
-                }
+              switch (ops[s2]) {
+                case OP_MAP: v = fns[s2](v); break
+                case OP_FILTER: if (!fns[s2](v)) { v = HALT; break } break
+                case OP_REJECT: if (fns[s2](v)) { v = HALT; break } break
+                case OP_FILTER_MAP:
+                  v = fns[s2](v)
+                  if (v == null) { v = HALT; break }
+                  break
+                case OP_MAP_WHILE:
+                  v = fns[s2](v)
+                  if (v == null) break outer
+                  break
+              case OP_TAKE: if (state[s2] >= fns[s2]) break outer; state[s2]++; break
+              case OP_TAKE_WHILE: if (!fns[s2](v)) break outer; break
+              case OP_TAKE_UNTIL: if (fns[s2](v)) break outer; break
+            }
                 if (v === HALT) break
               }
               if (v !== HALT) {
@@ -484,10 +675,15 @@ function interpretedFallback(ops: number[], len: number): CompiledRunner {
                     case OP_REDUCE: acc = fns[len - 1](acc, v); break
                     case OP_FOR_EACH: fns[len - 1](v); break
                     case OP_EVERY: if (!fns[len - 1](v)) { everyResult = false; break outer } break
-                    case OP_SOME: if (fns[len - 1](v)) { someResult = true; break outer } break
-                    case OP_FIND: if (fns[len - 1](v)) { result = v; break outer } break
-                    case OP_FIND_INDEX: if (fns[len - 1](v)) { result = idx; break outer } idx++; break
-                    case OP_NONE: if (fns[len - 1](v)) { someResult = true; break outer } break
+                case OP_SOME: if (fns[len - 1](v)) { someResult = true; break outer } break
+                case OP_FIND: if (fns[len - 1](v)) { result = v; break outer } break
+                case OP_FIND_MAP: {
+                  const mapped = fns[len - 1](v)
+                  if (mapped != null) { result = mapped; break outer }
+                  break
+                }
+                case OP_FIND_INDEX: if (fns[len - 1](v)) { result = idx; break outer } idx++; break
+                case OP_NONE: if (fns[len - 1](v)) { someResult = true; break outer } break
                     case OP_COUNT: if (fns[len - 1](v)) idx++; break
                   }
                 }
@@ -507,6 +703,11 @@ function interpretedFallback(ops: number[], len: number): CompiledRunner {
           case OP_EVERY: if (!fns[len - 1](val)) { everyResult = false; break outer } break
           case OP_SOME: if (fns[len - 1](val)) { someResult = true; break outer } break
           case OP_FIND: if (fns[len - 1](val)) { result = val; break outer } break
+          case OP_FIND_MAP: {
+            const mapped = fns[len - 1](val)
+            if (mapped != null) { result = mapped; break outer }
+            break
+          }
           case OP_FIND_INDEX: if (fns[len - 1](val)) { result = idx; break outer } idx++; break
           case OP_NONE: if (fns[len - 1](val)) { someResult = true; break outer } break
           case OP_COUNT: if (fns[len - 1](val)) idx++; break
@@ -521,6 +722,7 @@ function interpretedFallback(ops: number[], len: number): CompiledRunner {
       case OP_EVERY: return everyResult
       case OP_SOME: return someResult
       case OP_FIND: return result
+      case OP_FIND_MAP: return result
       case OP_FIND_INDEX: return result
       case OP_NONE: return !someResult
       case OP_COUNT: return idx
@@ -591,6 +793,8 @@ function getOrCompile(tagged: any[], start: number, end: number): { runner: Comp
         const ops: number[] = new Array(len)
         for (let i = 0; i < len; i++) ops[i] = opBuf[i]
         runner = jitCompile(ops, len)
+      } else {
+        fusionStats.aotCacheHits++
       }
       compiledCache.set(key, runner)
     }
@@ -613,6 +817,7 @@ let _mruRunner: CompiledRunner | null = null
 
 function runSegment(data: any[], tagged: any[], start: number, end: number): any {
   const len = end - start
+  fusionStats.segmentsRun++
 
   // MRU hit: same callback references + opcodes as last call → skip all scanning/extraction
   // Compare both _fn and _op to avoid collisions between accessor ops (head/last/etc share _fn === undefined)
@@ -675,7 +880,10 @@ type ScalarRunner = (val: any, fns: any[]) => any
 const scalarCache = new Map<number, ScalarRunner>()
 
 function scalarJitCompile(ops: number[], len: number): ScalarRunner {
-  if (!canJIT) return scalarFallback(ops, len)
+  if (!shouldAttemptJIT()) {
+    fusionStats.scalarFallbackCompiles++
+    return scalarFallback(ops, len)
+  }
 
   const params: string[] = ['v']
   for (let i = 0; i < len; i++) params.push('f' + i)
@@ -720,7 +928,16 @@ function scalarJitCompile(ops: number[], len: number): ScalarRunner {
   lines.push('return v')
 
   const code = lines.join(';')
-  const jitFn = new Function(...params, code)
+  let jitFn: Function
+  try {
+    jitFn = new Function(...params, code)
+    fusionStats.scalarJitCompiles++
+  } catch {
+    canJIT = false
+    fusionStats.jitFallbacks++
+    fusionStats.scalarFallbackCompiles++
+    return scalarFallback(ops, len)
+  }
 
   return (val, fns) => {
     switch (len) {
@@ -770,6 +987,7 @@ function scalarFallback(ops: number[], len: number): ScalarRunner {
 
 function runScalar(data: any, tagged: any[], start: number, end: number): any {
   const len = end - start
+  fusionStats.scalarRuns++
   let key = 0
   for (let i = 0; i < len; i++) key = key * 256 + tagged[start + i]._op
 
@@ -855,4 +1073,3 @@ export function fuse(a: unknown, fns: Array<(x: unknown) => unknown>): unknown {
 export function fuseArray(a: any[], fns: any[], len?: number): any {
   return runSegment(a, fns, 0, len ?? fns.length)
 }
-

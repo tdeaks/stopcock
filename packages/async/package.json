@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/async",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,10 +10,17 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "files": ["dist"],
-  "dependencies": { "@stopcock/fp": "0.0.2" },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@stopcock/fp": "0.0.3"
+  },
   "scripts": {
     "build": "tsup"
   }

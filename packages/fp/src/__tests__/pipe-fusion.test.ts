@@ -3,8 +3,171 @@ import { pipe } from '../pipe'
 import * as A from '../array'
 import * as S from '../string'
 import * as M from '../math'
+import { type FusionMode, explainFusion, getFusionMode, getFusionStats, resetFusionStats, setFusionMode } from '../fuse'
+
+function withFusionMode<T>(mode: FusionMode, run: () => T): T {
+  const previous = getFusionMode()
+  setFusionMode(mode)
+  resetFusionStats()
+  try {
+    return run()
+  } finally {
+    setFusionMode(previous)
+    resetFusionStats()
+  }
+}
 
 describe('pipe fusion', () => {
+  describe('fusion mode controls', () => {
+    it('forces interpreted array fallback in no-jit mode', () => withFusionMode('no-jit', () => {
+      const result = pipe(
+        [1, 2, 3, 4, 5, 6],
+        A.filterMap((x: number) => x % 2 === 0 ? x * 10 : undefined),
+        A.takeUntil((x: number) => x > 40),
+      )
+
+      expect(result).toEqual([20, 40])
+      expect(getFusionStats()).toMatchObject({
+        mode: 'no-jit',
+        jitCompiles: 0,
+      })
+      expect(getFusionStats().interpretedCompiles).toBeGreaterThan(0)
+    }))
+
+    it('keeps representative pipelines working in auto mode', () => withFusionMode('auto', () => {
+      const result = pipe(
+        [1, 2, 3, 4, 5],
+        A.map((x: number) => x + 1),
+        A.mapWhile((x: number) => x < 5 ? x * 2 : undefined),
+      )
+
+      expect(result).toEqual([4, 6, 8])
+      expect(getFusionStats().mode).toBe('auto')
+      expect(getFusionStats().segmentsRun).toBeGreaterThan(0)
+    }))
+
+    it('explains tagged fusion inputs without executing them', () => withFusionMode('no-jit', () => {
+      const explanation = explainFusion(
+        A.filterMap((x: number) => x > 1 ? String(x) : undefined),
+        A.takeUntil((x: string) => x === '4'),
+      )
+
+      expect(explanation).toMatchObject({
+        mode: 'no-jit',
+        fuseable: true,
+        willUseJit: false,
+        operations: ['filterMap', 'takeUntil'],
+      })
+    }))
+  })
+
+  describe('new fused array operators', () => {
+    it('filterMap maps and drops nullish results inside a fused pipeline', () => {
+      expect(pipe(
+        [1, 2, 3, 4],
+        A.filterMap((x: number) => x % 2 === 0 ? String(x) : undefined),
+        A.map((x: string) => `#${x}`),
+      )).toEqual(['#2', '#4'])
+    })
+
+    it('findMap stops at the first mapped value', () => {
+      let visited = 0
+      const result = pipe(
+        [1, 2, 3, 4, 5],
+        A.map((x: number) => x + 1),
+        A.findMap((x: number) => {
+          visited++
+          return x > 3 ? `hit:${x}` : undefined
+        }),
+      )
+
+      expect(result).toBe('hit:4')
+      expect(visited).toBe(3)
+    })
+
+    it('mapWhile stops when the mapper returns undefined', () => {
+      let visited = 0
+      const result = pipe(
+        [1, 2, 3, 4, 5],
+        A.mapWhile((x: number) => {
+          visited++
+          return x < 4 ? x * 2 : undefined
+        }),
+        A.map((x: number) => x + 1),
+      )
+
+      expect(result).toEqual([3, 5, 7])
+      expect(visited).toBe(4)
+    })
+
+    it('takeUntil stops before the first matching item', () => {
+      let visited = 0
+      const result = pipe(
+        [1, 2, 3, 4, 5],
+        A.takeUntil((x: number) => {
+          visited++
+          return x >= 4
+        }),
+        A.map((x: number) => x * 10),
+      )
+
+      expect(result).toEqual([10, 20, 30])
+    expect(visited).toBe(4)
+  })
+
+  it('auto mode mapWhile after flatMap matches interpreted fallback', () => {
+    const run = () => pipe(
+      [1, 2, 3],
+      A.flatMap((x: number) => [x, x + 10]),
+      A.mapWhile((x: number) => x < 12 ? x : undefined),
+    )
+
+    const interpreted = withFusionMode('no-jit', run)
+    const auto = withFusionMode('auto', run)
+    expect(interpreted).toEqual([1, 11, 2])
+    expect(auto).toEqual(interpreted)
+  })
+
+  it('auto mode takeUntil after flatMap matches interpreted fallback', () => {
+    const run = () => pipe(
+      [1, 2, 3],
+      A.flatMap((x: number) => [x, x + 10]),
+      A.takeUntil((x: number) => x >= 12),
+    )
+
+    const interpreted = withFusionMode('no-jit', run)
+    const auto = withFusionMode('auto', run)
+    expect(interpreted).toEqual([1, 11, 2])
+    expect(auto).toEqual(interpreted)
+  })
+
+  it('auto mode take after flatMap matches interpreted fallback', () => {
+    const run = () => pipe(
+      [1, 2, 3],
+      A.flatMap((x: number) => [x, x + 10]),
+      A.take(3),
+    )
+
+    const interpreted = withFusionMode('no-jit', run)
+    const auto = withFusionMode('auto', run)
+    expect(interpreted).toEqual([1, 11, 2])
+    expect(auto).toEqual(interpreted)
+  })
+
+  it('auto mode takeWhile after flatMap matches interpreted fallback', () => {
+    const run = () => pipe(
+      [1, 2, 3],
+      A.flatMap((x: number) => [x, x + 10]),
+      A.takeWhile((x: number) => x < 12),
+    )
+
+    const interpreted = withFusionMode('no-jit', run)
+    const auto = withFusionMode('auto', run)
+    expect(interpreted).toEqual([1, 11, 2])
+    expect(auto).toEqual(interpreted)
+  })
+  })
+
   describe('correctness (known expected values)', () => {
     const data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
@@ -20,11 +183,24 @@ describe('pipe fusion', () => {
       expect(pipe(data, A.filter((x: number) => x % 2 === 0), A.map((x: number) => x * 10), A.take(3))).toEqual([20, 40, 60])
     })
 
-    it('map, sort (non-fuseable), take', () => {
-      expect(pipe(data, A.map((x: number) => -x), A.sort, A.take(5))).toEqual([-10, -9, -8, -7, -6])
-    })
+  it('map, sort (non-fuseable), take', () => {
+    expect(pipe(data, A.map((x: number) => -x), A.sort, A.take(5))).toEqual([-10, -9, -8, -7, -6])
+  })
 
-    it('flatMap then filter', () => {
+  it('long pipeline respects sort materialization boundary', () => {
+    expect(pipe(
+      [3, 1, 2, 4],
+      A.map((x: number) => x),
+      A.filter((x: number) => x > 0),
+      A.take(4),
+      A.drop(0),
+      A.map((x: number) => x),
+      A.sort,
+      A.take(2),
+    )).toEqual([1, 2])
+  })
+
+  it('flatMap then filter', () => {
       expect(pipe([1, 2, 3], A.flatMap((x: number) => [x, x * 10]), A.filter((x: number) => x > 5))).toEqual([10, 20, 30])
     })
 

@@ -35,7 +35,7 @@ describe('assoc', () => {
   bench('stopcock', () => Obj.assoc(obj, 'a', 99))
   bench('rambda', () => Rb.assoc('a', 99)(obj))
   bench('ramda', () => Ra.assoc('a', 99, obj))
-  bench('lodash', () => ({ ...obj, a: 99 }))
+  bench('native immutable spread baseline', () => ({ ...obj, a: 99 }))
 })
 
 describe('dissoc', () => {

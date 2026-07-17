@@ -2,7 +2,7 @@
 const id = 'color-showcase'
 ---
 
-<div class="color-showcase" id={id} data-id={id}>
+<div class="color-showcase not-content" id={id} data-id={id}>
   <!-- Live region toast for "Copied #xxxxxx" announcements -->
   <div class={`${id}-toast toast`} role="status" aria-live="polite"></div>
 
@@ -432,18 +432,6 @@ const id = 'color-showcase'
     font-size: 0.9375rem;
   }
   .color-showcase * { box-sizing: border-box; }
-  /* Starlight applies a vertical-rhythm margin-top to consecutive siblings inside .sl-markdown-content.
-     That rule cascades into our interactive widgets and breaks flex alignment. We compose our own
-     spacing via gap/margin on the surrounding containers, so opt out here. */
-  .color-showcase .cs-card *,
-  .color-showcase .cs-swatches > *,
-  .color-showcase .cs-spaces > *,
-  .color-showcase .cs-gradient > *,
-  .color-showcase .cs-matrix > *,
-  .color-showcase .cs-row > *,
-  .color-showcase .cs-col > *,
-  .color-showcase .cs-radio-group > * { margin-top: 0; }
-
   .color-showcase .cs-card {
     background: var(--cs-bg-elev);
     border: 1px solid var(--cs-border);

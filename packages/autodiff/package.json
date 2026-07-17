@@ -1,0 +1,50 @@
+{
+  "name": "@stopcock/autodiff",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tdeaks/stopcock",
+    "directory": "packages/autodiff"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./scalar": {
+      "types": "./dist/scalar.d.ts",
+      "import": "./dist/scalar.js"
+    },
+    "./math": {
+      "types": "./dist/math.d.ts",
+      "import": "./dist/math.js"
+    },
+    "./vec": {
+      "types": "./dist/vec.d.ts",
+      "import": "./dist/vec.js"
+    },
+    "./mat": {
+      "types": "./dist/mat.d.ts",
+      "import": "./dist/mat.js"
+    },
+    "./tape": {
+      "types": "./dist/tape.d.ts",
+      "import": "./dist/tape.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@stopcock/fp": "0.0.3",
+    "@stopcock/la": "0.0.3"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  }
+}

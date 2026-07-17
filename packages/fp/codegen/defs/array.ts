@@ -1,5 +1,6 @@
 import { dual } from './dual'
 import * as RS from './Array.gen'
+import { tryInlineSource } from './fuse'
 type Dict<A> = Record<string, A>
 import { sum as nSum, min as nMin, max as nMax } from './number'
 
@@ -40,14 +41,63 @@ export const xprod: {
 } = dual(2, RS.xprod, { op: 'xprod' })
 
 // Arity 2
-export const map: {
-  <A, B>(arr: readonly A[], f: (a: A) => B): B[]
-  <A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
-} = dual(2, (arr: any[], f: any) => {
+type MapRunner = (arr: readonly any[], f: (value: any) => any) => any[]
+
+let mapRunnerFn: Function | null = null
+let mapRunner: MapRunner | null = null
+let mapOperatorFn: Function | null = null
+let mapOperator: any = null
+
+const runMapFallback: MapRunner = (arr, f) => {
   const len = arr.length, out = new Array(len)
   for (let i = 0; i < len; i++) out[i] = f(arr[i])
   return out
-}, { op: 'map' })
+}
+
+const getMapRunner = (f: (value: any) => any): MapRunner => {
+  if (f === mapRunnerFn && mapRunner) return mapRunner
+
+  const src = tryInlineSource(f)
+  let runner = runMapFallback
+
+  if (src) {
+    try {
+      runner = new Function(
+        'arr',
+        'f',
+        `var len=arr.length,out=new Array(len);for(var i=0;i<len;i++){var v=arr[i];out[i]=${src}}return out`,
+      ) as MapRunner
+    } catch {
+      runner = runMapFallback
+    }
+  }
+
+  mapRunnerFn = f
+  mapRunner = runner
+  return runner
+}
+
+export function map<A, B>(arr: readonly A[], f: (a: A) => B): B[]
+export function map<A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
+export function map(): any {
+  if (arguments.length >= 2) {
+    const _a0 = arguments[0]
+    const _a1 = arguments[1]
+    return getMapRunner(_a1)(_a0, _a1)
+  }
+  const _a0 = arguments[0]
+  if (_a0 === mapOperatorFn && mapOperator) return mapOperator
+  const runner = getMapRunner(_a0)
+  const _dl: any = function(data: any) {
+    const arr = data, f = _a0
+    return runner(arr, f)
+  }
+  _dl._op = 1
+  _dl._fn = _a0
+  mapOperatorFn = _a0
+  mapOperator = _dl
+  return _dl
+}
 
 export const mapWithIndex: {
   <A, B>(arr: readonly A[], f: (a: A, i: number) => B): B[]
@@ -328,6 +378,55 @@ export const count: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): number
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number
 } = dual(2, RS.count, { op: 'count' })
+
+export const filterMap: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
+} = dual(2, (arr: any[], f: any) => {
+  const out: any[] = []
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const mapped = f(arr[i])
+    if (mapped != null) out.push(mapped)
+  }
+  return out
+}, { op: 'filterMap' })
+
+export const findMap: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B | undefined
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B | undefined
+} = dual(2, (arr: any[], f: any) => {
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const mapped = f(arr[i])
+    if (mapped != null) return mapped
+  }
+  return undefined
+}, { op: 'findMap' })
+
+export const mapWhile: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
+} = dual(2, (arr: any[], f: any) => {
+  const out: any[] = []
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const mapped = f(arr[i])
+    if (mapped == null) break
+    out.push(mapped)
+  }
+  return out
+}, { op: 'mapWhile' })
+
+export const takeUntil: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+} = dual(2, (arr: any[], pred: any) => {
+  const out: any[] = []
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const value = arr[i]
+    if (pred(value)) break
+    out.push(value)
+  }
+  return out
+}, { op: 'takeUntil' })
 
 // Arity 2. Non-fuseable
 export const append: {

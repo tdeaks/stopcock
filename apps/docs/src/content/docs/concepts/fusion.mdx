@@ -3,49 +3,52 @@ title: Fusion
 description: How pipe fuses array operations
 ---
 
-When you chain [array operations](/api/array) in `pipe`, it fuses them into a single loop.
+When you chain streaming [array operations](/api/array) in `pipe`, they fuse into a single loop.
 
 Without fusion:
 
-```
-data [100K] → filter → [50K] → map → [50K] → take(10) → [10]
+```text
+data [100K] -> filter -> [50K] -> map -> [50K] -> take(10) -> [10]
 ```
 
 Three passes. Two throwaway arrays.
 
 With fusion:
 
-```
-data [100K] → fused(filter + map + take) → [10]
+```text
+data [100K] -> fused(filter + map + take) -> [10]
 ```
 
 One pass. `take(10)` breaks the loop after 10 results.
 
 ## What fuses
 
-| Operation | Fuseable | |
-|-----------|----------|-|
-| `filter`, `map`, `flatMap` | yes | inlined into the loop |
-| `take`, `drop` | yes | `take` triggers early exit |
-| `reduce`, `find`, `every`, `some` | yes | terminals |
-| `sort`, `reverse`, `groupBy`, `uniq` | no | need the full array |
+| Operation | Position | Notes |
+|-----------|----------|-------|
+| `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, `dropWhile` | streaming-fused | inlined into the loop; `take` and `takeWhile` can stop early |
+| `reduce`, `find`, `every`, `some`, `count` | terminal folds/predicates | finish the fused pass and return a scalar or found value |
+| `head`, `last`, `length`, `join`, `sum`, `min`, `max` | accessor terminals | end the chain with a scalar or aggregate result |
+| `sort`, `sortBy`, `reverse`, `groupBy`, `uniq` | materialization boundary | need a completed array before the next step |
+| `sortBy -> take(k)`, `sort -> take(k)` | top-k optimization | uses a bounded top-k path instead of fully sorting when the take immediately follows the sort |
 
-Operations that need the whole array break the chain. Everything before them gets fused and runs first, then the non-fuseable op runs on that result:
+Operations that need the whole array break the streaming chain. Everything before them gets fused and runs first, then the materializing op runs on that result:
 
 ```ts
 pipe(
   data,
-  A.filter(x => x > 3),  // ─┐ segment 1
-  A.map(x => x * 2),     // ─┘ materializes here
-  A.sortBy((a, b) => a - b), // runs on the materialized array
-  A.take(3),              // ── segment 2
+  A.filter(x => x > 3),        // segment 1
+  A.map(x => x * 2),           // materializes here
+  A.sortBy((a, b) => a - b),   // runs on the materialized array
+  A.take(3),                   // uses top-k because it immediately follows sortBy
 )
 ```
 
+When `take(k)` immediately follows `sortBy` or `sort`, pipe uses the top-k optimization for that pair. If you insert another operation between them, the sort boundary behaves like a normal materialization point.
+
 ## Mechanics
 
-Every function created by `dual()` carries metadata: `_op`, `_fn`, `_args`. `pipe` reads these tags and compiles consecutive fuseable ops into a single `for` loop with inlined predicates. `take(n)` emits a `HALT` to break out early.
+Every function created by `dual()` carries metadata: `_op`, `_fn`, `_args`. `pipe` reads the tags and compiles consecutive fuseable ops into a single `for` loop with inlined predicates. `take(n)` emits `HALT` to break out early. Your own lambdas pass through unchanged.
 
-Your own lambdas pass through unchanged. If nothing is fuseable, `pipe` just applies functions one after another like you'd expect.
+If nothing is fuseable, `pipe` just applies functions one after another like you would expect.
 
 See [Benchmarks](/performance/benchmarks) for how fusion compares to lodash, ramda, and native JS.

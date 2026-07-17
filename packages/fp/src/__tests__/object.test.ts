@@ -76,12 +76,24 @@ describe('object', () => {
     it('deep access', () => expect(Obj.path(user, 'address.city')).toBe('London'))
     it('missing intermediate → undefined', () => expect(Obj.path({} as typeof user, 'address.city')).toBeUndefined())
     it('data-last', () => expect(pipe(user, Obj.path('address.zip'))).toBe('SW1'))
+    it('tuple path data-first', () => expect(Obj.path(user, ['address', 'city'] as const)).toBe('London'))
+    it('tuple path data-last', () => expect(pipe(user, Obj.path(['address', 'zip'] as const))).toBe('SW1'))
+    it('tuple path missing intermediate → undefined', () => {
+      expect(Obj.path({} as typeof user, ['address', 'city'] as const)).toBeUndefined()
+    })
   })
 
   describe('pathOr', () => {
     it('existing path returns value', () => expect(Obj.pathOr(user, 'name', 'default')).toBe('Alice'))
     it('missing path returns default', () => expect(Obj.pathOr({} as typeof user, 'address.city', 'unknown')).toBe('unknown'))
     it('data-last', () => expect(pipe(user, Obj.pathOr('address.city', 'unknown'))).toBe('London'))
+    it('tuple path data-first', () => expect(Obj.pathOr(user, ['address', 'city'] as const, 'unknown')).toBe('London'))
+    it('tuple path missing intermediate returns default', () => {
+      expect(Obj.pathOr({} as typeof user, ['address', 'city'] as const, 'unknown')).toBe('unknown')
+    })
+    it('tuple path data-last', () => {
+      expect(pipe(user, Obj.pathOr(['address', 'city'] as const, 'unknown'))).toBe('London')
+    })
   })
 
   describe('evolve', () => {
