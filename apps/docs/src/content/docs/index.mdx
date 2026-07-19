@@ -19,7 +19,7 @@ hero:
 import FusionSpotlight from '../../components/charts/FusionSpotlight.astro'
 import LibraryGrid from '../../components/LibraryGrid.astro'
 
-A handful of functional TypeScript packages that play nicely together. Pipeable utilities covering arrays, dates, async tasks, state management, diffing, and image processing, with more to come.
+A focused set of TypeScript packages that play nicely together. Pipeable utilities cover functional programming, dates, async tasks, HTTP, state, diffing, linear algebra, automatic differentiation, signal processing, color, SVG, and image processing.
 
 ```ts
 import { pipe, A } from '@stopcock/fp'
@@ -34,12 +34,12 @@ const top10 = pipe(
 
 ```ts
 import { pipe } from '@stopcock/fp'
-import { create, add, format } from '@stopcock/date'
+import { now, add, format } from '@stopcock/date'
 
 const nextWeek = pipe(
-  create.now(),
-  add('days', 7),
-  format('yyyy-MM-dd'),
+  now(),
+  add(7, 'day'),
+  format('YYYY-MM-DD'),
 )
 ```
 
@@ -61,11 +61,10 @@ const name = await run(fetchUser)
 ```ts
 import { diff, apply, invert } from '@stopcock/diff'
 
-const patch = diff(
-  { user: 'Tom', scores: [10, 20] },
-  { user: 'Tom', scores: [10, 20, 30] },
-)
-const restored = apply(patch.target, invert(patch))
+const before = { user: 'Tom', scores: [10, 20] }
+const after = { user: 'Tom', scores: [10, 20, 30] }
+const patch = diff(before, after)
+const restored = apply(after, invert(patch))
 ```
 
 ```ts

@@ -1,70 +1,68 @@
 # stopcock
 
-> Type-safe functional utilities for TypeScript with pipeline fusion. `pipe` fuses consecutive array operations into single loops at runtime. Dual-form functions work both data-first and data-last. Subpath exports: `stopcock/fp`, `stopcock/img`, `stopcock/date`, etc.
+> Fast, composable TypeScript packages for functional programming, dates, async work, HTTP, state, diffing, linear algebra, automatic differentiation, signal processing, color, SVG, and image processing.
+
+Packages are independently installable under the `@stopcock` scope.
 
 ## Install
 
-```
-bun add stopcock
-```
-
-```typescript
-import { pipe, A, O, R } from 'stopcock/fp'
+```bash
+bun add @stopcock/fp
 ```
 
-## Getting Started
+## Guides
 
-- [Getting Started](/getting-started): Install, pipe, flow, fusion, dual signatures, Option and Result
-- [Cookbook](/cookbook): 30+ copy-paste examples covering pipes, data transformation, error handling, lenses, and more
+- [Cookbook](https://stopcock.dev/cookbook/): Real-world patterns with stopcock
+- [Getting Started](https://stopcock.dev/getting-started/): Install stopcock and build your first pipe with fusion, Option, and Result
+- [Playground](https://stopcock.dev/playground/): Interactive REPL to try stopcock pipes, fusion, and modules in the browser
 
 ## Concepts
 
-- [Fusion](/concepts/fusion): How pipe detects and fuses consecutive array operations into single loops
-- [Option & Result](/concepts/option-result): Types for missing values and errors, with constructors, transforms, extraction, and conversion
-
-## Core (stopcock/fp)
-
-- [fp](/libraries/fp): Overview of all fp modules, fusion mechanics, Option & Result
-
-### fp Modules
-
-- [A (Array)](/api/array): map, filter, reduce, sort, groupBy, zip, take, flatMap, uniq, set operations, and 30+ more. Fuseable in pipe.
-- [S (String)](/api/string): trim, split, replace, startsWith, endsWith, slice, repeat
-- [D (Dict)](/api/dict): map, filter, get, merge, keys, values, toEntries for Record<string, T>
-- [N (Number)](/api/number): sum, mean, median, variance, standardDeviation, min, max, percentile, clamp
-- [G (Guards)](/api/guards): Runtime type guards with TypeScript type predicates. isString, isNumber, isNil, isDeepEqual, etc.
-- [Obj (Object)](/api/object): pick, omit, path, assoc, dissoc, evolve, mergeDeepLeft, mergeDeepRight
-- [M (Math)](/api/math): add, subtract, multiply, divide, modulo, inc, dec, negate, product
-- [B (Boolean)](/api/boolean): not_, and_, or_, ifElse
-- [Logic](/api/logic): both, either, allPass, anyPass, equals, defaultTo, when_, unless, cond
-- [Lenses](/api/lenses): lens, lensProp, lensIndex, lensPath, view, set, over for immutable nested updates
-- [O (Option)](/api/option): Some/None type for nullable values. map, flatMap, filter, getOrElse, match, toResult.
-- [R (Result)](/api/result): Ok/Err type for error handling. map, mapErr, flatMap, tryCatch, getOrElse, match, toOption.
+- [Fusion](https://stopcock.dev/concepts/fusion/): How pipe fuses array operations
+- [Option & Result](https://stopcock.dev/concepts/option-result/): Types for missing values and errors
 
 ## Libraries
 
-- [async](/libraries/async): Lazy Task type with concurrency, retry, timeout, cancellation, rate limiting
-- [stream](/libraries/stream): Lazy pull-based streams with dual-form operators. Infinite sequences with take.
-- [optics](/libraries/optics): Lens, Prism, Traversal, Iso for immutable data access and updates
-- [validate](/libraries/validate): Schema validation with type inference and JIT compilation. Similar API to zod.
-- [parse](/libraries/parse): Parser combinator library with typed composition and error reporting
-- [date](/libraries/date): Zero-allocation date utilities using branded number timestamps. Business days, timezones, intervals.
-- [struct](/libraries/struct): Persistent data structures: HashMap, SortedSet, Deque
-- [search](/libraries/search): Fuzzy search, Trie, Bloom filter, inverted index with BM25
-- [encoding](/libraries/encoding): Base64, Hex, MessagePack encoding
-- [zip](/libraries/zip): ZIP archives with builder and streaming APIs. Deflate or store compression.
-- [geo](/libraries/geo): 2D geometry, geodesic distance, point-in-polygon, spatial indexing
-- [img](/libraries/img): Image processing with dual-form filters, convolution, Hough lines, connected components
-- [rand](/libraries/rand): Seedable PRNGs (PCG, Xoshiro) and statistical distributions
+- [async](https://stopcock.dev/libraries/async/): Lazy Task type with concurrency, retry, and cancellation
+- [autodiff](https://stopcock.dev/libraries/autodiff/): Reverse-mode automatic differentiation for scalar, vector, and matrix values
+- [color](https://stopcock.dev/libraries/color/): Color as a first-class value — 11 spaces, perceptual ops, WCAG contrast, CVD simulation
+- [date](https://stopcock.dev/libraries/date/): Zero-allocation functional date utilities with branded types
+- [diff](https://stopcock.dev/libraries/diff/): Structural diffing, patching, composition, and rebasing for objects and arrays
+- [fp](https://stopcock.dev/libraries/fp/): Pipe-based functional programming with pipeline fusion
+- [http](https://stopcock.dev/libraries/http/): Typed HTTP client with retry, timeout, dedup, and Task integration
+- [img](https://stopcock.dev/libraries/img/): Image processing, filters, convolution, transforms
+- [la](https://stopcock.dev/libraries/la/): Typed-array vectors, matrices, decompositions, and optional acceleration hooks
+- [signal](https://stopcock.dev/libraries/signal/): Deterministic DSP kernels over typed arrays
+- [state](https://stopcock.dev/libraries/state/): Reactive state management with structural diffs, fine-grained subscriptions, and undo/redo
+- [Stream](https://stopcock.dev/libraries/stream/): Lazy pull-based streams with dual-form operators
+- [svg](https://stopcock.dev/libraries/svg/): Pipe-native procedural SVG with typed nodes, defs hoisting, filters, and linear-algebra helpers
+
+## API
+
+- [A (Array)](https://stopcock.dev/api/array/): Filter, map, sort, group, and 30+ array functions for pipe
+- [B (Boolean)](https://stopcock.dev/api/boolean/): not, and, or, ifElse. Boolean combinators for pipe
+- [D (Dict)](https://stopcock.dev/api/dict/): Map, filter, merge, and traverse Record<string, T> dictionaries
+- [G (Guards)](https://stopcock.dev/api/guards/): isString, isNumber, isNil, isDeepEqual and more. Runtime type guards with TypeScript predicates
+- [Lenses & Optics](https://stopcock.dev/api/lenses/): Lens, Prism, Traversal, Iso. Immutable nested reads and updates
+- [Logic](https://stopcock.dev/api/logic/): both, either, allPass, cond. Compose predicates and branch logic in pipe
+- [M (Math)](https://stopcock.dev/api/math/): add, multiply, sum, mean, median. Arithmetic and stats for pipe
+- [N (Number)](https://stopcock.dev/api/number/): clamp, sum, mean, percentile. Numeric transforms for pipe
+- [Obj (Object)](https://stopcock.dev/api/object/): pick, omit, path, evolve, mergeDeepLeft, mergeDeepRight. Immutable object transforms
+- [O (Option)](https://stopcock.dev/api/option/): Some and None for missing values. map, flatMap, filter, getOrElse, toResult
+- [R (Result)](https://stopcock.dev/api/result/): Ok and Err for recoverable errors. map, flatMap, tryCatch, getOrElse, toOption
+- [S (String)](https://stopcock.dev/api/string/): trim, split, replace, startsWith, slice. String transforms for pipe
 
 ## Showcases
 
-- [Image Processing](/showcases/img): Interactive browser demo of img filters and analysis
+- [Color](https://stopcock.dev/showcases/color/): Interactive demo of stopcock/color — color spaces, palettes, mixing, contrast, gamut mapping, and CVD simulation
+- [Image Processing](https://stopcock.dev/showcases/img/): Interactive demo of stopcock/img filters and transforms
+- [SVG + Color Batch](https://stopcock.dev/showcases/svg-color-batch/): Whole-image CVD simulation feeding a procedural SVG pattern and badge overlay
 
 ## Performance
 
-- [Benchmarks](/performance/benchmarks): stopcock vs lodash, ramda, remeda, rambda, ts-belt, and native JS
+- [Benchmarks](https://stopcock.dev/performance/benchmarks/): stopcock vs lodash, ramda, remeda, rambda, ts-belt, and native JS
 
-## Optional
+## Blog
 
-- [Playground](/playground): Interactive REPL on StackBlitz
+- [How pipe() fuses your loops](https://stopcock.dev/blog/how-pipe-fuses-your-loops/)
+- [Zustand without the spread](https://stopcock.dev/blog/zustand-without-the-spread/)

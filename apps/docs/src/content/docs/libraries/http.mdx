@@ -78,7 +78,8 @@ await api.get('/me', { headers: { 'X-Custom': 'value' } })
 Every method has a `task` counterpart that returns a raw `Task` instead of a `Promise`. Compose with any `@stopcock/async` combinator.
 
 ```ts
-import { pipe, retry, timeout, run } from '@stopcock/async'
+import { pipe } from '@stopcock/fp'
+import { retry, timeout, run } from '@stopcock/async'
 
 const task = api.task.get<User[]>('/users')
 

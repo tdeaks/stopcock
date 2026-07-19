@@ -16,10 +16,6 @@ bun add @stopcock/autodiff
 records its forward value and local derivative to a scoped tape; `gradient()`
 walks the tape backwards and accumulates gradients with the chain rule.
 
-For the full stack version, try the [Spectral Optimizer](/showcases/spectral-optimizer/):
-autodiff tunes a synth patch, signal verifies the FFT, and svg/color render the
-resulting artifact.
-
 ```ts
 import { pipe } from '@stopcock/fp'
 import { differentiable, sin, square, add, type Var } from '@stopcock/autodiff'

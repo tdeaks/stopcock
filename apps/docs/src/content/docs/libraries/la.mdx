@@ -1,0 +1,162 @@
+---
+title: la
+description: Typed-array vectors, matrices, decompositions, and optional acceleration hooks
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+```bash
+bun add @stopcock/la
+```
+
+`@stopcock/la` provides vector and matrix operations over `Float64Array` data.
+The main entry point exposes `Vec` and `Mat` namespaces, lower-level `Fast` and
+`Primitives` kernels, and optional acceleration hooks.
+
+```ts
+import { Vec, Mat } from '@stopcock/la'
+
+const direction = Vec.create(3, 4)
+const unit = Vec.normalize(direction)
+
+const transform = Mat.fromArray(2, 2, [2, 0, 0, 3])
+const inverse = Mat.inverse(transform)
+```
+
+## Vectors
+
+Vectors are `Float64Array` values. Most operations allocate a new vector;
+the `*Into` variants write into a caller-owned output buffer.
+
+```ts
+import { Vec } from '@stopcock/la'
+
+const a = Vec.create(1, 2, 3)
+const b = Vec.create(4, 5, 6)
+
+Vec.add(a, b)                 // Float64Array [5, 7, 9]
+Vec.dot(a, b)                 // 32
+Vec.cross(a, b)               // Float64Array [-3, 6, -3]
+Vec.norm(a)                   // sqrt(14)
+Vec.distance(a, b)
+Vec.lerp(a, b, 0.5)
+Vec.axpy(2, a, b)             // 2a + b
+```
+
+### Vector API
+
+```ts
+type Vec = Float64Array
+
+Vec.create(...values): Vec
+Vec.zeros(length): Vec
+Vec.ones(length): Vec
+Vec.add(a, b): Vec
+Vec.sub(a, b): Vec
+Vec.scale(vector, scalar): Vec
+Vec.dot(a, b): number
+Vec.cross(a, b): Vec
+Vec.norm(vector): number
+Vec.normalize(vector): Vec
+Vec.distance(a, b): number
+Vec.lerp(a, b, t): Vec
+Vec.axpy(alpha, x, y): Vec
+
+Vec.addInto(out, a, b): Vec
+Vec.scaleInto(out, vector, scalar): Vec
+Vec.axpyInto(out, alpha, x, y): Vec
+```
+
+## Matrices
+
+Matrices are row-major objects containing a `Float64Array`, row count, and
+column count. Shape checks run before arithmetic and solve operations.
+
+```ts
+import { Mat, Vec } from '@stopcock/la'
+
+const a = Mat.fromArray(2, 2, [4, 1, 2, 3])
+const b = Vec.create(9, 8)
+
+const x = Mat.solve(a, b)
+const product = Mat.multiply(a, Mat.identity(2))
+const { L, U, P } = Mat.lu(a)
+```
+
+### Matrix API
+
+```ts
+type Mat = { data: Float64Array; rows: number; cols: number }
+
+Mat.create(rows, cols, data?): Mat
+Mat.zeros(rows, cols): Mat
+Mat.identity(size): Mat
+Mat.fromArray(rows, cols, values): Mat
+Mat.get(matrix, row, col): number
+Mat.set(matrix, row, col, value): Mat
+
+Mat.add(a, b): Mat
+Mat.sub(a, b): Mat
+Mat.scale(matrix, scalar): Mat
+Mat.multiply(a, b): Mat
+Mat.multiplyInto(out, a, b): Mat
+Mat.transpose(matrix): Mat
+Mat.trace(matrix): number
+Mat.determinant(matrix): number
+Mat.norm(matrix): number
+
+Mat.lu(matrix): { L: Mat; U: Mat; P: number[] }
+Mat.qr(matrix): { Q: Mat; R: Mat }
+Mat.svd(matrix): { U: Mat; S: Vec; V: Mat }
+Mat.cholesky(matrix): Mat | null
+Mat.eigenvalues(matrix): Vec
+Mat.solve(matrix, vector): Vec
+Mat.inverse(matrix): Mat | null
+```
+
+<Aside type="note">
+  `inverse()` and `cholesky()` return `null` when the requested decomposition
+  does not exist. `solve()` throws for non-square, incompatible, or singular
+  systems.
+</Aside>
+
+## Hot-path kernels
+
+`Fast` contains fixed-size, unrolled operations. `Primitives` contains
+caller-owned-buffer kernels used by image and signal workloads.
+
+```ts
+import { Fast, Primitives } from '@stopcock/la'
+
+Fast.dot3(a, b)
+Fast.mul3x3(left, right, out)
+Fast.mul3vec(matrix, x, y, z, out)
+
+Primitives.sumOfSquares(values, values.length)
+Primitives.convolve1dFloat(out, source, kernel, source.length, kernel.length)
+Primitives.applyColorMatrix3x3(outPixels, sourcePixels, matrix, pixelCount)
+```
+
+Import the same namespaces through subpaths when bundle boundaries matter:
+
+```ts
+import * as Fast from '@stopcock/la/fast'
+import * as Primitives from '@stopcock/la/primitives'
+```
+
+## Optional acceleration
+
+Install an accelerator once to let large dot products, AXPY operations, matrix
+multiplication, convolution, and color-matrix kernels use an external runtime.
+The JavaScript implementations remain the fallback.
+
+```ts
+import { accelerate, decelerate, isAccelerated } from '@stopcock/la'
+import type { WasmAccelerator } from '@stopcock/la/accel'
+
+declare const accelerator: WasmAccelerator
+
+accelerate(accelerator)
+isAccelerated() // true
+decelerate()
+```

@@ -120,15 +120,14 @@ export default defineConfig({
         {
           label: 'Showcases',
           items: [
-            { label: 'Spectral Optimizer', slug: 'showcases/spectral-optimizer' },
             { label: 'Color', slug: 'showcases/color' },
             { label: 'Image Processing', slug: 'showcases/img' },
             { label: 'SVG + Color Batch', slug: 'showcases/svg-color-batch' },
           ],
         },
         { label: 'autodiff', slug: 'libraries/autodiff' },
+        { label: 'la', slug: 'libraries/la' },
         { label: 'signal', slug: 'libraries/signal' },
-        { label: 'synth', slug: 'libraries/synth' },
         { label: 'diff', slug: 'libraries/diff' },
         { label: 'state', slug: 'libraries/state' },
         {
@@ -171,7 +170,6 @@ export default defineConfig({
         { find: '@stopcock/autodiff', replacement: path.resolve(__dirname, '../../packages/autodiff/src/index.ts') },
         { find: '@stopcock/la', replacement: path.resolve(__dirname, '../../packages/la/src/index.ts') },
         { find: '@stopcock/signal', replacement: path.resolve(__dirname, '../../packages/signal/src/index.ts') },
-        { find: '@stopcock/synth', replacement: path.resolve(__dirname, '../../packages/synth/src/index.ts') },
         { find: '@stopcock/fp', replacement: path.resolve(__dirname, '../../packages/fp/src/index.ts') },
         { find: '@stopcock/svg', replacement: path.resolve(__dirname, '../../packages/svg/src/index.ts') },
       ],

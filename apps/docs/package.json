@@ -4,17 +4,17 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "smoke:synth-wasm": "node scripts/smoke-synth-wasm.mjs"
+    "build": "node scripts/generate-llms.mjs && astro build",
+    "generate:llms": "node scripts/generate-llms.mjs",
+    "preview": "astro preview"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.38.2",
     "@stopcock/autodiff": "workspace:*",
     "@stopcock/color": "workspace:*",
+    "@stopcock/la": "workspace:*",
     "@stopcock/signal": "workspace:*",
     "@stopcock/svg": "workspace:*",
-    "@stopcock/synth": "workspace:*",
     "astro": "^6.1.1",
     "sharp": "^0.33.0",
     "starlight-blog": "^0.26.1"
