@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/state",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -39,11 +39,11 @@
     "dist"
   ],
   "dependencies": {
-    "@stopcock/fp": "0.0.3",
-    "@stopcock/diff": "0.0.3"
+    "@stopcock/fp": "1.0.0",
+    "@stopcock/diff": "1.0.0"
   },
   "peerDependencies": {
-    "@stopcock/async": "0.0.3",
+    "@stopcock/async": "1.0.0",
     "react": ">=18.0.0",
     "svelte": ">=3.0.0",
     "vue": ">=3.0.0"
