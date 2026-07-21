@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import * as Vec from '../vec'
 
 const approx = (a: Float64Array, b: number[], tol = 1e-10) => {

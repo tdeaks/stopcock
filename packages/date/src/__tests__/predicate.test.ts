@@ -1,9 +1,20 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import { compose } from '../core'
 import {
-  isBefore, isAfter, isEqual, isSameDay, isSameMonth, isSameYear, isBetween,
-  isWeekend, isWeekday, isToday, isPast, isFuture, isValid,
+  isBefore,
+  isAfter,
+  isEqual,
+  isSameDay,
+  isSameMonth,
+  isSameYear,
+  isBetween,
+  isWeekend,
+  isWeekday,
+  isToday,
+  isPast,
+  isFuture,
+  isValid,
 } from '../predicate'
 import type { Timestamp } from '../types'
 

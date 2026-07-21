@@ -7,6 +7,10 @@
     "url": "git+https://github.com/tdeaks/stopcock.git",
     "directory": "packages/autodiff"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -35,16 +39,11 @@
       "import": "./dist/tape.js"
     }
   },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "dependencies": {
-    "@stopcock/fp": "1.0.0",
-    "@stopcock/la": "1.0.0"
-  },
   "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly",
-    "test": "vitest run"
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@stopcock/fp": "workspace:*",
+    "@stopcock/la": "workspace:*"
   }
 }

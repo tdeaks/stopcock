@@ -1,5 +1,11 @@
 export type {
-  PathSegment, Path, Operation, Patch, PatchError, ConflictError, DiffOptions,
+  PathSegment,
+  Path,
+  Operation,
+  Patch,
+  PatchError,
+  ConflictError,
+  DiffOptions,
 } from './types'
 
 export { patch, empty, ops, size, isEmpty } from './patch'

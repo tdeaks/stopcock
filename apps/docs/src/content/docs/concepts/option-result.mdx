@@ -60,15 +60,18 @@ import { pipe, O } from '@stopcock/fp'
 
 pipe(
   O.fromNullable(config.port),
-  O.map(p => parseInt(p, 10)),
-  O.filter(p => p > 0 && p < 65536),
+  O.map((p) => parseInt(p, 10)),
+  O.filter((p) => p > 0 && p < 65536),
   O.getOrElse(() => 3000),
 )
 
 pipe(
   O.fromNullable(address),
-  O.flatMap(a => O.fromNullable(a.zip)),
-  O.match(() => 'no zip', zip => zip),
+  O.flatMap((a) => O.fromNullable(a.zip)),
+  O.match(
+    () => 'no zip',
+    (zip) => zip,
+  ),
 )
 ```
 
@@ -126,10 +129,10 @@ const parsed = R.tryCatch(() => JSON.parse(input))
 pipe(
   parsed,
   R.map((obj: { value: number }) => obj.value),
-  R.flatMap(v => v > 0 ? R.ok(v) : R.err('must be positive')),
+  R.flatMap((v) => (v > 0 ? R.ok(v) : R.err('must be positive'))),
   R.match(
-    err => console.error(err),
-    val => console.log(val),
+    (err) => console.error(err),
+    (val) => console.log(val),
   ),
 )
 ```
@@ -143,6 +146,6 @@ pipe(
 pipe(O.fromNullable(x), O.toResult('was null'))
 
 // Result → Option (discards error)
-pipe(R.ok('hello'), R.toOption)  // Some('hello')
-pipe(R.err('boom'), R.toOption)  // None
+pipe(R.ok('hello'), R.toOption) // Some('hello')
+pipe(R.err('boom'), R.toOption) // None
 ```

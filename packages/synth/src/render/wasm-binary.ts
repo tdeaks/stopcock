@@ -27,7 +27,11 @@ export function serializeBinaryRenderRequest(
   writer.u32(length)
   writer.u32(graph.rootIndex)
   const triggerFreq = note ? noteToFreq(note) : undefined
-  writer.u8((note?.gateMs !== undefined ? 1 : 0) | (note?.velocity !== undefined ? 2 : 0) | (triggerFreq !== undefined ? 8 : 0))
+  writer.u8(
+    (note?.gateMs !== undefined ? 1 : 0) |
+      (note?.velocity !== undefined ? 2 : 0) |
+      (triggerFreq !== undefined ? 8 : 0),
+  )
   if (note?.gateMs !== undefined) writer.f64(Math.max(0, note.gateMs / 1000))
   if (note?.velocity !== undefined) writer.f64(note.velocity)
   if (triggerFreq !== undefined) writer.f64(triggerFreq)
@@ -56,7 +60,11 @@ export function cachedBinaryGraph(node: Node): CachedBinaryGraph {
   return graph
 }
 
-export function serializeBinaryRuntimeGraphRequest(graph: CachedBinaryGraph, sampleRate: number, maxFrames: number): Uint8Array {
+export function serializeBinaryRuntimeGraphRequest(
+  graph: CachedBinaryGraph,
+  sampleRate: number,
+  maxFrames: number,
+): Uint8Array {
   const writer = new BinaryWriter()
   writer.ascii('SYN1')
   writer.f64(sampleRate)

@@ -39,8 +39,7 @@ export type UnvarsOf<Vs extends readonly Var<Grad>[]> = {
   readonly [K in keyof Vs]: Vs[K] extends Var<infer G> ? G : never
 }
 
-export type GradReturn<Args extends readonly unknown[]> =
-  Args extends readonly [infer A] ? A : Args
+export type GradReturn<Args extends readonly unknown[]> = Args extends readonly [infer A] ? A : Args
 
 export interface DiffFn<Args extends readonly unknown[]> {
   readonly forward: (...args: Args) => number

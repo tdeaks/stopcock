@@ -1,12 +1,20 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { compose, decompose } from '../core'
-import { isBusinessDay, addBusinessDays, subtractBusinessDays, businessDaysBetween, nextBusinessDay, prevBusinessDay, addBusinessDaysWithHolidays } from '../business'
+import {
+  isBusinessDay,
+  addBusinessDays,
+  subtractBusinessDays,
+  businessDaysBetween,
+  nextBusinessDay,
+  prevBusinessDay,
+  addBusinessDaysWithHolidays,
+} from '../business'
 import type { Timestamp } from '../types'
 
-const mon = compose(2024, 3, 11, 10, 30, 0, 0)  // Monday
-const sat = compose(2024, 3, 16, 10, 30, 0, 0)  // Saturday
-const sun = compose(2024, 3, 17, 10, 30, 0, 0)  // Sunday
-const fri = compose(2024, 3, 15, 10, 30, 0, 0)  // Friday
+const mon = compose(2024, 3, 11, 10, 30, 0, 0) // Monday
+const sat = compose(2024, 3, 16, 10, 30, 0, 0) // Saturday
+const sun = compose(2024, 3, 17, 10, 30, 0, 0) // Sunday
+const fri = compose(2024, 3, 15, 10, 30, 0, 0) // Friday
 
 describe('isBusinessDay', () => {
   it('Monday is a business day', () => expect(isBusinessDay(mon)).toBe(true))

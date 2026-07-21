@@ -1,12 +1,18 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vite-plus/test'
 import { createClient } from '../client.js'
 import { HttpError } from '../error.js'
 
-function mockFetch(response: { status?: number; statusText?: string; body?: unknown; headers?: Record<string, string> }) {
+function mockFetch(response: {
+  status?: number
+  statusText?: string
+  body?: unknown
+  headers?: Record<string, string>
+}) {
   const status = response.status ?? 200
   const statusText = response.statusText ?? 'OK'
   const headers = new Headers({ 'content-type': 'application/json', ...(response.headers ?? {}) })
-  const bodyText = typeof response.body === 'string' ? response.body : JSON.stringify(response.body ?? null)
+  const bodyText =
+    typeof response.body === 'string' ? response.body : JSON.stringify(response.body ?? null)
 
   return vi.fn(async () => new Response(bodyText, { status, statusText, headers }))
 }
@@ -51,7 +57,11 @@ describe('createClient', () => {
   })
 
   it('throws HttpError on non-ok response', async () => {
-    const fetch = mockFetch({ status: 404, statusText: 'Not Found', body: { message: 'User not found' } })
+    const fetch = mockFetch({
+      status: 404,
+      statusText: 'Not Found',
+      body: { message: 'User not found' },
+    })
     const api = createClient({ fetch })
     try {
       await api.get('/users/999')
@@ -66,7 +76,11 @@ describe('createClient', () => {
 
   it('typed error body flows through', async () => {
     type ApiError = { code: string; detail: string }
-    const fetch = mockFetch({ status: 422, statusText: 'Unprocessable', body: { code: 'INVALID', detail: 'Bad email' } })
+    const fetch = mockFetch({
+      status: 422,
+      statusText: 'Unprocessable',
+      body: { code: 'INVALID', detail: 'Bad email' },
+    })
     const api = createClient({ fetch })
     try {
       await api.post<void, ApiError>('/users', { body: { email: 'bad' } })
@@ -79,7 +93,10 @@ describe('createClient', () => {
   })
 
   it('handles 204 No Content', async () => {
-    const fetch = vi.fn(async () => new Response(null, { status: 204, headers: new Headers({ 'content-length': '0' }) }))
+    const fetch = vi.fn(
+      async () =>
+        new Response(null, { status: 204, headers: new Headers({ 'content-length': '0' }) }),
+    )
     const api = createClient({ fetch })
     const result = await api.delete<void>('/users/1')
     expect(result).toBeUndefined()
@@ -121,7 +138,11 @@ describe('createClient', () => {
 
   it('with() creates a new client with merged config', async () => {
     const fetch = mockFetch({ body: {} })
-    const base = createClient({ baseUrl: 'https://api.com', headers: { Accept: 'application/json' }, fetch })
+    const base = createClient({
+      baseUrl: 'https://api.com',
+      headers: { Accept: 'application/json' },
+      fetch,
+    })
     const authed = base.with({ headers: { Authorization: 'Bearer tok' } })
     await authed.get('/me')
     const headers = fetch.mock.calls[0][1].headers
@@ -130,10 +151,13 @@ describe('createClient', () => {
   })
 
   it('head returns headers', async () => {
-    const fetch = vi.fn(async () => new Response(null, {
-      status: 200,
-      headers: new Headers({ 'X-Total': '42' }),
-    }))
+    const fetch = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 200,
+          headers: new Headers({ 'X-Total': '42' }),
+        }),
+    )
     const api = createClient({ fetch })
     const headers = await api.head('/users')
     expect(headers.get('X-Total')).toBe('42')
@@ -165,10 +189,7 @@ describe('deduplication', () => {
   it('concurrent identical GETs share one fetch', async () => {
     const fetch = mockFetch({ body: [1, 2, 3] })
     const api = createClient({ dedup: true, fetch })
-    const [a, b] = await Promise.all([
-      api.get<number[]>('/users'),
-      api.get<number[]>('/users'),
-    ])
+    const [a, b] = await Promise.all([api.get<number[]>('/users'), api.get<number[]>('/users')])
     expect(fetch).toHaveBeenCalledTimes(1)
     expect(a).toEqual([1, 2, 3])
     expect(b).toEqual([1, 2, 3])
@@ -197,7 +218,9 @@ describe('dedup invalidation', () => {
     let callCount = 0
     const fetch = vi.fn(async (url: string) => {
       callCount++
-      return new Response(JSON.stringify([]), { headers: new Headers({ 'content-type': 'application/json' }) })
+      return new Response(JSON.stringify([]), {
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
     })
     const api = createClient({ dedup: { windowMs: 5000 }, fetch })
 
@@ -218,8 +241,9 @@ describe('dedup invalidation', () => {
   })
 
   it('POST to /users also invalidates GET /users/1', async () => {
-    const fetch = vi.fn(async () =>
-      new Response('{}', { headers: new Headers({ 'content-type': 'application/json' }) })
+    const fetch = vi.fn(
+      async () =>
+        new Response('{}', { headers: new Headers({ 'content-type': 'application/json' }) }),
     )
     const api = createClient({ dedup: { windowMs: 5000 }, fetch })
 
@@ -239,9 +263,16 @@ describe('retry', () => {
     const fetch = vi.fn(async () => {
       attempts++
       if (attempts < 3) {
-        return new Response('Server Error', { status: 500, statusText: 'Internal Server Error', headers: new Headers({ 'content-type': 'text/plain' }) })
+        return new Response('Server Error', {
+          status: 500,
+          statusText: 'Internal Server Error',
+          headers: new Headers({ 'content-type': 'text/plain' }),
+        })
       }
-      return new Response('{"ok":true}', { status: 200, headers: new Headers({ 'content-type': 'application/json' }) })
+      return new Response('{"ok":true}', {
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
     })
     const api = createClient({ fetch, retry: { attempts: 3, delay: 1 } })
     const result = await api.get<{ ok: boolean }>('/test')
@@ -253,7 +284,11 @@ describe('retry', () => {
     let attempts = 0
     const fetch = vi.fn(async () => {
       attempts++
-      return new Response('{"error":"bad"}', { status: 400, statusText: 'Bad Request', headers: new Headers({ 'content-type': 'application/json' }) })
+      return new Response('{"error":"bad"}', {
+        status: 400,
+        statusText: 'Bad Request',
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
     })
     const api = createClient({ fetch, retry: { attempts: 3, delay: 1 } })
     await expect(api.get('/test')).rejects.toThrow()
@@ -263,7 +298,11 @@ describe('retry', () => {
 
 describe('error response bodies', () => {
   it('parses JSON error body', async () => {
-    const fetch = mockFetch({ status: 422, statusText: 'Unprocessable', body: { code: 'INVALID', field: 'email' } })
+    const fetch = mockFetch({
+      status: 422,
+      statusText: 'Unprocessable',
+      body: { code: 'INVALID', field: 'email' },
+    })
     const api = createClient({ fetch })
     try {
       await api.post('/users', { body: {} })
@@ -276,7 +315,14 @@ describe('error response bodies', () => {
   })
 
   it('handles plain text error body', async () => {
-    const fetch = vi.fn(async () => new Response('Something went wrong', { status: 500, statusText: 'Error', headers: new Headers({ 'content-type': 'text/plain' }) }))
+    const fetch = vi.fn(
+      async () =>
+        new Response('Something went wrong', {
+          status: 500,
+          statusText: 'Error',
+          headers: new Headers({ 'content-type': 'text/plain' }),
+        }),
+    )
     const api = createClient({ fetch })
     try {
       await api.get('/fail')
@@ -288,7 +334,14 @@ describe('error response bodies', () => {
   })
 
   it('handles empty error body', async () => {
-    const fetch = vi.fn(async () => new Response('', { status: 500, statusText: 'Error', headers: new Headers({ 'content-length': '0' }) }))
+    const fetch = vi.fn(
+      async () =>
+        new Response('', {
+          status: 500,
+          statusText: 'Error',
+          headers: new Headers({ 'content-length': '0' }),
+        }),
+    )
     const api = createClient({ fetch })
     try {
       await api.get('/fail')

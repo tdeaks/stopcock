@@ -60,18 +60,18 @@ const data = pipe(
 // chain validations
 pipe(
   R.ok(formData),
-  R.flatMap(d => d.name ? R.ok(d) : R.err('name required')),
-  R.flatMap(d => d.email ? R.ok(d) : R.err('email required')),
+  R.flatMap((d) => (d.name ? R.ok(d) : R.err('name required'))),
+  R.flatMap((d) => (d.email ? R.ok(d) : R.err('email required'))),
   R.match(
-    err => ({ success: false as const, error: err }),
-    val => ({ success: true as const, data: val }),
+    (err) => ({ success: false as const, error: err }),
+    (val) => ({ success: true as const, data: val }),
   ),
 )
 
 // log errors without changing the pipeline
 pipe(
   R.tryCatch(() => connectToDb()),
-  R.tapErr(e => console.error('db connection failed:', e)),
+  R.tapErr((e) => console.error('db connection failed:', e)),
   R.getOrElse(() => fallbackDb),
 )
 ```

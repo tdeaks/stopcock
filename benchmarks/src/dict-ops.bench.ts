@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { D } from '@stopcock/fp'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'

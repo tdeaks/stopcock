@@ -54,7 +54,9 @@ export type ResourceOptions<T> = {
 
 export type ResourceConfig<D, T> = {
   deps?: (get: Get) => D | null
-  fetch: D extends void ? (signal: AbortSignal) => Promise<T> : (deps: D, signal: AbortSignal) => Promise<T>
+  fetch: D extends void
+    ? (signal: AbortSignal) => Promise<T>
+    : (deps: D, signal: AbortSignal) => Promise<T>
 } & ResourceOptions<T>
 
 // --- Cycle detection ---
@@ -64,18 +66,40 @@ const evaluating = new Set<Resource<any>>()
 // --- Resource ---
 
 function isStore(x: unknown): x is Store<any> {
-  return x != null && typeof x === 'object' && 'subscribe' in x && 'set' in x && 'get' in x && 'batch' in x
+  return (
+    x != null &&
+    typeof x === 'object' &&
+    'subscribe' in x &&
+    'set' in x &&
+    'get' in x &&
+    'batch' in x
+  )
 }
 
-export function resource<T>(config: { fetch: (signal: AbortSignal) => Promise<T> } & ResourceOptions<T>): Resource<T>
-export function resource<D, T>(config: { deps: (get: Get) => D | null; fetch: (deps: D, signal: AbortSignal) => Promise<T> } & ResourceOptions<T>): Resource<T>
+export function resource<T>(
+  config: { fetch: (signal: AbortSignal) => Promise<T> } & ResourceOptions<T>,
+): Resource<T>
+export function resource<D, T>(
+  config: {
+    deps: (get: Get) => D | null
+    fetch: (deps: D, signal: AbortSignal) => Promise<T>
+  } & ResourceOptions<T>,
+): Resource<T>
 export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
-  const { deps: depsFn, retry: retryCount = 0, retryDelay = 1000, into, onSuccess, onError } = config
+  const {
+    deps: depsFn,
+    retry: retryCount = 0,
+    retryDelay = 1000,
+    into,
+    onSuccess,
+    onError,
+  } = config
   const fetchFn = config.fetch as (deps: any, signal: AbortSignal) => Promise<T>
 
-  let state: ResourceState<T> = config.initialData !== undefined
-    ? { status: 'ok', data: config.initialData, error: undefined }
-    : { status: 'idle', data: undefined, error: undefined }
+  let state: ResourceState<T> =
+    config.initialData !== undefined
+      ? { status: 'ok', data: config.initialData, error: undefined }
+      : { status: 'idle', data: undefined, error: undefined }
 
   let listeners: ResourceListener<T>[] = []
   let destroyed = false
@@ -98,21 +122,34 @@ export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
     into?.set(next)
     guardedNotify(() => {
       for (const fn of listeners) {
-        try { fn(state, prev) } catch {}
+        try {
+          fn(state, prev)
+        } catch {}
       }
     })
   }
 
   function guardedNotify(fn: () => void) {
-    if (notifying) { pendingNotifications.push(fn); return }
+    if (notifying) {
+      pendingNotifications.push(fn)
+      return
+    }
     notifying = true
-    try { fn() } finally { notifying = false }
+    try {
+      fn()
+    } finally {
+      notifying = false
+    }
     while (pendingNotifications.length > 0) {
       const queue = pendingNotifications
       pendingNotifications = []
       for (let i = 0; i < queue.length; i++) {
         notifying = true
-        try { queue[i]() } finally { notifying = false }
+        try {
+          queue[i]()
+        } finally {
+          notifying = false
+        }
       }
     }
     // resource subscriber errors are swallowed (unlike store which rethrows)
@@ -194,10 +231,20 @@ export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
           const delay = typeof retryDelay === 'function' ? retryDelay(attempt) : retryDelay
           return new Promise<T>((resolve, reject) => {
             const timer = setTimeout(() => {
-              if (signal.aborted) { reject(new DOMException('Aborted', 'AbortError')); return }
+              if (signal.aborted) {
+                reject(new DOMException('Aborted', 'AbortError'))
+                return
+              }
               doFetch(attempt + 1).then(resolve, reject)
             }, delay)
-            signal.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')) }, { once: true })
+            signal.addEventListener(
+              'abort',
+              () => {
+                clearTimeout(timer)
+                reject(new DOMException('Aborted', 'AbortError'))
+              },
+              { once: true },
+            )
           })
         }
         throw error
@@ -230,7 +277,10 @@ export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
   }
 
   function clearInterval_() {
-    if (intervalTimer) { clearInterval(intervalTimer); intervalTimer = null }
+    if (intervalTimer) {
+      clearInterval(intervalTimer)
+      intervalTimer = null
+    }
   }
 
   // focus/reconnect handlers
@@ -243,7 +293,8 @@ export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
       visibilityHandler = () => {
         if (document.visibilityState !== 'visible') return
         if (destroyed) return
-        if (config.staleTime && lastFetchTime && Date.now() - lastFetchTime < config.staleTime) return
+        if (config.staleTime && lastFetchTime && Date.now() - lastFetchTime < config.staleTime)
+          return
         run()
       }
       document.addEventListener('visibilitychange', visibilityHandler)
@@ -251,7 +302,8 @@ export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
     if (config.refetchOnReconnect && typeof globalThis.window !== 'undefined') {
       onlineHandler = () => {
         if (destroyed) return
-        if (config.staleTime && lastFetchTime && Date.now() - lastFetchTime < config.staleTime) return
+        if (config.staleTime && lastFetchTime && Date.now() - lastFetchTime < config.staleTime)
+          return
         run()
       }
       window.addEventListener('online', onlineHandler)
@@ -259,14 +311,30 @@ export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
   }
 
   const self: Resource<T> = {
-    get() { return state },
-    get data() { return state.data },
-    get error() { return state.error },
-    get status() { return state.status },
-    get isLoading() { return state.status === 'loading' },
-    get isOk() { return state.status === 'ok' },
-    get isError() { return state.status === 'error' },
-    get isIdle() { return state.status === 'idle' },
+    get() {
+      return state
+    },
+    get data() {
+      return state.data
+    },
+    get error() {
+      return state.error
+    },
+    get status() {
+      return state.status
+    },
+    get isLoading() {
+      return state.status === 'loading'
+    },
+    get isOk() {
+      return state.status === 'ok'
+    },
+    get isError() {
+      return state.status === 'error'
+    },
+    get isIdle() {
+      return state.status === 'idle'
+    },
 
     refetch() {
       if (destroyed) return
@@ -294,7 +362,7 @@ export function resource<D, T>(config: ResourceConfig<D, T>): Resource<T> {
       }
 
       return () => {
-        listeners = listeners.filter(l => l !== listener)
+        listeners = listeners.filter((l) => l !== listener)
         hasSubscribers = listeners.length > 0
       }
     },
@@ -366,7 +434,9 @@ export function mutation<I, O>(config: MutationConfig<I, O>): Mutation<I, O> {
     const prev = state
     state = next
     for (const fn of listeners) {
-      try { fn(state, prev) } catch {}
+      try {
+        fn(state, prev)
+      } catch {}
     }
   }
 
@@ -403,12 +473,22 @@ export function mutation<I, O>(config: MutationConfig<I, O>): Mutation<I, O> {
       }
     },
 
-    get() { return state },
-    get state() { return state },
-    get isRunning() { return state.status === 'running' },
-    get error() { return state.error },
+    get() {
+      return state
+    },
+    get state() {
+      return state
+    },
+    get isRunning() {
+      return state.status === 'running'
+    },
+    get error() {
+      return state.error
+    },
 
-    abort() { controller?.abort() },
+    abort() {
+      controller?.abort()
+    },
 
     reset() {
       controller?.abort()
@@ -417,7 +497,9 @@ export function mutation<I, O>(config: MutationConfig<I, O>): Mutation<I, O> {
 
     subscribe(listener: MutationListener<O>): Unsubscribe {
       listeners.push(listener)
-      return () => { listeners = listeners.filter(l => l !== listener) }
+      return () => {
+        listeners = listeners.filter((l) => l !== listener)
+      }
     },
   }
 

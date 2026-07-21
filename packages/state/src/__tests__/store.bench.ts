@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { create, computed, history } from '../index.js'
 import { createStore as zustandCreate } from 'zustand/vanilla'
 import { configureStore, createSlice } from '@reduxjs/toolkit'
@@ -33,9 +33,15 @@ const slice = createSlice({
   name: 'state',
   initialState: largeState(10_000),
   reducers: {
-    setCount: (state, action: { payload: number }) => { state.count = action.payload },
-    setTheme: (state, action: { payload: string }) => { state.user.settings.theme = action.payload },
-    toggleTodo: (state, action: { payload: number }) => { state.todos[action.payload].done = !state.todos[action.payload].done },
+    setCount: (state, action: { payload: number }) => {
+      state.count = action.payload
+    },
+    setTheme: (state, action: { payload: string }) => {
+      state.user.settings.theme = action.payload
+    },
+    toggleTodo: (state, action: { payload: number }) => {
+      state.todos[action.payload].done = !state.todos[action.payload].done
+    },
   },
 })
 
@@ -45,9 +51,15 @@ function rtkStore(n: number) {
       name: 'state',
       initialState: largeState(n),
       reducers: {
-        setCount: (state, action: { payload: number }) => { state.count = action.payload },
-        setTheme: (state, action: { payload: string }) => { state.user.settings.theme = action.payload },
-        toggleTodo: (state, action: { payload: number }) => { state.todos[action.payload].done = !state.todos[action.payload].done },
+        setCount: (state, action: { payload: number }) => {
+          state.count = action.payload
+        },
+        setTheme: (state, action: { payload: string }) => {
+          state.user.settings.theme = action.payload
+        },
+        toggleTodo: (state, action: { payload: number }) => {
+          state.todos[action.payload].done = !state.todos[action.payload].done
+        },
       },
     }).reducer,
   })
@@ -75,12 +87,17 @@ describe('set shallow value', () => {
   const rtk = rtkStore(10_000)
   const { store: jStore, countAtom } = jotaiStore()
   const rtkSlice = createSlice({
-    name: 's', initialState: largeState(10_000),
-    reducers: { setCount: (s, a: { payload: number }) => { s.count = a.payload } },
+    name: 's',
+    initialState: largeState(10_000),
+    reducers: {
+      setCount: (s, a: { payload: number }) => {
+        s.count = a.payload
+      },
+    },
   })
 
   bench('stopcock set', () => {
-    sc.set(s => s.count, Math.random())
+    sc.set((s) => s.count, Math.random())
   })
 
   bench('stopcock merge', () => {
@@ -107,16 +124,26 @@ describe('set deep path', () => {
   const zu = zustandStore(10_000)
   const rtk = rtkStore(10_000)
   const rtkSlice = createSlice({
-    name: 's', initialState: largeState(10_000),
-    reducers: { setTheme: (s, a: { payload: string }) => { s.user.settings.theme = a.payload } },
+    name: 's',
+    initialState: largeState(10_000),
+    reducers: {
+      setTheme: (s, a: { payload: string }) => {
+        s.user.settings.theme = a.payload
+      },
+    },
   })
 
   bench('stopcock', () => {
-    sc.set(s => s.user.settings.theme, Math.random() > 0.5 ? 'dark' : 'light')
+    sc.set((s) => s.user.settings.theme, Math.random() > 0.5 ? 'dark' : 'light')
   })
 
   bench('zustand', () => {
-    zu.setState(s => ({ user: { ...s.user, settings: { ...s.user.settings, theme: Math.random() > 0.5 ? 'dark' : 'light' } } }))
+    zu.setState((s) => ({
+      user: {
+        ...s.user,
+        settings: { ...s.user.settings, theme: Math.random() > 0.5 ? 'dark' : 'light' },
+      },
+    }))
   })
 
   bench('RTK', () => {
@@ -128,16 +155,22 @@ describe('set deep path', () => {
 
 describe('set with 1 subscriber', () => {
   const sc = create(largeState(10_000))
-  sc.subscribe(s => s.count, () => {})
+  sc.subscribe(
+    (s) => s.count,
+    () => {},
+  )
 
   const zu = zustandStore(10_000)
-  zu.subscribe((s) => s.count, () => {})
+  zu.subscribe(
+    (s) => s.count,
+    () => {},
+  )
 
   const { store: jStore, countAtom } = jotaiStore()
   jStore.sub(countAtom, () => {})
 
   bench('stopcock', () => {
-    sc.set(s => s.count, Math.random())
+    sc.set((s) => s.count, Math.random())
   })
 
   bench('zustand', () => {
@@ -151,16 +184,23 @@ describe('set with 1 subscriber', () => {
 
 describe('set with 100 unrelated subscribers', () => {
   const sc = create(largeState(10_000))
-  for (let i = 0; i < 100; i++) sc.subscribe(s => s.todos[i], () => {})
+  for (let i = 0; i < 100; i++)
+    sc.subscribe(
+      (s) => s.todos[i],
+      () => {},
+    )
 
   const zu = zustandStore(10_000)
   for (let i = 0; i < 100; i++) {
     const idx = i
-    zu.subscribe((s) => s.todos[idx], () => {})
+    zu.subscribe(
+      (s) => s.todos[idx],
+      () => {},
+    )
   }
 
   bench('stopcock - set count', () => {
-    sc.set(s => s.count, Math.random())
+    sc.set((s) => s.count, Math.random())
   })
 
   bench('zustand - set count', () => {
@@ -174,12 +214,22 @@ describe('update via draft', () => {
   const sc = create(largeState(100))
   const rtk = rtkStore(100)
   const rtkSlice = createSlice({
-    name: 's', initialState: largeState(100),
-    reducers: { toggleTodo: (s, a: { payload: number }) => { s.todos[a.payload].done = !s.todos[a.payload].done } },
+    name: 's',
+    initialState: largeState(100),
+    reducers: {
+      toggleTodo: (s, a: { payload: number }) => {
+        s.todos[a.payload].done = !s.todos[a.payload].done
+      },
+    },
   })
 
   bench('stopcock', () => {
-    sc.update(s => s.todos[0], draft => { draft.done = !draft.done })
+    sc.update(
+      (s) => s.todos[0],
+      (draft) => {
+        draft.done = !draft.done
+      },
+    )
   })
 
   bench('RTK (Immer)', () => {
@@ -197,7 +247,9 @@ describe('batch 10 writes', () => {
   zu.subscribe(() => {})
 
   bench('stopcock', () => {
-    sc.batch(() => { for (let i = 0; i < 10; i++) sc.set(s => s.count, i) })
+    sc.batch(() => {
+      for (let i = 0; i < 10; i++) sc.set((s) => s.count, i)
+    })
   })
 
   bench('zustand (10 setStates)', () => {
@@ -209,10 +261,14 @@ describe('batch 10 writes', () => {
 
 describe('computed / selector (cached read)', () => {
   const sc = create(largeState(10_000))
-  const c = computed(sc, s => s.todos, ts => ts.filter(t => !t.done).length)
+  const c = computed(
+    sc,
+    (s) => s.todos,
+    (ts) => ts.filter((t) => !t.done).length,
+  )
 
   const zu = zustandStore(10_000)
-  const selector = (s: State) => s.todos.filter(t => !t.done).length
+  const selector = (s: State) => s.todos.filter((t) => !t.done).length
   // pre-warm
   selector(zu.getState())
 
@@ -232,7 +288,7 @@ describe('set with history middleware', () => {
   const sc = create(largeState(100), { middleware: [h.middleware] })
 
   bench('stopcock', () => {
-    sc.set(s => s.count, Math.random())
+    sc.set((s) => s.count, Math.random())
   })
 })
 
@@ -244,8 +300,12 @@ describe('replace (small state)', () => {
   const next = largeState(10)
   next.count = 99
 
-  bench('stopcock', () => { sc.replace(next) })
-  bench('zustand', () => { zu.setState(next, true) })
+  bench('stopcock', () => {
+    sc.replace(next)
+  })
+  bench('zustand', () => {
+    zu.setState(next, true)
+  })
 })
 
 describe('replace (large state)', () => {
@@ -254,6 +314,10 @@ describe('replace (large state)', () => {
   const next = largeState(1_000)
   next.count = 99
 
-  bench('stopcock', () => { sc.replace(next) })
-  bench('zustand', () => { zu.setState(next, true) })
+  bench('stopcock', () => {
+    sc.replace(next)
+  })
+  bench('zustand', () => {
+    zu.setState(next, true)
+  })
 })

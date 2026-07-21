@@ -40,7 +40,8 @@ class PipelineStream<A> implements Stream<A> {
 
 const make = <A>(iter: () => Iterator<A>): Stream<A> => ({ [Symbol.iterator]: iter })
 
-const isPipeline = <A>(stream: Stream<A>): stream is PipelineStream<A> => stream instanceof PipelineStream
+const isPipeline = <A>(stream: Stream<A>): stream is PipelineStream<A> =>
+  stream instanceof PipelineStream
 
 const appendStep = <A, B>(stream: Stream<A>, step: Step): Stream<B> =>
   isPipeline(stream)
@@ -49,12 +50,12 @@ const appendStep = <A, B>(stream: Stream<A>, step: Step): Stream<B> =>
 
 const initState = (steps: readonly Step[]): RuntimeState => ({
   counts: new Array(steps.length).fill(0),
-  dropping: steps.map(step => step.tag === 'dropWhile'),
-  scanAcc: steps.map(step => (step.tag === 'scan' ? step.init : undefined)),
+  dropping: steps.map((step) => step.tag === 'dropWhile'),
+  scanAcc: steps.map((step) => (step.tag === 'scan' ? step.init : undefined)),
 })
 
 const hasZeroTake = (steps: readonly Step[]): boolean =>
-  steps.some(step => step.tag === 'take' && step.n <= 0)
+  steps.some((step) => step.tag === 'take' && step.n <= 0)
 
 type ArrayMapFilterTakeRunner = (
   source: readonly any[],
@@ -263,10 +264,16 @@ function tryArrayMapFilterTakeToArray<A>(stream: PipelineStream<A>): A[] | null 
   if (!Array.isArray(source) || steps.length !== 3) return null
 
   const [mapStep, filterStep, takeStep] = steps
-  if (mapStep?.tag !== 'map' || filterStep?.tag !== 'filter' || takeStep?.tag !== 'take') return null
+  if (mapStep?.tag !== 'map' || filterStep?.tag !== 'filter' || takeStep?.tag !== 'take')
+    return null
   if (takeStep.n <= 0) return []
 
-  return getArrayMapFilterTakeRunner(mapStep.fn, filterStep.pred)(source, mapStep.fn, filterStep.pred, takeStep.n)
+  return getArrayMapFilterTakeRunner(mapStep.fn, filterStep.pred)(
+    source,
+    mapStep.fn,
+    filterStep.pred,
+    takeStep.n,
+  )
 }
 
 function toArrayInternal<A>(stream: Stream<A>): A[] {
@@ -275,7 +282,7 @@ function toArrayInternal<A>(stream: Stream<A>): A[] {
     if (specialized) return specialized
 
     const out: A[] = []
-    visitPipeline(stream.source, stream.steps, value => {
+    visitPipeline(stream.source, stream.steps, (value) => {
       out.push(value)
     })
     return out
@@ -307,58 +314,68 @@ export const repeat = <A>(value: A): Stream<A> =>
     while (true) yield value
   })
 
-export const empty = <A = never>(): Stream<A> =>
-  make(function* () {})
+export const empty = <A = never>(): Stream<A> => make(function* () {})
 
 // --- Transformers ---
 
 export const map: {
   <A, B>(stream: Stream<A>, f: (a: A) => B): Stream<B>
   <A, B>(f: (a: A) => B): (stream: Stream<A>) => Stream<B>
-} = dual(2, <A, B>(stream: Stream<A>, f: (a: A) => B): Stream<B> =>
-  appendStep(stream, { tag: 'map', fn: f }),
+} = dual(
+  2,
+  <A, B>(stream: Stream<A>, f: (a: A) => B): Stream<B> => appendStep(stream, { tag: 'map', fn: f }),
 ) as any
 
 export const filter: {
   <A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A>
   <A>(pred: (a: A) => boolean): (stream: Stream<A>) => Stream<A>
-} = dual(2, <A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A> =>
-  appendStep(stream, { tag: 'filter', pred }),
+} = dual(
+  2,
+  <A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A> =>
+    appendStep(stream, { tag: 'filter', pred }),
 ) as any
 
 export const flatMap: {
   <A, B>(stream: Stream<A>, f: (a: A) => Stream<B>): Stream<B>
   <A, B>(f: (a: A) => Stream<B>): (stream: Stream<A>) => Stream<B>
-} = dual(2, <A, B>(stream: Stream<A>, f: (a: A) => Stream<B>): Stream<B> =>
-  appendStep(stream, { tag: 'flatMap', fn: f }),
+} = dual(
+  2,
+  <A, B>(stream: Stream<A>, f: (a: A) => Stream<B>): Stream<B> =>
+    appendStep(stream, { tag: 'flatMap', fn: f }),
 ) as any
 
 export const take: {
   <A>(stream: Stream<A>, n: number): Stream<A>
   (n: number): <A>(stream: Stream<A>) => Stream<A>
-} = dual(2, <A>(stream: Stream<A>, n: number): Stream<A> =>
-  appendStep(stream, { tag: 'take', n }),
+} = dual(
+  2,
+  <A>(stream: Stream<A>, n: number): Stream<A> => appendStep(stream, { tag: 'take', n }),
 ) as any
 
 export const drop: {
   <A>(stream: Stream<A>, n: number): Stream<A>
   (n: number): <A>(stream: Stream<A>) => Stream<A>
-} = dual(2, <A>(stream: Stream<A>, n: number): Stream<A> =>
-  appendStep(stream, { tag: 'drop', n }),
+} = dual(
+  2,
+  <A>(stream: Stream<A>, n: number): Stream<A> => appendStep(stream, { tag: 'drop', n }),
 ) as any
 
 export const takeWhile: {
   <A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A>
   <A>(pred: (a: A) => boolean): (stream: Stream<A>) => Stream<A>
-} = dual(2, <A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A> =>
-  appendStep(stream, { tag: 'takeWhile', pred }),
+} = dual(
+  2,
+  <A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A> =>
+    appendStep(stream, { tag: 'takeWhile', pred }),
 ) as any
 
 export const dropWhile: {
   <A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A>
   <A>(pred: (a: A) => boolean): (stream: Stream<A>) => Stream<A>
-} = dual(2, <A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A> =>
-  appendStep(stream, { tag: 'dropWhile', pred }),
+} = dual(
+  2,
+  <A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A> =>
+    appendStep(stream, { tag: 'dropWhile', pred }),
 ) as any
 
 export const chunk: {
@@ -383,34 +400,40 @@ export const chunk: {
 export const scan: {
   <A, B>(stream: Stream<A>, f: (acc: B, a: A) => B, init: B): Stream<B>
   <A, B>(f: (acc: B, a: A) => B, init: B): (stream: Stream<A>) => Stream<B>
-} = dual(3, <A, B>(stream: Stream<A>, f: (acc: B, a: A) => B, init: B): Stream<B> =>
-  appendStep(stream, { tag: 'scan', fn: f, init }),
+} = dual(
+  3,
+  <A, B>(stream: Stream<A>, f: (acc: B, a: A) => B, init: B): Stream<B> =>
+    appendStep(stream, { tag: 'scan', fn: f, init }),
 ) as any
 
 export const zip: {
   <A, B>(stream: Stream<A>, other: Stream<B>): Stream<[A, B]>
   <B>(other: Stream<B>): <A>(stream: Stream<A>) => Stream<[A, B]>
-} = dual(2, <A, B>(stream: Stream<A>, other: Stream<B>): Stream<[A, B]> =>
-  make(function* () {
-    const itA = stream[Symbol.iterator]()
-    const itB = other[Symbol.iterator]()
-    while (true) {
-      const a = itA.next()
-      const b = itB.next()
-      if (a.done || b.done) return
-      yield [a.value, b.value]
-    }
-  }),
+} = dual(
+  2,
+  <A, B>(stream: Stream<A>, other: Stream<B>): Stream<[A, B]> =>
+    make(function* () {
+      const itA = stream[Symbol.iterator]()
+      const itB = other[Symbol.iterator]()
+      while (true) {
+        const a = itA.next()
+        const b = itB.next()
+        if (a.done || b.done) return
+        yield [a.value, b.value]
+      }
+    }),
 ) as any
 
 export const concat: {
   <A>(stream: Stream<A>, other: Stream<A>): Stream<A>
   <A>(other: Stream<A>): (stream: Stream<A>) => Stream<A>
-} = dual(2, <A>(stream: Stream<A>, other: Stream<A>): Stream<A> =>
-  make(function* () {
-    yield* stream
-    yield* other
-  }),
+} = dual(
+  2,
+  <A>(stream: Stream<A>, other: Stream<A>): Stream<A> =>
+    make(function* () {
+      yield* stream
+      yield* other
+    }),
 ) as any
 
 export const distinct = <A>(stream: Stream<A>): Stream<A> =>
@@ -427,31 +450,35 @@ export const distinct = <A>(stream: Stream<A>): Stream<A> =>
 export const distinctN: {
   <A>(stream: Stream<A>, maxSize: number): Stream<A>
   (maxSize: number): <A>(stream: Stream<A>) => Stream<A>
-} = dual(2, <A>(stream: Stream<A>, maxSize: number): Stream<A> =>
-  make(function* () {
-    const seen = new Set<A>()
-    for (const a of stream) {
-      if (!seen.has(a)) {
-        if (seen.size >= maxSize) seen.clear()
-        seen.add(a)
-        yield a
+} = dual(
+  2,
+  <A>(stream: Stream<A>, maxSize: number): Stream<A> =>
+    make(function* () {
+      const seen = new Set<A>()
+      for (const a of stream) {
+        if (!seen.has(a)) {
+          if (seen.size >= maxSize) seen.clear()
+          seen.add(a)
+          yield a
+        }
       }
-    }
-  }),
+    }),
 ) as any
 
 export const intersperse: {
   <A>(stream: Stream<A>, sep: A): Stream<A>
   <A>(sep: A): (stream: Stream<A>) => Stream<A>
-} = dual(2, <A>(stream: Stream<A>, sep: A): Stream<A> =>
-  make(function* () {
-    let firstValue = true
-    for (const a of stream) {
-      if (!firstValue) yield sep
-      firstValue = false
-      yield a
-    }
-  }),
+} = dual(
+  2,
+  <A>(stream: Stream<A>, sep: A): Stream<A> =>
+    make(function* () {
+      let firstValue = true
+      for (const a of stream) {
+        if (!firstValue) yield sep
+        firstValue = false
+        yield a
+      }
+    }),
 ) as any
 
 // --- Terminals ---
@@ -467,7 +494,7 @@ export const reduce: {
   let acc = init
 
   if (isPipeline(stream)) {
-    visitPipeline(stream.source, stream.steps, value => {
+    visitPipeline(stream.source, stream.steps, (value) => {
       acc = f(acc, value)
     })
     return acc
@@ -480,7 +507,7 @@ export const reduce: {
 export const first = <A>(stream: Stream<A>): A | undefined => {
   if (isPipeline(stream)) {
     let result: A | undefined
-    visitPipeline(stream.source, stream.steps, value => {
+    visitPipeline(stream.source, stream.steps, (value) => {
       result = value
       return false
     })
@@ -495,7 +522,7 @@ export const last = <A>(stream: Stream<A>): A | undefined => {
   let result: A | undefined
 
   if (isPipeline(stream)) {
-    visitPipeline(stream.source, stream.steps, value => {
+    visitPipeline(stream.source, stream.steps, (value) => {
       result = value
     })
     return result
@@ -584,7 +611,7 @@ export const forEach: {
   <A>(f: (a: A) => void): (stream: Stream<A>) => void
 } = dual(2, <A>(stream: Stream<A>, f: (a: A) => void): void => {
   if (isPipeline(stream)) {
-    visitPipeline(stream.source, stream.steps, value => {
+    visitPipeline(stream.source, stream.steps, (value) => {
       f(value)
     })
     return

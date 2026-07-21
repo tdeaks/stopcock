@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import fc from 'fast-check'
 import { pipe } from '../pipe'
 import {
@@ -44,7 +44,7 @@ describe('Lens', () => {
 
     it('over (data-first)', () => {
       const ageLens = prop<User, 'age'>('age')
-      expect(over(user, ageLens, n => n + 1).age).toBe(31)
+      expect(over(user, ageLens, (n) => n + 1).age).toBe(31)
     })
 
     it('over (data-last)', () => {
@@ -64,7 +64,7 @@ describe('Lens', () => {
 
     it('view', () => expect(view([10, 20, 30], second)).toBe(20))
     it('set', () => expect(set([10, 20, 30], second, 99)).toEqual([10, 99, 30]))
-    it('over', () => expect(over([10, 20, 30], second, n => n * 2)).toEqual([10, 40, 30]))
+    it('over', () => expect(over([10, 20, 30], second, (n) => n * 2)).toEqual([10, 40, 30]))
 
     it('immutability', () => {
       const arr = [10, 20, 30]
@@ -79,36 +79,43 @@ describe('Lens', () => {
     const tupleCityLens = path<User, readonly ['address', 'city']>(['address', 'city'] as const)
 
     it('view', () => expect(view(user, cityLens)).toBe('NYC'))
-  it('tuple view', () => expect(view(user, tupleCityLens)).toBe('NYC'))
-  it('tuple view returns undefined for missing optional intermediate', () => {
-    type OptionalUser = { meta?: { active: boolean } }
-    const activeLens = path<OptionalUser, readonly ['meta', 'active']>(['meta', 'active'] as const)
-    expect(view({}, activeLens)).toBeUndefined()
-  })
+    it('tuple view', () => expect(view(user, tupleCityLens)).toBe('NYC'))
+    it('tuple view returns undefined for missing optional intermediate', () => {
+      type OptionalUser = { meta?: { active: boolean } }
+      const activeLens = path<OptionalUser, readonly ['meta', 'active']>([
+        'meta',
+        'active',
+      ] as const)
+      expect(view({}, activeLens)).toBeUndefined()
+    })
 
     it('set', () => {
       const updated = set(user, cityLens, 'LA')
       expect(updated.address.city).toBe('LA')
       expect(updated.name).toBe('Alice')
     })
-  it('tuple set', () => {
-    const updated = set(user, tupleCityLens, 'LA')
-    expect(updated.address.city).toBe('LA')
-    expect(updated.name).toBe('Alice')
-    expect(updated.address).not.toBe(user.address)
-  })
-  it('tuple set preserves arrays along numeric paths', () => {
-    type Inventory = { items: { name: string }[] }
-    const inventory: Inventory = { items: [{ name: 'a' }] }
-    const itemNameLens = path<Inventory, readonly ['items', 0, 'name']>(['items', 0, 'name'] as const)
-    const updated = set(inventory, itemNameLens, 'b')
-    expect(updated).toEqual({ items: [{ name: 'b' }] })
-    expect(Array.isArray(updated.items)).toBe(true)
-    expect(updated.items).not.toBe(inventory.items)
-    expect(updated.items[0]).not.toBe(inventory.items[0])
-  })
+    it('tuple set', () => {
+      const updated = set(user, tupleCityLens, 'LA')
+      expect(updated.address.city).toBe('LA')
+      expect(updated.name).toBe('Alice')
+      expect(updated.address).not.toBe(user.address)
+    })
+    it('tuple set preserves arrays along numeric paths', () => {
+      type Inventory = { items: { name: string }[] }
+      const inventory: Inventory = { items: [{ name: 'a' }] }
+      const itemNameLens = path<Inventory, readonly ['items', 0, 'name']>([
+        'items',
+        0,
+        'name',
+      ] as const)
+      const updated = set(inventory, itemNameLens, 'b')
+      expect(updated).toEqual({ items: [{ name: 'b' }] })
+      expect(Array.isArray(updated.items)).toBe(true)
+      expect(updated.items).not.toBe(inventory.items)
+      expect(updated.items[0]).not.toBe(inventory.items[0])
+    })
     it('tuple over', () => {
-      const updated = over(user, tupleCityLens, city => city.toLowerCase())
+      const updated = over(user, tupleCityLens, (city) => city.toLowerCase())
       expect(updated.address.city).toBe('nyc')
       expect(user.address.city).toBe('NYC')
     })
@@ -134,14 +141,16 @@ describe('Lens', () => {
       expect(view(user, lensProp<User, 'name'>('name'))).toBe('Alice')
       expect(view([10, 20, 30], lensIndex<number>(1))).toBe(20)
       expect(view(user, lensPath<User, 'address', 'city'>('address', 'city'))).toBe('NYC')
-      expect(view(user, lensPath<User, readonly ['address', 'city']>(['address', 'city'] as const))).toBe('NYC')
+      expect(
+        view(user, lensPath<User, readonly ['address', 'city']>(['address', 'city'] as const)),
+      ).toBe('NYC')
     })
   })
 
   describe('custom lens', () => {
     const celsiusToFahrenheit = lens<{ celsius: number }, number>(
-      s => s.celsius * 9 / 5 + 32,
-      (s, f) => ({ celsius: (f - 32) * 5 / 9 }),
+      (s) => (s.celsius * 9) / 5 + 32,
+      (s, f) => ({ celsius: ((f - 32) * 5) / 9 }),
     )
 
     it('view', () => expect(view({ celsius: 100 }, celsiusToFahrenheit)).toBe(212))
@@ -156,7 +165,12 @@ describe('Lens', () => {
 
     it('over in pipe', () => {
       const nameLens = prop<User, 'name'>('name')
-      expect(pipe(user, over(nameLens, (n: string) => n.toUpperCase())).name).toBe('ALICE')
+      expect(
+        pipe(
+          user,
+          over(nameLens, (n: string) => n.toUpperCase()),
+        ).name,
+      ).toBe('ALICE')
     })
 
     it('set in pipe', () => {
@@ -170,21 +184,27 @@ describe('Lens', () => {
     const arb = fc.record({ name: fc.string(), age: fc.integer() })
 
     it('get-set: set(s, lens, view(s, lens)) === s', () => {
-      fc.assert(fc.property(arb, (s) => {
-        expect(set(s, nameLens, view(s, nameLens))).toEqual(s)
-      }))
+      fc.assert(
+        fc.property(arb, (s) => {
+          expect(set(s, nameLens, view(s, nameLens))).toEqual(s)
+        }),
+      )
     })
 
     it('set-get: view(set(s, lens, a), lens) === a', () => {
-      fc.assert(fc.property(arb, fc.string(), (s, a) => {
-        expect(view(set(s, nameLens, a), nameLens)).toBe(a)
-      }))
+      fc.assert(
+        fc.property(arb, fc.string(), (s, a) => {
+          expect(view(set(s, nameLens, a), nameLens)).toBe(a)
+        }),
+      )
     })
 
     it('set-set: set(set(s, lens, a), lens, b) === set(s, lens, b)', () => {
-      fc.assert(fc.property(arb, fc.string(), fc.string(), (s, a, b) => {
-        expect(set(set(s, nameLens, a), nameLens, b)).toEqual(set(s, nameLens, b))
-      }))
+      fc.assert(
+        fc.property(arb, fc.string(), fc.string(), (s, a, b) => {
+          expect(set(set(s, nameLens, a), nameLens, b)).toEqual(set(s, nameLens, b))
+        }),
+      )
     })
   })
 })

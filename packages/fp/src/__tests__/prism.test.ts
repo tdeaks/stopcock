@@ -1,10 +1,20 @@
-import { describe, it, expect } from 'vitest'
-import { pipe, type Option, type Result, some as optSome, none, ok as resOk, err, isSome, isNone } from '../index'
+import { describe, it, expect } from 'vite-plus/test'
+import {
+  pipe,
+  type Option,
+  type Result,
+  some as optSome,
+  none,
+  ok as resOk,
+  err,
+  isSome,
+  isNone,
+} from '../index'
 import { prism, fromPredicate, some, ok, preview, set, over, compose } from '../prism'
 
 describe('Prism', () => {
   it('fromPredicate', () => {
-    const positive = fromPredicate<number>(n => n > 0)
+    const positive = fromPredicate<number>((n) => n > 0)
     expect(isSome(preview(5, positive))).toBe(true)
     expect(isNone(preview(-1, positive))).toBe(true)
   })
@@ -64,7 +74,10 @@ describe('Prism', () => {
 
   it('custom prism', () => {
     const parseInt_ = prism<string, number>(
-      s => { const n = parseInt(s, 10); return isNaN(n) ? none : optSome(n) },
+      (s) => {
+        const n = parseInt(s, 10)
+        return isNaN(n) ? none : optSome(n)
+      },
       (_, a) => String(a),
     )
     const v = preview('42', parseInt_)
@@ -74,18 +87,21 @@ describe('Prism', () => {
 
   it('pipe integration (data-last)', () => {
     const p = some<number>()
-    const result = pipe(optSome(10) as Option<number>, over(p, (n: number) => n + 5))
+    const result = pipe(
+      optSome(10) as Option<number>,
+      over(p, (n: number) => n + 5),
+    )
     expect(isSome(result) && result.value).toBe(15)
   })
 
   it('fromPredicate set replaces value', () => {
-    const positive = fromPredicate<number>(n => n > 0)
+    const positive = fromPredicate<number>((n) => n > 0)
     const result = set(5, positive, 99)
     expect(result).toBe(99)
   })
 
   it('fromPredicate set on non-match returns original', () => {
-    const positive = fromPredicate<number>(n => n > 0)
+    const positive = fromPredicate<number>((n) => n > 0)
     const result = set(-1, positive, 99)
     expect(result).toBe(-1)
   })

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '../pipe'
 import * as Logic from '../logic'
 
@@ -42,16 +42,18 @@ describe('logic', () => {
 
   describe('defaultTo', () => {
     it('data-first with value', () => expect(Logic.defaultTo('actual', 'fallback')).toBe('actual'))
-    it('data-first with undefined', () => expect(Logic.defaultTo(undefined, 'fallback')).toBe('fallback'))
+    it('data-first with undefined', () =>
+      expect(Logic.defaultTo(undefined, 'fallback')).toBe('fallback'))
     it('data-last', () => expect(pipe(undefined, Logic.defaultTo('fallback'))).toBe('fallback'))
-    it('data-last with value', () => expect(pipe('actual' as string | undefined, Logic.defaultTo('fallback'))).toBe('actual'))
+    it('data-last with value', () =>
+      expect(pipe('actual' as string | undefined, Logic.defaultTo('fallback'))).toBe('actual'))
   })
 
   describe('cond', () => {
     const conditions: [(n: number) => boolean, (n: number) => string][] = [
-      [n => n < 0, () => 'negative'],
-      [n => n === 0, () => 'zero'],
-      [n => n > 0, () => 'positive'],
+      [(n) => n < 0, () => 'negative'],
+      [(n) => n === 0, () => 'zero'],
+      [(n) => n > 0, () => 'positive'],
     ]
 
     it('data-first', () => expect(Logic.cond(5, conditions)).toBe('positive'))
@@ -59,14 +61,60 @@ describe('logic', () => {
   })
 
   describe('when_', () => {
-    it('data-first applies', () => expect(Logic.when_(5, n => n > 0, n => n * 2)).toBe(10))
-    it('data-first skips', () => expect(Logic.when_(-5, n => n > 0, n => n * 2)).toBe(-5))
-    it('data-last', () => expect(pipe(5, Logic.when_((n: number) => n > 0, n => n * 2))).toBe(10))
+    it('data-first applies', () =>
+      expect(
+        Logic.when_(
+          5,
+          (n) => n > 0,
+          (n) => n * 2,
+        ),
+      ).toBe(10))
+    it('data-first skips', () =>
+      expect(
+        Logic.when_(
+          -5,
+          (n) => n > 0,
+          (n) => n * 2,
+        ),
+      ).toBe(-5))
+    it('data-last', () =>
+      expect(
+        pipe(
+          5,
+          Logic.when_(
+            (n: number) => n > 0,
+            (n) => n * 2,
+          ),
+        ),
+      ).toBe(10))
   })
 
   describe('unless', () => {
-    it('data-first applies', () => expect(Logic.unless(-5, n => n > 0, n => n * -1)).toBe(5))
-    it('data-first skips', () => expect(Logic.unless(5, n => n > 0, n => n * -1)).toBe(5))
-    it('data-last', () => expect(pipe(-5, Logic.unless((n: number) => n > 0, n => n * -1))).toBe(5))
+    it('data-first applies', () =>
+      expect(
+        Logic.unless(
+          -5,
+          (n) => n > 0,
+          (n) => n * -1,
+        ),
+      ).toBe(5))
+    it('data-first skips', () =>
+      expect(
+        Logic.unless(
+          5,
+          (n) => n > 0,
+          (n) => n * -1,
+        ),
+      ).toBe(5))
+    it('data-last', () =>
+      expect(
+        pipe(
+          -5,
+          Logic.unless(
+            (n: number) => n > 0,
+            (n) => n * -1,
+          ),
+        ),
+      ).toBe(5))
   })
 })

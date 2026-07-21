@@ -4,7 +4,13 @@ import { defaultFor } from '../params'
 import type { AnyParam, Node, RenderOptions, Samples, Trigger } from '../types'
 import { cloneForTrigger, compile, SynthCompileError } from '../internal/graph'
 import { clamp, mulberry32, safeFinite } from '../internal/util'
-import { renderFmSample, samplePolyblep, sampleWavetable, TAU, wrapPhase } from '../internal/oscillator'
+import {
+  renderFmSample,
+  samplePolyblep,
+  sampleWavetable,
+  TAU,
+  wrapPhase,
+} from '../internal/oscillator'
 import { validateRenderInputs } from './render-inputs'
 
 type Mono = Float32Array
@@ -20,15 +26,20 @@ type RenderContext = {
 }
 
 export function renderReference(node: Node, opts: RenderOptions): Samples {
-  if (!Number.isFinite(opts.duration) || opts.duration < 0) throw new SynthCompileError('render duration must be a non-negative finite number')
+  if (!Number.isFinite(opts.duration) || opts.duration < 0)
+    throw new SynthCompileError('render duration must be a non-negative finite number')
   const sampleRate = opts.sampleRate ?? DEFAULT_SAMPLE_RATE
-  if (!Number.isFinite(sampleRate) || sampleRate <= 0) throw new SynthCompileError('sampleRate must be a positive finite number')
+  if (!Number.isFinite(sampleRate) || sampleRate <= 0)
+    throw new SynthCompileError('sampleRate must be a positive finite number')
   const length = Math.max(0, Math.floor(opts.duration * sampleRate))
 
   if (opts.triggers && opts.triggers.length > 0) {
     const compiled = compile(node, 'offline')
     validateRenderInputs(compiled.inputNodes, opts.inputs, length)
-    const output: Rendered = compiled.root.out === 2 ? [new Float32Array(length), new Float32Array(length)] : new Float32Array(length)
+    const output: Rendered =
+      compiled.root.out === 2
+        ? [new Float32Array(length), new Float32Array(length)]
+        : new Float32Array(length)
     const triggers = [...opts.triggers].sort((a, b) => a.atSec - b.atSec)
 
     for (const trigger of triggers) {
@@ -36,11 +47,15 @@ export function renderReference(node: Node, opts: RenderOptions): Samples {
       if (start >= length) continue
       const localDuration = (length - start) / sampleRate
       const localInputs = opts.inputs?.map((input) => input.subarray(start, length))
-      const voice = renderSingle(cloneForTrigger(node, trigger), {
-        duration: localDuration,
-        sampleRate,
-        inputs: localInputs,
-      }, trigger)
+      const voice = renderSingle(
+        cloneForTrigger(node, trigger),
+        {
+          duration: localDuration,
+          sampleRate,
+          inputs: localInputs,
+        },
+        trigger,
+      )
       addInto(output, voice, start)
     }
     return output
@@ -106,14 +121,18 @@ function renderNode(node: Node, ctx: RenderContext): Rendered {
           for (let i = 0; i < ctx.length; i++) out[i] = input[i] * amount
           return
         }
-        for (let i = 0; i < ctx.length; i++) out[i] = input[i] * paramAt(node, 'amount', node.amount, i, ctx)
+        for (let i = 0; i < ctx.length; i++)
+          out[i] = input[i] * paramAt(node, 'amount', node.amount, i, ctx)
       })
     case 'pan':
       return renderPan(node, ctx)
     case 'mix':
       return renderMix(node, ctx)
     case 'stereo':
-      return [monoOf(inputOf(node.left, ctx), ctx.length), monoOf(inputOf(node.right, ctx), ctx.length)]
+      return [
+        monoOf(inputOf(node.left, ctx), ctx.length),
+        monoOf(inputOf(node.right, ctx), ctx.length),
+      ]
     case 'biquad':
       return renderBiquad(node, ctx)
     case 'stateVariableFilter':
@@ -292,7 +311,7 @@ function renderPan(node: Extract<Node, { kind: 'pan' }>, ctx: RenderContext): St
   const right = new Float32Array(ctx.length)
   if (!hasParamMod(node, 'position')) {
     const position = clamp(safeFinite(node.position), -1, 1)
-    const angle = (position + 1) * Math.PI / 4
+    const angle = ((position + 1) * Math.PI) / 4
     const leftGain = Math.cos(angle)
     const rightGain = Math.sin(angle)
     for (let i = 0; i < ctx.length; i++) {
@@ -304,7 +323,7 @@ function renderPan(node: Extract<Node, { kind: 'pan' }>, ctx: RenderContext): St
 
   for (let i = 0; i < ctx.length; i++) {
     const position = clamp(paramAt(node, 'position', node.position, i, ctx), -1, 1)
-    const angle = (position + 1) * Math.PI / 4
+    const angle = ((position + 1) * Math.PI) / 4
     left[i] = mono[i] * Math.cos(angle)
     right[i] = mono[i] * Math.sin(angle)
   }
@@ -332,7 +351,8 @@ function renderBiquad(node: Extract<Node, { kind: 'biquad' }>, ctx: RenderContex
     let x2 = 0
     let y1 = 0
     let y2 = 0
-    const staticParams = !hasParamMod(node, 'freq') && !hasParamMod(node, 'q') && !hasParamMod(node, 'gainDb')
+    const staticParams =
+      !hasParamMod(node, 'freq') && !hasParamMod(node, 'q') && !hasParamMod(node, 'gainDb')
     if (staticParams) {
       let coeffs: ReturnType<typeof biquad.design>
       try {
@@ -400,7 +420,11 @@ function renderComb(node: Extract<Node, { kind: 'comb' }>, ctx: RenderContext): 
     let write = 0
     let dampState = 0
     for (let i = 0; i < ctx.length; i++) {
-      const delaySamples = clamp(Math.round(paramAt(node, 'delayMs', node.delayMs, i, ctx) * ctx.sampleRate / 1000), 1, maxDelay - 1)
+      const delaySamples = clamp(
+        Math.round((paramAt(node, 'delayMs', node.delayMs, i, ctx) * ctx.sampleRate) / 1000),
+        1,
+        maxDelay - 1,
+      )
       const feedback = clamp(paramAt(node, 'feedback', node.feedback, i, ctx), -0.999, 0.999)
       const damp = clamp(paramAt(node, 'damp', node.damp, i, ctx), 0, 1)
       const read = (write - delaySamples + maxDelay) % maxDelay
@@ -414,7 +438,10 @@ function renderComb(node: Extract<Node, { kind: 'comb' }>, ctx: RenderContext): 
 
 function renderAdsr(node: Extract<Node, { kind: 'adsr' }>, ctx: RenderContext): Rendered {
   return mapChannels(inputOf(node.input, ctx), (input, out) => {
-    const gateSec = ctx.note?.gateMs !== undefined ? Math.max(0, ctx.note.gateMs / 1000) : ctx.length / ctx.sampleRate
+    const gateSec =
+      ctx.note?.gateMs !== undefined
+        ? Math.max(0, ctx.note.gateMs / 1000)
+        : ctx.length / ctx.sampleRate
     const velocity = ctx.note?.velocity ?? 1
     if (!hasAnyMod(node)) {
       const opts = {
@@ -446,7 +473,10 @@ function renderAr(node: Extract<Node, { kind: 'ar' }>, ctx: RenderContext): Rend
   return mapChannels(inputOf(node.input, ctx), (input, out) => {
     for (let i = 0; i < ctx.length; i++) {
       const t = i / ctx.sampleRate
-      const gateSec = ctx.note?.gateMs !== undefined ? Math.max(0, ctx.note.gateMs / 1000) : ctx.length / ctx.sampleRate
+      const gateSec =
+        ctx.note?.gateMs !== undefined
+          ? Math.max(0, ctx.note.gateMs / 1000)
+          : ctx.length / ctx.sampleRate
       const amp = arAt(t, gateSec, {
         attack: Math.max(0, paramAt(node, 'attack', node.attack, i, ctx)),
         release: Math.max(0, paramAt(node, 'release', node.release, i, ctx)),
@@ -462,7 +492,11 @@ function renderDelay(node: Extract<Node, { kind: 'delay' }>, ctx: RenderContext)
     const delayLine = new Float32Array(maxDelay)
     let write = 0
     if (!hasAnyMod(node)) {
-      const delaySamples = clamp(Math.round(safeFinite(node.delayMs) * ctx.sampleRate / 1000), 1, maxDelay - 1)
+      const delaySamples = clamp(
+        Math.round((safeFinite(node.delayMs) * ctx.sampleRate) / 1000),
+        1,
+        maxDelay - 1,
+      )
       const feedback = clamp(safeFinite(node.feedback), -0.999, 0.999)
       const mix = clamp(safeFinite(node.mix), 0, 1)
       const dry = 1 - mix
@@ -477,7 +511,11 @@ function renderDelay(node: Extract<Node, { kind: 'delay' }>, ctx: RenderContext)
     }
 
     for (let i = 0; i < ctx.length; i++) {
-      const delaySamples = clamp(Math.round(paramAt(node, 'delayMs', node.delayMs, i, ctx) * ctx.sampleRate / 1000), 1, maxDelay - 1)
+      const delaySamples = clamp(
+        Math.round((paramAt(node, 'delayMs', node.delayMs, i, ctx) * ctx.sampleRate) / 1000),
+        1,
+        maxDelay - 1,
+      )
       const feedback = clamp(paramAt(node, 'feedback', node.feedback, i, ctx), -0.999, 0.999)
       const mix = clamp(paramAt(node, 'mix', node.mix, i, ctx), 0, 1)
       const read = (write - delaySamples + maxDelay) % maxDelay
@@ -503,7 +541,10 @@ function renderReverb(node: Extract<Node, { kind: 'reverb' }>, ctx: RenderContex
   })
 }
 
-function renderDistortion(node: Extract<Node, { kind: 'distortion' }>, ctx: RenderContext): Rendered {
+function renderDistortion(
+  node: Extract<Node, { kind: 'distortion' }>,
+  ctx: RenderContext,
+): Rendered {
   return mapChannels(inputOf(node.input, ctx), (input, out) => {
     if (!hasParamMod(node, 'amount')) {
       const drive = 1 + Math.max(0, safeFinite(node.amount)) * 24
@@ -544,7 +585,7 @@ function renderChorus(node: Extract<Node, { kind: 'chorus' }>, ctx: RenderContex
       for (let i = 0; i < ctx.length; i++) {
         const t = i / ctx.sampleRate
         const delayMs = 8 + depth * (0.5 + 0.5 * Math.sin(2 * Math.PI * rate * t))
-        const delaySamples = clamp(Math.round(delayMs * ctx.sampleRate / 1000), 1, maxDelay - 1)
+        const delaySamples = clamp(Math.round((delayMs * ctx.sampleRate) / 1000), 1, maxDelay - 1)
         const read = (write - delaySamples + maxDelay) % maxDelay
         const wet = delayLine[read]
         out[i] = input[i] * dry + wet * mix
@@ -560,7 +601,7 @@ function renderChorus(node: Extract<Node, { kind: 'chorus' }>, ctx: RenderContex
       const depth = Math.max(0, paramAt(node, 'depth', node.depth, i, ctx))
       const mix = clamp(paramAt(node, 'mix', node.mix, i, ctx), 0, 1)
       const delayMs = 8 + depth * (0.5 + 0.5 * Math.sin(2 * Math.PI * rate * t))
-      const delaySamples = clamp(Math.round(delayMs * ctx.sampleRate / 1000), 1, maxDelay - 1)
+      const delaySamples = clamp(Math.round((delayMs * ctx.sampleRate) / 1000), 1, maxDelay - 1)
       const read = (write - delaySamples + maxDelay) % maxDelay
       const wet = delayLine[read]
       out[i] = input[i] * (1 - mix) + wet * mix
@@ -606,27 +647,35 @@ function renderSpaceEcho(node: Extract<Node, { kind: 'spaceEcho' }>, ctx: Render
     const flutter = clamp(paramAt(node, 'flutter', node.flutter, i, ctx), 0, 1)
     const tapeAge = clamp(paramAt(node, 'tapeAge', node.tapeAge, i, ctx), 0, 1)
     const drive = Math.max(0, paramAt(node, 'drive', node.drive, i, ctx))
-    const modulation = 1
-      + Math.sin(2 * Math.PI * 0.55 * t) * wow * 0.013
-      + Math.sin(2 * Math.PI * 0.13 * t + 1.1) * wow * 0.006
-      + Math.sin(2 * Math.PI * 7.8 * t + 1.7) * flutter * 0.0035
-    const baseDelay = timeMs * ctx.sampleRate / 1000 * modulation
+    const modulation =
+      1 +
+      Math.sin(2 * Math.PI * 0.55 * t) * wow * 0.013 +
+      Math.sin(2 * Math.PI * 0.13 * t + 1.1) * wow * 0.006 +
+      Math.sin(2 * Math.PI * 7.8 * t + 1.7) * flutter * 0.0035
+    const baseDelay = ((timeMs * ctx.sampleRate) / 1000) * modulation
     const headGain = 0.88 / headCount
     let wetL = 0
     let wetR = 0
 
     if (spaceEchoHasHead(node.mode, 1)) {
-      const tap = (readDelayLine(delayL, write, baseDelay) + readDelayLine(delayR, write, baseDelay)) * 0.5
+      const tap =
+        (readDelayLine(delayL, write, baseDelay) + readDelayLine(delayR, write, baseDelay)) * 0.5
       wetL += tap * 0.94 * headGain
       wetR += tap * 0.42 * headGain
     }
     if (spaceEchoHasHead(node.mode, 2)) {
-      const tap = (readDelayLine(delayL, write, baseDelay * 1.5) + readDelayLine(delayR, write, baseDelay * 1.5)) * 0.5
+      const tap =
+        (readDelayLine(delayL, write, baseDelay * 1.5) +
+          readDelayLine(delayR, write, baseDelay * 1.5)) *
+        0.5
       wetL += tap * 0.68 * headGain
       wetR += tap * 0.68 * headGain
     }
     if (spaceEchoHasHead(node.mode, 3)) {
-      const tap = (readDelayLine(delayL, write, baseDelay * 2) + readDelayLine(delayR, write, baseDelay * 2)) * 0.5
+      const tap =
+        (readDelayLine(delayL, write, baseDelay * 2) +
+          readDelayLine(delayR, write, baseDelay * 2)) *
+        0.5
       wetL += tap * 0.42 * headGain
       wetR += tap * 0.94 * headGain
     }
@@ -673,14 +722,21 @@ function renderSpaceEcho(node: Extract<Node, { kind: 'spaceEcho' }>, ctx: Render
   return [left, right]
 }
 
-function renderCompressor(node: Extract<Node, { kind: 'compressor' }>, ctx: RenderContext): Rendered {
+function renderCompressor(
+  node: Extract<Node, { kind: 'compressor' }>,
+  ctx: RenderContext,
+): Rendered {
   return mapChannels(inputOf(node.input, ctx), (input, out) => {
     let env = 0
     if (!hasAnyMod(node)) {
       const threshold = safeFinite(node.threshold)
       const ratio = Math.max(1, safeFinite(node.ratio, 1))
-      const attackCoeff = Math.exp(-1 / (Math.max(1e-6, safeFinite(node.attack, 1e-6)) * ctx.sampleRate))
-      const releaseCoeff = Math.exp(-1 / (Math.max(1e-6, safeFinite(node.release, 1e-6)) * ctx.sampleRate))
+      const attackCoeff = Math.exp(
+        -1 / (Math.max(1e-6, safeFinite(node.attack, 1e-6)) * ctx.sampleRate),
+      )
+      const releaseCoeff = Math.exp(
+        -1 / (Math.max(1e-6, safeFinite(node.release, 1e-6)) * ctx.sampleRate),
+      )
       const knee = Math.max(0, safeFinite(node.knee))
       for (let i = 0; i < ctx.length; i++) {
         const x = input[i]
@@ -703,7 +759,10 @@ function renderCompressor(node: Extract<Node, { kind: 'compressor' }>, ctx: Rend
       const knee = Math.max(0, paramAt(node, 'knee', node.knee, i, ctx))
       const x = input[i]
       const level = Math.abs(x)
-      const coeff = level > env ? Math.exp(-1 / (attack * ctx.sampleRate)) : Math.exp(-1 / (release * ctx.sampleRate))
+      const coeff =
+        level > env
+          ? Math.exp(-1 / (attack * ctx.sampleRate))
+          : Math.exp(-1 / (release * ctx.sampleRate))
       env = coeff * env + (1 - coeff) * level
       const db = 20 * Math.log10(Math.max(env, 1e-9))
       const over = softKnee(db - threshold, knee)
@@ -719,7 +778,10 @@ function renderBitcrush(node: Extract<Node, { kind: 'bitcrush' }>, ctx: RenderCo
     let countdown = 0
     for (let i = 0; i < ctx.length; i++) {
       const bits = clamp(Math.round(paramAt(node, 'bits', node.bits, i, ctx)), 1, 24)
-      const downsample = Math.max(1, Math.round(paramAt(node, 'downsample', node.downsample, i, ctx)))
+      const downsample = Math.max(
+        1,
+        Math.round(paramAt(node, 'downsample', node.downsample, i, ctx)),
+      )
       if (countdown <= 0) {
         const levels = 2 ** bits
         held = Math.round(clamp(input[i], -1, 1) * (levels / 2 - 1)) / (levels / 2 - 1)
@@ -754,27 +816,41 @@ function asymmetricTanh(value: number, drive: number, bias: number): number {
 }
 
 function spaceEchoHeadCount(mode: Extract<Node, { kind: 'spaceEcho' }>['mode']): number {
-  return (spaceEchoHasHead(mode, 1) ? 1 : 0)
-    + (spaceEchoHasHead(mode, 2) ? 1 : 0)
-    + (spaceEchoHasHead(mode, 3) ? 1 : 0)
+  return (
+    (spaceEchoHasHead(mode, 1) ? 1 : 0) +
+    (spaceEchoHasHead(mode, 2) ? 1 : 0) +
+    (spaceEchoHasHead(mode, 3) ? 1 : 0)
+  )
 }
 
-function spaceEchoHasHead(mode: Extract<Node, { kind: 'spaceEcho' }>['mode'], head: 1 | 2 | 3): boolean {
-  return mode === 'heads-1-2-3'
-    || (head === 1 && (mode === 'head-1' || mode === 'heads-1-2' || mode === 'heads-1-3'))
-    || (head === 2 && (mode === 'head-2' || mode === 'heads-1-2' || mode === 'heads-2-3'))
-    || (head === 3 && (mode === 'head-3' || mode === 'heads-1-3' || mode === 'heads-2-3'))
+function spaceEchoHasHead(
+  mode: Extract<Node, { kind: 'spaceEcho' }>['mode'],
+  head: 1 | 2 | 3,
+): boolean {
+  return (
+    mode === 'heads-1-2-3' ||
+    (head === 1 && (mode === 'head-1' || mode === 'heads-1-2' || mode === 'heads-1-3')) ||
+    (head === 2 && (mode === 'head-2' || mode === 'heads-1-2' || mode === 'heads-2-3')) ||
+    (head === 3 && (mode === 'head-3' || mode === 'heads-1-3' || mode === 'heads-2-3'))
+  )
 }
 
-function paramAt(node: Node, param: AnyParam, base: number, sample: number, ctx: RenderContext): number {
+function paramAt(
+  node: Node,
+  param: AnyParam,
+  base: number,
+  sample: number,
+  ctx: RenderContext,
+): number {
   let value = base
   for (const edge of node.mods) {
     if (edge.param !== param) continue
     const source = ctx.rendered.get(edge.source)
     if (!source) continue
-    const index = edge.rate === 'control'
-      ? Math.min(ctx.length - 1, Math.floor(sample / DEFAULT_BLOCK_SIZE) * DEFAULT_BLOCK_SIZE)
-      : sample
+    const index =
+      edge.rate === 'control'
+        ? Math.min(ctx.length - 1, Math.floor(sample / DEFAULT_BLOCK_SIZE) * DEFAULT_BLOCK_SIZE)
+        : sample
     value += monoSample(source, index) * edge.depth
   }
   return Number.isFinite(value) ? value : safeFinite(base)
@@ -816,7 +892,8 @@ function addInto(target: Rendered, source: Rendered, offset: number): void {
     addChannelsAt(target, source, offset)
   } else {
     const mono = Array.isArray(source) ? monoOf(source, source[0].length) : source
-    for (let i = 0; i < mono.length && i + offset < target.length; i++) target[i + offset] += mono[i]
+    for (let i = 0; i < mono.length && i + offset < target.length; i++)
+      target[i + offset] += mono[i]
   }
 }
 
@@ -845,7 +922,11 @@ function sampleLinear(samples: Float32Array, index: number): number {
   return samples[lo] * (1 - frac) + samples[hi] * frac
 }
 
-function adsrAt(t: number, gateSec: number, opts: { attack: number, decay: number, sustain: number, release: number }): number {
+function adsrAt(
+  t: number,
+  gateSec: number,
+  opts: { attack: number; decay: number; sustain: number; release: number },
+): number {
   if (t < opts.attack) return opts.attack === 0 ? 1 : t / opts.attack
   if (t < opts.attack + opts.decay) {
     const p = opts.decay === 0 ? 1 : (t - opts.attack) / opts.decay
@@ -856,7 +937,7 @@ function adsrAt(t: number, gateSec: number, opts: { attack: number, decay: numbe
   return clamp(opts.sustain * (1 - releaseProgress), 0, 1)
 }
 
-function arAt(t: number, gateSec: number, opts: { attack: number, release: number }): number {
+function arAt(t: number, gateSec: number, opts: { attack: number; release: number }): number {
   if (t < opts.attack) return opts.attack === 0 ? 1 : t / opts.attack
   if (t < gateSec) return 1
   const releaseProgress = opts.release === 0 ? 1 : (t - gateSec) / opts.release
@@ -867,5 +948,5 @@ function softKnee(overDb: number, knee: number): number {
   if (knee <= 0) return Math.max(0, overDb)
   if (overDb <= -knee / 2) return 0
   if (overDb >= knee / 2) return overDb
-  return ((overDb + knee / 2) ** 2) / (2 * knee)
+  return (overDb + knee / 2) ** 2 / (2 * knee)
 }

@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { pipe, A } from '@stopcock/fp'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
@@ -23,6 +23,5 @@ describe.each([100, 1_000, 10_000, 100_000])('filter→map→take(10) — n=%i',
       (d: number[]) => _.filter(d, gt),
       (d: number[]) => _.map(d, dbl),
       (d: number[]) => _.take(d, 10),
-    ])(data),
-  )
+    ])(data))
 })

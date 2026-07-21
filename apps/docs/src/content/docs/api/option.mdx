@@ -55,21 +55,21 @@ import { pipe, O } from '@stopcock/fp'
 // safe env variable with validation
 const port = pipe(
   O.fromNullable(process.env.PORT),
-  O.map(s => parseInt(s, 10)),
-  O.filter(n => n > 0 && n < 65536),
+  O.map((s) => parseInt(s, 10)),
+  O.filter((n) => n > 0 && n < 65536),
   O.getOrElse(() => 3000),
 )
 
 // chain nullable lookups
 pipe(
   O.fromNullable(user.address),
-  O.flatMap(a => O.fromNullable(a.zip)),
-  O.match(() => 'no zip', zip => zip),
+  O.flatMap((a) => O.fromNullable(a.zip)),
+  O.match(
+    () => 'no zip',
+    (zip) => zip,
+  ),
 )
 
 // convert to Result for error context
-pipe(
-  O.fromNullable(headers.authorization),
-  O.toResult('missing auth header'),
-)
+pipe(O.fromNullable(headers.authorization), O.toResult('missing auth header'))
 ```

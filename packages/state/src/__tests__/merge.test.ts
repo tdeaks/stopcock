@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vite-plus/test'
 import { create, history } from '../index.js'
 
 type State = {
@@ -17,16 +17,16 @@ describe('merge', () => {
   it('merges a single key', () => {
     const store = create(initial())
     store.merge({ count: 42 })
-    expect(store.get(s => s.count)).toBe(42)
-    expect(store.get(s => s.user.name)).toBe('Tom')
+    expect(store.get((s) => s.count)).toBe(42)
+    expect(store.get((s) => s.user.name)).toBe('Tom')
   })
 
   it('merges multiple keys', () => {
     const store = create(initial())
     store.merge({ count: 10, flag: true })
-    expect(store.get(s => s.count)).toBe(10)
-    expect(store.get(s => s.flag)).toBe(true)
-    expect(store.get(s => s.user.name)).toBe('Tom')
+    expect(store.get((s) => s.count)).toBe(10)
+    expect(store.get((s) => s.flag)).toBe(true)
+    expect(store.get((s) => s.user.name)).toBe('Tom')
   })
 
   it('skips noop when all values unchanged', () => {
@@ -41,8 +41,8 @@ describe('merge', () => {
     const store = create(initial())
     const countListener = vi.fn()
     const nameListener = vi.fn()
-    store.subscribe(s => s.count, countListener)
-    store.subscribe(s => s.user.name, nameListener)
+    store.subscribe((s) => s.count, countListener)
+    store.subscribe((s) => s.user.name, nameListener)
     store.merge({ count: 5 })
     expect(countListener).toHaveBeenCalledWith(5, 0)
     expect(nameListener).not.toHaveBeenCalled()
@@ -51,10 +51,22 @@ describe('merge', () => {
   it('does not fire unrelated subscribers with many subs', () => {
     const store = create({ a: 1, b: 2, c: 3, d: 4 })
     const calls: string[] = []
-    store.subscribe(s => s.a, () => calls.push('a'))
-    store.subscribe(s => s.b, () => calls.push('b'))
-    store.subscribe(s => s.c, () => calls.push('c'))
-    store.subscribe(s => s.d, () => calls.push('d'))
+    store.subscribe(
+      (s) => s.a,
+      () => calls.push('a'),
+    )
+    store.subscribe(
+      (s) => s.b,
+      () => calls.push('b'),
+    )
+    store.subscribe(
+      (s) => s.c,
+      () => calls.push('c'),
+    )
+    store.subscribe(
+      (s) => s.d,
+      () => calls.push('d'),
+    )
     store.merge({ b: 99 })
     expect(calls).toEqual(['b'])
   })
@@ -63,15 +75,15 @@ describe('merge', () => {
     const h = history<State>()
     const store = create(initial(), { middleware: [h.middleware] })
     store.merge({ count: 10 })
-    expect(store.get(s => s.count)).toBe(10)
+    expect(store.get((s) => s.count)).toBe(10)
     h.undo(store)
-    expect(store.get(s => s.count)).toBe(0)
+    expect(store.get((s) => s.count)).toBe(0)
   })
 
   it('middleware can reject merge', () => {
     const store = create(initial(), { middleware: [() => null] })
     store.merge({ count: 99 })
-    expect(store.get(s => s.count)).toBe(0)
+    expect(store.get((s) => s.count)).toBe(0)
   })
 
   it('works within batch', () => {
@@ -83,8 +95,8 @@ describe('merge', () => {
       store.merge({ flag: true })
     })
     expect(listener).toHaveBeenCalledTimes(1)
-    expect(store.get(s => s.count)).toBe(1)
-    expect(store.get(s => s.flag)).toBe(true)
+    expect(store.get((s) => s.count)).toBe(1)
+    expect(store.get((s) => s.flag)).toBe(true)
   })
 
   it('fires onCommit with patch', () => {
@@ -101,6 +113,6 @@ describe('merge', () => {
   it('get() sees merge immediately', () => {
     const store = create(initial())
     store.merge({ count: 7 })
-    expect(store.get(s => s.count)).toBe(7)
+    expect(store.get((s) => s.count)).toBe(7)
   })
 })

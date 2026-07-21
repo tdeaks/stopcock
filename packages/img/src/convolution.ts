@@ -4,8 +4,12 @@ import { dual } from './dual'
 import { convolve2dSeparable } from '@stopcock/la/primitives'
 
 function validateImage(img: Image): void {
-  if (img.width <= 0 || img.height <= 0) throw new Error('Invalid image: width and height must be positive')
-  if (img.data.length !== img.width * img.height * 4) throw new Error(`Invalid image: data length ${img.data.length} doesn't match ${img.width}x${img.height}x4`)
+  if (img.width <= 0 || img.height <= 0)
+    throw new Error('Invalid image: width and height must be positive')
+  if (img.data.length !== img.width * img.height * 4)
+    throw new Error(
+      `Invalid image: data length ${img.data.length} doesn't match ${img.width}x${img.height}x4`,
+    )
 }
 
 const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)))
@@ -15,19 +19,24 @@ export const convolve: {
   (kernel: number[][], divisor?: number): (img: Image) => Image
 } = dual(2, (img: Image, kernel: number[][], divisor?: number): Image => {
   validateImage(img)
-  if (kernel.length === 0 || kernel[0].length === 0) throw new Error('Invalid kernel: must be non-empty')
+  if (kernel.length === 0 || kernel[0].length === 0)
+    throw new Error('Invalid kernel: must be non-empty')
   const kw0 = kernel[0].length
   for (const row of kernel) {
     if (row.length !== kw0) throw new Error('Invalid kernel: must be rectangular')
   }
-  const kh = kernel.length, kw = kernel[0].length
-  const hh = Math.floor(kh / 2), hw = Math.floor(kw / 2)
+  const kh = kernel.length,
+    kw = kernel[0].length
+  const hh = Math.floor(kh / 2),
+    hw = Math.floor(kw / 2)
   const div = divisor ?? (kernel.flat().reduce((a, b) => a + b, 0) || 1)
   const out = create(img.width, img.height)
 
   for (let y = 0; y < img.height; y++) {
     for (let x = 0; x < img.width; x++) {
-      let r = 0, g = 0, b = 0
+      let r = 0,
+        g = 0,
+        b = 0
       for (let ky = 0; ky < kh; ky++) {
         for (let kx = 0; kx < kw; kx++) {
           const sy = Math.min(img.height - 1, Math.max(0, y + ky - hh))
@@ -68,13 +77,14 @@ const gaussianKernel = (radius: number, sigma?: number): number[][] => {
   for (let y = 0; y < size; y++) {
     k[y] = []
     for (let x = 0; x < size; x++) {
-      const dx = x - radius, dy = y - radius
+      const dx = x - radius,
+        dy = y - radius
       const v = Math.exp(-(dx * dx + dy * dy) / (2 * s * s))
       k[y][x] = v
       sum += v
     }
   }
-  return k.map(row => row.map(v => v / sum))
+  return k.map((row) => row.map((v) => v / sum))
 }
 
 const gaussian1dKernel = (radius: number, sigma?: number): Float64Array => {
@@ -105,11 +115,15 @@ export const gaussianBlur: {
 
 const sharpenImpl = (img: Image, amount: number): Image => {
   validateImage(img)
-  return convolve(img, [
-    [0, -amount, 0],
-    [-amount, 1 + 4 * amount, -amount],
-    [0, -amount, 0],
-  ], 1)
+  return convolve(
+    img,
+    [
+      [0, -amount, 0],
+      [-amount, 1 + 4 * amount, -amount],
+      [0, -amount, 0],
+    ],
+    1,
+  )
 }
 
 export const sharpen: {
@@ -126,8 +140,24 @@ export const sharpen: {
 
 export const edgeDetect = (img: Image): Image => {
   validateImage(img)
-  const gx = convolve(img, [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], 1)
-  const gy = convolve(img, [[-1, -2, -1], [0, 0, 0], [1, 2, 1]], 1)
+  const gx = convolve(
+    img,
+    [
+      [-1, 0, 1],
+      [-2, 0, 2],
+      [-1, 0, 1],
+    ],
+    1,
+  )
+  const gy = convolve(
+    img,
+    [
+      [-1, -2, -1],
+      [0, 0, 0],
+      [1, 2, 1],
+    ],
+    1,
+  )
   const out = create(img.width, img.height)
   for (let i = 0; i < out.data.length; i += 4) {
     for (let c = 0; c < 3; c++) {

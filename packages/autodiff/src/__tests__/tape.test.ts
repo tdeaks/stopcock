@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { NoActiveTapeError, type Var } from '../types'
 import { accumulate, backward, currentTape, gradOf, variable, withTape } from '../tape'
 import { differentiable } from '../differentiable'

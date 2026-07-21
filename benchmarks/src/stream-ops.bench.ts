@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { pipe, Stream } from '@stopcock/fp'
 import { getData } from './setup'
 
@@ -33,26 +33,27 @@ function nativeLoopMapFilterTake(data: readonly number[], limit: number) {
   return out
 }
 
-describe.each(sizes)('Stream.from -> map -> filter -> take(100) -> toArray, iterator bridge n=%i', (n) => {
-  const data = getData<number>('numbers', n)
+describe.each(sizes)(
+  'Stream.from -> map -> filter -> take(100) -> toArray, iterator bridge n=%i',
+  (n) => {
+    const data = getData<number>('numbers', n)
 
-  bench('stopcock Stream.from map/filter/take/toArray', () => (
-    pipe(
-      Stream.from(data),
-      Stream.map(double),
-      Stream.filter(keepMappedValue),
-      Stream.take(takeCount),
-      Stream.toArray,
-    )
-  ))
+    bench('stopcock Stream.from map/filter/take/toArray', () =>
+      pipe(
+        Stream.from(data),
+        Stream.map(double),
+        Stream.filter(keepMappedValue),
+        Stream.take(takeCount),
+        Stream.toArray,
+      ))
 
-  bench('native generator iterator map/filter/take -> Array.from', () => (
-    Array.from(nativeGeneratorMapFilterTake(data, takeCount))
-  ))
+    bench('native generator iterator map/filter/take -> Array.from', () =>
+      Array.from(nativeGeneratorMapFilterTake(data, takeCount)))
 
-  bench('native array chain map -> filter -> slice', () => (
-    data.map(double).filter(keepMappedValue).slice(0, takeCount)
-  ))
+    bench('native array chain map -> filter -> slice', () =>
+      data.map(double).filter(keepMappedValue).slice(0, takeCount))
 
-  bench('native loop map/filter/take with early exit', () => nativeLoopMapFilterTake(data, takeCount))
-})
+    bench('native loop map/filter/take with early exit', () =>
+      nativeLoopMapFilterTake(data, takeCount))
+  },
+)

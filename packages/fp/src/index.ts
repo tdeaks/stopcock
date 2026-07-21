@@ -1,7 +1,16 @@
 export type { Fn, LazyValue } from './types'
 export { pipe } from './pipe'
 export { flow } from './flow'
-export { type FusionExplanation, type FusionMode, type FusionStats, explainFusion, getFusionMode, getFusionStats, resetFusionStats, setFusionMode } from './fuse'
+export {
+  type FusionExplanation,
+  type FusionMode,
+  type FusionStats,
+  explainFusion,
+  getFusionMode,
+  getFusionStats,
+  resetFusionStats,
+  setFusionMode,
+} from './fuse'
 export { dual } from './dual'
 
 export {
@@ -102,9 +111,7 @@ export {
   not,
 } from './guard'
 
-export {
-  identity, always, flip, complement, memoize, once, converge, juxt,
-} from './function'
+export { identity, always, flip, complement, memoize, once, converge, juxt } from './function'
 
 import * as O from './option'
 import * as R from './result'
@@ -134,7 +141,26 @@ export {
   over,
   compose as composeLens,
 } from './lens'
-export { type Prism, prism, fromPredicate as prismFromPredicate, some as somePrism, ok as okPrism, preview, set as setPrism, over as overPrism, compose as composePrism } from './prism'
-export { type Traversal, traversal, each, filtered, compose as composeTraversal, toArray, modify, set as setTraversal } from './traversal'
+export {
+  type Prism,
+  prism,
+  fromPredicate as prismFromPredicate,
+  some as somePrism,
+  ok as okPrism,
+  preview,
+  set as setPrism,
+  over as overPrism,
+  compose as composePrism,
+} from './prism'
+export {
+  type Traversal,
+  traversal,
+  each,
+  filtered,
+  compose as composeTraversal,
+  toArray,
+  modify,
+  set as setTraversal,
+} from './traversal'
 export { type Iso, iso, reverse, compose as composeIso } from './iso'
 export { composeOptics } from './optics-compose'

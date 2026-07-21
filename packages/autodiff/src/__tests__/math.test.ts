@@ -1,12 +1,24 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import { differentiable } from '../differentiable'
-import { abs, cos, exp, leakyRelu, log, relu, sigmoid, sin, softplus, sqrt, tan, tanh } from '../math'
+import {
+  abs,
+  cos,
+  exp,
+  leakyRelu,
+  log,
+  relu,
+  sigmoid,
+  sin,
+  softplus,
+  sqrt,
+  tan,
+  tanh,
+} from '../math'
 import { add, mul, square, sub } from '../scalar'
 import type { Var } from '../types'
 
-const numerical = (f: (x: number) => number, x: number, h = 1e-5) =>
-  (f(x + h) - f(x - h)) / (2 * h)
+const numerical = (f: (x: number) => number, x: number, h = 1e-5) => (f(x + h) - f(x - h)) / (2 * h)
 
 describe('math ops', () => {
   it.each([
@@ -20,7 +32,13 @@ describe('math ops', () => {
     ['tanh', (x: Var<number>) => tanh(x), Math.tanh, 0.7, 1e-5],
     ['sigmoid', (x: Var<number>) => sigmoid(x), (x: number) => 1 / (1 + Math.exp(-x)), 0.7, 1e-5],
     ['relu', (x: Var<number>) => relu(x), (x: number) => Math.max(0, x), 0.7, 1e-5],
-    ['softplus', (x: Var<number>) => softplus(x), (x: number) => Math.log1p(Math.exp(x)), 0.7, 1e-5],
+    [
+      'softplus',
+      (x: Var<number>) => softplus(x),
+      (x: number) => Math.log1p(Math.exp(x)),
+      0.7,
+      1e-5,
+    ],
   ])('%s matches central differences', (_, op, raw, x, tol) => {
     const f = differentiable((v: Var<number>) => op(v))
 
@@ -37,17 +55,7 @@ describe('math ops', () => {
 
   it('matches central differences for a composite chain', () => {
     const f = differentiable((x: Var<number>) =>
-      pipe(
-        x,
-        square,
-        add(0.5),
-        sin,
-        mul(1.2),
-        sub(0.1),
-        tanh,
-        exp,
-        log,
-      )
+      pipe(x, square, add(0.5), sin, mul(1.2), sub(0.1), tanh, exp, log),
     )
     const x = 0.4
 

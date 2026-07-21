@@ -5,9 +5,45 @@ import { epochDays, epochDaysToCivil, msOfDay, timeComponents } from './core'
 // ── Lookup tables (allocated once, shared) ───────────────────────────
 
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
-const LONG_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
-const SHORT_MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
-const LONG_MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as const
+const LONG_DAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const
+const SHORT_MONTHS = [
+  '',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const
+const LONG_MONTHS = [
+  '',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const
 
 // ── Pad helpers (no string allocation for common cases) ──────────────
 
@@ -37,42 +73,65 @@ function ordinal(n: number): string {
 // Each part is either a literal string or a token extractor.
 // The compiled function runs the parts array. No parsing per call.
 
-const enum Need { NONE = 0, CIVIL = 1, TIME = 2, BOTH = 3 }
+const enum Need {
+  NONE = 0,
+  CIVIL = 1,
+  TIME = 2,
+  BOTH = 3,
+}
 
 type Part = {
-  fn: (y: number, mo: number, d: number, h: number, mi: number, s: number, ms: number, dow: number) => string
+  fn: (
+    y: number,
+    mo: number,
+    d: number,
+    h: number,
+    mi: number,
+    s: number,
+    ms: number,
+    dow: number,
+  ) => string
   need: Need
 }
 
 const TOKENS: [string, Part][] = [
   ['YYYY', { fn: (y) => pad4(y), need: Need.CIVIL }],
-  ['YY',   { fn: (y) => pad2(y % 100), need: Need.CIVIL }],
+  ['YY', { fn: (y) => pad2(y % 100), need: Need.CIVIL }],
   ['MMMM', { fn: (_y, mo) => LONG_MONTHS[mo]!, need: Need.CIVIL }],
-  ['MMM',  { fn: (_y, mo) => SHORT_MONTHS[mo]!, need: Need.CIVIL }],
-  ['MM',   { fn: (_y, mo) => pad2(mo), need: Need.CIVIL }],
-  ['M',    { fn: (_y, mo) => '' + mo, need: Need.CIVIL }],
-  ['Do',   { fn: (_y, _mo, d) => ordinal(d), need: Need.CIVIL }],
-  ['DD',   { fn: (_y, _mo, d) => pad2(d), need: Need.CIVIL }],
-  ['D',    { fn: (_y, _mo, d) => '' + d, need: Need.CIVIL }],
+  ['MMM', { fn: (_y, mo) => SHORT_MONTHS[mo]!, need: Need.CIVIL }],
+  ['MM', { fn: (_y, mo) => pad2(mo), need: Need.CIVIL }],
+  ['M', { fn: (_y, mo) => '' + mo, need: Need.CIVIL }],
+  ['Do', { fn: (_y, _mo, d) => ordinal(d), need: Need.CIVIL }],
+  ['DD', { fn: (_y, _mo, d) => pad2(d), need: Need.CIVIL }],
+  ['D', { fn: (_y, _mo, d) => '' + d, need: Need.CIVIL }],
   ['dddd', { fn: (_y, _mo, _d, _h, _mi, _s, _ms, dow) => LONG_DAYS[dow]!, need: Need.CIVIL }],
-  ['ddd',  { fn: (_y, _mo, _d, _h, _mi, _s, _ms, dow) => SHORT_DAYS[dow]!, need: Need.CIVIL }],
-  ['HH',   { fn: (_y, _mo, _d, h) => pad2(h), need: Need.TIME }],
-  ['H',    { fn: (_y, _mo, _d, h) => '' + h, need: Need.TIME }],
-  ['hh',   { fn: (_y, _mo, _d, h) => pad2(h % 12 || 12), need: Need.TIME }],
-  ['h',    { fn: (_y, _mo, _d, h) => '' + (h % 12 || 12), need: Need.TIME }],
-  ['mm',   { fn: (_y, _mo, _d, _h, mi) => pad2(mi), need: Need.TIME }],
-  ['m',    { fn: (_y, _mo, _d, _h, mi) => '' + mi, need: Need.TIME }],
-  ['ss',   { fn: (_y, _mo, _d, _h, _mi, s) => pad2(s), need: Need.TIME }],
-  ['s',    { fn: (_y, _mo, _d, _h, _mi, s) => '' + s, need: Need.TIME }],
-  ['SSS',  { fn: (_y, _mo, _d, _h, _mi, _s, ms) => pad3(ms), need: Need.TIME }],
-  ['A',    { fn: (_y, _mo, _d, h) => h < 12 ? 'AM' : 'PM', need: Need.TIME }],
-  ['a',    { fn: (_y, _mo, _d, h) => h < 12 ? 'am' : 'pm', need: Need.TIME }],
+  ['ddd', { fn: (_y, _mo, _d, _h, _mi, _s, _ms, dow) => SHORT_DAYS[dow]!, need: Need.CIVIL }],
+  ['HH', { fn: (_y, _mo, _d, h) => pad2(h), need: Need.TIME }],
+  ['H', { fn: (_y, _mo, _d, h) => '' + h, need: Need.TIME }],
+  ['hh', { fn: (_y, _mo, _d, h) => pad2(h % 12 || 12), need: Need.TIME }],
+  ['h', { fn: (_y, _mo, _d, h) => '' + (h % 12 || 12), need: Need.TIME }],
+  ['mm', { fn: (_y, _mo, _d, _h, mi) => pad2(mi), need: Need.TIME }],
+  ['m', { fn: (_y, _mo, _d, _h, mi) => '' + mi, need: Need.TIME }],
+  ['ss', { fn: (_y, _mo, _d, _h, _mi, s) => pad2(s), need: Need.TIME }],
+  ['s', { fn: (_y, _mo, _d, _h, _mi, s) => '' + s, need: Need.TIME }],
+  ['SSS', { fn: (_y, _mo, _d, _h, _mi, _s, ms) => pad3(ms), need: Need.TIME }],
+  ['A', { fn: (_y, _mo, _d, h) => (h < 12 ? 'AM' : 'PM'), need: Need.TIME }],
+  ['a', { fn: (_y, _mo, _d, h) => (h < 12 ? 'am' : 'pm'), need: Need.TIME }],
 ]
 
 type CompiledFormatter = (ts: Timestamp) => string
 
 function compile(template: string): CompiledFormatter {
-  const parts: ((y: number, mo: number, d: number, h: number, mi: number, s: number, ms: number, dow: number) => string)[] = []
+  const parts: ((
+    y: number,
+    mo: number,
+    d: number,
+    h: number,
+    mi: number,
+    s: number,
+    ms: number,
+    dow: number,
+  ) => string)[] = []
   let needs = Need.NONE
   let i = 0
 
@@ -94,7 +153,10 @@ function compile(template: string): CompiledFormatter {
       while (i < template.length) {
         let isToken = false
         for (const [token] of TOKENS) {
-          if (template.startsWith(token, i)) { isToken = true; break }
+          if (template.startsWith(token, i)) {
+            isToken = true
+            break
+          }
         }
         if (isToken) break
         lit += template[i]
@@ -109,18 +171,30 @@ function compile(template: string): CompiledFormatter {
   const needsTime = (needs & Need.TIME) !== 0
 
   return (ts: Timestamp) => {
-    let y = 0, mo = 0, d = 0, h = 0, mi = 0, s = 0, ms = 0, dow = 0
+    let y = 0,
+      mo = 0,
+      d = 0,
+      h = 0,
+      mi = 0,
+      s = 0,
+      ms = 0,
+      dow = 0
 
     if (needsCivil) {
       const ed = epochDays(ts)
       const civil = epochDaysToCivil(ed)
-      y = civil.year; mo = civil.month; d = civil.day
-      dow = ((ed + 4) % 7 + 7) % 7
+      y = civil.year
+      mo = civil.month
+      d = civil.day
+      dow = (((ed + 4) % 7) + 7) % 7
     }
     if (needsTime) {
       const tod = msOfDay(ts)
       const time = timeComponents(tod)
-      h = time.hour; mi = time.minute; s = time.second; ms = time.millisecond
+      h = time.hour
+      mi = time.minute
+      s = time.second
+      ms = time.millisecond
     }
 
     let out = ''
@@ -146,7 +220,8 @@ function getFormatter(template: string): CompiledFormatter {
 
 // ── Public API ───────────────────────────────────────────────────────
 
-let _lastFmtTpl = '', _lastFmt: CompiledFormatter
+let _lastFmtTpl = '',
+  _lastFmt: CompiledFormatter
 
 export const format: {
   (ts: Timestamp, template: string): string

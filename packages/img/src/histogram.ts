@@ -22,8 +22,8 @@ export const equalize = (img: Image): Image => {
     const c = new Array(256)
     c[0] = h[0]
     for (let i = 1; i < 256; i++) c[i] = c[i - 1] + h[i]
-    const cMin = c.find(v => v > 0)!
-    return c.map(v => Math.round(((v - cMin) / (total - cMin)) * 255))
+    const cMin = c.find((v) => v > 0)!
+    return c.map((v) => Math.round(((v - cMin) / (total - cMin)) * 255))
   }
 
   const mapR = cdf(hist.r)

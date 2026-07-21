@@ -18,7 +18,17 @@ export function plan(kernel: Real, blockSize: number): ConvolvePlan {
   rfftInto(input, fft, kernelSpectrum)
   input.fill(0)
 
-  return { blockSize, kernelLength, tailLength, fftSize, fft, kernelSpectrum, input, spectrum, time }
+  return {
+    blockSize,
+    kernelLength,
+    tailLength,
+    fftSize,
+    fft,
+    kernelSpectrum,
+    input,
+    spectrum,
+    time,
+  }
 }
 
 export function state(plan: ConvolvePlan): Real {

@@ -28,19 +28,19 @@ modulo(a: number, b: number): number
 import { pipe, A, M } from '@stopcock/fp'
 
 // apply discount
-pipe(prices, A.map(M.multiply(0.9)))  // 10% off
+pipe(prices, A.map(M.multiply(0.9))) // 10% off
 
 // offset scores
 pipe(rawScores, A.map(M.add(curve)))
 
 // compound product
-M.product([2, 3, 4])  // 24
+M.product([2, 3, 4]) // 24
 
 // counter operations
-pipe(count, M.inc)     // count + 1
-pipe(count, M.dec)     // count - 1
-pipe(value, M.negate)  // -value
+pipe(count, M.inc) // count + 1
+pipe(count, M.dec) // count - 1
+pipe(value, M.negate) // -value
 
 // data-first
-M.modulo(17, 5)  // 2
+M.modulo(17, 5) // 2
 ```

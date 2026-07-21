@@ -1,13 +1,25 @@
 import { dual } from './dual'
 
 // Arity 1. Tagged for scalar JIT
-export const isEmpty: (s: string) => boolean = dual(1, (s: string): boolean => s === '', { op: 'strIsEmpty' })
-export const length: (s: string) => number = dual(1, (s: string): number => s.length, { op: 'strLength' })
+export const isEmpty: (s: string) => boolean = dual(1, (s: string): boolean => s === '', {
+  op: 'strIsEmpty',
+})
+export const length: (s: string) => number = dual(1, (s: string): number => s.length, {
+  op: 'strLength',
+})
 export const trim: (s: string) => string = dual(1, (s: string): string => s.trim(), { op: 'trim' })
-export const trimStart: (s: string) => string = dual(1, (s: string): string => s.trimStart(), { op: 'trimStart' })
-export const trimEnd: (s: string) => string = dual(1, (s: string): string => s.trimEnd(), { op: 'trimEnd' })
-export const toLowerCase: (s: string) => string = dual(1, (s: string): string => s.toLowerCase(), { op: 'toLowerCase' })
-export const toUpperCase: (s: string) => string = dual(1, (s: string): string => s.toUpperCase(), { op: 'toUpperCase' })
+export const trimStart: (s: string) => string = dual(1, (s: string): string => s.trimStart(), {
+  op: 'trimStart',
+})
+export const trimEnd: (s: string) => string = dual(1, (s: string): string => s.trimEnd(), {
+  op: 'trimEnd',
+})
+export const toLowerCase: (s: string) => string = dual(1, (s: string): string => s.toLowerCase(), {
+  op: 'toLowerCase',
+})
+export const toUpperCase: (s: string) => string = dual(1, (s: string): string => s.toUpperCase(), {
+  op: 'toUpperCase',
+})
 
 // Arity 2. Tagged for scalar JIT
 export const startsWith: {

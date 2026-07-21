@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from 'vitest'
+import { describe, it, expect, afterAll } from 'vite-plus/test'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { createClient } from '../client.js'
 import { HttpError } from '../error.js'
@@ -8,7 +8,9 @@ let attempts = 0
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve) => {
     let data = ''
-    req.on('data', (chunk: Buffer) => { data += chunk })
+    req.on('data', (chunk: Buffer) => {
+      data += chunk
+    })
     req.on('end', () => resolve(data))
   })
 }
@@ -21,7 +23,10 @@ function json(res: ServerResponse, data: unknown, status = 200) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url!, `http://localhost`)
   if (url.pathname === '/json') return json(res, { ok: true })
-  if (url.pathname === '/text') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('hello') }
+  if (url.pathname === '/text') {
+    res.writeHead(200, { 'content-type': 'text/plain' })
+    return res.end('hello')
+  }
   if (url.pathname === '/echo') {
     const body = await readBody(req)
     return json(res, JSON.parse(body))
@@ -39,8 +44,12 @@ const server = createServer(async (req, res) => {
     const auth = req.headers['authorization'] ?? 'none'
     return json(res, { auth })
   }
-  if (url.pathname === '/empty') { res.writeHead(204); return res.end() }
-  res.writeHead(404); res.end('Not found')
+  if (url.pathname === '/empty') {
+    res.writeHead(204)
+    return res.end()
+  }
+  res.writeHead(404)
+  res.end('Not found')
 })
 
 const port = await new Promise<number>((resolve) => {

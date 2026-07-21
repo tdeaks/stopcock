@@ -1,17 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import * as Mat from '../mat'
 import * as Vec from '../vec'
 
 const approxMat = (a: Mat.Mat, expected: number[], tol = 1e-8) => {
   expect(a.data.length).toBe(expected.length)
-  for (let i = 0; i < expected.length; i++)
-    expect(a.data[i]).toBeCloseTo(expected[i], 8)
+  for (let i = 0; i < expected.length; i++) expect(a.data[i]).toBeCloseTo(expected[i], 8)
 }
 
 const approxVec = (a: Float64Array, expected: number[], tol = 1e-8) => {
   expect(a.length).toBe(expected.length)
-  for (let i = 0; i < expected.length; i++)
-    expect(a[i]).toBeCloseTo(expected[i], 8)
+  for (let i = 0; i < expected.length; i++) expect(a[i]).toBeCloseTo(expected[i], 8)
 }
 
 describe('Mat', () => {
@@ -78,12 +76,7 @@ describe('Mat', () => {
   })
 
   it('determinant 4x4', () => {
-    const m = Mat.fromArray(4, 4, [
-      1, 2, 3, 4,
-      5, 6, 7, 8,
-      2, 6, 4, 8,
-      3, 1, 1, 2,
-    ])
+    const m = Mat.fromArray(4, 4, [1, 2, 3, 4, 5, 6, 7, 8, 2, 6, 4, 8, 3, 1, 1, 2])
     expect(Mat.determinant(m)).toBeCloseTo(72)
   })
 
@@ -120,8 +113,7 @@ describe('Mat', () => {
     const LU = Mat.multiply(L, U)
     const PA = Mat.create(3, 3)
     for (let i = 0; i < 3; i++)
-      for (let j = 0; j < 3; j++)
-        PA.data[i * 3 + j] = A.data[P[i] * 3 + j]
+      for (let j = 0; j < 3; j++) PA.data[i * 3 + j] = A.data[P[i] * 3 + j]
     for (let i = 0; i < 9; i++) expect(LU.data[i]).toBeCloseTo(PA.data[i], 8)
   })
 
@@ -241,12 +233,7 @@ describe('Mat', () => {
   describe('solve well-conditioned 4x4', () => {
     it('solves correctly', () => {
       // Hilbert-like but well-conditioned: diagonal-dominant
-      const A = Mat.fromArray(4, 4, [
-        10, 1, 0, 0,
-        1, 10, 1, 0,
-        0, 1, 10, 1,
-        0, 0, 1, 10,
-      ])
+      const A = Mat.fromArray(4, 4, [10, 1, 0, 0, 1, 10, 1, 0, 0, 1, 10, 1, 0, 0, 1, 10])
       const expected = [1, 2, 3, 4]
       // b = A * expected
       const bArr = new Float64Array(4)
@@ -262,12 +249,7 @@ describe('Mat', () => {
 
   describe('inverse 4x4', () => {
     it('A * A^-1 = I', () => {
-      const A = Mat.fromArray(4, 4, [
-        5, 7, 6, 5,
-        7, 10, 8, 7,
-        6, 8, 10, 9,
-        5, 7, 9, 10,
-      ])
+      const A = Mat.fromArray(4, 4, [5, 7, 6, 5, 7, 10, 8, 7, 6, 8, 10, 9, 5, 7, 9, 10])
       const inv = Mat.inverse(A)
       expect(inv).not.toBeNull()
       const prod = Mat.multiply(A, inv!)
@@ -277,13 +259,11 @@ describe('Mat', () => {
   })
 
   it('determinant 5x5 via LU', () => {
-    const A = Mat.fromArray(5, 5, [
-      2, 1, 0, 0, 0,
-      1, 3, 1, 0, 0,
-      0, 1, 4, 1, 0,
-      0, 0, 1, 5, 1,
-      0, 0, 0, 1, 6,
-    ])
+    const A = Mat.fromArray(
+      5,
+      5,
+      [2, 1, 0, 0, 0, 1, 3, 1, 0, 0, 0, 1, 4, 1, 0, 0, 0, 1, 5, 1, 0, 0, 0, 1, 6],
+    )
     const det = Mat.determinant(A)
     expect(det).toBeCloseTo(492)
   })
@@ -308,12 +288,7 @@ describe('Mat', () => {
   })
 
   it('multiply 4x4 uses fast path', () => {
-    const a = Mat.fromArray(4, 4, [
-      1, 0, 0, 0,
-      0, 2, 0, 0,
-      0, 0, 3, 0,
-      0, 0, 0, 4,
-    ])
+    const a = Mat.fromArray(4, 4, [1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4])
     const b = Mat.identity(4)
     approxMat(Mat.multiply(a, b), [1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4])
   })
@@ -329,8 +304,7 @@ describe('Mat', () => {
     const b = Mat.identity(n)
     const c = Mat.multiply(a, b)
     for (let i = 0; i < n; i++)
-      for (let j = 0; j < n; j++)
-        expect(c.data[i * n + j]).toBeCloseTo(i === j ? 1 : 0)
+      for (let j = 0; j < n; j++) expect(c.data[i * n + j]).toBeCloseTo(i === j ? 1 : 0)
   })
 
   it('zeros creates zero matrix', () => {
@@ -340,4 +314,3 @@ describe('Mat', () => {
     for (let i = 0; i < 6; i++) expect(z.data[i]).toBe(0)
   })
 })
-

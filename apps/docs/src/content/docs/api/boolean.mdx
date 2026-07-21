@@ -17,9 +17,15 @@ Trailing underscores avoid colliding with JS reserved words.
 ```ts
 import { pipe, B } from '@stopcock/fp'
 
-pipe(true, B.not_)           // false
-pipe(true, B.and_(false))    // false
-pipe(false, B.ifElse(() => 'yes', () => 'no'))  // 'no'
+pipe(true, B.not_) // false
+pipe(true, B.and_(false)) // false
+pipe(
+  false,
+  B.ifElse(
+    () => 'yes',
+    () => 'no',
+  ),
+) // 'no'
 
 // toggle a feature flag
 const toggled = pipe(isEnabled, B.not_)

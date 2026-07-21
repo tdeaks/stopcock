@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe, A, S, D, N, Obj } from '@stopcock/fp'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
@@ -184,17 +184,20 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('forEach', () => {
-    const nmOut: number[] = [], raOut: number[] = [], ldOut: number[] = []
-    A.forEach(nums, x => nmOut.push(x))
-    Ra.forEach(x => raOut.push(x), nums)
-    _.forEach(nums, x => ldOut.push(x))
+    const nmOut: number[] = [],
+      raOut: number[] = [],
+      ldOut: number[] = []
+    A.forEach(nums, (x) => nmOut.push(x))
+    Ra.forEach((x) => raOut.push(x), nums)
+    _.forEach(nums, (x) => ldOut.push(x))
     expect(nmOut).toEqual(nums)
     expect(raOut).toEqual(nums)
     expect(ldOut).toEqual(nums)
   })
 
   it('intersection', () => {
-    const a = [1, 2, 3, 4, 5], b = [3, 4, 5, 6, 7]
+    const a = [1, 2, 3, 4, 5],
+      b = [3, 4, 5, 6, 7]
     const expected = [3, 4, 5]
     expect(A.intersection(a, b)).toEqual(expected)
     expect(Rb.intersection(a)(b)).toEqual(expected)
@@ -203,7 +206,8 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('difference', () => {
-    const a = [1, 2, 3, 4, 5], b = [3, 4, 5, 6, 7]
+    const a = [1, 2, 3, 4, 5],
+      b = [3, 4, 5, 6, 7]
     const expected = [1, 2]
     expect(A.difference(a, b)).toEqual(expected)
     expect(Ra.difference(a, b)).toEqual(expected)
@@ -211,7 +215,8 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('union', () => {
-    const a = [1, 2, 3, 4, 5], b = [3, 4, 5, 6, 7]
+    const a = [1, 2, 3, 4, 5],
+      b = [3, 4, 5, 6, 7]
     const expected = [1, 2, 3, 4, 5, 6, 7]
     expect(A.union(a, b)).toEqual(expected)
     expect(Ra.union(a, b)).toEqual(expected)
@@ -219,15 +224,21 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('symmetricDifference', () => {
-    const a = [1, 2, 3, 4, 5], b = [3, 4, 5, 6, 7]
+    const a = [1, 2, 3, 4, 5],
+      b = [3, 4, 5, 6, 7]
     const expected = [1, 2, 6, 7]
     expect(A.symmetricDifference(a, b)).toEqual(expected)
     expect(_.xor(a, b)).toEqual(expected)
   })
 
   it('zip', () => {
-    const a = [1, 2, 3], b = ['a', 'b', 'c']
-    const expected = [[1, 'a'], [2, 'b'], [3, 'c']]
+    const a = [1, 2, 3],
+      b = ['a', 'b', 'c']
+    const expected = [
+      [1, 'a'],
+      [2, 'b'],
+      [3, 'c'],
+    ]
     expect(A.zip(a, b)).toEqual(expected)
     expect(R.zip(a, b)).toEqual(expected)
     expect(Rb.zip(a)(b)).toEqual(expected)
@@ -236,7 +247,7 @@ describe('correctness: all libraries produce identical output', () => {
   it('partition', () => {
     const [pass, fail] = A.partition(nums, pred)
     expect(pass).toEqual(nums.filter(pred))
-    expect(fail).toEqual(nums.filter(x => !pred(x)))
+    expect(fail).toEqual(nums.filter((x) => !pred(x)))
   })
 
   it('chunk', () => {
@@ -267,7 +278,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('groupBy', () => {
     const input = [1, 2, 3, 4, 5, 6]
-    const f = (x: number) => x % 2 === 0 ? 'even' : 'odd'
+    const f = (x: number) => (x % 2 === 0 ? 'even' : 'odd')
     const expected = { odd: [1, 3, 5], even: [2, 4, 6] }
     expect(A.groupBy(input, f)).toEqual(expected)
     expect(Rb.groupBy(f)(input)).toEqual(expected)
@@ -283,7 +294,7 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('reject', () => {
-    const expected = nums.filter(x => !pred(x))
+    const expected = nums.filter((x) => !pred(x))
     expect(A.reject(nums, pred)).toEqual(expected)
     expect(Rb.reject(pred)(nums)).toEqual(expected)
     expect(Ra.reject(pred, nums)).toEqual(expected)
@@ -291,7 +302,11 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('uniqBy', () => {
-    const input = [{ id: 1, n: 'a' }, { id: 2, n: 'b' }, { id: 1, n: 'c' }]
+    const input = [
+      { id: 1, n: 'a' },
+      { id: 2, n: 'b' },
+      { id: 1, n: 'c' },
+    ]
     const f = (x: any) => x.id
     const result = A.uniqBy(input, f)
     expect(result).toHaveLength(2)
@@ -311,7 +326,10 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('D.fromEntries', () => {
-    const entries: [string, number][] = [['a', 1], ['b', 2]]
+    const entries: [string, number][] = [
+      ['a', 1],
+      ['b', 2],
+    ]
     expect(D.fromEntries(entries)).toEqual({ a: 1, b: 2 })
     expect(Ra.fromPairs(entries)).toEqual({ a: 1, b: 2 })
   })
@@ -319,7 +337,10 @@ describe('correctness: all libraries produce identical output', () => {
   it('D.toEntries', () => {
     const d = { a: 1, b: 2 }
     const result = D.toEntries(d).sort((a, b) => a[0].localeCompare(b[0]))
-    expect(result).toEqual([['a', 1], ['b', 2]])
+    expect(result).toEqual([
+      ['a', 1],
+      ['b', 2],
+    ])
   })
 
   it('D.merge', () => {

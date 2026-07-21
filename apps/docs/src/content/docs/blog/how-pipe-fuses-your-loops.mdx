@@ -13,8 +13,8 @@ You've probably written something like this:
 
 ```ts
 const result = users
-  .filter(u => u.active)
-  .map(u => u.name)
+  .filter((u) => u.active)
+  .map((u) => u.name)
   .slice(0, 10)
 ```
 
@@ -27,8 +27,8 @@ import { pipe, A } from '@stopcock/fp'
 
 const result = pipe(
   users,
-  A.filter(u => u.active),
-  A.map(u => u.name),
+  A.filter((u) => u.active),
+  A.map((u) => u.name),
   A.take(10),
 )
 ```
@@ -42,8 +42,7 @@ Every array function in stopcock carries a hidden `_op` tag. When you call `A.fi
 When `pipe` receives its arguments, it checks each function for this tag:
 
 ```ts
-const _hasOp = (fn: any): boolean =>
-  typeof fn._op === 'number' && fn._op > 0
+const _hasOp = (fn: any): boolean => typeof fn._op === 'number' && fn._op > 0
 ```
 
 If consecutive functions are tagged, `pipe` doesn't call them one by one. It hands the whole sequence to the fusion engine, which compiles them into a single loop.
@@ -57,13 +56,14 @@ The fusion engine generates a specialized `for` loop at runtime using `new Funct
 function fused(src, fns) {
   var f0 = fns[0] // filter predicate
   var f1 = fns[1] // map transform
-  var c2 = 0      // take counter
+  var c2 = 0 // take counter
   var r = []
   for (var i = 0; i < src.length; i++) {
     var v = src[i]
-    if (!f0(v)) continue      // filter
-    v = f1(v)                 // map
-    r.push(v); if (++c2 >= 10) break  // take(10)
+    if (!f0(v)) continue // filter
+    v = f1(v) // map
+    r.push(v)
+    if (++c2 >= 10) break // take(10)
   }
   return r
 }
@@ -90,10 +90,10 @@ Operations that need the full array don't fuse: `sort`, `reverse`, `groupBy`, `u
 ```ts
 pipe(
   data,
-  A.filter(x => x > 3),       // ─┐ fused segment 1
-  A.map(x => x * 2),          // ─┘ materializes here
-  A.sortBy((a, b) => a - b),  // runs on materialized array
-  A.take(3),                  // segment 2 (take on sorted result)
+  A.filter((x) => x > 3), // ─┐ fused segment 1
+  A.map((x) => x * 2), // ─┘ materializes here
+  A.sortBy((a, b) => a - b), // runs on materialized array
+  A.take(3), // segment 2 (take on sorted result)
 )
 ```
 
@@ -104,6 +104,7 @@ There's one exception. `sort` followed immediately by `take(k)` gets a special o
 For small arrays (under ~100 items), fusion doesn't buy you much. The overhead of native method calls is negligible at that scale, and V8 is very good at optimizing simple chains.
 
 Fusion pays off when:
+
 - Your arrays are large (1K+ items)
 - You have early-exit operations like `take` or `find`
 - You're chaining 3+ operations

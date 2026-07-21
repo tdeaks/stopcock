@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { accelerate, decelerate } from '@stopcock/la/accel'
 import { rgb } from '../create'
 import { convert } from '../convert'
@@ -44,7 +44,10 @@ const bufferFrom = (colors: Color[]): Float64Array => {
 const expectBufferClose = (actual: Float64Array, expected: Float64Array, eps = 1e-8) => {
   expect(actual.length).toBe(expected.length)
   for (let i = 0; i < actual.length; i++)
-    expect(Math.abs(actual[i] - expected[i]), `index ${i}: ${actual[i]} vs ${expected[i]}`).toBeLessThanOrEqual(eps)
+    expect(
+      Math.abs(actual[i] - expected[i]),
+      `index ${i}: ${actual[i]} vs ${expected[i]}`,
+    ).toBeLessThanOrEqual(eps)
 }
 
 afterEach(() => {
@@ -52,11 +55,7 @@ afterEach(() => {
 })
 
 describe('applyMatrix3x3', () => {
-  const identity = new Float64Array([
-    1, 0, 0,
-    0, 1, 0,
-    0, 0, 1,
-  ])
+  const identity = new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
 
   it('applies identity without changing values', () => {
     const src = new Float64Array([0.1, 0.2, 0.3, 0.8, 0.7, 0.6])
@@ -65,15 +64,8 @@ describe('applyMatrix3x3', () => {
 
   it('matches manual matrix math', () => {
     const src = new Float64Array([1, 2, 3, 4, 5, 6])
-    const m = new Float64Array([
-      1, 2, 3,
-      4, 5, 6,
-      7, 8, 9,
-    ])
-    expect(Array.from(applyMatrix3x3(m, src))).toEqual([
-      14, 32, 50,
-      32, 77, 122,
-    ])
+    const m = new Float64Array([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    expect(Array.from(applyMatrix3x3(m, src))).toEqual([14, 32, 50, 32, 77, 122])
   })
 
   it('uses the Float64 accelerator at and above the threshold only', () => {

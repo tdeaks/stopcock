@@ -141,12 +141,12 @@ type Product = {
 const deals = pipe(
   products,
   A.filter((p: Product) => p.inStock && p.price < 50),
-  A.map(p => ({ name: p.name, price: p.price })),
+  A.map((p) => ({ name: p.name, price: p.price })),
   A.take(10),
 )
 
 // group + count
-const byCategory = A.groupBy(products, p => p.category)
+const byCategory = A.groupBy(products, (p) => p.category)
 // { electronics: [...], clothing: [...] }
 
 // rolling total

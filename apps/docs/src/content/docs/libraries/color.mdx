@@ -19,13 +19,7 @@ image processing and procedural graphics in the
 import { pipe } from '@stopcock/fp'
 import { fromHex, lighten, desaturate, adjustHue, toHex } from '@stopcock/color'
 
-pipe(
-  fromHex('#2563eb'),
-  lighten(0.1),
-  desaturate(0.2),
-  adjustHue(15),
-  toHex,
-)
+pipe(fromHex('#2563eb'), lighten(0.1), desaturate(0.2), adjustHue(15), toHex)
 // => '#647dd1'
 ```
 
@@ -45,14 +39,22 @@ You can still operate in any space explicitly with `convert(c, 'hsl')` or `mixIn
 
 ```ts
 type ColorSpace =
-  | 'srgb' | 'linear-srgb' | 'hsl' | 'hwb'
-  | 'lab' | 'lch' | 'oklab' | 'oklch'
-  | 'p3' | 'xyz-d50' | 'xyz-d65'
+  | 'srgb'
+  | 'linear-srgb'
+  | 'hsl'
+  | 'hwb'
+  | 'lab'
+  | 'lch'
+  | 'oklab'
+  | 'oklch'
+  | 'p3'
+  | 'xyz-d50'
+  | 'xyz-d65'
 
 type Color = {
   readonly space: ColorSpace
-  readonly channels: Float64Array  // always length 3
-  readonly alpha: number           // 0-1
+  readonly channels: Float64Array // always length 3
+  readonly alpha: number // 0-1
 }
 ```
 
@@ -86,9 +88,7 @@ convert(target: ColorSpace): (c: Color) => Color
 Arity-1 convenience aliases that pipe directly:
 
 ```ts
-toSRGB, toLinearRGB, toHSL, toHWB,
-toLab, toLCh, toOKLab, toOKLCh,
-toP3, toXYZ, toXYZ50
+;(toSRGB, toLinearRGB, toHSL, toHWB, toLab, toLCh, toOKLab, toOKLCh, toP3, toXYZ, toXYZ50)
 ```
 
 ## Batch buffers
@@ -98,19 +98,11 @@ For image-sized workloads, use the batch API instead of looping over `Color` obj
 ```ts
 import { convertBuffer, simulateBuffer, applyMatrix3x3 } from '@stopcock/color'
 
-const rgb = new Float64Array([
-  1, 0, 0,
-  0, 1, 0,
-  0, 0, 1,
-])
+const rgb = new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
 
 const oklab = convertBuffer(rgb, 'srgb', 'oklab')
 const simulated = simulateBuffer(rgb, 'srgb', 'deuteranopia', 1)
-const transformed = applyMatrix3x3(new Float64Array([
-  1, 0, 0,
-  0, 1, 0,
-  0, 0, 1,
-]), rgb)
+const transformed = applyMatrix3x3(new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1]), rgb)
 ```
 
 Alpha stays out-of-band. `@stopcock/img` handles RGBA byte splitting and recombination for whole-image filters.
@@ -137,7 +129,8 @@ hueInterpolate(h1: number, h2: number, t: number): number  // shorter-arc
 ```
 
 <Aside type="tip">
-  Mixing in OKLab gives smooth, perceptually-uniform gradients. The `mixIn` form lets you pick a different space — useful when you want HSL-style chroma preservation or sRGB-compatible output.
+  Mixing in OKLab gives smooth, perceptually-uniform gradients. The `mixIn` form lets you pick a
+  different space — useful when you want HSL-style chroma preservation or sRGB-compatible output.
 </Aside>
 
 ## Palettes
@@ -156,8 +149,8 @@ Harmony palettes rotate the hue in OKLCh and project back to the source space, s
 ## Channels
 
 ```ts
-red(c), green(c), blue(c)                  // sRGB 0-1
-lightness(c), chroma(c), hue(c)            // OKLCh
+;(red(c), green(c), blue(c)) // sRGB 0-1
+;(lightness(c), chroma(c), hue(c)) // OKLCh
 alpha(c)
 ```
 
@@ -210,7 +203,8 @@ const partialDeutan = simulate(myBrand, 'deuteranopia', 0.5)
 ```
 
 <Aside type="caution">
-  Around 8% of men and 0.5% of women have some form of CVD. Designs that rely on hue alone (red = bad, green = good) fail for them. Pair color with lightness, shape, or text to stay accessible.
+  Around 8% of men and 0.5% of women have some form of CVD. Designs that rely on hue alone (red =
+  bad, green = good) fail for them. Pair color with lightness, shape, or text to stay accessible.
 </Aside>
 
 ### Accessibility helpers
@@ -248,8 +242,7 @@ const theme = {
 ```ts
 import { contrastRatio, fromHex, rgb } from '@stopcock/color'
 
-const onBg = (bg: Color) =>
-  contrastRatio(rgb(1, 1, 1), bg) >= 4.5 ? rgb(1, 1, 1) : rgb(0, 0, 0)
+const onBg = (bg: Color) => (contrastRatio(rgb(1, 1, 1), bg) >= 4.5 ? rgb(1, 1, 1) : rgb(0, 0, 0))
 ```
 
 ### Building a colorblind-safe categorical palette

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import { compose, decompose } from '../core'
 import { now, fromDate } from '../create'
@@ -80,7 +80,7 @@ describe('spring forward (gap)', () => {
 
   it('format around spring forward', () => {
     const before = utc(2024, 3, 10, 6, 30, 0) // 1:30 AM EST
-    const after = utc(2024, 3, 10, 7, 30, 0)  // 3:30 AM EDT
+    const after = utc(2024, 3, 10, 7, 30, 0) // 3:30 AM EDT
     expect(Tz.format(before, 'HH:mm', 'America/New_York')).toBe('01:30')
     expect(Tz.format(after, 'HH:mm', 'America/New_York')).toBe('03:30')
   })
@@ -116,7 +116,7 @@ describe('fall back (fold)', () => {
 
   it('both occurrences format to the same local time', () => {
     const earlier = utc(2024, 11, 3, 5, 30, 0) // 01:30 EDT
-    const later = utc(2024, 11, 3, 6, 30, 0)   // 01:30 EST
+    const later = utc(2024, 11, 3, 6, 30, 0) // 01:30 EST
     expect(Tz.format(earlier, 'HH:mm', 'America/New_York')).toBe('01:30')
     expect(Tz.format(later, 'HH:mm', 'America/New_York')).toBe('01:30')
   })
@@ -239,8 +239,8 @@ describe('southern hemisphere', () => {
     const jul = utc(2024, 7, 15, 0, 0, 0)
     const offJan = Tz.resolveOffset('Australia/Sydney', jan as number)
     const offJul = Tz.resolveOffset('Australia/Sydney', jul as number)
-    expect(offJan).toBe(11 * 3_600_000)  // AEDT
-    expect(offJul).toBe(10 * 3_600_000)  // AEST
+    expect(offJan).toBe(11 * 3_600_000) // AEDT
+    expect(offJul).toBe(10 * 3_600_000) // AEST
   })
 })
 
@@ -368,8 +368,8 @@ describe('formatter', () => {
 
 describe('tz-aware predicates', () => {
   it('isSameDay across midnight UTC', () => {
-    const a = utc(2024, 6, 16, 3, 0, 0)  // Jun 15 11pm in NYC
-    const b = utc(2024, 6, 16, 2, 0, 0)  // Jun 15 10pm in NYC
+    const a = utc(2024, 6, 16, 3, 0, 0) // Jun 15 11pm in NYC
+    const b = utc(2024, 6, 16, 2, 0, 0) // Jun 15 10pm in NYC
     expect(Tz.isSameDay(a, b, 'America/New_York')).toBe(true)
   })
 

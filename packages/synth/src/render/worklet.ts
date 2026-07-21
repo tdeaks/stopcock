@@ -1,5 +1,11 @@
 import { PARAMS_BY_KIND } from '../params'
-import type { AnyParam, Node, WorkletInputHandle, WorkletModule, WorkletParamHandle } from '../types'
+import type {
+  AnyParam,
+  Node,
+  WorkletInputHandle,
+  WorkletModule,
+  WorkletParamHandle,
+} from '../types'
 import { compile, SynthCompileError } from '../internal/graph'
 import { SYNTH_WASM_BASE64 } from './wasm-blob'
 import { serializeWasmRuntimeRequestForWorklet } from './wasm'
@@ -87,7 +93,9 @@ function synthWasmBytes(): Uint8Array {
 }
 
 function decodeBase64ToBytes(value: string): Uint8Array {
-  const BufferCtor = (globalThis as unknown as { Buffer?: { from(value: string, encoding: string): Uint8Array } }).Buffer
+  const BufferCtor = (
+    globalThis as unknown as { Buffer?: { from(value: string, encoding: string): Uint8Array } }
+  ).Buffer
   if (BufferCtor && typeof BufferCtor.from === 'function') {
     return new Uint8Array(BufferCtor.from(value, 'base64'))
   }
@@ -97,7 +105,11 @@ function decodeBase64ToBytes(value: string): Uint8Array {
   return decoded
 }
 
-async function registerModule(ctx: AudioContext, processorName: string, source: string): Promise<void> {
+async function registerModule(
+  ctx: AudioContext,
+  processorName: string,
+  source: string,
+): Promise<void> {
   const cache = moduleCache.get(ctx) ?? new Map<string, Promise<void>>()
   if (!moduleCache.has(ctx)) moduleCache.set(ctx, cache)
   const cached = cache.get(processorName)

@@ -9,7 +9,16 @@ bun add @stopcock/synth
 
 ```ts
 import { pipe } from '@stopcock/fp'
-import { effects, envelope, filter, instrument, oscillator, render, sampler, toWav } from '@stopcock/synth'
+import {
+  effects,
+  envelope,
+  filter,
+  instrument,
+  oscillator,
+  render,
+  sampler,
+  toWav,
+} from '@stopcock/synth'
 
 const bass = pipe(
   oscillator('saw', 110),
@@ -28,28 +37,32 @@ const samples = render(bass, { duration: 1, sampleRate: 48_000 })
 const wav = toWav(samples, { sampleRate: 48_000 })
 
 const sampled = sampler.instrument({
-  zones: [{
-    samples: new Float32Array([0, 0.7, 0.2, -0.2, 0]),
-    sampleRate: 48_000,
-    rootMidi: 60,
-    keyLow: 48,
-    keyHigh: 72,
-    velocityLow: 0,
-    velocityHigh: 1,
-    loop: true,
-    loopStart: 1,
-    loopEnd: 4,
-  }],
+  zones: [
+    {
+      samples: new Float32Array([0, 0.7, 0.2, -0.2, 0]),
+      sampleRate: 48_000,
+      rootMidi: 60,
+      keyLow: 48,
+      keyHigh: 72,
+      velocityLow: 0,
+      velocityHigh: 1,
+      loop: true,
+      loopStart: 1,
+      loopEnd: 4,
+    },
+  ],
 })
 
 const lofi = instrument.lofiSampler({
-  zones: [{
-    samples: new Float32Array([0, 0.9, 0.4, -0.15, 0]),
-    sampleRate: 48_000,
-    rootMidi: 60,
-    keyLow: 48,
-    keyHigh: 72,
-  }],
+  zones: [
+    {
+      samples: new Float32Array([0, 0.9, 0.4, -0.15, 0]),
+      sampleRate: 48_000,
+      rootMidi: 60,
+      keyLow: 48,
+      keyHigh: 72,
+    },
+  ],
   bits: 12,
   downsample: 2,
   tone: 0.62,

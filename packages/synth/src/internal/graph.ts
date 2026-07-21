@@ -73,8 +73,10 @@ export function compile(root: Node, _target: CompileTarget): CompiledGraph {
   const nodeIds = new WeakMap<Node, string>()
 
   const visit = (node: Node): void => {
-    if (!node || typeof node !== 'object') throw new SynthCompileError('Graph contains a non-object node')
-    if (!NODE_KINDS.has(node.kind)) throw new SynthCompileError(`Unsupported node kind: ${(node as { kind?: string }).kind}`)
+    if (!node || typeof node !== 'object')
+      throw new SynthCompileError('Graph contains a non-object node')
+    if (!NODE_KINDS.has(node.kind))
+      throw new SynthCompileError(`Unsupported node kind: ${(node as { kind?: string }).kind}`)
     if (seen.has(node)) return
     seen.add(node)
 
@@ -122,7 +124,9 @@ export function compile(root: Node, _target: CompileTarget): CompiledGraph {
 
     for (const edge of node.mods) {
       if (!hasParam(node.kind, edge.param)) {
-        throw new SynthCompileError(`Cannot modulate "${edge.param}" on ${node.kind}; the parameter does not exist`)
+        throw new SynthCompileError(
+          `Cannot modulate "${edge.param}" on ${node.kind}; the parameter does not exist`,
+        )
       }
       visit(edge.source)
     }
@@ -209,20 +213,21 @@ export function cloneForTrigger(root: Node, trigger: Trigger): Node {
   const freq = noteToFreq(trigger)
   return cloneGraph(root, (node) =>
     node.kind === 'osc' || node.kind === 'wavetable' || node.kind === 'fm'
-      ? { ...node, freq } as Node
+      ? ({ ...node, freq } as Node)
       : node.kind === 'samplerInstrument'
-        ? { ...node, freq, velocity: trigger.velocity } as Node
-      : node.kind === 'lofiSampler'
-        ? { ...node, freq, velocity: trigger.velocity } as Node
-      : node.kind === 'acidBass'
-        ? { ...node, freq, velocity: trigger.velocity } as Node
-      : node.kind === 'drumVoice'
-        ? { ...node, freq, velocity: trigger.velocity } as Node
-      : node.kind === 'stringMachine'
-        ? { ...node, freq, velocity: trigger.velocity } as Node
-      : node.kind === 'polySynth'
-        ? { ...node, freq, velocity: trigger.velocity } as Node
-      : node)
+        ? ({ ...node, freq, velocity: trigger.velocity } as Node)
+        : node.kind === 'lofiSampler'
+          ? ({ ...node, freq, velocity: trigger.velocity } as Node)
+          : node.kind === 'acidBass'
+            ? ({ ...node, freq, velocity: trigger.velocity } as Node)
+            : node.kind === 'drumVoice'
+              ? ({ ...node, freq, velocity: trigger.velocity } as Node)
+              : node.kind === 'stringMachine'
+                ? ({ ...node, freq, velocity: trigger.velocity } as Node)
+                : node.kind === 'polySynth'
+                  ? ({ ...node, freq, velocity: trigger.velocity } as Node)
+                  : node,
+  )
 }
 
 export function structuredCloneSafe(root: Node): Node {
@@ -236,18 +241,22 @@ export function structuredCloneSafe(root: Node): Node {
 export function assertNoFrozenTypedArrays(root: Node): void {
   const compiled = compile(root, 'offline')
   for (const node of compiled.nodes) {
-    if (node.kind === 'buffer' && Object.isFrozen(node.samples)) throw new SynthCompileError('buffer.samples must not be frozen')
+    if (node.kind === 'buffer' && Object.isFrozen(node.samples))
+      throw new SynthCompileError('buffer.samples must not be frozen')
     if (node.kind === 'samplerInstrument') {
       for (const zone of node.zones) {
-        if (Object.isFrozen(zone.samples)) throw new SynthCompileError('sampler zone samples must not be frozen')
+        if (Object.isFrozen(zone.samples))
+          throw new SynthCompileError('sampler zone samples must not be frozen')
       }
     }
     if (node.kind === 'lofiSampler') {
       for (const zone of node.zones) {
-        if (Object.isFrozen(zone.samples)) throw new SynthCompileError('lofi sampler zone samples must not be frozen')
+        if (Object.isFrozen(zone.samples))
+          throw new SynthCompileError('lofi sampler zone samples must not be frozen')
       }
     }
-    if (node.kind === 'reverb' && Object.isFrozen(node.ir)) throw new SynthCompileError('reverb.ir must not be frozen')
+    if (node.kind === 'reverb' && Object.isFrozen(node.ir))
+      throw new SynthCompileError('reverb.ir must not be frozen')
     if (node.kind === 'wavetable') assertWavetableArrays(node.bank.levels)
     if (node.kind === 'fm') {
       for (const operator of node.operators) {
@@ -255,7 +264,8 @@ export function assertNoFrozenTypedArrays(root: Node): void {
       }
     }
     for (const value of Object.values(node)) {
-      if (isTypedArray(value) && Object.isFrozen(value)) throw new SynthCompileError('typed-array fields must not be frozen')
+      if (isTypedArray(value) && Object.isFrozen(value))
+        throw new SynthCompileError('typed-array fields must not be frozen')
     }
   }
 }

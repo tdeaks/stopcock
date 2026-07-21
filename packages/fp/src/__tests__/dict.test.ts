@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '../pipe'
 import * as D from '../dict'
 
@@ -12,11 +12,25 @@ describe('dict', () => {
   })
 
   describe('arity 2 dual wrappers', () => {
-    it('map data-first', () => expect(D.map({ a: 1, b: 2 }, x => x * 10)).toEqual({ a: 10, b: 20 }))
-    it('map data-last', () => expect(pipe({ a: 1, b: 2 }, D.map(x => x * 10))).toEqual({ a: 10, b: 20 }))
+    it('map data-first', () =>
+      expect(D.map({ a: 1, b: 2 }, (x) => x * 10)).toEqual({ a: 10, b: 20 }))
+    it('map data-last', () =>
+      expect(
+        pipe(
+          { a: 1, b: 2 },
+          D.map((x) => x * 10),
+        ),
+      ).toEqual({ a: 10, b: 20 }))
 
-    it('filter data-first', () => expect(D.filter({ a: 1, b: 2, c: 3 }, x => x > 1)).toEqual({ b: 2, c: 3 }))
-    it('filter data-last', () => expect(pipe({ a: 1, b: 2, c: 3 }, D.filter(x => x > 1))).toEqual({ b: 2, c: 3 }))
+    it('filter data-first', () =>
+      expect(D.filter({ a: 1, b: 2, c: 3 }, (x) => x > 1)).toEqual({ b: 2, c: 3 }))
+    it('filter data-last', () =>
+      expect(
+        pipe(
+          { a: 1, b: 2, c: 3 },
+          D.filter((x) => x > 1),
+        ),
+      ).toEqual({ b: 2, c: 3 }))
 
     it('get data-first', () => expect(D.get({ a: 1, b: 2 }, 'a')).toBe(1))
     it('get data-last', () => expect(pipe({ a: 1, b: 2 }, D.get('a'))).toBe(1))

@@ -19,15 +19,18 @@ export const range: {
 export const rangeBy: {
   (start: Timestamp, end: Timestamp, stepFn: (ts: Timestamp) => Timestamp): Timestamp[]
   (stepFn: (ts: Timestamp) => Timestamp): (start: Timestamp, end: Timestamp) => Timestamp[]
-} = dual(3, (start: Timestamp, end: Timestamp, stepFn: (ts: Timestamp) => Timestamp): Timestamp[] => {
-  const result: Timestamp[] = []
-  let current = start
-  while ((current as number) <= (end as number)) {
-    result.push(current)
-    current = stepFn(current)
-  }
-  return result
-})
+} = dual(
+  3,
+  (start: Timestamp, end: Timestamp, stepFn: (ts: Timestamp) => Timestamp): Timestamp[] => {
+    const result: Timestamp[] = []
+    let current = start
+    while ((current as number) <= (end as number)) {
+      result.push(current)
+      current = stepFn(current)
+    }
+    return result
+  },
+)
 
 export function daysIn(year: number, month: number): Timestamp[] {
   const count = daysInMonth(year, month)
@@ -45,7 +48,7 @@ export function weekdaysIn(year: number, month: number): Timestamp[] {
   const result: Timestamp[] = []
   for (let i = 0; i < count; i++) {
     const d = base + i
-    const dow = ((d + 4) % 7 + 7) % 7 // 0=Sun
+    const dow = (((d + 4) % 7) + 7) % 7 // 0=Sun
     if (dow !== 0 && dow !== 6) {
       result.push(stamp(d * MS_DAY))
     }

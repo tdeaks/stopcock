@@ -1,9 +1,9 @@
-import { defineConfig } from 'vite'
+import { defineConfig, lazyPlugins } from 'vite-plus'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: lazyPlugins(() => [react()]),
   resolve: {
     alias: {
       '@stopcock/state/react': path.resolve(__dirname, '../../packages/state/src/react.ts'),
@@ -15,6 +15,11 @@ export default defineConfig({
       '@stopcock/fp/result': path.resolve(__dirname, '../../packages/fp/src/result.ts'),
       '@stopcock/fp': path.resolve(__dirname, '../../packages/fp/src/index.ts'),
       '@stopcock/diff': path.resolve(__dirname, '../../packages/diff/src/index.ts'),
+    },
+  },
+  run: {
+    tasks: {
+      build: ['tsc -b', 'vp build'],
     },
   },
 })

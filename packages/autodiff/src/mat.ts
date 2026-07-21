@@ -22,8 +22,7 @@ const assertSameShape = (op: string, a: Mat, b: Mat) => {
 }
 
 const assertMatMulShape = (a: Mat, b: Mat) => {
-  if (a.cols !== b.rows)
-    throw new ShapeError(`matMul: ${a.rows}x${a.cols} vs ${b.rows}x${b.cols}`)
+  if (a.cols !== b.rows) throw new ShapeError(`matMul: ${a.rows}x${a.cols} vs ${b.rows}x${b.cols}`)
 }
 
 const matFilled = (rows: number, cols: number, value: number): Mat => {
@@ -43,7 +42,7 @@ export const matMul = dual(2, (a: MatInput, b: MatInput): Var<Mat> => {
   const av = asVar(a)
   const bv = asVar(b)
   assertMatMulShape(av.value, bv.value)
-  return record(LaMat.multiply(av.value, bv.value), [av, bv], grad => [
+  return record(LaMat.multiply(av.value, bv.value), [av, bv], (grad) => [
     LaMat.multiply(grad, LaMat.transpose(bv.value)),
     LaMat.multiply(LaMat.transpose(av.value), grad),
   ])
@@ -53,23 +52,20 @@ export const matAdd = dual(2, (a: MatInput, b: MatInput): Var<Mat> => {
   const av = asVar(a)
   const bv = asVar(b)
   assertSameShape('matAdd', av.value, bv.value)
-  return record(LaMat.add(av.value, bv.value), [av, bv], grad => [grad, grad])
+  return record(LaMat.add(av.value, bv.value), [av, bv], (grad) => [grad, grad])
 }) as BinaryMatOp
 
 export const matSub = dual(2, (a: MatInput, b: MatInput): Var<Mat> => {
   const av = asVar(a)
   const bv = asVar(b)
   assertSameShape('matSub', av.value, bv.value)
-  return record(LaMat.sub(av.value, bv.value), [av, bv], grad => [
-    grad,
-    LaMat.scale(grad, -1),
-  ])
+  return record(LaMat.sub(av.value, bv.value), [av, bv], (grad) => [grad, LaMat.scale(grad, -1)])
 }) as BinaryMatOp
 
 export const matScale = dual(2, (m: MatInput, s: ScalarInput): Var<Mat> => {
   const mv = asVar(m)
   const sv = asVar(s)
-  return record(LaMat.scale(mv.value, sv.value), [mv, sv], grad => [
+  return record(LaMat.scale(mv.value, sv.value), [mv, sv], (grad) => [
     LaMat.scale(grad, sv.value),
     matInner(grad, mv.value),
   ])
@@ -77,16 +73,14 @@ export const matScale = dual(2, (m: MatInput, s: ScalarInput): Var<Mat> => {
 
 export const matTranspose = (m: MatInput): Var<Mat> => {
   const mv = asVar(m)
-  return record(LaMat.transpose(mv.value), [mv], grad => [LaMat.transpose(grad)])
+  return record(LaMat.transpose(mv.value), [mv], (grad) => [LaMat.transpose(grad)])
 }
 
 export const matSum = (m: MatInput): Var<number> => {
   const mv = asVar(m)
   let value = 0
   for (let i = 0; i < mv.value.data.length; i++) value += mv.value.data[i]
-  return record(value, [mv], grad => [
-    matFilled(mv.value.rows, mv.value.cols, grad),
-  ])
+  return record(value, [mv], (grad) => [matFilled(mv.value.rows, mv.value.cols, grad)])
 }
 
 export const matMean = (m: MatInput): Var<number> => {
@@ -94,16 +88,12 @@ export const matMean = (m: MatInput): Var<number> => {
   let value = 0
   for (let i = 0; i < mv.value.data.length; i++) value += mv.value.data[i]
   const n = mv.value.data.length
-  return record(value / n, [mv], grad => [
-    matFilled(mv.value.rows, mv.value.cols, grad / n),
-  ])
+  return record(value / n, [mv], (grad) => [matFilled(mv.value.rows, mv.value.cols, grad / n)])
 }
 
 export const matNormSquared = (m: MatInput): Var<number> => {
   const mv = asVar(m)
   let value = 0
   for (let i = 0; i < mv.value.data.length; i++) value += mv.value.data[i] * mv.value.data[i]
-  return record(value, [mv], grad => [
-    LaMat.scale(mv.value, 2 * grad),
-  ])
+  return record(value, [mv], (grad) => [LaMat.scale(mv.value, 2 * grad)])
 }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
@@ -50,19 +50,25 @@ describe('source-equivalent FP subpath tree-shaking smoke', () => {
 
     // This is a source-equivalent smoke because dist may not exist in local dev.
     // It checks the focused array entry stays tiny relative to a root namespace import.
-    const focusedEntry = await makeEntry('focused-array-entry.ts', `
+    const focusedEntry = await makeEntry(
+      'focused-array-entry.ts',
+      `
       import { filter, map, take } from ${JSON.stringify(arraySource)}
 
       const data = [1, 2, 3, 4]
       console.log(take(map(filter(data, (x) => x > 1), (x) => x * 2), 2))
-    `)
+    `,
+    )
 
-    const rootNamespaceEntry = await makeEntry('root-namespace-entry.ts', `
+    const rootNamespaceEntry = await makeEntry(
+      'root-namespace-entry.ts',
+      `
       import { A } from ${JSON.stringify(rootSource)}
 
       const data = [1, 2, 3, 4]
       console.log(A.take(A.map(A.filter(data, (x) => x > 1), (x) => x * 2), 2))
-    `)
+    `,
+    )
 
     const focused = await bundle(focusedEntry)
     const rootNamespace = await bundle(rootNamespaceEntry)

@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { rgb, lab, fromHex } from '../create'
 import { contrastRatio, luminance, deltaE, meetsAA, meetsAAA, meetsAALarge } from '../contrast'
 
 describe('luminance', () => {
   it('black is 0', () => expect(luminance(rgb(0, 0, 0))).toBeCloseTo(0, 6))
   it('white is 1', () => expect(luminance(rgb(1, 1, 1))).toBeCloseTo(1, 6))
-  it('mid-gray ≈ 0.215', () => expect(luminance(rgb(0.5, 0.5, 0.5))).toBeCloseTo(0.2140, 3))
+  it('mid-gray ≈ 0.215', () => expect(luminance(rgb(0.5, 0.5, 0.5))).toBeCloseTo(0.214, 3))
 })
 
 describe('contrastRatio', () => {
@@ -14,8 +14,10 @@ describe('contrastRatio', () => {
   })
 
   it('symmetric (order does not matter)', () => {
-    expect(contrastRatio(rgb(0.2, 0.4, 0.6), rgb(1, 1, 1)))
-      .toBeCloseTo(contrastRatio(rgb(1, 1, 1), rgb(0.2, 0.4, 0.6)), 6)
+    expect(contrastRatio(rgb(0.2, 0.4, 0.6), rgb(1, 1, 1))).toBeCloseTo(
+      contrastRatio(rgb(1, 1, 1), rgb(0.2, 0.4, 0.6)),
+      6,
+    )
   })
 
   it('curried', () => {
@@ -43,11 +45,11 @@ describe('deltaE (CIEDE2000)', () => {
   // Use a generous epsilon — published values rounded to 4 decimals.
   it.each([
     // [L1, a1, b1, L2, a2, b2, expected]
-    [50.0000, 2.6772, -79.7751, 50.0000, 0.0000, -82.7485, 2.0425],
-    [50.0000, 3.1571, -77.2803, 50.0000, 0.0000, -82.7485, 2.8615],
-    [50.0000, 2.8361, -74.0200, 50.0000, 0.0000, -82.7485, 3.4412],
-    [50.0000, -1.3802, -84.2814, 50.0000, 0.0000, -82.7485, 1.0000],
-    [50.0000, -1.1848, -84.8006, 50.0000, 0.0000, -82.7485, 1.0000],
+    [50.0, 2.6772, -79.7751, 50.0, 0.0, -82.7485, 2.0425],
+    [50.0, 3.1571, -77.2803, 50.0, 0.0, -82.7485, 2.8615],
+    [50.0, 2.8361, -74.02, 50.0, 0.0, -82.7485, 3.4412],
+    [50.0, -1.3802, -84.2814, 50.0, 0.0, -82.7485, 1.0],
+    [50.0, -1.1848, -84.8006, 50.0, 0.0, -82.7485, 1.0],
   ])('Sharma pair L1=%s ... expected %s', (L1, a1, b1, L2, a2, b2, exp) => {
     const c1 = lab(L1, a1, b1)
     const c2 = lab(L2, a2, b2)

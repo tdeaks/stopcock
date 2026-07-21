@@ -31,26 +31,20 @@ import { pipe, A, D } from '@stopcock/fp'
 
 // count items per category
 const counts = pipe(
-  A.groupBy(products, p => p.category),
-  D.map(items => items.length),
+  A.groupBy(products, (p) => p.category),
+  D.map((items) => items.length),
 )
 // { electronics: 12, clothing: 8 }
 
 // merge config layers
-const config = pipe(
-  defaults,
-  D.merge(envOverrides),
-  D.merge(cliFlags),
-)
+const config = pipe(defaults, D.merge(envOverrides), D.merge(cliFlags))
 
 // filter out empty groups
 pipe(
   grouped,
-  D.filter(items => items.length > 0),
+  D.filter((items) => items.length > 0),
 )
 
 // build lookup table
-const byId = D.fromEntries(
-  users.map(u => [u.id, u]),
-)
+const byId = D.fromEntries(users.map((u) => [u.id, u]))
 ```

@@ -1,10 +1,31 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import fc from 'fast-check'
 import {
-  ok, err, isOk, isErr,
-  map, mapErr, flatMap, andThen, flatten, getOrElse, match,
-  orElse, orElseWith, and, zip, zipWith, contains, exists,
-  toOption, tryCatch, fromThrowable, tryCatchAsync, fromNullable, tap, tapErr,
+  ok,
+  err,
+  isOk,
+  isErr,
+  map,
+  mapErr,
+  flatMap,
+  andThen,
+  flatten,
+  getOrElse,
+  match,
+  orElse,
+  orElseWith,
+  and,
+  zip,
+  zipWith,
+  contains,
+  exists,
+  toOption,
+  tryCatch,
+  fromThrowable,
+  tryCatchAsync,
+  fromNullable,
+  tap,
+  tapErr,
 } from '../result'
 import { some, none } from '../option'
 import { pipe } from '../pipe'
@@ -31,24 +52,44 @@ describe('Result', () => {
 
   describe('operators', () => {
     it('map transforms Ok, skips Err', () => {
-      expect(pipe(ok(1), map((n) => n + 1))).toEqual(ok(2))
-      expect(pipe(err('x'), map((n: number) => n + 1))).toEqual(err('x'))
+      expect(
+        pipe(
+          ok(1),
+          map((n) => n + 1),
+        ),
+      ).toEqual(ok(2))
+      expect(
+        pipe(
+          err('x'),
+          map((n: number) => n + 1),
+        ),
+      ).toEqual(err('x'))
     })
 
     it('mapErr transforms Err, skips Ok', () => {
-      expect(pipe(err('x'), mapErr((e) => e + '!'))).toEqual(err('x!'))
-      expect(pipe(ok(1), mapErr((e: string) => e + '!'))).toEqual(ok(1))
+      expect(
+        pipe(
+          err('x'),
+          mapErr((e) => e + '!'),
+        ),
+      ).toEqual(err('x!'))
+      expect(
+        pipe(
+          ok(1),
+          mapErr((e: string) => e + '!'),
+        ),
+      ).toEqual(ok(1))
     })
 
     it('flatMap chains Ok, skips Err', () => {
-      const half = (n: number) => n % 2 === 0 ? ok(n / 2) : err('odd')
+      const half = (n: number) => (n % 2 === 0 ? ok(n / 2) : err('odd'))
       expect(pipe(ok(4), flatMap(half))).toEqual(ok(2))
       expect(pipe(ok(3), flatMap(half))).toEqual(err('odd'))
       expect(pipe(err('x'), flatMap(half))).toEqual(err('x'))
     })
 
     it('andThen aliases flatMap', () => {
-      const half = (n: number) => n % 2 === 0 ? ok(n / 2) : err('odd')
+      const half = (n: number) => (n % 2 === 0 ? ok(n / 2) : err('odd'))
       expect(pipe(ok(4), andThen(half))).toEqual(ok(2))
       expect(pipe(err('x'), andThen(half))).toEqual(err('x'))
     })
@@ -84,9 +125,24 @@ describe('Result', () => {
     })
 
     it('zipWith combines two Ok values with a function', () => {
-      expect(pipe(ok(1), zipWith(ok(2), (a, b) => a + b))).toEqual(ok(3))
-      expect(pipe(ok(1), zipWith(err('y'), (a, b: number) => a + b))).toEqual(err('y'))
-      expect(pipe(err('x'), zipWith(ok(2), (a: number, b) => a + b))).toEqual(err('x'))
+      expect(
+        pipe(
+          ok(1),
+          zipWith(ok(2), (a, b) => a + b),
+        ),
+      ).toEqual(ok(3))
+      expect(
+        pipe(
+          ok(1),
+          zipWith(err('y'), (a, b: number) => a + b),
+        ),
+      ).toEqual(err('y'))
+      expect(
+        pipe(
+          err('x'),
+          zipWith(ok(2), (a: number, b) => a + b),
+        ),
+      ).toEqual(err('x'))
     })
 
     it('contains checks Ok values with Object.is semantics', () => {
@@ -97,39 +153,79 @@ describe('Result', () => {
     })
 
     it('exists checks predicates only for Ok', () => {
-      expect(pipe(ok(2), exists((n) => n > 1))).toBe(true)
-      expect(pipe(ok(0), exists((n) => n > 1))).toBe(false)
-      expect(pipe(err('x'), exists((n: number) => n > 1))).toBe(false)
+      expect(
+        pipe(
+          ok(2),
+          exists((n) => n > 1),
+        ),
+      ).toBe(true)
+      expect(
+        pipe(
+          ok(0),
+          exists((n) => n > 1),
+        ),
+      ).toBe(false)
+      expect(
+        pipe(
+          err('x'),
+          exists((n: number) => n > 1),
+        ),
+      ).toBe(false)
     })
 
     it('getOrElse returns value or lazy default', () => {
-      expect(pipe(ok(1), getOrElse(() => 99))).toBe(1)
-      expect(pipe(err('x'), getOrElse(() => 99))).toBe(99)
+      expect(
+        pipe(
+          ok(1),
+          getOrElse(() => 99),
+        ),
+      ).toBe(1)
+      expect(
+        pipe(
+          err('x'),
+          getOrElse(() => 99),
+        ),
+      ).toBe(99)
     })
 
     it('match folds over both cases', () => {
-      const fold = match((e: string) => `err: ${e}`, (n: number) => `ok: ${n}`)
+      const fold = match(
+        (e: string) => `err: ${e}`,
+        (n: number) => `ok: ${n}`,
+      )
       expect(pipe(ok(42), fold)).toBe('ok: 42')
       expect(pipe(err('fail'), fold)).toBe('err: fail')
     })
 
     it('tryCatch captures throwing fn', () => {
       expect(tryCatch(() => 42)).toEqual(ok(42))
-      const result = tryCatch(() => { throw new Error('boom') })
+      const result = tryCatch(() => {
+        throw new Error('boom')
+      })
       expect(isErr(result)).toBe(true)
     })
 
     it('fromThrowable aliases tryCatch', () => {
       expect(fromThrowable(() => 42)).toEqual(ok(42))
-      expect(fromThrowable(() => { throw new Error('boom') }, () => 'boom')).toEqual(err('boom'))
+      expect(
+        fromThrowable(
+          () => {
+            throw new Error('boom')
+          },
+          () => 'boom',
+        ),
+      ).toEqual(err('boom'))
     })
 
     it('tryCatchAsync captures resolved and rejected promises', async () => {
       await expect(tryCatchAsync(async () => 42)).resolves.toEqual(ok(42))
       await expect(
-        tryCatchAsync(async () => {
-          throw new Error('boom')
-        }, (e) => e instanceof Error ? e.message : 'unknown'),
+        tryCatchAsync(
+          async () => {
+            throw new Error('boom')
+          },
+          (e) => (e instanceof Error ? e.message : 'unknown'),
+        ),
       ).resolves.toEqual(err('boom'))
     })
 
@@ -147,28 +243,40 @@ describe('Result', () => {
 
     it('tap calls effect for Ok, returns original', () => {
       const calls: number[] = []
-      const result = pipe(ok(5), tap((n) => calls.push(n)))
+      const result = pipe(
+        ok(5),
+        tap((n) => calls.push(n)),
+      )
       expect(result).toEqual(ok(5))
       expect(calls).toEqual([5])
     })
 
     it('tap skips effect for Err', () => {
       const calls: number[] = []
-      const result = pipe(err('x'), tap((n: number) => calls.push(n)))
+      const result = pipe(
+        err('x'),
+        tap((n: number) => calls.push(n)),
+      )
       expect(result).toEqual(err('x'))
       expect(calls).toEqual([])
     })
 
     it('tapErr calls effect for Err, returns original', () => {
       const calls: string[] = []
-      const result = pipe(err('x'), tapErr((e) => calls.push(e)))
+      const result = pipe(
+        err('x'),
+        tapErr((e) => calls.push(e)),
+      )
       expect(result).toEqual(err('x'))
       expect(calls).toEqual(['x'])
     })
 
     it('tapErr skips effect for Ok', () => {
       const calls: string[] = []
-      const result = pipe(ok(1), tapErr((e: string) => calls.push(e)))
+      const result = pipe(
+        ok(1),
+        tapErr((e: string) => calls.push(e)),
+      )
       expect(result).toEqual(ok(1))
       expect(calls).toEqual([])
     })
@@ -177,58 +285,87 @@ describe('Result', () => {
   describe('pipeability', () => {
     it('chains through pipe', () => {
       expect(
-        pipe(ok(10), map((n) => n * 2), getOrElse(() => 0)),
+        pipe(
+          ok(10),
+          map((n) => n * 2),
+          getOrElse(() => 0),
+        ),
       ).toBe(20)
     })
   })
 
   describe('functor laws', () => {
     it('identity: map(x => x) roundtrips', () => {
-      fc.assert(fc.property(fc.integer(), (a) => {
-        expect(pipe(ok(a), map((x) => x))).toEqual(ok(a))
-      }))
+      fc.assert(
+        fc.property(fc.integer(), (a) => {
+          expect(
+            pipe(
+              ok(a),
+              map((x) => x),
+            ),
+          ).toEqual(ok(a))
+        }),
+      )
     })
 
     it('composition', () => {
-      fc.assert(fc.property(fc.integer(), (a) => {
-        const f = (n: number) => n * 2
-        const g = (n: number) => n + 1
-        expect(pipe(ok(a), map((x) => f(g(x))))).toEqual(pipe(ok(a), map(g), map(f)))
-      }))
+      fc.assert(
+        fc.property(fc.integer(), (a) => {
+          const f = (n: number) => n * 2
+          const g = (n: number) => n + 1
+          expect(
+            pipe(
+              ok(a),
+              map((x) => f(g(x))),
+            ),
+          ).toEqual(pipe(ok(a), map(g), map(f)))
+        }),
+      )
     })
   })
 
   describe('monad laws', () => {
     it('left identity', () => {
-      fc.assert(fc.property(fc.integer(), (a) => {
-        const f = (n: number) => ok(n * 2)
-        expect(pipe(ok(a), flatMap(f))).toEqual(f(a))
-      }))
+      fc.assert(
+        fc.property(fc.integer(), (a) => {
+          const f = (n: number) => ok(n * 2)
+          expect(pipe(ok(a), flatMap(f))).toEqual(f(a))
+        }),
+      )
     })
 
     it('right identity', () => {
-      fc.assert(fc.property(fc.integer(), (a) => {
-        const m = ok(a)
-        expect(pipe(m, flatMap(ok))).toEqual(m)
-      }))
+      fc.assert(
+        fc.property(fc.integer(), (a) => {
+          const m = ok(a)
+          expect(pipe(m, flatMap(ok))).toEqual(m)
+        }),
+      )
     })
 
     it('associativity', () => {
-      fc.assert(fc.property(fc.integer(), (a) => {
-        const f = (n: number) => ok(n + 1)
-        const g = (n: number) => ok(n * 2)
-        const left = pipe(ok(a), flatMap(f), flatMap(g))
-        const right = pipe(ok(a), flatMap((x) => pipe(f(x), flatMap(g))))
-        expect(left).toEqual(right)
-      }))
+      fc.assert(
+        fc.property(fc.integer(), (a) => {
+          const f = (n: number) => ok(n + 1)
+          const g = (n: number) => ok(n * 2)
+          const left = pipe(ok(a), flatMap(f), flatMap(g))
+          const right = pipe(
+            ok(a),
+            flatMap((x) => pipe(f(x), flatMap(g))),
+          )
+          expect(left).toEqual(right)
+        }),
+      )
     })
   })
 
   describe('toOption consistency', () => {
     it('ok(a) |> toOption === some(a)', () => {
-      fc.assert(fc.property(fc.integer(), (a) => {
-        expect(toOption(ok(a))).toEqual(some(a))
-      }))
+      fc.assert(
+        fc.property(fc.integer(), (a) => {
+          expect(toOption(ok(a))).toEqual(some(a))
+        }),
+      )
     })
   })
 })

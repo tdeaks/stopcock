@@ -5,7 +5,10 @@ type Dict<A> = { [id: string]: A }
 export const keys: <A>(d: Dict<A>) => string[] = Object.keys as any
 export const values: <A>(d: Dict<A>) => A[] = Object.values as any
 export const toEntries: <A>(d: Dict<A>) => [string, A][] = Object.entries as any
-export function isEmpty<A>(d: Dict<A>): boolean { for (const _ in d) return false; return true }
+export function isEmpty<A>(d: Dict<A>): boolean {
+  for (const _ in d) return false
+  return true
+}
 export function fromEntries<A>(entries: [string, A][]): Dict<A> {
   const out: any = {}
   for (let i = 0, len = entries.length; i < len; i++) out[entries[i][0]] = entries[i][1]
@@ -33,7 +36,7 @@ export const filter: {
 export const get: {
   <A>(d: Dict<A>, key: string): A | undefined
   (key: string): <A>(d: Dict<A>) => A | undefined
-} = dual(2, (d: any, key: string) => key in d ? d[key] : undefined)
+} = dual(2, (d: any, key: string) => (key in d ? d[key] : undefined))
 
 export const merge: {
   <A>(a: Dict<A>, b: Dict<A>): Dict<A>

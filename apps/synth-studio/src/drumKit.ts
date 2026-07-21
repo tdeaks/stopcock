@@ -21,9 +21,16 @@ export type DrumPieceDef = {
 
 const drumVoice = (
   kind: DrumVoiceKind,
-  params: { freq?: number; decay?: number; tone?: number; snap?: number; noise?: number; drive?: number; level?: number },
-): Node =>
-  instrument.drumVoice({ kind, ...params })
+  params: {
+    freq?: number
+    decay?: number
+    tone?: number
+    snap?: number
+    noise?: number
+    drive?: number
+    level?: number
+  },
+): Node => instrument.drumVoice({ kind, ...params })
 
 export const DRUM_KIT: ReadonlyArray<DrumPieceDef> = [
   {
@@ -32,7 +39,16 @@ export const DRUM_KIT: ReadonlyArray<DrumPieceDef> = [
     tag: 'KK',
     key: 'q',
     chokeGroup: null,
-    build: () => drumVoice('kick', { freq: 55, decay: 0.42, tone: 0.55, snap: 0.5, noise: 0.04, drive: 0.25, level: 1 }),
+    build: () =>
+      drumVoice('kick', {
+        freq: 55,
+        decay: 0.42,
+        tone: 0.55,
+        snap: 0.5,
+        noise: 0.04,
+        drive: 0.25,
+        level: 1,
+      }),
   },
   {
     id: 'snare',
@@ -44,7 +60,16 @@ export const DRUM_KIT: ReadonlyArray<DrumPieceDef> = [
     // dominated by the wires, not the shell tone. Higher snap + shorter decay
     // tightens the transient; higher tone shifts the sizzle into the 1.3 kHz
     // band where snare wires live.
-    build: () => drumVoice('snare', { freq: 185, decay: 0.18, tone: 0.78, snap: 0.85, noise: 0.95, drive: 0.05, level: 1.0 }),
+    build: () =>
+      drumVoice('snare', {
+        freq: 185,
+        decay: 0.18,
+        tone: 0.78,
+        snap: 0.85,
+        noise: 0.95,
+        drive: 0.05,
+        level: 1.0,
+      }),
   },
   {
     id: 'hatClosed',
@@ -52,7 +77,16 @@ export const DRUM_KIT: ReadonlyArray<DrumPieceDef> = [
     tag: 'HC',
     key: 'e',
     chokeGroup: 'hat',
-    build: () => drumVoice('hat', { freq: 8000, decay: 0.05, tone: 0.85, snap: 0.6, noise: 0.95, drive: 0.05, level: 0.55 }),
+    build: () =>
+      drumVoice('hat', {
+        freq: 8000,
+        decay: 0.05,
+        tone: 0.85,
+        snap: 0.6,
+        noise: 0.95,
+        drive: 0.05,
+        level: 0.55,
+      }),
   },
   {
     id: 'hatOpen',
@@ -67,7 +101,16 @@ export const DRUM_KIT: ReadonlyArray<DrumPieceDef> = [
     //   - tone slightly warmer (lower)
     //   - level a touch quieter so closed-hat accents read on top
     // Replace this stub with your tuning.
-    build: () => drumVoice('hat', { freq: 8000, decay: 0.4, tone: 0.7, snap: 0.4, noise: 0.9, drive: 0.05, level: 0.5 }),
+    build: () =>
+      drumVoice('hat', {
+        freq: 8000,
+        decay: 0.4,
+        tone: 0.7,
+        snap: 0.4,
+        noise: 0.9,
+        drive: 0.05,
+        level: 0.5,
+      }),
   },
   {
     id: 'clap',
@@ -83,11 +126,23 @@ export const DRUM_KIT: ReadonlyArray<DrumPieceDef> = [
     //   - short decay (≈0.12) with snap close to 1 for the burst
     //   - level slightly under snare
     // Replace this stub with your tuning.
-    build: () => drumVoice('snare', { freq: 350, decay: 0.15, tone: 0.1, snap: 0.95, noise: 0.95, drive: 0.1, level: 0.7 }),
+    build: () =>
+      drumVoice('snare', {
+        freq: 350,
+        decay: 0.15,
+        tone: 0.1,
+        snap: 0.95,
+        noise: 0.95,
+        drive: 0.1,
+        level: 0.7,
+      }),
   },
 ]
 
 export const DRUM_PIECE_INDEX: Readonly<Record<DrumPieceId, number>> = DRUM_KIT.reduce(
-  (acc, piece, i) => { (acc as Record<DrumPieceId, number>)[piece.id] = i; return acc },
+  (acc, piece, i) => {
+    ;(acc as Record<DrumPieceId, number>)[piece.id] = i
+    return acc
+  },
   {} as Record<DrumPieceId, number>,
 )

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Vec as LaVec } from '@stopcock/la'
 import { differentiable } from '../differentiable'
 import { add, square, sub } from '../scalar'
@@ -19,7 +19,7 @@ const directional = (f: (x: Vec) => number, x: Vec, d: Vec, h = 1e-5) => {
 describe('vector ops', () => {
   it('computes elementwise and scale gradients', () => {
     const f = differentiable((v: Var<Vec>) =>
-      vecSum(vecSub(vecScale(vecAdd(v, new Float64Array([1, 1, 1])), 2), v))
+      vecSum(vecSub(vecScale(vecAdd(v, new Float64Array([1, 1, 1])), 2), v)),
     )
 
     expect(f.forward(new Float64Array([1, 2, 3]))).toBe(12)
@@ -35,9 +35,7 @@ describe('vector ops', () => {
   })
 
   it('matches a random-direction numerical check', () => {
-    const f = differentiable((v: Var<Vec>) =>
-      square(sub(vecNorm(v), 5))
-    )
+    const f = differentiable((v: Var<Vec>) => square(sub(vecNorm(v), 5)))
     const x = new Float64Array([3, 4, 5])
     const dir = LaVec.normalize(new Float64Array([2, -1, 3]))
     const grad = f.gradient(x)
@@ -61,8 +59,7 @@ describe('vector ops', () => {
     const ys = [2, -1, 1, 3]
     const loss = differentiable((w: Var<Vec>) => {
       let total = square(sub(vecDot(w, xs[0]), ys[0]))
-      for (let i = 1; i < xs.length; i++)
-        total = add(total, square(sub(vecDot(w, xs[i]), ys[i])))
+      for (let i = 1; i < xs.length; i++) total = add(total, square(sub(vecDot(w, xs[i]), ys[i])))
       return total
     })
 

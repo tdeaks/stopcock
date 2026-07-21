@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { MAX_WORKLET_FRAMES, wasmProcessorBody } from '../render/worklet-processor'
 
 describe('WASM worklet processor source', () => {

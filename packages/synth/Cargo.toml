@@ -1,10 +1,5 @@
 [workspace]
-members = [
-  "dsp-core",
-  "vintage-instruments",
-  "vintage-rack",
-  "wasm",
-]
+members = ["dsp-core", "vintage-instruments", "vintage-rack", "wasm"]
 resolver = "2"
 
 [workspace.package]

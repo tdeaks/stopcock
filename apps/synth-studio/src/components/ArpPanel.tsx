@@ -1,5 +1,12 @@
 import { createMemo, For, type Component } from 'solid-js'
-import { activeArpNotes, activeNotes, latchedNotes, setArpEnabled, setArpParam, state } from '../state'
+import {
+  activeArpNotes,
+  activeNotes,
+  latchedNotes,
+  setArpEnabled,
+  setArpParam,
+  state,
+} from '../state'
 import { midiNoteName, type ArpMode, type ArpRate } from '../arp'
 import { Module } from './Module'
 import { Segments } from './Segments'
@@ -70,8 +77,12 @@ export const ArpPanel: Component = () => {
               Latch
             </button>
             <div class="arp-readout">
-              <span>In <strong>{pool().length}</strong></span>
-              <span>Play <strong>{playingNames() || '—'}</strong></span>
+              <span>
+                In <strong>{pool().length}</strong>
+              </span>
+              <span>
+                Play <strong>{playingNames() || '—'}</strong>
+              </span>
             </div>
           </div>
 
@@ -119,9 +130,11 @@ export const ArpPanel: Component = () => {
           </div>
 
           <div class="arp-note-list" aria-label="Arpeggiator input notes">
-            <For each={pool()}>{(midi) => (
-              <span class={activeArpNotes().has(midi) ? 'active' : ''}>{midiNoteName(midi)}</span>
-            )}</For>
+            <For each={pool()}>
+              {(midi) => (
+                <span class={activeArpNotes().has(midi) ? 'active' : ''}>{midiNoteName(midi)}</span>
+              )}
+            </For>
             {poolNames() === '' && <span>—</span>}
           </div>
         </div>

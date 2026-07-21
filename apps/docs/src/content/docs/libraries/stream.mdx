@@ -13,8 +13,8 @@ const { range, map, filter, take, toArray } = Stream
 
 const squares = pipe(
   range(1, Infinity),
-  map(n => n * n),
-  filter(n => n % 2 === 0),
+  map((n) => n * n),
+  filter((n) => n % 2 === 0),
   take(5),
   toArray,
 )
@@ -26,22 +26,23 @@ const squares = pipe(
 ```ts
 // Array: 3 full passes, 3 intermediate arrays allocated
 const result = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  .filter(n => n % 2 === 0)
-  .map(n => n * n)
+  .filter((n) => n % 2 === 0)
+  .map((n) => n * n)
   .slice(0, 3)
 
 // Stream: single lazy pass, stops after 3 results
 const result = pipe(
   from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
-  filter(n => n % 2 === 0),
-  map(n => n * n),
+  filter((n) => n % 2 === 0),
+  map((n) => n * n),
   take(3),
   toArray,
 )
 ```
 
 <Aside type="tip">
-  With a million elements this actually matters. The Array version allocates three intermediate arrays. The Stream version touches exactly 6 elements and allocates nothing.
+  With a million elements this actually matters. The Array version allocates three intermediate
+  arrays. The Stream version touches exactly 6 elements and allocates nothing.
 </Aside>
 
 ## Real-world patterns
@@ -51,11 +52,11 @@ const result = pipe(
 ```ts
 const lines = pipe(
   from(file.split('\n')),
-  drop(1),                          // skip header
-  map(line => line.split(',')),
-  filter(cols => cols[2] !== ''),    // skip empty emails
+  drop(1), // skip header
+  map((line) => line.split(',')),
+  filter((cols) => cols[2] !== ''), // skip empty emails
   map(([name, age, email]) => ({ name, age: +age, email })),
-  take(1000),                       // first 1000 valid rows
+  take(1000), // first 1000 valid rows
   toArray,
 )
 ```
@@ -68,19 +69,22 @@ const fibs = pipe(
   map(([a]) => a),
 )
 
-pipe(fibs, take(10), toArray)  // [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
-pipe(fibs, find(n => n > 1000))  // 1597
+pipe(fibs, take(10), toArray) // [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+pipe(
+  fibs,
+  find((n) => n > 1000),
+) // 1597
 ```
 
 ### Chunked batch processing
 
 ```ts
-const ids = range(1, 10001)  // 10,000 IDs
+const ids = range(1, 10001) // 10,000 IDs
 
 pipe(
   ids,
-  chunk(100),   // groups of 100
-  forEach(batch => sendBatchRequest(toArray(batch))),
+  chunk(100), // groups of 100
+  forEach((batch) => sendBatchRequest(toArray(batch))),
 )
 ```
 
@@ -128,7 +132,8 @@ intersperse<A>(stream: Stream<A>, sep: A): Stream<A>
 ```
 
 <Aside type="note">
-  `distinctN` limits the seen-set size. Useful for memory-bounded deduplication on large streams. When the set is full it clears and starts over, trading perfect dedup for bounded memory.
+  `distinctN` limits the seen-set size. Useful for memory-bounded deduplication on large streams.
+  When the set is full it clears and starts over, trading perfect dedup for bounded memory.
 </Aside>
 
 ## Terminals

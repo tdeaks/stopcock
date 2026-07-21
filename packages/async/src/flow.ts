@@ -49,7 +49,10 @@ export function debounce<Args extends unknown[], R>(
     return lastResult
   }
   debounced.cancel = () => {
-    if (timer) { clearTimeout(timer); timer = null }
+    if (timer) {
+      clearTimeout(timer)
+      timer = null
+    }
   }
   return debounced as DebouncedFn<Args, R>
 }

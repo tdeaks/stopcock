@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vite-plus'
 import path from 'path'
 
 export default defineConfig({
@@ -6,6 +6,11 @@ export default defineConfig({
     alias: {
       '@stopcock/color': path.resolve(__dirname, '../../packages/color/src/index.ts'),
       '@stopcock/fp': path.resolve(__dirname, '../../packages/fp/src/index.ts'),
+    },
+  },
+  run: {
+    tasks: {
+      build: ['vp build'],
     },
   },
 })

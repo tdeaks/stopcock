@@ -15,11 +15,7 @@ Dates are branded numbers (Unix ms timestamps). No `Date` objects get allocated 
 import { pipe } from '@stopcock/fp'
 import { now, add, startOf, format, isWeekend } from '@stopcock/date'
 
-const nextMonday = pipe(
-  now(),
-  startOf('week'),
-  add(7, 'day'),
-)
+const nextMonday = pipe(now(), startOf('week'), add(7, 'day'))
 
 format(nextMonday, 'YYYY-MM-DD')
 ```
@@ -51,6 +47,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     <Aside type="tip">
       `formatter(pattern)` pre-compiles the format string. The compiled formatter is ~9% faster than calling `format()` directly. Worth it in hot loops.
     </Aside>
+
   </TabItem>
   <TabItem label="Diff">
     | Operation | vs date-fns | vs moment | vs luxon |
@@ -62,6 +59,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     <Aside type="note">
       Native `(a - b) / 86400000` is still faster for simple day diffs, but it doesn't handle month/year boundaries or DST transitions. stopcock is the fastest *correct* implementation.
     </Aside>
+
   </TabItem>
 </Tabs>
 
@@ -83,6 +81,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     import { now, add, format } from '@stopcock/date'
     const result = pipe(now(), add(7, 'day'), format('YYYY-MM-DD'))
     ```
+
   </TabItem>
   <TabItem label="Timezone">
     ```ts
@@ -102,6 +101,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     import { Tz, now } from '@stopcock/date'
     Tz.isWeekend(now(), 'Asia/Tokyo')
     ```
+
   </TabItem>
   <TabItem label="Business days">
     ```ts
@@ -115,6 +115,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     const delivery = addBusinessDaysWithHolidays(now(), 10, holidays)
     format(delivery, 'YYYY-MM-DD')
     ```
+
   </TabItem>
 </Tabs>
 
@@ -140,13 +141,22 @@ format(due, 'DD MMM YYYY') // "14 Apr 2026"
 
 ```ts
 import { pipe, A } from '@stopcock/fp'
-import { fromParts, startOf, endOf, daysIn, getWeekday, format, isToday, isWeekend } from '@stopcock/date'
+import {
+  fromParts,
+  startOf,
+  endOf,
+  daysIn,
+  getWeekday,
+  format,
+  isToday,
+  isWeekend,
+} from '@stopcock/date'
 
 const calendarMonth = (year: number, month: number) => {
   const start = fromParts({ year, month })
   const days = daysIn(startOf(start, 'month'), endOf(start, 'month'))
 
-  return A.map(days, day => ({
+  return A.map(days, (day) => ({
     label: format(day, 'D'),
     weekday: getWeekday(day),
     today: isToday(day),
@@ -176,13 +186,10 @@ const timeAgo = (ts: Timestamp) => {
 import { pipe } from '@stopcock/fp'
 import { fromISO, Tz } from '@stopcock/date'
 
-const standup = pipe(
-  fromISO('2026-04-03'),
-  ts => Tz.add(ts, 9, 'hour', 'Europe/London'),
-)
+const standup = pipe(fromISO('2026-04-03'), (ts) => Tz.add(ts, 9, 'hour', 'Europe/London'))
 
-Tz.format(standup, 'HH:mm z', 'America/New_York')  // "04:00 EDT"
-Tz.format(standup, 'HH:mm z', 'Asia/Tokyo')         // "17:00 JST"
+Tz.format(standup, 'HH:mm z', 'America/New_York') // "04:00 EDT"
+Tz.format(standup, 'HH:mm z', 'Asia/Tokyo') // "17:00 JST"
 ```
 
 ### Merging overlapping bookings
@@ -211,7 +218,15 @@ type Timestamp = number & { readonly [TimestampBrand]: true }
 type Duration = number & { readonly [DurationBrand]: true }
 type DateUnit = 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond'
 type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
-type DateParts = { year: number; month: number; day?: number; hour?: number; minute?: number; second?: number; millisecond?: number }
+type DateParts = {
+  year: number
+  month: number
+  day?: number
+  hour?: number
+  minute?: number
+  second?: number
+  millisecond?: number
+}
 ```
 
 ### Creation

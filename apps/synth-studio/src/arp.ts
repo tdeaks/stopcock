@@ -68,7 +68,8 @@ export const snapshotArpSettings = (settings: ArpSettings): ArpSettings => ({
   seed: settings.seed | 0,
 })
 
-export const arpRateToBeats = (rate: ArpRate): number => RATE_TO_BEATS[rate] ?? RATE_TO_BEATS['1/16']
+export const arpRateToBeats = (rate: ArpRate): number =>
+  RATE_TO_BEATS[rate] ?? RATE_TO_BEATS['1/16']
 
 export const baseStepDurationMs = (settings: ArpSettings): number => {
   const safe = snapshotArpSettings(settings)
@@ -86,7 +87,11 @@ export const intervalDurationMs = (settings: ArpSettings, stepIndex: number): nu
 export const gateDurationMs = (settings: ArpSettings): number =>
   Math.max(12, baseStepDurationMs(settings) * snapshotArpSettings(settings).gate)
 
-const expandOctaves = (notes: readonly number[], settings: ArpSettings, preserveOrder: boolean): number[] => {
+const expandOctaves = (
+  notes: readonly number[],
+  settings: ArpSettings,
+  preserveOrder: boolean,
+): number[] => {
   const safe = snapshotArpSettings(settings)
   const base = preserveOrder ? [...notes] : [...notes].sort((a, b) => a - b)
   const out: number[] = []

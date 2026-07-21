@@ -7,6 +7,9 @@
     "url": "git+https://github.com/tdeaks/stopcock.git",
     "directory": "packages/date"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -15,13 +18,7 @@
       "import": "./dist/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
   "dependencies": {
-    "@stopcock/fp": "1.0.0"
-  },
-  "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly"
+    "@stopcock/fp": "workspace:*"
   }
 }

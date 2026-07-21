@@ -1,11 +1,12 @@
 import type { Color } from './types'
 import { toOKLCh, convert } from './convert'
 
-const isColor = (x: any): x is Color => x && typeof x === 'object' && 'space' in x && 'channels' in x
+const isColor = (x: any): x is Color =>
+  x && typeof x === 'object' && 'space' in x && 'channels' in x
 
 // Generate a palette by rotating the OKLCh hue, then projecting back into the source space.
 const rotateHue = (source: Color, ok: Color, deg: number): Color => {
-  const h = ((ok.channels[2] + deg) % 360 + 360) % 360
+  const h = (((ok.channels[2] + deg) % 360) + 360) % 360
   const rotated: Color = {
     space: 'oklch',
     channels: new Float64Array([ok.channels[0], ok.channels[1], h]),

@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest'
-import { sumOfSquares, convolve1dFloat, complexMulAccum, applyColorMatrix3x3, convolve2dSeparable } from '../primitives'
+import { describe, it, expect } from 'vite-plus/test'
+import {
+  sumOfSquares,
+  convolve1dFloat,
+  complexMulAccum,
+  applyColorMatrix3x3,
+  convolve2dSeparable,
+} from '../primitives'
 
 describe('sumOfSquares', () => {
   it('computes sum of squares', () => {
@@ -50,8 +56,8 @@ describe('complexMulAccum', () => {
   })
 
   it('handles multiple complex pairs', () => {
-    const a = new Float64Array([1, 0, 0, 1])  // 1+0i, 0+1i
-    const b = new Float64Array([0, 1, 0, 1])  // 0+1i, 0+1i
+    const a = new Float64Array([1, 0, 0, 1]) // 1+0i, 0+1i
+    const b = new Float64Array([0, 1, 0, 1]) // 0+1i, 0+1i
     const out = new Float64Array(4)
     complexMulAccum(out, a, b, 2)
     // (1)(0+i) = 0+i
@@ -98,7 +104,9 @@ describe('applyColorMatrix3x3', () => {
 describe('convolve2dSeparable', () => {
   it('uniform kernel produces average', () => {
     // 3x3 image, all 128 in one channel, box kernel
-    const w = 3, h = 3, ch = 1
+    const w = 3,
+      h = 3,
+      ch = 1
     const src = new Uint8ClampedArray(w * h * ch)
     src.fill(128)
     const out = new Uint8ClampedArray(w * h * ch)

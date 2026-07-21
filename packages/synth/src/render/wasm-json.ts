@@ -8,7 +8,7 @@ type SerializedNode = {
   kind: Node['kind']
   out: 1 | 2
   inputs: number[]
-  mods: Array<{ param: AnyParam, source: number, depth: number, rate: 'audio' | 'control' }>
+  mods: Array<{ param: AnyParam; source: number; depth: number; rate: 'audio' | 'control' }>
   fields: Record<string, unknown>
 }
 
@@ -51,10 +51,21 @@ function serializeNode(node: Node, indexes: WeakMap<Node, number>): SerializedNo
 
   switch (node.kind) {
     case 'osc':
-      Object.assign(fields, { wave: node.wave, freq: node.freq, detune: node.detune, phase: node.phase })
+      Object.assign(fields, {
+        wave: node.wave,
+        freq: node.freq,
+        detune: node.detune,
+        phase: node.phase,
+      })
       break
     case 'wavetable':
-      Object.assign(fields, { bank: serializeWavetable(node.bank), freq: node.freq, detune: node.detune, phase: node.phase, position: node.position })
+      Object.assign(fields, {
+        bank: serializeWavetable(node.bank),
+        freq: node.freq,
+        detune: node.detune,
+        phase: node.phase,
+        position: node.position,
+      })
       break
     case 'fm':
       Object.assign(fields, {
@@ -72,7 +83,11 @@ function serializeNode(node: Node, indexes: WeakMap<Node, number>): SerializedNo
       fields.value = node.value
       break
     case 'buffer':
-      Object.assign(fields, { samples: Array.from(node.samples), looped: node.loop, rate: node.rate })
+      Object.assign(fields, {
+        samples: Array.from(node.samples),
+        looped: node.loop,
+        rate: node.rate,
+      })
       break
     case 'samplerInstrument':
       Object.assign(fields, {
@@ -183,7 +198,12 @@ function serializeNode(node: Node, indexes: WeakMap<Node, number>): SerializedNo
       inputs.push(indexOf(indexes, node.left), indexOf(indexes, node.right))
       break
     case 'biquad':
-      Object.assign(fields, { filter: node.filter, freq: node.freq, q: node.q, gainDb: node.gainDb })
+      Object.assign(fields, {
+        filter: node.filter,
+        freq: node.freq,
+        q: node.q,
+        gainDb: node.gainDb,
+      })
       inputs.push(indexOf(indexes, node.input))
       break
     case 'stateVariableFilter':
@@ -201,7 +221,12 @@ function serializeNode(node: Node, indexes: WeakMap<Node, number>): SerializedNo
       inputs.push(indexOf(indexes, node.input))
       break
     case 'adsr':
-      Object.assign(fields, { attack: node.attack, decay: node.decay, sustain: node.sustain, release: node.release })
+      Object.assign(fields, {
+        attack: node.attack,
+        decay: node.decay,
+        sustain: node.sustain,
+        release: node.release,
+      })
       inputs.push(indexOf(indexes, node.input))
       break
     case 'ar':
@@ -307,7 +332,12 @@ function serializeNode(node: Node, indexes: WeakMap<Node, number>): SerializedNo
       inputs.push(indexOf(indexes, node.input))
       break
     case 'microPitch':
-      Object.assign(fields, { detune: node.detune, width: node.width, delayMs: node.delayMs, mix: node.mix })
+      Object.assign(fields, {
+        detune: node.detune,
+        width: node.width,
+        delayMs: node.delayMs,
+        mix: node.mix,
+      })
       inputs.push(indexOf(indexes, node.input))
       break
     case 'multiTapDelay':
@@ -324,7 +354,13 @@ function serializeNode(node: Node, indexes: WeakMap<Node, number>): SerializedNo
       inputs.push(indexOf(indexes, node.input))
       break
     case 'saturator':
-      Object.assign(fields, { drive: node.drive, asymmetry: node.asymmetry, tone: node.tone, mix: node.mix, output: node.output })
+      Object.assign(fields, {
+        drive: node.drive,
+        asymmetry: node.asymmetry,
+        tone: node.tone,
+        mix: node.mix,
+        output: node.output,
+      })
       inputs.push(indexOf(indexes, node.input))
       break
     case 'wavefolder':
@@ -373,7 +409,13 @@ function serializeNode(node: Node, indexes: WeakMap<Node, number>): SerializedNo
       inputs.push(indexOf(indexes, node.input))
       break
     case 'compressor':
-      Object.assign(fields, { threshold: node.threshold, ratio: node.ratio, attack: node.attack, release: node.release, knee: node.knee })
+      Object.assign(fields, {
+        threshold: node.threshold,
+        ratio: node.ratio,
+        attack: node.attack,
+        release: node.release,
+        knee: node.knee,
+      })
       inputs.push(indexOf(indexes, node.input))
       break
     case 'bitcrush':
@@ -396,7 +438,9 @@ function serializeNode(node: Node, indexes: WeakMap<Node, number>): SerializedNo
   }
 }
 
-function serializeOperator(operator: Extract<Node, { kind: 'fm' }>['operators'][number]): Record<string, unknown> {
+function serializeOperator(
+  operator: Extract<Node, { kind: 'fm' }>['operators'][number],
+): Record<string, unknown> {
   const base = {
     kind: operator.kind,
     ratio: operator.ratio,
@@ -407,7 +451,8 @@ function serializeOperator(operator: Extract<Node, { kind: 'fm' }>['operators'][
     phase: operator.phase,
   }
   if (operator.kind === 'polyblep') return { ...base, wave: operator.wave }
-  if (operator.kind === 'wavetable') return { ...base, bank: serializeWavetable(operator.bank), position: operator.position }
+  if (operator.kind === 'wavetable')
+    return { ...base, bank: serializeWavetable(operator.bank), position: operator.position }
   return base
 }
 
@@ -420,7 +465,9 @@ function serializeWavetable(bank: WavetableBank): Record<string, unknown> {
   }
 }
 
-function serializeSamplerZone(zone: Extract<Node, { kind: 'samplerInstrument' }>['zones'][number]): Record<string, unknown> {
+function serializeSamplerZone(
+  zone: Extract<Node, { kind: 'samplerInstrument' }>['zones'][number],
+): Record<string, unknown> {
   return {
     samples: Array.from(zone.samples),
     sampleRate: zone.sampleRate,

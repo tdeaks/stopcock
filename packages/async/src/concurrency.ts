@@ -9,7 +9,7 @@ export const all = <A, E>(tasks: readonly Task<A, E>[]): Task<A[], E> =>
     if (tasks.length === 0) return []
     const linked = linkedController(signal)
     try {
-      return await Promise.all(tasks.map(t => t.run(linked.signal)))
+      return await Promise.all(tasks.map((t) => t.run(linked.signal)))
     } catch (e) {
       linked.abort()
       throw e
@@ -19,11 +19,11 @@ export const all = <A, E>(tasks: readonly Task<A, E>[]): Task<A[], E> =>
 export const allSettled = <A, E>(tasks: readonly Task<A, E>[]): Task<Result<A, E>[], never> =>
   of(async (signal?) => {
     if (tasks.length === 0) return []
-    const promises = tasks.map(t =>
+    const promises = tasks.map((t) =>
       t.run(signal).then(
         (a): Result<A, E> => ok(a),
         (e): Result<A, E> => err(e as E),
-      )
+      ),
     )
     return Promise.all(promises)
   })
@@ -32,7 +32,7 @@ export const race = <A, E>(tasks: readonly Task<A, E>[]): Task<A, E> =>
   of(async (signal?) => {
     const linked = linkedController(signal)
     try {
-      const result = await Promise.race(tasks.map(t => t.run(linked.signal)))
+      const result = await Promise.race(tasks.map((t) => t.run(linked.signal)))
       linked.abort()
       return result
     } catch (e) {
@@ -49,7 +49,10 @@ export const any = <A, E>(tasks: readonly Task<A, E>[]): Task<A, E[]> =>
 
     return new Promise<A>((resolve, reject) => {
       let remaining = tasks.length
-      if (remaining === 0) { reject([] as E[]); return }
+      if (remaining === 0) {
+        reject([] as E[])
+        return
+      }
 
       tasks.forEach((t, i) => {
         t.run(linked.signal).then(
@@ -82,7 +85,10 @@ export const parallel = (concurrency: number) => {
 
       const execute = async (task: Task<A, E>, index: number) => {
         await sem.acquire()
-        if (failed || linked.signal.aborted) { sem.release(); throw linked.signal.reason ?? new CancelledError() }
+        if (failed || linked.signal.aborted) {
+          sem.release()
+          throw linked.signal.reason ?? new CancelledError()
+        }
         try {
           results[index] = await task.run(linked.signal)
         } catch (e) {
@@ -99,5 +105,4 @@ export const parallel = (concurrency: number) => {
     })
 }
 
-export const sequential = <A, E>(tasks: readonly Task<A, E>[]): Task<A[], E> =>
-  parallel(1)(tasks)
+export const sequential = <A, E>(tasks: readonly Task<A, E>[]): Task<A[], E> => parallel(1)(tasks)

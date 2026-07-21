@@ -1,4 +1,4 @@
-import { describe, expectTypeOf, it } from 'vitest'
+import { describe, expectTypeOf, it } from 'vite-plus/test'
 import { differentiable } from '../differentiable'
 import { add, mul, square } from '../scalar'
 import { vecDot } from '../vec'

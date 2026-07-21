@@ -1,18 +1,29 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import { compose } from '../core'
-import { diff, diffInDays, diffInHours, diffInMinutes, diffInSeconds, diffInMonths, diffInYears } from '../diff'
+import {
+  diff,
+  diffInDays,
+  diffInHours,
+  diffInMinutes,
+  diffInSeconds,
+  diffInMonths,
+  diffInYears,
+} from '../diff'
 
 const a = compose(2024, 1, 1, 0, 0, 0, 0)
 const b = compose(2024, 3, 15, 12, 30, 45, 0)
 
 describe('diff', () => {
-  it('millisecond', () => expect(diff(b, a, 'millisecond')).toBe(b as number - (a as number)))
-  it('second', () => expect(diff(b, a, 'second')).toBe(((b as number - (a as number)) / 1000) | 0))
-  it('minute', () => expect(diff(b, a, 'minute')).toBe(((b as number - (a as number)) / 60000) | 0))
-  it('hour', () => expect(diff(b, a, 'hour')).toBe(((b as number - (a as number)) / 3600000) | 0))
-  it('day', () => expect(diff(b, a, 'day')).toBe(((b as number - (a as number)) / 86400000) | 0))
-  it('week', () => expect(diff(b, a, 'week')).toBe(((b as number - (a as number)) / (86400000 * 7)) | 0))
+  it('millisecond', () => expect(diff(b, a, 'millisecond')).toBe((b as number) - (a as number)))
+  it('second', () =>
+    expect(diff(b, a, 'second')).toBe((((b as number) - (a as number)) / 1000) | 0))
+  it('minute', () =>
+    expect(diff(b, a, 'minute')).toBe((((b as number) - (a as number)) / 60000) | 0))
+  it('hour', () => expect(diff(b, a, 'hour')).toBe((((b as number) - (a as number)) / 3600000) | 0))
+  it('day', () => expect(diff(b, a, 'day')).toBe((((b as number) - (a as number)) / 86400000) | 0))
+  it('week', () =>
+    expect(diff(b, a, 'week')).toBe((((b as number) - (a as number)) / (86400000 * 7)) | 0))
   it('month', () => expect(diff(b, a, 'month')).toBe(2))
   it('year', () => {
     const c = compose(2026, 6, 1, 0, 0, 0, 0)
@@ -21,7 +32,7 @@ describe('diff', () => {
 
   it('data-last', () => {
     const fn = diff(a, 'day')
-    expect(fn(b)).toBe(((b as number - (a as number)) / 86400000) | 0)
+    expect(fn(b)).toBe((((b as number) - (a as number)) / 86400000) | 0)
   })
 })
 

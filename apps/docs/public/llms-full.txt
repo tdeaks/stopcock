@@ -155,12 +155,12 @@ type Product = {
 const deals = pipe(
   products,
   A.filter((p: Product) => p.inStock && p.price < 50),
-  A.map(p => ({ name: p.name, price: p.price })),
+  A.map((p) => ({ name: p.name, price: p.price })),
   A.take(10),
 )
 
 // group + count
-const byCategory = A.groupBy(products, p => p.category)
+const byCategory = A.groupBy(products, (p) => p.category)
 // { electronics: [...], clothing: [...] }
 
 // rolling total
@@ -202,9 +202,15 @@ Trailing underscores avoid colliding with JS reserved words.
 ```ts
 import { pipe, B } from '@stopcock/fp'
 
-pipe(true, B.not_)           // false
-pipe(true, B.and_(false))    // false
-pipe(false, B.ifElse(() => 'yes', () => 'no'))  // 'no'
+pipe(true, B.not_) // false
+pipe(true, B.and_(false)) // false
+pipe(
+  false,
+  B.ifElse(
+    () => 'yes',
+    () => 'no',
+  ),
+) // 'no'
 
 // toggle a feature flag
 const toggled = pipe(isEnabled, B.not_)
@@ -248,28 +254,22 @@ import { pipe, A, D } from '@stopcock/fp'
 
 // count items per category
 const counts = pipe(
-  A.groupBy(products, p => p.category),
-  D.map(items => items.length),
+  A.groupBy(products, (p) => p.category),
+  D.map((items) => items.length),
 )
 // { electronics: 12, clothing: 8 }
 
 // merge config layers
-const config = pipe(
-  defaults,
-  D.merge(envOverrides),
-  D.merge(cliFlags),
-)
+const config = pipe(defaults, D.merge(envOverrides), D.merge(cliFlags))
 
 // filter out empty groups
 pipe(
   grouped,
-  D.filter(items => items.length > 0),
+  D.filter((items) => items.length > 0),
 )
 
 // build lookup table
-const byId = D.fromEntries(
-  users.map(u => [u.id, u]),
-)
+const byId = D.fromEntries(users.map((u) => [u.id, u]))
 ```
 
 ---
@@ -338,8 +338,8 @@ import { pipe, A, G } from '@stopcock/fp'
 
 // narrow unknown API data
 const data: unknown[] = [1, 'hello', null, { a: 1 }]
-data.filter(G.isNumber)       // [1], typed as number[]
-data.filter(G.isNonNullish)   // [1, 'hello', { a: 1 }]
+data.filter(G.isNumber) // [1], typed as number[]
+data.filter(G.isNonNullish) // [1, 'hello', { a: 1 }]
 
 // validate form field
 if (G.isString(input) && !G.isEmpty(input)) {
@@ -349,16 +349,16 @@ if (G.isString(input) && !G.isEmpty(input)) {
 // filter mixed arrays in pipe
 pipe(
   rawValues,
-  A.filter(G.isNumber),   // unknown[] → number[]
-  A.filter(n => n > 0),
+  A.filter(G.isNumber), // unknown[] → number[]
+  A.filter((n) => n > 0),
 )
 
 // deep equality check
-G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] })  // true
+G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] }) // true
 
 // check class instance
-G.is(Date, new Date())  // true
-G.is(Date, '2024-01-01')  // false
+G.is(Date, new Date()) // true
+G.is(Date, '2024-01-01') // false
 ```
 
 ---
@@ -412,18 +412,21 @@ import { pipe, prop, path, view, set, over } from '@stopcock/fp'
 const nameLens = prop<User, 'name'>('name')
 
 // Data-first
-view(user, nameLens)                          // 'Alice'
-set(user, nameLens, 'Bob')                    // { ...user, name: 'Bob' }
-over(user, nameLens, s => s.toUpperCase())    // { ...user, name: 'ALICE' }
+view(user, nameLens) // 'Alice'
+set(user, nameLens, 'Bob') // { ...user, name: 'Bob' }
+over(user, nameLens, (s) => s.toUpperCase()) // { ...user, name: 'ALICE' }
 
 // Data-last (works in pipe)
-pipe(user, view(nameLens))                    // 'Alice'
-pipe(user, set(nameLens, 'Bob'))              // { ...user, name: 'Bob' }
-pipe(user, over(nameLens, s => s.toUpperCase()))
+pipe(user, view(nameLens)) // 'Alice'
+pipe(user, set(nameLens, 'Bob')) // { ...user, name: 'Bob' }
+pipe(
+  user,
+  over(nameLens, (s) => s.toUpperCase()),
+)
 
 // Nested paths
 const cityLens = path<User, 'address', 'city'>('address', 'city')
-view(user, cityLens)                          // 'Portland'
+view(user, cityLens) // 'Portland'
 set(user, cityLens, 'London')
 ```
 
@@ -443,10 +446,10 @@ type Prism<S, A> = {
 import { somePrism, okPrism, preview, setPrism, overPrism } from '@stopcock/fp'
 
 const p = somePrism<number>()
-preview(optSome(42), p)     // Some(42)
-preview(none, p)            // None
+preview(optSome(42), p) // Some(42)
+preview(none, p) // None
 setPrism(optSome(42), p, 99) // Some(99)
-setPrism(none, p, 99)        // None (unchanged)
+setPrism(none, p, 99) // None (unchanged)
 ```
 
 ## Traversal
@@ -464,12 +467,12 @@ type Traversal<S, A> = {
 ```ts
 import { each, filtered, toArray, modify } from '@stopcock/fp'
 
-const evens = filtered<number>(n => n % 2 === 0)
-toArray([1, 2, 3, 4], evens)                  // [2, 4]
-modify([1, 2, 3, 4], evens, x => x * 10)      // [1, 20, 3, 40]
+const evens = filtered<number>((n) => n % 2 === 0)
+toArray([1, 2, 3, 4], evens) // [2, 4]
+modify([1, 2, 3, 4], evens, (x) => x * 10) // [1, 20, 3, 40]
 
 const all = each<number>()
-modify([1, 2, 3], all, x => x + 1)            // [2, 3, 4]
+modify([1, 2, 3], all, (x) => x + 1) // [2, 3, 4]
 ```
 
 ## Iso
@@ -487,16 +490,25 @@ type Iso<S, A> = {
 ```ts
 import { iso, reverse } from '@stopcock/fp'
 
-const celsiusToF = iso<number, number>(c => c * 9/5 + 32, f => (f - 32) * 5/9)
-celsiusToF.get(100)          // 212
-celsiusToF.reverseGet(212)   // 100
+const celsiusToF = iso<number, number>(
+  (c) => (c * 9) / 5 + 32,
+  (f) => ((f - 32) * 5) / 9,
+)
+celsiusToF.get(100) // 212
+celsiusToF.reverseGet(212) // 100
 reverse(celsiusToF).get(212) // 100
 ```
 
 ## Composition
 
 ```ts
-import { composeLens, composePrism, composeTraversal, composeIso, composeOptics } from '@stopcock/fp'
+import {
+  composeLens,
+  composePrism,
+  composeTraversal,
+  composeIso,
+  composeOptics,
+} from '@stopcock/fp'
 ```
 
 Each `compose*` function combines two optics of the same kind. `composeOptics` composes any combination. The result type is the weakest optic in the chain: Lens + Prism = Prism, anything + Traversal = Traversal.
@@ -539,16 +551,16 @@ cond<A, B>(value: A, conditions: [(a: A) => boolean, (a: A) => B][]): B | undefi
 ```ts
 import { pipe, Logic } from '@stopcock/fp'
 
-pipe(undefined, Logic.defaultTo(0))  // 0
-pipe(5, Logic.defaultTo(0))          // 5
+pipe(undefined, Logic.defaultTo(0)) // 0
+pipe(5, Logic.defaultTo(0)) // 5
 
 pipe(
   score,
   Logic.cond([
-    [s => s >= 90, () => 'A'],
-    [s => s >= 80, () => 'B'],
-    [s => s >= 70, () => 'C'],
-    [() => true,   () => 'F'],
+    [(s) => s >= 90, () => 'A'],
+    [(s) => s >= 80, () => 'B'],
+    [(s) => s >= 70, () => 'C'],
+    [() => true, () => 'F'],
   ]),
 )
 ```
@@ -585,21 +597,21 @@ modulo(a: number, b: number): number
 import { pipe, A, M } from '@stopcock/fp'
 
 // apply discount
-pipe(prices, A.map(M.multiply(0.9)))  // 10% off
+pipe(prices, A.map(M.multiply(0.9))) // 10% off
 
 // offset scores
 pipe(rawScores, A.map(M.add(curve)))
 
 // compound product
-M.product([2, 3, 4])  // 24
+M.product([2, 3, 4]) // 24
 
 // counter operations
-pipe(count, M.inc)     // count + 1
-pipe(count, M.dec)     // count - 1
-pipe(value, M.negate)  // -value
+pipe(count, M.inc) // count + 1
+pipe(count, M.dec) // count - 1
+pipe(value, M.negate) // -value
 
 // data-first
-M.modulo(17, 5)  // 2
+M.modulo(17, 5) // 2
 ```
 
 ---
@@ -644,19 +656,23 @@ import { pipe, A, N } from '@stopcock/fp'
 
 // stats on response times
 const times = [120, 95, 200, 88, 150, 300, 110]
-N.mean(times)               // ~151.9
-N.median(times)             // 120
-N.standardDeviation(times)  // ~68.6
-N.percentile(times, 95)     // 300
+N.mean(times) // ~151.9
+N.median(times) // 120
+N.standardDeviation(times) // ~68.6
+N.percentile(times, 95) // 300
 
 // clamp user input
 pipe(userAge, N.clamp(0, 150))
 
 // average score, ignoring zeros
-pipe(scores, A.filter(s => s > 0), N.mean)
+pipe(
+  scores,
+  A.filter((s) => s > 0),
+  N.mean,
+)
 
 // feature vector similarity
-N.dotProduct([1, 0, 1], [0, 1, 1])  // 1
+N.dotProduct([1, 0, 1], [0, 1, 1]) // 1
 ```
 
 ---
@@ -780,23 +796,23 @@ import { pipe, O } from '@stopcock/fp'
 // safe env variable with validation
 const port = pipe(
   O.fromNullable(process.env.PORT),
-  O.map(s => parseInt(s, 10)),
-  O.filter(n => n > 0 && n < 65536),
+  O.map((s) => parseInt(s, 10)),
+  O.filter((n) => n > 0 && n < 65536),
   O.getOrElse(() => 3000),
 )
 
 // chain nullable lookups
 pipe(
   O.fromNullable(user.address),
-  O.flatMap(a => O.fromNullable(a.zip)),
-  O.match(() => 'no zip', zip => zip),
+  O.flatMap((a) => O.fromNullable(a.zip)),
+  O.match(
+    () => 'no zip',
+    (zip) => zip,
+  ),
 )
 
 // convert to Result for error context
-pipe(
-  O.fromNullable(headers.authorization),
-  O.toResult('missing auth header'),
-)
+pipe(O.fromNullable(headers.authorization), O.toResult('missing auth header'))
 ```
 
 ---
@@ -863,18 +879,18 @@ const data = pipe(
 // chain validations
 pipe(
   R.ok(formData),
-  R.flatMap(d => d.name ? R.ok(d) : R.err('name required')),
-  R.flatMap(d => d.email ? R.ok(d) : R.err('email required')),
+  R.flatMap((d) => (d.name ? R.ok(d) : R.err('name required'))),
+  R.flatMap((d) => (d.email ? R.ok(d) : R.err('email required'))),
   R.match(
-    err => ({ success: false as const, error: err }),
-    val => ({ success: true as const, data: val }),
+    (err) => ({ success: false as const, error: err }),
+    (val) => ({ success: true as const, data: val }),
   ),
 )
 
 // log errors without changing the pipeline
 pipe(
   R.tryCatch(() => connectToDb()),
-  R.tapErr(e => console.error('db connection failed:', e)),
+  R.tapErr((e) => console.error('db connection failed:', e)),
   R.getOrElse(() => fallbackDb),
 )
 ```
@@ -924,7 +940,7 @@ pipe('name,email,role', S.split(','))
 // ['name', 'email', 'role']
 
 // check file extension
-pipe('report.pdf', S.endsWith('.pdf'))  // true
+pipe('report.pdf', S.endsWith('.pdf')) // true
 
 // template
 pipe('Hello, NAME!', S.replaceAll('NAME', user.name))
@@ -943,8 +959,8 @@ You've probably written something like this:
 
 ```ts
 const result = users
-  .filter(u => u.active)
-  .map(u => u.name)
+  .filter((u) => u.active)
+  .map((u) => u.name)
   .slice(0, 10)
 ```
 
@@ -957,8 +973,8 @@ import { pipe, A } from '@stopcock/fp'
 
 const result = pipe(
   users,
-  A.filter(u => u.active),
-  A.map(u => u.name),
+  A.filter((u) => u.active),
+  A.map((u) => u.name),
   A.take(10),
 )
 ```
@@ -972,8 +988,7 @@ Every array function in stopcock carries a hidden `_op` tag. When you call `A.fi
 When `pipe` receives its arguments, it checks each function for this tag:
 
 ```ts
-const _hasOp = (fn: any): boolean =>
-  typeof fn._op === 'number' && fn._op > 0
+const _hasOp = (fn: any): boolean => typeof fn._op === 'number' && fn._op > 0
 ```
 
 If consecutive functions are tagged, `pipe` doesn't call them one by one. It hands the whole sequence to the fusion engine, which compiles them into a single loop.
@@ -987,13 +1002,14 @@ The fusion engine generates a specialized `for` loop at runtime using `new Funct
 function fused(src, fns) {
   var f0 = fns[0] // filter predicate
   var f1 = fns[1] // map transform
-  var c2 = 0      // take counter
+  var c2 = 0 // take counter
   var r = []
   for (var i = 0; i < src.length; i++) {
     var v = src[i]
-    if (!f0(v)) continue      // filter
-    v = f1(v)                 // map
-    r.push(v); if (++c2 >= 10) break  // take(10)
+    if (!f0(v)) continue // filter
+    v = f1(v) // map
+    r.push(v)
+    if (++c2 >= 10) break // take(10)
   }
   return r
 }
@@ -1020,10 +1036,10 @@ Operations that need the full array don't fuse: `sort`, `reverse`, `groupBy`, `u
 ```ts
 pipe(
   data,
-  A.filter(x => x > 3),       // ─┐ fused segment 1
-  A.map(x => x * 2),          // ─┘ materializes here
-  A.sortBy((a, b) => a - b),  // runs on materialized array
-  A.take(3),                  // segment 2 (take on sorted result)
+  A.filter((x) => x > 3), // ─┐ fused segment 1
+  A.map((x) => x * 2), // ─┘ materializes here
+  A.sortBy((a, b) => a - b), // runs on materialized array
+  A.take(3), // segment 2 (take on sorted result)
 )
 ```
 
@@ -1034,6 +1050,7 @@ There's one exception. `sort` followed immediately by `take(k)` gets a special o
 For small arrays (under ~100 items), fusion doesn't buy you much. The overhead of native method calls is negligible at that scale, and V8 is very good at optimizing simple chains.
 
 Fusion pays off when:
+
 - Your arrays are large (1K+ items)
 - You have early-exit operations like `take` or `find`
 - You're chaining 3+ operations
@@ -1081,16 +1098,17 @@ type State = {
 Now update the user's city:
 
 ```ts
-setCity: (city) => set(state => ({
-  ...state,
-  user: {
-    ...state.user,
-    address: {
-      ...state.user.address,
-      city,
+setCity: (city) =>
+  set((state) => ({
+    ...state,
+    user: {
+      ...state.user,
+      address: {
+        ...state.user.address,
+        city,
+      },
     },
-  },
-}))
+  }))
 ```
 
 Three levels of spread for one field. And it gets worse. Every new action that touches nested state repeats the same pattern. You end up with a store file that's 80% spread operators.
@@ -1120,9 +1138,15 @@ Here's a full Zustand store using optics. The pattern is simple: define your len
 ```ts
 import { create } from 'zustand'
 import {
-  prop, path, composeLens, view as lensView,
-  set as lensSet, over as lensOver,
-  each, filtered, modify,
+  prop,
+  path,
+  composeLens,
+  view as lensView,
+  set as lensSet,
+  over as lensOver,
+  each,
+  filtered,
+  modify,
 } from '@stopcock/fp'
 
 // Lenses. define once, use everywhere
@@ -1142,10 +1166,10 @@ const useStore = create<State & Actions>((set, get) => ({
   ui: { sidebarOpen: false, theme: 'light' },
 
   // Simple field updates. one line each
-  setCity: (c) => set(s => lensSet(s, city, c)),
-  toggleSidebar: () => set(s => lensOver(s, sidebar, open => !open)),
-  setTheme: (t) => set(s => lensSet(s, theme, t)),
-  applyDiscount: (d) => set(s => lensSet(s, discount, d)),
+  setCity: (c) => set((s) => lensSet(s, city, c)),
+  toggleSidebar: () => set((s) => lensOver(s, sidebar, (open) => !open)),
+  setTheme: (t) => set((s) => lensSet(s, theme, t)),
+  applyDiscount: (d) => set((s) => lensSet(s, discount, d)),
 }))
 ```
 
@@ -1161,24 +1185,28 @@ Cart state is where spread hell really kicks in. You're updating items inside an
 import { each, filtered, modify } from '@stopcock/fp'
 
 // Bump quantity for a specific item
-const increaseQuantity = (id: string) => set(s => {
-  const items = lensView(s, cartItems)
-  return lensSet(s, cartItems,
-    items.map(item =>
-      item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+const increaseQuantity = (id: string) =>
+  set((s) => {
+    const items = lensView(s, cartItems)
+    return lensSet(
+      s,
+      cartItems,
+      items.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item)),
     )
-  )
-})
+  })
 
 // Mark all out-of-stock items
-const outOfStock = filtered<CartItem>(item => item.stock === 0)
+const outOfStock = filtered<CartItem>((item) => item.stock === 0)
 
-const markOutOfStock = () => set(s => {
-  const items = lensView(s, cartItems)
-  return lensSet(s, cartItems,
-    modify(items, outOfStock, item => ({ ...item, disabled: true }))
-  )
-})
+const markOutOfStock = () =>
+  set((s) => {
+    const items = lensView(s, cartItems)
+    return lensSet(
+      s,
+      cartItems,
+      modify(items, outOfStock, (item) => ({ ...item, disabled: true })),
+    )
+  })
 ```
 
 The `filtered` traversal finds all matching items and applies the update. You're not writing `.map` with a ternary every time.
@@ -1199,22 +1227,19 @@ type FormState = {
 }
 
 const shippingAddress = path<FormState, 'steps', 'shipping', 'address'>(
-  'steps', 'shipping', 'address'
+  'steps',
+  'shipping',
+  'address',
 )
-const paymentMethod = path<FormState, 'steps', 'payment', 'method'>(
-  'steps', 'payment', 'method'
-)
+const paymentMethod = path<FormState, 'steps', 'payment', 'method'>('steps', 'payment', 'method')
 const currentStep = prop<FormState, 'currentStep'>('currentStep')
 
 // Each action reads clearly
-const setShippingAddress = (addr: Address) =>
-  set(s => lensSet(s, shippingAddress, addr))
+const setShippingAddress = (addr: Address) => set((s) => lensSet(s, shippingAddress, addr))
 
-const nextStep = () =>
-  set(s => lensOver(s, currentStep, step => step + 1))
+const nextStep = () => set((s) => lensOver(s, currentStep, (step) => step + 1))
 
-const selectPaypal = () =>
-  set(s => lensSet(s, paymentMethod, 'paypal'))
+const selectPaypal = () => set((s) => lensSet(s, paymentMethod, 'paypal'))
 ```
 
 ### Dashboard filters
@@ -1245,24 +1270,23 @@ const page = path<DashboardState, 'table', 'page'>('table', 'page')
 const selected = path<DashboardState, 'table', 'selected'>('table', 'selected')
 
 // Toggle sort direction
-const toggleSort = (column: string) => set(s => {
-  const current = lensView(s, sortBy)
-  if (current === column) {
-    return lensOver(s, sortOrder, o => o === 'asc' ? 'desc' : 'asc')
-  }
-  return lensSet(lensSet(s, sortBy, column), sortOrder, 'asc')
-})
+const toggleSort = (column: string) =>
+  set((s) => {
+    const current = lensView(s, sortBy)
+    if (current === column) {
+      return lensOver(s, sortOrder, (o) => (o === 'asc' ? 'desc' : 'asc'))
+    }
+    return lensSet(lensSet(s, sortBy, column), sortOrder, 'asc')
+  })
 
 // Clear all filters at once
-const clearFilters = () => set(s =>
-  lensSet(
-    lensSet(
-      lensSet(s, search, ''),
-      statusFilter, [],
-    ),
-    dateRange, { start: defaultStart, end: defaultEnd },
+const clearFilters = () =>
+  set((s) =>
+    lensSet(lensSet(lensSet(s, search, ''), statusFilter, []), dateRange, {
+      start: defaultStart,
+      end: defaultEnd,
+    }),
   )
-)
 ```
 
 Chaining `lensSet` calls reads top to bottom. Each one returns a new state that feeds into the next. No intermediate variables, no spreading.
@@ -1272,6 +1296,7 @@ Chaining `lensSet` calls reads top to bottom. Each one returns a new state that 
 If your state is flat, you don't need lenses. Zustand already handles `{ count: 0, increment: () => set(s => ({ count: s.count + 1 })) }` perfectly. Don't add abstraction where there's no problem.
 
 Lenses pay off when:
+
 - State is 3+ levels deep
 - Multiple actions touch the same nested paths
 - You're tired of reading and reviewing spread sandwiches
@@ -1310,23 +1335,23 @@ One pass. `take(10)` breaks the loop after 10 results.
 
 ## What fuses
 
-| Operation | Position | Notes |
-|-----------|----------|-------|
-| `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, `dropWhile` | streaming-fused | inlined into the loop; `take` and `takeWhile` can stop early |
-| `reduce`, `find`, `every`, `some`, `count` | terminal folds/predicates | finish the fused pass and return a scalar or found value |
-| `head`, `last`, `length`, `join`, `sum`, `min`, `max` | accessor terminals | end the chain with a scalar or aggregate result |
-| `sort`, `sortBy`, `reverse`, `groupBy`, `uniq` | materialization boundary | need a completed array before the next step |
-| `sortBy -> take(k)`, `sort -> take(k)` | top-k optimization | uses a bounded top-k path instead of fully sorting when the take immediately follows the sort |
+| Operation                                                            | Position                  | Notes                                                                                         |
+| -------------------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, `dropWhile` | streaming-fused           | inlined into the loop; `take` and `takeWhile` can stop early                                  |
+| `reduce`, `find`, `every`, `some`, `count`                           | terminal folds/predicates | finish the fused pass and return a scalar or found value                                      |
+| `head`, `last`, `length`, `join`, `sum`, `min`, `max`                | accessor terminals        | end the chain with a scalar or aggregate result                                               |
+| `sort`, `sortBy`, `reverse`, `groupBy`, `uniq`                       | materialization boundary  | need a completed array before the next step                                                   |
+| `sortBy -> take(k)`, `sort -> take(k)`                               | top-k optimization        | uses a bounded top-k path instead of fully sorting when the take immediately follows the sort |
 
 Operations that need the whole array break the streaming chain. Everything before them gets fused and runs first, then the materializing op runs on that result:
 
 ```ts
 pipe(
   data,
-  A.filter(x => x > 3),        // segment 1
-  A.map(x => x * 2),           // materializes here
-  A.sortBy((a, b) => a - b),   // runs on the materialized array
-  A.take(3),                   // uses top-k because it immediately follows sortBy
+  A.filter((x) => x > 3), // segment 1
+  A.map((x) => x * 2), // materializes here
+  A.sortBy((a, b) => a - b), // runs on the materialized array
+  A.take(3), // uses top-k because it immediately follows sortBy
 )
 ```
 
@@ -1404,15 +1429,18 @@ import { pipe, O } from '@stopcock/fp'
 
 pipe(
   O.fromNullable(config.port),
-  O.map(p => parseInt(p, 10)),
-  O.filter(p => p > 0 && p < 65536),
+  O.map((p) => parseInt(p, 10)),
+  O.filter((p) => p > 0 && p < 65536),
   O.getOrElse(() => 3000),
 )
 
 pipe(
   O.fromNullable(address),
-  O.flatMap(a => O.fromNullable(a.zip)),
-  O.match(() => 'no zip', zip => zip),
+  O.flatMap((a) => O.fromNullable(a.zip)),
+  O.match(
+    () => 'no zip',
+    (zip) => zip,
+  ),
 )
 ```
 
@@ -1470,10 +1498,10 @@ const parsed = R.tryCatch(() => JSON.parse(input))
 pipe(
   parsed,
   R.map((obj: { value: number }) => obj.value),
-  R.flatMap(v => v > 0 ? R.ok(v) : R.err('must be positive')),
+  R.flatMap((v) => (v > 0 ? R.ok(v) : R.err('must be positive'))),
   R.match(
-    err => console.error(err),
-    val => console.log(val),
+    (err) => console.error(err),
+    (val) => console.log(val),
   ),
 )
 ```
@@ -1487,8 +1515,8 @@ pipe(
 pipe(O.fromNullable(x), O.toResult('was null'))
 
 // Result → Option (discards error)
-pipe(R.ok('hello'), R.toOption)  // Some('hello')
-pipe(R.err('boom'), R.toOption)  // None
+pipe(R.ok('hello'), R.toOption) // Some('hello')
+pipe(R.err('boom'), R.toOption) // None
 ```
 
 ---
@@ -1526,8 +1554,8 @@ import { pipe, O } from '@stopcock/fp'
 
 const port = pipe(
   O.fromNullable(process.env.PORT),
-  O.map(s => parseInt(s, 10)),
-  O.filter(n => n > 0 && n < 65536),
+  O.map((s) => parseInt(s, 10)),
+  O.filter((n) => n > 0 && n < 65536),
   O.getOrElse(() => 3000),
 )
 
@@ -1562,9 +1590,9 @@ cheapestInStock(productsFromApiB)
 import { pipe, Logic } from '@stopcock/fp'
 
 const classify = Logic.cond([
-  [n => n >= 90, () => 'A'],
-  [n => n >= 80, () => 'B'],
-  [n => n >= 70, () => 'C'],
+  [(n) => n >= 90, () => 'A'],
+  [(n) => n >= 80, () => 'B'],
+  [(n) => n >= 70, () => 'C'],
   [() => true, () => 'F'],
 ])
 
@@ -1584,7 +1612,7 @@ const clean = pipe(
   rawTags,
   A.map(S.trim),
   A.map(S.toLowerCase),
-  A.filter(t => t.length > 0),
+  A.filter((t) => t.length > 0),
   A.uniq,
 )
 ```
@@ -1601,7 +1629,7 @@ type Order = { customerId: string; total: number; status: string }
 const revenueByCustomer = pipe(
   orders,
   A.filter((o: Order) => o.status === 'completed'),
-  A.groupBy(o => o.customerId),
+  A.groupBy((o) => o.customerId),
 )
 
 const topCustomers = pipe(
@@ -1637,13 +1665,14 @@ import { pipe, Obj } from '@stopcock/fp'
 
 type RawEvent = { timestamp_ms: number; event_name: string; user_id: string }
 
-const normalize = (raw: RawEvent) => pipe(
-  raw,
-  Obj.evolve({
-    timestamp_ms: (ms: number) => new Date(ms),
-    event_name: (s: string) => s.toLowerCase(),
-  }),
-)
+const normalize = (raw: RawEvent) =>
+  pipe(
+    raw,
+    Obj.evolve({
+      timestamp_ms: (ms: number) => new Date(ms),
+      event_name: (s: string) => s.toLowerCase(),
+    }),
+  )
 ```
 
 ### CSV row processing
@@ -1651,20 +1680,13 @@ const normalize = (raw: RawEvent) => pipe(
 ```ts
 import { pipe, A, S } from '@stopcock/fp'
 
-const parseCSV = (raw: string) => pipe(
-  raw,
-  S.trim,
-  S.split('\n'),
-  A.map(S.split(',')),
-)
+const parseCSV = (raw: string) => pipe(raw, S.trim, S.split('\n'), A.map(S.split(',')))
 
 const [header, ...rows] = parseCSV(csvText)
 
 const records = pipe(
   rows,
-  A.map(row =>
-    Object.fromEntries(header.map((col, i) => [col, row[i]])),
-  ),
+  A.map((row) => Object.fromEntries(header.map((col, i) => [col, row[i]]))),
 )
 ```
 
@@ -1678,16 +1700,17 @@ import { pipe, A, O, Obj } from '@stopcock/fp'
 type OldUser = { first_name: string; last_name: string; email: string | null; is_active: number }
 type NewUser = { fullName: string; email: string; active: boolean }
 
-const migrate = (rows: OldUser[]): NewUser[] => pipe(
-  rows,
-  A.filter(r => r.is_active === 1),
-  A.map(r => ({
-    fullName: `${r.first_name} ${r.last_name}`.trim(),
-    email: pipe(O.fromNullable(r.email), O.getWithDefault('')),
-    active: true,
-  })),
-  A.filter(r => r.email.length > 0),
-)
+const migrate = (rows: OldUser[]): NewUser[] =>
+  pipe(
+    rows,
+    A.filter((r) => r.is_active === 1),
+    A.map((r) => ({
+      fullName: `${r.first_name} ${r.last_name}`.trim(),
+      email: pipe(O.fromNullable(r.email), O.getWithDefault('')),
+      active: true,
+    })),
+    A.filter((r) => r.email.length > 0),
+  )
 ```
 
 ---
@@ -1699,13 +1722,7 @@ const migrate = (rows: OldUser[]): NewUser[] => pipe(
 ```ts
 import { pipe, S } from '@stopcock/fp'
 
-const slug = pipe(
-  title,
-  S.trim,
-  S.toLowerCase,
-  S.replaceAll(' ', '-'),
-  S.replaceAll('/', '-'),
-)
+const slug = pipe(title, S.trim, S.toLowerCase, S.replaceAll(' ', '-'), S.replaceAll('/', '-'))
 ```
 
 ### Build a lookup table
@@ -1715,9 +1732,7 @@ import { pipe, A, D } from '@stopcock/fp'
 
 type Product = { sku: string; name: string; price: number }
 
-const bySku = D.fromEntries(
-  products.map(p => [p.sku, p]),
-)
+const bySku = D.fromEntries(products.map((p) => [p.sku, p]))
 
 const item = D.get(bySku, 'ABC-123')
 ```
@@ -1728,11 +1743,7 @@ const item = D.get(bySku, 'ABC-123')
 import { pipe, A } from '@stopcock/fp'
 
 function paginate<T>(items: T[], page: number, perPage: number) {
-  return pipe(
-    items,
-    A.drop((page - 1) * perPage),
-    A.take(perPage),
-  )
+  return pipe(items, A.drop((page - 1) * perPage), A.take(perPage))
 }
 
 const page3 = paginate(allResults, 3, 20)
@@ -1748,9 +1759,7 @@ type Country = { code: string; name: string; region: string }
 const optionsByRegion = pipe(
   countries,
   A.groupBy((c: Country) => c.region),
-  D.map(cs =>
-    A.map(cs, c => ({ value: c.code, label: c.name })),
-  ),
+  D.map((cs) => A.map(cs, (c) => ({ value: c.code, label: c.name }))),
 )
 // { Europe: [{ value: 'DE', label: 'Germany' }, ...], Asia: [...] }
 ```
@@ -1776,9 +1785,7 @@ type Employee = { name: string; department: string; salary: number }
 
 const sorted = pipe(
   employees,
-  A.sortBy((a, b) =>
-    a.department.localeCompare(b.department) || b.salary - a.salary
-  ),
+  A.sortBy((a, b) => a.department.localeCompare(b.department) || b.salary - a.salary),
 )
 ```
 
@@ -1790,10 +1797,17 @@ import { pipe, A } from '@stopcock/fp'
 type Player = { name: string; score: number }
 
 function leaderboard(players: Player[]) {
-  const sorted = pipe(players, A.sortBy((a, b) => b.score - a.score))
-  let rank = 0, prev = -1
+  const sorted = pipe(
+    players,
+    A.sortBy((a, b) => b.score - a.score),
+  )
+  let rank = 0,
+    prev = -1
   return sorted.map((p, i) => {
-    if (p.score !== prev) { rank = i + 1; prev = p.score }
+    if (p.score !== prev) {
+      rank = i + 1
+      prev = p.score
+    }
     return { rank, name: p.name, score: p.score }
   })
 }
@@ -1809,7 +1823,7 @@ type Post = { title: string; tags: string[] }
 const allTags = pipe(
   posts,
   A.flatMap((p: Post) => p.tags),
-  A.map(t => t.toLowerCase()),
+  A.map((t) => t.toLowerCase()),
   A.uniq,
   A.sortBy((a, b) => a.localeCompare(b)),
 )
@@ -1823,10 +1837,7 @@ Smooth noisy time-series data.
 import { pipe, A, N } from '@stopcock/fp'
 
 function movingAverage(values: number[], windowSize: number) {
-  return pipe(
-    A.slidingWindow(values, windowSize),
-    A.map(N.mean),
-  )
+  return pipe(A.slidingWindow(values, windowSize), A.map(N.mean))
 }
 
 movingAverage([10, 20, 30, 40, 50], 3)
@@ -1854,10 +1865,10 @@ function validateEmail(input: unknown): R.Result<string, string> {
 
 const email = pipe(
   validateEmail(formData.email),
-  R.map(e => e.toLowerCase()),
+  R.map((e) => e.toLowerCase()),
   R.match(
-    err => ({ valid: false as const, error: err }),
-    val => ({ valid: true as const, value: val }),
+    (err) => ({ valid: false as const, error: err }),
+    (val) => ({ valid: true as const, value: val }),
   ),
 )
 ```
@@ -1869,8 +1880,8 @@ import { pipe, R } from '@stopcock/fp'
 
 const fetchConfig = pipe(
   R.tryCatch(() => readFileSync('/etc/app/config.json', 'utf-8')),
-  R.flatMap(raw => R.tryCatch(() => JSON.parse(raw))),
-  R.tapErr(e => logger.warn('config load failed, using defaults:', e)),
+  R.flatMap((raw) => R.tryCatch(() => JSON.parse(raw))),
+  R.tapErr((e) => logger.warn('config load failed, using defaults:', e)),
   R.getOrElse(() => defaultConfig),
 )
 ```
@@ -1884,8 +1895,8 @@ type Order = { shipping?: { address?: { zip?: string } } }
 
 const zip = pipe(
   O.fromNullable(order.shipping),
-  O.flatMap(s => O.fromNullable(s.address)),
-  O.flatMap(a => O.fromNullable(a.zip)),
+  O.flatMap((s) => O.fromNullable(s.address)),
+  O.flatMap((a) => O.fromNullable(a.zip)),
   O.getWithDefault('N/A'),
 )
 ```
@@ -1908,7 +1919,10 @@ function validateSignup(form: SignupForm) {
     checks,
     A.filter(([, result]) => R.isErr(result)),
     A.map(([field, result]) =>
-      R.match((e: string) => ({ field, message: e }), () => null)(result)
+      R.match(
+        (e: string) => ({ field, message: e }),
+        () => null,
+      )(result),
     ),
     A.filter(G.isNotNil),
   )
@@ -1928,24 +1942,31 @@ import { pipe, R, O, A } from '@stopcock/fp'
 
 type StripeEvent = {
   type: string
-  data: { object: { id: string; amount: number; customer: string | null; metadata?: Record<string, string> } }
+  data: {
+    object: {
+      id: string
+      amount: number
+      customer: string | null
+      metadata?: Record<string, string>
+    }
+  }
 }
 
 function handleChargeSucceeded(raw: string) {
   return pipe(
     R.tryCatch((): StripeEvent => JSON.parse(raw)),
-    R.flatMap(evt =>
+    R.flatMap((evt) =>
       evt.type === 'charge.succeeded'
         ? R.ok(evt.data.object)
-        : R.err(`unexpected event: ${evt.type}`)
+        : R.err(`unexpected event: ${evt.type}`),
     ),
-    R.map(charge => ({
+    R.map((charge) => ({
       chargeId: charge.id,
       amountCents: charge.amount,
       customer: pipe(O.fromNullable(charge.customer), O.getWithDefault('guest')),
       ref: pipe(
         O.fromNullable(charge.metadata),
-        O.flatMap(m => O.fromNullable(m['order_ref'])),
+        O.flatMap((m) => O.fromNullable(m['order_ref'])),
         O.getWithDefault('none'),
       ),
     })),
@@ -1965,7 +1986,7 @@ import { pipe, A, N } from '@stopcock/fp'
 type Measurement = { sensorId: string; value: number; timestamp: number }
 
 const summary = (readings: Measurement[]) => {
-  const values = A.map(readings, r => r.value)
+  const values = A.map(readings, (r) => r.value)
   return {
     count: A.length(values),
     mean: N.mean(values),
@@ -1986,12 +2007,12 @@ type CartItem = { name: string; price: number; qty: number; taxRate: number }
 function cartTotal(items: CartItem[]) {
   const subtotal = pipe(
     items,
-    A.map(i => i.price * i.qty),
+    A.map((i) => i.price * i.qty),
     N.sum,
   )
   const tax = pipe(
     items,
-    A.map(i => i.price * i.qty * i.taxRate),
+    A.map((i) => i.price * i.qty * i.taxRate),
     N.sum,
   )
   return { subtotal, tax, total: subtotal + tax }
@@ -2006,8 +2027,19 @@ import { pipe, A, N, M } from '@stopcock/fp'
 type DailyRevenue = { date: string; amount: number }
 
 function weekOverWeek(days: DailyRevenue[]) {
-  const thisWeek = pipe(days, A.take(7), A.map(d => d.amount), N.sum)
-  const lastWeek = pipe(days, A.drop(7), A.take(7), A.map(d => d.amount), N.sum)
+  const thisWeek = pipe(
+    days,
+    A.take(7),
+    A.map((d) => d.amount),
+    N.sum,
+  )
+  const lastWeek = pipe(
+    days,
+    A.drop(7),
+    A.take(7),
+    A.map((d) => d.amount),
+    N.sum,
+  )
   return lastWeek === 0 ? null : ((thisWeek - lastWeek) / lastWeek) * 100
 }
 ```
@@ -2022,10 +2054,14 @@ type LogEntry = { level: 'info' | 'warn' | 'error'; message: string; ts: number 
 function logSummary(logs: LogEntry[]) {
   return pipe(
     logs,
-    A.groupBy(l => l.level),
-    D.map(entries => ({
+    A.groupBy((l) => l.level),
+    D.map((entries) => ({
       count: entries.length,
-      latest: pipe(entries, A.sortBy((a, b) => b.ts - a.ts), A.head),
+      latest: pipe(
+        entries,
+        A.sortBy((a, b) => b.ts - a.ts),
+        A.head,
+      ),
     })),
   )
 }
@@ -2042,10 +2078,13 @@ import { pipe, A, D } from '@stopcock/fp'
 type Event = { entityId: string; ts: number; payload: unknown }
 
 function dedup(events: Event[]) {
-  const sorted = pipe(events, A.sortBy((a, b) => b.ts - a.ts))
+  const sorted = pipe(
+    events,
+    A.sortBy((a, b) => b.ts - a.ts),
+  )
   return pipe(
     sorted,
-    A.uniqBy(e => e.entityId),
+    A.uniqBy((e) => e.entityId),
   )
 }
 ```
@@ -2063,10 +2102,10 @@ function buildDigests(notifications: Notification[]) {
   return pipe(
     notifications,
     A.sortBy((a, b) => a.ts - b.ts),
-    A.groupBy(n => n.userId),
-    D.map(notes => ({
+    A.groupBy((n) => n.userId),
+    D.map((notes) => ({
       count: notes.length,
-      messages: A.map(notes, n => n.message),
+      messages: A.map(notes, (n) => n.message),
       earliest: A.head(notes)!.ts,
     })),
   )
@@ -2101,11 +2140,7 @@ import { pipe, A, Logic } from '@stopcock/fp'
 
 type User = { age: number; active: boolean; verified: boolean }
 
-const eligible = Logic.allPass<User>([
-  u => u.age >= 18,
-  u => u.active,
-  u => u.verified,
-])
+const eligible = Logic.allPass<User>([(u) => u.age >= 18, (u) => u.active, (u) => u.verified])
 
 pipe(users, A.filter(eligible))
 ```
@@ -2115,10 +2150,7 @@ pipe(users, A.filter(eligible))
 ```ts
 import { Obj } from '@stopcock/fp'
 
-const config = Obj.mergeDeepRight(
-  Obj.mergeDeepRight(defaults, fileConfig),
-  envOverrides,
-)
+const config = Obj.mergeDeepRight(Obj.mergeDeepRight(defaults, fileConfig), envOverrides)
 ```
 
 ### Search with ranking
@@ -2132,18 +2164,22 @@ function search(contacts: Contact[], query: string) {
   const q = query.toLowerCase()
   return pipe(
     contacts,
-    A.map(c => {
+    A.map((c) => {
       const name = c.name.toLowerCase()
       const score =
-        name === q ? 3 :
-        name.startsWith(q) ? 2 :
-        name.includes(q) || c.email.toLowerCase().includes(q) ? 1 : 0
+        name === q
+          ? 3
+          : name.startsWith(q)
+            ? 2
+            : name.includes(q) || c.email.toLowerCase().includes(q)
+              ? 1
+              : 0
       return { contact: c, score }
     }),
-    A.filter(r => r.score > 0),
+    A.filter((r) => r.score > 0),
     A.sortBy((a, b) => b.score - a.score),
     A.take(20),
-    A.map(r => r.contact),
+    A.map((r) => r.contact),
   )
 }
 ```
@@ -2206,9 +2242,12 @@ const emailNotifLens = composeLens(
 )
 const themeLens = path<AppState, 'user', 'preferences'>('user', 'preferences')
 
-pipe(state, view(emailNotifLens))                               // read
-pipe(state, set(emailNotifLens, false))                         // replace
-pipe(state, over(themeLens, p => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' })))
+pipe(state, view(emailNotifLens)) // read
+pipe(state, set(emailNotifLens, false)) // replace
+pipe(
+  state,
+  over(themeLens, (p) => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' })),
+)
 ```
 
 ### useReducer with lenses
@@ -2236,16 +2275,16 @@ type Action =
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'increment':
-      return over(countLens, n => n + 1)(state)
+      return over(countLens, (n) => n + 1)(state)
     case 'decrement':
-      return over(countLens, n => n - 1)(state)
+      return over(countLens, (n) => n - 1)(state)
     case 'setFilter':
       return set(filterLens, action.filter)(state)
     case 'addTodo':
-      return over(todosLens, todos => [...todos, action.todo])(state)
+      return over(todosLens, (todos) => [...todos, action.todo])(state)
     case 'toggleTodo':
-      return over(todosLens, todos =>
-        todos.map(t => t.id === action.id ? { ...t, done: !t.done } : t)
+      return over(todosLens, (todos) =>
+        todos.map((t) => (t.id === action.id ? { ...t, done: !t.done } : t)),
       )(state)
   }
 }
@@ -2269,8 +2308,7 @@ const bioLens = prop<ProfileForm, 'bio'>('bio')
 const websiteLens = prop<ProfileForm, 'website'>('website')
 
 function handleChange<K extends keyof ProfileForm>(lens: Lens<ProfileForm, string>) {
-  return (e: { target: { value: string } }) =>
-    setForm(prev => set(lens, e.target.value)(prev))
+  return (e: { target: { value: string } }) => setForm((prev) => set(lens, e.target.value)(prev))
 }
 
 // <input onChange={handleChange(displayNameLens)} value={view(displayNameLens)(form)} />
@@ -2290,15 +2328,11 @@ const shareUsageLens = path<Settings, 'privacy', 'shareUsage'>('privacy', 'share
 const compactLens = path<Settings, 'display', 'compactMode'>('display', 'compactMode')
 const fontSizeLens = path<Settings, 'display', 'fontSize'>('display', 'fontSize')
 
-const toggleShareUsage = over(shareUsageLens, v => !v)
-const toggleCompact = over(compactLens, v => !v)
-const bumpFontSize = over(fontSizeLens, n => Math.min(n + 2, 32))
+const toggleShareUsage = over(shareUsageLens, (v) => !v)
+const toggleCompact = over(compactLens, (v) => !v)
+const bumpFontSize = over(fontSizeLens, (n) => Math.min(n + 2, 32))
 
-const updated = pipe(
-  settings,
-  toggleShareUsage,
-  bumpFontSize,
-)
+const updated = pipe(settings, toggleShareUsage, bumpFontSize)
 ```
 
 ### Undo/redo with lens snapshots
@@ -2310,11 +2344,7 @@ import { view, set, over, path, type Lens } from '@stopcock/fp'
 
 type History<S> = { past: S[]; present: S; future: S[] }
 
-function edit<S, A>(
-  history: History<S>,
-  lens: Lens<S, A>,
-  fn: (a: A) => A,
-): History<S> {
+function edit<S, A>(history: History<S>, lens: Lens<S, A>, fn: (a: A) => A): History<S> {
   return {
     past: [...history.past, history.present],
     present: over(lens, fn)(history.present),
@@ -2346,7 +2376,7 @@ type NormalizedState = {
 
 const entityLens = (id: string) =>
   lens<NormalizedState, Entity>(
-    s => s.entities[id],
+    (s) => s.entities[id],
     (s, entity) => ({
       ...s,
       entities: { ...s.entities, [id]: entity },
@@ -2354,7 +2384,10 @@ const entityLens = (id: string) =>
   )
 
 const archiveEntity = (state: NormalizedState, id: string) =>
-  pipe(state, over(entityLens(id), e => ({ ...e, status: 'archived' as const })))
+  pipe(
+    state,
+    over(entityLens(id), (e) => ({ ...e, status: 'archived' as const })),
+  )
 ```
 
 ### Shopping cart: update quantity by SKU
@@ -2365,11 +2398,11 @@ import { pipe, A, index, over } from '@stopcock/fp'
 type CartItem = { sku: string; name: string; qty: number; price: number }
 
 function updateQty(cart: CartItem[], sku: string, delta: number): CartItem[] {
-  const idx = A.findIndex(cart, item => item.sku === sku)
+  const idx = A.findIndex(cart, (item) => item.sku === sku)
   if (idx === undefined) return cart
   return pipe(
     cart,
-    over(index<CartItem>(idx), item => ({
+    over(index<CartItem>(idx), (item) => ({
       ...item,
       qty: Math.max(0, item.qty + delta),
     })),
@@ -2432,7 +2465,12 @@ activeNames(usersB)
 const big = Array.from({ length: 1_000_000 }, (_, i) => i)
 
 // visits ~70 items, allocates nothing intermediate
-pipe(big, A.filter(x => x % 7 === 0), A.map(x => x * 2), A.take(10))
+pipe(
+  big,
+  A.filter((x) => x % 7 === 0),
+  A.map((x) => x * 2),
+  A.take(10),
+)
 ```
 
 Operations that need the whole array (`sort`, `groupBy`, `uniq`) break the fusion chain. See [Fusion](/concepts/fusion) for the full picture.
@@ -2442,7 +2480,7 @@ Operations that need the whole array (`sort`, `groupBy`, `uniq`) break the fusio
 Every function works both ways:
 
 ```ts
-A.take(users, 5)       // data-first
+A.take(users, 5) // data-first
 pipe(users, A.take(5)) // data-last
 ```
 
@@ -2451,7 +2489,7 @@ pipe(users, A.take(5)) // data-last
 ```ts
 pipe(
   O.fromNullable(user.email),
-  O.map(e => e.split('@')[1]),
+  O.map((e) => e.split('@')[1]),
   O.getWithDefault('unknown'),
 )
 
@@ -2478,8 +2516,8 @@ import { pipe, A } from '@stopcock/fp'
 
 const top10 = pipe(
   users,
-  A.filter(u => u.active),
-  A.map(u => ({ name: u.name, score: u.score })),
+  A.filter((u) => u.active),
+  A.map((u) => ({ name: u.name, score: u.score })),
   A.take(10),
 )
 ```
@@ -2488,11 +2526,7 @@ const top10 = pipe(
 import { pipe } from '@stopcock/fp'
 import { now, add, format } from '@stopcock/date'
 
-const nextWeek = pipe(
-  now(),
-  add(7, 'day'),
-  format('YYYY-MM-DD'),
-)
+const nextWeek = pipe(now(), add(7, 'day'), format('YYYY-MM-DD'))
 ```
 
 ```ts
@@ -2501,8 +2535,8 @@ import { fromPromise, map, flatMap, retry, timeout, run } from '@stopcock/async'
 
 const fetchUser = pipe(
   fromPromise(() => fetch('/api/user')),
-  flatMap(res => fromPromise(() => res.json())),
-  map(data => data.name),
+  flatMap((res) => fromPromise(() => res.json())),
+  map((data) => data.name),
   retry({ attempts: 3 }),
   timeout(5000),
 )
@@ -2523,20 +2557,19 @@ const restored = apply(after, invert(patch))
 import { create, history } from '@stopcock/state'
 
 const store = create({ count: 0, name: 'Tom' })
-store.subscribe(s => s.count, (next) => console.log(next))
-store.set(s => s.count, 1)
+store.subscribe(
+  (s) => s.count,
+  (next) => console.log(next),
+)
+store.set((s) => s.count, 1)
 ```
 
 ```ts
 import { pipe } from '@stopcock/fp'
 import { fromRGBA, resize, sharpen, contrast } from '@stopcock/img'
 
-const thumbnail = (data: Uint8ClampedArray, w: number, h: number) => pipe(
-  fromRGBA(data, w, h),
-  resize(200, 200),
-  sharpen,
-  contrast(30),
-)
+const thumbnail = (data: Uint8ClampedArray, w: number, h: number) =>
+  pipe(fromRGBA(data, w, h), resize(200, 200), sharpen, contrast(30))
 ```
 
 ---
@@ -2576,8 +2609,8 @@ import { fromPromise, map, flatMap, retry, timeout, mapAsync, run } from '@stopc
 
 const fetchUser = pipe(
   fromPromise(() => fetch('/api/user')),
-  flatMap(res => fromPromise(() => res.json())),
-  map(data => data.name),
+  flatMap((res) => fromPromise(() => res.json())),
+  map((data) => data.name),
   retry({ attempts: 3 }),
   timeout(5000),
 )
@@ -2631,6 +2664,7 @@ never: Task<never, never>
       retry({ attempts: 3, backoff: 'exponential' }),
     )
     ```
+
   </TabItem>
   <TabItem label="Concurrency">
     ```ts
@@ -2646,6 +2680,7 @@ never: Task<never, never>
       run,
     )
     ```
+
   </TabItem>
   <TabItem label="Cancellation">
     ```ts
@@ -2660,6 +2695,7 @@ never: Task<never, never>
     )
     // cancel() aborts immediately, signal propagates to fetch
     ```
+
   </TabItem>
 </Tabs>
 
@@ -2669,19 +2705,26 @@ never: Task<never, never>
 
 ```ts
 const fetchAllPages = (baseUrl: string) => {
-  const fetchPage = (page: number) => pipe(
-    fromPromise(() => fetch(`${baseUrl}?page=${page}`)),
-    flatMap(res => fromPromise(() => res.json())),
-  )
+  const fetchPage = (page: number) =>
+    pipe(
+      fromPromise(() => fetch(`${baseUrl}?page=${page}`)),
+      flatMap((res) => fromPromise(() => res.json())),
+    )
 
-  const go = (page: number, acc: unknown[]): Task<unknown[], unknown> => pipe(
-    fetchPage(page),
-    map(data => ({ items: [...acc, ...data.items], more: data.hasMore })),
-    flatMap(({ items, more }) => pipe(
-      more,
-      B.ifElse(() => go(page + 1, items), () => resolve(items)),
-    )),
-  )
+  const go = (page: number, acc: unknown[]): Task<unknown[], unknown> =>
+    pipe(
+      fetchPage(page),
+      map((data) => ({ items: [...acc, ...data.items], more: data.hasMore })),
+      flatMap(({ items, more }) =>
+        pipe(
+          more,
+          B.ifElse(
+            () => go(page + 1, items),
+            () => resolve(items),
+          ),
+        ),
+      ),
+    )
 
   return pipe(go(1, []), timeout(30000))
 }
@@ -2692,13 +2735,13 @@ const fetchAllPages = (baseUrl: string) => {
 ```ts
 const checkPrimary = pipe(
   fromPromise(() => fetch('https://api.primary.com/health')),
-  map(res => res.ok),
+  map((res) => res.ok),
   timeout(2000),
 )
 
 const checkFallback = pipe(
   fromPromise(() => fetch('https://api.fallback.com/health')),
-  map(res => res.ok),
+  map((res) => res.ok),
   timeout(2000),
 )
 
@@ -2718,9 +2761,7 @@ const callApi = rateLimit(10, 1000, async (endpoint: string) => {
 })
 
 // First 10 calls go through immediately, then queued at 10/sec
-const users = await Promise.all(
-  ids.map(id => callApi(`/users/${id}`))
-)
+const users = await Promise.all(ids.map((id) => callApi(`/users/${id}`)))
 ```
 
 ## Combinators
@@ -2765,11 +2806,7 @@ sequential<A, E>(tasks: readonly Task<A, E>[]): Task<A[], E>
 `parallel(n)` returns a function. Use it to run up to `n` tasks at a time:
 
 ```ts
-const results = await pipe(
-  tasks,
-  parallel(4),
-  run,
-)
+const results = await pipe(tasks, parallel(4), run)
 ```
 
 ## Resilience
@@ -2783,10 +2820,10 @@ fallback<A, E>(task: Task<A, E>, alt: Task<A, E>): Task<A, E>
 ```ts
 interface RetryOptions {
   attempts: number
-  delay?: number           // default 100ms
-  backoff?: 'constant' | 'linear' | 'exponential'  // default exponential
-  jitter?: boolean         // default true
-  maxDelay?: number        // default 30000ms
+  delay?: number // default 100ms
+  backoff?: 'constant' | 'linear' | 'exponential' // default exponential
+  jitter?: boolean // default true
+  maxDelay?: number // default 30000ms
   retryIf?: (error: unknown, attempt: number) => boolean
 }
 ```
@@ -2816,7 +2853,7 @@ All dual-form. Data-last works in `pipe`:
 ```ts
 const results = await pipe(
   urls,
-  mapAsync(url => fetch(url).then(r => r.json()), 4),
+  mapAsync((url) => fetch(url).then((r) => r.json()), 4),
   run,
 )
 ```
@@ -2840,12 +2877,10 @@ walks the tape backwards and accumulates gradients with the chain rule.
 import { pipe } from '@stopcock/fp'
 import { differentiable, sin, square, add, type Var } from '@stopcock/autodiff'
 
-const f = differentiable((x: Var<number>) =>
-  pipe(x, square, add(3), sin)
-)
+const f = differentiable((x: Var<number>) => pipe(x, square, add(3), sin))
 
-f.forward(2)   // Math.sin(7)
-f.gradient(2)  // Math.cos(7) * 4
+f.forward(2) // Math.sin(7)
+f.gradient(2) // Math.cos(7) * 4
 ```
 
 This first example shows the core idea: write the calculation once, then ask for
@@ -2865,12 +2900,10 @@ path and every stage can record to the active tape.
 ## The API
 
 ```ts
-const f = differentiable((x: Var<number>, y: Var<number>) =>
-  add(mul(x, y), square(x))
-)
+const f = differentiable((x: Var<number>, y: Var<number>) => add(mul(x, y), square(x)))
 
-f.forward(2, 3)          // 10
-f.gradient(2, 3)         // [7, 2]
+f.forward(2, 3) // 10
+f.gradient(2, 3) // [7, 2]
 f.valueAndGradient(2, 3) // { value: 10, gradient: [7, 2] }
 ```
 
@@ -2923,9 +2956,7 @@ import { differentiable, sub, square, vecDot, type Var, type Vec } from '@stopco
 
 const x = new Float64Array([1, 2, 3])
 
-const loss = differentiable((w: Var<Vec>) =>
-  square(sub(vecDot(w, x), 1))
-)
+const loss = differentiable((w: Var<Vec>) => square(sub(vecDot(w, x), 1)))
 
 loss.gradient(new Float64Array([0, 0, 0]))
 ```
@@ -2946,12 +2977,19 @@ type Mat = { data: Float64Array; rows: number; cols: number }
 ```
 
 ```ts
-import { differentiable, matMul, matNormSquared, matSub, type Mat, type Var } from '@stopcock/autodiff'
+import {
+  differentiable,
+  matMul,
+  matNormSquared,
+  matSub,
+  type Mat,
+  type Var,
+} from '@stopcock/autodiff'
 
 const target: Mat = { rows: 2, cols: 1, data: new Float64Array([1, -1]) }
 
 const loss = differentiable((w: Var<Mat>, x: Var<Mat>) =>
-  matNormSquared(matSub(matMul(x, w), target))
+  matNormSquared(matSub(matMul(x, w), target)),
 )
 ```
 
@@ -3010,13 +3048,7 @@ image processing and procedural graphics in the
 import { pipe } from '@stopcock/fp'
 import { fromHex, lighten, desaturate, adjustHue, toHex } from '@stopcock/color'
 
-pipe(
-  fromHex('#2563eb'),
-  lighten(0.1),
-  desaturate(0.2),
-  adjustHue(15),
-  toHex,
-)
+pipe(fromHex('#2563eb'), lighten(0.1), desaturate(0.2), adjustHue(15), toHex)
 // => '#647dd1'
 ```
 
@@ -3036,14 +3068,22 @@ You can still operate in any space explicitly with `convert(c, 'hsl')` or `mixIn
 
 ```ts
 type ColorSpace =
-  | 'srgb' | 'linear-srgb' | 'hsl' | 'hwb'
-  | 'lab' | 'lch' | 'oklab' | 'oklch'
-  | 'p3' | 'xyz-d50' | 'xyz-d65'
+  | 'srgb'
+  | 'linear-srgb'
+  | 'hsl'
+  | 'hwb'
+  | 'lab'
+  | 'lch'
+  | 'oklab'
+  | 'oklch'
+  | 'p3'
+  | 'xyz-d50'
+  | 'xyz-d65'
 
 type Color = {
   readonly space: ColorSpace
-  readonly channels: Float64Array  // always length 3
-  readonly alpha: number           // 0-1
+  readonly channels: Float64Array // always length 3
+  readonly alpha: number // 0-1
 }
 ```
 
@@ -3077,9 +3117,7 @@ convert(target: ColorSpace): (c: Color) => Color
 Arity-1 convenience aliases that pipe directly:
 
 ```ts
-toSRGB, toLinearRGB, toHSL, toHWB,
-toLab, toLCh, toOKLab, toOKLCh,
-toP3, toXYZ, toXYZ50
+;(toSRGB, toLinearRGB, toHSL, toHWB, toLab, toLCh, toOKLab, toOKLCh, toP3, toXYZ, toXYZ50)
 ```
 
 ## Batch buffers
@@ -3089,19 +3127,11 @@ For image-sized workloads, use the batch API instead of looping over `Color` obj
 ```ts
 import { convertBuffer, simulateBuffer, applyMatrix3x3 } from '@stopcock/color'
 
-const rgb = new Float64Array([
-  1, 0, 0,
-  0, 1, 0,
-  0, 0, 1,
-])
+const rgb = new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
 
 const oklab = convertBuffer(rgb, 'srgb', 'oklab')
 const simulated = simulateBuffer(rgb, 'srgb', 'deuteranopia', 1)
-const transformed = applyMatrix3x3(new Float64Array([
-  1, 0, 0,
-  0, 1, 0,
-  0, 0, 1,
-]), rgb)
+const transformed = applyMatrix3x3(new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1]), rgb)
 ```
 
 Alpha stays out-of-band. `@stopcock/img` handles RGBA byte splitting and recombination for whole-image filters.
@@ -3128,7 +3158,8 @@ hueInterpolate(h1: number, h2: number, t: number): number  // shorter-arc
 ```
 
 <Aside type="tip">
-  Mixing in OKLab gives smooth, perceptually-uniform gradients. The `mixIn` form lets you pick a different space — useful when you want HSL-style chroma preservation or sRGB-compatible output.
+  Mixing in OKLab gives smooth, perceptually-uniform gradients. The `mixIn` form lets you pick a
+  different space — useful when you want HSL-style chroma preservation or sRGB-compatible output.
 </Aside>
 
 ## Palettes
@@ -3147,8 +3178,8 @@ Harmony palettes rotate the hue in OKLCh and project back to the source space, s
 ## Channels
 
 ```ts
-red(c), green(c), blue(c)                  // sRGB 0-1
-lightness(c), chroma(c), hue(c)            // OKLCh
+;(red(c), green(c), blue(c)) // sRGB 0-1
+;(lightness(c), chroma(c), hue(c)) // OKLCh
 alpha(c)
 ```
 
@@ -3201,7 +3232,8 @@ const partialDeutan = simulate(myBrand, 'deuteranopia', 0.5)
 ```
 
 <Aside type="caution">
-  Around 8% of men and 0.5% of women have some form of CVD. Designs that rely on hue alone (red = bad, green = good) fail for them. Pair color with lightness, shape, or text to stay accessible.
+  Around 8% of men and 0.5% of women have some form of CVD. Designs that rely on hue alone (red =
+  bad, green = good) fail for them. Pair color with lightness, shape, or text to stay accessible.
 </Aside>
 
 ### Accessibility helpers
@@ -3239,8 +3271,7 @@ const theme = {
 ```ts
 import { contrastRatio, fromHex, rgb } from '@stopcock/color'
 
-const onBg = (bg: Color) =>
-  contrastRatio(rgb(1, 1, 1), bg) >= 4.5 ? rgb(1, 1, 1) : rgb(0, 0, 0)
+const onBg = (bg: Color) => (contrastRatio(rgb(1, 1, 1), bg) >= 4.5 ? rgb(1, 1, 1) : rgb(0, 0, 0))
 ```
 
 ### Building a colorblind-safe categorical palette
@@ -3270,11 +3301,7 @@ Dates are branded numbers (Unix ms timestamps). No `Date` objects get allocated 
 import { pipe } from '@stopcock/fp'
 import { now, add, startOf, format, isWeekend } from '@stopcock/date'
 
-const nextMonday = pipe(
-  now(),
-  startOf('week'),
-  add(7, 'day'),
-)
+const nextMonday = pipe(now(), startOf('week'), add(7, 'day'))
 
 format(nextMonday, 'YYYY-MM-DD')
 ```
@@ -3306,6 +3333,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     <Aside type="tip">
       `formatter(pattern)` pre-compiles the format string. The compiled formatter is ~9% faster than calling `format()` directly. Worth it in hot loops.
     </Aside>
+
   </TabItem>
   <TabItem label="Diff">
     | Operation | vs date-fns | vs moment | vs luxon |
@@ -3317,6 +3345,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     <Aside type="note">
       Native `(a - b) / 86400000` is still faster for simple day diffs, but it doesn't handle month/year boundaries or DST transitions. stopcock is the fastest *correct* implementation.
     </Aside>
+
   </TabItem>
 </Tabs>
 
@@ -3338,6 +3367,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     import { now, add, format } from '@stopcock/date'
     const result = pipe(now(), add(7, 'day'), format('YYYY-MM-DD'))
     ```
+
   </TabItem>
   <TabItem label="Timezone">
     ```ts
@@ -3357,6 +3387,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     import { Tz, now } from '@stopcock/date'
     Tz.isWeekend(now(), 'Asia/Tokyo')
     ```
+
   </TabItem>
   <TabItem label="Business days">
     ```ts
@@ -3370,6 +3401,7 @@ Measured on Bun 1.3, batch operations over 10,000 timestamps.
     const delivery = addBusinessDaysWithHolidays(now(), 10, holidays)
     format(delivery, 'YYYY-MM-DD')
     ```
+
   </TabItem>
 </Tabs>
 
@@ -3395,13 +3427,22 @@ format(due, 'DD MMM YYYY') // "14 Apr 2026"
 
 ```ts
 import { pipe, A } from '@stopcock/fp'
-import { fromParts, startOf, endOf, daysIn, getWeekday, format, isToday, isWeekend } from '@stopcock/date'
+import {
+  fromParts,
+  startOf,
+  endOf,
+  daysIn,
+  getWeekday,
+  format,
+  isToday,
+  isWeekend,
+} from '@stopcock/date'
 
 const calendarMonth = (year: number, month: number) => {
   const start = fromParts({ year, month })
   const days = daysIn(startOf(start, 'month'), endOf(start, 'month'))
 
-  return A.map(days, day => ({
+  return A.map(days, (day) => ({
     label: format(day, 'D'),
     weekday: getWeekday(day),
     today: isToday(day),
@@ -3431,13 +3472,10 @@ const timeAgo = (ts: Timestamp) => {
 import { pipe } from '@stopcock/fp'
 import { fromISO, Tz } from '@stopcock/date'
 
-const standup = pipe(
-  fromISO('2026-04-03'),
-  ts => Tz.add(ts, 9, 'hour', 'Europe/London'),
-)
+const standup = pipe(fromISO('2026-04-03'), (ts) => Tz.add(ts, 9, 'hour', 'Europe/London'))
 
-Tz.format(standup, 'HH:mm z', 'America/New_York')  // "04:00 EDT"
-Tz.format(standup, 'HH:mm z', 'Asia/Tokyo')         // "17:00 JST"
+Tz.format(standup, 'HH:mm z', 'America/New_York') // "04:00 EDT"
+Tz.format(standup, 'HH:mm z', 'Asia/Tokyo') // "17:00 JST"
 ```
 
 ### Merging overlapping bookings
@@ -3466,7 +3504,15 @@ type Timestamp = number & { readonly [TimestampBrand]: true }
 type Duration = number & { readonly [DurationBrand]: true }
 type DateUnit = 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond'
 type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
-type DateParts = { year: number; month: number; day?: number; hour?: number; minute?: number; second?: number; millisecond?: number }
+type DateParts = {
+  year: number
+  month: number
+  day?: number
+  hour?: number
+  minute?: number
+  second?: number
+  millisecond?: number
+}
 ```
 
 ### Creation
@@ -3653,23 +3699,18 @@ diffWith(before, after, options): Patch
 ```
 
 Options:
+
 - `eq` - custom equality function (default: `===`)
 - `detectMoves` - detect array element moves (default: `true`)
 - `detectRenames` - detect object key renames (default: `true`)
 
 ```ts
 // Move detection
-diff(
-  { items: ['a', 'b', 'c'] },
-  { items: ['c', 'a', 'b'] },
-)
+diff({ items: ['a', 'b', 'c'] }, { items: ['c', 'a', 'b'] })
 // [{ op: 'move', from: ['items', 2], path: ['items', 0] }]
 
 // Rename detection
-diff(
-  { firstName: 'Tom' },
-  { name: 'Tom' },
-)
+diff({ firstName: 'Tom' }, { name: 'Tom' })
 // [{ op: 'rename', path: [], oldKey: 'firstName', newKey: 'name' }]
 ```
 
@@ -3706,6 +3747,7 @@ compose(p1, p2): Patch
 ```
 
 Merges two sequential patches into one. Automatically simplifies:
+
 - `add` then `remove` at the same path cancels out
 - `replace` then `replace` at the same path merges into one
 - `add` then `replace` at the same path becomes a single `add`
@@ -3739,7 +3781,8 @@ const rebased = rebase(local, remote)
 Array index adjustments happen automatically. If both sides replace the same path, you get a `ConflictError`. If the remote deletes a path your local patch touches, the local operation is dropped.
 
 <Aside type="tip">
-  `rebase` returns a `Result`. Check for conflicts before applying. This is the same `Result` type from `@stopcock/fp`.
+  `rebase` returns a `Result`. Check for conflicts before applying. This is the same `Result` type
+  from `@stopcock/fp`.
 </Aside>
 
 ## JSON Patch (RFC 6902)
@@ -3760,7 +3803,8 @@ const roundTripped = fromJsonPatch(json)
 ```
 
 <Aside type="note">
-  JSON Patch doesn't have `rename` or `oldValue` on removes, so the conversion is slightly lossy. Round-tripping through JSON Patch may lose information needed for inversion.
+  JSON Patch doesn't have `rename` or `oldValue` on removes, so the conversion is slightly lossy.
+  Round-tripping through JSON Patch may lose information needed for inversion.
 </Aside>
 
 ## Optics bridge
@@ -3785,7 +3829,12 @@ type Path = readonly PathSegment[]
 
 type Patch = { readonly _tag: 'Patch'; readonly ops: readonly Operation[] }
 type PatchError = { readonly _tag: 'PatchError'; message: string; op: Operation; path: Path }
-type ConflictError = { readonly _tag: 'ConflictError'; message: string; local: Operation; remote: Operation }
+type ConflictError = {
+  readonly _tag: 'ConflictError'
+  message: string
+  local: Operation
+  remote: Operation
+}
 ```
 
 ### Constructors
@@ -3843,8 +3892,8 @@ import { pipe, A, O, R } from '@stopcock/fp'
 
 const activeNames = pipe(
   players,
-  A.filter(p => p.active),
-  A.map(p => p.name),
+  A.filter((p) => p.active),
+  A.map((p) => p.name),
   A.take(10),
 )
 ```
@@ -3855,28 +3904,28 @@ const activeNames = pipe(
 
 ## Modules
 
-| Namespace | Module | What it does |
-|-----------|--------|-------------|
-| `A` | [Array](/api/array) | `map`, `filter`, `reduce`, `sort`, `groupBy`, `zip`, `take`, `flatMap` + 30 more |
-| `S` | [String](/api/string) | `split`, `trim`, `replaceAll`, `startsWith`, `slice`, `repeat` |
-| `D` | [Dict](/api/dict) | `map`, `filter`, `get`, `merge`, `keys`, `values`, `toEntries` |
-| `N` | [Number](/api/number) | `clamp`, `sum`, `mean`, `median`, `isEven`, `isOdd` |
-| `G` | [Guards](/api/guards) | `isString`, `isNumber`, `isArray`, `isNil`, `isPlainObject` |
-| `Obj` | [Object](/api/object) | `pick`, `omit`, `assoc`, `dissoc`, `mergeDeepLeft`, `mergeDeepRight`, `path`, `evolve` |
-| `M` | [Math](/api/math) | `add`, `subtract`, `multiply`, `divide`, `modulo`, `inc`, `dec`, `product` |
-| `B` | [Boolean](/api/boolean) | `and_`, `or_`, `not_`, `ifElse` |
-| `Logic` | [Logic](/api/logic) | `both`, `either`, `equals`, `defaultTo`, `cond`, `when_`, `unless`, `allPass`, `anyPass` |
-| `Lens` | [Lenses](/api/lenses) | `view`, `set`, `over` for immutable nested updates |
-| `O` | [Option](/api/option) | `some`, `none`, `fromNullable`, `map`, `flatMap`, `match` |
-| `R` | [Result](/api/result) | `ok`, `err`, `tryCatch`, `map`, `mapErr`, `flatMap`, `match` |
+| Namespace | Module                  | What it does                                                                             |
+| --------- | ----------------------- | ---------------------------------------------------------------------------------------- |
+| `A`       | [Array](/api/array)     | `map`, `filter`, `reduce`, `sort`, `groupBy`, `zip`, `take`, `flatMap` + 30 more         |
+| `S`       | [String](/api/string)   | `split`, `trim`, `replaceAll`, `startsWith`, `slice`, `repeat`                           |
+| `D`       | [Dict](/api/dict)       | `map`, `filter`, `get`, `merge`, `keys`, `values`, `toEntries`                           |
+| `N`       | [Number](/api/number)   | `clamp`, `sum`, `mean`, `median`, `isEven`, `isOdd`                                      |
+| `G`       | [Guards](/api/guards)   | `isString`, `isNumber`, `isArray`, `isNil`, `isPlainObject`                              |
+| `Obj`     | [Object](/api/object)   | `pick`, `omit`, `assoc`, `dissoc`, `mergeDeepLeft`, `mergeDeepRight`, `path`, `evolve`   |
+| `M`       | [Math](/api/math)       | `add`, `subtract`, `multiply`, `divide`, `modulo`, `inc`, `dec`, `product`               |
+| `B`       | [Boolean](/api/boolean) | `and_`, `or_`, `not_`, `ifElse`                                                          |
+| `Logic`   | [Logic](/api/logic)     | `both`, `either`, `equals`, `defaultTo`, `cond`, `when_`, `unless`, `allPass`, `anyPass` |
+| `Lens`    | [Lenses](/api/lenses)   | `view`, `set`, `over` for immutable nested updates                                       |
+| `O`       | [Option](/api/option)   | `some`, `none`, `fromNullable`, `map`, `flatMap`, `match`                                |
+| `R`       | [Result](/api/result)   | `ok`, `err`, `tryCatch`, `map`, `mapErr`, `flatMap`, `match`                             |
 
 ```ts
 // Looks like 3 passes over the array:
 const result = pipe(
-  users,                         // 100,000 users
-  A.filter(u => u.active),       // pass 1: filter
-  A.map(u => u.name),            // pass 2: map
-  A.take(10),                    // pass 3: slice
+  users, // 100,000 users
+  A.filter((u) => u.active), // pass 1: filter
+  A.map((u) => u.name), // pass 2: map
+  A.take(10), // pass 3: slice
 )
 
 // But streaming fusion compiles it into roughly:
@@ -3902,21 +3951,22 @@ for (const u of users) {
 // Option: values might not exist
 const port = pipe(
   O.fromNullable(process.env.PORT),
-  O.map(s => parseInt(s, 10)),
-  O.filter(n => n > 0 && n < 65536),
+  O.map((s) => parseInt(s, 10)),
+  O.filter((n) => n > 0 && n < 65536),
   O.getOrElse(() => 3000),
 )
 
 // Result: operations might fail
 const config = pipe(
   R.tryCatch(() => JSON.parse(rawConfig)),
-  R.map(obj => obj.settings),
+  R.map((obj) => obj.settings),
   R.getOrElse(() => defaults),
 )
 ```
 
 <Aside type="note">
-  `Option` and `Result` use numeric `_tag` values (0/1) instead of string tags. V8 handles numeric comparisons in a single CPU instruction.
+  `Option` and `Result` use numeric `_tag` values (0/1) instead of string tags. V8 handles numeric
+  comparisons in a single CPU instruction.
 </Aside>
 
 Full docs on the [Option & Result page](/concepts/option-result), or look at individual module pages in the sidebar.
@@ -3957,9 +4007,9 @@ try {
   await api.get<User>('/users/999')
 } catch (e) {
   if (e instanceof HttpError) {
-    e.status      // 404
-    e.statusText  // 'Not Found'
-    e.data        // parsed response body (unknown)
+    e.status // 404
+    e.statusText // 'Not Found'
+    e.data // parsed response body (unknown)
   }
 }
 ```
@@ -4008,11 +4058,7 @@ import { retry, timeout, run } from '@stopcock/async'
 
 const task = api.task.get<User[]>('/users')
 
-const withFallback = pipe(
-  task,
-  retry({ attempts: 5, backoff: 'exponential' }),
-  timeout(10_000),
-)
+const withFallback = pipe(task, retry({ attempts: 5, backoff: 'exponential' }), timeout(10_000))
 
 const users = await run(withFallback)
 ```
@@ -4027,7 +4073,9 @@ const api = createClient({
     attempts: 3,
     backoff: 'exponential',
     delay: 1000,
-    retryIf: (error, attempt) => { /* custom logic */ },
+    retryIf: (error, attempt) => {
+      /* custom logic */
+    },
   },
 })
 ```
@@ -4051,10 +4099,7 @@ Concurrent identical GET requests share one fetch. Mutations invalidate matching
 const api = createClient({ dedup: true })
 
 // one network request, both resolve with the same data
-const [a, b] = await Promise.all([
-  api.get('/users'),
-  api.get('/users'),
-])
+const [a, b] = await Promise.all([api.get('/users'), api.get('/users')])
 ```
 
 ## Upload progress
@@ -4110,7 +4155,7 @@ const api = createClient({ baseUrl: 'https://api.example.com' })
 const store = create({ search: '' })
 
 const users = resource({
-  deps: (get) => ({ q: get(store, s => s.search) }),
+  deps: (get) => ({ q: get(store, (s) => s.search) }),
   fetch: ({ q }, signal) => api.get<User[]>('/users', { query: { q }, signal }),
 })
 ```
@@ -4181,13 +4226,7 @@ Pixel-level image manipulation on raw RGBA buffers. Filters, convolution, resize
 ```ts
 import { create, grayscale, blur, resize, brightness } from '@stopcock/img'
 
-pipe(
-  create(800, 600),
-  grayscale,
-  blur(3),
-  brightness(40),
-  resize(400, 300),
-)
+pipe(create(800, 600), grayscale, blur(3), brightness(40), resize(400, 300))
 ```
 
 ## Real-world patterns
@@ -4198,12 +4237,13 @@ pipe(
 import { pipe } from '@stopcock/fp'
 import { fromRGBA, resize, sharpen, contrast } from '@stopcock/img'
 
-const thumbnail = (data: Uint8ClampedArray, w: number, h: number) => pipe(
-  fromRGBA(data, w, h),
-  resize(200, 200),
-  sharpen,          // sharpen after downscale to recover detail
-  contrast(30),     // slight contrast boost
-)
+const thumbnail = (data: Uint8ClampedArray, w: number, h: number) =>
+  pipe(
+    fromRGBA(data, w, h),
+    resize(200, 200),
+    sharpen, // sharpen after downscale to recover detail
+    contrast(30), // slight contrast boost
+  )
 ```
 
 ### Batch image filter
@@ -4224,20 +4264,20 @@ import { grayscale, gaussianBlur, edgeDetect } from '@stopcock/img'
 
 const edges = pipe(
   image,
-  grayscale,          // convert to single channel
-  gaussianBlur(2),    // smooth out noise
-  edgeDetect,         // Sobel operator
+  grayscale, // convert to single channel
+  gaussianBlur(2), // smooth out noise
+  edgeDetect, // Sobel operator
 )
 ```
 
 ## Types
 
 ```ts
-type Pixel = [r: number, g: number, b: number, a: number]  // 0-255 each
+type Pixel = [r: number, g: number, b: number, a: number] // 0-255 each
 type Image = {
   width: number
   height: number
-  data: Uint8ClampedArray  // RGBA pixel data
+  data: Uint8ClampedArray // RGBA pixel data
 }
 ```
 
@@ -4276,7 +4316,8 @@ tonemapToGamut(img: Image, srcSpace: ColorSpace, targetSpace: ColorSpace): Image
 ```
 
 <Aside type="tip">
-  All filter functions return a new `Image`. The original is never mutated. Chain them freely in `pipe`.
+  All filter functions return a new `Image`. The original is never mutated. Chain them freely in
+  `pipe`.
 </Aside>
 
 The color-aware filters use `@stopcock/color`'s packed `Float64Array` batch API internally:
@@ -4333,8 +4374,18 @@ connectedComponents(img: Image): ComponentResult
 
 ```ts
 type DetectedLine = { rho: number; theta: number; votes: number }
-type Component = { id: number; area: number; centroid: { x: number; y: number }; bbox: { x: number; y: number; w: number; h: number } }
-type ComponentResult = { labels: Int32Array; width: number; height: number; components: Component[] }
+type Component = {
+  id: number
+  area: number
+  centroid: { x: number; y: number }
+  bbox: { x: number; y: number; w: number; h: number }
+}
+type ComponentResult = {
+  labels: Int32Array
+  width: number
+  height: number
+  components: Component[]
+}
 ```
 
 ---
@@ -4373,13 +4424,13 @@ import { Vec } from '@stopcock/la'
 const a = Vec.create(1, 2, 3)
 const b = Vec.create(4, 5, 6)
 
-Vec.add(a, b)                 // Float64Array [5, 7, 9]
-Vec.dot(a, b)                 // 32
-Vec.cross(a, b)               // Float64Array [-3, 6, -3]
-Vec.norm(a)                   // sqrt(14)
+Vec.add(a, b) // Float64Array [5, 7, 9]
+Vec.dot(a, b) // 32
+Vec.cross(a, b) // Float64Array [-3, 6, -3]
+Vec.norm(a) // sqrt(14)
 Vec.distance(a, b)
 Vec.lerp(a, b, 0.5)
-Vec.axpy(2, a, b)             // 2a + b
+Vec.axpy(2, a, b) // 2a + b
 ```
 
 ### Vector API
@@ -4454,9 +4505,8 @@ Mat.inverse(matrix): Mat | null
 ```
 
 <Aside type="note">
-  `inverse()` and `cholesky()` return `null` when the requested decomposition
-  does not exist. `solve()` throws for non-square, incompatible, or singular
-  systems.
+  `inverse()` and `cholesky()` return `null` when the requested decomposition does not exist.
+  `solve()` throws for non-square, incompatible, or singular systems.
 </Aside>
 
 ## Hot-path kernels
@@ -4542,22 +4592,22 @@ analysis.peak(out)
 ```
 
 <Aside type="tip">
-  One-shot helpers such as `fft.rfft()` and `convolve.direct()` allocate by
-  design. Use the `Into` and `plan` forms when a renderer owns scratch memory.
+  One-shot helpers such as `fft.rfft()` and `convolve.direct()` allocate by design. Use the `Into`
+  and `plan` forms when a renderer owns scratch memory.
 </Aside>
 
 ## Modules
 
-| Module | Purpose |
-| --- | --- |
-| `window` | Hann, Hamming, Blackman, Blackman-Harris, triangular, and elementwise apply |
-| `fft` | Complex FFT, real FFT, inverse real FFT, magnitude, phase, power |
-| `biquad` | RBJ cookbook filters plus stateful block processing and response analysis |
-| `onepole` | Cheap low-pass and high-pass smoothing kernels |
-| `fir` | Windowed-sinc FIR design and streaming FIR processing with history |
-| `convolve` | Direct convolution and overlap-add plans with explicit flush |
-| `resample` | Linear, windowed-sinc, and one-shot polyphase resampling |
-| `analysis` | RMS, peak, zero crossings, centroid, flatness, rolloff |
+| Module     | Purpose                                                                     |
+| ---------- | --------------------------------------------------------------------------- |
+| `window`   | Hann, Hamming, Blackman, Blackman-Harris, triangular, and elementwise apply |
+| `fft`      | Complex FFT, real FFT, inverse real FFT, magnitude, phase, power            |
+| `biquad`   | RBJ cookbook filters plus stateful block processing and response analysis   |
+| `onepole`  | Cheap low-pass and high-pass smoothing kernels                              |
+| `fir`      | Windowed-sinc FIR design and streaming FIR processing with history          |
+| `convolve` | Direct convolution and overlap-add plans with explicit flush                |
+| `resample` | Linear, windowed-sinc, and one-shot polyphase resampling                    |
+| `analysis` | RMS, peak, zero crossings, centroid, flatness, rolloff                      |
 
 ## Examples
 
@@ -4699,11 +4749,7 @@ to the full convolution length.
 ```ts
 import { convolve } from '@stopcock/signal'
 
-export function convolveStreaming(
-  signal: Float32Array,
-  kernel: Float32Array,
-  blockSize = 128,
-) {
+export function convolveStreaming(signal: Float32Array, kernel: Float32Array, blockSize = 128) {
   const plan = convolve.plan(kernel, blockSize)
   const state = convolve.state(plan)
   const chunks: Float32Array[] = []
@@ -4752,7 +4798,7 @@ resample.sinc(input, 0.75, {
   out: sincOut,
 })
 
-const polyphaseOut = new Float32Array(Math.floor(input.length * 2 / 1))
+const polyphaseOut = new Float32Array(Math.floor((input.length * 2) / 1))
 resample.polyphase(input, 2, 1, new Float32Array([1, 0]), polyphaseOut)
 ```
 
@@ -4839,12 +4885,15 @@ import { create, computed } from '@stopcock/state'
 
 const store = create({ user: { name: 'Tom' }, todos: [] as Todo[] })
 
-store.subscribe(s => s.user.name, (next, prev) => {
-  console.log(`${prev} -> ${next}`)
-})
+store.subscribe(
+  (s) => s.user.name,
+  (next, prev) => {
+    console.log(`${prev} -> ${next}`)
+  },
+)
 
-store.set(s => s.user.name, 'Alice') // logs "Tom -> Alice"
-store.set(s => s.todos, [])          // subscriber above doesn't fire
+store.set((s) => s.user.name, 'Alice') // logs "Tom -> Alice"
+store.set((s) => s.todos, []) // subscriber above doesn't fire
 ```
 
 ## How it works
@@ -4852,6 +4901,7 @@ store.set(s => s.todos, [])          // subscriber above doesn't fire
 When you pass `s => s.user.name` to a store method, the store runs that function against a Proxy. The Proxy records which properties were accessed and builds a path: `['user', 'name']`. That path is compiled into a lens (from `@stopcock/fp`) and cached. Next time you pass the same function, it hits the cache.
 
 This means:
+
 - No string paths. No action constants. Just functions.
 - TypeScript validates the accessor. If the property doesn't exist, you get a type error.
 - The path is extracted once and reused for reads, writes, and subscription matching.
@@ -4886,24 +4936,27 @@ type State = {
 }
 
 const h = history<State>()
-const store = create<State>(
-  { todos: [], filter: 'all' },
-  { middleware: [h.middleware] },
-)
+const store = create<State>({ todos: [], filter: 'all' }, { middleware: [h.middleware] })
 
 const visible = computed(
   store,
-  s => s.todos,
-  todos => todos.filter(t => !t.done).length,
+  (s) => s.todos,
+  (todos) => todos.filter((t) => !t.done).length,
 )
 
 // Add a todo
-store.over(s => s.todos, todos => [
-  ...todos, { id: Date.now(), text: 'Write docs', done: false },
-])
+store.over(
+  (s) => s.todos,
+  (todos) => [...todos, { id: Date.now(), text: 'Write docs', done: false }],
+)
 
 // Toggle
-store.update(s => s.todos[0], draft => { draft.done = !draft.done })
+store.update(
+  (s) => s.todos[0],
+  (draft) => {
+    draft.done = !draft.done
+  },
+)
 
 // Undo the toggle
 h.undo(store)
@@ -4918,15 +4971,18 @@ const form = create({
   submitting: false,
 })
 
-form.subscribe(s => s.fields, (fields) => {
-  // re-validate on any field change
-  const errors: Record<string, string> = {}
-  if (!fields.email.includes('@')) errors.email = 'Invalid email'
-  if (fields.password.length < 8) errors.password = 'Too short'
-  form.set(s => s.errors, errors)
-})
+form.subscribe(
+  (s) => s.fields,
+  (fields) => {
+    // re-validate on any field change
+    const errors: Record<string, string> = {}
+    if (!fields.email.includes('@')) errors.email = 'Invalid email'
+    if (fields.password.length < 8) errors.password = 'Too short'
+    form.set((s) => s.errors, errors)
+  },
+)
 
-form.set(s => s.fields.email, 'tom@example.com')
+form.set((s) => s.fields.email, 'tom@example.com')
 ```
 
 ### Async data with resources
@@ -4944,12 +5000,11 @@ const users = resource({
 
 const userPosts = resource({
   deps: (get) => {
-    const id = get(store, s => s.selectedUserId)
+    const id = get(store, (s) => s.selectedUserId)
     if (id === null) return null
     return { userId: id }
   },
-  fetch: ({ userId }, signal) =>
-    api.get<Post[]>('/posts', { query: { userId }, signal }),
+  fetch: ({ userId }, signal) => api.get<Post[]>('/posts', { query: { userId }, signal }),
 })
 
 const addPost = mutation({
@@ -4967,8 +5022,8 @@ Multiple writes in a `batch` produce a single notification.
 
 ```ts
 store.batch(() => {
-  store.set(s => s.user.name, 'Alice')
-  store.set(s => s.user.age, 31)
+  store.set((s) => s.user.name, 'Alice')
+  store.set((s) => s.user.age, 31)
 })
 // subscribers notified once with the final state
 ```
@@ -5007,12 +5062,12 @@ import { create, history } from '@stopcock/state'
 const h = history<State>()
 const store = create(initial, { middleware: [h.middleware] })
 
-store.set(s => s.count, 1)
-store.set(s => s.count, 2)
+store.set((s) => s.count, 1)
+store.set((s) => s.count, 2)
 
-h.canUndo  // true
-h.undo(store)  // count back to 1
-h.redo(store)  // count back to 2
+h.canUndo // true
+h.undo(store) // count back to 1
+h.redo(store) // count back to 2
 ```
 
 Making a new change after undo clears the redo stack.
@@ -5107,23 +5162,24 @@ import { resource, idle } from '@stopcock/state'
 
 // standalone
 const users = resource({
-  fetch: (signal) => fetch('/api/users', { signal }).then(r => r.json()),
+  fetch: (signal) => fetch('/api/users', { signal }).then((r) => r.json()),
 })
 
 // with store deps. refetches when search changes
 const filtered = resource({
-  deps: (get) => ({ q: get(store, s => s.search) }),
-  fetch: ({ q }, signal) => fetch(`/api/users?q=${q}`, { signal }).then(r => r.json()),
+  deps: (get) => ({ q: get(store, (s) => s.search) }),
+  fetch: ({ q }, signal) => fetch(`/api/users?q=${q}`, { signal }).then((r) => r.json()),
 })
 
 // with resource deps. waits for parent to resolve
 const posts = resource({
   deps: (get) => {
     const user = get(selectedUser)
-    if (!user) return null  // don't fetch yet
+    if (!user) return null // don't fetch yet
     return { userId: user.id }
   },
-  fetch: ({ userId }, signal) => fetch(`/api/posts?userId=${userId}`, { signal }).then(r => r.json()),
+  fetch: ({ userId }, signal) =>
+    fetch(`/api/posts?userId=${userId}`, { signal }).then((r) => r.json()),
 })
 ```
 
@@ -5134,13 +5190,13 @@ Rapid dependency changes are coalesced via microtask. The resource aborts in-fli
 ```ts
 resource({
   fetch: (signal) => fetchUsers(signal),
-  initialData: [],           // skip loading state on first render
-  lazy: true,                // don't fetch until first subscriber
-  staleTime: 30_000,         // skip refetch if data is fresh
-  refetchInterval: 60_000,   // poll every 60s
-  refetchOnFocus: true,      // refetch when tab becomes visible
-  refetchOnReconnect: true,  // refetch when network reconnects
-  retry: 3,                  // retry failed fetches
+  initialData: [], // skip loading state on first render
+  lazy: true, // don't fetch until first subscriber
+  staleTime: 30_000, // skip refetch if data is fresh
+  refetchInterval: 60_000, // poll every 60s
+  refetchOnFocus: true, // refetch when tab becomes visible
+  refetchOnReconnect: true, // refetch when network reconnects
+  retry: 3, // retry failed fetches
   retryDelay: (n) => Math.min(1000 * 2 ** n, 30_000),
   into: store.at(['users']), // mirror state into a store slot
 })
@@ -5173,10 +5229,12 @@ import { mutation } from '@stopcock/state'
 
 const addUser = mutation({
   fn: (input: { name: string }, signal) =>
-    fetch('/api/users', { method: 'POST', body: JSON.stringify(input), signal }).then(r => r.json()),
+    fetch('/api/users', { method: 'POST', body: JSON.stringify(input), signal }).then((r) =>
+      r.json(),
+    ),
   invalidates: [users],
   optimistic: (input) => {
-    users.update(prev => [...(prev ?? []), { ...input, id: 'temp' }])
+    users.update((prev) => [...(prev ?? []), { ...input, id: 'temp' }])
   },
 })
 
@@ -5204,7 +5262,7 @@ interface Mutation<I, O> {
 import { useStore, useResource, useMutation } from '@stopcock/state/react'
 
 function UserList() {
-  const search = useStore(store, s => s.search)
+  const search = useStore(store, (s) => s.search)
   const { data, isLoading, refetch } = useResource(users)
   const { status, run } = useMutation(addUser)
   // ...
@@ -5244,8 +5302,8 @@ const { range, map, filter, take, toArray } = Stream
 
 const squares = pipe(
   range(1, Infinity),
-  map(n => n * n),
-  filter(n => n % 2 === 0),
+  map((n) => n * n),
+  filter((n) => n % 2 === 0),
   take(5),
   toArray,
 )
@@ -5257,22 +5315,23 @@ const squares = pipe(
 ```ts
 // Array: 3 full passes, 3 intermediate arrays allocated
 const result = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  .filter(n => n % 2 === 0)
-  .map(n => n * n)
+  .filter((n) => n % 2 === 0)
+  .map((n) => n * n)
   .slice(0, 3)
 
 // Stream: single lazy pass, stops after 3 results
 const result = pipe(
   from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
-  filter(n => n % 2 === 0),
-  map(n => n * n),
+  filter((n) => n % 2 === 0),
+  map((n) => n * n),
   take(3),
   toArray,
 )
 ```
 
 <Aside type="tip">
-  With a million elements this actually matters. The Array version allocates three intermediate arrays. The Stream version touches exactly 6 elements and allocates nothing.
+  With a million elements this actually matters. The Array version allocates three intermediate
+  arrays. The Stream version touches exactly 6 elements and allocates nothing.
 </Aside>
 
 ## Real-world patterns
@@ -5282,11 +5341,11 @@ const result = pipe(
 ```ts
 const lines = pipe(
   from(file.split('\n')),
-  drop(1),                          // skip header
-  map(line => line.split(',')),
-  filter(cols => cols[2] !== ''),    // skip empty emails
+  drop(1), // skip header
+  map((line) => line.split(',')),
+  filter((cols) => cols[2] !== ''), // skip empty emails
   map(([name, age, email]) => ({ name, age: +age, email })),
-  take(1000),                       // first 1000 valid rows
+  take(1000), // first 1000 valid rows
   toArray,
 )
 ```
@@ -5299,19 +5358,22 @@ const fibs = pipe(
   map(([a]) => a),
 )
 
-pipe(fibs, take(10), toArray)  // [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
-pipe(fibs, find(n => n > 1000))  // 1597
+pipe(fibs, take(10), toArray) // [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+pipe(
+  fibs,
+  find((n) => n > 1000),
+) // 1597
 ```
 
 ### Chunked batch processing
 
 ```ts
-const ids = range(1, 10001)  // 10,000 IDs
+const ids = range(1, 10001) // 10,000 IDs
 
 pipe(
   ids,
-  chunk(100),   // groups of 100
-  forEach(batch => sendBatchRequest(toArray(batch))),
+  chunk(100), // groups of 100
+  forEach((batch) => sendBatchRequest(toArray(batch))),
 )
 ```
 
@@ -5359,7 +5421,8 @@ intersperse<A>(stream: Stream<A>, sep: A): Stream<A>
 ```
 
 <Aside type="note">
-  `distinctN` limits the seen-set size. Useful for memory-bounded deduplication on large streams. When the set is full it clears and starts over, trading perfect dedup for bounded memory.
+  `distinctN` limits the seen-set size. Useful for memory-bounded deduplication on large streams.
+  When the set is full it clears and starts over, trading perfect dedup for bounded memory.
 </Aside>
 
 ## Terminals
@@ -5399,17 +5462,12 @@ See it compose with image and color processing in the
 import { rgb } from '@stopcock/color'
 import { circle, fill, render, rotate, stroke, translate, viewBox } from '@stopcock/svg'
 
-const badge = viewBox(0, 0, 100, 100)(
-  stroke(rgb(0, 0, 0), 2)(
-    fill(rgb(1, 0, 0))(
-      rotate(15)(
-        translate(50, 50)(
-          circle(32),
-        ),
-      ),
-    ),
-  ),
-)
+const badge = viewBox(
+  0,
+  0,
+  100,
+  100,
+)(stroke(rgb(0, 0, 0), 2)(fill(rgb(1, 0, 0))(rotate(15)(translate(50, 50)(circle(32))))))
 
 render(badge)
 ```
@@ -5456,10 +5514,7 @@ const brand = linear([
   { offset: 1, color: rgb(0, 0, 1) },
 ])
 
-render(group([
-  fill(brand)(rect(20, 20)),
-  fill(brand)(circle(8)),
-]))
+render(group([fill(brand)(rect(20, 20)), fill(brand)(circle(8))]))
 ```
 
 ## Paths
@@ -5468,13 +5523,7 @@ render(group([
 import { path, render } from '@stopcock/svg'
 
 const triangle = path.toNode()(
-  path.close()(
-    path.lineTo(50, 80)(
-      path.lineTo(100, 0)(
-        path.start(0, 0),
-      ),
-    ),
-  ),
+  path.close()(path.lineTo(50, 80)(path.lineTo(100, 0)(path.start(0, 0)))),
 )
 
 render(triangle)
@@ -5485,19 +5534,9 @@ render(triangle)
 ```ts
 import { filter, rect, render } from '@stopcock/svg'
 
-const identity = [
-  1, 0, 0, 0, 0,
-  0, 1, 0, 0, 0,
-  0, 0, 1, 0, 0,
-  0, 0, 0, 1, 0,
-] as const
+const identity = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0] as const
 
-render(
-  filter(filter.compose([
-    filter.blur(2),
-    filter.colorMatrix(identity),
-  ]))(rect(100, 40)),
-)
+render(filter(filter.compose([filter.blur(2), filter.colorMatrix(identity)]))(rect(100, 40)))
 ```
 
 `filter.colorMatrix` accepts a row-major 4x5 SVG color matrix: 20 numbers for RGBA plus bias.
@@ -5510,7 +5549,12 @@ Import from `@stopcock/svg/la` when you want helpers backed by `@stopcock/la`.
 import { rect } from '@stopcock/svg'
 import { toQuad, lerpTransform, symmetry } from '@stopcock/svg/la'
 
-const warped = toQuad([[0, 0], [120, 10], [100, 80], [10, 90]])(rect(1, 1))
+const warped = toQuad([
+  [0, 0],
+  [120, 10],
+  [100, 80],
+  [10, 90],
+])(rect(1, 1))
 const halfway = lerpTransform([1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 100, 0], 0.5)
 const repeated = symmetry(warped, 8, halfway)
 ```
@@ -5532,7 +5576,12 @@ stopcock vs lodash, ramda, remeda, rambda, ts-belt, and native JS
 ### Fully fused: filter → map → take
 
 ```ts
-pipe(data, A.filter(x => x > threshold), A.map(x => x * 2), A.take(10))
+pipe(
+  data,
+  A.filter((x) => x > threshold),
+  A.map((x) => x * 2),
+  A.take(10),
+)
 ```
 
 All three operations fuse into a single loop. `take(10)` halts after 10 results. The loop never visits the rest of the array.
@@ -5544,7 +5593,13 @@ stopcock holds ~4M ops/s from n=100 to n=100K (the flat line). Every other libra
 ### Partial fusion: filter → map → sort → take
 
 ```ts
-pipe(data, A.filter(x => x > 0), A.map(x => x * 2), A.sortBy((a, b) => a - b), A.take(5))
+pipe(
+  data,
+  A.filter((x) => x > 0),
+  A.map((x) => x * 2),
+  A.sortBy((a, b) => a - b),
+  A.take(5),
+)
 ```
 
 `sort` can't fuse because it needs the full array. `filter → map` fuses into one loop, materializes the result, then `sort` runs, then `take` slices.
@@ -5731,16 +5786,16 @@ const blurred = blur(img, 2)
 
 ## Filters
 
-| Filter | What it does |
-|--------|-------------|
-| `grayscale(img)` | Luminance-weighted conversion (0.299R + 0.587G + 0.114B) |
-| `sepia(img)` | Warm brown tone using fixed colour matrix |
-| `invert(img)` | Flips every channel: `255 - value` |
-| `brightness(img, amount)` | Adds `amount` to RGB channels. Negative darkens. |
-| `contrast(img, amount)` | Stretches or compresses values around the midpoint |
-| `saturate(img, factor)` | Multiplies saturation in HSL space. 0 = greyscale, 2 = vivid. |
-| `threshold(img, value)` | Binary: pixels brighter than `value` become white, rest black |
-| `equalize(img)` | Histogram equalization. Spreads tonal range across 0-255. |
+| Filter                      | What it does                                                       |
+| --------------------------- | ------------------------------------------------------------------ |
+| `grayscale(img)`            | Luminance-weighted conversion (0.299R + 0.587G + 0.114B)           |
+| `sepia(img)`                | Warm brown tone using fixed colour matrix                          |
+| `invert(img)`               | Flips every channel: `255 - value`                                 |
+| `brightness(img, amount)`   | Adds `amount` to RGB channels. Negative darkens.                   |
+| `contrast(img, amount)`     | Stretches or compresses values around the midpoint                 |
+| `saturate(img, factor)`     | Multiplies saturation in HSL space. 0 = greyscale, 2 = vivid.      |
+| `threshold(img, value)`     | Binary: pixels brighter than `value` become white, rest black      |
+| `equalize(img)`             | Histogram equalization. Spreads tonal range across 0-255.          |
 | `gaussianBlur(img, radius)` | Weighted Gaussian kernel. Softer than box blur at the same radius. |
 
 ## Convolution
@@ -5751,11 +5806,15 @@ const blurred = blur(img, 2)
 import { convolve } from '@stopcock/img'
 
 // emboss kernel
-const embossed = convolve(img, [
-  [-2, -1, 0],
-  [-1,  1, 1],
-  [ 0,  1, 2],
-], 1)
+const embossed = convolve(
+  img,
+  [
+    [-2, -1, 0],
+    [-1, 1, 1],
+    [0, 1, 2],
+  ],
+  1,
+)
 ```
 
 `edgeDetect` runs two Sobel convolutions (horizontal and vertical) and combines them with `sqrt(gx² + gy²)` per channel. Good for finding boundaries in an image.
@@ -5767,8 +5826,8 @@ import { pipe } from '@stopcock/fp'
 import { resize, crop, flipH, flipV, rotate90 } from '@stopcock/img'
 
 // data-first
-resize(img, 200, 150)       // bilinear interpolation
-crop(img, 10, 10, 100, 80)  // x, y, width, height
+resize(img, 200, 150) // bilinear interpolation
+crop(img, 10, 10, 100, 80) // x, y, width, height
 
 // data-last in pipe
 pipe(img, resize(200, 150), flipH, rotate90)
@@ -5781,8 +5840,13 @@ pipe(img, resize(200, 150), flipH, rotate90)
 ```typescript
 import { pipe } from '@stopcock/fp'
 import {
-  gaussianBlur, grayscale, edgeDetect, threshold,
-  houghLines, connectedComponents, lineToEndpoints,
+  gaussianBlur,
+  grayscale,
+  edgeDetect,
+  threshold,
+  houghLines,
+  connectedComponents,
+  lineToEndpoints,
 } from '@stopcock/img'
 
 // pre-process: smooth noise, detect edges, clean up
@@ -5793,13 +5857,16 @@ const lines = houghLines(edges, { threshold: 40, maxLines: 20 })
 
 // find blobs (vents, skylights, chimneys)
 const { components } = connectedComponents(edges)
-const obstructions = components.filter(c => c.area > 50 && c.area < 5000)
+const obstructions = components.filter((c) => c.area > 50 && c.area < 5000)
 
 // draw results
 for (const line of lines) {
   const [a, b] = lineToEndpoints(line, img.width, img.height)
   ctx.strokeStyle = '#0f0'
-  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(a.x, a.y)
+  ctx.lineTo(b.x, b.y)
+  ctx.stroke()
 }
 for (const c of obstructions) {
   ctx.strokeStyle = '#f00'
@@ -5835,10 +5902,19 @@ Whole-image CVD simulation feeding a procedural SVG pattern and badge overlay
 
 This stack runs image pixels through `@stopcock/img`, color math through `@stopcock/color`, then uses `@stopcock/svg` and `@stopcock/svg/la` to build the final vector overlay.
 
-<svg viewBox="0 0 420 220" role="img" aria-label="A patterned image tile with a procedural badge overlay" style="width: 100%; max-width: 720px; border: 1px solid var(--sl-color-gray-5); background: var(--sl-color-bg);">
+<svg
+  viewBox="0 0 420 220"
+  role="img"
+  aria-label="A patterned image tile with a procedural badge overlay"
+  style="width: 100%; max-width: 720px; border: 1px solid var(--sl-color-gray-5); background: var(--sl-color-bg);"
+>
   <defs>
     <pattern id="simulated-roof" width="96" height="96" patternUnits="userSpaceOnUse">
-      <image width="96" height="96" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%23d6d1c8'/%3E%3Cpath d='M-20 88 L96 -8 M0 104 L112 -8 M20 112 L120 12' stroke='%236f8c91' stroke-width='12' opacity='.9'/%3E%3Cpath d='M0 80 L96 -16 M16 104 L112 8' stroke='%239a8372' stroke-width='5' opacity='.75'/%3E%3C/svg%3E" />
+      <image
+        width="96"
+        height="96"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%23d6d1c8'/%3E%3Cpath d='M-20 88 L96 -8 M0 104 L112 -8 M20 112 L120 12' stroke='%236f8c91' stroke-width='12' opacity='.9'/%3E%3Cpath d='M0 80 L96 -16 M16 104 L112 8' stroke='%239a8372' stroke-width='5' opacity='.75'/%3E%3C/svg%3E"
+      />
     </pattern>
     <linearGradient id="badge-fill" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="oklch(0.77 0.16 145)" />
@@ -5847,7 +5923,13 @@ This stack runs image pixels through `@stopcock/img`, color math through `@stopc
   </defs>
   <rect x="24" y="24" width="260" height="168" fill="url(#simulated-roof)" />
   <path d="M300 58 L380 42 L396 112 L316 132 Z" fill="url(#badge-fill)" opacity=".94" />
-  <path d="M316 80 L372 68 L381 104 L325 116 Z" fill="none" stroke="white" stroke-width="5" stroke-linejoin="round" />
+  <path
+    d="M316 80 L372 68 L381 104 L325 116 Z"
+    fill="none"
+    stroke="white"
+    stroke-width="5"
+    stroke-linejoin="round"
+  />
   <circle cx="340" cy="92" r="7" fill="white" />
   <circle cx="358" cy="88" r="7" fill="white" />
 </svg>
@@ -5880,20 +5962,21 @@ const badgeFill = linear([
   { offset: 1, color: rgb(0.1, 0.4, 0.9) },
 ])
 
-const badge = toQuad([[300, 58], [380, 42], [396, 112], [316, 132]])(
-  fill(badgeFill)(rect(1, 1)),
-)
+const badge = toQuad([
+  [300, 58],
+  [380, 42],
+  [396, 112],
+  [316, 132],
+])(fill(badgeFill)(rect(1, 1)))
 
 const dots = symmetry(fill(rgb(1, 1, 1))(circle(7)), 2, [1, 0, 0, 1, 18, -4])
 
-const doc = viewBox(0, 0, 420, 220)(
-  group([
-    fill(tile)(rect(260, 168)),
-    badge,
-    stroke(rgb(1, 1, 1), 5)(use(badge)),
-    dots,
-  ]),
-)
+const doc = viewBox(
+  0,
+  0,
+  420,
+  220,
+)(group([fill(tile)(rect(260, 168)), badge, stroke(rgb(1, 1, 1), 5)(use(badge)), dots]))
 
 render(doc)
 ```

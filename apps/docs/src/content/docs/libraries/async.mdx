@@ -19,8 +19,8 @@ import { fromPromise, map, flatMap, retry, timeout, mapAsync, run } from '@stopc
 
 const fetchUser = pipe(
   fromPromise(() => fetch('/api/user')),
-  flatMap(res => fromPromise(() => res.json())),
-  map(data => data.name),
+  flatMap((res) => fromPromise(() => res.json())),
+  map((data) => data.name),
   retry({ attempts: 3 }),
   timeout(5000),
 )
@@ -74,6 +74,7 @@ never: Task<never, never>
       retry({ attempts: 3, backoff: 'exponential' }),
     )
     ```
+
   </TabItem>
   <TabItem label="Concurrency">
     ```ts
@@ -89,6 +90,7 @@ never: Task<never, never>
       run,
     )
     ```
+
   </TabItem>
   <TabItem label="Cancellation">
     ```ts
@@ -103,6 +105,7 @@ never: Task<never, never>
     )
     // cancel() aborts immediately, signal propagates to fetch
     ```
+
   </TabItem>
 </Tabs>
 
@@ -112,19 +115,26 @@ never: Task<never, never>
 
 ```ts
 const fetchAllPages = (baseUrl: string) => {
-  const fetchPage = (page: number) => pipe(
-    fromPromise(() => fetch(`${baseUrl}?page=${page}`)),
-    flatMap(res => fromPromise(() => res.json())),
-  )
+  const fetchPage = (page: number) =>
+    pipe(
+      fromPromise(() => fetch(`${baseUrl}?page=${page}`)),
+      flatMap((res) => fromPromise(() => res.json())),
+    )
 
-  const go = (page: number, acc: unknown[]): Task<unknown[], unknown> => pipe(
-    fetchPage(page),
-    map(data => ({ items: [...acc, ...data.items], more: data.hasMore })),
-    flatMap(({ items, more }) => pipe(
-      more,
-      B.ifElse(() => go(page + 1, items), () => resolve(items)),
-    )),
-  )
+  const go = (page: number, acc: unknown[]): Task<unknown[], unknown> =>
+    pipe(
+      fetchPage(page),
+      map((data) => ({ items: [...acc, ...data.items], more: data.hasMore })),
+      flatMap(({ items, more }) =>
+        pipe(
+          more,
+          B.ifElse(
+            () => go(page + 1, items),
+            () => resolve(items),
+          ),
+        ),
+      ),
+    )
 
   return pipe(go(1, []), timeout(30000))
 }
@@ -135,13 +145,13 @@ const fetchAllPages = (baseUrl: string) => {
 ```ts
 const checkPrimary = pipe(
   fromPromise(() => fetch('https://api.primary.com/health')),
-  map(res => res.ok),
+  map((res) => res.ok),
   timeout(2000),
 )
 
 const checkFallback = pipe(
   fromPromise(() => fetch('https://api.fallback.com/health')),
-  map(res => res.ok),
+  map((res) => res.ok),
   timeout(2000),
 )
 
@@ -161,9 +171,7 @@ const callApi = rateLimit(10, 1000, async (endpoint: string) => {
 })
 
 // First 10 calls go through immediately, then queued at 10/sec
-const users = await Promise.all(
-  ids.map(id => callApi(`/users/${id}`))
-)
+const users = await Promise.all(ids.map((id) => callApi(`/users/${id}`)))
 ```
 
 ## Combinators
@@ -208,11 +216,7 @@ sequential<A, E>(tasks: readonly Task<A, E>[]): Task<A[], E>
 `parallel(n)` returns a function. Use it to run up to `n` tasks at a time:
 
 ```ts
-const results = await pipe(
-  tasks,
-  parallel(4),
-  run,
-)
+const results = await pipe(tasks, parallel(4), run)
 ```
 
 ## Resilience
@@ -226,10 +230,10 @@ fallback<A, E>(task: Task<A, E>, alt: Task<A, E>): Task<A, E>
 ```ts
 interface RetryOptions {
   attempts: number
-  delay?: number           // default 100ms
-  backoff?: 'constant' | 'linear' | 'exponential'  // default exponential
-  jitter?: boolean         // default true
-  maxDelay?: number        // default 30000ms
+  delay?: number // default 100ms
+  backoff?: 'constant' | 'linear' | 'exponential' // default exponential
+  jitter?: boolean // default true
+  maxDelay?: number // default 30000ms
   retryIf?: (error: unknown, attempt: number) => boolean
 }
 ```
@@ -259,7 +263,7 @@ All dual-form. Data-last works in `pipe`:
 ```ts
 const results = await pipe(
   urls,
-  mapAsync(url => fetch(url).then(r => r.json()), 4),
+  mapAsync((url) => fetch(url).then((r) => r.json()), 4),
   run,
 )
 ```

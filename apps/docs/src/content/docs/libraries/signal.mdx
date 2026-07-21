@@ -42,22 +42,22 @@ analysis.peak(out)
 ```
 
 <Aside type="tip">
-  One-shot helpers such as `fft.rfft()` and `convolve.direct()` allocate by
-  design. Use the `Into` and `plan` forms when a renderer owns scratch memory.
+  One-shot helpers such as `fft.rfft()` and `convolve.direct()` allocate by design. Use the `Into`
+  and `plan` forms when a renderer owns scratch memory.
 </Aside>
 
 ## Modules
 
-| Module | Purpose |
-| --- | --- |
-| `window` | Hann, Hamming, Blackman, Blackman-Harris, triangular, and elementwise apply |
-| `fft` | Complex FFT, real FFT, inverse real FFT, magnitude, phase, power |
-| `biquad` | RBJ cookbook filters plus stateful block processing and response analysis |
-| `onepole` | Cheap low-pass and high-pass smoothing kernels |
-| `fir` | Windowed-sinc FIR design and streaming FIR processing with history |
-| `convolve` | Direct convolution and overlap-add plans with explicit flush |
-| `resample` | Linear, windowed-sinc, and one-shot polyphase resampling |
-| `analysis` | RMS, peak, zero crossings, centroid, flatness, rolloff |
+| Module     | Purpose                                                                     |
+| ---------- | --------------------------------------------------------------------------- |
+| `window`   | Hann, Hamming, Blackman, Blackman-Harris, triangular, and elementwise apply |
+| `fft`      | Complex FFT, real FFT, inverse real FFT, magnitude, phase, power            |
+| `biquad`   | RBJ cookbook filters plus stateful block processing and response analysis   |
+| `onepole`  | Cheap low-pass and high-pass smoothing kernels                              |
+| `fir`      | Windowed-sinc FIR design and streaming FIR processing with history          |
+| `convolve` | Direct convolution and overlap-add plans with explicit flush                |
+| `resample` | Linear, windowed-sinc, and one-shot polyphase resampling                    |
+| `analysis` | RMS, peak, zero crossings, centroid, flatness, rolloff                      |
 
 ## Examples
 
@@ -199,11 +199,7 @@ to the full convolution length.
 ```ts
 import { convolve } from '@stopcock/signal'
 
-export function convolveStreaming(
-  signal: Float32Array,
-  kernel: Float32Array,
-  blockSize = 128,
-) {
+export function convolveStreaming(signal: Float32Array, kernel: Float32Array, blockSize = 128) {
   const plan = convolve.plan(kernel, blockSize)
   const state = convolve.state(plan)
   const chunks: Float32Array[] = []
@@ -252,7 +248,7 @@ resample.sinc(input, 0.75, {
   out: sincOut,
 })
 
-const polyphaseOut = new Float32Array(Math.floor(input.length * 2 / 1))
+const polyphaseOut = new Float32Array(Math.floor((input.length * 2) / 1))
 resample.polyphase(input, 2, 1, new Float32Array([1, 0]), polyphaseOut)
 ```
 

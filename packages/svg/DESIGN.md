@@ -4,22 +4,22 @@ Procedural vector graphics as pipeable values. Output target for color, geo, pro
 
 ## Decisions
 
-| # | Question | Decision |
-|---|----------|----------|
-| 1 | Composition model | Everything is pipe. `group([...])` is a stage that takes an array of `Node`. |
-| 2 | AST shape | Hybrid. Discriminated `kind` for the leaf type, structural `Common` for shared decoration (`fill`, `stroke`, `transform`, `opacity`, `clip`, `mask`, `filter`). |
-| 3 | Gradient placement | In `Paint`. One `fill` function, any paint kind. |
-| 4 | clip / mask scope | On `Common`, valid on any node. |
-| 5 | Reuse model | Reference by value. Renderer hoists into `<defs>`. No ids in user code. |
-| 6 | Equality for dedup | Reference equality. `const` is the user's lever. |
-| 7 | Render passes | Two. Walk to collect defs, then emit. |
-| 8 | Transform representation | Affine matrix as a flat 6-tuple. Composes by multiply, identity is a constant. |
-| 9 | Transform compose direction | Post-multiply. Whatever you pipe most recently wraps everything before it. Matches reading order. |
-| 10 | Rotation default center | Origin. Caller passes `cx, cy` if they want something else. No bounding-box math at this layer. |
-| 11 | Angle units | Degrees at the API. Convert to radians internally. Matches SVG, CSS, and color hue. |
-| 12 | Path representation | Typed command array, built by pipe. String only as an escape hatch. |
-| 13 | Output | String. DOM and React adapters can sit in separate packages later. |
-| 14 | Color integration | Accept `Color` from `@stopcock/color` directly. No `toHex()` ceremony at call sites. |
+| #   | Question                    | Decision                                                                                                                                                        |
+| --- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Composition model           | Everything is pipe. `group([...])` is a stage that takes an array of `Node`.                                                                                    |
+| 2   | AST shape                   | Hybrid. Discriminated `kind` for the leaf type, structural `Common` for shared decoration (`fill`, `stroke`, `transform`, `opacity`, `clip`, `mask`, `filter`). |
+| 3   | Gradient placement          | In `Paint`. One `fill` function, any paint kind.                                                                                                                |
+| 4   | clip / mask scope           | On `Common`, valid on any node.                                                                                                                                 |
+| 5   | Reuse model                 | Reference by value. Renderer hoists into `<defs>`. No ids in user code.                                                                                         |
+| 6   | Equality for dedup          | Reference equality. `const` is the user's lever.                                                                                                                |
+| 7   | Render passes               | Two. Walk to collect defs, then emit.                                                                                                                           |
+| 8   | Transform representation    | Affine matrix as a flat 6-tuple. Composes by multiply, identity is a constant.                                                                                  |
+| 9   | Transform compose direction | Post-multiply. Whatever you pipe most recently wraps everything before it. Matches reading order.                                                               |
+| 10  | Rotation default center     | Origin. Caller passes `cx, cy` if they want something else. No bounding-box math at this layer.                                                                 |
+| 11  | Angle units                 | Degrees at the API. Convert to radians internally. Matches SVG, CSS, and color hue.                                                                             |
+| 12  | Path representation         | Typed command array, built by pipe. String only as an escape hatch.                                                                                             |
+| 13  | Output                      | String. DOM and React adapters can sit in separate packages later.                                                                                              |
+| 14  | Color integration           | Accept `Color` from `@stopcock/color` directly. No `toHex()` ceremony at call sites.                                                                            |
 
 ## Type system
 
@@ -29,12 +29,19 @@ import type { Color } from '@stopcock/color'
 export type Mat = readonly [number, number, number, number, number, number]
 export const identity: Mat = [1, 0, 0, 1, 0, 0]
 
-export type GradientStop = { offset: number, color: Color, opacity?: number }
+export type GradientStop = { offset: number; color: Color; opacity?: number }
 export type Gradient =
-  | { kind: 'linear', stops: ReadonlyArray<GradientStop>, angle: number, transform?: Mat }
-  | { kind: 'radial', stops: ReadonlyArray<GradientStop>, cx: number, cy: number, r: number, transform?: Mat }
+  | { kind: 'linear'; stops: ReadonlyArray<GradientStop>; angle: number; transform?: Mat }
+  | {
+      kind: 'radial'
+      stops: ReadonlyArray<GradientStop>
+      cx: number
+      cy: number
+      r: number
+      transform?: Mat
+    }
 
-export type Pattern = { kind: 'pattern', child: Node, w: number, h: number, transform?: Mat }
+export type Pattern = { kind: 'pattern'; child: Node; w: number; h: number; transform?: Mat }
 export type Paint = Color | Gradient | Pattern | 'none'
 
 export type Stroke = {
@@ -45,16 +52,16 @@ export type Stroke = {
   linejoin?: 'miter' | 'round' | 'bevel'
 }
 
-export type ClipPath = { kind: 'clip', child: Node }
-export type Mask     = { kind: 'mask', child: Node }
-export type Filter   = { kind: 'filter', stages: ReadonlyArray<FilterStage> }
+export type ClipPath = { kind: 'clip'; child: Node }
+export type Mask = { kind: 'mask'; child: Node }
+export type Filter = { kind: 'filter'; stages: ReadonlyArray<FilterStage> }
 
 export type PathCmd =
-  | { c: 'M', x: number, y: number }
-  | { c: 'L', x: number, y: number }
-  | { c: 'C', x1: number, y1: number, x2: number, y2: number, x: number, y: number }
-  | { c: 'Q', x1: number, y1: number, x: number, y: number }
-  | { c: 'A', rx: number, ry: number, large: boolean, sweep: boolean, x: number, y: number }
+  | { c: 'M'; x: number; y: number }
+  | { c: 'L'; x: number; y: number }
+  | { c: 'C'; x1: number; y1: number; x2: number; y2: number; x: number; y: number }
+  | { c: 'Q'; x1: number; y1: number; x: number; y: number }
+  | { c: 'A'; rx: number; ry: number; large: boolean; sweep: boolean; x: number; y: number }
   | { c: 'Z' }
 export type Path = ReadonlyArray<PathCmd>
 
@@ -68,17 +75,18 @@ export type Common = {
   filter?: Filter
 }
 
-export type Node = Common & (
-  | { kind: 'circle',  r: number, cx: number, cy: number }
-  | { kind: 'rect',    w: number, h: number, x: number, y: number, rx?: number, ry?: number }
-  | { kind: 'ellipse', rx: number, ry: number, cx: number, cy: number }
-  | { kind: 'line',    x1: number, y1: number, x2: number, y2: number }
-  | { kind: 'path',    d: Path }
-  | { kind: 'text',    text: string, x: number, y: number, size: number, family?: string }
-  | { kind: 'group',   children: ReadonlyArray<Node> }
-  | { kind: 'use',     target: Node }
-  | { kind: 'root',    child: Node, viewBox: readonly [number, number, number, number] }
-)
+export type Node = Common &
+  (
+    | { kind: 'circle'; r: number; cx: number; cy: number }
+    | { kind: 'rect'; w: number; h: number; x: number; y: number; rx?: number; ry?: number }
+    | { kind: 'ellipse'; rx: number; ry: number; cx: number; cy: number }
+    | { kind: 'line'; x1: number; y1: number; x2: number; y2: number }
+    | { kind: 'path'; d: Path }
+    | { kind: 'text'; text: string; x: number; y: number; size: number; family?: string }
+    | { kind: 'group'; children: ReadonlyArray<Node> }
+    | { kind: 'use'; target: Node }
+    | { kind: 'root'; child: Node; viewBox: readonly [number, number, number, number] }
+  )
 ```
 
 ## Operators

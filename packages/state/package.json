@@ -7,6 +7,9 @@
     "url": "git+https://github.com/tdeaks/stopcock.git",
     "directory": "packages/state"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -35,15 +38,12 @@
       "import": "./dist/persist.js"
     }
   },
-  "files": [
-    "dist"
-  ],
   "dependencies": {
-    "@stopcock/fp": "1.0.0",
-    "@stopcock/diff": "1.0.0"
+    "@stopcock/diff": "workspace:*",
+    "@stopcock/fp": "workspace:*"
   },
   "peerDependencies": {
-    "@stopcock/async": "1.0.0",
+    "@stopcock/async": "workspace:*",
     "react": ">=18.0.0",
     "svelte": ">=3.0.0",
     "vue": ">=3.0.0"
@@ -61,8 +61,5 @@
     "vue": {
       "optional": true
     }
-  },
-  "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly"
   }
 }

@@ -16,8 +16,8 @@ import { pipe, A, O, R } from '@stopcock/fp'
 
 const activeNames = pipe(
   players,
-  A.filter(p => p.active),
-  A.map(p => p.name),
+  A.filter((p) => p.active),
+  A.map((p) => p.name),
   A.take(10),
 )
 ```
@@ -28,28 +28,28 @@ const activeNames = pipe(
 
 ## Modules
 
-| Namespace | Module | What it does |
-|-----------|--------|-------------|
-| `A` | [Array](/api/array) | `map`, `filter`, `reduce`, `sort`, `groupBy`, `zip`, `take`, `flatMap` + 30 more |
-| `S` | [String](/api/string) | `split`, `trim`, `replaceAll`, `startsWith`, `slice`, `repeat` |
-| `D` | [Dict](/api/dict) | `map`, `filter`, `get`, `merge`, `keys`, `values`, `toEntries` |
-| `N` | [Number](/api/number) | `clamp`, `sum`, `mean`, `median`, `isEven`, `isOdd` |
-| `G` | [Guards](/api/guards) | `isString`, `isNumber`, `isArray`, `isNil`, `isPlainObject` |
-| `Obj` | [Object](/api/object) | `pick`, `omit`, `assoc`, `dissoc`, `mergeDeepLeft`, `mergeDeepRight`, `path`, `evolve` |
-| `M` | [Math](/api/math) | `add`, `subtract`, `multiply`, `divide`, `modulo`, `inc`, `dec`, `product` |
-| `B` | [Boolean](/api/boolean) | `and_`, `or_`, `not_`, `ifElse` |
-| `Logic` | [Logic](/api/logic) | `both`, `either`, `equals`, `defaultTo`, `cond`, `when_`, `unless`, `allPass`, `anyPass` |
-| `Lens` | [Lenses](/api/lenses) | `view`, `set`, `over` for immutable nested updates |
-| `O` | [Option](/api/option) | `some`, `none`, `fromNullable`, `map`, `flatMap`, `match` |
-| `R` | [Result](/api/result) | `ok`, `err`, `tryCatch`, `map`, `mapErr`, `flatMap`, `match` |
+| Namespace | Module                  | What it does                                                                             |
+| --------- | ----------------------- | ---------------------------------------------------------------------------------------- |
+| `A`       | [Array](/api/array)     | `map`, `filter`, `reduce`, `sort`, `groupBy`, `zip`, `take`, `flatMap` + 30 more         |
+| `S`       | [String](/api/string)   | `split`, `trim`, `replaceAll`, `startsWith`, `slice`, `repeat`                           |
+| `D`       | [Dict](/api/dict)       | `map`, `filter`, `get`, `merge`, `keys`, `values`, `toEntries`                           |
+| `N`       | [Number](/api/number)   | `clamp`, `sum`, `mean`, `median`, `isEven`, `isOdd`                                      |
+| `G`       | [Guards](/api/guards)   | `isString`, `isNumber`, `isArray`, `isNil`, `isPlainObject`                              |
+| `Obj`     | [Object](/api/object)   | `pick`, `omit`, `assoc`, `dissoc`, `mergeDeepLeft`, `mergeDeepRight`, `path`, `evolve`   |
+| `M`       | [Math](/api/math)       | `add`, `subtract`, `multiply`, `divide`, `modulo`, `inc`, `dec`, `product`               |
+| `B`       | [Boolean](/api/boolean) | `and_`, `or_`, `not_`, `ifElse`                                                          |
+| `Logic`   | [Logic](/api/logic)     | `both`, `either`, `equals`, `defaultTo`, `cond`, `when_`, `unless`, `allPass`, `anyPass` |
+| `Lens`    | [Lenses](/api/lenses)   | `view`, `set`, `over` for immutable nested updates                                       |
+| `O`       | [Option](/api/option)   | `some`, `none`, `fromNullable`, `map`, `flatMap`, `match`                                |
+| `R`       | [Result](/api/result)   | `ok`, `err`, `tryCatch`, `map`, `mapErr`, `flatMap`, `match`                             |
 
 ```ts
 // Looks like 3 passes over the array:
 const result = pipe(
-  users,                         // 100,000 users
-  A.filter(u => u.active),       // pass 1: filter
-  A.map(u => u.name),            // pass 2: map
-  A.take(10),                    // pass 3: slice
+  users, // 100,000 users
+  A.filter((u) => u.active), // pass 1: filter
+  A.map((u) => u.name), // pass 2: map
+  A.take(10), // pass 3: slice
 )
 
 // But streaming fusion compiles it into roughly:
@@ -75,21 +75,22 @@ for (const u of users) {
 // Option: values might not exist
 const port = pipe(
   O.fromNullable(process.env.PORT),
-  O.map(s => parseInt(s, 10)),
-  O.filter(n => n > 0 && n < 65536),
+  O.map((s) => parseInt(s, 10)),
+  O.filter((n) => n > 0 && n < 65536),
   O.getOrElse(() => 3000),
 )
 
 // Result: operations might fail
 const config = pipe(
   R.tryCatch(() => JSON.parse(rawConfig)),
-  R.map(obj => obj.settings),
+  R.map((obj) => obj.settings),
   R.getOrElse(() => defaults),
 )
 ```
 
 <Aside type="note">
-  `Option` and `Result` use numeric `_tag` values (0/1) instead of string tags. V8 handles numeric comparisons in a single CPU instruction.
+  `Option` and `Result` use numeric `_tag` values (0/1) instead of string tags. V8 handles numeric
+  comparisons in a single CPU instruction.
 </Aside>
 
 Full docs on the [Option & Result page](/concepts/option-result), or look at individual module pages in the sidebar.

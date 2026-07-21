@@ -50,23 +50,18 @@ diffWith(before, after, options): Patch
 ```
 
 Options:
+
 - `eq` - custom equality function (default: `===`)
 - `detectMoves` - detect array element moves (default: `true`)
 - `detectRenames` - detect object key renames (default: `true`)
 
 ```ts
 // Move detection
-diff(
-  { items: ['a', 'b', 'c'] },
-  { items: ['c', 'a', 'b'] },
-)
+diff({ items: ['a', 'b', 'c'] }, { items: ['c', 'a', 'b'] })
 // [{ op: 'move', from: ['items', 2], path: ['items', 0] }]
 
 // Rename detection
-diff(
-  { firstName: 'Tom' },
-  { name: 'Tom' },
-)
+diff({ firstName: 'Tom' }, { name: 'Tom' })
 // [{ op: 'rename', path: [], oldKey: 'firstName', newKey: 'name' }]
 ```
 
@@ -103,6 +98,7 @@ compose(p1, p2): Patch
 ```
 
 Merges two sequential patches into one. Automatically simplifies:
+
 - `add` then `remove` at the same path cancels out
 - `replace` then `replace` at the same path merges into one
 - `add` then `replace` at the same path becomes a single `add`
@@ -136,7 +132,8 @@ const rebased = rebase(local, remote)
 Array index adjustments happen automatically. If both sides replace the same path, you get a `ConflictError`. If the remote deletes a path your local patch touches, the local operation is dropped.
 
 <Aside type="tip">
-  `rebase` returns a `Result`. Check for conflicts before applying. This is the same `Result` type from `@stopcock/fp`.
+  `rebase` returns a `Result`. Check for conflicts before applying. This is the same `Result` type
+  from `@stopcock/fp`.
 </Aside>
 
 ## JSON Patch (RFC 6902)
@@ -157,7 +154,8 @@ const roundTripped = fromJsonPatch(json)
 ```
 
 <Aside type="note">
-  JSON Patch doesn't have `rename` or `oldValue` on removes, so the conversion is slightly lossy. Round-tripping through JSON Patch may lose information needed for inversion.
+  JSON Patch doesn't have `rename` or `oldValue` on removes, so the conversion is slightly lossy.
+  Round-tripping through JSON Patch may lose information needed for inversion.
 </Aside>
 
 ## Optics bridge
@@ -182,7 +180,12 @@ type Path = readonly PathSegment[]
 
 type Patch = { readonly _tag: 'Patch'; readonly ops: readonly Operation[] }
 type PatchError = { readonly _tag: 'PatchError'; message: string; op: Operation; path: Path }
-type ConflictError = { readonly _tag: 'ConflictError'; message: string; local: Operation; remote: Operation }
+type ConflictError = {
+  readonly _tag: 'ConflictError'
+  message: string
+  local: Operation
+  remote: Operation
+}
 ```
 
 ### Constructors

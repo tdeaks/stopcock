@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { rgb } from '@stopcock/color'
 import {
   channelBufferToRgbaBytes,
@@ -10,12 +10,12 @@ import {
   tonemapToGamut,
 } from '../index'
 
-const fixture = () => fromRGBA(new Uint8ClampedArray([
-  255, 0, 0, 255,
-  0, 255, 0, 128,
-  0, 0, 255, 64,
-  255, 255, 255, 0,
-]), 2, 2)
+const fixture = () =>
+  fromRGBA(
+    new Uint8ClampedArray([255, 0, 0, 255, 0, 255, 0, 128, 0, 0, 255, 64, 255, 255, 255, 0]),
+    2,
+    2,
+  )
 
 const px = (data: Uint8ClampedArray, pixel: number) =>
   Array.from(data.slice(pixel * 4, pixel * 4 + 4))

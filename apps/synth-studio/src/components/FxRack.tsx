@@ -4,14 +4,14 @@ import { Knob } from './Knob'
 import { state, swapFxKind, setFxParam, toggleFxBypass, moveFxSlot } from '../state'
 import { fxCatalog, fxCategories, fxKinds, isEnumSpec, type FxKind, type FxParamSpec } from '../fx'
 
-const swapOptions: ReadonlyArray<SwapOption<FxKind>> = fxKinds.map(kind => ({
+const swapOptions: ReadonlyArray<SwapOption<FxKind>> = fxKinds.map((kind) => ({
   value: kind,
   label: fxCatalog[kind].label,
   tag: fxCatalog[kind].tag,
   group: fxCatalog[kind].category,
 }))
 
-const swapGroups = fxCategories.map(c => ({ key: c.key, label: c.label }))
+const swapGroups = fxCategories.map((c) => ({ key: c.key, label: c.label }))
 
 type SelectorOption = { value: string; label: string }
 type SelectorProps = {
@@ -39,22 +39,18 @@ const Selector: Component<SelectorProps> = (props) => {
   return (
     <div class="knob">
       <div class="knob-dial selector-dial" onWheel={onWheel} role="group" aria-label={props.label}>
-        <button
-          type="button"
-          class="selector-step"
-          aria-label="Previous"
-          onClick={() => step(-1)}
-        >‹</button>
+        <button type="button" class="selector-step" aria-label="Previous" onClick={() => step(-1)}>
+          ‹
+        </button>
         <div class="selector-value">{props.options[safeIndex()]?.label ?? '—'}</div>
-        <button
-          type="button"
-          class="selector-step"
-          aria-label="Next"
-          onClick={() => step(1)}
-        >›</button>
+        <button type="button" class="selector-step" aria-label="Next" onClick={() => step(1)}>
+          ›
+        </button>
       </div>
       <div class="knob-label">{props.label}</div>
-      <div class="knob-value">{safeIndex() + 1}/{props.options.length}</div>
+      <div class="knob-value">
+        {safeIndex() + 1}/{props.options.length}
+      </div>
     </div>
   )
 }
@@ -72,7 +68,7 @@ const FxSlot: Component<{ index: number }> = (props) => {
   const slot = createMemo(() => state.fx[props.index])
   const def = createMemo(() => fxCatalog[slot().kind])
   const [open, setOpen] = createSignal(false)
-  const cols = createMemo(() => def().params.length <= 4 ? def().params.length : 4)
+  const cols = createMemo(() => (def().params.length <= 4 ? def().params.length : 4))
 
   const onDragStart = (e: DragEvent): void => {
     if (!e.dataTransfer) return
@@ -108,13 +104,17 @@ const FxSlot: Component<{ index: number }> = (props) => {
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      bypass={slot().kind === 'none' ? undefined : {
-        on: slot().enabled,
-        onToggle: () => toggleFxBypass(props.index),
-      }}
+      bypass={
+        slot().kind === 'none'
+          ? undefined
+          : {
+              on: slot().enabled,
+              onToggle: () => toggleFxBypass(props.index),
+            }
+      }
       swap={{
         open: open(),
-        toggle: () => setOpen(o => !o),
+        toggle: () => setOpen((o) => !o),
         menu: (
           <SwapMenu
             open={open()}
@@ -131,30 +131,34 @@ const FxSlot: Component<{ index: number }> = (props) => {
         when={slot().kind !== 'none'}
         fallback={<div class="fx-empty-placeholder">tap SWAP to pick an effect</div>}
       >
-        <For each={chunkParams(def().params)}>{(row) => (
-          <div class={`knob-row cols-${cols()}`}>
-            <For each={row}>{(spec) => (
-              isEnumSpec(spec) ? (
-                <Selector
-                  label={spec.label}
-                  value={Math.round(slot().params[spec.id] ?? spec.value)}
-                  options={spec.options}
-                  onChange={(i) => setFxParam(props.index, spec.id, i)}
-                />
-              ) : (
-                <Knob
-                  label={spec.label}
-                  value={slot().params[spec.id] ?? spec.value}
-                  min={spec.min}
-                  max={spec.max}
-                  log={spec.log}
-                  unit={spec.unit}
-                  onChange={(v) => setFxParam(props.index, spec.id, v)}
-                />
-              )
-            )}</For>
-          </div>
-        )}</For>
+        <For each={chunkParams(def().params)}>
+          {(row) => (
+            <div class={`knob-row cols-${cols()}`}>
+              <For each={row}>
+                {(spec) =>
+                  isEnumSpec(spec) ? (
+                    <Selector
+                      label={spec.label}
+                      value={Math.round(slot().params[spec.id] ?? spec.value)}
+                      options={spec.options}
+                      onChange={(i) => setFxParam(props.index, spec.id, i)}
+                    />
+                  ) : (
+                    <Knob
+                      label={spec.label}
+                      value={slot().params[spec.id] ?? spec.value}
+                      min={spec.min}
+                      max={spec.max}
+                      log={spec.log}
+                      unit={spec.unit}
+                      onChange={(v) => setFxParam(props.index, spec.id, v)}
+                    />
+                  )
+                }
+              </For>
+            </div>
+          )}
+        </For>
       </Show>
     </Module>
   )

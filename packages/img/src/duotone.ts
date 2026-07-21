@@ -4,7 +4,7 @@ import type { Image } from './types'
 import { dual } from './dual'
 import { channelBufferToImage, imageToChannelBuffer } from './buffer'
 
-const clamp01 = (v: number): number => v < 0 ? 0 : v > 1 ? 1 : v
+const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v)
 
 export const duotone: {
   (img: Image, dark: Color, light: Color): Image

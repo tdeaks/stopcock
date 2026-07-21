@@ -40,15 +40,13 @@ export const users = resource({
 
 export const filteredUsers = computed(
   store,
-  s => s.search,
+  (s) => s.search,
   (search) => {
     const data = users.data
     if (!data) return []
     if (!search) return data
     const q = search.toLowerCase()
-    return data.filter(u =>
-      u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
-    )
+    return data.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
   },
 )
 
@@ -60,12 +58,11 @@ users.subscribe(() => {
 
 export const userPosts = resource<{ userId: number }, Post[]>({
   deps: (get) => {
-    const id = get(store, s => s.selectedUserId)
+    const id = get(store, (s) => s.selectedUserId)
     if (id === null) return null
     return { userId: id }
   },
-  fetch: ({ userId }, signal) =>
-    api.get<Post[]>('/posts', { query: { userId }, signal }),
+  fetch: ({ userId }, signal) => api.get<Post[]>('/posts', { query: { userId }, signal }),
 })
 
 // --- Mutations ---
@@ -79,9 +76,9 @@ export const createPost = mutation({
 // --- Actions ---
 
 export function selectUser(id: number | null) {
-  store.set(s => s.selectedUserId, id)
+  store.set((s) => s.selectedUserId, id)
 }
 
 export function setSearch(q: string) {
-  store.set(s => s.search, q)
+  store.set((s) => s.search, q)
 }

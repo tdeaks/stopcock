@@ -15,7 +15,14 @@ Vec.normalize(v)
 Vec.cross(Vec.from([1, 0, 0]), Vec.from([0, 1, 0])) // [0, 0, 1]
 
 const m = Mat.identity(3)
-Mat.multiply(m, Mat.from([[1, 2], [3, 4], [5, 6]]))
+Mat.multiply(
+  m,
+  Mat.from([
+    [1, 2],
+    [3, 4],
+    [5, 6],
+  ]),
+)
 Mat.transpose(m)
 Mat.determinant(m)
 ```

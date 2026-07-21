@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { compose, decompose } from '../core'
-import { now, fromDate, toDate, fromParts, fromTimestamp, fromISO, toTimestamp, toISO, clone } from '../create'
+import {
+  now,
+  fromDate,
+  toDate,
+  fromParts,
+  fromTimestamp,
+  fromISO,
+  toTimestamp,
+  toISO,
+  clone,
+} from '../create'
 import type { Timestamp } from '../types'
 
 describe('now', () => {
@@ -24,9 +34,25 @@ describe('fromDate / toDate', () => {
 
 describe('fromParts', () => {
   it('full parts', () => {
-    const ts = fromParts({ year: 2024, month: 3, day: 15, hour: 14, minute: 30, second: 45, millisecond: 123 })
+    const ts = fromParts({
+      year: 2024,
+      month: 3,
+      day: 15,
+      hour: 14,
+      minute: 30,
+      second: 45,
+      millisecond: 123,
+    })
     const p = decompose(ts)
-    expect(p).toEqual({ year: 2024, month: 3, day: 15, hour: 14, minute: 30, second: 45, millisecond: 123 })
+    expect(p).toEqual({
+      year: 2024,
+      month: 3,
+      day: 15,
+      hour: 14,
+      minute: 30,
+      second: 45,
+      millisecond: 123,
+    })
   })
 
   it('defaults missing fields', () => {

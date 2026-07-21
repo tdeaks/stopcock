@@ -1,5 +1,13 @@
-import { describe, it, expect } from 'vitest'
-import { epochDaysToCivil, civilToEpochDays, compose, decompose, isLeapYear, daysInMonth, stamp } from '../core'
+import { describe, it, expect } from 'vite-plus/test'
+import {
+  epochDaysToCivil,
+  civilToEpochDays,
+  compose,
+  decompose,
+  isLeapYear,
+  daysInMonth,
+  stamp,
+} from '../core'
 import type { Timestamp } from '../types'
 
 describe('epochDaysToCivil / civilToEpochDays', () => {
@@ -36,7 +44,15 @@ describe('compose / decompose', () => {
   it('roundtrips', () => {
     const ts = compose(2024, 6, 15, 14, 30, 45, 123)
     const parts = decompose(ts)
-    expect(parts).toEqual({ year: 2024, month: 6, day: 15, hour: 14, minute: 30, second: 45, millisecond: 123 })
+    expect(parts).toEqual({
+      year: 2024,
+      month: 6,
+      day: 15,
+      hour: 14,
+      minute: 30,
+      second: 45,
+      millisecond: 123,
+    })
   })
 
   it('matches Date.UTC', () => {

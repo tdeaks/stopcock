@@ -2,12 +2,18 @@ import { isDeepEqual } from '@stopcock/fp'
 import type { Operation, Path, DiffOptions } from './types'
 import { objectDiff } from './object-diff'
 
-type EditOp = { type: 'keep'; oldIdx: number; newIdx: number }
+type EditOp =
+  | { type: 'keep'; oldIdx: number; newIdx: number }
   | { type: 'insert'; newIdx: number }
   | { type: 'delete'; oldIdx: number }
 
 function isPlainObject(x: unknown): x is Record<string, unknown> {
-  return typeof x === 'object' && x !== null && !Array.isArray(x) && Object.getPrototypeOf(x) === Object.prototype
+  return (
+    typeof x === 'object' &&
+    x !== null &&
+    !Array.isArray(x) &&
+    Object.getPrototypeOf(x) === Object.prototype
+  )
 }
 
 function myersDiff<T>(a: T[], b: T[], eq: (x: T, y: T) => boolean): EditOp[] {
@@ -34,13 +40,17 @@ function myersDiff<T>(a: T[], b: T[], eq: (x: T, y: T) => boolean): EditOp[] {
         x = v[k - 1 + offset] + 1
       }
       let y = x - k
-      while (x < n && y < m && eq(a[x], b[y])) { x++; y++ }
+      while (x < n && y < m && eq(a[x], b[y])) {
+        x++
+        y++
+      }
       v[k + offset] = x
       if (x >= n && y >= m) break outer
     }
   }
 
-  let cx = n, cy = m
+  let cx = n,
+    cy = m
   const result: EditOp[] = []
   for (let d = trace.length - 1; d >= 0; d--) {
     const snap = trace[d]
@@ -55,7 +65,8 @@ function myersDiff<T>(a: T[], b: T[], eq: (x: T, y: T) => boolean): EditOp[] {
     const prevY = prevX - pk
 
     while (cx > prevX && cy > prevY) {
-      cx--; cy--
+      cx--
+      cy--
       result.push({ type: 'keep', oldIdx: cx, newIdx: cy })
     }
 
@@ -105,7 +116,11 @@ function arrayDiff(a: unknown[], b: unknown[], path: Path, options: DiffOptions)
 
     const realDeleted = deleted.filter((_, i) => !usedDel.has(i))
     for (let i = realDeleted.length - 1; i >= 0; i--) {
-      ops.push({ op: 'remove', path: [...path, realDeleted[i].oldIdx], oldValue: realDeleted[i].value })
+      ops.push({
+        op: 'remove',
+        path: [...path, realDeleted[i].oldIdx],
+        oldValue: realDeleted[i].value,
+      })
     }
     for (const move of moves) {
       ops.push({ op: 'move', from: [...path, move.from], path: [...path, move.to] })
@@ -125,7 +140,12 @@ function arrayDiff(a: unknown[], b: unknown[], path: Path, options: DiffOptions)
 
   for (const edit of edits) {
     if (edit.type === 'keep') {
-      const childOps = treeDiffRecursive(a[edit.oldIdx], b[edit.newIdx], [...path, edit.newIdx], options)
+      const childOps = treeDiffRecursive(
+        a[edit.oldIdx],
+        b[edit.newIdx],
+        [...path, edit.newIdx],
+        options,
+      )
       ops.push(...childOps)
     }
   }

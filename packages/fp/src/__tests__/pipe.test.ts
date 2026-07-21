@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import fc from 'fast-check'
 import { pipe } from '../pipe'
 import * as A from '../array'
@@ -43,10 +43,26 @@ describe('pipe', () => {
       expect(
         pipe(
           0,
-          inc, inc, inc, inc, inc,
-          inc, inc, inc, inc, inc,
-          inc, inc, inc, inc, inc,
-          inc, inc, inc, inc, inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
+          inc,
         ),
       ).toBe(20)
     })
@@ -55,17 +71,13 @@ describe('pipe', () => {
   describe('large chain (general loop path)', () => {
     it('handles 8 plain functions via general loop', () => {
       const inc = (n: number) => n + 1
-      expect(
-        pipe(0, inc, inc, inc, inc, inc, inc, inc, inc),
-      ).toBe(8)
+      expect(pipe(0, inc, inc, inc, inc, inc, inc, inc, inc)).toBe(8)
     })
 
     it('handles 10 plain functions', () => {
       const dbl = (n: number) => n * 2
       const add1 = (n: number) => n + 1
-      expect(
-        pipe(1, dbl, add1, dbl, add1, dbl, add1, dbl, add1, dbl, add1),
-      ).toBe(63)
+      expect(pipe(1, dbl, add1, dbl, add1, dbl, add1, dbl, add1, dbl, add1)).toBe(63)
     })
   })
 
@@ -121,27 +133,20 @@ describe('pipe', () => {
   describe('7+ tagged ops with non-array ops (fuse path)', () => {
     it('mixes array and scalar ops in long pipe', () => {
       expect(
-        pipe(
-          10,
-          M.add(5),
-          M.multiply(2),
-          M.subtract(3),
-          M.add(1),
-          M.negate,
-          M.negate,
-          M.inc,
-        ),
+        pipe(10, M.add(5), M.multiply(2), M.subtract(3), M.add(1), M.negate, M.negate, M.inc),
       ).toBe(29)
     })
   })
 
   describe('properties', () => {
     it('pipe(x, f, g) === g(f(x))', () => {
-      fc.assert(fc.property(fc.integer(), (x) => {
-        const f = (n: number) => n * 2
-        const g = (n: number) => n + 1
-        expect(pipe(x, f, g)).toBe(g(f(x)))
-      }))
+      fc.assert(
+        fc.property(fc.integer(), (x) => {
+          const f = (n: number) => n * 2
+          const g = (n: number) => n + 1
+          expect(pipe(x, f, g)).toBe(g(f(x)))
+        }),
+      )
     })
   })
 })

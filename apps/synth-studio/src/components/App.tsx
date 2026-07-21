@@ -47,8 +47,24 @@ export const App: Component = () => {
   const rebuildVoice = debouncedRebuild(() => engine()?.rebuildVoice(state))
   const rebuildFx = debouncedRebuild(() => engine()?.rebuildFx(state))
 
-  createEffect(on(voiceSignature, () => { if (engine()) rebuildVoice() }, { defer: true }))
-  createEffect(on(fxSignature,    () => { if (engine()) rebuildFx() },    { defer: true }))
+  createEffect(
+    on(
+      voiceSignature,
+      () => {
+        if (engine()) rebuildVoice()
+      },
+      { defer: true },
+    ),
+  )
+  createEffect(
+    on(
+      fxSignature,
+      () => {
+        if (engine()) rebuildFx()
+      },
+      { defer: true },
+    ),
+  )
 
   return (
     <div class="app">

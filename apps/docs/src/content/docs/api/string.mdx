@@ -41,7 +41,7 @@ pipe('name,email,role', S.split(','))
 // ['name', 'email', 'role']
 
 // check file extension
-pipe('report.pdf', S.endsWith('.pdf'))  // true
+pipe('report.pdf', S.endsWith('.pdf')) // true
 
 // template
 pipe('Hello, NAME!', S.replaceAll('NAME', user.name))

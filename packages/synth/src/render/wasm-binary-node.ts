@@ -394,7 +394,10 @@ export function writeBinaryNode(
   }
 }
 
-function writeBinaryOperator(writer: BinaryWriter, operator: Extract<Node, { kind: 'fm' }>['operators'][number]): void {
+function writeBinaryOperator(
+  writer: BinaryWriter,
+  operator: Extract<Node, { kind: 'fm' }>['operators'][number],
+): void {
   writer.u8(operator.kind === 'sine' ? 0 : operator.kind === 'polyblep' ? 1 : 2)
   writer.f64(operator.ratio)
   writer.f64(operator.detune)
@@ -416,7 +419,10 @@ function writeBinaryWavetable(writer: BinaryWriter, bank: WavetableBank): void {
   writer.f64Array(bank.levelMaxHarmonics)
 }
 
-function writeBinarySamplerZone(writer: BinaryWriter, zone: Extract<Node, { kind: 'samplerInstrument' }>['zones'][number]): void {
+function writeBinarySamplerZone(
+  writer: BinaryWriter,
+  zone: Extract<Node, { kind: 'samplerInstrument' }>['zones'][number],
+): void {
   writer.f32Array(zone.samples)
   writer.f64(zone.sampleRate)
   writer.f64(zone.rootMidi)
@@ -431,7 +437,9 @@ function writeBinarySamplerZone(writer: BinaryWriter, zone: Extract<Node, { kind
   writer.f64(zone.pan)
 }
 
-export function spaceEchoHeads(mode: Extract<Node, { kind: 'spaceEcho' }>['mode']): [boolean, boolean, boolean] {
+export function spaceEchoHeads(
+  mode: Extract<Node, { kind: 'spaceEcho' }>['mode'],
+): [boolean, boolean, boolean] {
   return [
     mode === 'head-1' || mode === 'heads-1-2' || mode === 'heads-1-3' || mode === 'heads-1-2-3',
     mode === 'head-2' || mode === 'heads-1-2' || mode === 'heads-2-3' || mode === 'heads-1-2-3',

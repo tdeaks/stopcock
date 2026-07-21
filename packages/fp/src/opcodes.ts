@@ -89,30 +89,74 @@ export const OP_NON_FUSEABLE = 0
 // Lookup table: op name → opcode (used by dual to tag)
 export const OP_CODES: Record<string, number> = {
   // Array stream
-  map: OP_MAP, filter: OP_FILTER, take: OP_TAKE, drop: OP_DROP,
-  takeWhile: OP_TAKE_WHILE, dropWhile: OP_DROP_WHILE, flatMap: OP_FLAT_MAP, reject: OP_REJECT,
-  filterMap: OP_FILTER_MAP, mapWhile: OP_MAP_WHILE, takeUntil: OP_TAKE_UNTIL,
+  map: OP_MAP,
+  filter: OP_FILTER,
+  take: OP_TAKE,
+  drop: OP_DROP,
+  takeWhile: OP_TAKE_WHILE,
+  dropWhile: OP_DROP_WHILE,
+  flatMap: OP_FLAT_MAP,
+  reject: OP_REJECT,
+  filterMap: OP_FILTER_MAP,
+  mapWhile: OP_MAP_WHILE,
+  takeUntil: OP_TAKE_UNTIL,
   // Array terminal
-  reduce: OP_REDUCE, forEach: OP_FOR_EACH, every: OP_EVERY, some: OP_SOME,
-  find: OP_FIND, findIndex: OP_FIND_INDEX, none: OP_NONE, count: OP_COUNT, findMap: OP_FIND_MAP,
+  reduce: OP_REDUCE,
+  forEach: OP_FOR_EACH,
+  every: OP_EVERY,
+  some: OP_SOME,
+  find: OP_FIND,
+  findIndex: OP_FIND_INDEX,
+  none: OP_NONE,
+  count: OP_COUNT,
+  findMap: OP_FIND_MAP,
   // Array accessor
-  head: OP_HEAD, last: OP_LAST, length: OP_LENGTH, isEmpty: OP_IS_EMPTY,
-  tail: OP_TAIL, init: OP_INIT, reverse: OP_REVERSE, uniq: OP_UNIQ_INLINE,
-  join: OP_JOIN, flatten: OP_FLATTEN, sum: OP_SUM, min: OP_MIN, max: OP_MAX,
+  head: OP_HEAD,
+  last: OP_LAST,
+  length: OP_LENGTH,
+  isEmpty: OP_IS_EMPTY,
+  tail: OP_TAIL,
+  init: OP_INIT,
+  reverse: OP_REVERSE,
+  uniq: OP_UNIQ_INLINE,
+  join: OP_JOIN,
+  flatten: OP_FLATTEN,
+  sum: OP_SUM,
+  min: OP_MIN,
+  max: OP_MAX,
   // Sort
-  sort: OP_SORT, sortBy: OP_SORT_BY, sortAsc: OP_SORT_ASC, sortDesc: OP_SORT_DESC,
+  sort: OP_SORT,
+  sortBy: OP_SORT_BY,
+  sortAsc: OP_SORT_ASC,
+  sortDesc: OP_SORT_DESC,
   // String
-  trim: OP_STR_TRIM, toLowerCase: OP_STR_LOWER, toUpperCase: OP_STR_UPPER,
-  trimStart: OP_STR_TRIM_START, trimEnd: OP_STR_TRIM_END, split: OP_STR_SPLIT,
-  strLength: OP_STR_LENGTH, strIsEmpty: OP_STR_IS_EMPTY,
+  trim: OP_STR_TRIM,
+  toLowerCase: OP_STR_LOWER,
+  toUpperCase: OP_STR_UPPER,
+  trimStart: OP_STR_TRIM_START,
+  trimEnd: OP_STR_TRIM_END,
+  split: OP_STR_SPLIT,
+  strLength: OP_STR_LENGTH,
+  strIsEmpty: OP_STR_IS_EMPTY,
   // Dict
-  keys: OP_DICT_KEYS, values: OP_DICT_VALUES, dictIsEmpty: OP_DICT_IS_EMPTY,
+  keys: OP_DICT_KEYS,
+  values: OP_DICT_VALUES,
+  dictIsEmpty: OP_DICT_IS_EMPTY,
   // Math
-  add: OP_MATH_ADD, subtract: OP_MATH_SUBTRACT, multiply: OP_MATH_MULTIPLY,
-  divide: OP_MATH_DIVIDE, negate: OP_MATH_NEGATE, inc: OP_MATH_INC, dec: OP_MATH_DEC,
+  add: OP_MATH_ADD,
+  subtract: OP_MATH_SUBTRACT,
+  multiply: OP_MATH_MULTIPLY,
+  divide: OP_MATH_DIVIDE,
+  negate: OP_MATH_NEGATE,
+  inc: OP_MATH_INC,
+  dec: OP_MATH_DEC,
   // Guards
-  isNumber: OP_GUARD_IS_NUMBER, isString: OP_GUARD_IS_STRING, isBoolean: OP_GUARD_IS_BOOLEAN,
-  isNil: OP_GUARD_IS_NIL, isArray: OP_GUARD_IS_ARRAY, isObject: OP_GUARD_IS_OBJECT,
+  isNumber: OP_GUARD_IS_NUMBER,
+  isString: OP_GUARD_IS_STRING,
+  isBoolean: OP_GUARD_IS_BOOLEAN,
+  isNil: OP_GUARD_IS_NIL,
+  isArray: OP_GUARD_IS_ARRAY,
+  isObject: OP_GUARD_IS_OBJECT,
   isFunction: OP_GUARD_IS_FUNCTION,
 }
 
@@ -130,8 +174,7 @@ export const isTerminalOp = (op: number): boolean =>
   op === OP_COUNT ||
   op === OP_FIND_MAP
 
-export const isAccessorOp = (op: number): boolean =>
-  op >= OP_HEAD && op <= OP_MAX
+export const isAccessorOp = (op: number): boolean => op >= OP_HEAD && op <= OP_MAX
 
 export const isScalarOp = (op: number): boolean =>
   (op >= OP_STR_TRIM && op <= OP_STR_IS_EMPTY) ||

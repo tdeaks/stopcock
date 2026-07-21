@@ -5,7 +5,7 @@ function xorshift32(seed: number) {
     state ^= state << 13
     state ^= state >> 17
     state ^= state << 5
-    return (state >>> 0) / 0xFFFFFFFF
+    return (state >>> 0) / 0xffffffff
   }
 }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
   DEFAULT_ARP_SETTINGS,
   arpRateToBeats,
@@ -24,10 +24,16 @@ describe('arpeggiator primitives', () => {
 
   it('builds up, down, up-down, and as-played patterns across octaves', () => {
     const notes = [67, 60, 64]
-    expect(buildArpPattern(notes, settings({ mode: 'up', octaves: 2 }))).toEqual([60, 64, 67, 72, 76, 79])
-    expect(buildArpPattern(notes, settings({ mode: 'down', octaves: 2 }))).toEqual([79, 76, 72, 67, 64, 60])
+    expect(buildArpPattern(notes, settings({ mode: 'up', octaves: 2 }))).toEqual([
+      60, 64, 67, 72, 76, 79,
+    ])
+    expect(buildArpPattern(notes, settings({ mode: 'down', octaves: 2 }))).toEqual([
+      79, 76, 72, 67, 64, 60,
+    ])
     expect(buildArpPattern(notes, settings({ mode: 'upDown' }))).toEqual([60, 64, 67, 64])
-    expect(buildArpPattern(notes, settings({ mode: 'asPlayed', octaves: 2 }))).toEqual([67, 60, 64, 79, 72, 76])
+    expect(buildArpPattern(notes, settings({ mode: 'asPlayed', octaves: 2 }))).toEqual([
+      67, 60, 64, 79, 72, 76,
+    ])
   })
 
   it('selects chord notes together and limits them to the engine voice budget', () => {
@@ -36,9 +42,18 @@ describe('arpeggiator primitives', () => {
   })
 
   it('keeps random mode deterministic for a seed', () => {
-    const a = Array.from({ length: 8 }, (_, i) => selectArpNotes([60, 64, 67], i, settings({ mode: 'random', seed: 9 }))[0])
-    const b = Array.from({ length: 8 }, (_, i) => selectArpNotes([60, 64, 67], i, settings({ mode: 'random', seed: 9 }))[0])
-    const c = Array.from({ length: 8 }, (_, i) => selectArpNotes([60, 64, 67], i, settings({ mode: 'random', seed: 10 }))[0])
+    const a = Array.from(
+      { length: 8 },
+      (_, i) => selectArpNotes([60, 64, 67], i, settings({ mode: 'random', seed: 9 }))[0],
+    )
+    const b = Array.from(
+      { length: 8 },
+      (_, i) => selectArpNotes([60, 64, 67], i, settings({ mode: 'random', seed: 9 }))[0],
+    )
+    const c = Array.from(
+      { length: 8 },
+      (_, i) => selectArpNotes([60, 64, 67], i, settings({ mode: 'random', seed: 10 }))[0],
+    )
     expect(a).toEqual(b)
     expect(c).not.toEqual(a)
   })

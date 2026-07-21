@@ -29,5 +29,11 @@ export const inverse = (m: Mat): Mat | null => {
   return [a, b, c, d, -(a * m[4] + c * m[5]), -(b * m[4] + d * m[5])]
 }
 
-export const matrix = (a: number, b: number, c: number, d: number, e: number, f: number): Mat =>
-  [a, b, c, d, e, f]
+export const matrix = (a: number, b: number, c: number, d: number, e: number, f: number): Mat => [
+  a,
+  b,
+  c,
+  d,
+  e,
+  f,
+]

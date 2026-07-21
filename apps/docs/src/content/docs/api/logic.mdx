@@ -34,16 +34,16 @@ cond<A, B>(value: A, conditions: [(a: A) => boolean, (a: A) => B][]): B | undefi
 ```ts
 import { pipe, Logic } from '@stopcock/fp'
 
-pipe(undefined, Logic.defaultTo(0))  // 0
-pipe(5, Logic.defaultTo(0))          // 5
+pipe(undefined, Logic.defaultTo(0)) // 0
+pipe(5, Logic.defaultTo(0)) // 5
 
 pipe(
   score,
   Logic.cond([
-    [s => s >= 90, () => 'A'],
-    [s => s >= 80, () => 'B'],
-    [s => s >= 70, () => 'C'],
-    [() => true,   () => 'F'],
+    [(s) => s >= 90, () => 'A'],
+    [(s) => s >= 80, () => 'B'],
+    [(s) => s >= 70, () => 'C'],
+    [() => true, () => 'F'],
   ]),
 )
 ```

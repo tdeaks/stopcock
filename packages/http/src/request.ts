@@ -23,7 +23,12 @@ export function serializeQuery(query?: QueryParams): string {
   return str ? `?${str}` : ''
 }
 
-export function buildUrl(baseUrl: string | undefined, path: string, params?: PathParams, query?: QueryParams): string {
+export function buildUrl(
+  baseUrl: string | undefined,
+  path: string,
+  params?: PathParams,
+  query?: QueryParams,
+): string {
   const resolved = substitutePath(path, params)
   const base = baseUrl ? baseUrl.replace(/\/+$/, '') : ''
   const sep = resolved.startsWith('/') ? '' : '/'
@@ -45,12 +50,14 @@ export async function resolveHeaders(
 }
 
 function isPassthrough(body: unknown): body is BodyInit {
-  return body instanceof FormData
-    || body instanceof Blob
-    || body instanceof ArrayBuffer
-    || body instanceof URLSearchParams
-    || body instanceof ReadableStream
-    || typeof body === 'string'
+  return (
+    body instanceof FormData ||
+    body instanceof Blob ||
+    body instanceof ArrayBuffer ||
+    body instanceof URLSearchParams ||
+    body instanceof ReadableStream ||
+    typeof body === 'string'
+  )
 }
 
 export function serializeBody(body: unknown): { body: BodyInit | null; contentType?: string } {

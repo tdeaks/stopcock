@@ -38,16 +38,17 @@ type State = {
 Now update the user's city:
 
 ```ts
-setCity: (city) => set(state => ({
-  ...state,
-  user: {
-    ...state.user,
-    address: {
-      ...state.user.address,
-      city,
+setCity: (city) =>
+  set((state) => ({
+    ...state,
+    user: {
+      ...state.user,
+      address: {
+        ...state.user.address,
+        city,
+      },
     },
-  },
-}))
+  }))
 ```
 
 Three levels of spread for one field. And it gets worse. Every new action that touches nested state repeats the same pattern. You end up with a store file that's 80% spread operators.
@@ -77,9 +78,15 @@ Here's a full Zustand store using optics. The pattern is simple: define your len
 ```ts
 import { create } from 'zustand'
 import {
-  prop, path, composeLens, view as lensView,
-  set as lensSet, over as lensOver,
-  each, filtered, modify,
+  prop,
+  path,
+  composeLens,
+  view as lensView,
+  set as lensSet,
+  over as lensOver,
+  each,
+  filtered,
+  modify,
 } from '@stopcock/fp'
 
 // Lenses. define once, use everywhere
@@ -99,10 +106,10 @@ const useStore = create<State & Actions>((set, get) => ({
   ui: { sidebarOpen: false, theme: 'light' },
 
   // Simple field updates. one line each
-  setCity: (c) => set(s => lensSet(s, city, c)),
-  toggleSidebar: () => set(s => lensOver(s, sidebar, open => !open)),
-  setTheme: (t) => set(s => lensSet(s, theme, t)),
-  applyDiscount: (d) => set(s => lensSet(s, discount, d)),
+  setCity: (c) => set((s) => lensSet(s, city, c)),
+  toggleSidebar: () => set((s) => lensOver(s, sidebar, (open) => !open)),
+  setTheme: (t) => set((s) => lensSet(s, theme, t)),
+  applyDiscount: (d) => set((s) => lensSet(s, discount, d)),
 }))
 ```
 
@@ -118,24 +125,28 @@ Cart state is where spread hell really kicks in. You're updating items inside an
 import { each, filtered, modify } from '@stopcock/fp'
 
 // Bump quantity for a specific item
-const increaseQuantity = (id: string) => set(s => {
-  const items = lensView(s, cartItems)
-  return lensSet(s, cartItems,
-    items.map(item =>
-      item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+const increaseQuantity = (id: string) =>
+  set((s) => {
+    const items = lensView(s, cartItems)
+    return lensSet(
+      s,
+      cartItems,
+      items.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item)),
     )
-  )
-})
+  })
 
 // Mark all out-of-stock items
-const outOfStock = filtered<CartItem>(item => item.stock === 0)
+const outOfStock = filtered<CartItem>((item) => item.stock === 0)
 
-const markOutOfStock = () => set(s => {
-  const items = lensView(s, cartItems)
-  return lensSet(s, cartItems,
-    modify(items, outOfStock, item => ({ ...item, disabled: true }))
-  )
-})
+const markOutOfStock = () =>
+  set((s) => {
+    const items = lensView(s, cartItems)
+    return lensSet(
+      s,
+      cartItems,
+      modify(items, outOfStock, (item) => ({ ...item, disabled: true })),
+    )
+  })
 ```
 
 The `filtered` traversal finds all matching items and applies the update. You're not writing `.map` with a ternary every time.
@@ -156,22 +167,19 @@ type FormState = {
 }
 
 const shippingAddress = path<FormState, 'steps', 'shipping', 'address'>(
-  'steps', 'shipping', 'address'
+  'steps',
+  'shipping',
+  'address',
 )
-const paymentMethod = path<FormState, 'steps', 'payment', 'method'>(
-  'steps', 'payment', 'method'
-)
+const paymentMethod = path<FormState, 'steps', 'payment', 'method'>('steps', 'payment', 'method')
 const currentStep = prop<FormState, 'currentStep'>('currentStep')
 
 // Each action reads clearly
-const setShippingAddress = (addr: Address) =>
-  set(s => lensSet(s, shippingAddress, addr))
+const setShippingAddress = (addr: Address) => set((s) => lensSet(s, shippingAddress, addr))
 
-const nextStep = () =>
-  set(s => lensOver(s, currentStep, step => step + 1))
+const nextStep = () => set((s) => lensOver(s, currentStep, (step) => step + 1))
 
-const selectPaypal = () =>
-  set(s => lensSet(s, paymentMethod, 'paypal'))
+const selectPaypal = () => set((s) => lensSet(s, paymentMethod, 'paypal'))
 ```
 
 ### Dashboard filters
@@ -202,24 +210,23 @@ const page = path<DashboardState, 'table', 'page'>('table', 'page')
 const selected = path<DashboardState, 'table', 'selected'>('table', 'selected')
 
 // Toggle sort direction
-const toggleSort = (column: string) => set(s => {
-  const current = lensView(s, sortBy)
-  if (current === column) {
-    return lensOver(s, sortOrder, o => o === 'asc' ? 'desc' : 'asc')
-  }
-  return lensSet(lensSet(s, sortBy, column), sortOrder, 'asc')
-})
+const toggleSort = (column: string) =>
+  set((s) => {
+    const current = lensView(s, sortBy)
+    if (current === column) {
+      return lensOver(s, sortOrder, (o) => (o === 'asc' ? 'desc' : 'asc'))
+    }
+    return lensSet(lensSet(s, sortBy, column), sortOrder, 'asc')
+  })
 
 // Clear all filters at once
-const clearFilters = () => set(s =>
-  lensSet(
-    lensSet(
-      lensSet(s, search, ''),
-      statusFilter, [],
-    ),
-    dateRange, { start: defaultStart, end: defaultEnd },
+const clearFilters = () =>
+  set((s) =>
+    lensSet(lensSet(lensSet(s, search, ''), statusFilter, []), dateRange, {
+      start: defaultStart,
+      end: defaultEnd,
+    }),
   )
-)
 ```
 
 Chaining `lensSet` calls reads top to bottom. Each one returns a new state that feeds into the next. No intermediate variables, no spreading.
@@ -229,6 +236,7 @@ Chaining `lensSet` calls reads top to bottom. Each one returns a new state that 
 If your state is flat, you don't need lenses. Zustand already handles `{ count: 0, increment: () => set(s => ({ count: s.count + 1 })) }` perfectly. Don't add abstraction where there's no problem.
 
 Lenses pay off when:
+
 - State is 3+ levels deep
 - Multiple actions touch the same nested paths
 - You're tired of reading and reviewing spread sandwiches

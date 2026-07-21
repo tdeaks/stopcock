@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { rgb } from '@stopcock/color'
 import {
   circle,
@@ -16,17 +16,24 @@ import {
   use,
   viewBox,
 } from '../index'
-import { alignToPrincipalAxis, bakeTransform, fitBezier, hitTest, lerpTransform, symmetry, toQuad } from '../la'
+import {
+  alignToPrincipalAxis,
+  bakeTransform,
+  fitBezier,
+  hitTest,
+  lerpTransform,
+  symmetry,
+  toQuad,
+} from '../la'
 
 describe('@stopcock/svg render', () => {
   it('renders shapes, fills, strokes, transforms, and a root viewBox', () => {
-    const doc = viewBox(0, 0, 100, 100)(
-      stroke(rgb(0, 0, 0), 2)(
-        fill(rgb(1, 0, 0))(
-          translate(10, 20)(circle(5))
-        )
-      )
-    )
+    const doc = viewBox(
+      0,
+      0,
+      100,
+      100,
+    )(stroke(rgb(0, 0, 0), 2)(fill(rgb(1, 0, 0))(translate(10, 20)(circle(5)))))
     const svg = render(doc)
     expect(svg).toContain('<svg')
     expect(svg).toContain('viewBox="0 0 100 100"')
@@ -55,7 +62,10 @@ describe('@stopcock/svg render', () => {
   })
 
   it('hoists gradients and symbols by reference equality', () => {
-    const grad = linear([{ offset: 0, color: rgb(1, 0, 0) }, { offset: 1, color: rgb(0, 0, 1) }])
+    const grad = linear([
+      { offset: 0, color: rgb(1, 0, 0) },
+      { offset: 1, color: rgb(0, 0, 1) },
+    ])
     const target = fill(grad)(rect(10, 10))
     const svg = render(viewBox(0, 0, 20, 20)(group([target, use(target), fill(grad)(circle(4))])))
     expect(svg.match(/<linearGradient/g)?.length).toBe(1)
@@ -65,12 +75,7 @@ describe('@stopcock/svg render', () => {
   })
 
   it('renders filter definitions', () => {
-    const matrix = [
-      1, 0, 0, 0, 0,
-      0, 1, 0, 0, 0,
-      0, 0, 1, 0, 0,
-      0, 0, 0, 1, 0,
-    ] as const
+    const matrix = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0] as const
     const f = filter.compose([filter.blur(2), filter.colorMatrix(matrix)])
     const svg = render(filter(f)(rect(10, 10)))
     expect(svg).toContain('<filter id="_f0">')
@@ -87,11 +92,18 @@ describe('@stopcock/svg render', () => {
 
 describe('@stopcock/svg/la', () => {
   it('lerps transforms', () => {
-    expect(lerpTransform([1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 10, 20], 0.5)).toEqual([1, 0, -0, 1, 5, 10])
+    expect(lerpTransform([1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 10, 20], 0.5)).toEqual([
+      1, 0, -0, 1, 5, 10,
+    ])
   })
 
   it('toQuad maps a unit shape into an affine quad', () => {
-    const warped = toQuad([[10, 20], [20, 20], [20, 30], [10, 30]])(rect(1, 1))
+    const warped = toQuad([
+      [10, 20],
+      [20, 20],
+      [20, 30],
+      [10, 30],
+    ])(rect(1, 1))
     expect(warped.transform).toEqual([10, 0, 0, 10, 10, 20])
   })
 
@@ -101,11 +113,22 @@ describe('@stopcock/svg/la', () => {
   })
 
   it('fitBezier returns a cubic path', () => {
-    expect(fitBezier([[0, 0], [5, 10], [10, 0]])[1]?.c).toBe('C')
+    expect(
+      fitBezier([
+        [0, 0],
+        [5, 10],
+        [10, 0],
+      ])[1]?.c,
+    ).toBe('C')
   })
 
   it('aligns to a principal axis', () => {
-    expect(alignToPrincipalAxis(rect(1, 1), [[0, 0], [10, 0]]).transform).toBeDefined()
+    expect(
+      alignToPrincipalAxis(rect(1, 1), [
+        [0, 0],
+        [10, 0],
+      ]).transform,
+    ).toBeDefined()
   })
 
   it('bakes path transforms into path coordinates', () => {

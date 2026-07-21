@@ -62,8 +62,8 @@ import { pipe, A, G } from '@stopcock/fp'
 
 // narrow unknown API data
 const data: unknown[] = [1, 'hello', null, { a: 1 }]
-data.filter(G.isNumber)       // [1], typed as number[]
-data.filter(G.isNonNullish)   // [1, 'hello', { a: 1 }]
+data.filter(G.isNumber) // [1], typed as number[]
+data.filter(G.isNonNullish) // [1, 'hello', { a: 1 }]
 
 // validate form field
 if (G.isString(input) && !G.isEmpty(input)) {
@@ -73,14 +73,14 @@ if (G.isString(input) && !G.isEmpty(input)) {
 // filter mixed arrays in pipe
 pipe(
   rawValues,
-  A.filter(G.isNumber),   // unknown[] → number[]
-  A.filter(n => n > 0),
+  A.filter(G.isNumber), // unknown[] → number[]
+  A.filter((n) => n > 0),
 )
 
 // deep equality check
-G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] })  // true
+G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] }) // true
 
 // check class instance
-G.is(Date, new Date())  // true
-G.is(Date, '2024-01-01')  // false
+G.is(Date, new Date()) // true
+G.is(Date, '2024-01-01') // false
 ```

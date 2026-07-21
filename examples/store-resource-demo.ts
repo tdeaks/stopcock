@@ -37,8 +37,8 @@ const store = create({
 // Users list. Refetches when search or role filter changes.
 const users = resource({
   deps: (get) => ({
-    q: get(store, s => s.search),
-    role: get(store, s => s.roleFilter),
+    q: get(store, (s) => s.search),
+    role: get(store, (s) => s.roleFilter),
   }),
   fetch: ({ q, role }, signal) => {
     const query: Record<string, string> = {}
@@ -52,7 +52,7 @@ const users = resource({
 // Returns null (deps returns null) when no user is selected.
 const selectedUser = resource({
   deps: (get) => {
-    const id = get(store, s => s.selectedUserId)
+    const id = get(store, (s) => s.selectedUserId)
     if (id === null) return null
     return { id }
   },
@@ -67,15 +67,20 @@ const userStats = resource({
     if (!data) return null
     return { count: data.length }
   },
-  fetch: ({ count }) => Promise.resolve({
-    total: count,
-    admins: 0, // in a real app this would be a separate API call
-  }),
+  fetch: ({ count }) =>
+    Promise.resolve({
+      total: count,
+      admins: 0, // in a real app this would be a separate API call
+    }),
 })
 
 // --- Computed (derived sync state) ---
 
-const hasSelection = computed(store, s => s.selectedUserId, id => id !== null)
+const hasSelection = computed(
+  store,
+  (s) => s.selectedUserId,
+  (id) => id !== null,
+)
 
 // --- Mutations ---
 
@@ -93,12 +98,11 @@ const createUser = mutation({
 })
 
 const deleteUser = mutation({
-  fn: (id: number, signal) =>
-    api.delete<void>(`/users/:id`, { params: { id }, signal }),
+  fn: (id: number, signal) => api.delete<void>(`/users/:id`, { params: { id }, signal }),
   invalidates: [users],
   optimistic: (id) => {
     // immediately remove from list while server processes
-    users.update(prev => (prev ?? []).filter(u => u.id !== id))
+    users.update((prev) => (prev ?? []).filter((u) => u.id !== id))
   },
 })
 
@@ -132,22 +136,22 @@ async function demo() {
   // --- User interactions ---
 
   // typing in search box → resource automatically refetches
-  store.set(s => s.search, 'tom')
+  store.set((s) => s.search, 'tom')
 
   // changing filter → resource automatically refetches
-  store.set(s => s.roleFilter, 'admin')
+  store.set((s) => s.roleFilter, 'admin')
 
   // both at once → resource coalesces into one fetch
   store.batch(() => {
-    store.set(s => s.search, '')
-    store.set(s => s.roleFilter, 'all')
+    store.set((s) => s.search, '')
+    store.set((s) => s.roleFilter, 'all')
   })
 
   // selecting a user → selectedUser resource fetches
-  store.set(s => s.selectedUserId, 42)
+  store.set((s) => s.selectedUserId, 42)
 
   // deselecting → selectedUser deps returns null, no fetch
-  store.set(s => s.selectedUserId, null)
+  store.set((s) => s.selectedUserId, null)
 
   // creating a user → POST, then users list refetches
   try {
@@ -183,4 +187,4 @@ async function demo() {
   hasSelection.destroy()
 }
 
-demo()
+void demo()

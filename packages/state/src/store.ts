@@ -24,9 +24,10 @@ function patchFromPartial<S>(prev: S, partial: Partial<S>): Patch {
     const oldVal = (prev as any)[key]
     const newVal = (partial as any)[key]
     if (oldVal !== newVal) {
-      ops.push(key in (prev as any)
-        ? { op: 'replace', path: [key], oldValue: oldVal, newValue: newVal }
-        : { op: 'add', path: [key], value: newVal },
+      ops.push(
+        key in (prev as any)
+          ? { op: 'replace', path: [key], oldValue: oldVal, newValue: newVal }
+          : { op: 'add', path: [key], value: newVal },
       )
     }
   }
@@ -58,19 +59,28 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
     for (let i = 0; i < path.length; i++) {
       const seg = path[i]
       let child = node.children.get(seg)
-      if (!child) { child = { subs: new Set(), children: new Map() }; node.children.set(seg, child) }
+      if (!child) {
+        child = { subs: new Set(), children: new Map() }
+        node.children.set(seg, child)
+      }
       node = child
     }
     return node
   }
 
   function indexSub(sub: Sub) {
-    if (sub.path === null) { globalSubs.add(sub.idx); return }
+    if (sub.path === null) {
+      globalSubs.add(sub.idx)
+      return
+    }
     trieGet(sub.path).subs.add(sub.idx)
   }
 
   function deindexSub(sub: Sub) {
-    if (sub.path === null) { globalSubs.delete(sub.idx); return }
+    if (sub.path === null) {
+      globalSubs.delete(sub.idx)
+      return
+    }
     const path = sub.path
     const nodes: TrieNode[] = [rootNode]
     let node = rootNode
@@ -85,7 +95,9 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
       const n = nodes[i]
       if (n.subs.size === 0 && n.children.size === 0) {
         nodes[i - 1].children.delete(path[i - 1])
-      } else { break }
+      } else {
+        break
+      }
     }
   }
 
@@ -124,7 +136,10 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
 
   function fireSub(sub: Sub, prev: S, next: S) {
     try {
-      if (sub.path === null) { sub.listener(next, prev); return }
+      if (sub.path === null) {
+        sub.listener(next, prev)
+        return
+      }
       const pv = sub.get!(prev)
       const nv = sub.get!(next)
       if (pv !== nv) sub.listener(nv, pv)
@@ -135,16 +150,27 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
   }
 
   function guardedNotify(fn: () => void) {
-    if (notifying) { pendingNotifications.push(fn); return }
+    if (notifying) {
+      pendingNotifications.push(fn)
+      return
+    }
     firstError = undefined
     notifying = true
-    try { fn() } finally { notifying = false }
+    try {
+      fn()
+    } finally {
+      notifying = false
+    }
     while (pendingNotifications.length > 0) {
       const queue = pendingNotifications
       pendingNotifications = []
       for (let i = 0; i < queue.length; i++) {
         notifying = true
-        try { queue[i]() } finally { notifying = false }
+        try {
+          queue[i]()
+        } finally {
+          notifying = false
+        }
       }
     }
     if (firstError !== undefined && !onError) {
@@ -236,11 +262,19 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         const final = runMiddleware(p, prev)
         if (!final || final.ops.length === 0) return
         state = final === p ? next : applyUnsafe(prev, final)
-        const s = state; guardedNotify(() => { notifyPath(prev, s, c.path); onCommit?.(final, prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notifyPath(prev, s, c.path)
+          onCommit?.(final, prev, s)
+        })
       } else {
         state = next
         if (subLen === 0 && !onCommit) return
-        const s = state; guardedNotify(() => { notifyPath(prev, s, c.path); if (onCommit) onCommit(replacePatch(c.path, old, value), prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notifyPath(prev, s, c.path)
+          if (onCommit) onCommit(replacePatch(c.path, old, value), prev, s)
+        })
       }
     },
 
@@ -262,11 +296,19 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         const final = runMiddleware(p, prev)
         if (!final || final.ops.length === 0) return
         state = final === p ? next : applyUnsafe(prev, final)
-        const s = state; guardedNotify(() => { notifyPath(prev, s, c.path); onCommit?.(final, prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notifyPath(prev, s, c.path)
+          onCommit?.(final, prev, s)
+        })
       } else {
         state = next
         if (subLen === 0 && !onCommit) return
-        const s = state; guardedNotify(() => { notifyPath(prev, s, c.path); if (onCommit) onCommit(replacePatch(c.path, old, val), prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notifyPath(prev, s, c.path)
+          if (onCommit) onCommit(replacePatch(c.path, old, val), prev, s)
+        })
       }
     },
 
@@ -287,7 +329,11 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         if (!final || final.ops.length === 0) return
         const prev = state
         state = applyUnsafe(prev, final)
-        const s = state; guardedNotify(() => { notify(prev, s, final); onCommit?.(final, prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notify(prev, s, final)
+          onCommit?.(final, prev, s)
+        })
       } else {
         const { draft, finish } = recordMutations(state)
         accessorOrFn(draft)
@@ -302,7 +348,11 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         if (!final || final.ops.length === 0) return
         const prev = state
         state = applyUnsafe(prev, final)
-        const s = state; guardedNotify(() => { notify(prev, s, final); onCommit?.(final, prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notify(prev, s, final)
+          onCommit?.(final, prev, s)
+        })
       }
     },
 
@@ -318,7 +368,11 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         const prev = state
         state = next
         if (subLen === 0 && !onCommit) return
-        const s = state; guardedNotify(() => { notifyAll(prev, s); if (onCommit) onCommit(diff(prev, s), prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notifyAll(prev, s)
+          if (onCommit) onCommit(diff(prev, s), prev, s)
+        })
         return
       }
       const p = diff(state, next)
@@ -327,7 +381,11 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
       if (!final || final.ops.length === 0) return
       const prev = state
       state = applyUnsafe(prev, final)
-      const s = state; guardedNotify(() => { notify(prev, s, final); onCommit?.(final, prev, s) })
+      const s = state
+      guardedNotify(() => {
+        notify(prev, s, final)
+        onCommit?.(final, prev, s)
+      })
     },
 
     merge(partial: Partial<S>) {
@@ -344,25 +402,40 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         const final = runMiddleware(p, prev)
         if (!final || final.ops.length === 0) return
         state = final === p ? next : applyUnsafe(prev, final)
-        const s = state; guardedNotify(() => { notify(prev, s, final); onCommit?.(final, prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notify(prev, s, final)
+          onCommit?.(final, prev, s)
+        })
       } else {
         state = next
         if (subLen === 0 && !onCommit) return
         const p = patchFromPartial(prev, partial)
         if (p.ops.length === 0) return
-        const s = state; guardedNotify(() => { notify(prev, s, p); if (onCommit) onCommit(p, prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notify(prev, s, p)
+          if (onCommit) onCommit(p, prev, s)
+        })
       }
     },
 
     batch(fn: () => void) {
       const isOutermost = batchDepth === 0
-      if (isOutermost) { batchPrev = state; if (hasMw) batchPatches = [] }
+      if (isOutermost) {
+        batchPrev = state
+        if (hasMw) batchPatches = []
+      }
       batchDepth++
       try {
         fn()
       } catch (e) {
         batchDepth--
-        if (isOutermost) { state = batchPrev!; batchPrev = null; batchPatches = null }
+        if (isOutermost) {
+          state = batchPrev!
+          batchPrev = null
+          batchPatches = null
+        }
         throw e
       }
       batchDepth--
@@ -374,19 +447,36 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
       if (!hasMw) {
         batchPatches = null
         if (subLen === 0 && !onCommit) return
-        const s = state; guardedNotify(() => { notifyAll(prev, s); if (onCommit) onCommit(diff(prev, s), prev, s) })
+        const s = state
+        guardedNotify(() => {
+          notifyAll(prev, s)
+          if (onCommit) onCommit(diff(prev, s), prev, s)
+        })
         return
       }
 
       const patches = batchPatches!
       batchPatches = null
-      if (patches.length === 0) { state = prev; return }
+      if (patches.length === 0) {
+        state = prev
+        return
+      }
       const composed = patches.length === 1 ? patches[0] : patches.reduce((a, b) => compose(a, b))
-      if (composed.ops.length === 0) { state = prev; return }
+      if (composed.ops.length === 0) {
+        state = prev
+        return
+      }
       const final = runMiddleware(composed, prev)
-      if (!final || final.ops.length === 0) { state = prev; return }
+      if (!final || final.ops.length === 0) {
+        state = prev
+        return
+      }
       if (final !== composed) state = applyUnsafe(prev, final)
-      const s = state; guardedNotify(() => { notify(prev, s, final); onCommit?.(final, prev, s) })
+      const s = state
+      guardedNotify(() => {
+        notify(prev, s, final)
+        onCommit?.(final, prev, s)
+      })
     },
 
     at<A = unknown>(path: readonly (string | number)[]): Handle<A> {
@@ -414,10 +504,17 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
             const final = runMiddleware(p, prev)
             if (!final || final.ops.length === 0) return
             state = final === p ? next : applyUnsafe(prev, final)
-            const s = state; guardedNotify(() => { notifyPath(prev, s, path); onCommit?.(final, prev, s) })
+            const s = state
+            guardedNotify(() => {
+              notifyPath(prev, s, path)
+              onCommit?.(final, prev, s)
+            })
           } else {
             state = next
-            const s = state; guardedNotify(() => { notifyPath(prev, s, path) })
+            const s = state
+            guardedNotify(() => {
+              notifyPath(prev, s, path)
+            })
           }
         },
         over: (fn: (a: A) => A) => {
@@ -436,10 +533,17 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
             const final = runMiddleware(p, prev)
             if (!final || final.ops.length === 0) return
             state = final === p ? next : applyUnsafe(prev, final)
-            const s = state; guardedNotify(() => { notifyPath(prev, s, path); onCommit?.(final, prev, s) })
+            const s = state
+            guardedNotify(() => {
+              notifyPath(prev, s, path)
+              onCommit?.(final, prev, s)
+            })
           } else {
             state = next
-            const s = state; guardedNotify(() => { notifyPath(prev, s, path) })
+            const s = state
+            guardedNotify(() => {
+              notifyPath(prev, s, path)
+            })
           }
         },
         subscribe: (listener: Listener<A>) => {
@@ -458,6 +562,12 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
       return addSub({ path: null, lens: null, get: null, listener: accessorOrListener, idx: 0 })
     },
 
-    destroy() { subs = []; subLen = 0; rootNode.subs.clear(); rootNode.children.clear(); globalSubs.clear() },
+    destroy() {
+      subs = []
+      subLen = 0
+      rootNode.subs.clear()
+      rootNode.children.clear()
+      globalSubs.clear()
+    },
   }
 }

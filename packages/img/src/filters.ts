@@ -5,8 +5,12 @@ import { dual } from './dual'
 import { applyColorMatrix3x3 } from '@stopcock/la/primitives'
 
 function validateImage(img: Image): void {
-  if (img.width <= 0 || img.height <= 0) throw new Error('Invalid image: width and height must be positive')
-  if (img.data.length !== img.width * img.height * 4) throw new Error(`Invalid image: data length ${img.data.length} doesn't match ${img.width}x${img.height}x4`)
+  if (img.width <= 0 || img.height <= 0)
+    throw new Error('Invalid image: width and height must be positive')
+  if (img.data.length !== img.width * img.height * 4)
+    throw new Error(
+      `Invalid image: data length ${img.data.length} doesn't match ${img.width}x${img.height}x4`,
+    )
 }
 
 const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)))
@@ -72,9 +76,7 @@ export const threshold: {
 })
 
 const SEPIA_MATRIX = new Float64Array([
-  0.393, 0.769, 0.189,
-  0.349, 0.686, 0.168,
-  0.272, 0.534, 0.131,
+  0.393, 0.769, 0.189, 0.349, 0.686, 0.168, 0.272, 0.534, 0.131,
 ])
 
 export const sepia = (img: Image): Image => {

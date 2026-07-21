@@ -37,13 +37,18 @@ export const paletteContrastMatrix = (palette: Color[]): ContrastCell[][] => {
  * Uses Euclidean distance in linear-sRGB for cheapness — when you need a
  * proper perceptual delta, run deltaE on each simulated pair yourself.
  */
-export const minDistinguishableDistance = (palette: Color[], type: CVDType, severity = 1): number => {
+export const minDistinguishableDistance = (
+  palette: Color[],
+  type: CVDType,
+  severity = 1,
+): number => {
   if (palette.length < 2) return Infinity
   const simulated = palette.map((c) => simulate(c, type, severity))
   let min = Infinity
   for (let i = 0; i < simulated.length; i++) {
     for (let j = i + 1; j < simulated.length; j++) {
-      const a = simulated[i], b = simulated[j]
+      const a = simulated[i],
+        b = simulated[j]
       // Channels are in the source space — for a quick proxy, use channel-wise distance.
       // (We don't re-import deltaE here to avoid a heavy dependency for a cheap signal.)
       const d = Math.hypot(

@@ -11,12 +11,18 @@ import { create } from '@stopcock/state'
 
 const store = create({ user: { name: 'Tom', score: 0 } })
 
-store.subscribe(s => s.user.score, (next, prev) => {
-  console.log(`score: ${prev} -> ${next}`)
-})
+store.subscribe(
+  (s) => s.user.score,
+  (next, prev) => {
+    console.log(`score: ${prev} -> ${next}`)
+  },
+)
 
-store.set(s => s.user.score, 42)
-store.over(s => s.user.score, n => n + 1)
+store.set((s) => s.user.score, 42)
+store.over(
+  (s) => s.user.score,
+  (n) => n + 1,
+)
 ```
 
 ## What's in the box

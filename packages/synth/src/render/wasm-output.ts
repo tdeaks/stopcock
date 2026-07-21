@@ -68,8 +68,15 @@ export function copyHeapBlockInto(
   }
 }
 
-function addChannelsAt(target: [Float32Array, Float32Array], source: Samples, offset: number): void {
-  const writableFrames = Math.min(Math.max(0, target[0].length - offset), Math.max(0, target[1].length - offset))
+function addChannelsAt(
+  target: [Float32Array, Float32Array],
+  source: Samples,
+  offset: number,
+): void {
+  const writableFrames = Math.min(
+    Math.max(0, target[0].length - offset),
+    Math.max(0, target[1].length - offset),
+  )
   if (Array.isArray(source)) {
     const frames = Math.min(source[0].length, source[1].length, writableFrames)
     for (let i = 0; i < frames; i++) {

@@ -18,13 +18,28 @@ import type {
 } from '../types'
 import { common } from './shared'
 
-function oscillatorBase(wave: Waveform, freq: number, opts: { detune?: number, phase?: number } = {}): Node {
-  return { kind: 'osc', wave, freq, detune: opts.detune ?? DEFAULT_DETUNE, phase: opts.phase ?? DEFAULT_PHASE, ...common(1) }
+function oscillatorBase(
+  wave: Waveform,
+  freq: number,
+  opts: { detune?: number; phase?: number } = {},
+): Node {
+  return {
+    kind: 'osc',
+    wave,
+    freq,
+    detune: opts.detune ?? DEFAULT_DETUNE,
+    phase: opts.phase ?? DEFAULT_PHASE,
+    ...common(1),
+  }
 }
 
 export const oscillator = Object.assign(oscillatorBase, {
   polyblep: oscillatorBase,
-  wavetable: (bank: WavetableBank, freq: number, opts: { detune?: number, phase?: number, position?: number } = {}): Node => ({
+  wavetable: (
+    bank: WavetableBank,
+    freq: number,
+    opts: { detune?: number; phase?: number; position?: number } = {},
+  ): Node => ({
     kind: 'wavetable',
     bank,
     freq,
@@ -35,12 +50,21 @@ export const oscillator = Object.assign(oscillatorBase, {
   }),
 })
 
-type OperatorOpts = Partial<Pick<FmOperator, 'ratio' | 'detune' | 'level' | 'feedback' | 'output' | 'phase'>>
+type OperatorOpts = Partial<
+  Pick<FmOperator, 'ratio' | 'detune' | 'level' | 'feedback' | 'output' | 'phase'>
+>
 
 export const operator = {
   sine: (opts: OperatorOpts = {}): FmOperatorInput => ({ kind: 'sine', ...opts }),
-  polyblep: (wave: Waveform, opts: OperatorOpts = {}): FmOperatorInput => ({ kind: 'polyblep', wave, ...opts }),
-  wavetable: (bank: WavetableBank, opts: OperatorOpts & { position?: number } = {}): FmOperatorInput => ({
+  polyblep: (wave: Waveform, opts: OperatorOpts = {}): FmOperatorInput => ({
+    kind: 'polyblep',
+    wave,
+    ...opts,
+  }),
+  wavetable: (
+    bank: WavetableBank,
+    opts: OperatorOpts & { position?: number } = {},
+  ): FmOperatorInput => ({
     kind: 'wavetable',
     bank,
     ...opts,
@@ -69,8 +93,14 @@ export function constant(value: number): Node {
   return { kind: 'constant', value, ...common(1) }
 }
 
-export function buffer(samples: Float32Array, opts: { loop?: boolean, rate?: number } = {}): Node {
-  return { kind: 'buffer', samples, loop: opts.loop ?? DEFAULT_BUFFER_LOOP, rate: opts.rate ?? DEFAULT_BUFFER_RATE, ...common(1) }
+export function buffer(samples: Float32Array, opts: { loop?: boolean; rate?: number } = {}): Node {
+  return {
+    kind: 'buffer',
+    samples,
+    loop: opts.loop ?? DEFAULT_BUFFER_LOOP,
+    rate: opts.rate ?? DEFAULT_BUFFER_RATE,
+    ...common(1),
+  }
 }
 
 function normalizeOperators(input: ReadonlyArray<FmOperatorInput>): ReadonlyArray<FmOperator> {
@@ -80,7 +110,8 @@ function normalizeOperators(input: ReadonlyArray<FmOperatorInput>): ReadonlyArra
   const operators: FmOperator[] = []
   for (let i = 0; i < DEFAULT_FM_OPERATOR_COUNT; i++) {
     const source = input[i] ?? { kind: 'sine' as const }
-    const normalizedSource = source.kind === 'wavetable' ? { ...source, position: source.position ?? 0 } : source
+    const normalizedSource =
+      source.kind === 'wavetable' ? { ...source, position: source.position ?? 0 } : source
     operators.push({
       ...normalizedSource,
       ratio: source.ratio ?? 1,
@@ -101,7 +132,9 @@ function normalizeMatrix(input: FmPatch['matrix']): ReadonlyArray<ReadonlyArray<
   const matrix: number[][] = []
   for (let row = 0; row < DEFAULT_FM_OPERATOR_COUNT; row++) {
     if (input?.[row] && input[row].length > DEFAULT_FM_OPERATOR_COUNT) {
-      throw new SynthCompileError(`fm() matrix rows support at most ${DEFAULT_FM_OPERATOR_COUNT} columns`)
+      throw new SynthCompileError(
+        `fm() matrix rows support at most ${DEFAULT_FM_OPERATOR_COUNT} columns`,
+      )
     }
     matrix[row] = []
     for (let col = 0; col < DEFAULT_FM_OPERATOR_COUNT; col++) {

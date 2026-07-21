@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import { of, resolve, reject, run, runWithCancel } from '../task'
 import { retry, timeout, fallback } from '../resilience'
@@ -17,7 +17,7 @@ describe('retry', () => {
         attempt++
         if (attempt < 3) throw 'not yet'
         return 'done'
-      })
+      }),
     )
     expect(await run(task)).toBe('done')
     expect(attempt).toBe(3)
@@ -26,7 +26,10 @@ describe('retry', () => {
   it('exhausts retries and fails', async () => {
     let attempts = 0
     const task = retry({ attempts: 3, delay: 10 })(
-      of(async () => { attempts++; throw 'always fails' })
+      of(async () => {
+        attempts++
+        throw 'always fails'
+      }),
     )
     await expect(run(task)).rejects.toBe('always fails')
     expect(attempts).toBe(3)
@@ -39,7 +42,10 @@ describe('retry', () => {
       delay: 10,
       retryIf: (e) => e === 'retryable',
     })(
-      of(async () => { attempts++; throw attempts === 1 ? 'retryable' : 'fatal' })
+      of(async () => {
+        attempts++
+        throw attempts === 1 ? 'retryable' : 'fatal'
+      }),
     )
     await expect(run(task)).rejects.toBe('fatal')
     expect(attempts).toBe(2)
@@ -48,7 +54,10 @@ describe('retry', () => {
   it('cancellation stops retries', async () => {
     let attempts = 0
     const task = retry({ attempts: 10, delay: 50 })(
-      of(async () => { attempts++; throw 'fail' })
+      of(async () => {
+        attempts++
+        throw 'fail'
+      }),
     )
     const [promise, cancel] = runWithCancel(task)
     setTimeout(cancel, 80)
@@ -64,7 +73,10 @@ describe('timeout', () => {
   })
 
   it('rejects on timeout', async () => {
-    const slow = of(async () => { await new Promise(r => setTimeout(r, 500)); return 'done' })
+    const slow = of(async () => {
+      await new Promise((r) => setTimeout(r, 500))
+      return 'done'
+    })
     const task = pipe(slow, timeout(30))
     await expect(run(task)).rejects.toBeInstanceOf(TimeoutError)
   })

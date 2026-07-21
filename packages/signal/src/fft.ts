@@ -48,7 +48,9 @@ const transform = (buf: Complex, fftPlan: FftPlan, inverse: boolean): Complex =>
       for (let j = 0; j < half; j++) {
         const twiddleIndex = j * step
         const wr = fftPlan.twiddles[2 * twiddleIndex]
-        const wi = inverse ? -fftPlan.twiddles[2 * twiddleIndex + 1] : fftPlan.twiddles[2 * twiddleIndex + 1]
+        const wi = inverse
+          ? -fftPlan.twiddles[2 * twiddleIndex + 1]
+          : fftPlan.twiddles[2 * twiddleIndex + 1]
         const even = 2 * (start + j)
         const odd = 2 * (start + j + half)
         const or = buf[odd]

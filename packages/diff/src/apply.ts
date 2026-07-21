@@ -61,7 +61,8 @@ function applyOp(target: unknown, op: Operation): Result<unknown, PatchError> {
       const last = op.path[op.path.length - 1]
       if (Array.isArray(parent)) {
         const idx = last as number
-        if (idx < 0 || idx > parent.length) return err(patchError('Index out of bounds', op, op.path))
+        if (idx < 0 || idx > parent.length)
+          return err(patchError('Index out of bounds', op, op.path))
       }
       return ok(setAtPath(target, op.path, op.value, true))
     }
@@ -78,8 +79,7 @@ function applyOp(target: unknown, op: Operation): Result<unknown, PatchError> {
     }
     case 'move': {
       const value = getAtPath(target, op.from)
-      if (value === undefined)
-        return err(patchError('Source path not found for move', op, op.from))
+      if (value === undefined) return err(patchError('Source path not found for move', op, op.from))
       let result = removeAtPath(target, op.from)
       result = setAtPath(result, op.path, value, true)
       return ok(result)
@@ -100,7 +100,13 @@ function applyOp(target: unknown, op: Operation): Result<unknown, PatchError> {
       const actual = getAtPath(target, op.path)
       return isDeepEqual(actual, op.value)
         ? ok(target)
-        : err(patchError(`Test failed: expected ${JSON.stringify(op.value)}, got ${JSON.stringify(actual)}`, op, op.path))
+        : err(
+            patchError(
+              `Test failed: expected ${JSON.stringify(op.value)}, got ${JSON.stringify(actual)}`,
+              op,
+              op.path,
+            ),
+          )
     }
   }
 }

@@ -80,12 +80,18 @@ export function triangular(n: number): Real {
 export function create(kind: Window, n: number): Real {
   assertWindow(kind)
   switch (kind) {
-    case 'hann': return hann(n)
-    case 'hamming': return hamming(n)
-    case 'blackman': return blackman(n)
-    case 'blackman-harris': return blackmanHarris(n)
-    case 'triangular': return triangular(n)
-    case 'rect': return rect(n)
+    case 'hann':
+      return hann(n)
+    case 'hamming':
+      return hamming(n)
+    case 'blackman':
+      return blackman(n)
+    case 'blackman-harris':
+      return blackmanHarris(n)
+    case 'triangular':
+      return triangular(n)
+    case 'rect':
+      return rect(n)
   }
 }
 

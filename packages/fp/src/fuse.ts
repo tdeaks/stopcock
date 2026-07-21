@@ -1,21 +1,74 @@
 import { aotCache } from './aot-compiled'
 import {
-  OP_MAP, OP_FILTER, OP_TAKE, OP_DROP, OP_TAKE_WHILE, OP_DROP_WHILE, OP_FLAT_MAP,
-  OP_REJECT, OP_FILTER_MAP, OP_MAP_WHILE, OP_TAKE_UNTIL,
-  OP_REDUCE, OP_FOR_EACH, OP_EVERY, OP_SOME, OP_FIND, OP_FIND_INDEX,
-  OP_NONE, OP_COUNT, OP_FIND_MAP, OP_SORT_BY, OP_SORT,
-  OP_HEAD, OP_LAST, OP_LENGTH, OP_IS_EMPTY, OP_TAIL, OP_INIT,
-  OP_REVERSE, OP_SORT_INLINE, OP_UNIQ_INLINE, OP_JOIN, OP_FLATTEN,
-  OP_SUM, OP_MIN, OP_MAX,
-  OP_STR_TRIM, OP_STR_LOWER, OP_STR_UPPER, OP_STR_TRIM_START, OP_STR_TRIM_END,
-  OP_STR_SPLIT, OP_STR_LENGTH, OP_STR_IS_EMPTY,
-  OP_DICT_KEYS, OP_DICT_VALUES, OP_DICT_IS_EMPTY,
-  OP_MATH_ADD, OP_MATH_SUBTRACT, OP_MATH_MULTIPLY, OP_MATH_DIVIDE,
-  OP_MATH_NEGATE, OP_MATH_INC, OP_MATH_DEC,
-  OP_GUARD_IS_NUMBER, OP_GUARD_IS_STRING, OP_GUARD_IS_BOOLEAN,
-  OP_GUARD_IS_NIL, OP_GUARD_IS_ARRAY, OP_GUARD_IS_OBJECT, OP_GUARD_IS_FUNCTION,
-  OP_SORT_ASC, OP_SORT_DESC, OP_CODES,
-  isFuseableOrTerminal, isTerminalOp, isAccessorOp, isFuseableOp, isScalarOp,
+  OP_MAP,
+  OP_FILTER,
+  OP_TAKE,
+  OP_DROP,
+  OP_TAKE_WHILE,
+  OP_DROP_WHILE,
+  OP_FLAT_MAP,
+  OP_REJECT,
+  OP_FILTER_MAP,
+  OP_MAP_WHILE,
+  OP_TAKE_UNTIL,
+  OP_REDUCE,
+  OP_FOR_EACH,
+  OP_EVERY,
+  OP_SOME,
+  OP_FIND,
+  OP_FIND_INDEX,
+  OP_NONE,
+  OP_COUNT,
+  OP_FIND_MAP,
+  OP_SORT_BY,
+  OP_SORT,
+  OP_HEAD,
+  OP_LAST,
+  OP_LENGTH,
+  OP_IS_EMPTY,
+  OP_TAIL,
+  OP_INIT,
+  OP_REVERSE,
+  OP_SORT_INLINE,
+  OP_UNIQ_INLINE,
+  OP_JOIN,
+  OP_FLATTEN,
+  OP_SUM,
+  OP_MIN,
+  OP_MAX,
+  OP_STR_TRIM,
+  OP_STR_LOWER,
+  OP_STR_UPPER,
+  OP_STR_TRIM_START,
+  OP_STR_TRIM_END,
+  OP_STR_SPLIT,
+  OP_STR_LENGTH,
+  OP_STR_IS_EMPTY,
+  OP_DICT_KEYS,
+  OP_DICT_VALUES,
+  OP_DICT_IS_EMPTY,
+  OP_MATH_ADD,
+  OP_MATH_SUBTRACT,
+  OP_MATH_MULTIPLY,
+  OP_MATH_DIVIDE,
+  OP_MATH_NEGATE,
+  OP_MATH_INC,
+  OP_MATH_DEC,
+  OP_GUARD_IS_NUMBER,
+  OP_GUARD_IS_STRING,
+  OP_GUARD_IS_BOOLEAN,
+  OP_GUARD_IS_NIL,
+  OP_GUARD_IS_ARRAY,
+  OP_GUARD_IS_OBJECT,
+  OP_GUARD_IS_FUNCTION,
+  OP_SORT_ASC,
+  OP_SORT_DESC,
+  OP_CODES,
+  isFuseableOrTerminal,
+  isTerminalOp,
+  isAccessorOp,
+  isFuseableOp,
+  isScalarOp,
 } from './opcodes'
 
 const HALT = Symbol('HALT')
@@ -26,14 +79,22 @@ function takeSorted(arr: any[], k: number, cmp: (a: any, b: any) => number): any
   if (k <= 0) return []
   if (k >= n) return arr.slice().sort(cmp)
   const work = arr.slice()
-  let lo = 0, hi = n - 1
+  let lo = 0,
+    hi = n - 1
   while (lo < hi) {
     const pivot = work[lo + ((hi - lo) >> 1)]
-    let i = lo, j = hi
+    let i = lo,
+      j = hi
     while (i <= j) {
       while (cmp(work[i], pivot) < 0) i++
       while (cmp(work[j], pivot) > 0) j--
-      if (i <= j) { const tmp = work[i]; work[i] = work[j]; work[j] = tmp; i++; j-- }
+      if (i <= j) {
+        const tmp = work[i]
+        work[i] = work[j]
+        work[j] = tmp
+        i++
+        j--
+      }
     }
     if (j < k - 1) lo = i
     else if (i > k - 1) hi = j
@@ -54,7 +115,11 @@ const compiledCache = new Map<number, CompiledRunner>()
 
 // CSP check. Can we use new Function()?
 let canJIT = true
-try { new Function('return 1')() } catch { canJIT = false }
+try {
+  new Function('return 1')()
+} catch {
+  canJIT = false
+}
 
 export type FusionMode = 'auto' | 'jit' | 'no-jit'
 
@@ -148,10 +213,13 @@ export function resetFusionStats(): void {
   fusionStats.aotCacheHits = 0
 }
 
-export function explainFusion(...input: Array<((x: unknown) => unknown) | Array<(x: unknown) => unknown>>): Readonly<FusionExplanation> {
-  const fns = (input.length === 1 && Array.isArray(input[0]))
-    ? input[0] as Array<(x: unknown) => unknown>
-    : input as Array<(x: unknown) => unknown>
+export function explainFusion(
+  ...input: Array<((x: unknown) => unknown) | Array<(x: unknown) => unknown>>
+): Readonly<FusionExplanation> {
+  const fns =
+    input.length === 1 && Array.isArray(input[0])
+      ? (input[0] as Array<(x: unknown) => unknown>)
+      : (input as Array<(x: unknown) => unknown>)
   const opcodes: number[] = []
   let fuseable = true
   let reason = 'fuseable'
@@ -181,7 +249,7 @@ export function explainFusion(...input: Array<((x: unknown) => unknown) | Array<
     jitAvailable: canJIT,
     willUseJit: fuseable && shouldAttemptJIT(),
     fuseable,
-    operations: Object.freeze(opcodes.map(op => OP_NAMES.get(op) ?? `op:${op}`)),
+    operations: Object.freeze(opcodes.map((op) => OP_NAMES.get(op) ?? `op:${op}`)),
     opcodes: Object.freeze(opcodes.slice()),
     reason,
   })
@@ -189,7 +257,7 @@ export function explainFusion(...input: Array<((x: unknown) => unknown) | Array<
 
 // Callback opcode for introspection. 0 means "no opcode, call the function"
 function callbackOp(fn: any): number {
-  return (fn && typeof fn._op === 'number' && fn._op > 0) ? fn._op : 0
+  return fn && typeof fn._op === 'number' && fn._op > 0 ? fn._op : 0
 }
 
 // --- toString() callback inlining ---
@@ -197,9 +265,25 @@ function callbackOp(fn: any): number {
 const INLINE_CACHE = new Map<Function, string | null>()
 
 const ALLOWED_IDENTS = new Set([
-  'typeof', 'instanceof', 'undefined', 'null', 'true', 'false',
-  'NaN', 'Infinity', 'Math', 'Array', 'Object', 'Number', 'String', 'Boolean',
-  'isNaN', 'isFinite', 'parseInt', 'parseFloat', 'void',
+  'typeof',
+  'instanceof',
+  'undefined',
+  'null',
+  'true',
+  'false',
+  'NaN',
+  'Infinity',
+  'Math',
+  'Array',
+  'Object',
+  'Number',
+  'String',
+  'Boolean',
+  'isNaN',
+  'isFinite',
+  'parseInt',
+  'parseFloat',
+  'void',
 ])
 
 const DANGEROUS_RE = /\b(new|delete|throw|await|yield|import|eval)\b/
@@ -210,19 +294,36 @@ export function tryInlineSource(fn: any): string | null {
   if (cached !== undefined) return cached
 
   let src: string
-  try { src = Function.prototype.toString.call(fn) } catch { INLINE_CACHE.set(fn, null); return null }
+  try {
+    src = Function.prototype.toString.call(fn)
+  } catch {
+    INLINE_CACHE.set(fn, null)
+    return null
+  }
 
-  if (src.includes('[native code]')) { INLINE_CACHE.set(fn, null); return null }
+  if (src.includes('[native code]')) {
+    INLINE_CACHE.set(fn, null)
+    return null
+  }
 
   // Match: x => expr, (x) => expr
   const m = src.match(/^\(?(\w+)\)?\s*=>\s*(.+)$/)
-  if (!m) { INLINE_CACHE.set(fn, null); return null }
+  if (!m) {
+    INLINE_CACHE.set(fn, null)
+    return null
+  }
 
   const param = m[1]
   const body = m[2].trim()
 
-  if (body.startsWith('{')) { INLINE_CACHE.set(fn, null); return null }
-  if (DANGEROUS_RE.test(body)) { INLINE_CACHE.set(fn, null); return null }
+  if (body.startsWith('{')) {
+    INLINE_CACHE.set(fn, null)
+    return null
+  }
+  if (DANGEROUS_RE.test(body)) {
+    INLINE_CACHE.set(fn, null)
+    return null
+  }
 
   const idents = body.match(/\b[a-zA-Z_$][a-zA-Z0-9_$]*\b/g)
   if (idents) {
@@ -248,19 +349,36 @@ function tryInlineReduceSource(fn: any): string | null {
   if (cached !== undefined) return cached
 
   let src: string
-  try { src = Function.prototype.toString.call(fn) } catch { REDUCE_INLINE_CACHE.set(fn, null); return null }
+  try {
+    src = Function.prototype.toString.call(fn)
+  } catch {
+    REDUCE_INLINE_CACHE.set(fn, null)
+    return null
+  }
 
-  if (src.includes('[native code]')) { REDUCE_INLINE_CACHE.set(fn, null); return null }
+  if (src.includes('[native code]')) {
+    REDUCE_INLINE_CACHE.set(fn, null)
+    return null
+  }
 
   // Match: (a, b) => expr
   const m = src.match(/^\((\w+)\s*,\s*(\w+)\)\s*=>\s*(.+)$/)
-  if (!m) { REDUCE_INLINE_CACHE.set(fn, null); return null }
+  if (!m) {
+    REDUCE_INLINE_CACHE.set(fn, null)
+    return null
+  }
 
   const [, p1, p2, body] = m
   const trimmed = body.trim()
 
-  if (trimmed.startsWith('{')) { REDUCE_INLINE_CACHE.set(fn, null); return null }
-  if (DANGEROUS_RE.test(trimmed)) { REDUCE_INLINE_CACHE.set(fn, null); return null }
+  if (trimmed.startsWith('{')) {
+    REDUCE_INLINE_CACHE.set(fn, null)
+    return null
+  }
+  if (DANGEROUS_RE.test(trimmed)) {
+    REDUCE_INLINE_CACHE.set(fn, null)
+    return null
+  }
 
   const idents = trimmed.match(/\b[a-zA-Z_$][a-zA-Z0-9_$]*\b/g)
   if (idents) {
@@ -286,14 +404,22 @@ function tryInlineReduceSource(fn: any): string | null {
 function emitFilterInline(cbOp: number, fnIdx: string, inlineSrc?: string | null): string {
   if (inlineSrc) return 'if(!(' + inlineSrc + '))continue'
   switch (cbOp) {
-    case OP_GUARD_IS_NUMBER:   return "if(typeof v!=='number')continue"
-    case OP_GUARD_IS_STRING:   return "if(typeof v!=='string')continue"
-    case OP_GUARD_IS_BOOLEAN:  return "if(typeof v!=='boolean')continue"
-    case OP_GUARD_IS_NIL:      return 'if(v!=null)continue'
-    case OP_GUARD_IS_ARRAY:    return 'if(!Array.isArray(v))continue'
-    case OP_GUARD_IS_OBJECT:   return "if(typeof v!=='object'||v===null||Array.isArray(v))continue"
-    case OP_GUARD_IS_FUNCTION: return "if(typeof v!=='function')continue"
-    default: return 'if(!' + fnIdx + '(v))continue'
+    case OP_GUARD_IS_NUMBER:
+      return "if(typeof v!=='number')continue"
+    case OP_GUARD_IS_STRING:
+      return "if(typeof v!=='string')continue"
+    case OP_GUARD_IS_BOOLEAN:
+      return "if(typeof v!=='boolean')continue"
+    case OP_GUARD_IS_NIL:
+      return 'if(v!=null)continue'
+    case OP_GUARD_IS_ARRAY:
+      return 'if(!Array.isArray(v))continue'
+    case OP_GUARD_IS_OBJECT:
+      return "if(typeof v!=='object'||v===null||Array.isArray(v))continue"
+    case OP_GUARD_IS_FUNCTION:
+      return "if(typeof v!=='function')continue"
+    default:
+      return 'if(!' + fnIdx + '(v))continue'
   }
 }
 
@@ -301,37 +427,59 @@ function emitFilterInline(cbOp: number, fnIdx: string, inlineSrc?: string | null
 function emitRejectInline(cbOp: number, fnIdx: string, inlineSrc?: string | null): string {
   if (inlineSrc) return 'if(' + inlineSrc + ')continue'
   switch (cbOp) {
-    case OP_GUARD_IS_NUMBER:   return "if(typeof v==='number')continue"
-    case OP_GUARD_IS_STRING:   return "if(typeof v==='string')continue"
-    case OP_GUARD_IS_BOOLEAN:  return "if(typeof v==='boolean')continue"
-    case OP_GUARD_IS_NIL:      return 'if(v==null)continue'
-    case OP_GUARD_IS_ARRAY:    return 'if(Array.isArray(v))continue'
-    default: return 'if(' + fnIdx + '(v))continue'
+    case OP_GUARD_IS_NUMBER:
+      return "if(typeof v==='number')continue"
+    case OP_GUARD_IS_STRING:
+      return "if(typeof v==='string')continue"
+    case OP_GUARD_IS_BOOLEAN:
+      return "if(typeof v==='boolean')continue"
+    case OP_GUARD_IS_NIL:
+      return 'if(v==null)continue'
+    case OP_GUARD_IS_ARRAY:
+      return 'if(Array.isArray(v))continue'
+    default:
+      return 'if(' + fnIdx + '(v))continue'
   }
 }
 
 function emitMapInline(cbOp: number, fnIdx: string, inlineSrc?: string | null): string {
   if (inlineSrc) return 'v=' + inlineSrc
   switch (cbOp) {
-    case OP_MATH_ADD:      return 'v=v+' + fnIdx
-    case OP_MATH_SUBTRACT: return 'v=v-' + fnIdx
-    case OP_MATH_MULTIPLY: return 'v=v*' + fnIdx
-    case OP_MATH_DIVIDE:   return 'v=v/' + fnIdx
-    case OP_MATH_NEGATE:   return 'v=-v'
-    case OP_MATH_INC:      return 'v=v+1'
-    case OP_MATH_DEC:      return 'v=v-1'
-    case OP_STR_TRIM:      return 'v=v.trim()'
-    case OP_STR_LOWER:     return 'v=v.toLowerCase()'
-    case OP_STR_UPPER:     return 'v=v.toUpperCase()'
-    default: return 'v=' + fnIdx + '(v)'
+    case OP_MATH_ADD:
+      return 'v=v+' + fnIdx
+    case OP_MATH_SUBTRACT:
+      return 'v=v-' + fnIdx
+    case OP_MATH_MULTIPLY:
+      return 'v=v*' + fnIdx
+    case OP_MATH_DIVIDE:
+      return 'v=v/' + fnIdx
+    case OP_MATH_NEGATE:
+      return 'v=-v'
+    case OP_MATH_INC:
+      return 'v=v+1'
+    case OP_MATH_DEC:
+      return 'v=v-1'
+    case OP_STR_TRIM:
+      return 'v=v.trim()'
+    case OP_STR_LOWER:
+      return 'v=v.toLowerCase()'
+    case OP_STR_UPPER:
+      return 'v=v.toUpperCase()'
+    default:
+      return 'v=' + fnIdx + '(v)'
   }
 }
 
-function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (string | null)[]): CompiledRunner {
+function jitCompile(
+  ops: number[],
+  len: number,
+  cbOps?: number[],
+  inlineSrcs?: (string | null)[],
+): CompiledRunner {
   const lastOp = ops[len - 1]
   const hasTerminal = isTerminalOp(lastOp)
   const hasAccessor = isAccessorOp(lastOp)
-  const streamLen = (hasTerminal || hasAccessor) ? len - 1 : len
+  const streamLen = hasTerminal || hasAccessor ? len - 1 : len
 
   if (!shouldAttemptJIT()) {
     fusionStats.interpretedCompiles++
@@ -340,14 +488,22 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
 
   // Detect all-maps → function composition
   let allMaps = !hasTerminal && !hasAccessor
-  if (allMaps) { for (let i = 0; i < len; i++) { if (ops[i] !== OP_MAP) { allMaps = false; break } } }
+  if (allMaps) {
+    for (let i = 0; i < len; i++) {
+      if (ops[i] !== OP_MAP) {
+        allMaps = false
+        break
+      }
+    }
+  }
   if (allMaps && len > 1) {
     const n = len
     fusionStats.specializedCompiles++
     return (src, fns) => {
       let composed = fns[0]
       for (let k = 1; k < n; k++) {
-        const prev = composed, next = fns[k]
+        const prev = composed,
+          next = fns[k]
         composed = (x: any) => next(prev(x))
       }
       const r = new Array(src.length)
@@ -374,7 +530,14 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
 
   // Result var. Pre-alloc for map-only chains (no filter/take/flatMap changes length)
   let canPrealloc = !hasTerminal && !hasAccessor
-  if (canPrealloc) { for (let i = 0; i < streamLen; i++) { if (ops[i] !== OP_MAP) { canPrealloc = false; break } } }
+  if (canPrealloc) {
+    for (let i = 0; i < streamLen; i++) {
+      if (ops[i] !== OP_MAP) {
+        canPrealloc = false
+        break
+      }
+    }
+  }
   if (!hasTerminal) lines.push(canPrealloc ? 'var r=new Array(src.length)' : 'var r=[]')
   else if (lastOp === OP_REDUCE) lines.push('var acc=init')
   else if (lastOp === OP_EVERY) lines.push('var ev=true')
@@ -413,34 +576,37 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
         lines.push('if(v==null)continue')
         break
       }
-    case OP_MAP_WHILE: {
-      const s = inlineSrcs?.[i]
-      lines.push(s ? 'v=' + s : 'v=f' + i + '(v)')
-      lines.push('if(v==null)break outer')
-      break
-    }
-    case OP_TAKE_UNTIL: {
-      const s = inlineSrcs?.[i]
-      lines.push(s ? 'if(' + s + ')break outer' : 'if(f' + i + '(v))break outer')
-      break
-    }
-    case OP_TAKE:
-      lines.push('if(c' + i + '>=f' + i + ')break outer;c' + i + '++')
-      break
+      case OP_MAP_WHILE: {
+        const s = inlineSrcs?.[i]
+        lines.push(s ? 'v=' + s : 'v=f' + i + '(v)')
+        lines.push('if(v==null)break outer')
+        break
+      }
+      case OP_TAKE_UNTIL: {
+        const s = inlineSrcs?.[i]
+        lines.push(s ? 'if(' + s + ')break outer' : 'if(f' + i + '(v))break outer')
+        break
+      }
+      case OP_TAKE:
+        lines.push('if(c' + i + '>=f' + i + ')break outer;c' + i + '++')
+        break
       case OP_DROP:
         lines.push('if(d' + i + '<f' + i + '){d' + i + '++;continue}')
         break
-    case OP_TAKE_WHILE: {
-      const s = inlineSrcs?.[i]
-      lines.push(s ? 'if(!(' + s + '))break outer' : 'if(!f' + i + '(v))break outer')
-      break
-    }
-      case OP_DROP_WHILE: {
+      case OP_TAKE_WHILE: {
         const s = inlineSrcs?.[i]
-        lines.push(s
-          ? 'if(dw' + i + '){if(' + s + ')continue;dw' + i + '=false}'
-          : 'if(dw' + i + '){if(f' + i + '(v))continue;dw' + i + '=false}')
+        lines.push(s ? 'if(!(' + s + '))break outer' : 'if(!f' + i + '(v))break outer')
+        break
       }
+      case OP_DROP_WHILE:
+        {
+          const s = inlineSrcs?.[i]
+          lines.push(
+            s
+              ? 'if(dw' + i + '){if(' + s + ')continue;dw' + i + '=false}'
+              : 'if(dw' + i + '){if(f' + i + '(v))continue;dw' + i + '=false}',
+          )
+        }
         break
       case OP_FLAT_MAP:
         lines.push('var items' + i + '=f' + i + '(v)')
@@ -449,21 +615,49 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
         flatMapDepth++
         break
       // Math stream ops. Inline arithmetic
-      case OP_MATH_ADD:      lines.push('v=v+f' + i); break
-      case OP_MATH_SUBTRACT: lines.push('v=v-f' + i); break
-      case OP_MATH_MULTIPLY: lines.push('v=v*f' + i); break
-      case OP_MATH_DIVIDE:   lines.push('v=v/f' + i); break
-      case OP_MATH_NEGATE:   lines.push('v=-v'); break
-      case OP_MATH_INC:      lines.push('v=v+1'); break
-      case OP_MATH_DEC:      lines.push('v=v-1'); break
+      case OP_MATH_ADD:
+        lines.push('v=v+f' + i)
+        break
+      case OP_MATH_SUBTRACT:
+        lines.push('v=v-f' + i)
+        break
+      case OP_MATH_MULTIPLY:
+        lines.push('v=v*f' + i)
+        break
+      case OP_MATH_DIVIDE:
+        lines.push('v=v/f' + i)
+        break
+      case OP_MATH_NEGATE:
+        lines.push('v=-v')
+        break
+      case OP_MATH_INC:
+        lines.push('v=v+1')
+        break
+      case OP_MATH_DEC:
+        lines.push('v=v-1')
+        break
       // Guard predicate ops. Inline typeof (used inside filter)
-      case OP_GUARD_IS_NUMBER:   lines.push("if(typeof v!=='number')continue"); break
-      case OP_GUARD_IS_STRING:   lines.push("if(typeof v!=='string')continue"); break
-      case OP_GUARD_IS_BOOLEAN:  lines.push("if(typeof v!=='boolean')continue"); break
-      case OP_GUARD_IS_NIL:      lines.push('if(v!=null)continue'); break
-      case OP_GUARD_IS_ARRAY:    lines.push('if(!Array.isArray(v))continue'); break
-      case OP_GUARD_IS_OBJECT:   lines.push("if(typeof v!=='object'||v===null||Array.isArray(v))continue"); break
-      case OP_GUARD_IS_FUNCTION: lines.push("if(typeof v!=='function')continue"); break
+      case OP_GUARD_IS_NUMBER:
+        lines.push("if(typeof v!=='number')continue")
+        break
+      case OP_GUARD_IS_STRING:
+        lines.push("if(typeof v!=='string')continue")
+        break
+      case OP_GUARD_IS_BOOLEAN:
+        lines.push("if(typeof v!=='boolean')continue")
+        break
+      case OP_GUARD_IS_NIL:
+        lines.push('if(v!=null)continue')
+        break
+      case OP_GUARD_IS_ARRAY:
+        lines.push('if(!Array.isArray(v))continue')
+        break
+      case OP_GUARD_IS_OBJECT:
+        lines.push("if(typeof v!=='object'||v===null||Array.isArray(v))continue")
+        break
+      case OP_GUARD_IS_FUNCTION:
+        lines.push("if(typeof v!=='function')continue")
+        break
     }
   }
 
@@ -478,7 +672,9 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
         lines.push(rs ? 'acc=' + rs : 'acc=f' + ti + '(acc,v)')
         break
       }
-      case OP_FOR_EACH:   lines.push('f' + ti + '(v)'); break
+      case OP_FOR_EACH:
+        lines.push('f' + ti + '(v)')
+        break
       case OP_EVERY: {
         const s = inlineSrcs?.[ti]
         lines.push(s ? 'if(!(' + s + ')){ev=false;break}' : 'if(!f' + ti + '(v)){ev=false;break}')
@@ -528,50 +724,121 @@ function jitCompile(ops: number[], len: number, cbOps?: number[], inlineSrcs?: (
   if (hasAccessor) {
     // Accessor ops transform the collected result array
     switch (lastOp) {
-      case OP_HEAD:         lines.push('return r[0]'); break
-      case OP_LAST:         lines.push('return r[r.length-1]'); break
-      case OP_LENGTH:       lines.push('return r.length'); break
-      case OP_IS_EMPTY:     lines.push('return r.length===0'); break
-      case OP_TAIL:         lines.push('return r.slice(1)'); break
-      case OP_INIT:         lines.push('return r.slice(0,-1)'); break
-      case OP_REVERSE:      lines.push('return r.reverse()'); break
-      case OP_SORT_INLINE:  lines.push('return r.sort(f' + (len - 1) + ')'); break
-      case OP_UNIQ_INLINE:  lines.push('return Array.from(new Set(r))'); break
-      case OP_JOIN:         lines.push('return r.join(f' + (len - 1) + ')'); break
-      case OP_FLATTEN:      lines.push('return r.flat()'); break
-      case OP_SUM:          lines.push('var s=0;for(var si=0;si<r.length;si++)s+=r[si];return s'); break
-      case OP_MIN:          lines.push('var mn=r[0];for(var mi=1;mi<r.length;mi++)if(r[mi]<mn)mn=r[mi];return mn'); break
-      case OP_MAX:          lines.push('var mx=r[0];for(var mi=1;mi<r.length;mi++)if(r[mi]>mx)mx=r[mi];return mx'); break
+      case OP_HEAD:
+        lines.push('return r[0]')
+        break
+      case OP_LAST:
+        lines.push('return r[r.length-1]')
+        break
+      case OP_LENGTH:
+        lines.push('return r.length')
+        break
+      case OP_IS_EMPTY:
+        lines.push('return r.length===0')
+        break
+      case OP_TAIL:
+        lines.push('return r.slice(1)')
+        break
+      case OP_INIT:
+        lines.push('return r.slice(0,-1)')
+        break
+      case OP_REVERSE:
+        lines.push('return r.reverse()')
+        break
+      case OP_SORT_INLINE:
+        lines.push('return r.sort(f' + (len - 1) + ')')
+        break
+      case OP_UNIQ_INLINE:
+        lines.push('return Array.from(new Set(r))')
+        break
+      case OP_JOIN:
+        lines.push('return r.join(f' + (len - 1) + ')')
+        break
+      case OP_FLATTEN:
+        lines.push('return r.flat()')
+        break
+      case OP_SUM:
+        lines.push('var s=0;for(var si=0;si<r.length;si++)s+=r[si];return s')
+        break
+      case OP_MIN:
+        lines.push('var mn=r[0];for(var mi=1;mi<r.length;mi++)if(r[mi]<mn)mn=r[mi];return mn')
+        break
+      case OP_MAX:
+        lines.push('var mx=r[0];for(var mi=1;mi<r.length;mi++)if(r[mi]>mx)mx=r[mi];return mx')
+        break
       // String accessor ops
-      case OP_STR_TRIM:       lines.push('return r.trim()'); break
-      case OP_STR_LOWER:      lines.push('return r.toLowerCase()'); break
-      case OP_STR_UPPER:      lines.push('return r.toUpperCase()'); break
-      case OP_STR_TRIM_START: lines.push('return r.trimStart()'); break
-      case OP_STR_TRIM_END:   lines.push('return r.trimEnd()'); break
-      case OP_STR_SPLIT:      lines.push('return r.split(f' + (len - 1) + ')'); break
-      case OP_STR_LENGTH:     lines.push('return r.length'); break
-      case OP_STR_IS_EMPTY:   lines.push("return r===''"); break
+      case OP_STR_TRIM:
+        lines.push('return r.trim()')
+        break
+      case OP_STR_LOWER:
+        lines.push('return r.toLowerCase()')
+        break
+      case OP_STR_UPPER:
+        lines.push('return r.toUpperCase()')
+        break
+      case OP_STR_TRIM_START:
+        lines.push('return r.trimStart()')
+        break
+      case OP_STR_TRIM_END:
+        lines.push('return r.trimEnd()')
+        break
+      case OP_STR_SPLIT:
+        lines.push('return r.split(f' + (len - 1) + ')')
+        break
+      case OP_STR_LENGTH:
+        lines.push('return r.length')
+        break
+      case OP_STR_IS_EMPTY:
+        lines.push("return r===''")
+        break
       // Dict accessor ops
-      case OP_DICT_KEYS:      lines.push('return Object.keys(r)'); break
-      case OP_DICT_VALUES:    lines.push('return Object.values(r)'); break
-      case OP_DICT_IS_EMPTY:  lines.push('return Object.keys(r).length===0'); break
+      case OP_DICT_KEYS:
+        lines.push('return Object.keys(r)')
+        break
+      case OP_DICT_VALUES:
+        lines.push('return Object.values(r)')
+        break
+      case OP_DICT_IS_EMPTY:
+        lines.push('return Object.keys(r).length===0')
+        break
       // Sort specialization
-      case OP_SORT_ASC:       lines.push('return r.slice().sort(function(a,b){return a-b})'); break
-      case OP_SORT_DESC:      lines.push('return r.slice().sort(function(a,b){return b-a})'); break
+      case OP_SORT_ASC:
+        lines.push('return r.slice().sort(function(a,b){return a-b})')
+        break
+      case OP_SORT_DESC:
+        lines.push('return r.slice().sort(function(a,b){return b-a})')
+        break
     }
   } else if (!hasTerminal) {
     lines.push('return r')
   } else {
     switch (lastOp) {
-      case OP_REDUCE:     lines.push('return acc'); break
-      case OP_FOR_EACH:   break
-      case OP_EVERY:      lines.push('return ev'); break
-      case OP_SOME:       lines.push('return sm'); break
-      case OP_FIND:       lines.push('return undefined'); break
-      case OP_FIND_MAP:   lines.push('return undefined'); break
-      case OP_FIND_INDEX: lines.push('return undefined'); break
-      case OP_NONE:       lines.push('return !nn'); break
-      case OP_COUNT:      lines.push('return cnt'); break
+      case OP_REDUCE:
+        lines.push('return acc')
+        break
+      case OP_FOR_EACH:
+        break
+      case OP_EVERY:
+        lines.push('return ev')
+        break
+      case OP_SOME:
+        lines.push('return sm')
+        break
+      case OP_FIND:
+        lines.push('return undefined')
+        break
+      case OP_FIND_MAP:
+        lines.push('return undefined')
+        break
+      case OP_FIND_INDEX:
+        lines.push('return undefined')
+        break
+      case OP_NONE:
+        lines.push('return !nn')
+        break
+      case OP_COUNT:
+        lines.push('return cnt')
+        break
     }
   }
 
@@ -608,21 +875,30 @@ function interpretedFallback(ops: number[], len: number): CompiledRunner {
     }
 
     // Terminal setup
-    let acc: any, result: any, idx = 0, everyResult = true, someResult = false
+    let acc: any,
+      result: any,
+      idx = 0,
+      everyResult = true,
+      someResult = false
     if (hasTerminal && lastOp === OP_REDUCE) acc = a1s[len - 1]
 
     const out: any[] = hasTerminal ? [] : []
     const useOut = !hasTerminal
 
-    outer:
-    for (let i = 0; i < source.length; i++) {
+    outer: for (let i = 0; i < source.length; i++) {
       let val = source[i]
 
       for (let s = 0; s < streamLen; s++) {
         switch (ops[s]) {
-          case OP_MAP: val = fns[s](val); break
-          case OP_FILTER: if (!fns[s](val)) continue outer; break
-          case OP_REJECT: if (fns[s](val)) continue outer; break
+          case OP_MAP:
+            val = fns[s](val)
+            break
+          case OP_FILTER:
+            if (!fns[s](val)) continue outer
+            break
+          case OP_REJECT:
+            if (fns[s](val)) continue outer
+            break
           case OP_FILTER_MAP:
             val = fns[s](val)
             if (val == null) continue outer
@@ -634,57 +910,143 @@ function interpretedFallback(ops: number[], len: number): CompiledRunner {
           case OP_TAKE_UNTIL:
             if (fns[s](val)) break outer
             break
-          case OP_MATH_ADD: val = val + fns[s]; break
-          case OP_MATH_SUBTRACT: val = val - fns[s]; break
-          case OP_MATH_MULTIPLY: val = val * fns[s]; break
-          case OP_MATH_DIVIDE: val = val / fns[s]; break
-          case OP_MATH_NEGATE: val = -val; break
-          case OP_MATH_INC: val = val + 1; break
-          case OP_MATH_DEC: val = val - 1; break
-          case OP_TAKE: if (state[s] >= fns[s]) break outer; state[s]++; break
-          case OP_DROP: if (state[s] < fns[s]) { state[s]++; continue outer } break
-          case OP_TAKE_WHILE: if (!fns[s](val)) break outer; break
-          case OP_DROP_WHILE: if (state[s]) { if (fns[s](val)) continue outer; state[s] = false } break
+          case OP_MATH_ADD:
+            val = val + fns[s]
+            break
+          case OP_MATH_SUBTRACT:
+            val = val - fns[s]
+            break
+          case OP_MATH_MULTIPLY:
+            val = val * fns[s]
+            break
+          case OP_MATH_DIVIDE:
+            val = val / fns[s]
+            break
+          case OP_MATH_NEGATE:
+            val = -val
+            break
+          case OP_MATH_INC:
+            val = val + 1
+            break
+          case OP_MATH_DEC:
+            val = val - 1
+            break
+          case OP_TAKE:
+            if (state[s] >= fns[s]) break outer
+            state[s]++
+            break
+          case OP_DROP:
+            if (state[s] < fns[s]) {
+              state[s]++
+              continue outer
+            }
+            break
+          case OP_TAKE_WHILE:
+            if (!fns[s](val)) break outer
+            break
+          case OP_DROP_WHILE:
+            if (state[s]) {
+              if (fns[s](val)) continue outer
+              state[s] = false
+            }
+            break
           case OP_FLAT_MAP: {
             const items = fns[s](val)
             for (let j = 0; j < items.length; j++) {
               let v = items[j]
               for (let s2 = s + 1; s2 < streamLen; s2++) {
-              switch (ops[s2]) {
-                case OP_MAP: v = fns[s2](v); break
-                case OP_FILTER: if (!fns[s2](v)) { v = HALT; break } break
-                case OP_REJECT: if (fns[s2](v)) { v = HALT; break } break
-                case OP_FILTER_MAP:
-                  v = fns[s2](v)
-                  if (v == null) { v = HALT; break }
-                  break
-                case OP_MAP_WHILE:
-                  v = fns[s2](v)
-                  if (v == null) break outer
-                  break
-              case OP_TAKE: if (state[s2] >= fns[s2]) break outer; state[s2]++; break
-              case OP_TAKE_WHILE: if (!fns[s2](v)) break outer; break
-              case OP_TAKE_UNTIL: if (fns[s2](v)) break outer; break
-            }
+                switch (ops[s2]) {
+                  case OP_MAP:
+                    v = fns[s2](v)
+                    break
+                  case OP_FILTER:
+                    if (!fns[s2](v)) {
+                      v = HALT
+                      break
+                    }
+                    break
+                  case OP_REJECT:
+                    if (fns[s2](v)) {
+                      v = HALT
+                      break
+                    }
+                    break
+                  case OP_FILTER_MAP:
+                    v = fns[s2](v)
+                    if (v == null) {
+                      v = HALT
+                      break
+                    }
+                    break
+                  case OP_MAP_WHILE:
+                    v = fns[s2](v)
+                    if (v == null) break outer
+                    break
+                  case OP_TAKE:
+                    if (state[s2] >= fns[s2]) break outer
+                    state[s2]++
+                    break
+                  case OP_TAKE_WHILE:
+                    if (!fns[s2](v)) break outer
+                    break
+                  case OP_TAKE_UNTIL:
+                    if (fns[s2](v)) break outer
+                    break
+                }
                 if (v === HALT) break
               }
               if (v !== HALT) {
                 if (useOut) out.push(v)
                 else if (hasTerminal) {
                   switch (lastOp) {
-                    case OP_REDUCE: acc = fns[len - 1](acc, v); break
-                    case OP_FOR_EACH: fns[len - 1](v); break
-                    case OP_EVERY: if (!fns[len - 1](v)) { everyResult = false; break outer } break
-                case OP_SOME: if (fns[len - 1](v)) { someResult = true; break outer } break
-                case OP_FIND: if (fns[len - 1](v)) { result = v; break outer } break
-                case OP_FIND_MAP: {
-                  const mapped = fns[len - 1](v)
-                  if (mapped != null) { result = mapped; break outer }
-                  break
-                }
-                case OP_FIND_INDEX: if (fns[len - 1](v)) { result = idx; break outer } idx++; break
-                case OP_NONE: if (fns[len - 1](v)) { someResult = true; break outer } break
-                    case OP_COUNT: if (fns[len - 1](v)) idx++; break
+                    case OP_REDUCE:
+                      acc = fns[len - 1](acc, v)
+                      break
+                    case OP_FOR_EACH:
+                      fns[len - 1](v)
+                      break
+                    case OP_EVERY:
+                      if (!fns[len - 1](v)) {
+                        everyResult = false
+                        break outer
+                      }
+                      break
+                    case OP_SOME:
+                      if (fns[len - 1](v)) {
+                        someResult = true
+                        break outer
+                      }
+                      break
+                    case OP_FIND:
+                      if (fns[len - 1](v)) {
+                        result = v
+                        break outer
+                      }
+                      break
+                    case OP_FIND_MAP: {
+                      const mapped = fns[len - 1](v)
+                      if (mapped != null) {
+                        result = mapped
+                        break outer
+                      }
+                      break
+                    }
+                    case OP_FIND_INDEX:
+                      if (fns[len - 1](v)) {
+                        result = idx
+                        break outer
+                      }
+                      idx++
+                      break
+                    case OP_NONE:
+                      if (fns[len - 1](v)) {
+                        someResult = true
+                        break outer
+                      }
+                      break
+                    case OP_COUNT:
+                      if (fns[len - 1](v)) idx++
+                      break
                   }
                 }
               }
@@ -698,34 +1060,78 @@ function interpretedFallback(ops: number[], len: number): CompiledRunner {
       if (useOut) out.push(val)
       else if (hasTerminal) {
         switch (lastOp) {
-          case OP_REDUCE: acc = fns[len - 1](acc, val); break
-          case OP_FOR_EACH: fns[len - 1](val); break
-          case OP_EVERY: if (!fns[len - 1](val)) { everyResult = false; break outer } break
-          case OP_SOME: if (fns[len - 1](val)) { someResult = true; break outer } break
-          case OP_FIND: if (fns[len - 1](val)) { result = val; break outer } break
+          case OP_REDUCE:
+            acc = fns[len - 1](acc, val)
+            break
+          case OP_FOR_EACH:
+            fns[len - 1](val)
+            break
+          case OP_EVERY:
+            if (!fns[len - 1](val)) {
+              everyResult = false
+              break outer
+            }
+            break
+          case OP_SOME:
+            if (fns[len - 1](val)) {
+              someResult = true
+              break outer
+            }
+            break
+          case OP_FIND:
+            if (fns[len - 1](val)) {
+              result = val
+              break outer
+            }
+            break
           case OP_FIND_MAP: {
             const mapped = fns[len - 1](val)
-            if (mapped != null) { result = mapped; break outer }
+            if (mapped != null) {
+              result = mapped
+              break outer
+            }
             break
           }
-          case OP_FIND_INDEX: if (fns[len - 1](val)) { result = idx; break outer } idx++; break
-          case OP_NONE: if (fns[len - 1](val)) { someResult = true; break outer } break
-          case OP_COUNT: if (fns[len - 1](val)) idx++; break
+          case OP_FIND_INDEX:
+            if (fns[len - 1](val)) {
+              result = idx
+              break outer
+            }
+            idx++
+            break
+          case OP_NONE:
+            if (fns[len - 1](val)) {
+              someResult = true
+              break outer
+            }
+            break
+          case OP_COUNT:
+            if (fns[len - 1](val)) idx++
+            break
         }
       }
     }
 
     if (useOut) return out
     switch (lastOp) {
-      case OP_REDUCE: return acc
-      case OP_FOR_EACH: return undefined
-      case OP_EVERY: return everyResult
-      case OP_SOME: return someResult
-      case OP_FIND: return result
-      case OP_FIND_MAP: return result
-      case OP_FIND_INDEX: return result
-      case OP_NONE: return !someResult
-      case OP_COUNT: return idx
+      case OP_REDUCE:
+        return acc
+      case OP_FOR_EACH:
+        return undefined
+      case OP_EVERY:
+        return everyResult
+      case OP_SOME:
+        return someResult
+      case OP_FIND:
+        return result
+      case OP_FIND_MAP:
+        return result
+      case OP_FIND_INDEX:
+        return result
+      case OP_NONE:
+        return !someResult
+      case OP_COUNT:
+        return idx
     }
   }
 }
@@ -737,7 +1143,11 @@ const opBuf = new Int8Array(32)
 
 const inlinedCache = new Map<string, CompiledRunner>()
 
-function getOrCompile(tagged: any[], start: number, end: number): { runner: CompiledRunner; len: number } {
+function getOrCompile(
+  tagged: any[],
+  start: number,
+  end: number,
+): { runner: CompiledRunner; len: number } {
   const len = end - start
   let key = 0
   const cbOps: number[] = new Array(len)
@@ -762,12 +1172,18 @@ function getOrCompile(tagged: any[], start: number, end: number): { runner: Comp
   }
 
   let hasCbIntrospection = false
-  for (let i = 0; i < len; i++) { if (cbOps[i] > 0) { hasCbIntrospection = true; break } }
+  for (let i = 0; i < len; i++) {
+    if (cbOps[i] > 0) {
+      hasCbIntrospection = true
+      break
+    }
+  }
 
   // Inlined pipelines get a string-keyed cache (specialised to callback source)
   if (hasInline) {
     let skey = ''
-    for (let i = 0; i < len; i++) skey += opBuf[i] + ':' + (cbOps[i] || '') + ':' + (inlineSrcs[i] || '') + '|'
+    for (let i = 0; i < len; i++)
+      skey += opBuf[i] + ':' + (cbOps[i] || '') + ':' + (inlineSrcs[i] || '') + '|'
     let runner = inlinedCache.get(skey)
     if (!runner) {
       const ops: number[] = new Array(len)
@@ -821,12 +1237,18 @@ function runSegment(data: any[], tagged: any[], start: number, end: number): any
 
   // MRU hit: same callback references + opcodes as last call → skip all scanning/extraction
   // Compare both _fn and _op to avoid collisions between accessor ops (head/last/etc share _fn === undefined)
-  if (_mruRunner && _mruLen === len &&
-      tagged[start + len - 1]._fn === _mruCbs[len - 1] &&
-      tagged[start + len - 1]._op === _mruOps[len - 1]) {
+  if (
+    _mruRunner &&
+    _mruLen === len &&
+    tagged[start + len - 1]._fn === _mruCbs[len - 1] &&
+    tagged[start + len - 1]._op === _mruOps[len - 1]
+  ) {
     let hit = true
     for (let i = 0; i < len - 1; i++) {
-      if (tagged[start + i]._fn !== _mruCbs[i] || tagged[start + i]._op !== _mruOps[i]) { hit = false; break }
+      if (tagged[start + i]._fn !== _mruCbs[i] || tagged[start + i]._op !== _mruOps[i]) {
+        hit = false
+        break
+      }
     }
     if (hit) return _mruRunner(data, _mruFns, _mruA1s)
   }
@@ -852,11 +1274,16 @@ function runSegment(data: any[], tagged: any[], start: number, end: number): any
       _mruA1s[i] = _a1s[i]
     }
   }
-  if (updateMru) { _mruLen = len; _mruRunner = runner }
+  if (updateMru) {
+    _mruLen = len
+    _mruRunner = runner
+  }
   return runner(data, _fns, _a1s)
 }
 
-export function tryCompileFlow(fns: Array<(x: unknown) => unknown>): ((a: unknown) => unknown) | null {
+export function tryCompileFlow(
+  fns: Array<(x: unknown) => unknown>,
+): ((a: unknown) => unknown) | null {
   const tagged = fns as any[]
   for (let i = 0; i < tagged.length; i++) {
     if (!isTagged(tagged[i]) || !isFuseableOrTerminal(tagged[i]._op)) return null
@@ -892,37 +1319,88 @@ function scalarJitCompile(ops: number[], len: number): ScalarRunner {
   for (let i = 0; i < len; i++) {
     switch (ops[i]) {
       // Math
-      case OP_MATH_ADD:      lines.push('v=v+f' + i); break
-      case OP_MATH_SUBTRACT: lines.push('v=v-f' + i); break
-      case OP_MATH_MULTIPLY: lines.push('v=v*f' + i); break
-      case OP_MATH_DIVIDE:   lines.push('v=v/f' + i); break
-      case OP_MATH_NEGATE:   lines.push('v=-v'); break
-      case OP_MATH_INC:      lines.push('v=v+1'); break
-      case OP_MATH_DEC:      lines.push('v=v-1'); break
+      case OP_MATH_ADD:
+        lines.push('v=v+f' + i)
+        break
+      case OP_MATH_SUBTRACT:
+        lines.push('v=v-f' + i)
+        break
+      case OP_MATH_MULTIPLY:
+        lines.push('v=v*f' + i)
+        break
+      case OP_MATH_DIVIDE:
+        lines.push('v=v/f' + i)
+        break
+      case OP_MATH_NEGATE:
+        lines.push('v=-v')
+        break
+      case OP_MATH_INC:
+        lines.push('v=v+1')
+        break
+      case OP_MATH_DEC:
+        lines.push('v=v-1')
+        break
       // String
-      case OP_STR_TRIM:       lines.push('v=v.trim()'); break
-      case OP_STR_LOWER:      lines.push('v=v.toLowerCase()'); break
-      case OP_STR_UPPER:      lines.push('v=v.toUpperCase()'); break
-      case OP_STR_TRIM_START: lines.push('v=v.trimStart()'); break
-      case OP_STR_TRIM_END:   lines.push('v=v.trimEnd()'); break
-      case OP_STR_SPLIT:      lines.push('v=v.split(f' + i + ')'); break
-      case OP_STR_LENGTH:     lines.push('v=v.length'); break
-      case OP_STR_IS_EMPTY:   lines.push("v=v===''"); break
+      case OP_STR_TRIM:
+        lines.push('v=v.trim()')
+        break
+      case OP_STR_LOWER:
+        lines.push('v=v.toLowerCase()')
+        break
+      case OP_STR_UPPER:
+        lines.push('v=v.toUpperCase()')
+        break
+      case OP_STR_TRIM_START:
+        lines.push('v=v.trimStart()')
+        break
+      case OP_STR_TRIM_END:
+        lines.push('v=v.trimEnd()')
+        break
+      case OP_STR_SPLIT:
+        lines.push('v=v.split(f' + i + ')')
+        break
+      case OP_STR_LENGTH:
+        lines.push('v=v.length')
+        break
+      case OP_STR_IS_EMPTY:
+        lines.push("v=v===''")
+        break
       // Dict
-      case OP_DICT_KEYS:      lines.push('v=Object.keys(v)'); break
-      case OP_DICT_VALUES:    lines.push('v=Object.values(v)'); break
-      case OP_DICT_IS_EMPTY:  lines.push('v=Object.keys(v).length===0'); break
+      case OP_DICT_KEYS:
+        lines.push('v=Object.keys(v)')
+        break
+      case OP_DICT_VALUES:
+        lines.push('v=Object.values(v)')
+        break
+      case OP_DICT_IS_EMPTY:
+        lines.push('v=Object.keys(v).length===0')
+        break
       // Guard (as boolean transform)
-      case OP_GUARD_IS_NUMBER:   lines.push("v=typeof v==='number'"); break
-      case OP_GUARD_IS_STRING:   lines.push("v=typeof v==='string'"); break
-      case OP_GUARD_IS_BOOLEAN:  lines.push("v=typeof v==='boolean'"); break
-      case OP_GUARD_IS_NIL:      lines.push('v=v==null'); break
-      case OP_GUARD_IS_ARRAY:    lines.push('v=Array.isArray(v)'); break
-      case OP_GUARD_IS_OBJECT:   lines.push("v=typeof v==='object'&&v!==null&&!Array.isArray(v)"); break
-      case OP_GUARD_IS_FUNCTION: lines.push("v=typeof v==='function'"); break
+      case OP_GUARD_IS_NUMBER:
+        lines.push("v=typeof v==='number'")
+        break
+      case OP_GUARD_IS_STRING:
+        lines.push("v=typeof v==='string'")
+        break
+      case OP_GUARD_IS_BOOLEAN:
+        lines.push("v=typeof v==='boolean'")
+        break
+      case OP_GUARD_IS_NIL:
+        lines.push('v=v==null')
+        break
+      case OP_GUARD_IS_ARRAY:
+        lines.push('v=Array.isArray(v)')
+        break
+      case OP_GUARD_IS_OBJECT:
+        lines.push("v=typeof v==='object'&&v!==null&&!Array.isArray(v)")
+        break
+      case OP_GUARD_IS_FUNCTION:
+        lines.push("v=typeof v==='function'")
+        break
       default:
         // Unknown scalar op. Call the function directly
-        lines.push('v=f' + i + '(v)'); break
+        lines.push('v=f' + i + '(v)')
+        break
     }
   }
   lines.push('return v')
@@ -941,11 +1419,16 @@ function scalarJitCompile(ops: number[], len: number): ScalarRunner {
 
   return (val, fns) => {
     switch (len) {
-      case 1: return jitFn(val, fns[0])
-      case 2: return jitFn(val, fns[0], fns[1])
-      case 3: return jitFn(val, fns[0], fns[1], fns[2])
-      case 4: return jitFn(val, fns[0], fns[1], fns[2], fns[3])
-      case 5: return jitFn(val, fns[0], fns[1], fns[2], fns[3], fns[4])
+      case 1:
+        return jitFn(val, fns[0])
+      case 2:
+        return jitFn(val, fns[0], fns[1])
+      case 3:
+        return jitFn(val, fns[0], fns[1], fns[2])
+      case 4:
+        return jitFn(val, fns[0], fns[1], fns[2], fns[3])
+      case 5:
+        return jitFn(val, fns[0], fns[1], fns[2], fns[3], fns[4])
       default: {
         const args: any[] = [val]
         for (let i = 0; i < len; i++) args.push(fns[i])
@@ -960,25 +1443,63 @@ function scalarFallback(ops: number[], len: number): ScalarRunner {
     let v = val
     for (let i = 0; i < len; i++) {
       switch (ops[i]) {
-        case OP_MATH_ADD:      v = v + fns[i]; break
-        case OP_MATH_SUBTRACT: v = v - fns[i]; break
-        case OP_MATH_MULTIPLY: v = v * fns[i]; break
-        case OP_MATH_DIVIDE:   v = v / fns[i]; break
-        case OP_MATH_NEGATE:   v = -v; break
-        case OP_MATH_INC:      v = v + 1; break
-        case OP_MATH_DEC:      v = v - 1; break
-        case OP_STR_TRIM:       v = v.trim(); break
-        case OP_STR_LOWER:      v = v.toLowerCase(); break
-        case OP_STR_UPPER:      v = v.toUpperCase(); break
-        case OP_STR_TRIM_START: v = v.trimStart(); break
-        case OP_STR_TRIM_END:   v = v.trimEnd(); break
-        case OP_STR_SPLIT:      v = v.split(fns[i]); break
-        case OP_STR_LENGTH:     v = v.length; break
-        case OP_STR_IS_EMPTY:   v = v === ''; break
-        case OP_DICT_KEYS:      v = Object.keys(v); break
-        case OP_DICT_VALUES:    v = Object.values(v); break
-        case OP_DICT_IS_EMPTY:  v = Object.keys(v).length === 0; break
-        default: v = fns[i](v); break
+        case OP_MATH_ADD:
+          v = v + fns[i]
+          break
+        case OP_MATH_SUBTRACT:
+          v = v - fns[i]
+          break
+        case OP_MATH_MULTIPLY:
+          v = v * fns[i]
+          break
+        case OP_MATH_DIVIDE:
+          v = v / fns[i]
+          break
+        case OP_MATH_NEGATE:
+          v = -v
+          break
+        case OP_MATH_INC:
+          v = v + 1
+          break
+        case OP_MATH_DEC:
+          v = v - 1
+          break
+        case OP_STR_TRIM:
+          v = v.trim()
+          break
+        case OP_STR_LOWER:
+          v = v.toLowerCase()
+          break
+        case OP_STR_UPPER:
+          v = v.toUpperCase()
+          break
+        case OP_STR_TRIM_START:
+          v = v.trimStart()
+          break
+        case OP_STR_TRIM_END:
+          v = v.trimEnd()
+          break
+        case OP_STR_SPLIT:
+          v = v.split(fns[i])
+          break
+        case OP_STR_LENGTH:
+          v = v.length
+          break
+        case OP_STR_IS_EMPTY:
+          v = v === ''
+          break
+        case OP_DICT_KEYS:
+          v = Object.keys(v)
+          break
+        case OP_DICT_VALUES:
+          v = Object.values(v)
+          break
+        case OP_DICT_IS_EMPTY:
+          v = Object.keys(v).length === 0
+          break
+        default:
+          v = fns[i](v)
+          break
       }
     }
     return v
@@ -1014,7 +1535,10 @@ export function fuse(a: unknown, fns: Array<(x: unknown) => unknown>): unknown {
   let lane = 0
   for (let i = 0; i < tagged.length; i++) {
     const t = tagged[i]
-    if (typeof t._op !== 'number' || t._op <= 0) { lane = -1; break }
+    if (typeof t._op !== 'number' || t._op <= 0) {
+      lane = -1
+      break
+    }
     const op = t._op
     if (isFuseableOp(op) || isTerminalOp(op) || isAccessorOp(op)) {
       if (lane === 2) lane = 3
@@ -1022,7 +1546,10 @@ export function fuse(a: unknown, fns: Array<(x: unknown) => unknown>): unknown {
     } else if (isScalarOp(op)) {
       if (lane === 1) lane = 3
       else if (lane === 0) lane = 2
-    } else { lane = -1; break }
+    } else {
+      lane = -1
+      break
+    }
   }
 
   if (lane === 2) return runScalar(a, tagged, 0, tagged.length)
@@ -1038,12 +1565,18 @@ export function fuse(a: unknown, fns: Array<(x: unknown) => unknown>): unknown {
     if (!isTagged(fn) || !isFuseableOrTerminal(fn._op)) {
       // Sort→take fusion
       const op = isTagged(fn) ? fn._op : -1
-      if ((op === OP_SORT_BY || op === OP_SORT || op === OP_SORT_ASC || op === OP_SORT_DESC) && i + 1 < tagged.length) {
+      if (
+        (op === OP_SORT_BY || op === OP_SORT || op === OP_SORT_ASC || op === OP_SORT_DESC) &&
+        i + 1 < tagged.length
+      ) {
         const next = tagged[i + 1]
         if (isTagged(next) && next._op === OP_TAKE) {
-          const cmp = op === OP_SORT_BY ? fn._fn
-            : op === OP_SORT_DESC ? ((a: number, b: number) => b - a)
-            : ((a: number, b: number) => a - b)
+          const cmp =
+            op === OP_SORT_BY
+              ? fn._fn
+              : op === OP_SORT_DESC
+                ? (a: number, b: number) => b - a
+                : (a: number, b: number) => a - b
           data = takeSorted(data as any[], next._fn, cmp)
           i += 2
           continue

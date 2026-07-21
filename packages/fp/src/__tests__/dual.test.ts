@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { dual } from '../dual'
 import { pipe } from '../pipe'
 
@@ -26,9 +26,7 @@ describe('dual', () => {
     const clamp: {
       (value: number, min: number, max: number): number
       (min: number, max: number): (value: number) => number
-    } = dual(3, (value: number, min: number, max: number) =>
-      Math.min(Math.max(value, min), max),
-    )
+    } = dual(3, (value: number, min: number, max: number) => Math.min(Math.max(value, min), max))
 
     it('data-first: executes immediately with all args', () => {
       expect(clamp(5, 0, 10)).toBe(5)
@@ -136,11 +134,7 @@ describe('dual', () => {
   })
 
   describe('tagged arity 3', () => {
-    const tagged3 = dual(
-      3,
-      (data: number, a: number, b: number) => data + a + b,
-      { op: 'map' },
-    )
+    const tagged3 = dual(3, (data: number, a: number, b: number) => data + a + b, { op: 'map' })
 
     it('data-first', () => expect(tagged3(10, 2, 3)).toBe(15))
 
@@ -154,11 +148,9 @@ describe('dual', () => {
   })
 
   describe('tagged arity 4', () => {
-    const tagged4 = dual(
-      4,
-      (data: number, a: number, b: number, c: number) => data + a + b + c,
-      { op: 'map' },
-    )
+    const tagged4 = dual(4, (data: number, a: number, b: number, c: number) => data + a + b + c, {
+      op: 'map',
+    })
 
     it('data-first', () => expect(tagged4(10, 1, 2, 3)).toBe(16))
 

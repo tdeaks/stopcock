@@ -1,12 +1,34 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import {
-  is, propIs,
-  isString, isNumber, isBoolean, isNonNull, isDefined,
-  isNullish, isNonNullish, isArray, isPlainObject, isFunction,
-  isBigInt, isDate, isEmpty, isEmptyish, isError, isPromise,
-  isShallowEqual, isSymbol, isTruthy, isObjectType,
-  isDeepEqual, isStrictEqual, isNil, isNotNil,
-  and, or, not,
+  is,
+  propIs,
+  isString,
+  isNumber,
+  isBoolean,
+  isNonNull,
+  isDefined,
+  isNullish,
+  isNonNullish,
+  isArray,
+  isPlainObject,
+  isFunction,
+  isBigInt,
+  isDate,
+  isEmpty,
+  isEmptyish,
+  isError,
+  isPromise,
+  isShallowEqual,
+  isSymbol,
+  isTruthy,
+  isObjectType,
+  isDeepEqual,
+  isStrictEqual,
+  isNil,
+  isNotNil,
+  and,
+  or,
+  not,
 } from '../guard'
 
 describe('guard', () => {
@@ -91,10 +113,13 @@ describe('guard', () => {
   describe('isShallowEqual', () => {
     it('equal objects', () => expect(isShallowEqual({ a: 1, b: 2 }, { a: 1, b: 2 })).toBe(true))
     it('unequal objects', () => expect(isShallowEqual({ a: 1 }, { a: 2 })).toBe(false))
-  it('different key counts', () => expect(isShallowEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false))
-  it('different keys with undefined values', () =>
-    expect(isShallowEqual({ a: undefined }, { b: undefined })).toBe(false))
-  it('same reference', () => { const o = { a: 1 }; expect(isShallowEqual(o, o)).toBe(true) })
+    it('different key counts', () => expect(isShallowEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false))
+    it('different keys with undefined values', () =>
+      expect(isShallowEqual({ a: undefined }, { b: undefined })).toBe(false))
+    it('same reference', () => {
+      const o = { a: 1 }
+      expect(isShallowEqual(o, o)).toBe(true)
+    })
     it('primitives', () => expect(isShallowEqual(1, 1)).toBe(true))
     it('different primitives', () => expect(isShallowEqual(1, 2)).toBe(false))
     it('null vs object', () => expect(isShallowEqual(null, { a: 1 })).toBe(false))
@@ -168,14 +193,23 @@ describe('guard', () => {
 
   describe('isDeepEqual', () => {
     it('equal Maps', () => {
-      const a = new Map([['x', 1], ['y', 2]])
-      const b = new Map([['x', 1], ['y', 2]])
+      const a = new Map([
+        ['x', 1],
+        ['y', 2],
+      ])
+      const b = new Map([
+        ['x', 1],
+        ['y', 2],
+      ])
       expect(isDeepEqual(a, b)).toBe(true)
     })
 
     it('unequal Maps (different size)', () => {
       const a = new Map([['x', 1]])
-      const b = new Map([['x', 1], ['y', 2]])
+      const b = new Map([
+        ['x', 1],
+        ['y', 2],
+      ])
       expect(isDeepEqual(a, b)).toBe(false)
     })
 

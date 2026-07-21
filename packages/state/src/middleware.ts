@@ -23,31 +23,47 @@ export function logger<S>(options?: LoggerOptions): Middleware<S> {
     const ops = patch.ops
     if (ops.length === 0) return patch
 
-    const summary = ops.length === 1
-      ? describeOp(ops[0])
-      : groupOps(ops) ?? `${ops.length} changes`
+    const summary =
+      ops.length === 1 ? describeOp(ops[0]) : (groupOps(ops) ?? `${ops.length} changes`)
 
     const groupMethod = collapsed ? console.groupCollapsed : console.group
-    groupMethod.call(console, '%c state %c' + summary, 'background:#161b22;color:#58a6ff;padding:2px 6px;border-radius:3px;font-weight:bold', 'color:inherit;font-weight:normal;margin-left:4px')
+    groupMethod.call(
+      console,
+      '%c state %c' + summary,
+      'background:#161b22;color:#58a6ff;padding:2px 6px;border-radius:3px;font-weight:bold',
+      'color:inherit;font-weight:normal;margin-left:4px',
+    )
 
     if (table) {
-      const rows = ops.map(op => {
+      const rows = ops.map((op) => {
         const row: Record<string, unknown> = {
           op: op.op,
           path: formatPath(op.path),
         }
-        if (op.op === 'replace') { row.from = op.oldValue; row.to = op.newValue }
-        else if (op.op === 'add') { row.value = op.value }
-        else if (op.op === 'remove') { row.was = op.oldValue }
-        else if (op.op === 'move') { row.from = formatPath(op.from) }
-        else if (op.op === 'rename') { row.from = op.oldKey; row.to = op.newKey }
+        if (op.op === 'replace') {
+          row.from = op.oldValue
+          row.to = op.newValue
+        } else if (op.op === 'add') {
+          row.value = op.value
+        } else if (op.op === 'remove') {
+          row.was = op.oldValue
+        } else if (op.op === 'move') {
+          row.from = formatPath(op.from)
+        } else if (op.op === 'rename') {
+          row.from = op.oldKey
+          row.to = op.newKey
+        }
         return row
       })
       console.table(rows)
     } else {
       for (const op of ops) {
         const color = OP_COLORS[op.op] ?? '#768390'
-        console.log(`%c${op.op}%c ${describeOp(op)}`, `color:#fff;background:${color};padding:1px 5px;border-radius:2px;font-size:10px`, 'color:inherit')
+        console.log(
+          `%c${op.op}%c ${describeOp(op)}`,
+          `color:#fff;background:${color};padding:1px 5px;border-radius:2px;font-size:10px`,
+          'color:inherit',
+        )
       }
     }
 
@@ -72,7 +88,7 @@ export type DevtoolsOptions = {
  *   // dt.connect(store) to enable time travel
  */
 export function devtools<S extends object>(options?: string | DevtoolsOptions) {
-  const opts = typeof options === 'string' ? { name: options } : options ?? {}
+  const opts = typeof options === 'string' ? { name: options } : (options ?? {})
   const ext = typeof window !== 'undefined' && (window as any).__REDUX_DEVTOOLS_EXTENSION__
 
   // no-op if devtools extension isn't present
@@ -146,21 +162,27 @@ function truncate(v: unknown, max = 40): string {
 function describeOp(op: Operation): string {
   const p = formatPath(op.path)
   switch (op.op) {
-    case 'replace': return `${p}: ${truncate(op.oldValue)} -> ${truncate(op.newValue)}`
-    case 'add': return `added ${p}: ${truncate(op.value)}`
-    case 'remove': return `removed ${p}`
-    case 'move': return `moved ${formatPath(op.from)} -> ${p}`
-    case 'rename': return `renamed ${p}.${op.oldKey} -> ${op.newKey}`
-    case 'test': return `test ${p}`
+    case 'replace':
+      return `${p}: ${truncate(op.oldValue)} -> ${truncate(op.newValue)}`
+    case 'add':
+      return `added ${p}: ${truncate(op.value)}`
+    case 'remove':
+      return `removed ${p}`
+    case 'move':
+      return `moved ${formatPath(op.from)} -> ${p}`
+    case 'rename':
+      return `renamed ${p}.${op.oldKey} -> ${op.newKey}`
+    case 'test':
+      return `test ${p}`
   }
 }
 
 function groupOps(ops: readonly Operation[]): string | null {
-  const roots = new Set(ops.map(op => op.path[0]))
+  const roots = new Set(ops.map((op) => op.path[0]))
   if (roots.size > 3) return `${ops.length} changes`
   const parts: string[] = []
   for (const key of roots) {
-    const group = ops.filter(op => op.path[0] === key)
+    const group = ops.filter((op) => op.path[0] === key)
     if (group.length === 1) parts.push(describeOp(group[0]))
     else parts.push(`${key} (${group.length} changes)`)
   }
@@ -184,9 +206,12 @@ export function withDevtools<S extends object>(
   return {
     ...base,
     onCommit: baseOnCommit
-      ? (patch, prev, next) => { baseOnCommit(patch, prev, next); dt.onCommit(patch, prev, next) }
-      : dt.onCommit,
-    connect: dt.connect,
+      ? (patch, prev, next) => {
+          baseOnCommit(patch, prev, next)
+          dt.onCommit(patch, prev, next)
+        }
+      : (patch, prev, next) => dt.onCommit(patch, prev, next),
+    connect: (store) => dt.connect(store),
   }
 }
 
@@ -244,7 +269,11 @@ export function history<S extends object = any>(options?: HistoryOptions): Histo
       store.replace(applyUnsafe(store.get(), p) as S)
       silent = false
     },
-    get canUndo() { return undos.length > 0 },
-    get canRedo() { return redos.length > 0 },
+    get canUndo() {
+      return undos.length > 0
+    },
+    get canRedo() {
+      return redos.length > 0
+    },
   }
 }

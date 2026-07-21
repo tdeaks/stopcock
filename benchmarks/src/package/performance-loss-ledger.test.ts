@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vite-plus/test'
 
 import {
   classifyBenchmarkRow,
@@ -36,10 +36,7 @@ describe('performance loss ledger', () => {
       },
       {
         title: 'Obj.path — string path',
-        results: [
-          result('stopcock path', 100),
-          result('rambda path', 108),
-        ],
+        results: [result('stopcock path', 100), result('rambda path', 108)],
       },
       {
         title: 'large array map — n=100000',
@@ -51,10 +48,7 @@ describe('performance loss ledger', () => {
       },
       {
         title: 'array chain comparison',
-        results: [
-          result('stopcock pipeline', 300),
-          result('native chain map -> filter', 500),
-        ],
+        results: [result('stopcock pipeline', 300), result('native chain map -> filter', 500)],
       },
     ]
 
@@ -71,7 +65,7 @@ describe('performance loss ledger', () => {
       percentage: 0,
     })
 
-    expect(summary.actionableLosses.map(loss => loss.baselineName)).toEqual([
+    expect(summary.actionableLosses.map((loss) => loss.baselineName)).toEqual([
       'native immutable spread baseline',
       'rambda path',
     ])
@@ -90,23 +84,30 @@ describe('performance loss ledger', () => {
   })
 
   test('skips Vitest JSON benchmark rows without numeric hz', () => {
-    const suites = parseVitestJsonOutput(JSON.stringify({
-      files: [
-        {
-          filepath: '/repo/benchmarks/src/object-ops.bench.ts',
-          groups: [
-            {
-              fullName: 'src/object-ops.bench.ts > assoc',
-              benchmarks: [
-                { name: 'stopcock', hz: 10_000, rme: 0.5, sampleCount: 100 },
-                { name: 'rambda' },
-                { name: 'native immutable spread baseline', hz: 30_000, rme: 0.5, sampleCount: 100 },
-              ],
-            },
-          ],
-        },
-      ],
-    }))
+    const suites = parseVitestJsonOutput(
+      JSON.stringify({
+        files: [
+          {
+            filepath: '/repo/benchmarks/src/object-ops.bench.ts',
+            groups: [
+              {
+                fullName: 'src/object-ops.bench.ts > assoc',
+                benchmarks: [
+                  { name: 'stopcock', hz: 10_000, rme: 0.5, sampleCount: 100 },
+                  { name: 'rambda' },
+                  {
+                    name: 'native immutable spread baseline',
+                    hz: 30_000,
+                    rme: 0.5,
+                    sampleCount: 100,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    )
 
     expect(suites).toEqual([
       {

@@ -22,16 +22,16 @@ const svg = `
   </text>
 </svg>`
 
-const logo = await sharp('src/assets/stopcock-logo.svg')
-  .resize(logoDim, logoDim)
-  .toBuffer()
+const logo = await sharp('src/assets/stopcock-logo.svg').resize(logoDim, logoDim).toBuffer()
 
 await sharp(Buffer.from(svg))
-  .composite([{
-    input: logo,
-    top: Math.round(height / 2 - logoDim - 30),
-    left: Math.round(width / 2 - logoDim / 2),
-  }])
+  .composite([
+    {
+      input: logo,
+      top: Math.round(height / 2 - logoDim - 30),
+      left: Math.round(width / 2 - logoDim / 2),
+    },
+  ])
   .png()
   .toFile('public/og.png')
 

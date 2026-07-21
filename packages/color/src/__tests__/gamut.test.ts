@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { rgb, oklch, fromHex } from '../create'
 import { inGamut, toGamut } from '../gamut'
 import { toSRGB } from '../convert'

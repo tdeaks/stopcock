@@ -1,5 +1,6 @@
 import type { Note, Node, VoiceFactory, WebAudioHandle, WebAudioPlayOptions } from './types'
 import { cloneForTrigger } from './internal/graph'
+import { unrefTimer } from './internal/util'
 import { play } from './render/web'
 
 type Mode = 'mono' | 'poly' | 'trigger'
@@ -25,7 +26,11 @@ function factory(template: Node, mode: Mode, max = 1): VoiceFactory {
         trigger(note: Note) {
           if (mode === 'mono' && active.length > 0) stopOldest()
           if (mode === 'poly' && active.length >= max) stopOldest()
-          const handle = play(ctx, cloneForTrigger(template, { ...note, atSec: note.atSec ?? ctx.currentTime }), opts)
+          const handle = play(
+            ctx,
+            cloneForTrigger(template, { ...note, atSec: note.atSec ?? ctx.currentTime }),
+            opts,
+          )
           active.push(handle)
           if (note.gateMs !== undefined || mode === 'trigger') {
             const timeout = setTimeout(() => {
@@ -35,10 +40,10 @@ function factory(template: Node, mode: Mode, max = 1): VoiceFactory {
                   handle.stop()
                   removeActive(handle)
                 }, 1200)
-                if (typeof stopTimeout === 'object' && 'unref' in stopTimeout) stopTimeout.unref()
+                unrefTimer(stopTimeout)
               }
             }, note.gateMs ?? 1000)
-            if (typeof timeout === 'object' && 'unref' in timeout) timeout.unref()
+            unrefTimer(timeout)
           }
         },
         release(note?: Note) {
@@ -60,6 +65,7 @@ function factory(template: Node, mode: Mode, max = 1): VoiceFactory {
 
 export const voice = {
   mono: (template: Node): VoiceFactory => factory(template, 'mono', 1),
-  poly: (template: Node, opts: { max: number }): VoiceFactory => factory(template, 'poly', Math.max(1, Math.floor(opts.max))),
+  poly: (template: Node, opts: { max: number }): VoiceFactory =>
+    factory(template, 'poly', Math.max(1, Math.floor(opts.max))),
   trigger: (template: Node): VoiceFactory => factory(template, 'trigger', Number.POSITIVE_INFINITY),
 } as const

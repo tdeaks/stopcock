@@ -1,12 +1,5 @@
 import { createEffect, onCleanup } from 'solid-js'
-import {
-  activeNotes,
-  clearArpNotes,
-  engine,
-  latchedNotes,
-  markArpNotes,
-  state,
-} from './state'
+import { activeNotes, clearArpNotes, engine, latchedNotes, markArpNotes, state } from './state'
 import {
   baseStepDurationMs,
   gateDurationMs,

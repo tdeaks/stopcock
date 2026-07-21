@@ -22,7 +22,11 @@ export async function parseResponse<T>(
       data = await response.text()
     } else {
       const text = await response.text()
-      try { data = JSON.parse(text) } catch { data = text }
+      try {
+        data = JSON.parse(text)
+      } catch {
+        data = text
+      }
     }
   }
 
@@ -34,7 +38,11 @@ export async function parseErrorBody<E>(response: Response): Promise<E> {
   try {
     const text = await response.text()
     if (!text) return undefined as E
-    try { return JSON.parse(text) as E } catch { return text as E }
+    try {
+      return JSON.parse(text) as E
+    } catch {
+      return text as E
+    }
   } catch {
     return undefined as E
   }

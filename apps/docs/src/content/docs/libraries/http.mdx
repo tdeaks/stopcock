@@ -32,9 +32,9 @@ try {
   await api.get<User>('/users/999')
 } catch (e) {
   if (e instanceof HttpError) {
-    e.status      // 404
-    e.statusText  // 'Not Found'
-    e.data        // parsed response body (unknown)
+    e.status // 404
+    e.statusText // 'Not Found'
+    e.data // parsed response body (unknown)
   }
 }
 ```
@@ -83,11 +83,7 @@ import { retry, timeout, run } from '@stopcock/async'
 
 const task = api.task.get<User[]>('/users')
 
-const withFallback = pipe(
-  task,
-  retry({ attempts: 5, backoff: 'exponential' }),
-  timeout(10_000),
-)
+const withFallback = pipe(task, retry({ attempts: 5, backoff: 'exponential' }), timeout(10_000))
 
 const users = await run(withFallback)
 ```
@@ -102,7 +98,9 @@ const api = createClient({
     attempts: 3,
     backoff: 'exponential',
     delay: 1000,
-    retryIf: (error, attempt) => { /* custom logic */ },
+    retryIf: (error, attempt) => {
+      /* custom logic */
+    },
   },
 })
 ```
@@ -126,10 +124,7 @@ Concurrent identical GET requests share one fetch. Mutations invalidate matching
 const api = createClient({ dedup: true })
 
 // one network request, both resolve with the same data
-const [a, b] = await Promise.all([
-  api.get('/users'),
-  api.get('/users'),
-])
+const [a, b] = await Promise.all([api.get('/users'), api.get('/users')])
 ```
 
 ## Upload progress
@@ -185,7 +180,7 @@ const api = createClient({ baseUrl: 'https://api.example.com' })
 const store = create({ search: '' })
 
 const users = resource({
-  deps: (get) => ({ q: get(store, s => s.search) }),
+  deps: (get) => ({ q: get(store, (s) => s.search) }),
   fetch: ({ q }, signal) => api.get<User[]>('/users', { query: { q }, signal }),
 })
 ```

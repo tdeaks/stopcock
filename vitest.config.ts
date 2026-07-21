@@ -1,8 +1,9 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   test: {
     include: ['packages/*/src/**/__tests__/**/*.test.ts'],
+    maxWorkers: 2,
     typecheck: {
       enabled: true,
       include: ['packages/*/src/**/__tests__/**/*.test-d.ts'],

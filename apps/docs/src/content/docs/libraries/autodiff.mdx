@@ -20,12 +20,10 @@ walks the tape backwards and accumulates gradients with the chain rule.
 import { pipe } from '@stopcock/fp'
 import { differentiable, sin, square, add, type Var } from '@stopcock/autodiff'
 
-const f = differentiable((x: Var<number>) =>
-  pipe(x, square, add(3), sin)
-)
+const f = differentiable((x: Var<number>) => pipe(x, square, add(3), sin))
 
-f.forward(2)   // Math.sin(7)
-f.gradient(2)  // Math.cos(7) * 4
+f.forward(2) // Math.sin(7)
+f.gradient(2) // Math.cos(7) * 4
 ```
 
 This first example shows the core idea: write the calculation once, then ask for
@@ -49,12 +47,10 @@ path and every stage can record to the active tape.
 ## The API
 
 ```ts
-const f = differentiable((x: Var<number>, y: Var<number>) =>
-  add(mul(x, y), square(x))
-)
+const f = differentiable((x: Var<number>, y: Var<number>) => add(mul(x, y), square(x)))
 
-f.forward(2, 3)          // 10
-f.gradient(2, 3)         // [7, 2]
+f.forward(2, 3) // 10
+f.gradient(2, 3) // [7, 2]
 f.valueAndGradient(2, 3) // { value: 10, gradient: [7, 2] }
 ```
 
@@ -107,9 +103,7 @@ import { differentiable, sub, square, vecDot, type Var, type Vec } from '@stopco
 
 const x = new Float64Array([1, 2, 3])
 
-const loss = differentiable((w: Var<Vec>) =>
-  square(sub(vecDot(w, x), 1))
-)
+const loss = differentiable((w: Var<Vec>) => square(sub(vecDot(w, x), 1)))
 
 loss.gradient(new Float64Array([0, 0, 0]))
 ```
@@ -130,12 +124,19 @@ type Mat = { data: Float64Array; rows: number; cols: number }
 ```
 
 ```ts
-import { differentiable, matMul, matNormSquared, matSub, type Mat, type Var } from '@stopcock/autodiff'
+import {
+  differentiable,
+  matMul,
+  matNormSquared,
+  matSub,
+  type Mat,
+  type Var,
+} from '@stopcock/autodiff'
 
 const target: Mat = { rows: 2, cols: 1, data: new Float64Array([1, -1]) }
 
 const loss = differentiable((w: Var<Mat>, x: Var<Mat>) =>
-  matNormSquared(matSub(matMul(x, w), target))
+  matNormSquared(matSub(matMul(x, w), target)),
 )
 ```
 

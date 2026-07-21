@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest'
-import { type Option, type Result, some as optSome, none, ok as resOk, err, isSome, isNone } from '../index'
+import { describe, it, expect } from 'vite-plus/test'
+import {
+  type Option,
+  type Result,
+  some as optSome,
+  none,
+  ok as resOk,
+  err,
+  isSome,
+  isNone,
+} from '../index'
 import { prop, view } from '../lens'
 import { some, ok, preview, set as setPrism, over as overPrism } from '../prism'
 import { each, filtered, toArray, modify } from '../traversal'
@@ -56,8 +65,14 @@ describe('composeOptics', () => {
   })
 
   it('iso + iso = iso', () => {
-    const double = iso<number, number>(n => n * 2, n => n / 2)
-    const addOne = iso<number, number>(n => n + 1, n => n - 1)
+    const double = iso<number, number>(
+      (n) => n * 2,
+      (n) => n / 2,
+    )
+    const addOne = iso<number, number>(
+      (n) => n + 1,
+      (n) => n - 1,
+    )
     const composed = composeOptics(double, addOne)
     expect(composed._tag).toBe('Iso')
     expect((composed as any).get(5)).toBe(11)
@@ -66,14 +81,20 @@ describe('composeOptics', () => {
 
   it('iso + lens = lens', () => {
     type S = { x: number }
-    const wrap = iso<S, S>(s => s, s => s)
+    const wrap = iso<S, S>(
+      (s) => s,
+      (s) => s,
+    )
     const composed = composeOptics(wrap, prop<S, 'x'>('x'))
     expect(composed._tag).toBe('Lens')
     expect(view({ x: 42 }, composed as any)).toBe(42)
   })
 
   it('iso + prism = prism', () => {
-    const wrap = iso<Option<number>, Option<number>>(s => s, s => s)
+    const wrap = iso<Option<number>, Option<number>>(
+      (s) => s,
+      (s) => s,
+    )
     const composed = composeOptics(wrap, some<number>())
     expect(composed._tag).toBe('Prism')
     const v = preview(optSome(5), composed as any)
@@ -97,7 +118,10 @@ describe('composeOptics', () => {
   })
 
   it('iso + traversal = traversal', () => {
-    const wrap = iso<number[], number[]>(s => s, s => s)
+    const wrap = iso<number[], number[]>(
+      (s) => s,
+      (s) => s,
+    )
     const composed = composeOptics(wrap, each<number>())
     expect(composed._tag).toBe('Traversal')
     expect(toArray([1, 2, 3], composed as any)).toEqual([1, 2, 3])
@@ -105,7 +129,10 @@ describe('composeOptics', () => {
   })
 
   it('traversal + iso = traversal', () => {
-    const double = iso<number, number>(n => n * 2, n => n / 2)
+    const double = iso<number, number>(
+      (n) => n * 2,
+      (n) => n / 2,
+    )
     const composed = composeOptics(each<number>(), double)
     expect(composed._tag).toBe('Traversal')
     expect(toArray([1, 2, 3], composed as any)).toEqual([2, 4, 6])
@@ -143,13 +170,16 @@ describe('optics edge cases', () => {
   })
 
   it('filtered with no matches', () => {
-    const t = filtered<number>(n => n > 100)
+    const t = filtered<number>((n) => n > 100)
     expect(toArray([1, 2, 3], t)).toEqual([])
     expect(modify([1, 2, 3], t, (x: number) => x * 10)).toEqual([1, 2, 3])
   })
 
   it('iso reverse roundtrip', () => {
-    const strToNum = iso<string, number>(s => parseInt(s, 10), n => String(n))
+    const strToNum = iso<string, number>(
+      (s) => parseInt(s, 10),
+      (n) => String(n),
+    )
     const roundtrip = reverse(reverse(strToNum))
     expect(roundtrip.get('42')).toBe(42)
     expect(roundtrip.reverseGet(42)).toBe('42')

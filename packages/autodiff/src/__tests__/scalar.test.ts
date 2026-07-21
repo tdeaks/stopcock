@@ -1,10 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { differentiable } from '../differentiable'
 import { add, div, mul, neg, pow, square, sub } from '../scalar'
 import type { Var } from '../types'
 
-const numerical = (f: (x: number) => number, x: number, h = 1e-5) =>
-  (f(x + h) - f(x - h)) / (2 * h)
+const numerical = (f: (x: number) => number, x: number, h = 1e-5) => (f(x + h) - f(x - h)) / (2 * h)
 
 const numericalA = (f: (a: number, b: number) => number, a: number, b: number, h = 1e-5) =>
   (f(a + h, b) - f(a - h, b)) / (2 * h)

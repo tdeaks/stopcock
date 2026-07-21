@@ -20,35 +20,45 @@ export const lighten: {
   (c: Color, amount: number): Color
   (amount: number): (c: Color) => Color
 } = dual(2, (c: Color, amount: number) =>
-  inOklch(c, (ch) => { ch[0] = clamp(ch[0] + amount, 0, 1) })
+  inOklch(c, (ch) => {
+    ch[0] = clamp(ch[0] + amount, 0, 1)
+  }),
 )
 
 export const darken: {
   (c: Color, amount: number): Color
   (amount: number): (c: Color) => Color
 } = dual(2, (c: Color, amount: number) =>
-  inOklch(c, (ch) => { ch[0] = clamp(ch[0] - amount, 0, 1) })
+  inOklch(c, (ch) => {
+    ch[0] = clamp(ch[0] - amount, 0, 1)
+  }),
 )
 
 export const saturate: {
   (c: Color, amount: number): Color
   (amount: number): (c: Color) => Color
 } = dual(2, (c: Color, amount: number) =>
-  inOklch(c, (ch) => { ch[1] = Math.max(0, ch[1] + amount * 0.4) })
+  inOklch(c, (ch) => {
+    ch[1] = Math.max(0, ch[1] + amount * 0.4)
+  }),
 )
 
 export const desaturate: {
   (c: Color, amount: number): Color
   (amount: number): (c: Color) => Color
 } = dual(2, (c: Color, amount: number) =>
-  inOklch(c, (ch) => { ch[1] = Math.max(0, ch[1] - amount * 0.4) })
+  inOklch(c, (ch) => {
+    ch[1] = Math.max(0, ch[1] - amount * 0.4)
+  }),
 )
 
 export const adjustHue: {
   (c: Color, degrees: number): Color
   (degrees: number): (c: Color) => Color
 } = dual(2, (c: Color, degrees: number) =>
-  inOklch(c, (ch) => { ch[2] = ((ch[2] + degrees) % 360 + 360) % 360 })
+  inOklch(c, (ch) => {
+    ch[2] = (((ch[2] + degrees) % 360) + 360) % 360
+  }),
 )
 
 export const adjustAlpha: {

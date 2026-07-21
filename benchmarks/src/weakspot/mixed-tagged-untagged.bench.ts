@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { pipe, A } from '@stopcock/fp'
 import * as R from 'remeda'
 import { A as TB, pipe as tbPipe } from '@mobily/ts-belt'
@@ -6,7 +6,7 @@ import { getData } from '../setup'
 
 const dbl = (x: number) => x * 2
 const gt = (x: number) => x > 0.5
-const custom = (arr: number[]) => arr.map(x => x + 100)
+const custom = (arr: number[]) => arr.map((x) => x + 100)
 
 describe.each([100, 1_000, 10_000])('tagged→untagged→tagged — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)

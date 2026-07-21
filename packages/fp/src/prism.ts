@@ -15,14 +15,14 @@ export function prism<S, A>(getOption: (s: S) => Option<A>, set: (s: S, a: A) =>
 
 export function fromPredicate<A>(pred: (a: A) => boolean): Prism<A, A> {
   return prism(
-    a => pred(a) ? some(a) : none,
+    (a) => (pred(a) ? some(a) : none),
     (_, a) => a,
   )
 }
 
 function some_<A>(): Prism<Option<A>, A> {
   return prism(
-    o => o,
+    (o) => o,
     (_, a) => some(a),
   )
 }
@@ -30,8 +30,8 @@ export { some_ as some }
 
 export function ok<A, E>(): Prism<Result<A, E>, A> {
   return prism(
-    r => r._tag === 1 ? some(r.value) : none,
-    (r, a) => r._tag === 1 ? { _tag: 1, value: a } : r,
+    (r) => (r._tag === 1 ? some(r.value) : none),
+    (r, a) => (r._tag === 1 ? { _tag: 1, value: a } : r),
   )
 }
 
@@ -57,7 +57,7 @@ export const over: {
 
 export function compose<S, A, B>(outer: Prism<S, A>, inner: Prism<A, B>): Prism<S, B> {
   return prism(
-    s => {
+    (s) => {
       const a = outer.getOption(s)
       return isSome(a) ? inner.getOption(a.value) : none
     },

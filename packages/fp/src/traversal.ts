@@ -6,28 +6,31 @@ export type Traversal<S, A> = {
   readonly modify: (s: S, f: (a: A) => A) => S
 }
 
-export function traversal<S, A>(getAll: (s: S) => A[], modify: (s: S, f: (a: A) => A) => S): Traversal<S, A> {
+export function traversal<S, A>(
+  getAll: (s: S) => A[],
+  modify: (s: S, f: (a: A) => A) => S,
+): Traversal<S, A> {
   return { _tag: 'Traversal', getAll, modify }
 }
 
 export function each<A>(): Traversal<A[], A> {
   return traversal(
-    s => [...s],
+    (s) => [...s],
     (s, f) => s.map(f),
   )
 }
 
 export function filtered<A>(pred: (a: A) => boolean): Traversal<A[], A> {
   return traversal(
-    s => s.filter(pred),
-    (s, f) => s.map(a => pred(a) ? f(a) : a),
+    (s) => s.filter(pred),
+    (s, f) => s.map((a) => (pred(a) ? f(a) : a)),
   )
 }
 
 export function compose<S, A, B>(outer: Traversal<S, A>, inner: Traversal<A, B>): Traversal<S, B> {
   return traversal(
-    s => outer.getAll(s).flatMap(a => inner.getAll(a)),
-    (s, f) => outer.modify(s, a => inner.modify(a, f)),
+    (s) => outer.getAll(s).flatMap((a) => inner.getAll(a)),
+    (s, f) => outer.modify(s, (a) => inner.modify(a, f)),
   )
 }
 

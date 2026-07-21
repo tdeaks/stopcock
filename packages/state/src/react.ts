@@ -19,10 +19,7 @@ export function useStore<S extends object, A>(store: Store<S>, accessor?: Access
     (cb: () => void) => store.subscribe(accessorRef.current, cb as any),
     [store],
   )
-  const getSnapshot = useCallback(
-    () => store.get(accessorRef.current),
-    [store],
-  )
+  const getSnapshot = useCallback(() => store.get(accessorRef.current), [store])
 
   return useSyncExternalStore(subscribe, getSnapshot)
 }
@@ -39,6 +36,8 @@ export function useResource<T>(resource: Resource<T>): ResourceState<T> & {
     (cb) => resource.subscribe(cb as any),
     () => resource.get(),
   )
+  const refetch = useCallback(() => resource.refetch(), [resource])
+  const abort = useCallback(() => resource.abort(), [resource])
 
   return {
     ...state,
@@ -46,12 +45,14 @@ export function useResource<T>(resource: Resource<T>): ResourceState<T> & {
     isOk: state.status === 'ok',
     isError: state.status === 'error',
     isIdle: state.status === 'idle',
-    refetch: resource.refetch,
-    abort: resource.abort,
+    refetch,
+    abort,
   }
 }
 
-export function useMutation<I, O>(m: Mutation<I, O>): MutationState<O> & {
+export function useMutation<I, O>(
+  m: Mutation<I, O>,
+): MutationState<O> & {
   run: (input: I) => Promise<O>
   abort: () => void
   reset: () => void
@@ -60,11 +61,14 @@ export function useMutation<I, O>(m: Mutation<I, O>): MutationState<O> & {
     (cb) => m.subscribe(cb as any),
     () => m.get(),
   )
+  const run = useCallback((input: I) => m.run(input), [m])
+  const abort = useCallback(() => m.abort(), [m])
+  const reset = useCallback(() => m.reset(), [m])
 
   return {
     ...state,
-    run: m.run,
-    abort: m.abort,
-    reset: m.reset,
+    run,
+    abort,
+    reset,
   }
 }

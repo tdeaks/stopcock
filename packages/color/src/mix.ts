@@ -43,8 +43,7 @@ const mixInImpl = (a: Color, b: Color, space: ColorSpace, t: number): Color => {
   const bIn = convert(b, space)
   const out = new Float64Array(3)
   // Polar spaces (hsl/hwb/lch/oklch) have their hue at a known index.
-  const polarHueIdx: Partial<Record<ColorSpace, number>> =
-    { hsl: 0, hwb: 0, lch: 2, oklch: 2 }
+  const polarHueIdx: Partial<Record<ColorSpace, number>> = { hsl: 0, hwb: 0, lch: 2, oklch: 2 }
   const hueIdx = polarHueIdx[space]
   for (let i = 0; i < 3; i++) {
     if (i === hueIdx) out[i] = hueInterpolate(aIn.channels[i], bIn.channels[i], t)
@@ -58,8 +57,13 @@ export const mix: {
   (b: Color, t?: number): (a: Color) => Color
 } = function mix(...args: any[]): any {
   // Data-first when first 2 args are Colors
-  if (args.length >= 2 && typeof args[0] === 'object' && 'space' in args[0]
-                       && typeof args[1] === 'object' && 'space' in args[1]) {
+  if (
+    args.length >= 2 &&
+    typeof args[0] === 'object' &&
+    'space' in args[0] &&
+    typeof args[1] === 'object' &&
+    'space' in args[1]
+  ) {
     const [a, b, t = 0.5] = args
     return mixInImpl(a, b, 'oklab', t)
   }
@@ -72,8 +76,13 @@ export const mixIn: {
   (a: Color, b: Color, space: ColorSpace, t?: number): Color
   (b: Color, space: ColorSpace, t?: number): (a: Color) => Color
 } = function mixIn(...args: any[]): any {
-  if (args.length >= 3 && typeof args[0] === 'object' && 'space' in args[0]
-                       && typeof args[1] === 'object' && 'space' in args[1]) {
+  if (
+    args.length >= 3 &&
+    typeof args[0] === 'object' &&
+    'space' in args[0] &&
+    typeof args[1] === 'object' &&
+    'space' in args[1]
+  ) {
     const [a, b, space, t = 0.5] = args
     return mixInImpl(a, b, space, t)
   }

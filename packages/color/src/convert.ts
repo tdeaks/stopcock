@@ -1,11 +1,16 @@
 import { dual } from '@stopcock/fp'
 import type { Color, ColorSpace } from './types'
 import {
-  LIN_SRGB_TO_XYZ_D65, XYZ_D65_TO_LIN_SRGB,
-  XYZ_D65_TO_XYZ_D50, XYZ_D50_TO_XYZ_D65,
-  LIN_P3_TO_XYZ_D65, XYZ_D65_TO_LIN_P3,
-  XYZ_D65_TO_LMS, LMS_TO_XYZ_D65,
-  LMS_PRIME_TO_OKLAB, OKLAB_TO_LMS_PRIME,
+  LIN_SRGB_TO_XYZ_D65,
+  XYZ_D65_TO_LIN_SRGB,
+  XYZ_D65_TO_XYZ_D50,
+  XYZ_D50_TO_XYZ_D65,
+  LIN_P3_TO_XYZ_D65,
+  XYZ_D65_TO_LIN_P3,
+  XYZ_D65_TO_LMS,
+  LMS_TO_XYZ_D65,
+  LMS_PRIME_TO_OKLAB,
+  OKLAB_TO_LMS_PRIME,
   mul3,
 } from './matrices'
 import { srgbToLinear, linearToSrgb, p3ToLinear, linearToP3 } from './transfer'
@@ -16,12 +21,19 @@ import { srgbToLinear, linearToSrgb, p3ToLinear, linearToP3 } from './transfer'
 // Alpha passes through unchanged.
 // ──────────────────────────────────────────────────────────────────────
 
-const reskin = (c: Color, space: ColorSpace, ch: Float64Array): Color =>
-  ({ space, channels: ch, alpha: c.alpha })
+const reskin = (c: Color, space: ColorSpace, ch: Float64Array): Color => ({
+  space,
+  channels: ch,
+  alpha: c.alpha,
+})
 
 const srgbToLinSrgb = (c: Color): Color => {
   const [r, g, b] = c.channels
-  return reskin(c, 'linear-srgb', new Float64Array([srgbToLinear(r), srgbToLinear(g), srgbToLinear(b)]))
+  return reskin(
+    c,
+    'linear-srgb',
+    new Float64Array([srgbToLinear(r), srgbToLinear(g), srgbToLinear(b)]),
+  )
 }
 
 const linSrgbToSrgb = (c: Color): Color => {
@@ -55,7 +67,11 @@ const xyz50ToXyz65 = (c: Color): Color => {
 
 const p3ToLinP3 = (c: Color): Color => {
   const [r, g, b] = c.channels
-  return reskin(c, 'linear-srgb' as any, new Float64Array([p3ToLinear(r), p3ToLinear(g), p3ToLinear(b)]))
+  return reskin(
+    c,
+    'linear-srgb' as any,
+    new Float64Array([p3ToLinear(r), p3ToLinear(g), p3ToLinear(b)]),
+  )
   // NB: tag is internal; we never expose 'linear-p3' as a space. Re-tag immediately via linP3ToXyz65.
 }
 
@@ -68,7 +84,11 @@ const linP3ToXyz65 = (channels: Float64Array, alpha: number): Color => {
 const xyz65ToP3 = (c: Color): Color => {
   const lin = new Float64Array(3)
   mul3(XYZ_D65_TO_LIN_P3, c.channels[0], c.channels[1], c.channels[2], lin)
-  return reskin(c, 'p3', new Float64Array([linearToP3(lin[0]), linearToP3(lin[1]), linearToP3(lin[2])]))
+  return reskin(
+    c,
+    'p3',
+    new Float64Array([linearToP3(lin[0]), linearToP3(lin[1]), linearToP3(lin[2])]),
+  )
 }
 
 // CIE Lab uses D50. ε and κ from CIE.
@@ -80,13 +100,11 @@ const xyz50ToLab = (c: Color): Color => {
   const x = c.channels[0] / D50_WHITE[0]
   const y = c.channels[1] / D50_WHITE[1]
   const z = c.channels[2] / D50_WHITE[2]
-  const f = (t: number) => t > LAB_E ? Math.cbrt(t) : (LAB_K * t + 16) / 116
-  const fx = f(x), fy = f(y), fz = f(z)
-  return reskin(c, 'lab', new Float64Array([
-    116 * fy - 16,
-    500 * (fx - fy),
-    200 * (fy - fz),
-  ]))
+  const f = (t: number) => (t > LAB_E ? Math.cbrt(t) : (LAB_K * t + 16) / 116)
+  const fx = f(x),
+    fy = f(y),
+    fz = f(z)
+  return reskin(c, 'lab', new Float64Array([116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)]))
 }
 
 const labToXyz50 = (c: Color): Color => {
@@ -98,11 +116,11 @@ const labToXyz50 = (c: Color): Color => {
     const f3 = f * f * f
     return f3 > LAB_E ? f3 : (116 * f - 16) / LAB_K
   }
-  return reskin(c, 'xyz-d50', new Float64Array([
-    finv(fx) * D50_WHITE[0],
-    finv(fy) * D50_WHITE[1],
-    finv(fz) * D50_WHITE[2],
-  ]))
+  return reskin(
+    c,
+    'xyz-d50',
+    new Float64Array([finv(fx) * D50_WHITE[0], finv(fy) * D50_WHITE[1], finv(fz) * D50_WHITE[2]]),
+  )
 }
 
 // Rectangular <-> Polar (shared by Lab<->LCh and OKLab<->OKLCh)
@@ -133,7 +151,9 @@ const lchToLab = (c: Color): Color => {
 const xyz65ToOklab = (c: Color): Color => {
   const lms = new Float64Array(3)
   mul3(XYZ_D65_TO_LMS, c.channels[0], c.channels[1], c.channels[2], lms)
-  const lp = Math.cbrt(lms[0]), mp = Math.cbrt(lms[1]), sp = Math.cbrt(lms[2])
+  const lp = Math.cbrt(lms[0]),
+    mp = Math.cbrt(lms[1]),
+    sp = Math.cbrt(lms[2])
   const out = new Float64Array(3)
   mul3(LMS_PRIME_TO_OKLAB, lp, mp, sp, out)
   return reskin(c, 'oklab', out)
@@ -161,9 +181,11 @@ const oklchToOklab = (c: Color): Color => {
 // sRGB <-> HSL (direct, no XYZ)
 const srgbToHsl = (c: Color): Color => {
   const [r, g, b] = c.channels
-  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b)
   const l = (max + min) / 2
-  let h = 0, s = 0
+  let h = 0,
+    s = 0
   if (max !== min) {
     const d = max - min
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
@@ -188,13 +210,18 @@ const hslToSrgb = (c: Color): Color => {
     if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
     return p
   }
-  return reskin(c, 'srgb', new Float64Array([hue2rgb(hk + 1 / 3), hue2rgb(hk), hue2rgb(hk - 1 / 3)]))
+  return reskin(
+    c,
+    'srgb',
+    new Float64Array([hue2rgb(hk + 1 / 3), hue2rgb(hk), hue2rgb(hk - 1 / 3)]),
+  )
 }
 
 // sRGB <-> HWB (direct, via HSL relationship in CSS Color 4 §6)
 const srgbToHwb = (c: Color): Color => {
   const [r, g, b] = c.channels
-  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b)
   const w = min
   const bl = 1 - max
   let h = 0
@@ -214,13 +241,21 @@ const hwbToSrgb = (c: Color): Color => {
     return reskin(c, 'srgb', new Float64Array([g, g, g]))
   }
   // Convert through HSL: hsl(h, 100%, 50%) then mix with white/black
-  const hslPure = hslToSrgb({ space: 'hsl', channels: new Float64Array([h, 1, 0.5]), alpha: c.alpha })
+  const hslPure = hslToSrgb({
+    space: 'hsl',
+    channels: new Float64Array([h, 1, 0.5]),
+    alpha: c.alpha,
+  })
   const span = 1 - w - bl
-  return reskin(c, 'srgb', new Float64Array([
-    hslPure.channels[0] * span + w,
-    hslPure.channels[1] * span + w,
-    hslPure.channels[2] * span + w,
-  ]))
+  return reskin(
+    c,
+    'srgb',
+    new Float64Array([
+      hslPure.channels[0] * span + w,
+      hslPure.channels[1] * span + w,
+      hslPure.channels[2] * span + w,
+    ]),
+  )
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -249,7 +284,11 @@ const EDGES: Record<string, Edge> = {
   'hwb→srgb': hwbToSrgb,
   // P3: go via xyz-d65 with a combined hop
   'p3→xyz-d65': (c) => {
-    const lin = new Float64Array([p3ToLinear(c.channels[0]), p3ToLinear(c.channels[1]), p3ToLinear(c.channels[2])])
+    const lin = new Float64Array([
+      p3ToLinear(c.channels[0]),
+      p3ToLinear(c.channels[1]),
+      p3ToLinear(c.channels[2]),
+    ])
     return linP3ToXyz65(lin, c.alpha)
   },
   'xyz-d65→p3': xyz65ToP3,

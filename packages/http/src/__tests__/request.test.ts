@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest'
-import { substitutePath, serializeQuery, buildUrl, resolveHeaders, serializeBody } from '../request.js'
+import { describe, it, expect } from 'vite-plus/test'
+import {
+  substitutePath,
+  serializeQuery,
+  buildUrl,
+  resolveHeaders,
+  serializeBody,
+} from '../request.js'
 
 describe('substitutePath', () => {
   it('replaces named params', () => {
@@ -7,7 +13,9 @@ describe('substitutePath', () => {
   })
 
   it('replaces multiple params', () => {
-    expect(substitutePath('/users/:userId/posts/:postId', { userId: '1', postId: '42' })).toBe('/users/1/posts/42')
+    expect(substitutePath('/users/:userId/posts/:postId', { userId: '1', postId: '42' })).toBe(
+      '/users/1/posts/42',
+    )
   })
 
   it('encodes param values', () => {
@@ -63,19 +71,20 @@ describe('buildUrl', () => {
   })
 
   it('substitutes params and appends query', () => {
-    expect(buildUrl('https://api.com', '/users/:id', { id: '42' }, { fields: 'name' }))
-      .toBe('https://api.com/users/42?fields=name')
+    expect(buildUrl('https://api.com', '/users/:id', { id: '42' }, { fields: 'name' })).toBe(
+      'https://api.com/users/42?fields=name',
+    )
   })
 })
 
 describe('resolveHeaders', () => {
   it('merges config and request headers', async () => {
-    const result = await resolveHeaders({ 'Accept': 'application/json' }, { 'X-Custom': 'value' })
-    expect(result).toEqual({ 'Accept': 'application/json', 'X-Custom': 'value' })
+    const result = await resolveHeaders({ Accept: 'application/json' }, { 'X-Custom': 'value' })
+    expect(result).toEqual({ Accept: 'application/json', 'X-Custom': 'value' })
   })
 
   it('request headers override config', async () => {
-    const result = await resolveHeaders({ 'Accept': 'text/html' }, { 'Accept': 'application/json' })
+    const result = await resolveHeaders({ Accept: 'text/html' }, { Accept: 'application/json' })
     expect(result.Accept).toBe('application/json')
   })
 
@@ -85,7 +94,10 @@ describe('resolveHeaders', () => {
   })
 
   it('calls async function headers', async () => {
-    const result = await resolveHeaders(async () => ({ Authorization: 'Bearer async-tok' }), undefined)
+    const result = await resolveHeaders(
+      async () => ({ Authorization: 'Bearer async-tok' }),
+      undefined,
+    )
     expect(result.Authorization).toBe('Bearer async-tok')
   })
 })

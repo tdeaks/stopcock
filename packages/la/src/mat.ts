@@ -18,11 +18,9 @@ export const identity = (n: number): Mat => {
 
 export const zeros = (rows: number, cols: number): Mat => create(rows, cols)
 
-export const fromArray = (rows: number, cols: number, arr: number[]): Mat =>
-  create(rows, cols, arr)
+export const fromArray = (rows: number, cols: number, arr: number[]): Mat => create(rows, cols, arr)
 
-export const get = (m: Mat, row: number, col: number): number =>
-  m.data[row * m.cols + col]
+export const get = (m: Mat, row: number, col: number): number => m.data[row * m.cols + col]
 
 export const set = (m: Mat, row: number, col: number, value: number): Mat => {
   const data = new Float64Array(m.data)
@@ -48,8 +46,12 @@ export const sub = (a: Mat, b: Mat): Mat => {
 
 export const multiply = (a: Mat, b: Mat): Mat => {
   if (a.cols !== b.rows)
-    throw new Error(`Matrix multiply: incompatible dimensions ${a.rows}x${a.cols} * ${b.rows}x${b.cols}`)
-  const M = a.rows, K = a.cols, N = b.cols
+    throw new Error(
+      `Matrix multiply: incompatible dimensions ${a.rows}x${a.cols} * ${b.rows}x${b.cols}`,
+    )
+  const M = a.rows,
+    K = a.cols,
+    N = b.cols
   const data = new Float64Array(M * N)
 
   // WASM path for large matrices
@@ -60,9 +62,18 @@ export const multiply = (a: Mat, b: Mat): Mat => {
   }
 
   // Unrolled fast paths for common small sizes
-  if (M === 2 && K === 2 && N === 2) { mul2x2(a.data, b.data, data); return { data, rows: 2, cols: 2 } }
-  if (M === 3 && K === 3 && N === 3) { mul3x3(a.data, b.data, data); return { data, rows: 3, cols: 3 } }
-  if (M === 4 && K === 4 && N === 4) { mul4x4(a.data, b.data, data); return { data, rows: 4, cols: 4 } }
+  if (M === 2 && K === 2 && N === 2) {
+    mul2x2(a.data, b.data, data)
+    return { data, rows: 2, cols: 2 }
+  }
+  if (M === 3 && K === 3 && N === 3) {
+    mul3x3(a.data, b.data, data)
+    return { data, rows: 3, cols: 3 }
+  }
+  if (M === 4 && K === 4 && N === 4) {
+    mul4x4(a.data, b.data, data)
+    return { data, rows: 4, cols: 4 }
+  }
 
   // Block matmul for larger matrices (cache-friendly tiling)
   if (M > 32 && K > 32 && N > 32) {
@@ -76,8 +87,7 @@ export const multiply = (a: Mat, b: Mat): Mat => {
           for (let i = ii; i < iMax; i++)
             for (let k = kk; k < kMax; k++) {
               const aik = a.data[i * K + k]
-              for (let j = jj; j < jMax; j++)
-                data[i * N + j] += aik * b.data[k * N + j]
+              for (let j = jj; j < jMax; j++) data[i * N + j] += aik * b.data[k * N + j]
             }
         }
     return { data, rows: M, cols: N }
@@ -97,14 +107,17 @@ export const multiply = (a: Mat, b: Mat): Mat => {
 
 export const multiplyInto = (out: Mat, a: Mat, b: Mat): Mat => {
   if (a.cols !== b.rows)
-    throw new Error(`Matrix multiply: incompatible dimensions ${a.rows}x${a.cols} * ${b.rows}x${b.cols}`)
-  const M = a.rows, K = a.cols, N = b.cols
+    throw new Error(
+      `Matrix multiply: incompatible dimensions ${a.rows}x${a.cols} * ${b.rows}x${b.cols}`,
+    )
+  const M = a.rows,
+    K = a.cols,
+    N = b.cols
   out.data.fill(0)
   for (let i = 0; i < M; i++)
     for (let k = 0; k < K; k++) {
       const aik = a.data[i * K + k]
-      for (let j = 0; j < N; j++)
-        out.data[i * N + j] += aik * b.data[k * N + j]
+      for (let j = 0; j < N; j++) out.data[i * N + j] += aik * b.data[k * N + j]
     }
   return out
 }
@@ -118,8 +131,7 @@ export const scale = (m: Mat, s: number): Mat => {
 export const transpose = (m: Mat): Mat => {
   const data = new Float64Array(m.rows * m.cols)
   for (let i = 0; i < m.rows; i++)
-    for (let j = 0; j < m.cols; j++)
-      data[j * m.rows + i] = m.data[i * m.cols + j]
+    for (let j = 0; j < m.cols; j++) data[j * m.rows + i] = m.data[i * m.cols + j]
   return { data, rows: m.cols, cols: m.rows }
 }
 
@@ -146,8 +158,13 @@ export const determinant = (m: Mat): number => {
   let swaps = 0
   for (let i = 0; i < n; i++) {
     if (visited[i]) continue
-    let j = i, cycleLen = 0
-    while (!visited[j]) { visited[j] = 1; j = P[j]; cycleLen++ }
+    let j = i,
+      cycleLen = 0
+    while (!visited[j]) {
+      visited[j] = 1
+      j = P[j]
+      cycleLen++
+    }
     swaps += cycleLen - 1
   }
   return swaps % 2 === 0 ? det : -det
@@ -160,18 +177,22 @@ export const lu = (m: Mat): { L: Mat; U: Mat; P: number[] } => {
   const p: number[] = Array.from({ length: n }, (_, i) => i)
 
   for (let k = 0; k < n; k++) {
-    let maxVal = 0, maxRow = k
+    let maxVal = 0,
+      maxRow = k
     for (let i = k; i < n; i++) {
       const v = Math.abs(u[i * n + k])
-      if (v > maxVal) { maxVal = v; maxRow = i }
+      if (v > maxVal) {
+        maxVal = v
+        maxRow = i
+      }
     }
     if (maxRow !== k) {
-      [p[k], p[maxRow]] = [p[maxRow], p[k]]
+      ;[p[k], p[maxRow]] = [p[maxRow], p[k]]
       for (let j = 0; j < n; j++) {
-        [u[k * n + j], u[maxRow * n + j]] = [u[maxRow * n + j], u[k * n + j]]
+        ;[u[k * n + j], u[maxRow * n + j]] = [u[maxRow * n + j], u[k * n + j]]
       }
       for (let j = 0; j < k; j++) {
-        [l[k * n + j], l[maxRow * n + j]] = [l[maxRow * n + j], l[k * n + j]]
+        ;[l[k * n + j], l[maxRow * n + j]] = [l[maxRow * n + j], l[k * n + j]]
       }
     }
     l[k * n + k] = 1
@@ -195,7 +216,9 @@ export const solve = (a: Mat, b: Vec): Vec => {
   if (a.rows !== a.cols)
     throw new Error(`Matrix solve: matrix must be square, got ${a.rows}x${a.cols}`)
   if (b.length !== a.rows)
-    throw new Error(`Matrix solve: incompatible dimensions ${a.rows}x${a.cols} and vector of length ${b.length}`)
+    throw new Error(
+      `Matrix solve: incompatible dimensions ${a.rows}x${a.cols} and vector of length ${b.length}`,
+    )
   const n = a.rows
   const { L, U, P } = lu(a)
   for (let i = 0; i < n; i++)
@@ -230,10 +253,14 @@ export const inverse = (m: Mat): Mat | null => {
   }
   const w = 2 * n
   for (let k = 0; k < n; k++) {
-    let maxVal = 0, maxRow = k
+    let maxVal = 0,
+      maxRow = k
     for (let i = k; i < n; i++) {
       const v = Math.abs(aug[i * w + k])
-      if (v > maxVal) { maxVal = v; maxRow = i }
+      if (v > maxVal) {
+        maxVal = v
+        maxRow = i
+      }
     }
     if (maxVal < 1e-12) return null
     if (maxRow !== k) {
@@ -249,8 +276,7 @@ export const inverse = (m: Mat): Mat | null => {
     }
   }
   const data = new Float64Array(n * n)
-  for (let i = 0; i < n; i++)
-    for (let j = 0; j < n; j++) data[i * n + j] = aug[i * w + n + j]
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) data[i * n + j] = aug[i * w + n + j]
   return { data, rows: n, cols: n }
 }
 
@@ -300,8 +326,7 @@ export const svd = (m: Mat): { U: Mat; S: Vec; V: Mat } => {
   for (let iter = 0; iter < 100 * n * n; iter++) {
     let offDiag = 0
     for (let i = 0; i < n; i++)
-      for (let j = i + 1; j < n; j++)
-        offDiag += d[i * n + j] * d[i * n + j]
+      for (let j = i + 1; j < n; j++) offDiag += d[i * n + j] * d[i * n + j]
     if (offDiag < 1e-20) break
 
     for (let p = 0; p < n; p++) {
@@ -314,7 +339,8 @@ export const svd = (m: Mat): { U: Mat; S: Vec; V: Mat } => {
         const c = 1 / Math.sqrt(1 + t * t)
         const s = t * c
 
-        const dpp = d[p * n + p], dqq = d[q * n + q]
+        const dpp = d[p * n + p],
+          dqq = d[q * n + q]
         d[p * n + p] = dpp - t * dpq
         d[q * n + q] = dqq + t * dpq
         d[p * n + q] = 0
@@ -322,7 +348,8 @@ export const svd = (m: Mat): { U: Mat; S: Vec; V: Mat } => {
 
         for (let i = 0; i < n; i++) {
           if (i === p || i === q) continue
-          const dip = d[i * n + p], diq = d[i * n + q]
+          const dip = d[i * n + p],
+            diq = d[i * n + q]
           d[i * n + p] = c * dip - s * diq
           d[p * n + i] = c * dip - s * diq
           d[i * n + q] = s * dip + c * diq
@@ -330,7 +357,8 @@ export const svd = (m: Mat): { U: Mat; S: Vec; V: Mat } => {
         }
 
         for (let i = 0; i < n; i++) {
-          const vip = v.data[i * n + p], viq = v.data[i * n + q]
+          const vip = v.data[i * n + p],
+            viq = v.data[i * n + q]
           v.data[i * n + p] = c * vip - s * viq
           v.data[i * n + q] = s * vip + c * viq
         }
@@ -344,8 +372,7 @@ export const svd = (m: Mat): { U: Mat; S: Vec; V: Mat } => {
 
   const vSorted = create(n, n)
   for (let j = 0; j < n; j++)
-    for (let i = 0; i < n; i++)
-      vSorted.data[i * n + j] = v.data[i * n + indices[j]]
+    for (let i = 0; i < n; i++) vSorted.data[i * n + j] = v.data[i * n + indices[j]]
 
   for (let i = 0; i < k; i++)
     singularValues[i] = Math.sqrt(Math.max(0, d[indices[i] * n + indices[i]]))
@@ -355,8 +382,7 @@ export const svd = (m: Mat): { U: Mat; S: Vec; V: Mat } => {
     if (singularValues[j] < 1e-12) continue
     for (let i = 0; i < rows; i++) {
       let sum = 0
-      for (let l = 0; l < cols; l++)
-        sum += m.data[i * cols + l] * vSorted.data[l * n + j]
+      for (let l = 0; l < cols; l++) sum += m.data[i * cols + l] * vSorted.data[l * n + j]
       uData[i * k + j] = sum / singularValues[j]
     }
   }
@@ -382,8 +408,7 @@ export const eigenvalues = (m: Mat): Vec => {
   for (let iter = 0; iter < 300 * n; iter++) {
     let offDiag = 0
     for (let i = 0; i < n; i++)
-      for (let j = 0; j < n; j++)
-        if (i !== j) offDiag += a.data[i * n + j] * a.data[i * n + j]
+      for (let j = 0; j < n; j++) if (i !== j) offDiag += a.data[i * n + j] * a.data[i * n + j]
     if (offDiag < 1e-20) break
 
     const ann = a.data[(n - 1) * n + (n - 1)]
@@ -416,8 +441,7 @@ export const norm = (m: Mat): number => {
 }
 
 export const cholesky = (m: Mat): Mat | null => {
-  if (m.rows !== m.cols)
-    throw new Error(`Cholesky: matrix must be square, got ${m.rows}x${m.cols}`)
+  if (m.rows !== m.cols) throw new Error(`Cholesky: matrix must be square, got ${m.rows}x${m.cols}`)
   const n = m.rows
   const L = new Float64Array(n * n)
 

@@ -1,8 +1,20 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { compose } from '../core'
 import {
-  getYear, getMonth, getDay, getWeekday, getHours, getMinutes, getSeconds, getMilliseconds,
-  getDayOfYear, getWeekOfYear, getQuarter, getDaysInMonth, getDaysInYear, isLeapYear,
+  getYear,
+  getMonth,
+  getDay,
+  getWeekday,
+  getHours,
+  getMinutes,
+  getSeconds,
+  getMilliseconds,
+  getDayOfYear,
+  getWeekOfYear,
+  getQuarter,
+  getDaysInMonth,
+  getDaysInYear,
+  isLeapYear,
 } from '../extract'
 
 const ts = compose(2024, 3, 15, 14, 30, 45, 123) // Friday
@@ -27,7 +39,8 @@ describe('getWeekday edge cases', () => {
 describe('getDayOfYear', () => {
   it('Jan 1 = 1', () => expect(getDayOfYear(compose(2024, 1, 1, 0, 0, 0, 0))).toBe(1))
   it('Mar 15 2024 (leap year) = 75', () => expect(getDayOfYear(ts)).toBe(75))
-  it('Dec 31 2024 (leap year) = 366', () => expect(getDayOfYear(compose(2024, 12, 31, 0, 0, 0, 0))).toBe(366))
+  it('Dec 31 2024 (leap year) = 366', () =>
+    expect(getDayOfYear(compose(2024, 12, 31, 0, 0, 0, 0))).toBe(366))
 })
 
 describe('getWeekOfYear', () => {

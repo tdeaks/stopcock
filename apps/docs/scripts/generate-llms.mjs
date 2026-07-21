@@ -7,15 +7,7 @@ const docsDir = path.resolve(scriptDir, '../src/content/docs')
 const publicDir = path.resolve(scriptDir, '../public')
 const site = 'https://stopcock.dev'
 
-const categoryOrder = [
-  'Guides',
-  'Concepts',
-  'Libraries',
-  'API',
-  'Showcases',
-  'Performance',
-  'Blog',
-]
+const categoryOrder = ['Guides', 'Concepts', 'Libraries', 'API', 'Showcases', 'Performance', 'Blog']
 
 const categoryFor = (relativePath) => {
   const root = relativePath.split('/')[0]
@@ -30,10 +22,12 @@ const categoryFor = (relativePath) => {
 
 const walk = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true })
-  const files = await Promise.all(entries.map(async (entry) => {
-    const target = path.join(directory, entry.name)
-    return entry.isDirectory() ? walk(target) : [target]
-  }))
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const target = path.join(directory, entry.name)
+      return entry.isDirectory() ? walk(target) : [target]
+    }),
+  )
   return files.flat()
 }
 
@@ -73,21 +67,21 @@ const toRoute = (relativePath) => {
   return `/${withoutExtension.replace(/\/index$/, '')}/`
 }
 
-const files = (await walk(docsDir))
-  .filter((file) => file.endsWith('.mdx'))
-  .sort()
+const files = (await walk(docsDir)).filter((file) => file.endsWith('.mdx')).sort()
 
-const pages = await Promise.all(files.map(async (file) => {
-  const relativePath = path.relative(docsDir, file)
-  const source = await readFile(file, 'utf8')
-  const parsed = parseFrontmatter(source)
-  return {
-    ...parsed,
-    body: cleanBody(parsed.body),
-    category: categoryFor(relativePath),
-    route: toRoute(relativePath),
-  }
-}))
+const pages = await Promise.all(
+  files.map(async (file) => {
+    const relativePath = path.relative(docsDir, file)
+    const source = await readFile(file, 'utf8')
+    const parsed = parseFrontmatter(source)
+    return {
+      ...parsed,
+      body: cleanBody(parsed.body),
+      category: categoryFor(relativePath),
+      route: toRoute(relativePath),
+    }
+  }),
+)
 
 const intro = `# stopcock
 
@@ -112,14 +106,18 @@ for (const category of categoryOrder) {
   indexLines.push(`## ${category}\n\n${links.join('\n')}`)
 }
 
-const fullSections = pages.map((page) => [
-  '---',
-  `# ${page.title}`,
-  '',
-  `Source: ${site}${page.route}`,
-  page.description ? `\n${page.description}` : '',
-  page.body ? `\n${page.body}` : '',
-].join('\n').trim())
+const fullSections = pages.map((page) =>
+  [
+    '---',
+    `# ${page.title}`,
+    '',
+    `Source: ${site}${page.route}`,
+    page.description ? `\n${page.description}` : '',
+    page.body ? `\n${page.body}` : '',
+  ]
+    .join('\n')
+    .trim(),
+)
 
 await Promise.all([
   writeFile(path.join(publicDir, 'llms.txt'), `${indexLines.join('\n\n')}\n`),

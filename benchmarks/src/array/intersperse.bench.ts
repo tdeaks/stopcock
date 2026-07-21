@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { A } from '@stopcock/fp'
 import * as Ra from 'ramda'
 import * as Rb from 'rambda'

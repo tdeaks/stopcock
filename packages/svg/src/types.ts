@@ -6,7 +6,14 @@ export type Pt = readonly [number, number]
 export type GradientStop = { offset: number; color: Color; opacity?: number }
 export type Gradient =
   | { kind: 'linear'; stops: ReadonlyArray<GradientStop>; angle: number; transform?: Mat }
-  | { kind: 'radial'; stops: ReadonlyArray<GradientStop>; cx: number; cy: number; r: number; transform?: Mat }
+  | {
+      kind: 'radial'
+      stops: ReadonlyArray<GradientStop>
+      cx: number
+      cy: number
+      r: number
+      transform?: Mat
+    }
 
 export type Pattern = { kind: 'pattern'; child: Node; w: number; h: number; transform?: Mat }
 export type Paint = Color | Gradient | Pattern | 'none'
@@ -23,10 +30,26 @@ export type ClipPath = { kind: 'clip'; child: Node }
 export type Mask = { kind: 'mask'; child: Node }
 
 export type ColorMatrix4x5 = readonly [
-  number, number, number, number, number,
-  number, number, number, number, number,
-  number, number, number, number, number,
-  number, number, number, number, number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
 ]
 
 export type FilterStage =
@@ -54,15 +77,16 @@ export type Common = {
   filter?: Filter
 }
 
-export type Node = Common & (
-  | { kind: 'circle'; r: number; cx: number; cy: number }
-  | { kind: 'rect'; w: number; h: number; x: number; y: number; rx?: number; ry?: number }
-  | { kind: 'ellipse'; rx: number; ry: number; cx: number; cy: number }
-  | { kind: 'image'; href: string; w: number; h: number; x: number; y: number }
-  | { kind: 'line'; x1: number; y1: number; x2: number; y2: number }
-  | { kind: 'path'; d: Path }
-  | { kind: 'text'; text: string; x: number; y: number; size: number; family?: string }
-  | { kind: 'group'; children: ReadonlyArray<Node> }
-  | { kind: 'use'; target: Node }
-  | { kind: 'root'; child: Node; viewBox: readonly [number, number, number, number] }
-)
+export type Node = Common &
+  (
+    | { kind: 'circle'; r: number; cx: number; cy: number }
+    | { kind: 'rect'; w: number; h: number; x: number; y: number; rx?: number; ry?: number }
+    | { kind: 'ellipse'; rx: number; ry: number; cx: number; cy: number }
+    | { kind: 'image'; href: string; w: number; h: number; x: number; y: number }
+    | { kind: 'line'; x1: number; y1: number; x2: number; y2: number }
+    | { kind: 'path'; d: Path }
+    | { kind: 'text'; text: string; x: number; y: number; size: number; family?: string }
+    | { kind: 'group'; children: ReadonlyArray<Node> }
+    | { kind: 'use'; target: Node }
+    | { kind: 'root'; child: Node; viewBox: readonly [number, number, number, number] }
+  )

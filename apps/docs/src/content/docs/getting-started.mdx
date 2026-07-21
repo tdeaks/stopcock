@@ -51,7 +51,12 @@ activeNames(usersB)
 const big = Array.from({ length: 1_000_000 }, (_, i) => i)
 
 // visits ~70 items, allocates nothing intermediate
-pipe(big, A.filter(x => x % 7 === 0), A.map(x => x * 2), A.take(10))
+pipe(
+  big,
+  A.filter((x) => x % 7 === 0),
+  A.map((x) => x * 2),
+  A.take(10),
+)
 ```
 
 Operations that need the whole array (`sort`, `groupBy`, `uniq`) break the fusion chain. See [Fusion](/concepts/fusion) for the full picture.
@@ -61,7 +66,7 @@ Operations that need the whole array (`sort`, `groupBy`, `uniq`) break the fusio
 Every function works both ways:
 
 ```ts
-A.take(users, 5)       // data-first
+A.take(users, 5) // data-first
 pipe(users, A.take(5)) // data-last
 ```
 
@@ -70,7 +75,7 @@ pipe(users, A.take(5)) // data-last
 ```ts
 pipe(
   O.fromNullable(user.email),
-  O.map(e => e.split('@')[1]),
+  O.map((e) => e.split('@')[1]),
   O.getWithDefault('unknown'),
 )
 

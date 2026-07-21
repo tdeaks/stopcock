@@ -11,14 +11,18 @@ import type {
 import { SynthCompileError } from './internal/graph'
 import { clamp } from './internal/util'
 
-export function createWavetable(source: WavetableSource, opts: WavetableOptions = {}): WavetableBank {
+export function createWavetable(
+  source: WavetableSource,
+  opts: WavetableOptions = {},
+): WavetableBank {
   const size = normalizeSize(opts.size ?? DEFAULT_WAVETABLE_SIZE)
   const normalize = opts.normalize ?? true
-  const frames = source instanceof Float32Array
-    ? [resampleCycle(source, size)]
-    : isFrameArray(source)
-      ? source.map((frame) => resampleCycle(frame, size))
-      : [partialsToCycle(source.partials, size)]
+  const frames =
+    source instanceof Float32Array
+      ? [resampleCycle(source, size)]
+      : isFrameArray(source)
+        ? source.map((frame) => resampleCycle(frame, size))
+        : [partialsToCycle(source.partials, size)]
 
   if (frames.length === 0) throw new SynthCompileError('wavetable requires at least one frame')
   if (normalize) {
@@ -32,19 +36,29 @@ function isFrameArray(source: WavetableSource): source is ReadonlyArray<Float32A
   return Array.isArray(source)
 }
 
-export function wavetableFromAudio(audio: AudioBufferLike, opts: WavetableAudioOptions = {}): WavetableBank {
+export function wavetableFromAudio(
+  audio: AudioBufferLike,
+  opts: WavetableAudioOptions = {},
+): WavetableBank {
   const size = normalizeSize(opts.size ?? DEFAULT_WAVETABLE_SIZE)
   const channel = Math.max(0, Math.floor(opts.channel ?? 0))
-  if (!Number.isFinite(audio.sampleRate) || audio.sampleRate <= 0) throw new SynthCompileError('audio sampleRate must be positive')
-  if (!Number.isFinite(audio.length) || audio.length <= 0) throw new SynthCompileError('audio input must not be empty')
+  if (!Number.isFinite(audio.sampleRate) || audio.sampleRate <= 0)
+    throw new SynthCompileError('audio sampleRate must be positive')
+  if (!Number.isFinite(audio.length) || audio.length <= 0)
+    throw new SynthCompileError('audio input must not be empty')
   const data = audio.getChannelData(channel)
   if (data.length === 0) throw new SynthCompileError('audio channel must not be empty')
   const sampleRate = audio.sampleRate
-  const start = clamp(Math.floor((opts.startSec ?? 0) * sampleRate), 0, Math.max(0, data.length - 1))
+  const start = clamp(
+    Math.floor((opts.startSec ?? 0) * sampleRate),
+    0,
+    Math.max(0, data.length - 1),
+  )
   const frameCount = Math.max(1, Math.floor(opts.frameCount ?? 1))
-  const sourceCycleLength = opts.fundamentalHz && opts.fundamentalHz > 0
-    ? Math.max(1, Math.round(sampleRate / opts.fundamentalHz))
-    : size
+  const sourceCycleLength =
+    opts.fundamentalHz && opts.fundamentalHz > 0
+      ? Math.max(1, Math.round(sampleRate / opts.fundamentalHz))
+      : size
   const frames: Float32Array[] = []
 
   for (let frame = 0; frame < frameCount; frame++) {
@@ -66,7 +80,7 @@ function buildBank(frames: ReadonlyArray<Float32Array>, size: number): Wavetable
   const levelMaxHarmonics: number[] = []
 
   for (let level = 0; level < levelCount; level++) {
-    const maxHarmonic = Math.max(1, Math.floor((size / 2) / (2 ** level)))
+    const maxHarmonic = Math.max(1, Math.floor(size / 2 / 2 ** level))
     const table = new Float32Array(size * frames.length)
     for (let frame = 0; frame < frames.length; frame++) {
       table.set(limitHarmonics(frames[frame], maxHarmonic), frame * size)
@@ -85,7 +99,8 @@ function buildBank(frames: ReadonlyArray<Float32Array>, size: number): Wavetable
 }
 
 function normalizeSize(size: number): number {
-  if (!Number.isFinite(size) || size < 8) throw new SynthCompileError('wavetable size must be at least 8')
+  if (!Number.isFinite(size) || size < 8)
+    throw new SynthCompileError('wavetable size must be at least 8')
   const integer = Math.floor(size)
   if (integer !== size || (integer & (integer - 1)) !== 0) {
     throw new SynthCompileError('wavetable size must be a power of two')
@@ -108,13 +123,14 @@ function resampleCycle(source: Float32Array, size: number): Float32Array {
 }
 
 function partialsToCycle(partials: ReadonlyArray<WavetablePartial>, size: number): Float32Array {
-  if (partials.length === 0) throw new SynthCompileError('partials wavetable requires at least one partial')
+  if (partials.length === 0)
+    throw new SynthCompileError('partials wavetable requires at least one partial')
   const out = new Float32Array(size)
   for (let p = 0; p < partials.length; p++) {
     const partial = partials[p]
     const harmonic = typeof partial === 'number' ? p + 1 : partial.harmonic
     const amplitude = typeof partial === 'number' ? partial : partial.amplitude
-    const phase = typeof partial === 'number' ? 0 : partial.phase ?? 0
+    const phase = typeof partial === 'number' ? 0 : (partial.phase ?? 0)
     if (!Number.isFinite(harmonic) || harmonic <= 0 || !Number.isFinite(amplitude)) continue
     for (let i = 0; i < size; i++) {
       out[i] += amplitude * Math.sin(2 * Math.PI * harmonic * (i / size) + phase)

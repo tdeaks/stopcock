@@ -3,8 +3,12 @@ import { create } from './create'
 import { dual } from './dual'
 
 function validateImage(img: Image): void {
-  if (img.width <= 0 || img.height <= 0) throw new Error('Invalid image: width and height must be positive')
-  if (img.data.length !== img.width * img.height * 4) throw new Error(`Invalid image: data length ${img.data.length} doesn't match ${img.width}x${img.height}x4`)
+  if (img.width <= 0 || img.height <= 0)
+    throw new Error('Invalid image: width and height must be positive')
+  if (img.data.length !== img.width * img.height * 4)
+    throw new Error(
+      `Invalid image: data length ${img.data.length} doesn't match ${img.width}x${img.height}x4`,
+    )
 }
 
 const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)))
@@ -20,7 +24,8 @@ export const resize: {
   (width: number, height: number): (img: Image) => Image
 } = dual(3, (img: Image, width: number, height: number): Image => {
   validateImage(img)
-  if (width <= 0 || height <= 0) throw new Error('Invalid dimensions: width and height must be positive')
+  if (width <= 0 || height <= 0)
+    throw new Error('Invalid dimensions: width and height must be positive')
   const out = create(width, height)
   const xRatio = img.width / width
   const yRatio = img.height / height
@@ -29,9 +34,12 @@ export const resize: {
     for (let x = 0; x < width; x++) {
       const srcX = x * xRatio
       const srcY = y * yRatio
-      const x0 = Math.floor(srcX), y0 = Math.floor(srcY)
-      const x1 = x0 + 1, y1 = y0 + 1
-      const fx = srcX - x0, fy = srcY - y0
+      const x0 = Math.floor(srcX),
+        y0 = Math.floor(srcY)
+      const x1 = x0 + 1,
+        y1 = y0 + 1
+      const fx = srcX - x0,
+        fy = srcY - y0
       const oi = (y * width + x) * 4
 
       for (let c = 0; c < 4; c++) {

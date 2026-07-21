@@ -1,7 +1,14 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import * as D from '@stopcock/date'
 import type { Timestamp } from '@stopcock/date'
-import { parseISO as dfnsParseISO, format as dfnsFormat, addDays, differenceInDays, isWeekend as dfnsIsWeekend, getMonth as dfnsGetMonth } from 'date-fns'
+import {
+  parseISO as dfnsParseISO,
+  format as dfnsFormat,
+  addDays,
+  differenceInDays,
+  isWeekend as dfnsIsWeekend,
+  getMonth as dfnsGetMonth,
+} from 'date-fns'
 import { DateTime } from 'luxon'
 import moment from 'moment'
 import { getTimestamps, getDates, getISOStrings, type Size } from './setup'
@@ -16,9 +23,15 @@ describe.each([100, 1_000, 10_000])('parse → format pipeline — n=%i', (n) =>
     const fmt = D.formatter('DD MMM YYYY')
     for (let i = 0; i < isos.length; i++) fmt(D.parseISO(isos[i]!))
   })
-  bench('date-fns', () => { for (let i = 0; i < isos.length; i++) dfnsFormat(dfnsParseISO(isos[i]!), 'dd MMM yyyy') })
-  bench('luxon', () => { for (let i = 0; i < isos.length; i++) DateTime.fromISO(isos[i]!).toFormat('dd MMM yyyy') })
-  bench('moment', () => { for (let i = 0; i < isos.length; i++) moment(isos[i]!).format('DD MMM YYYY') })
+  bench('date-fns', () => {
+    for (let i = 0; i < isos.length; i++) dfnsFormat(dfnsParseISO(isos[i]!), 'dd MMM yyyy')
+  })
+  bench('luxon', () => {
+    for (let i = 0; i < isos.length; i++) DateTime.fromISO(isos[i]!).toFormat('dd MMM yyyy')
+  })
+  bench('moment', () => {
+    for (let i = 0; i < isos.length; i++) moment(isos[i]!).format('DD MMM YYYY')
+  })
 })
 
 describe.each([100, 1_000, 10_000])('filter weekdays → add 30d → diff pipeline — n=%i', (n) => {
@@ -71,6 +84,7 @@ describe.each([100, 1_000, 10_000])('group by month — n=%i', (n) => {
     const counts = new Int32Array(13)
     for (let i = 0; i < ts.length; i++) counts[moment(ts[i]! as number).month() + 1]++
   })
+  bench('native', () => {
     const counts = new Int32Array(13)
     for (let i = 0; i < ds.length; i++) counts[ds[i]!.getMonth() + 1]++
   })

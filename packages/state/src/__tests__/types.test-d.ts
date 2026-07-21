@@ -1,4 +1,4 @@
-import { expectTypeOf, test } from 'vitest'
+import { expectTypeOf, test } from 'vite-plus/test'
 import { create, computed } from '../index.js'
 import type { Store, Accessor, Middleware, Handle, Computed, OnCommit } from '../types.js'
 
@@ -12,31 +12,37 @@ test('get() returns full state', () => {
 })
 
 test('get(accessor) infers slice type', () => {
-  expectTypeOf(store.get(s => s.user.name)).toBeString()
-  expectTypeOf(store.get(s => s.count)).toBeNumber()
-  expectTypeOf(store.get(s => s.items)).toEqualTypeOf<string[]>()
-  expectTypeOf(store.get(s => s.user)).toEqualTypeOf<{ name: string; age: number }>()
+  expectTypeOf(store.get((s) => s.user.name)).toBeString()
+  expectTypeOf(store.get((s) => s.count)).toBeNumber()
+  expectTypeOf(store.get((s) => s.items)).toEqualTypeOf<string[]>()
+  expectTypeOf(store.get((s) => s.user)).toEqualTypeOf<{ name: string; age: number }>()
 })
 
 // --- Store.set ---
 
 test('set accepts matching value type', () => {
-  store.set(s => s.count, 5)
-  store.set(s => s.user.name, 'Alice')
-  store.set(s => s.items, ['a', 'b'])
+  store.set((s) => s.count, 5)
+  store.set((s) => s.user.name, 'Alice')
+  store.set((s) => s.items, ['a', 'b'])
 })
 
 // --- Store.over ---
 
 test('over fn receives and returns correct type', () => {
-  store.over(s => s.count, n => {
-    expectTypeOf(n).toBeNumber()
-    return n + 1
-  })
-  store.over(s => s.user.name, name => {
-    expectTypeOf(name).toBeString()
-    return name.toUpperCase()
-  })
+  store.over(
+    (s) => s.count,
+    (n) => {
+      expectTypeOf(n).toBeNumber()
+      return n + 1
+    },
+  )
+  store.over(
+    (s) => s.user.name,
+    (name) => {
+      expectTypeOf(name).toBeString()
+      return name.toUpperCase()
+    },
+  )
 })
 
 // --- Store.merge ---
@@ -51,14 +57,20 @@ test('merge accepts Partial<S>', () => {
 // --- Store.subscribe ---
 
 test('subscribe with accessor provides typed prev/next', () => {
-  store.subscribe(s => s.count, (next, prev) => {
-    expectTypeOf(next).toBeNumber()
-    expectTypeOf(prev).toBeNumber()
-  })
-  store.subscribe(s => s.user.name, (next, prev) => {
-    expectTypeOf(next).toBeString()
-    expectTypeOf(prev).toBeString()
-  })
+  store.subscribe(
+    (s) => s.count,
+    (next, prev) => {
+      expectTypeOf(next).toBeNumber()
+      expectTypeOf(prev).toBeNumber()
+    },
+  )
+  store.subscribe(
+    (s) => s.user.name,
+    (next, prev) => {
+      expectTypeOf(next).toBeString()
+      expectTypeOf(prev).toBeString()
+    },
+  )
 })
 
 test('subscribe returns Unsubscribe', () => {
@@ -77,13 +89,21 @@ test('at returns typed Handle', () => {
 // --- computed ---
 
 test('computed infers derive return type', () => {
-  const c = computed(store, s => s.items, items => items.length)
+  const c = computed(
+    store,
+    (s) => s.items,
+    (items) => items.length,
+  )
   expectTypeOf(c.get()).toBeNumber()
   expectTypeOf(c).toMatchTypeOf<Computed<number>>()
 })
 
 test('computed subscribe provides typed values', () => {
-  const c = computed(store, s => s.count, n => n > 0)
+  const c = computed(
+    store,
+    (s) => s.count,
+    (n) => n > 0,
+  )
   c.subscribe((next, prev) => {
     expectTypeOf(next).toBeBoolean()
     expectTypeOf(prev).toBeBoolean()

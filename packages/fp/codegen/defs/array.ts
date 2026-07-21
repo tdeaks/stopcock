@@ -5,15 +5,23 @@ type Dict<A> = Record<string, A>
 import { sum as nSum, min as nMin, max as nMax } from './number'
 
 // Arity 1. Tagged for fusion engine (accessor ops get inlined in pipe)
-export const head: <A>(arr: readonly A[]) => A | undefined = dual(1, (a: any[]) => a[0], { op: 'head' })
-export const last: <A>(arr: readonly A[]) => A | undefined = dual(1, (a: any[]) => a[a.length - 1], { op: 'last' })
+export const head: <A>(arr: readonly A[]) => A | undefined = dual(1, (a: any[]) => a[0], {
+  op: 'head',
+})
+export const last: <A>(arr: readonly A[]) => A | undefined = dual(
+  1,
+  (a: any[]) => a[a.length - 1],
+  { op: 'last' },
+)
 export const tail: <A>(arr: readonly A[]) => A[] = dual(1, RS.tail, { op: 'tail' })
 export const init: <A>(arr: readonly A[]) => A[] = dual(1, RS.init, { op: 'init' })
 export const isEmpty: <A>(arr: readonly A[]) => boolean = dual(1, RS.isEmpty, { op: 'isEmpty' })
 export const length: <A>(arr: readonly A[]) => number = dual(1, RS.length, { op: 'length' })
 export const reverse: <A>(arr: readonly A[]) => A[] = dual(1, RS.reverse, { op: 'reverse' })
 export const flatten: <A>(arr: readonly A[][]) => A[] = dual(1, RS.flatten, { op: 'flatten' })
-export const first: <A>(arr: readonly A[]) => A | undefined = dual(1, (a: any[]) => a[0], { op: 'head' })
+export const first: <A>(arr: readonly A[]) => A | undefined = dual(1, (a: any[]) => a[0], {
+  op: 'head',
+})
 
 // Standalone generators (no dual)
 export const range: (start: number, end: number) => number[] = RS.range
@@ -49,7 +57,8 @@ let mapOperatorFn: Function | null = null
 let mapOperator: any = null
 
 const runMapFallback: MapRunner = (arr, f) => {
-  const len = arr.length, out = new Array(len)
+  const len = arr.length,
+    out = new Array(len)
   for (let i = 0; i < len; i++) out[i] = f(arr[i])
   return out
 }
@@ -88,8 +97,9 @@ export function map(): any {
   const _a0 = arguments[0]
   if (_a0 === mapOperatorFn && mapOperator) return mapOperator
   const runner = getMapRunner(_a0)
-  const _dl: any = function(data: any) {
-    const arr = data, f = _a0
+  const _dl: any = function (data: any) {
+    const arr = data,
+      f = _a0
     return runner(arr, f)
   }
   _dl._op = 1
@@ -102,88 +112,121 @@ export function map(): any {
 export const mapWithIndex: {
   <A, B>(arr: readonly A[], f: (a: A, i: number) => B): B[]
   <A, B>(f: (a: A, i: number) => B): (arr: readonly A[]) => B[]
-} = dual(2, (arr: any[], f: any) => {
-  const len = arr.length, out = new Array(len)
-  for (let i = 0; i < len; i++) out[i] = f(arr[i], i)
-  return out
-}, { op: 'mapWithIndex' })
+} = dual(
+  2,
+  (arr: any[], f: any) => {
+    const len = arr.length,
+      out = new Array(len)
+    for (let i = 0; i < len; i++) out[i] = f(arr[i], i)
+    return out
+  },
+  { op: 'mapWithIndex' },
+)
 
 export const filter: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = dual(2, (arr: any[], pred: any) => {
-  const out: any[] = []
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const v = arr[i]
-    if (pred(v)) out.push(v)
-  }
-  return out
-}, { op: 'filter' })
+} = dual(
+  2,
+  (arr: any[], pred: any) => {
+    const out: any[] = []
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const v = arr[i]
+      if (pred(v)) out.push(v)
+    }
+    return out
+  },
+  { op: 'filter' },
+)
 
 export const filterWithIndex: {
   <A>(arr: readonly A[], pred: (a: A, i: number) => boolean): A[]
   <A>(pred: (a: A, i: number) => boolean): (arr: readonly A[]) => A[]
-} = dual(2, (arr: any[], pred: any) => {
-  const out: any[] = []
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const v = arr[i]
-    if (pred(v, i)) out.push(v)
-  }
-  return out
-}, { op: 'filterWithIndex' })
+} = dual(
+  2,
+  (arr: any[], pred: any) => {
+    const out: any[] = []
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const v = arr[i]
+      if (pred(v, i)) out.push(v)
+    }
+    return out
+  },
+  { op: 'filterWithIndex' },
+)
 
 export const flatMap: {
   <A, B>(arr: readonly A[], f: (a: A) => B[]): B[]
   <A, B>(f: (a: A) => B[]): (arr: readonly A[]) => B[]
-} = dual(2, (arr: any[], f: any) => {
-  const out: any[] = []
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const r = f(arr[i])
-    for (let j = 0, rlen = r.length; j < rlen; j++) out.push(r[j])
-  }
-  return out
-}, { op: 'flatMap' })
+} = dual(
+  2,
+  (arr: any[], f: any) => {
+    const out: any[] = []
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const r = f(arr[i])
+      for (let j = 0, rlen = r.length; j < rlen; j++) out.push(r[j])
+    }
+    return out
+  },
+  { op: 'flatMap' },
+)
 
 export const find: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
-} = dual(2, (arr: any[], pred: any) => {
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const v = arr[i]
-    if (pred(v)) return v
-  }
-  return undefined
-}, { op: 'find' })
+} = dual(
+  2,
+  (arr: any[], pred: any) => {
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const v = arr[i]
+      if (pred(v)) return v
+    }
+    return undefined
+  },
+  { op: 'find' },
+)
 
 export const findIndex: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
-} = dual(2, (arr: any[], pred: any) => {
-  for (let i = 0, len = arr.length; i < len; i++) {
-    if (pred(arr[i])) return i
-  }
-  return undefined
-}, { op: 'findIndex' })
+} = dual(
+  2,
+  (arr: any[], pred: any) => {
+    for (let i = 0, len = arr.length; i < len; i++) {
+      if (pred(arr[i])) return i
+    }
+    return undefined
+  },
+  { op: 'findIndex' },
+)
 
 export const every: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
-} = dual(2, (arr: any[], pred: any) => {
-  for (let i = 0, len = arr.length; i < len; i++) {
-    if (!pred(arr[i])) return false
-  }
-  return true
-}, { op: 'every' })
+} = dual(
+  2,
+  (arr: any[], pred: any) => {
+    for (let i = 0, len = arr.length; i < len; i++) {
+      if (!pred(arr[i])) return false
+    }
+    return true
+  },
+  { op: 'every' },
+)
 
 export const some: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
-} = dual(2, (arr: any[], pred: any) => {
-  for (let i = 0, len = arr.length; i < len; i++) {
-    if (pred(arr[i])) return true
-  }
-  return false
-}, { op: 'some' })
+} = dual(
+  2,
+  (arr: any[], pred: any) => {
+    for (let i = 0, len = arr.length; i < len; i++) {
+      if (pred(arr[i])) return true
+    }
+    return false
+  },
+  { op: 'some' },
+)
 
 export const includes: {
   <A>(arr: readonly A[], value: A): boolean
@@ -245,16 +288,24 @@ export const intersperse: {
 export const forEach: {
   <A>(arr: readonly A[], f: (a: A) => void): void
   <A>(f: (a: A) => void): (arr: readonly A[]) => void
-} = dual(2, (arr: any[], f: any) => {
-  for (let i = 0, len = arr.length; i < len; i++) f(arr[i])
-}, { op: 'forEach' })
+} = dual(
+  2,
+  (arr: any[], f: any) => {
+    for (let i = 0, len = arr.length; i < len; i++) f(arr[i])
+  },
+  { op: 'forEach' },
+)
 
 export const forEachWithIndex: {
   <A>(arr: readonly A[], f: (a: A, i: number) => void): void
   <A>(f: (a: A, i: number) => void): (arr: readonly A[]) => void
-} = dual(2, (arr: any[], f: any) => {
-  for (let i = 0, len = arr.length; i < len; i++) f(arr[i], i)
-}, { op: 'forEachWithIndex' })
+} = dual(
+  2,
+  (arr: any[], f: any) => {
+    for (let i = 0, len = arr.length; i < len; i++) f(arr[i], i)
+  },
+  { op: 'forEachWithIndex' },
+)
 
 export const groupBy: {
   <A>(arr: readonly A[], f: (a: A) => string): Dict<A[]>
@@ -295,20 +346,28 @@ export const symmetricDifference: {
 export const reduce: {
   <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
   <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
-} = dual(3, (arr: any[], f: any, init: any) => {
-  let acc = init
-  for (let i = 0, len = arr.length; i < len; i++) acc = f(acc, arr[i])
-  return acc
-}, { op: 'reduce' })
+} = dual(
+  3,
+  (arr: any[], f: any, init: any) => {
+    let acc = init
+    for (let i = 0, len = arr.length; i < len; i++) acc = f(acc, arr[i])
+    return acc
+  },
+  { op: 'reduce' },
+)
 
 export const reduceRight: {
   <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
   <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
-} = dual(3, (arr: any[], f: any, init: any) => {
-  let acc = init
-  for (let i = arr.length - 1; i >= 0; i--) acc = f(acc, arr[i])
-  return acc
-}, { op: 'reduceRight' })
+} = dual(
+  3,
+  (arr: any[], f: any, init: any) => {
+    let acc = init
+    for (let i = arr.length - 1; i >= 0; i--) acc = f(acc, arr[i])
+    return acc
+  },
+  { op: 'reduceRight' },
+)
 
 export const zip: {
   <A, B>(a: readonly A[], b: readonly B[]): [A, B][]
@@ -351,13 +410,23 @@ export const min: (arr: readonly number[]) => number = dual(1, nMin, { op: 'min'
 export const max: (arr: readonly number[]) => number = dual(1, nMax, { op: 'max' })
 
 // Sort specializations (JIT-inlined in pipe)
-export const sortAsc: (arr: readonly number[]) => number[] = dual(1, (arr: number[]) => [...arr].sort((a, b) => a - b), { op: 'sortAsc' })
-export const sortDesc: (arr: readonly number[]) => number[] = dual(1, (arr: number[]) => [...arr].sort((a, b) => b - a), { op: 'sortDesc' })
+export const sortAsc: (arr: readonly number[]) => number[] = dual(
+  1,
+  (arr: number[]) => [...arr].sort((a, b) => a - b),
+  { op: 'sortAsc' },
+)
+export const sortDesc: (arr: readonly number[]) => number[] = dual(
+  1,
+  (arr: number[]) => [...arr].sort((a, b) => b - a),
+  { op: 'sortDesc' },
+)
 
 // --- Newly exposed from Array.res ---
 
 // Arity 1
-export const dropRepeats: <A>(arr: readonly A[]) => A[] = dual(1, RS.dropRepeats, { op: 'dropRepeats' })
+export const dropRepeats: <A>(arr: readonly A[]) => A[] = dual(1, RS.dropRepeats, {
+  op: 'dropRepeats',
+})
 export const shuffle: <A>(arr: readonly A[]) => A[] = RS.shuffle
 export const only: <A>(arr: readonly A[]) => A | undefined = RS.only
 export const mergeAll: <A>(arr: readonly A[]) => A = RS.mergeAll
@@ -382,51 +451,67 @@ export const count: {
 export const filterMap: {
   <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
   <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
-} = dual(2, (arr: any[], f: any) => {
-  const out: any[] = []
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const mapped = f(arr[i])
-    if (mapped != null) out.push(mapped)
-  }
-  return out
-}, { op: 'filterMap' })
+} = dual(
+  2,
+  (arr: any[], f: any) => {
+    const out: any[] = []
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const mapped = f(arr[i])
+      if (mapped != null) out.push(mapped)
+    }
+    return out
+  },
+  { op: 'filterMap' },
+)
 
 export const findMap: {
   <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B | undefined
   <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B | undefined
-} = dual(2, (arr: any[], f: any) => {
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const mapped = f(arr[i])
-    if (mapped != null) return mapped
-  }
-  return undefined
-}, { op: 'findMap' })
+} = dual(
+  2,
+  (arr: any[], f: any) => {
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const mapped = f(arr[i])
+      if (mapped != null) return mapped
+    }
+    return undefined
+  },
+  { op: 'findMap' },
+)
 
 export const mapWhile: {
   <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
   <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
-} = dual(2, (arr: any[], f: any) => {
-  const out: any[] = []
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const mapped = f(arr[i])
-    if (mapped == null) break
-    out.push(mapped)
-  }
-  return out
-}, { op: 'mapWhile' })
+} = dual(
+  2,
+  (arr: any[], f: any) => {
+    const out: any[] = []
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const mapped = f(arr[i])
+      if (mapped == null) break
+      out.push(mapped)
+    }
+    return out
+  },
+  { op: 'mapWhile' },
+)
 
 export const takeUntil: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = dual(2, (arr: any[], pred: any) => {
-  const out: any[] = []
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const value = arr[i]
-    if (pred(value)) break
-    out.push(value)
-  }
-  return out
-}, { op: 'takeUntil' })
+} = dual(
+  2,
+  (arr: any[], pred: any) => {
+    const out: any[] = []
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const value = arr[i]
+      if (pred(value)) break
+      out.push(value)
+    }
+    return out
+  },
+  { op: 'takeUntil' },
+)
 
 // Arity 2. Non-fuseable
 export const append: {
@@ -684,7 +769,11 @@ export const mapAccumRight: {
 // Arity 4
 export const reduceBy: {
   <A, B>(arr: readonly A[], keyFn: (a: A) => string, reducer: (acc: B, a: A) => B, init: B): Dict<B>
-  <A, B>(keyFn: (a: A) => string, reducer: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => Dict<B>
+  <A, B>(
+    keyFn: (a: A) => string,
+    reducer: (acc: B, a: A) => B,
+    init: B,
+  ): (arr: readonly A[]) => Dict<B>
 } = dual(4, RS.reduceBy)
 
 export const reduceWhile: {

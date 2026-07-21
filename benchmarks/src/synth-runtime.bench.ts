@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import {
   createWavetable,
@@ -45,16 +45,14 @@ const consume = (samples: Samples): number => {
 }
 
 const matrix = Array.from({ length: 6 }, (_, row) =>
-  Array.from({ length: 6 }, (_, col) => (row < col ? 0.18 / (col + 1) : 0)))
+  Array.from({ length: 6 }, (_, col) => (row < col ? 0.18 / (col + 1) : 0)),
+)
 
 const bank = createWavetable({ partials: [1, 0.42, 0.28, 0.12, 0.06] })
 const ir = new Float32Array(256)
 for (let i = 0; i < ir.length; i++) ir[i] = Math.sin(i * 0.19) * Math.exp(-i / 48)
 
-const simple = pipe(
-  oscillator('saw', 110),
-  gain(0.24),
-)
+const simple = pipe(oscillator('saw', 110), gain(0.24))
 
 const denseFm = fm({
   freq: 82.41,
@@ -82,11 +80,7 @@ const modulationHeavy = pipe(
 )
 
 const effectsChain = pipe(
-  mix([
-    oscillator('saw', 55),
-    oscillator.wavetable(bank, 110, { position: 0.35 }),
-    denseFm,
-  ]),
+  mix([oscillator('saw', 55), oscillator.wavetable(bank, 110, { position: 0.35 }), denseFm]),
   filter.comb(19, 0.26, 0.18),
   effects.delay(58, 0.28, 0.35),
   effects.chorus(0.65, 9, 0.22),

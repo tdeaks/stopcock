@@ -2,13 +2,10 @@ export type Predicate<A> = (a: A) => boolean
 export type Refinement<A, B extends A> = (a: A) => a is B
 export type Brand<T, B extends string> = T & { readonly __brand: B }
 
-const hasOwn = Object.prototype.hasOwnProperty
-
 export const is = <T>(ctor: new (...args: any[]) => T, val: unknown): val is T =>
   val instanceof ctor
 
-export const isNil = (val: unknown): val is null | undefined =>
-  val === null || val === undefined
+export const isNil = (val: unknown): val is null | undefined => val === null || val === undefined
 
 export const isNotNil = <T>(val: T | null | undefined): val is T =>
   val !== null && val !== undefined
@@ -34,7 +31,8 @@ export const isDeepEqual = (a: unknown, b: unknown): boolean => {
   if (Array.isArray(a)) {
     if (!Array.isArray(b) || a.length !== b.length) return false
     for (let i = 0; i < a.length; i++) {
-      const ai = a[i], bi = b[i]
+      const ai = a[i],
+        bi = b[i]
       if (ai !== bi && !isDeepEqual(ai, bi)) return false
     }
     return true
@@ -42,7 +40,8 @@ export const isDeepEqual = (a: unknown, b: unknown): boolean => {
   if (Array.isArray(b)) return false
 
   if (a instanceof Date) return b instanceof Date && a.getTime() === b.getTime()
-  if (a instanceof RegExp) return b instanceof RegExp && a.source === b.source && a.flags === b.flags
+  if (a instanceof RegExp)
+    return b instanceof RegExp && a.source === b.source && a.flags === b.flags
 
   if (a instanceof Map) {
     if (!(b instanceof Map) || a.size !== b.size) return false
@@ -59,7 +58,8 @@ export const isDeepEqual = (a: unknown, b: unknown): boolean => {
   if (keysA.length !== Object.keys(b as Record<string, unknown>).length) return false
   for (let i = 0; i < keysA.length; i++) {
     const k = keysA[i]
-    if (!Object.prototype.hasOwnProperty.call(b, k) || !isDeepEqual((a as any)[k], (b as any)[k])) return false
+    if (!Object.prototype.hasOwnProperty.call(b, k) || !isDeepEqual((a as any)[k], (b as any)[k]))
+      return false
   }
   return true
 }
@@ -90,15 +90,15 @@ export const isNullish = (val: unknown): val is null | undefined =>
 
 export const isNumber = (val: unknown): val is number => typeof val === 'number'
 
-export const isObjectType = (val: unknown): val is object =>
-  typeof val === 'object' && val !== null
+export const isObjectType = (val: unknown): val is object => typeof val === 'object' && val !== null
 
 export const isPlainObject = (val: unknown): val is Record<string, unknown> =>
-  typeof val === 'object' && val !== null && !Array.isArray(val) &&
+  typeof val === 'object' &&
+  val !== null &&
+  !Array.isArray(val) &&
   Object.getPrototypeOf(val) === Object.prototype
 
-export const isPromise = (val: unknown): val is Promise<unknown> =>
-  val instanceof Promise
+export const isPromise = (val: unknown): val is Promise<unknown> => val instanceof Promise
 
 export const isShallowEqual = (a: unknown, b: unknown): boolean => {
   if (a === b) return true
@@ -107,7 +107,7 @@ export const isShallowEqual = (a: unknown, b: unknown): boolean => {
   if (keysA.length !== Object.keys(b as Record<string, unknown>).length) return false
   for (let i = 0; i < keysA.length; i++) {
     const k = keysA[i]
-    if (!hasOwn.call(b, k) || (a as any)[k] !== (b as any)[k]) return false
+    if (!Object.hasOwn(b, k) || (a as any)[k] !== (b as any)[k]) return false
   }
   return true
 }

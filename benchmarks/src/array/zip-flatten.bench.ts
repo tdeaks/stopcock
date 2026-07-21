@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { A } from '@stopcock/fp'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
@@ -21,7 +21,9 @@ describe.each([100, 1_000, 10_000])('zip — n=%i', (n) => {
 
 describe.each([100, 1_000, 10_000])('flatten — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
-  const nested = Array.from({ length: Math.floor(n / 10) }, (_, i) => data.slice(i * 10, i * 10 + 10))
+  const nested = Array.from({ length: Math.floor(n / 10) }, (_, i) =>
+    data.slice(i * 10, i * 10 + 10),
+  )
 
   bench('stopcock', () => A.flatten(nested))
   bench('ts-belt', () => TB.flat(nested))

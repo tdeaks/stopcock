@@ -22,7 +22,8 @@ export type BenchmarkData = {
   suites: BenchmarkSuite[]
 }
 
-const resultPattern = /✔\s+(.+?)\s{2,}([\d,]+\.\d+)\s+ops\/sec\s+(±[\d.]+%)\s+\((\d+)\s+runs?\)\s+(.+)/
+const resultPattern =
+  /✔\s+(.+?)\s{2,}([\d,]+\.\d+)\s+ops\/sec\s+(±[\d.]+%)\s+\((\d+)\s+runs?\)\s+(.+)/
 
 function parseBenchmarkMarkdown(content: string, runtime: string): BenchmarkData {
   const suites: BenchmarkSuite[] = []
@@ -83,5 +84,8 @@ if (import.meta.main) {
   await Bun.write('src/data/benchmarks-bun.json', JSON.stringify(bunData, null, 2))
   await Bun.write('src/data/benchmarks-deno.json', JSON.stringify(denoData, null, 2))
 
-  console.log(`Parsed ${nodeData.suites.length} Node.js suites, ${bunData.suites.length} Bun suites, ${denoData.suites.length} Deno suites`)
+  console.log(
+    `Parsed ${nodeData.suites.length} Node.js suites, ${bunData.suites.length} Bun suites, ${denoData.suites.length} Deno suites`,
+  )
 }
+/// <reference types="bun" />

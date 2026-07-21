@@ -18,7 +18,10 @@ const parseAlpha = (tok: string | undefined): number => {
 // Split args by spaces or commas, and split alpha off after `/`
 const splitArgs = (inside: string): { args: string[]; alpha?: string } => {
   const parts = inside.split('/')
-  const main = parts[0].trim().split(/[\s,]+/).filter(Boolean)
+  const main = parts[0]
+    .trim()
+    .split(/[\s,]+/)
+    .filter(Boolean)
   const alpha = parts[1]?.trim()
   return { args: main, alpha }
 }
@@ -81,8 +84,18 @@ export const fromCSS = (input: string): Color => {
       return oklab(L, A, B, a)
     }
     case 'oklch': {
-      const L = args[0] === 'none' ? 0 : args[0].endsWith('%') ? parseFloat(args[0]) / 100 : parseFloat(args[0])
-      const C = args[1] === 'none' ? 0 : args[1].endsWith('%') ? (parseFloat(args[1]) / 100) * 0.4 : parseFloat(args[1])
+      const L =
+        args[0] === 'none'
+          ? 0
+          : args[0].endsWith('%')
+            ? parseFloat(args[0]) / 100
+            : parseFloat(args[0])
+      const C =
+        args[1] === 'none'
+          ? 0
+          : args[1].endsWith('%')
+            ? (parseFloat(args[1]) / 100) * 0.4
+            : parseFloat(args[1])
       const h = args[2] === 'none' ? 0 : parseFloat(args[2])
       return oklch(L, C, h, a)
     }
@@ -93,13 +106,19 @@ export const fromCSS = (input: string): Color => {
       const g = parseChannel(args[2])
       const b = parseChannel(args[3])
       switch (space) {
-        case 'srgb': return rgb(r, g, b, a)
-        case 'srgb-linear': return { space: 'linear-srgb', channels: new Float64Array([r, g, b]), alpha: a }
-        case 'display-p3': return p3(r, g, b, a)
+        case 'srgb':
+          return rgb(r, g, b, a)
+        case 'srgb-linear':
+          return { space: 'linear-srgb', channels: new Float64Array([r, g, b]), alpha: a }
+        case 'display-p3':
+          return p3(r, g, b, a)
         case 'xyz':
-        case 'xyz-d65': return xyz(r, g, b, a)
-        case 'xyz-d50': return { space: 'xyz-d50', channels: new Float64Array([r, g, b]), alpha: a }
-        default: throw new Error(`Unsupported color() space: ${space}`)
+        case 'xyz-d65':
+          return xyz(r, g, b, a)
+        case 'xyz-d50':
+          return { space: 'xyz-d50', channels: new Float64Array([r, g, b]), alpha: a }
+        default:
+          throw new Error(`Unsupported color() space: ${space}`)
       }
     }
     default:

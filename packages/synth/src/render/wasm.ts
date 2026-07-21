@@ -4,7 +4,11 @@ import { getWasmExports, hasDirectRuntimeOutput } from './wasm-instance'
 import { triggerRenderFrames } from './wasm-tail'
 import { renderRuntimeWasm } from './wasm-runtime-render'
 import { renderSingleWasm } from './wasm-single'
-import { renderTriggeredWasm, renderTriggeredWasmWithMode, triggeredWasmModeForGraph } from './wasm-triggered'
+import {
+  renderTriggeredWasm,
+  renderTriggeredWasmWithMode,
+  triggeredWasmModeForGraph,
+} from './wasm-triggered'
 
 export { serializeWasmRuntimeRequestForWorklet } from './wasm-binary'
 
@@ -18,9 +22,11 @@ export function isSynthWasmBinaryAvailable(): boolean {
 
 export function isSynthWasmRuntimeAvailable(): boolean {
   const wasm = getWasmExports()
-  return typeof wasm?.stopcock_synth_runtime_new === 'function'
-    && typeof wasm.stopcock_synth_runtime_process === 'function'
-    && typeof wasm.stopcock_synth_runtime_free === 'function'
+  return (
+    typeof wasm?.stopcock_synth_runtime_new === 'function' &&
+    typeof wasm.stopcock_synth_runtime_process === 'function' &&
+    typeof wasm.stopcock_synth_runtime_free === 'function'
+  )
 }
 
 export function isSynthWasmRuntimeResetAvailable(): boolean {
@@ -38,8 +44,10 @@ export function tryRenderWasm(node: Node, opts: RenderOptions): Samples | null {
   const sampleRate = opts.sampleRate ?? 48_000
   const length = Math.max(0, Math.floor(opts.duration * sampleRate))
 
-  if (!Number.isFinite(opts.duration) || opts.duration < 0) throw new SynthCompileError('render duration must be a non-negative finite number')
-  if (!Number.isFinite(sampleRate) || sampleRate <= 0) throw new SynthCompileError('sampleRate must be a positive finite number')
+  if (!Number.isFinite(opts.duration) || opts.duration < 0)
+    throw new SynthCompileError('render duration must be a non-negative finite number')
+  if (!Number.isFinite(sampleRate) || sampleRate <= 0)
+    throw new SynthCompileError('sampleRate must be a positive finite number')
 
   if (opts.triggers && opts.triggers.length > 0) {
     return renderTriggeredWasm(wasm, node, opts, sampleRate, length)
@@ -54,7 +62,11 @@ export function renderWasmForTest(node: Node, opts: RenderOptions): Samples {
   return result
 }
 
-export function renderWasmRuntimeForTest(node: Node, opts: RenderOptions, blockSize = 128): Samples {
+export function renderWasmRuntimeForTest(
+  node: Node,
+  opts: RenderOptions,
+  blockSize = 128,
+): Samples {
   const result = renderRuntimeWasm(node, opts, blockSize)
   if (!result) throw new SynthCompileError('WASM synth runtime is unavailable')
   return result
@@ -76,6 +88,11 @@ export function triggeredWasmModeForTest(node: Node): 'runtime' | 'legacy' {
   return triggeredWasmModeForGraph(node)
 }
 
-export function triggerRenderFramesForTest(root: Node, remainingFrames: number, sampleRate: number, trigger: Trigger): number {
+export function triggerRenderFramesForTest(
+  root: Node,
+  remainingFrames: number,
+  sampleRate: number,
+  trigger: Trigger,
+): number {
   return triggerRenderFrames(root, remainingFrames, sampleRate, trigger)
 }

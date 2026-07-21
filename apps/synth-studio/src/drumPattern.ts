@@ -34,11 +34,11 @@ export const DEFAULT_PATTERN = (): DrumPattern => ({
   level: 0.85,
   playing: false,
   rows: [
-    row('kick',       [0, 4, 8, 12]),
-    row('snare',      [4, 12]),
-    row('hatClosed',  [0, 2, 6, 8, 10, 14]),
-    row('hatOpen',    [4, 12]),
-    row('clap',       []),
+    row('kick', [0, 4, 8, 12]),
+    row('snare', [4, 12]),
+    row('hatClosed', [0, 2, 6, 8, 10, 14]),
+    row('hatOpen', [4, 12]),
+    row('clap', []),
   ],
 })
 
@@ -50,7 +50,7 @@ export function toggleStep(pattern: DrumPattern, rowIndex: number, stepIndex: nu
     rows: pattern.rows.map((r, ri) =>
       ri !== rowIndex
         ? r
-        : { ...r, steps: r.steps.map((s, si) => si === stepIndex ? (s === 0 ? 1 : 0) : s) },
+        : { ...r, steps: r.steps.map((s, si) => (si === stepIndex ? (s === 0 ? 1 : 0) : s)) },
     ),
   }
 }
@@ -58,7 +58,7 @@ export function toggleStep(pattern: DrumPattern, rowIndex: number, stepIndex: nu
 export function clearPattern(pattern: DrumPattern): DrumPattern {
   return {
     ...pattern,
-    rows: pattern.rows.map(r => ({ ...r, steps: r.steps.map(() => 0 as StepValue) })),
+    rows: pattern.rows.map((r) => ({ ...r, steps: r.steps.map(() => 0 as StepValue) })),
   }
 }
 

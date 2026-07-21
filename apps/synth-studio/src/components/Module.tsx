@@ -24,30 +24,39 @@ export type SwapMenuProps<T extends string> = {
 export function SwapMenu<T extends string>(props: SwapMenuProps<T>): JSX.Element {
   const groups = (): Array<{ key: string; label: string; items: ReadonlyArray<SwapOption<T>> }> => {
     if (!props.groups) return [{ key: '_', label: '', items: props.options }]
-    return props.groups.map(g => ({
-      key: g.key,
-      label: g.label,
-      items: props.options.filter(o => o.group === g.key),
-    })).filter(g => g.items.length > 0)
+    return props.groups
+      .map((g) => ({
+        key: g.key,
+        label: g.label,
+        items: props.options.filter((o) => o.group === g.key),
+      }))
+      .filter((g) => g.items.length > 0)
   }
   return (
-    <div class={'swap-menu' + (props.open ? ' open' : '')} onClick={e => e.stopPropagation()}>
-      <For each={groups()}>{(group) => (
-        <>
-          <Show when={group.label !== ''}>
-            <div class="swap-section">{group.label}</div>
-          </Show>
-          <For each={group.items}>{(opt) => (
-            <div
-              class={'swap-option' + (opt.value === props.current ? ' active' : '')}
-              onClick={() => { props.onSelect(opt.value); props.onRequestClose() }}
-            >
-              {opt.label}
-              <span class="opt-tag">{opt.tag}</span>
-            </div>
-          )}</For>
-        </>
-      )}</For>
+    <div class={'swap-menu' + (props.open ? ' open' : '')} onClick={(e) => e.stopPropagation()}>
+      <For each={groups()}>
+        {(group) => (
+          <>
+            <Show when={group.label !== ''}>
+              <div class="swap-section">{group.label}</div>
+            </Show>
+            <For each={group.items}>
+              {(opt) => (
+                <div
+                  class={'swap-option' + (opt.value === props.current ? ' active' : '')}
+                  onClick={() => {
+                    props.onSelect(opt.value)
+                    props.onRequestClose()
+                  }}
+                >
+                  {opt.label}
+                  <span class="opt-tag">{opt.tag}</span>
+                </div>
+              )}
+            </For>
+          </>
+        )}
+      </For>
     </div>
   )
 }
@@ -63,11 +72,11 @@ export type ModuleProps = {
   bypass?: { on: boolean; onToggle(): void }
   swap?: { open: boolean; toggle(): void; menu: JSX.Element }
   draggable?: boolean
-  onDragStart?(e: DragEvent): void
-  onDragEnd?(e: DragEvent): void
-  onDragOver?(e: DragEvent): void
-  onDragLeave?(e: DragEvent): void
-  onDrop?(e: DragEvent): void
+  onDragStart?: (e: DragEvent) => void
+  onDragEnd?: (e: DragEvent) => void
+  onDragOver?: (e: DragEvent) => void
+  onDragLeave?: (e: DragEvent) => void
+  onDrop?: (e: DragEvent) => void
   class?: string
   children: JSX.Element
 }
@@ -91,28 +100,35 @@ export const Module: Component<ModuleProps> = (props) => {
           <span class="module-name">{props.name}</span>
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
-          <Show when={props.bypass}>{(b) => (
-            <button
-              type="button"
-              class={'fx-bypass' + (b().on ? ' on' : '')}
-              onClick={() => b().onToggle()}
-            >ON</button>
-          )}</Show>
-          <Show when={props.swap}>{(s) => (
-            <button
-              type="button"
-              class="swap-btn"
-              onClick={(e) => { e.stopPropagation(); s().toggle() }}
-            >
-              SWAP
-              {s().menu}
-            </button>
-          )}</Show>
+          <Show when={props.bypass}>
+            {(b) => (
+              <button
+                type="button"
+                class={'fx-bypass' + (b().on ? ' on' : '')}
+                onClick={() => b().onToggle()}
+              >
+                ON
+              </button>
+            )}
+          </Show>
+          <Show when={props.swap}>
+            {(s) => (
+              <button
+                type="button"
+                class="swap-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  s().toggle()
+                }}
+              >
+                SWAP
+                {s().menu}
+              </button>
+            )}
+          </Show>
         </div>
       </div>
-      <div class="module-body">
-        {props.children}
-      </div>
+      <div class="module-body">{props.children}</div>
     </article>
   )
 }

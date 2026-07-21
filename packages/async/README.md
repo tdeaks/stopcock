@@ -11,10 +11,10 @@ import { Task } from '@stopcock/async'
 import { pipe } from '@stopcock/fp'
 
 const fetchUser = pipe(
-  Task.fromPromise(() => fetch('/api/user').then(r => r.json())),
+  Task.fromPromise(() => fetch('/api/user').then((r) => r.json())),
   Task.timeout(5000),
   Task.retry({ attempts: 3, backoff: 'exponential' }),
-  Task.map(data => data.user),
+  Task.map((data) => data.user),
 )
 
 const result = await Task.runSafe(fetchUser)

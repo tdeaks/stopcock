@@ -1,5 +1,12 @@
 import type { FirKind, FirSpec, Real } from './types'
-import { assertFinite, assertPositiveFinite, assertPositiveInteger, assertSameLength, assertWindow, fail } from './validate'
+import {
+  assertFinite,
+  assertPositiveFinite,
+  assertPositiveInteger,
+  assertSameLength,
+  assertWindow,
+  fail,
+} from './validate'
 import { create as createWindow } from './window'
 import { dual } from './dual'
 
@@ -40,7 +47,8 @@ export function design(spec: FirSpec): Real {
   if (spec.taps < 3) fail('taps must be >= 3')
   assertPositiveFinite(spec.sampleRate, 'sampleRate')
   assertFinite(spec.freq, 'freq')
-  if (spec.freq <= 0 || spec.freq >= spec.sampleRate / 2) fail('freq must be in (0, sampleRate / 2)')
+  if (spec.freq <= 0 || spec.freq >= spec.sampleRate / 2)
+    fail('freq must be in (0, sampleRate / 2)')
   const windowKind = spec.window ?? 'hann'
   assertWindow(windowKind)
 

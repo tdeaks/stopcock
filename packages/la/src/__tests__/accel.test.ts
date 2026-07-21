@@ -1,5 +1,15 @@
-import { describe, it, expect } from 'vitest'
-import { accelerate, decelerate, isAccelerated, getDot, getAxpy, getMatmul, getConvolve1d, getColorMatrix3x3, getColorMatrix3x3Float } from '../accel'
+import { describe, it, expect } from 'vite-plus/test'
+import {
+  accelerate,
+  decelerate,
+  isAccelerated,
+  getDot,
+  getAxpy,
+  getMatmul,
+  getConvolve1d,
+  getColorMatrix3x3,
+  getColorMatrix3x3Float,
+} from '../accel'
 
 describe('accel', () => {
   it('starts unaccelerated', () => {

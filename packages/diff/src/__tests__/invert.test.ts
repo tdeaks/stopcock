@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { invert } from '../invert'
 import { diff } from '../diff'
 import { applyUnsafe } from '../apply'

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '../pipe'
 import * as B from '../boolean'
 
@@ -20,9 +20,41 @@ describe('boolean', () => {
   })
 
   describe('ifElse', () => {
-    it('data-first true', () => expect(B.ifElse(true, () => 'yes', () => 'no')).toBe('yes'))
-    it('data-first false', () => expect(B.ifElse(false, () => 'yes', () => 'no')).toBe('no'))
-    it('data-last true', () => expect(pipe(true, B.ifElse(() => 'yes', () => 'no'))).toBe('yes'))
-    it('data-last false', () => expect(pipe(false, B.ifElse(() => 'yes', () => 'no'))).toBe('no'))
+    it('data-first true', () =>
+      expect(
+        B.ifElse(
+          true,
+          () => 'yes',
+          () => 'no',
+        ),
+      ).toBe('yes'))
+    it('data-first false', () =>
+      expect(
+        B.ifElse(
+          false,
+          () => 'yes',
+          () => 'no',
+        ),
+      ).toBe('no'))
+    it('data-last true', () =>
+      expect(
+        pipe(
+          true,
+          B.ifElse(
+            () => 'yes',
+            () => 'no',
+          ),
+        ),
+      ).toBe('yes'))
+    it('data-last false', () =>
+      expect(
+        pipe(
+          false,
+          B.ifElse(
+            () => 'yes',
+            () => 'no',
+          ),
+        ),
+      ).toBe('no'))
   })
 })

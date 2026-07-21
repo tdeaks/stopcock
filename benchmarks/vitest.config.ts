@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite-plus'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -29,11 +29,6 @@ export default defineConfig({
       include: ['src/**/*.bench.ts'],
     },
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        maxForks: undefined,
-      },
-    },
     fileParallelism: true,
   },
 })

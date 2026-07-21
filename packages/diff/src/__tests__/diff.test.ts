@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { diff, diffWith } from '../diff'
 import { applyUnsafe } from '../apply'
 
@@ -77,7 +77,7 @@ describe('diff', () => {
     const a = { oldKey: 'value' }
     const b = { newKey: 'value' }
     const p = diff(a, b)
-    const renameOp = p.ops.find(op => op.op === 'rename')
+    const renameOp = p.ops.find((op) => op.op === 'rename')
     expect(renameOp).toBeDefined()
   })
 
@@ -104,9 +104,9 @@ describe('diff', () => {
     const p = diff(a, b)
     expect(applyUnsafe(a, p)).toEqual(b)
     // x->z should be a rename, y removed and w added separately
-    const renames = p.ops.filter(op => op.op === 'rename')
-    const removes = p.ops.filter(op => op.op === 'remove')
-    const adds = p.ops.filter(op => op.op === 'add')
+    const renames = p.ops.filter((op) => op.op === 'rename')
+    const removes = p.ops.filter((op) => op.op === 'remove')
+    const adds = p.ops.filter((op) => op.op === 'add')
     expect(renames.length).toBeGreaterThanOrEqual(1)
     expect(removes.length).toBeGreaterThanOrEqual(1)
     expect(adds.length).toBeGreaterThanOrEqual(1)
@@ -120,7 +120,11 @@ describe('diff', () => {
 
 describe('diffWith', () => {
   it('uses custom equality', () => {
-    const p = diffWith({ a: 1 }, { a: 1.0001 }, { eq: (a, b) => Math.abs((a as number) - (b as number)) < 0.001 })
+    const p = diffWith(
+      { a: 1 },
+      { a: 1.0001 },
+      { eq: (a, b) => Math.abs((a as number) - (b as number)) < 0.001 },
+    )
     expect(p.ops).toHaveLength(0)
   })
 
@@ -128,13 +132,13 @@ describe('diffWith', () => {
     const a = [{ id: 1 }, { id: 2 }]
     const b = [{ id: 2 }, { id: 1 }]
     const p = diffWith(a, b, { detectMoves: false })
-    const moveOps = p.ops.filter(op => op.op === 'move')
+    const moveOps = p.ops.filter((op) => op.op === 'move')
     expect(moveOps).toHaveLength(0)
   })
 
   it('disables rename detection', () => {
     const p = diffWith({ old: 'v' }, { new: 'v' }, { detectRenames: false })
-    const renameOps = p.ops.filter(op => op.op === 'rename')
+    const renameOps = p.ops.filter((op) => op.op === 'rename')
     expect(renameOps).toHaveLength(0)
   })
 

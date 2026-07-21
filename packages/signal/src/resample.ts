@@ -11,13 +11,23 @@ const windowValue = (kind: Window, distance: number, width: number): number => {
   const x = Math.abs(distance) / width
   if (x >= 1) return 0
   switch (kind) {
-    case 'rect': return 1
-    case 'hann': return 0.5 + 0.5 * Math.cos(Math.PI * x)
-    case 'hamming': return 0.54 + 0.46 * Math.cos(Math.PI * x)
-    case 'blackman': return 0.42 + 0.5 * Math.cos(Math.PI * x) + 0.08 * Math.cos(2 * Math.PI * x)
+    case 'rect':
+      return 1
+    case 'hann':
+      return 0.5 + 0.5 * Math.cos(Math.PI * x)
+    case 'hamming':
+      return 0.54 + 0.46 * Math.cos(Math.PI * x)
+    case 'blackman':
+      return 0.42 + 0.5 * Math.cos(Math.PI * x) + 0.08 * Math.cos(2 * Math.PI * x)
     case 'blackman-harris':
-      return 0.35875 + 0.48829 * Math.cos(Math.PI * x) + 0.14128 * Math.cos(2 * Math.PI * x) + 0.01168 * Math.cos(3 * Math.PI * x)
-    case 'triangular': return 1 - x
+      return (
+        0.35875 +
+        0.48829 * Math.cos(Math.PI * x) +
+        0.14128 * Math.cos(2 * Math.PI * x) +
+        0.01168 * Math.cos(3 * Math.PI * x)
+      )
+    case 'triangular':
+      return 1 - x
   }
 }
 
@@ -51,7 +61,7 @@ export function linear(buf: Real, ratio: number, out: Real): Real {
 export function sinc(
   buf: Real,
   ratio: number,
-  opts: { width: number, window: Window, out: Real },
+  opts: { width: number; window: Window; out: Real },
 ): Real {
   assertPositiveFinite(ratio, 'ratio')
   assertPositiveInteger(opts.width, 'opts.width')
@@ -85,7 +95,7 @@ export function polyphase(buf: Real, up: number, down: number, taps: Real, out: 
   assertPositiveInteger(up, 'up')
   assertPositiveInteger(down, 'down')
   if (taps.length < up) fail('taps.length must be >= up')
-  if (out.length !== Math.floor(buf.length * up / down)) {
+  if (out.length !== Math.floor((buf.length * up) / down)) {
     fail('out.length must equal Math.floor(buf.length * up / down)')
   }
 

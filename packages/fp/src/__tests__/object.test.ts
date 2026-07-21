@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '../pipe'
 import * as Obj from '../object'
 
@@ -10,8 +10,10 @@ const user = {
 
 describe('object', () => {
   describe('ReScript wrappers', () => {
-    it('pick data-first', () => expect(Obj.pick(user, ['name', 'age'])).toEqual({ name: 'Alice', age: 30 }))
-    it('pick data-last', () => expect(pipe(user, Obj.pick(['name', 'age']))).toEqual({ name: 'Alice', age: 30 }))
+    it('pick data-first', () =>
+      expect(Obj.pick(user, ['name', 'age'])).toEqual({ name: 'Alice', age: 30 }))
+    it('pick data-last', () =>
+      expect(pipe(user, Obj.pick(['name', 'age']))).toEqual({ name: 'Alice', age: 30 }))
 
     it('omit data-first', () => {
       const result = Obj.omit(user, ['age'])
@@ -46,17 +48,28 @@ describe('object', () => {
     })
 
     it('mergeWith data-first', () => {
-      const result = Obj.mergeWith({ a: 1, b: 2 }, { a: 10, b: 20 }, (l: number, r: number) => l + r)
+      const result = Obj.mergeWith(
+        { a: 1, b: 2 },
+        { a: 10, b: 20 },
+        (l: number, r: number) => l + r,
+      )
       expect(result).toEqual({ a: 11, b: 22 })
     })
 
     it('mergeWith data-last', () => {
-      const result = pipe({ a: 1, b: 2 }, Obj.mergeWith({ a: 10, b: 20 }, (l: number, r: number) => l + r))
+      const result = pipe(
+        { a: 1, b: 2 },
+        Obj.mergeWith({ a: 10, b: 20 }, (l: number, r: number) => l + r),
+      )
       expect(result).toEqual({ a: 11, b: 22 })
     })
 
     it('mergeWith adds new keys from b', () => {
-      const result = Obj.mergeWith({ a: 1 } as any, { a: 10, c: 30 }, (l: number, r: number) => l + r)
+      const result = Obj.mergeWith(
+        { a: 1 } as any,
+        { a: 10, c: 30 },
+        (l: number, r: number) => l + r,
+      )
       expect(result).toEqual({ a: 11, c: 30 })
     })
 
@@ -74,20 +87,26 @@ describe('object', () => {
   describe('path', () => {
     it('shallow access', () => expect(Obj.path(user, 'name')).toBe('Alice'))
     it('deep access', () => expect(Obj.path(user, 'address.city')).toBe('London'))
-    it('missing intermediate → undefined', () => expect(Obj.path({} as typeof user, 'address.city')).toBeUndefined())
+    it('missing intermediate → undefined', () =>
+      expect(Obj.path({} as typeof user, 'address.city')).toBeUndefined())
     it('data-last', () => expect(pipe(user, Obj.path('address.zip'))).toBe('SW1'))
-    it('tuple path data-first', () => expect(Obj.path(user, ['address', 'city'] as const)).toBe('London'))
-    it('tuple path data-last', () => expect(pipe(user, Obj.path(['address', 'zip'] as const))).toBe('SW1'))
+    it('tuple path data-first', () =>
+      expect(Obj.path(user, ['address', 'city'] as const)).toBe('London'))
+    it('tuple path data-last', () =>
+      expect(pipe(user, Obj.path(['address', 'zip'] as const))).toBe('SW1'))
     it('tuple path missing intermediate → undefined', () => {
       expect(Obj.path({} as typeof user, ['address', 'city'] as const)).toBeUndefined()
     })
   })
 
   describe('pathOr', () => {
-    it('existing path returns value', () => expect(Obj.pathOr(user, 'name', 'default')).toBe('Alice'))
-    it('missing path returns default', () => expect(Obj.pathOr({} as typeof user, 'address.city', 'unknown')).toBe('unknown'))
+    it('existing path returns value', () =>
+      expect(Obj.pathOr(user, 'name', 'default')).toBe('Alice'))
+    it('missing path returns default', () =>
+      expect(Obj.pathOr({} as typeof user, 'address.city', 'unknown')).toBe('unknown'))
     it('data-last', () => expect(pipe(user, Obj.pathOr('address.city', 'unknown'))).toBe('London'))
-    it('tuple path data-first', () => expect(Obj.pathOr(user, ['address', 'city'] as const, 'unknown')).toBe('London'))
+    it('tuple path data-first', () =>
+      expect(Obj.pathOr(user, ['address', 'city'] as const, 'unknown')).toBe('London'))
     it('tuple path missing intermediate returns default', () => {
       expect(Obj.pathOr({} as typeof user, ['address', 'city'] as const, 'unknown')).toBe('unknown')
     })
@@ -115,10 +134,7 @@ describe('object', () => {
     })
 
     it('data-last', () => {
-      const result = pipe(
-        { count: 5, label: 'test' },
-        Obj.evolve({ count: (n: number) => n * 2 }),
-      )
+      const result = pipe({ count: 5, label: 'test' }, Obj.evolve({ count: (n: number) => n * 2 }))
       expect(result).toEqual({ count: 10, label: 'test' })
     })
   })

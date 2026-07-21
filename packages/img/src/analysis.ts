@@ -9,9 +9,9 @@ const isForeground = (img: Image, x: number, y: number): boolean => {
 // --- Hough line transform ---
 
 export type HoughOptions = {
-  threshold?: number   // min votes for a line (default: auto, 50% of max)
-  thetaSteps?: number  // angular resolution (default: 180)
-  maxLines?: number    // cap on returned lines (default: 50)
+  threshold?: number // min votes for a line (default: auto, 50% of max)
+  thetaSteps?: number // angular resolution (default: 180)
+  maxLines?: number // cap on returned lines (default: 50)
 }
 
 export const houghLines: {
@@ -19,7 +19,8 @@ export const houghLines: {
   (options: HoughOptions): (img: Image) => DetectedLine[]
 } = dual(2, (img: Image, options: HoughOptions = {}): DetectedLine[] => {
   const { thetaSteps = 180, maxLines = 50 } = options
-  const w = img.width, h = img.height
+  const w = img.width,
+    h = img.height
   const diag = Math.ceil(Math.sqrt(w * w + h * h))
   const rhoMax = diag
   const rhoSteps = diag * 2
@@ -110,16 +111,23 @@ class UnionFind {
   }
 
   union(a: number, b: number): void {
-    const ra = this.find(a), rb = this.find(b)
+    const ra = this.find(a),
+      rb = this.find(b)
     if (ra === rb) return
-    if (this.rank[ra] < this.rank[rb]) { this.parent[ra] = rb }
-    else if (this.rank[ra] > this.rank[rb]) { this.parent[rb] = ra }
-    else { this.parent[rb] = ra; this.rank[ra]++ }
+    if (this.rank[ra] < this.rank[rb]) {
+      this.parent[ra] = rb
+    } else if (this.rank[ra] > this.rank[rb]) {
+      this.parent[rb] = ra
+    } else {
+      this.parent[rb] = ra
+      this.rank[ra]++
+    }
   }
 }
 
 export const connectedComponents = (img: Image): ComponentResult => {
-  const w = img.width, h = img.height
+  const w = img.width,
+    h = img.height
   const labels = new Int32Array(w * h)
   const uf = new UnionFind(w * h + 1)
   let nextLabel = 1
@@ -149,7 +157,18 @@ export const connectedComponents = (img: Image): ComponentResult => {
   const remap = new Map<number, number>()
   let componentId = 0
 
-  const stats = new Map<number, { area: number; sumX: number; sumY: number; minX: number; minY: number; maxX: number; maxY: number }>()
+  const stats = new Map<
+    number,
+    {
+      area: number
+      sumX: number
+      sumY: number
+      minX: number
+      minY: number
+      maxX: number
+      maxY: number
+    }
+  >()
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {

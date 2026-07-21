@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { compose, stamp } from '../core'
 import { overlaps, contains, intersection, union, gap, mergeIntervals } from '../overlap'
 import type { Timestamp } from '../types'
@@ -65,7 +65,11 @@ describe('gap', () => {
 
 describe('mergeIntervals', () => {
   it('merges overlapping', () => {
-    const result = mergeIntervals([[d(1), d(10)], [d(5), d(15)], [d(20), d(25)]])
+    const result = mergeIntervals([
+      [d(1), d(10)],
+      [d(5), d(15)],
+      [d(20), d(25)],
+    ])
     expect(result).toHaveLength(2)
     expect(result[0]![0]).toBe(d(1))
     expect(result[0]![1]).toBe(d(15))
@@ -76,14 +80,20 @@ describe('mergeIntervals', () => {
   it('empty input', () => expect(mergeIntervals([])).toEqual([]))
 
   it('adjacent intervals merge', () => {
-    const result = mergeIntervals([[d(1), d(5)], [d(5), d(10)]])
+    const result = mergeIntervals([
+      [d(1), d(5)],
+      [d(5), d(10)],
+    ])
     expect(result).toHaveLength(1)
     expect(result[0]![0]).toBe(d(1))
     expect(result[0]![1]).toBe(d(10))
   })
 
   it('already disjoint', () => {
-    const result = mergeIntervals([[d(1), d(3)], [d(5), d(7)]])
+    const result = mergeIntervals([
+      [d(1), d(3)],
+      [d(5), d(7)],
+    ])
     expect(result).toHaveLength(2)
   })
 })

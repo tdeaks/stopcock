@@ -8,7 +8,11 @@ import { traversal } from './traversal'
 import { iso } from './iso'
 import { isSome, some, none } from './option'
 
-type Optic = Lens<unknown, unknown> | Prism<unknown, unknown> | Traversal<unknown, unknown> | Iso<unknown, unknown>
+type Optic =
+  | Lens<unknown, unknown>
+  | Prism<unknown, unknown>
+  | Traversal<unknown, unknown>
+  | Iso<unknown, unknown>
 
 type AnyLens = Lens<any, any>
 type AnyPrism = Prism<any, any>
@@ -26,8 +30,17 @@ function toLens(o: Optic): AnyLens | null {
 
 function toPrism(o: Optic): AnyPrism | null {
   if (o._tag === 'Prism') return o as AnyPrism
-  if (o._tag === 'Lens') { const l = o as AnyLens; return prism(s => some(l.get(s)), l.set) }
-  if (o._tag === 'Iso') { const i = o as AnyIso; return prism(s => some(i.get(s)), (_, a) => i.reverseGet(a)) }
+  if (o._tag === 'Lens') {
+    const l = o as AnyLens
+    return prism((s) => some(l.get(s)), l.set)
+  }
+  if (o._tag === 'Iso') {
+    const i = o as AnyIso
+    return prism(
+      (s) => some(i.get(s)),
+      (_, a) => i.reverseGet(a),
+    )
+  }
   return null
 }
 
@@ -35,17 +48,29 @@ function toTraversal(o: Optic): AnyTraversal {
   if (o._tag === 'Traversal') return o as AnyTraversal
   if (o._tag === 'Lens') {
     const l = o as AnyLens
-    return traversal(s => [l.get(s)], (s, f) => l.set(s, f(l.get(s))))
+    return traversal(
+      (s) => [l.get(s)],
+      (s, f) => l.set(s, f(l.get(s))),
+    )
   }
   if (o._tag === 'Prism') {
     const p = o as AnyPrism
     return traversal(
-      s => { const r = p.getOption(s); return isSome(r) ? [r.value] : [] },
-      (s, f) => { const r = p.getOption(s); return isSome(r) ? p.set(s, f(r.value)) : s },
+      (s) => {
+        const r = p.getOption(s)
+        return isSome(r) ? [r.value] : []
+      },
+      (s, f) => {
+        const r = p.getOption(s)
+        return isSome(r) ? p.set(s, f(r.value)) : s
+      },
     )
   }
   const i = o as AnyIso
-  return traversal(s => [i.get(s)], (s, f) => i.reverseGet(f(i.get(s))))
+  return traversal(
+    (s) => [i.get(s)],
+    (s, f) => i.reverseGet(f(i.get(s))),
+  )
 }
 
 export function composeOptics(outer: AnyLens, inner: AnyLens): AnyLens
@@ -58,7 +83,8 @@ export function composeOptics(outer: AnyIso, inner: AnyIso): AnyIso
 export function composeOptics(outer: Optic, inner: Optic): Optic
 export function composeOptics(outer: Optic, inner: Optic): Optic {
   if (outer._tag === 'Iso' && inner._tag === 'Iso') {
-    const o = outer as AnyIso, i = inner as AnyIso
+    const o = outer as AnyIso,
+      i = inner as AnyIso
     return iso(
       (s: unknown) => i.get(o.get(s)),
       (b: unknown) => o.reverseGet(i.reverseGet(b)),
@@ -67,8 +93,14 @@ export function composeOptics(outer: Optic, inner: Optic): Optic {
 
   const outerL = toLens(outer)
   const innerL = toLens(inner)
-  if (outerL && innerL && outer._tag !== 'Prism' && inner._tag !== 'Prism'
-    && outer._tag !== 'Traversal' && inner._tag !== 'Traversal') {
+  if (
+    outerL &&
+    innerL &&
+    outer._tag !== 'Prism' &&
+    inner._tag !== 'Prism' &&
+    outer._tag !== 'Traversal' &&
+    inner._tag !== 'Traversal'
+  ) {
     return lens(
       (s: unknown) => innerL.get(outerL.get(s)),
       (s: unknown, b: unknown) => outerL.set(s, innerL.set(outerL.get(s), b)),
@@ -95,6 +127,7 @@ export function composeOptics(outer: Optic, inner: Optic): Optic {
   const innerT = toTraversal(inner)
   return traversal(
     (s: unknown) => outerT.getAll(s).flatMap((a: unknown) => innerT.getAll(a)),
-    (s: unknown, f: (a: unknown) => unknown) => outerT.modify(s, (a: unknown) => innerT.modify(a, f)),
+    (s: unknown, f: (a: unknown) => unknown) =>
+      outerT.modify(s, (a: unknown) => innerT.modify(a, f)),
   )
 }

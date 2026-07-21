@@ -43,12 +43,12 @@ export const assertSameLength = (
 
 export const assertWindow = (window: Window, name = 'window'): void => {
   if (
-    window !== 'hann'
-    && window !== 'hamming'
-    && window !== 'blackman'
-    && window !== 'blackman-harris'
-    && window !== 'rect'
-    && window !== 'triangular'
+    window !== 'hann' &&
+    window !== 'hamming' &&
+    window !== 'blackman' &&
+    window !== 'blackman-harris' &&
+    window !== 'rect' &&
+    window !== 'triangular'
   ) {
     fail(`${name} must be a supported window`)
   }

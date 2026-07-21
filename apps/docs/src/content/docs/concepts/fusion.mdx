@@ -23,23 +23,23 @@ One pass. `take(10)` breaks the loop after 10 results.
 
 ## What fuses
 
-| Operation | Position | Notes |
-|-----------|----------|-------|
-| `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, `dropWhile` | streaming-fused | inlined into the loop; `take` and `takeWhile` can stop early |
-| `reduce`, `find`, `every`, `some`, `count` | terminal folds/predicates | finish the fused pass and return a scalar or found value |
-| `head`, `last`, `length`, `join`, `sum`, `min`, `max` | accessor terminals | end the chain with a scalar or aggregate result |
-| `sort`, `sortBy`, `reverse`, `groupBy`, `uniq` | materialization boundary | need a completed array before the next step |
-| `sortBy -> take(k)`, `sort -> take(k)` | top-k optimization | uses a bounded top-k path instead of fully sorting when the take immediately follows the sort |
+| Operation                                                            | Position                  | Notes                                                                                         |
+| -------------------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, `dropWhile` | streaming-fused           | inlined into the loop; `take` and `takeWhile` can stop early                                  |
+| `reduce`, `find`, `every`, `some`, `count`                           | terminal folds/predicates | finish the fused pass and return a scalar or found value                                      |
+| `head`, `last`, `length`, `join`, `sum`, `min`, `max`                | accessor terminals        | end the chain with a scalar or aggregate result                                               |
+| `sort`, `sortBy`, `reverse`, `groupBy`, `uniq`                       | materialization boundary  | need a completed array before the next step                                                   |
+| `sortBy -> take(k)`, `sort -> take(k)`                               | top-k optimization        | uses a bounded top-k path instead of fully sorting when the take immediately follows the sort |
 
 Operations that need the whole array break the streaming chain. Everything before them gets fused and runs first, then the materializing op runs on that result:
 
 ```ts
 pipe(
   data,
-  A.filter(x => x > 3),        // segment 1
-  A.map(x => x * 2),           // materializes here
-  A.sortBy((a, b) => a - b),   // runs on the materialized array
-  A.take(3),                   // uses top-k because it immediately follows sortBy
+  A.filter((x) => x > 3), // segment 1
+  A.map((x) => x * 2), // materializes here
+  A.sortBy((a, b) => a - b), // runs on the materialized array
+  A.take(3), // uses top-k because it immediately follows sortBy
 )
 ```
 

@@ -40,12 +40,16 @@ let lastDbText = ''
 export function registerSpectrum(bars: HTMLElement[]): () => void {
   refs.spectrumBars = bars
   lastBarHeight.fill(-1)
-  return () => { if (refs.spectrumBars === bars) refs.spectrumBars = null }
+  return () => {
+    if (refs.spectrumBars === bars) refs.spectrumBars = null
+  }
 }
 
 export function registerScope(path: SVGPathElement): () => void {
   refs.scopePath = path
-  return () => { if (refs.scopePath === path) refs.scopePath = null }
+  return () => {
+    if (refs.scopePath === path) refs.scopePath = null
+  }
 }
 
 export function registerMeter(cells: HTMLElement[], db: HTMLElement): () => void {

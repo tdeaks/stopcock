@@ -24,23 +24,33 @@ function digits2(s: string, offset: number): [number, number] {
 function digits3(s: string, offset: number): [number, number] {
   return [
     (s.charCodeAt(offset) - 48) * 100 +
-    (s.charCodeAt(offset + 1) - 48) * 10 +
-    (s.charCodeAt(offset + 2) - 48),
-    3
+      (s.charCodeAt(offset + 1) - 48) * 10 +
+      (s.charCodeAt(offset + 2) - 48),
+    3,
   ]
 }
 
 function digits4(s: string, offset: number): [number, number] {
   return [
     (s.charCodeAt(offset) - 48) * 1000 +
-    (s.charCodeAt(offset + 1) - 48) * 100 +
-    (s.charCodeAt(offset + 2) - 48) * 10 +
-    (s.charCodeAt(offset + 3) - 48),
-    4
+      (s.charCodeAt(offset + 1) - 48) * 100 +
+      (s.charCodeAt(offset + 2) - 48) * 10 +
+      (s.charCodeAt(offset + 3) - 48),
+    4,
   ]
 }
 
-const enum Field { YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, MS, AMPM, SKIP }
+const enum Field {
+  YEAR,
+  MONTH,
+  DAY,
+  HOUR,
+  MINUTE,
+  SECOND,
+  MS,
+  AMPM,
+  SKIP,
+}
 
 type ParsePart = {
   field: Field
@@ -49,22 +59,31 @@ type ParsePart = {
 
 const PARSE_TOKENS: [string, ParsePart][] = [
   ['YYYY', { field: Field.YEAR, extract: digits4 }],
-  ['YY',   { field: Field.YEAR, extract: (s, o) => { const [v, c] = digits2(s, o); return [v + 2000, c] } }],
-  ['MM',   { field: Field.MONTH, extract: digits2 }],
-  ['M',    { field: Field.MONTH, extract: digits1 }],
-  ['DD',   { field: Field.DAY, extract: digits2 }],
-  ['D',    { field: Field.DAY, extract: digits1 }],
-  ['HH',   { field: Field.HOUR, extract: digits2 }],
-  ['H',    { field: Field.HOUR, extract: digits1 }],
-  ['hh',   { field: Field.HOUR, extract: digits2 }],
-  ['h',    { field: Field.HOUR, extract: digits1 }],
-  ['mm',   { field: Field.MINUTE, extract: digits2 }],
-  ['m',    { field: Field.MINUTE, extract: digits1 }],
-  ['ss',   { field: Field.SECOND, extract: digits2 }],
-  ['s',    { field: Field.SECOND, extract: digits1 }],
-  ['SSS',  { field: Field.MS, extract: digits3 }],
-  ['A',    { field: Field.AMPM, extract: (s, o) => [s.charCodeAt(o) === 80 /* P */ ? 1 : 0, 2] }],
-  ['a',    { field: Field.AMPM, extract: (s, o) => [s.charCodeAt(o) === 112 /* p */ ? 1 : 0, 2] }],
+  [
+    'YY',
+    {
+      field: Field.YEAR,
+      extract: (s, o) => {
+        const [v, c] = digits2(s, o)
+        return [v + 2000, c]
+      },
+    },
+  ],
+  ['MM', { field: Field.MONTH, extract: digits2 }],
+  ['M', { field: Field.MONTH, extract: digits1 }],
+  ['DD', { field: Field.DAY, extract: digits2 }],
+  ['D', { field: Field.DAY, extract: digits1 }],
+  ['HH', { field: Field.HOUR, extract: digits2 }],
+  ['H', { field: Field.HOUR, extract: digits1 }],
+  ['hh', { field: Field.HOUR, extract: digits2 }],
+  ['h', { field: Field.HOUR, extract: digits1 }],
+  ['mm', { field: Field.MINUTE, extract: digits2 }],
+  ['m', { field: Field.MINUTE, extract: digits1 }],
+  ['ss', { field: Field.SECOND, extract: digits2 }],
+  ['s', { field: Field.SECOND, extract: digits1 }],
+  ['SSS', { field: Field.MS, extract: digits3 }],
+  ['A', { field: Field.AMPM, extract: (s, o) => [s.charCodeAt(o) === 80 /* P */ ? 1 : 0, 2] }],
+  ['a', { field: Field.AMPM, extract: (s, o) => [s.charCodeAt(o) === 112 /* p */ ? 1 : 0, 2] }],
 ]
 
 type CompiledParser = (s: string) => Timestamp
@@ -79,7 +98,19 @@ function compileParser(template: string): CompiledParser {
     for (const [token, part] of PARSE_TOKENS) {
       if (template.startsWith(token, i)) {
         parts.push({ field: part.field, extract: part.extract, offset: pos })
-        pos += token === 'YYYY' ? 4 : token === 'SSS' ? 3 : token === 'M' || token === 'D' || token === 'H' || token === 'h' || token === 'm' || token === 's' ? -1 : 2
+        pos +=
+          token === 'YYYY'
+            ? 4
+            : token === 'SSS'
+              ? 3
+              : token === 'M' ||
+                  token === 'D' ||
+                  token === 'H' ||
+                  token === 'h' ||
+                  token === 'm' ||
+                  token === 's'
+                ? -1
+                : 2
         i += token.length
         matched = true
         break
@@ -92,24 +123,47 @@ function compileParser(template: string): CompiledParser {
   }
 
   // For fixed-width formats, use direct offset extraction (fastest path)
-  const hasVariable = parts.some(p => p.offset < 0)
+  const hasVariable = parts.some((p) => p.offset < 0)
 
   if (!hasVariable) {
     return (s: string) => {
-      let year = 1970, month = 1, day = 1, hour = 0, minute = 0, second = 0, ms = 0, ampm = -1
+      let year = 1970,
+        month = 1,
+        day = 1,
+        hour = 0,
+        minute = 0,
+        second = 0,
+        ms = 0,
+        ampm = -1
 
       for (let i = 0; i < parts.length; i++) {
         const p = parts[i]!
         const [val] = p.extract(s, p.offset)
         switch (p.field) {
-          case Field.YEAR: year = val; break
-          case Field.MONTH: month = val; break
-          case Field.DAY: day = val; break
-          case Field.HOUR: hour = val; break
-          case Field.MINUTE: minute = val; break
-          case Field.SECOND: second = val; break
-          case Field.MS: ms = val; break
-          case Field.AMPM: ampm = val; break
+          case Field.YEAR:
+            year = val
+            break
+          case Field.MONTH:
+            month = val
+            break
+          case Field.DAY:
+            day = val
+            break
+          case Field.HOUR:
+            hour = val
+            break
+          case Field.MINUTE:
+            minute = val
+            break
+          case Field.SECOND:
+            second = val
+            break
+          case Field.MS:
+            ms = val
+            break
+          case Field.AMPM:
+            ampm = val
+            break
         }
       }
 
@@ -122,7 +176,14 @@ function compileParser(template: string): CompiledParser {
 
   // Variable-width: scan left to right
   return (s: string) => {
-    let year = 1970, month = 1, day = 1, hour = 0, minute = 0, second = 0, ms = 0, ampm = -1
+    let year = 1970,
+      month = 1,
+      day = 1,
+      hour = 0,
+      minute = 0,
+      second = 0,
+      ms = 0,
+      ampm = -1
     let offset = 0
 
     for (let i = 0; i < parts.length; i++) {
@@ -132,14 +193,30 @@ function compileParser(template: string): CompiledParser {
       offset = actualOffset + consumed
 
       switch (p.field) {
-        case Field.YEAR: year = val; break
-        case Field.MONTH: month = val; break
-        case Field.DAY: day = val; break
-        case Field.HOUR: hour = val; break
-        case Field.MINUTE: minute = val; break
-        case Field.SECOND: second = val; break
-        case Field.MS: ms = val; break
-        case Field.AMPM: ampm = val; break
+        case Field.YEAR:
+          year = val
+          break
+        case Field.MONTH:
+          month = val
+          break
+        case Field.DAY:
+          day = val
+          break
+        case Field.HOUR:
+          hour = val
+          break
+        case Field.MINUTE:
+          minute = val
+          break
+        case Field.SECOND:
+          second = val
+          break
+        case Field.MS:
+          ms = val
+          break
+        case Field.AMPM:
+          ampm = val
+          break
       }
     }
 
@@ -167,7 +244,11 @@ function getParser(template: string): CompiledParser {
 
 export function parseISO(s: string): Timestamp {
   // "2024-01-15T10:30:00.000Z". Fixed offsets, pure charCodeAt
-  const year = (s.charCodeAt(0) - 48) * 1000 + (s.charCodeAt(1) - 48) * 100 + (s.charCodeAt(2) - 48) * 10 + (s.charCodeAt(3) - 48)
+  const year =
+    (s.charCodeAt(0) - 48) * 1000 +
+    (s.charCodeAt(1) - 48) * 100 +
+    (s.charCodeAt(2) - 48) * 10 +
+    (s.charCodeAt(3) - 48)
   const month = (s.charCodeAt(5) - 48) * 10 + (s.charCodeAt(6) - 48)
   const day = (s.charCodeAt(8) - 48) * 10 + (s.charCodeAt(9) - 48)
 
@@ -176,16 +257,18 @@ export function parseISO(s: string): Timestamp {
   const hour = (s.charCodeAt(11) - 48) * 10 + (s.charCodeAt(12) - 48)
   const minute = (s.charCodeAt(14) - 48) * 10 + (s.charCodeAt(15) - 48)
   const second = (s.charCodeAt(17) - 48) * 10 + (s.charCodeAt(18) - 48)
-  const ms = s.length >= 23
-    ? (s.charCodeAt(20) - 48) * 100 + (s.charCodeAt(21) - 48) * 10 + (s.charCodeAt(22) - 48)
-    : 0
+  const ms =
+    s.length >= 23
+      ? (s.charCodeAt(20) - 48) * 100 + (s.charCodeAt(21) - 48) * 10 + (s.charCodeAt(22) - 48)
+      : 0
 
   return compose(year, month, day, hour, minute, second, ms)
 }
 
 // ── Public API ───────────────────────────────────────────────────────
 
-let _lastParseTpl = '', _lastParse: CompiledParser
+let _lastParseTpl = '',
+  _lastParse: CompiledParser
 
 export const parse: {
   (s: string, template: string): Timestamp

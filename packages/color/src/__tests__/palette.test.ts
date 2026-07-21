@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { fromHex, oklch } from '../create'
 import { complementary, triadic, tetradic, splitComplementary, analogous } from '../palette'
 import { hue } from '../channel'
 
 const around = (h: number, target: number, eps = 0.5) => {
-  const diff = ((h - target) % 360 + 540) % 360 - 180
+  const diff = ((((h - target) % 360) + 540) % 360) - 180
   return Math.abs(diff) < eps
 }
 

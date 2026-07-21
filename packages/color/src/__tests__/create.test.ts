@@ -1,5 +1,18 @@
-import { describe, it, expect } from 'vitest'
-import { rgb, rgb255, hsl, oklab, oklch, lab, lch, p3, xyz, hwb, linearRgb, fromHex } from '../create'
+import { describe, it, expect } from 'vite-plus/test'
+import {
+  rgb,
+  rgb255,
+  hsl,
+  oklab,
+  oklch,
+  lab,
+  lch,
+  p3,
+  xyz,
+  hwb,
+  linearRgb,
+  fromHex,
+} from '../create'
 
 describe('rgb', () => {
   it('builds an sRGB color with alpha 1 by default', () => {

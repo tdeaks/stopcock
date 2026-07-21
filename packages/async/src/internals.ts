@@ -8,9 +8,13 @@ export function linkedController(parent?: AbortSignal): AbortController {
     } else {
       const onAbort = () => controller.abort(parent.reason)
       parent.addEventListener('abort', onAbort, { once: true })
-      controller.signal.addEventListener('abort', () => {
-        parent.removeEventListener('abort', onAbort)
-      }, { once: true })
+      controller.signal.addEventListener(
+        'abort',
+        () => {
+          parent.removeEventListener('abort', onAbort)
+        },
+        { once: true },
+      )
     }
   }
   return controller
@@ -18,12 +22,19 @@ export function linkedController(parent?: AbortSignal): AbortController {
 
 export function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (signal?.aborted) { reject(signal.reason ?? new CancelledError()); return }
-    const timer = setTimeout(resolve, ms)
-    signal?.addEventListener('abort', () => {
-      clearTimeout(timer)
+    if (signal?.aborted) {
       reject(signal.reason ?? new CancelledError())
-    }, { once: true })
+      return
+    }
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer)
+        reject(signal.reason ?? new CancelledError())
+      },
+      { once: true },
+    )
   })
 }
 
@@ -40,7 +51,7 @@ export class Semaphore {
       this.permits--
       return Promise.resolve()
     }
-    return new Promise<void>(resolve => this.queue.push(resolve))
+    return new Promise<void>((resolve) => this.queue.push(resolve))
   }
 
   release(): void {

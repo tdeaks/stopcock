@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { A, pipe } from '@stopcock/fp'
 import { getData } from '../setup'
 
@@ -66,14 +66,11 @@ describe.each(sizes)('filterMap -> take(25), native chain vs native loop n=%i', 
   const data = getData<number>('numbers', n)
 
   bench('stopcock fused filterMap -> take(25) inline', () =>
-    pipe(data, A.filterMap(filterMapEvenBucket), A.take(takeLimit)),
-  )
+    pipe(data, A.filterMap(filterMapEvenBucket), A.take(takeLimit)))
   bench('stopcock fused filterMap -> take(25) hoisted', () =>
-    pipe(data, filterMapEvenBucketOp, takeLimitOp),
-  )
+    pipe(data, filterMapEvenBucketOp, takeLimitOp))
   bench('native chain map -> filter -> slice(0, 25)', () =>
-    data.map(filterMapEvenBucket).filter(isPresent).slice(0, takeLimit),
-  )
+    data.map(filterMapEvenBucket).filter(isPresent).slice(0, takeLimit))
   bench('native loop filterMap -> take(25)', () => nativeFilterMapLoopTake(data, takeLimit))
 })
 
@@ -103,11 +100,9 @@ describe.each(sizes)('map -> takeUntil(mapped > 1.9), native chain vs native loo
   const data = getData<number>('numbers', n)
 
   bench('stopcock fused map -> takeUntil inline', () =>
-    pipe(data, A.map(double), A.takeUntil(doubledOverThreshold)),
-  )
+    pipe(data, A.map(double), A.takeUntil(doubledOverThreshold)))
   bench('stopcock fused map -> takeUntil hoisted', () =>
-    pipe(data, doubleOp, takeUntilDoubledOverThresholdOp),
-  )
+    pipe(data, doubleOp, takeUntilDoubledOverThresholdOp))
   bench('native chain map -> findIndex -> slice', () => {
     const mapped = data.map(double)
     const stopAt = mapped.findIndex(doubledOverThreshold)

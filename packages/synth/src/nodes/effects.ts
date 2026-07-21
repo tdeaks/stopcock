@@ -236,11 +236,24 @@ type PhaserOpts = {
 }
 
 export const effects = {
-  distortion: (amount: number, shape: DistortionShape = DEFAULT_DISTORTION_SHAPE): Transform =>
+  distortion:
+    (amount: number, shape: DistortionShape = DEFAULT_DISTORTION_SHAPE): Transform =>
     (node) => ({ kind: 'distortion', input: node, amount, shape, ...common(node.out) }),
-  delay: (delayMs: number, feedback: number, mixAmount = DEFAULT_DELAY_MIX): Transform =>
-    (node) => ({ kind: 'delay', input: node, delayMs, feedback, mix: mixAmount, ...common(node.out) }),
-  reverb: (irOrOpts: Float32Array | { roomSize?: number, decay?: number }, mixAmount = DEFAULT_REVERB_MIX): Transform =>
+  delay:
+    (delayMs: number, feedback: number, mixAmount = DEFAULT_DELAY_MIX): Transform =>
+    (node) => ({
+      kind: 'delay',
+      input: node,
+      delayMs,
+      feedback,
+      mix: mixAmount,
+      ...common(node.out),
+    }),
+  reverb:
+    (
+      irOrOpts: Float32Array | { roomSize?: number; decay?: number },
+      mixAmount = DEFAULT_REVERB_MIX,
+    ): Transform =>
     (node) => ({
       kind: 'reverb',
       input: node,
@@ -248,9 +261,15 @@ export const effects = {
       mix: mixAmount,
       ...common(node.out),
     }),
-  chorus: (rate = DEFAULT_CHORUS_RATE, depth = DEFAULT_CHORUS_DEPTH, mixAmount = DEFAULT_CHORUS_MIX): Transform =>
+  chorus:
+    (
+      rate = DEFAULT_CHORUS_RATE,
+      depth = DEFAULT_CHORUS_DEPTH,
+      mixAmount = DEFAULT_CHORUS_MIX,
+    ): Transform =>
     (node) => ({ kind: 'chorus', input: node, rate, depth, mix: mixAmount, ...common(node.out) }),
-  ensembleChorus: (opts: EnsembleChorusOpts = {}): Transform =>
+  ensembleChorus:
+    (opts: EnsembleChorusOpts = {}): Transform =>
     (node) => ({
       kind: 'ensembleChorus',
       input: node,
@@ -262,7 +281,8 @@ export const effects = {
       noise: opts.noise ?? DEFAULT_ENSEMBLE_CHORUS_NOISE,
       ...common(2),
     }),
-  spaceEcho: (opts: SpaceEchoOpts = {}): Transform =>
+  spaceEcho:
+    (opts: SpaceEchoOpts = {}): Transform =>
     (node) => ({
       kind: 'spaceEcho',
       input: node,
@@ -277,7 +297,8 @@ export const effects = {
       mode: opts.mode ?? 'heads-1-2-3',
       ...common(2),
     }),
-  tapeDelay: (opts: TapeDelayOpts = {}): Transform =>
+  tapeDelay:
+    (opts: TapeDelayOpts = {}): Transform =>
     (node) => ({
       kind: 'tapeDelay',
       input: node,
@@ -292,7 +313,8 @@ export const effects = {
       width: opts.width ?? DEFAULT_TAPE_DELAY_WIDTH,
       ...common(2),
     }),
-  plateReverb: (opts: PlateReverbOpts = {}): Transform =>
+  plateReverb:
+    (opts: PlateReverbOpts = {}): Transform =>
     (node) => ({
       kind: 'plateReverb',
       input: node,
@@ -305,7 +327,8 @@ export const effects = {
       width: opts.width ?? DEFAULT_PLATE_REVERB_WIDTH,
       ...common(2),
     }),
-  springReverb: (opts: SpringReverbOpts = {}): Transform =>
+  springReverb:
+    (opts: SpringReverbOpts = {}): Transform =>
     (node) => ({
       kind: 'springReverb',
       input: node,
@@ -317,7 +340,8 @@ export const effects = {
       width: opts.width ?? DEFAULT_SPRING_REVERB_WIDTH,
       ...common(2),
     }),
-  nonlinearReverb: (opts: NonlinearReverbOpts = {}): Transform =>
+  nonlinearReverb:
+    (opts: NonlinearReverbOpts = {}): Transform =>
     (node) => ({
       kind: 'nonlinearReverb',
       input: node,
@@ -329,7 +353,8 @@ export const effects = {
       width: opts.width ?? DEFAULT_NONLINEAR_REVERB_WIDTH,
       ...common(2),
     }),
-  microPitch: (opts: MicroPitchOpts = {}): Transform =>
+  microPitch:
+    (opts: MicroPitchOpts = {}): Transform =>
     (node) => ({
       kind: 'microPitch',
       input: node,
@@ -339,7 +364,8 @@ export const effects = {
       mix: opts.mix ?? DEFAULT_MICRO_PITCH_MIX,
       ...common(2),
     }),
-  multiTapDelay: (opts: MultiTapDelayOpts = {}): Transform =>
+  multiTapDelay:
+    (opts: MultiTapDelayOpts = {}): Transform =>
     (node) => ({
       kind: 'multiTapDelay',
       input: node,
@@ -351,7 +377,8 @@ export const effects = {
       taps: normalizeMultiTapDelayTaps(opts.taps),
       ...common(2),
     }),
-  saturator: (opts: SaturatorOpts = {}): Transform =>
+  saturator:
+    (opts: SaturatorOpts = {}): Transform =>
     (node) => ({
       kind: 'saturator',
       input: node,
@@ -362,7 +389,8 @@ export const effects = {
       output: opts.output ?? DEFAULT_SATURATOR_OUTPUT,
       ...common(node.out),
     }),
-  wavefolder: (opts: WavefolderOpts = {}): Transform =>
+  wavefolder:
+    (opts: WavefolderOpts = {}): Transform =>
     (node) => ({
       kind: 'wavefolder',
       input: node,
@@ -374,7 +402,8 @@ export const effects = {
       output: opts.output ?? DEFAULT_WAVEFOLDER_OUTPUT,
       ...common(node.out),
     }),
-  degrade: (opts: DegradeOpts = {}): Transform =>
+  degrade:
+    (opts: DegradeOpts = {}): Transform =>
     (node) => ({
       kind: 'degrade',
       input: node,
@@ -386,7 +415,8 @@ export const effects = {
       mix: opts.mix ?? DEFAULT_DEGRADE_MIX,
       ...common(node.out),
     }),
-  tiltEq: (opts: TiltEqOpts = {}): Transform =>
+  tiltEq:
+    (opts: TiltEqOpts = {}): Transform =>
     (node) => ({
       kind: 'tiltEq',
       input: node,
@@ -395,7 +425,8 @@ export const effects = {
       mix: opts.mix ?? DEFAULT_TILT_EQ_MIX,
       ...common(node.out),
     }),
-  stereoSpread: (opts: StereoSpreadOpts = {}): Transform =>
+  stereoSpread:
+    (opts: StereoSpreadOpts = {}): Transform =>
     (node) => ({
       kind: 'stereoSpread',
       input: node,
@@ -404,7 +435,8 @@ export const effects = {
       mix: opts.mix ?? DEFAULT_STEREO_SPREAD_MIX,
       ...common(2),
     }),
-  frequencyShifter: (opts: FrequencyShifterOpts = {}): Transform =>
+  frequencyShifter:
+    (opts: FrequencyShifterOpts = {}): Transform =>
     (node) => ({
       kind: 'frequencyShifter',
       input: node,
@@ -412,7 +444,8 @@ export const effects = {
       mix: opts.mix ?? DEFAULT_FREQUENCY_SHIFTER_MIX,
       ...common(node.out),
     }),
-  rotarySpeaker: (opts: RotarySpeakerOpts = {}): Transform =>
+  rotarySpeaker:
+    (opts: RotarySpeakerOpts = {}): Transform =>
     (node) => ({
       kind: 'rotarySpeaker',
       input: node,
@@ -424,7 +457,8 @@ export const effects = {
       freq: opts.crossoverHz ?? DEFAULT_ROTARY_SPEAKER_CROSSOVER_HZ,
       ...common(2),
     }),
-  phaser: (opts: PhaserOpts = {}): Transform =>
+  phaser:
+    (opts: PhaserOpts = {}): Transform =>
     (node) => ({
       kind: 'phaser',
       input: node,
@@ -434,13 +468,16 @@ export const effects = {
       mix: opts.mix ?? 0.5,
       ...common(node.out),
     }),
-  compressor: (opts: {
-    threshold?: number
-    ratio?: number
-    attack?: number
-    release?: number
-    knee?: number
-  } = {}): Transform =>
+  compressor:
+    (
+      opts: {
+        threshold?: number
+        ratio?: number
+        attack?: number
+        release?: number
+        knee?: number
+      } = {},
+    ): Transform =>
     (node) => ({
       kind: 'compressor',
       input: node,
@@ -451,15 +488,16 @@ export const effects = {
       knee: opts.knee ?? DEFAULT_COMPRESSOR_KNEE,
       ...common(node.out),
     }),
-  bitcrush: (bits: number, downsample = DEFAULT_BITCRUSH_DOWNSAMPLE): Transform =>
+  bitcrush:
+    (bits: number, downsample = DEFAULT_BITCRUSH_DOWNSAMPLE): Transform =>
     (node) => ({ kind: 'bitcrush', input: node, bits, downsample, ...common(node.out) }),
 } as const
 
-function generatedIr(opts: { roomSize?: number, decay?: number }): Float32Array {
+function generatedIr(opts: { roomSize?: number; decay?: number }): Float32Array {
   const roomSize = opts.roomSize ?? DEFAULT_ROOM_SIZE
   const decay = opts.decay ?? DEFAULT_ROOM_DECAY
   const length = Math.max(1, Math.floor(DEFAULT_SAMPLE_RATE * Math.max(0.02, roomSize * decay)))
-  const rand = mulberry32(0x51A7E5)
+  const rand = mulberry32(0x51a7e5)
   const ir = new Float32Array(length)
   for (let i = 0; i < length; i++) {
     const t = i / DEFAULT_SAMPLE_RATE
@@ -468,7 +506,9 @@ function generatedIr(opts: { roomSize?: number, decay?: number }): Float32Array 
   return ir
 }
 
-function normalizeMultiTapDelayTaps(input: MultiTapDelayOpts['taps']): ReadonlyArray<Required<MultiTapDelayTap>> {
+function normalizeMultiTapDelayTaps(
+  input: MultiTapDelayOpts['taps'],
+): ReadonlyArray<Required<MultiTapDelayTap>> {
   const source = input?.length ? input : DEFAULT_MULTI_TAP_DELAY_TAPS
   return source.slice(0, 16).map((tap) => ({
     ratio: tap.ratio,

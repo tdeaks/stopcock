@@ -1,9 +1,4 @@
-import {
-  compileWorklet,
-  play,
-  type Node,
-  type WebAudioHandle,
-} from '@stopcock/synth'
+import { compileWorklet, play, type Node, type WebAudioHandle } from '@stopcock/synth'
 import { DRUM_KIT, type DrumPieceDef, type DrumPieceId } from './drumKit'
 
 type CompiledPiece = {
@@ -60,7 +55,11 @@ export async function createDrumEngine(
       if (other === piece) continue
       if (other.def.chokeGroup !== piece.def.chokeGroup) continue
       if (!other.lastHandle) continue
-      try { other.lastHandle.stop() } catch { /* already stopped */ }
+      try {
+        other.lastHandle.stop()
+      } catch {
+        /* already stopped */
+      }
       other.lastHandle = null
     }
   }
@@ -95,22 +94,40 @@ export async function createDrumEngine(
 
     window.setTimeout(() => {
       if (piece.lastHandle === handle) piece.lastHandle = null
-      try { handle.stop() } catch { /* already stopped */ }
-      try { hitGain.disconnect() } catch { /* already disconnected */ }
+      try {
+        handle.stop()
+      } catch {
+        /* already stopped */
+      }
+      try {
+        hitGain.disconnect()
+      } catch {
+        /* already disconnected */
+      }
     }, HANDLE_TTL_MS)
   }
 
   return {
     ctx,
     trigger,
-    setLevel: (level) => { drumBus.gain.value = Math.max(0, Math.min(1, level)) },
+    setLevel: (level) => {
+      drumBus.gain.value = Math.max(0, Math.min(1, level))
+    },
     destroy: () => {
       for (const piece of compiled.values()) {
         if (piece.lastHandle) {
-          try { piece.lastHandle.stop() } catch { /* already stopped */ }
+          try {
+            piece.lastHandle.stop()
+          } catch {
+            /* already stopped */
+          }
         }
       }
-      try { drumBus.disconnect() } catch { /* already disconnected */ }
+      try {
+        drumBus.disconnect()
+      } catch {
+        /* already disconnected */
+      }
     },
   }
 }

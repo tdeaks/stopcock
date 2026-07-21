@@ -1,25 +1,13 @@
 export type Real = Float32Array
 export type Complex = Float64Array
 
-export type BiquadCoeffs = readonly [
-  b0: number,
-  b1: number,
-  b2: number,
-  a1: number,
-  a2: number,
-]
+export type BiquadCoeffs = readonly [b0: number, b1: number, b2: number, a1: number, a2: number]
 export type BiquadState = Float64Array
 
 export type OnePoleCoeffs = readonly [a: number, b: number]
 export type OnePoleState = Float64Array
 
-export type Window =
-  | 'hann'
-  | 'hamming'
-  | 'blackman'
-  | 'blackman-harris'
-  | 'rect'
-  | 'triangular'
+export type Window = 'hann' | 'hamming' | 'blackman' | 'blackman-harris' | 'rect' | 'triangular'
 
 export type FilterKind =
   | 'lowpass'

@@ -1,7 +1,18 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import { compose, decompose } from '../core'
-import { add, subtract, startOf, endOf, setYear, setMonth, setDay, setHours, setMinutes, setSeconds } from '../arithmetic'
+import {
+  add,
+  subtract,
+  startOf,
+  endOf,
+  setYear,
+  setMonth,
+  setDay,
+  setHours,
+  setMinutes,
+  setSeconds,
+} from '../arithmetic'
 import type { Timestamp } from '../types'
 
 const ts = compose(2024, 3, 15, 14, 30, 45, 123)
@@ -130,7 +141,14 @@ describe('endOf', () => {
 
   it('year', () => {
     const result = decompose(endOf(ts, 'year'))
-    expect(result).toMatchObject({ month: 12, day: 31, hour: 23, minute: 59, second: 59, millisecond: 999 })
+    expect(result).toMatchObject({
+      month: 12,
+      day: 31,
+      hour: 23,
+      minute: 59,
+      second: 59,
+      millisecond: 999,
+    })
   })
 
   it('week', () => {

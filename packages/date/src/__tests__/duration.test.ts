@@ -1,6 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { compose } from '../core'
-import { duration, addDuration, subtractDuration, toDuration, durationToUnit, scaleDuration, negateDuration } from '../duration'
+import {
+  duration,
+  addDuration,
+  subtractDuration,
+  toDuration,
+  durationToUnit,
+  scaleDuration,
+  negateDuration,
+} from '../duration'
 import type { Duration, Timestamp } from '../types'
 
 const ts = compose(2024, 3, 15, 12, 0, 0, 0)

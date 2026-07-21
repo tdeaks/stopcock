@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { recordMutations } from '../draft.js'
 import { create } from '../index.js'
 
@@ -31,9 +31,7 @@ describe('recordMutations', () => {
     const { draft, finish } = recordMutations(obj)
     ;(draft as any).b = 2
     const patch = finish()
-    expect(patch.ops).toEqual([
-      { op: 'add', path: ['b'], value: 2 },
-    ])
+    expect(patch.ops).toEqual([{ op: 'add', path: ['b'], value: 2 }])
   })
 
   it('records a remove for delete', () => {
@@ -41,9 +39,7 @@ describe('recordMutations', () => {
     const { draft, finish } = recordMutations(obj)
     delete (draft as any).b
     const patch = finish()
-    expect(patch.ops).toEqual([
-      { op: 'remove', path: ['b'], oldValue: 2 },
-    ])
+    expect(patch.ops).toEqual([{ op: 'remove', path: ['b'], oldValue: 2 }])
     expect(obj.b).toBe(2)
   })
 
@@ -53,7 +49,7 @@ describe('recordMutations', () => {
     draft.items.push(3)
     const patch = finish()
     // push sets index 2 (add) and updates length (replace)
-    const addOp = patch.ops.find(op => op.op === 'add' && op.path.length === 2)
+    const addOp = patch.ops.find((op) => op.op === 'add' && op.path.length === 2)
     expect(addOp).toBeDefined()
     expect((addOp as any).value).toBe(3)
   })
@@ -119,7 +115,7 @@ describe('recordMutations: array methods', () => {
     draft.items.splice(1, 1, 'Y')
     expect([...draft.items]).toEqual(['x', 'Y', 'z'])
     const patch = finish()
-    const replaceOps = patch.ops.filter(op => op.op === 'replace')
+    const replaceOps = patch.ops.filter((op) => op.op === 'replace')
     expect(replaceOps.length).toBeGreaterThan(0)
   })
 
@@ -187,22 +183,34 @@ describe('recordMutations: array methods', () => {
   it('array methods in store.update produce correct state', () => {
     const store = create({ items: [1, 2, 3, 4, 5] })
 
-    store.update((draft: any) => { draft.items.splice(1, 2) })
+    store.update((draft: any) => {
+      draft.items.splice(1, 2)
+    })
     expect(store.get((s: any) => s.items)).toEqual([1, 4, 5])
 
-    store.update((draft: any) => { draft.items.reverse() })
+    store.update((draft: any) => {
+      draft.items.reverse()
+    })
     expect(store.get((s: any) => s.items)).toEqual([5, 4, 1])
 
-    store.update((draft: any) => { draft.items.sort((a: number, b: number) => a - b) })
+    store.update((draft: any) => {
+      draft.items.sort((a: number, b: number) => a - b)
+    })
     expect(store.get((s: any) => s.items)).toEqual([1, 4, 5])
 
-    store.update((draft: any) => { draft.items.pop() })
+    store.update((draft: any) => {
+      draft.items.pop()
+    })
     expect(store.get((s: any) => s.items)).toEqual([1, 4])
 
-    store.update((draft: any) => { draft.items.unshift(0) })
+    store.update((draft: any) => {
+      draft.items.unshift(0)
+    })
     expect(store.get((s: any) => s.items)).toEqual([0, 1, 4])
 
-    store.update((draft: any) => { draft.items.shift() })
+    store.update((draft: any) => {
+      draft.items.shift()
+    })
     expect(store.get((s: any) => s.items)).toEqual([1, 4])
   })
 })

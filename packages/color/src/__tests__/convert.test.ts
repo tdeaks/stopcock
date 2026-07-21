@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { rgb, hsl, oklab, oklch, lab, p3, xyz, fromHex } from '../create'
-import { convert, toOKLCh, toSRGB, toLab, toOKLab, toLinearRGB, toP3, toHSL, toXYZ } from '../convert'
+import {
+  convert,
+  toOKLCh,
+  toSRGB,
+  toLab,
+  toOKLab,
+  toLinearRGB,
+  toP3,
+  toHSL,
+  toXYZ,
+} from '../convert'
 import type { ColorSpace, Color } from '../types'
 
 const close = (a: number, b: number, eps = 1e-4) => Math.abs(a - b) < eps
@@ -28,7 +38,18 @@ describe('convert', () => {
 
   it('preserves alpha across any conversion', () => {
     const c = rgb(0.4, 0.6, 0.8, 0.42)
-    const spaces: ColorSpace[] = ['oklch', 'oklab', 'lab', 'lch', 'hsl', 'hwb', 'p3', 'xyz-d65', 'xyz-d50', 'linear-srgb']
+    const spaces: ColorSpace[] = [
+      'oklch',
+      'oklab',
+      'lab',
+      'lch',
+      'hsl',
+      'hwb',
+      'p3',
+      'xyz-d65',
+      'xyz-d50',
+      'linear-srgb',
+    ]
     for (const s of spaces) expect(convert(c, s).alpha).toBe(0.42)
   })
 })
@@ -54,7 +75,7 @@ describe('known reference values (CSS Color 4)', () => {
 
   // sRGB white -> Y of XYZ-D65 should be ~1
   it('srgb white luminance', () => {
-    expectChannels(toXYZ(rgb(1, 1, 1)), [0.9505, 1, 1.0890], 1e-3)
+    expectChannels(toXYZ(rgb(1, 1, 1)), [0.9505, 1, 1.089], 1e-3)
   })
 })
 
@@ -63,7 +84,16 @@ describe('round-trips within epsilon', () => {
   const eps = 1e-6
 
   it.each([
-    'linear-srgb', 'hsl', 'hwb', 'lab', 'lch', 'oklab', 'oklch', 'p3', 'xyz-d65', 'xyz-d50',
+    'linear-srgb',
+    'hsl',
+    'hwb',
+    'lab',
+    'lch',
+    'oklab',
+    'oklch',
+    'p3',
+    'xyz-d65',
+    'xyz-d50',
   ] as const)('srgb -> %s -> srgb', (mid) => {
     const there = convert(start, mid)
     const back = convert(there, 'srgb')

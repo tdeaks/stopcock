@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { dot2, dot3, dot4, mul2x2, mul3x3, mul3vec, mul4x4, det4x4 } from '../fast'
 import { Vec, Mat } from '../index'
 
@@ -24,11 +24,7 @@ describe('dot fast paths', () => {
 
 describe('matmul fast paths', () => {
   it('mul3vec multiplies a row-major matrix by a vector', () => {
-    const m = new Float64Array([
-      1, 2, 3,
-      4, 5, 6,
-      7, 8, 9,
-    ])
+    const m = new Float64Array([1, 2, 3, 4, 5, 6, 7, 8, 9])
     const out = new Float64Array(3)
     expect(Array.from(mul3vec(m, 2, 3, 4, out))).toEqual([
       1 * 2 + 2 * 3 + 3 * 4,
@@ -56,8 +52,16 @@ describe('matmul fast paths', () => {
   })
 
   it('mul4x4 matches generic', () => {
-    const a = Mat.fromArray(4, 4, Array.from({ length: 16 }, (_, i) => i + 1))
-    const b = Mat.fromArray(4, 4, Array.from({ length: 16 }, (_, i) => 16 - i))
+    const a = Mat.fromArray(
+      4,
+      4,
+      Array.from({ length: 16 }, (_, i) => i + 1),
+    )
+    const b = Mat.fromArray(
+      4,
+      4,
+      Array.from({ length: 16 }, (_, i) => 16 - i),
+    )
     const out = new Float64Array(16)
     mul4x4(a.data, b.data, out)
     // Verify against a known manual calculation for the first element

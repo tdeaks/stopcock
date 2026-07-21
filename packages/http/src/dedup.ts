@@ -8,16 +8,19 @@ export function createDedupCache(windowMs = 0): DedupCache {
   const cache = new Map<string, Promise<unknown>>()
 
   return {
-    get(key) { return cache.get(key) },
+    get(key) {
+      return cache.get(key)
+    },
     set(key, promise) {
       cache.set(key, promise)
-      promise.finally(() => {
+      const remove = () => {
         if (windowMs > 0) {
           setTimeout(() => cache.delete(key), windowMs)
         } else {
           cache.delete(key)
         }
-      })
+      }
+      void promise.then(remove, remove)
     },
     invalidate(url) {
       const mutationPath = url.split('?')[0]

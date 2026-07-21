@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '../pipe'
 import * as S from '../string'
 
@@ -40,12 +40,7 @@ describe('string', () => {
 
   describe('pipe composition', () => {
     it('chains string operations', () => {
-      const result = pipe(
-        '  Hello World  ',
-        S.trim,
-        S.toLowerCase,
-        S.split(' '),
-      )
+      const result = pipe('  Hello World  ', S.trim, S.toLowerCase, S.split(' '))
       expect(result).toEqual(['hello', 'world'])
     })
   })

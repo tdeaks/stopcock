@@ -41,33 +41,39 @@ export const TopBar: Component = () => {
 
   return (
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">PHASE.01</span></div>
+      <div class="brand">
+        <span class="brand-mark">PHASE.01</span>
+      </div>
 
       <div class="patch">
-        <button class="patch-nav" onClick={() => goPatch(-1)}>‹</button>
+        <button class="patch-nav" onClick={() => goPatch(-1)}>
+          ‹
+        </button>
         <div class="patch-info">
           <span class="patch-num">{currentPreset().num}</span>
           <span class="patch-name">{currentPreset().name}</span>
           <span class="patch-bank">USER · A</span>
         </div>
-        <button class="patch-nav" onClick={() => goPatch(1)}>›</button>
+        <button class="patch-nav" onClick={() => goPatch(1)}>
+          ›
+        </button>
       </div>
 
       <div class="header-right">
         <OutputMeter />
         <div class="status-compact">
-          <span class="stat-cell">{
-            engine() ? (engine()!.ctx.sampleRate / 1000).toFixed(1) : '—'
-          } <em>kHz</em></span>
-          <span class="stat-cell">{
-            engine() ? Math.round(engine()!.ctx.baseLatency * engine()!.ctx.sampleRate) : '—'
-          } <em>buf</em></span>
-          <span class="stat-cell">{state.fx.filter(f => f.enabled && f.kind !== 'none').length} <em>fx</em></span>
+          <span class="stat-cell">
+            {engine() ? (engine()!.ctx.sampleRate / 1000).toFixed(1) : '—'} <em>kHz</em>
+          </span>
+          <span class="stat-cell">
+            {engine() ? Math.round(engine()!.ctx.baseLatency * engine()!.ctx.sampleRate) : '—'}{' '}
+            <em>buf</em>
+          </span>
+          <span class="stat-cell">
+            {state.fx.filter((f) => f.enabled && f.kind !== 'none').length} <em>fx</em>
+          </span>
         </div>
-        <button
-          class={'power-btn' + (engine() ? ' engaged' : '')}
-          onClick={togglePower}
-        >
+        <button class={'power-btn' + (engine() ? ' engaged' : '')} onClick={togglePower}>
           {booting() ? 'BOOTING…' : engine() ? 'STOP' : 'START'}
         </button>
       </div>
@@ -88,10 +94,17 @@ const OutputMeter: Component = () => {
       <span class="meter-label">OUT</span>
       <div class="meter-bars">
         {Array.from({ length: METER_CELL_COUNT }, (_, i) => (
-          <div class="meter-cell" ref={(el) => { cells[i] = el }} />
+          <div
+            class="meter-cell"
+            ref={(el) => {
+              cells[i] = el
+            }}
+          />
         ))}
       </div>
-      <span class="meter-db" ref={dbEl}>−∞ dB</span>
+      <span class="meter-db" ref={dbEl}>
+        −∞ dB
+      </span>
     </div>
   )
 }

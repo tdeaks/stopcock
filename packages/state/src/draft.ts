@@ -7,7 +7,10 @@ import { patch as mkPatch, type Patch, type Operation, type Path } from '@stopco
  *
  * Replaces structuredClone + diff with O(mutations) work.
  */
-export function recordMutations<T extends object>(base: T, basePath: Path = []): { draft: T; finish: () => Patch } {
+export function recordMutations<T extends object>(
+  base: T,
+  basePath: Path = [],
+): { draft: T; finish: () => Patch } {
   const ops: Operation[] = []
   const copies = new WeakMap<object, any>()
 
@@ -40,9 +43,10 @@ export function recordMutations<T extends object>(base: T, basePath: Path = []):
         const oldValue = Reflect.get(copy, prop)
         if (oldValue === value) return true
         const exists = prop in copy && (!Array.isArray(copy) || (seg as number) < copy.length)
-        ops.push(exists
-          ? { op: 'replace', path: opPath, oldValue, newValue: value }
-          : { op: 'add', path: opPath, value },
+        ops.push(
+          exists
+            ? { op: 'replace', path: opPath, oldValue, newValue: value }
+            : { op: 'add', path: opPath, value },
         )
         Reflect.set(copy, prop, value)
         return true

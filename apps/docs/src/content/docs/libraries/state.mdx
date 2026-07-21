@@ -17,12 +17,15 @@ import { create, computed } from '@stopcock/state'
 
 const store = create({ user: { name: 'Tom' }, todos: [] as Todo[] })
 
-store.subscribe(s => s.user.name, (next, prev) => {
-  console.log(`${prev} -> ${next}`)
-})
+store.subscribe(
+  (s) => s.user.name,
+  (next, prev) => {
+    console.log(`${prev} -> ${next}`)
+  },
+)
 
-store.set(s => s.user.name, 'Alice') // logs "Tom -> Alice"
-store.set(s => s.todos, [])          // subscriber above doesn't fire
+store.set((s) => s.user.name, 'Alice') // logs "Tom -> Alice"
+store.set((s) => s.todos, []) // subscriber above doesn't fire
 ```
 
 ## How it works
@@ -30,6 +33,7 @@ store.set(s => s.todos, [])          // subscriber above doesn't fire
 When you pass `s => s.user.name` to a store method, the store runs that function against a Proxy. The Proxy records which properties were accessed and builds a path: `['user', 'name']`. That path is compiled into a lens (from `@stopcock/fp`) and cached. Next time you pass the same function, it hits the cache.
 
 This means:
+
 - No string paths. No action constants. Just functions.
 - TypeScript validates the accessor. If the property doesn't exist, you get a type error.
 - The path is extracted once and reused for reads, writes, and subscription matching.
@@ -64,24 +68,27 @@ type State = {
 }
 
 const h = history<State>()
-const store = create<State>(
-  { todos: [], filter: 'all' },
-  { middleware: [h.middleware] },
-)
+const store = create<State>({ todos: [], filter: 'all' }, { middleware: [h.middleware] })
 
 const visible = computed(
   store,
-  s => s.todos,
-  todos => todos.filter(t => !t.done).length,
+  (s) => s.todos,
+  (todos) => todos.filter((t) => !t.done).length,
 )
 
 // Add a todo
-store.over(s => s.todos, todos => [
-  ...todos, { id: Date.now(), text: 'Write docs', done: false },
-])
+store.over(
+  (s) => s.todos,
+  (todos) => [...todos, { id: Date.now(), text: 'Write docs', done: false }],
+)
 
 // Toggle
-store.update(s => s.todos[0], draft => { draft.done = !draft.done })
+store.update(
+  (s) => s.todos[0],
+  (draft) => {
+    draft.done = !draft.done
+  },
+)
 
 // Undo the toggle
 h.undo(store)
@@ -96,15 +103,18 @@ const form = create({
   submitting: false,
 })
 
-form.subscribe(s => s.fields, (fields) => {
-  // re-validate on any field change
-  const errors: Record<string, string> = {}
-  if (!fields.email.includes('@')) errors.email = 'Invalid email'
-  if (fields.password.length < 8) errors.password = 'Too short'
-  form.set(s => s.errors, errors)
-})
+form.subscribe(
+  (s) => s.fields,
+  (fields) => {
+    // re-validate on any field change
+    const errors: Record<string, string> = {}
+    if (!fields.email.includes('@')) errors.email = 'Invalid email'
+    if (fields.password.length < 8) errors.password = 'Too short'
+    form.set((s) => s.errors, errors)
+  },
+)
 
-form.set(s => s.fields.email, 'tom@example.com')
+form.set((s) => s.fields.email, 'tom@example.com')
 ```
 
 ### Async data with resources
@@ -122,12 +132,11 @@ const users = resource({
 
 const userPosts = resource({
   deps: (get) => {
-    const id = get(store, s => s.selectedUserId)
+    const id = get(store, (s) => s.selectedUserId)
     if (id === null) return null
     return { userId: id }
   },
-  fetch: ({ userId }, signal) =>
-    api.get<Post[]>('/posts', { query: { userId }, signal }),
+  fetch: ({ userId }, signal) => api.get<Post[]>('/posts', { query: { userId }, signal }),
 })
 
 const addPost = mutation({
@@ -145,8 +154,8 @@ Multiple writes in a `batch` produce a single notification.
 
 ```ts
 store.batch(() => {
-  store.set(s => s.user.name, 'Alice')
-  store.set(s => s.user.age, 31)
+  store.set((s) => s.user.name, 'Alice')
+  store.set((s) => s.user.age, 31)
 })
 // subscribers notified once with the final state
 ```
@@ -185,12 +194,12 @@ import { create, history } from '@stopcock/state'
 const h = history<State>()
 const store = create(initial, { middleware: [h.middleware] })
 
-store.set(s => s.count, 1)
-store.set(s => s.count, 2)
+store.set((s) => s.count, 1)
+store.set((s) => s.count, 2)
 
-h.canUndo  // true
-h.undo(store)  // count back to 1
-h.redo(store)  // count back to 2
+h.canUndo // true
+h.undo(store) // count back to 1
+h.redo(store) // count back to 2
 ```
 
 Making a new change after undo clears the redo stack.
@@ -285,23 +294,24 @@ import { resource, idle } from '@stopcock/state'
 
 // standalone
 const users = resource({
-  fetch: (signal) => fetch('/api/users', { signal }).then(r => r.json()),
+  fetch: (signal) => fetch('/api/users', { signal }).then((r) => r.json()),
 })
 
 // with store deps. refetches when search changes
 const filtered = resource({
-  deps: (get) => ({ q: get(store, s => s.search) }),
-  fetch: ({ q }, signal) => fetch(`/api/users?q=${q}`, { signal }).then(r => r.json()),
+  deps: (get) => ({ q: get(store, (s) => s.search) }),
+  fetch: ({ q }, signal) => fetch(`/api/users?q=${q}`, { signal }).then((r) => r.json()),
 })
 
 // with resource deps. waits for parent to resolve
 const posts = resource({
   deps: (get) => {
     const user = get(selectedUser)
-    if (!user) return null  // don't fetch yet
+    if (!user) return null // don't fetch yet
     return { userId: user.id }
   },
-  fetch: ({ userId }, signal) => fetch(`/api/posts?userId=${userId}`, { signal }).then(r => r.json()),
+  fetch: ({ userId }, signal) =>
+    fetch(`/api/posts?userId=${userId}`, { signal }).then((r) => r.json()),
 })
 ```
 
@@ -312,13 +322,13 @@ Rapid dependency changes are coalesced via microtask. The resource aborts in-fli
 ```ts
 resource({
   fetch: (signal) => fetchUsers(signal),
-  initialData: [],           // skip loading state on first render
-  lazy: true,                // don't fetch until first subscriber
-  staleTime: 30_000,         // skip refetch if data is fresh
-  refetchInterval: 60_000,   // poll every 60s
-  refetchOnFocus: true,      // refetch when tab becomes visible
-  refetchOnReconnect: true,  // refetch when network reconnects
-  retry: 3,                  // retry failed fetches
+  initialData: [], // skip loading state on first render
+  lazy: true, // don't fetch until first subscriber
+  staleTime: 30_000, // skip refetch if data is fresh
+  refetchInterval: 60_000, // poll every 60s
+  refetchOnFocus: true, // refetch when tab becomes visible
+  refetchOnReconnect: true, // refetch when network reconnects
+  retry: 3, // retry failed fetches
   retryDelay: (n) => Math.min(1000 * 2 ** n, 30_000),
   into: store.at(['users']), // mirror state into a store slot
 })
@@ -351,10 +361,12 @@ import { mutation } from '@stopcock/state'
 
 const addUser = mutation({
   fn: (input: { name: string }, signal) =>
-    fetch('/api/users', { method: 'POST', body: JSON.stringify(input), signal }).then(r => r.json()),
+    fetch('/api/users', { method: 'POST', body: JSON.stringify(input), signal }).then((r) =>
+      r.json(),
+    ),
   invalidates: [users],
   optimistic: (input) => {
-    users.update(prev => [...(prev ?? []), { ...input, id: 'temp' }])
+    users.update((prev) => [...(prev ?? []), { ...input, id: 'temp' }])
   },
 })
 
@@ -382,7 +394,7 @@ interface Mutation<I, O> {
 import { useStore, useResource, useMutation } from '@stopcock/state/react'
 
 function UserList() {
-  const search = useStore(store, s => s.search)
+  const search = useStore(store, (s) => s.search)
   const { data, isLoading, refetch } = useResource(users)
   const { status, run } = useMutation(addUser)
   // ...

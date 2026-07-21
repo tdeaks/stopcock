@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { lens, lensProp, lensIndex, lensPath, view, set, over } from '@stopcock/fp'
 import * as Ra from 'ramda'
 

@@ -68,13 +68,7 @@ import {
   DEFAULT_STRING_MACHINE_WIDTH,
 } from '../defaults'
 import { SynthCompileError } from '../internal/graph'
-import type {
-  AcidBassWaveform,
-  DrumVoiceKind,
-  Node,
-  SamplerZone,
-  SamplerZoneInput,
-} from '../types'
+import type { AcidBassWaveform, DrumVoiceKind, Node, SamplerZone, SamplerZoneInput } from '../types'
 import { common } from './shared'
 
 type SamplerInstrumentOpts = {

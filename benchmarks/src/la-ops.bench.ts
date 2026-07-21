@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { Vec, Mat } from '@stopcock/la'
 
 // -- Vectors at different sizes --
@@ -41,7 +41,11 @@ describe('Vec.lerp', () => {
 // -- Matrices at different sizes --
 
 const randomMat = (n: number) =>
-  Mat.fromArray(n, n, Array.from({ length: n * n }, () => Math.random() * 10 - 5))
+  Mat.fromArray(
+    n,
+    n,
+    Array.from({ length: n * n }, () => Math.random() * 10 - 5),
+  )
 
 const m4a = randomMat(4)
 const m4b = randomMat(4)
@@ -119,4 +123,3 @@ describe('Mat.solve', () => {
   bench('16x16', () => Mat.solve(m16a, b16))
   bench('64x64', () => Mat.solve(m64a, b64))
 })
-

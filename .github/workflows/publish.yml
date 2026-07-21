@@ -8,7 +8,10 @@ on:
       - 'packages/**'
       - '.changeset/**'
       - '.github/workflows/publish.yml'
+      - 'bun.lock'
       - 'package.json'
+      - 'tooling/**'
+      - 'vite.config.ts'
 
 concurrency:
   group: publish
@@ -24,34 +27,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: 24
-          package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run build:packages
-      - run: bun run test:packages
+          node-version: '24'
+          cache: true
+          run-install: |
+            - cwd: .
+              args: ['--frozen-lockfile']
+      - run: vp run build:packages
+      - run: vp run test:packages
 
   publish:
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: 24
+          node-version: '24'
           registry-url: https://registry.npmjs.org
-          package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run build:packages
+          cache: true
+          run-install: |
+            - cwd: .
+              args: ['--frozen-lockfile']
+      - run: vp run build:packages
       - run: npm install -g npm@latest
       - run: npm --version
       - uses: changesets/action@v1
         with:
-          publish: bunx changeset publish
-          version: bunx changeset version
+          publish: vp exec changeset publish
+          version: vp run changeset:version
           title: 'chore: version packages'
           commit: 'chore: version packages'
         env:

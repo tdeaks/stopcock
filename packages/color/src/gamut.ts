@@ -41,8 +41,16 @@ const toGamutImpl = (c: Color, target: ColorSpace): Color => {
   // Edge cases: pure black/white short-circuit
   const ok = toOKLCh(c)
   const [L] = ok.channels
-  if (L >= 1) return convert({ space: 'oklch', channels: new Float64Array([1, 0, 0]), alpha: c.alpha }, target)
-  if (L <= 0) return convert({ space: 'oklch', channels: new Float64Array([0, 0, 0]), alpha: c.alpha }, target)
+  if (L >= 1)
+    return convert(
+      { space: 'oklch', channels: new Float64Array([1, 0, 0]), alpha: c.alpha },
+      target,
+    )
+  if (L <= 0)
+    return convert(
+      { space: 'oklch', channels: new Float64Array([0, 0, 0]), alpha: c.alpha },
+      target,
+    )
 
   // Binary search chroma in [0, current]
   let lo = 0
@@ -50,7 +58,11 @@ const toGamutImpl = (c: Color, target: ColorSpace): Color => {
   let candidate = ok
   for (let i = 0; i < 25; i++) {
     const mid = (lo + hi) / 2
-    candidate = { space: 'oklch', channels: new Float64Array([L, mid, ok.channels[2]]), alpha: c.alpha }
+    candidate = {
+      space: 'oklch',
+      channels: new Float64Array([L, mid, ok.channels[2]]),
+      alpha: c.alpha,
+    }
     if (inGamutImpl(candidate, target)) {
       const clipped = clipToGamut(candidate, target)
       const e = deltaEOK(candidate, clipped)
@@ -65,7 +77,11 @@ const toGamutImpl = (c: Color, target: ColorSpace): Color => {
     }
     if (hi - lo < 1e-4) break
   }
-  candidate = { space: 'oklch', channels: new Float64Array([L, lo, ok.channels[2]]), alpha: c.alpha }
+  candidate = {
+    space: 'oklch',
+    channels: new Float64Array([L, lo, ok.channels[2]]),
+    alpha: c.alpha,
+  }
   return clipToGamut(candidate, target)
 }
 

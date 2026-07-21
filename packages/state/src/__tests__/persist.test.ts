@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test'
 import { create } from '../index.js'
 import { persist, type Storage } from '../persist.js'
 
@@ -10,8 +10,12 @@ function mockStorage(): Storage & { data: Record<string, string> } {
   return {
     data,
     getItem: (key) => data[key] ?? null,
-    setItem: (key, value) => { data[key] = value },
-    removeItem: (key) => { delete data[key] },
+    setItem: (key, value) => {
+      data[key] = value
+    },
+    removeItem: (key) => {
+      delete data[key]
+    },
   }
 }
 
@@ -20,7 +24,7 @@ describe('persist', () => {
     const storage = mockStorage()
     const p = persist<State>('test', { storage })
     const store = create(initial(), { onCommit: p.onCommit })
-    store.set(s => s.count, 5)
+    store.set((s) => s.count, 5)
     const saved = JSON.parse(storage.data['test'])
     expect(saved.s.count).toBe(5)
     expect(saved.v).toBe(0)
@@ -32,8 +36,8 @@ describe('persist', () => {
     const p = persist<State>('test', { storage })
     const store = create(initial(), { onCommit: p.onCommit })
     p.hydrate(store)
-    expect(store.get(s => s.count)).toBe(42)
-    expect(store.get(s => s.name)).toBe('Alice')
+    expect(store.get((s) => s.count)).toBe(42)
+    expect(store.get((s) => s.name)).toBe('Alice')
   })
 
   it('hydrate is a noop when no persisted data', () => {
@@ -48,7 +52,7 @@ describe('persist', () => {
     const storage = mockStorage()
     const p = persist<State>('test', { storage, include: ['count', 'name'] })
     const store = create(initial(), { onCommit: p.onCommit })
-    store.set(s => s.count, 10)
+    store.set((s) => s.count, 10)
     const saved = JSON.parse(storage.data['test'])
     expect(saved.s).toEqual({ count: 10, name: 'Tom' })
     expect(saved.s.secret).toBeUndefined()
@@ -60,15 +64,15 @@ describe('persist', () => {
     const p = persist<State>('test', { storage, include: ['count'] })
     const store = create(initial(), { onCommit: p.onCommit })
     p.hydrate(store)
-    expect(store.get(s => s.count)).toBe(99)
-    expect(store.get(s => s.name)).toBe('Tom') // untouched
+    expect(store.get((s) => s.count)).toBe(99)
+    expect(store.get((s) => s.name)).toBe('Tom') // untouched
   })
 
   it('exclude: omits specified keys', () => {
     const storage = mockStorage()
     const p = persist<State>('test', { storage, exclude: ['secret'] })
     const store = create(initial(), { onCommit: p.onCommit })
-    store.set(s => s.count, 7)
+    store.set((s) => s.count, 7)
     const saved = JSON.parse(storage.data['test'])
     expect(saved.s.secret).toBeUndefined()
     expect(saved.s.count).toBe(7)
@@ -87,8 +91,8 @@ describe('persist', () => {
     })
     const store = create(initial(), { onCommit: p.onCommit })
     p.hydrate(store)
-    expect(store.get(s => s.name)).toBe('Old (migrated)')
-    expect(store.get(s => s.count)).toBe(5)
+    expect(store.get((s) => s.name)).toBe('Old (migrated)')
+    expect(store.get((s) => s.count)).toBe(5)
   })
 
   it('does not migrate when version matches', () => {
@@ -115,7 +119,7 @@ describe('persist', () => {
     const deserialize = vi.fn(JSON.parse)
     const p = persist<State>('test', { storage, serialize, deserialize })
     const store = create(initial(), { onCommit: p.onCommit })
-    store.set(s => s.count, 1)
+    store.set((s) => s.count, 1)
     expect(serialize).toHaveBeenCalled()
     p.hydrate(store)
     expect(deserialize).toHaveBeenCalled()

@@ -1,6 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { differentiable } from '../differentiable'
-import { matAdd, matMean, matMul, matNormSquared, matScale, matSub, matSum, matTranspose } from '../mat'
+import {
+  matAdd,
+  matMean,
+  matMul,
+  matNormSquared,
+  matScale,
+  matSub,
+  matSum,
+  matTranspose,
+} from '../mat'
 import { ShapeError, type Mat, type Var } from '../types'
 
 const mat = (rows: number, cols: number, data: number[]): Mat => ({
@@ -11,7 +20,8 @@ const mat = (rows: number, cols: number, data: number[]): Mat => ({
 
 const approxMat = (actual: Mat, expected: number[], digits = 8) => {
   expect(actual.data.length).toBe(expected.length)
-  for (let i = 0; i < actual.data.length; i++) expect(actual.data[i]).toBeCloseTo(expected[i], digits)
+  for (let i = 0; i < actual.data.length; i++)
+    expect(actual.data[i]).toBeCloseTo(expected[i], digits)
 }
 
 const matInner = (a: Mat, b: Mat) => {
@@ -42,7 +52,7 @@ describe('matrix ops', () => {
   it('computes matMul gradients against central differences', () => {
     const target = mat(2, 2, [1, -1, 0.5, 2])
     const loss = differentiable((a: Var<Mat>, b: Var<Mat>) =>
-      matNormSquared(matSub(matMul(a, b), target))
+      matNormSquared(matSub(matMul(a, b), target)),
     )
     const a = mat(2, 3, [1, 2, -1, 0, 1, 3])
     const b = mat(3, 2, [2, -1, 0.5, 1, -2, 3])
@@ -50,8 +60,14 @@ describe('matrix ops', () => {
     const dirB = mat(3, 2, [-0.2, 0.1, 0.4, -0.3, 0.2, 0.5])
     const [gradA, gradB] = loss.gradient(a, b)
 
-    expect(matInner(gradA, dirA)).toBeCloseTo(directional(x => loss.forward(x, b), a, dirA), 3)
-    expect(matInner(gradB, dirB)).toBeCloseTo(directional(x => loss.forward(a, x), b, dirB), 3)
+    expect(matInner(gradA, dirA)).toBeCloseTo(
+      directional((x) => loss.forward(x, b), a, dirA),
+      3,
+    )
+    expect(matInner(gradB, dirB)).toBeCloseTo(
+      directional((x) => loss.forward(a, x), b, dirB),
+      3,
+    )
   })
 
   it('accumulates matrix fan-out gradients', () => {
@@ -72,9 +88,7 @@ describe('matrix ops', () => {
   it('reduces a matrix model loss with gradient descent', () => {
     const x = mat(4, 2, [0, 0, 0, 1, 1, 0, 1, 1])
     const y = mat(4, 1, [0, -1, 2, 1])
-    const loss = differentiable((w: Var<Mat>) =>
-      matNormSquared(matSub(matMul(x, w), y))
-    )
+    const loss = differentiable((w: Var<Mat>) => matNormSquared(matSub(matMul(x, w), y)))
 
     let w = mat(2, 1, [0, 0])
     const initial = loss.forward(w)

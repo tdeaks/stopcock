@@ -11,8 +11,8 @@ import { pipe, flow, A, S, N, O, R } from '@stopcock/fp'
 
 const activeNames = pipe(
   users,
-  A.filter(u => u.active && u.score > 0),
-  A.map(u => u.name),
+  A.filter((u) => u.active && u.score > 0),
+  A.map((u) => u.name),
   A.take(10),
 )
 ```
@@ -24,10 +24,10 @@ For sorted leaderboards, `sortBy -> take(k)` is a special top-k optimization, no
 ```ts
 const leaderboard = pipe(
   users,
-  A.filter(u => u.active && u.score > 0),
+  A.filter((u) => u.active && u.score > 0),
   A.sortBy((a, b) => b.score - a.score),
   A.take(10),
-  A.map(u => u.name),
+  A.map((u) => u.name),
 )
 ```
 
@@ -44,7 +44,7 @@ Here `filter` can stream first, `sortBy -> take(10)` uses the bounded top-k path
 Every function is dual: data-first and data-last.
 
 ```ts
-A.take(users, 5)       // data-first
+A.take(users, 5) // data-first
 pipe(users, A.take(5)) // data-last
 ```
 

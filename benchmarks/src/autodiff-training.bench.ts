@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { Vec } from '@stopcock/la'
 import {
   add,
@@ -48,7 +48,7 @@ const x = mat(4, 2, [0, 0, 0, 1, 1, 0, 1, 1])
 const y = mat(4, 1, [0, -1, 2, 1])
 
 const matrixLoss = differentiable((w1: Var<Mat>, w2: Var<Mat>) =>
-  matNormSquared(matSub(matMul(matMul(x, w1), w2), y))
+  matNormSquared(matSub(matMul(matMul(x, w1), w2), y)),
 )
 
 const runTwoLayerLinearModel = () => {

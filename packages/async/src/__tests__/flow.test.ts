@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vite-plus/test'
 import { throttle, debounce, rateLimit } from '../flow'
 
 describe('throttle', () => {
@@ -27,7 +27,7 @@ describe('debounce', () => {
     debounced()
     debounced()
     expect(fn).not.toHaveBeenCalled()
-    await new Promise(r => setTimeout(r, 80))
+    await new Promise((r) => setTimeout(r, 80))
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
@@ -36,7 +36,7 @@ describe('debounce', () => {
     const debounced = debounce(50, fn)
     debounced()
     debounced.cancel()
-    await new Promise(r => setTimeout(r, 80))
+    await new Promise((r) => setTimeout(r, 80))
     expect(fn).not.toHaveBeenCalled()
   })
 })
@@ -44,17 +44,23 @@ describe('debounce', () => {
 describe('rateLimit', () => {
   it('allows calls within budget', async () => {
     let calls = 0
-    const limited = rateLimit(3, 1000, async () => { calls++; return calls })
+    const limited = rateLimit(3, 1000, async () => {
+      calls++
+      return calls
+    })
     await Promise.all([limited(), limited(), limited()])
     expect(calls).toBe(3)
   })
 
   it('queues excess calls', async () => {
     let calls = 0
-    const limited = rateLimit(2, 50, async () => { calls++; return calls })
+    const limited = rateLimit(2, 50, async () => {
+      calls++
+      return calls
+    })
     const results = Promise.all([limited(), limited(), limited()])
     // first 2 fire immediately, 3rd waits for refill
-    await new Promise(r => setTimeout(r, 20))
+    await new Promise((r) => setTimeout(r, 20))
     expect(calls).toBe(2)
     await results
     expect(calls).toBe(3)

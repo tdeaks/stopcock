@@ -2,13 +2,12 @@ import type { AnyParam, FmOperatorIndex, NodeKind } from '../types'
 
 const operatorIndexes = [1, 2, 3, 4, 5, 6] as const
 const fmMatrixParams = operatorIndexes.flatMap((source) =>
-  operatorIndexes.map((destination) => `m${source}_${destination}` as const))
-const fmOperatorParams = operatorIndexes.flatMap((index) => [
-  `op${index}.ratio`,
-  `op${index}.level`,
-  `op${index}.feedback`,
-  `op${index}.output`,
-] as const)
+  operatorIndexes.map((destination) => `m${source}_${destination}` as const),
+)
+const fmOperatorParams = operatorIndexes.flatMap(
+  (index) =>
+    [`op${index}.ratio`, `op${index}.level`, `op${index}.feedback`, `op${index}.output`] as const,
+)
 
 export const params = {
   osc: { freq: 'freq', detune: 'detune', phase: 'phase' },
@@ -21,7 +20,8 @@ export const params = {
     level: (index: FmOperatorIndex) => `op${index}.level` as const,
     feedback: (index: FmOperatorIndex) => `op${index}.feedback` as const,
     output: (index: FmOperatorIndex) => `op${index}.output` as const,
-    matrix: (source: FmOperatorIndex, destination: FmOperatorIndex) => `m${source}_${destination}` as const,
+    matrix: (source: FmOperatorIndex, destination: FmOperatorIndex) =>
+      `m${source}_${destination}` as const,
   },
   constant: { value: 'value' },
   samplerInstrument: { freq: 'freq', attack: 'attack', release: 'release', level: 'level' },
@@ -49,7 +49,15 @@ export const params = {
     drive: 'drive',
     level: 'level',
   },
-  drumVoice: { freq: 'freq', decay: 'decay', tone: 'tone', snap: 'snap', noise: 'noise', drive: 'drive', level: 'level' },
+  drumVoice: {
+    freq: 'freq',
+    decay: 'decay',
+    tone: 'tone',
+    snap: 'snap',
+    noise: 'noise',
+    drive: 'drive',
+    level: 'level',
+  },
   stringMachine: {
     freq: 'freq',
     detune: 'detune',
@@ -92,7 +100,14 @@ export const params = {
   reverb: { mix: 'mix' },
   distortion: { amount: 'amount' },
   chorus: { rate: 'rate', depth: 'depth', mix: 'mix' },
-  ensembleChorus: { rate: 'rate', depth: 'depth', mix: 'mix', width: 'width', tone: 'tone', noise: 'noise' },
+  ensembleChorus: {
+    rate: 'rate',
+    depth: 'depth',
+    mix: 'mix',
+    width: 'width',
+    tone: 'tone',
+    noise: 'noise',
+  },
   spaceEcho: {
     timeMs: 'timeMs',
     feedback: 'feedback',
@@ -140,20 +155,54 @@ export const params = {
     width: 'width',
   },
   microPitch: { detune: 'detune', width: 'width', delayMs: 'delayMs', mix: 'mix' },
-  multiTapDelay: { timeMs: 'timeMs', feedback: 'feedback', mix: 'mix', tone: 'tone', width: 'width' },
+  multiTapDelay: {
+    timeMs: 'timeMs',
+    feedback: 'feedback',
+    mix: 'mix',
+    tone: 'tone',
+    width: 'width',
+  },
   saturator: { drive: 'drive', asymmetry: 'asymmetry', tone: 'tone', mix: 'mix', output: 'output' },
-  wavefolder: { drive: 'drive', depth: 'depth', asymmetry: 'asymmetry', tone: 'tone', mix: 'mix', output: 'output' },
-  degrade: { bits: 'bits', downsample: 'downsample', jitter: 'jitter', noise: 'noise', tone: 'tone', mix: 'mix' },
+  wavefolder: {
+    drive: 'drive',
+    depth: 'depth',
+    asymmetry: 'asymmetry',
+    tone: 'tone',
+    mix: 'mix',
+    output: 'output',
+  },
+  degrade: {
+    bits: 'bits',
+    downsample: 'downsample',
+    jitter: 'jitter',
+    noise: 'noise',
+    tone: 'tone',
+    mix: 'mix',
+  },
   tiltEq: { freq: 'freq', gainDb: 'gainDb', mix: 'mix' },
   stereoSpread: { width: 'width', delayMs: 'delayMs', mix: 'mix' },
   frequencyShifter: { shiftHz: 'shiftHz', mix: 'mix' },
-  rotarySpeaker: { rate: 'rate', depth: 'depth', mix: 'mix', drive: 'drive', width: 'width', freq: 'freq' },
+  rotarySpeaker: {
+    rate: 'rate',
+    depth: 'depth',
+    mix: 'mix',
+    drive: 'drive',
+    width: 'width',
+    freq: 'freq',
+  },
   phaser: { rate: 'rate', depth: 'depth', mix: 'mix' },
-  compressor: { threshold: 'threshold', ratio: 'ratio', attack: 'attack', release: 'release', knee: 'knee' },
+  compressor: {
+    threshold: 'threshold',
+    ratio: 'ratio',
+    attack: 'attack',
+    release: 'release',
+    knee: 'knee',
+  },
   bitcrush: { bits: 'bits', downsample: 'downsample' },
 } as const
 
-const entries = <T extends Record<string, string>>(value: T): ReadonlyArray<T[keyof T]> => Object.values(value) as Array<T[keyof T]>
+const entries = <T extends Record<string, string>>(value: T): ReadonlyArray<T[keyof T]> =>
+  Object.values(value) as Array<T[keyof T]>
 
 export const PARAMS_BY_KIND: Readonly<Record<NodeKind, ReadonlyArray<AnyParam>>> = {
   osc: entries(params.osc),

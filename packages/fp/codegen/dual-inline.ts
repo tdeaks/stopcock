@@ -8,10 +8,7 @@
 
 import { pipe, flow, A } from '../src'
 import { OP_CODES } from '../src/opcodes'
-import {
-  type Parser, type ParseResult,
-  seq, map, string as pStr, char, run,
-} from './parse'
+import { type Parser, type ParseResult, seq, map, string as pStr, char, run } from './parse'
 import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 
@@ -56,7 +53,10 @@ function skipString(src: string, pos: number): number {
   const quote = src[pos]
   let i = pos + 1
   while (i < src.length) {
-    if (src[i] === '\\') { i += 2; continue }
+    if (src[i] === '\\') {
+      i += 2
+      continue
+    }
     if (src[i] === quote) return i + 1
     if (quote === '`' && src[i] === '$' && src[i + 1] === '{') {
       i = findMatchingClose(src, i + 1) + 1
@@ -74,15 +74,32 @@ function findTopLevelSep(src: string, start: number): { pos: number; ch: string 
   let angleDepth = 0
   while (i < src.length) {
     const ch = src[i]
-    if (ch === "'" || ch === '"' || ch === '`') { i = skipString(src, i); continue }
-    if (ch === '(' || ch === '{' || ch === '[') { depth++; i++; continue }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      i = skipString(src, i)
+      continue
+    }
+    if (ch === '(' || ch === '{' || ch === '[') {
+      depth++
+      i++
+      continue
+    }
     if (ch === ')' || ch === '}' || ch === ']') {
       if (depth === 0) return { pos: i, ch }
-      depth--; i++; continue
+      depth--
+      i++
+      continue
     }
     // Track angle brackets for generics: <A, B>
-    if (ch === '<' && depth === 0) { angleDepth++; i++; continue }
-    if (ch === '>' && angleDepth > 0) { angleDepth--; i++; continue }
+    if (ch === '<' && depth === 0) {
+      angleDepth++
+      i++
+      continue
+    }
+    if (ch === '>' && angleDepth > 0) {
+      angleDepth--
+      i++
+      continue
+    }
     if (ch === ',' && depth === 0 && angleDepth === 0) return { pos: i, ch }
     i++
   }
@@ -98,7 +115,11 @@ interface RSFunction {
 
 function parseResJs(filePath: string): Map<string, RSFunction> {
   let src: string
-  try { src = readFileSync(filePath, 'utf8') } catch { return new Map() }
+  try {
+    src = readFileSync(filePath, 'utf8')
+  } catch {
+    return new Map()
+  }
 
   const fns = new Map<string, RSFunction>()
   const aliases = new Map<string, string>()
@@ -111,7 +132,11 @@ function parseResJs(filePath: string): Map<string, RSFunction> {
       const name = fnMatch[1]
       const paramStart = i + fnMatch[0].length - 1
       const paramClose = findMatchingClose(src, paramStart)
-      const params = src.slice(paramStart + 1, paramClose).split(',').map(p => p.trim()).filter(Boolean)
+      const params = src
+        .slice(paramStart + 1, paramClose)
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
 
       // Find the opening { after )
       let bi = paramClose + 1
@@ -141,7 +166,11 @@ function parseResJs(filePath: string): Map<string, RSFunction> {
       if (innerParamMatch) {
         const paramStart = innerParamMatch[0].length - 1
         const paramClose = findMatchingClose(inner, paramStart)
-        const params = inner.slice(paramStart + 1, paramClose).split(',').map(p => p.trim()).filter(Boolean)
+        const params = inner
+          .slice(paramStart + 1, paramClose)
+          .split(',')
+          .map((p) => p.trim())
+          .filter(Boolean)
 
         let bi = paramClose + 1
         while (bi < inner.length && inner[bi] !== '{') bi++
@@ -185,10 +214,14 @@ function usesRescriptRuntime(body: string): boolean {
 const rsFunctionMaps = new Map(
   pipe(
     Object.entries(RS_MODULE_MAP),
-    A.map(([mod, rsName]: [string, string]) =>
-      [mod, parseResJs(join(RESCRIPT_DIR, `${rsName}.res.js`))] as [string, Map<string, RSFunction>]
+    A.map(
+      ([mod, rsName]: [string, string]) =>
+        [mod, parseResJs(join(RESCRIPT_DIR, `${rsName}.res.js`))] as [
+          string,
+          Map<string, RSFunction>,
+        ],
     ),
-  )
+  ),
 )
 
 // --- Parser combinators (built on @stopcock/parse) ---
@@ -225,21 +258,41 @@ const innerOf: Parser<string> = (input, pos) => {
   if (ch !== '(' && ch !== '{' && ch !== '[')
     return { success: false, expected: 'opening bracket', position: pos }
   const end = findMatchingClose(input, pos)
-  return { success: true, value: input.slice(pos + 1, end), remaining: input.slice(end + 1), position: end + 1 }
+  return {
+    success: true,
+    value: input.slice(pos + 1, end),
+    remaining: input.slice(end + 1),
+    position: end + 1,
+  }
 }
 
 /** Consume until a top-level comma or closing delimiter, return trimmed content */
 const untilSep: Parser<{ text: string; sep: string }> = (input, pos) => {
   const { pos: endPos, ch } = findTopLevelSep(input, pos)
-  return { success: true, value: { text: input.slice(pos, endPos).trim(), sep: ch }, remaining: input.slice(endPos), position: endPos }
+  return {
+    success: true,
+    value: { text: input.slice(pos, endPos).trim(), sep: ch },
+    remaining: input.slice(endPos),
+    position: endPos,
+  }
 }
 
 /** Match angle brackets <...>, return inner content */
 const angleBlock: Parser<string> = (input, pos) => {
   if (input[pos] !== '<') return { success: false, expected: '<', position: pos }
-  let depth = 1, i = pos + 1
-  while (i < input.length && depth > 0) { if (input[i] === '<') depth++; else if (input[i] === '>') depth--; i++ }
-  return { success: true, value: input.slice(pos + 1, i - 1), remaining: input.slice(i), position: i }
+  let depth = 1,
+    i = pos + 1
+  while (i < input.length && depth > 0) {
+    if (input[i] === '<') depth++
+    else if (input[i] === '>') depth--
+    i++
+  }
+  return {
+    success: true,
+    value: input.slice(pos + 1, i - 1),
+    remaining: input.slice(i),
+    position: i,
+  }
 }
 
 /** Match a single-quoted string, return content (without quotes) */
@@ -247,7 +300,12 @@ const singleQuoted: Parser<string> = (input, pos) => {
   if (input[pos] !== "'") return { success: false, expected: "'", position: pos }
   const end = input.indexOf("'", pos + 1)
   if (end === -1) return { success: false, expected: "closing '", position: pos }
-  return { success: true, value: input.slice(pos + 1, end), remaining: input.slice(end + 1), position: end + 1 }
+  return {
+    success: true,
+    value: input.slice(pos + 1, end),
+    remaining: input.slice(end + 1),
+    position: end + 1,
+  }
 }
 
 // Tag parser: { op: 'name' } → name
@@ -296,9 +354,17 @@ const dualCallP: Parser<DualCall> = (input, pos) => {
 
   return {
     success: true,
-    value: { name, typeAnnotation, arity, bodyStr, bodyIsRef, tag,
-             fullMatch: input.slice(pos, innerR.position),
-             startIdx: pos, endIdx: innerR.position },
+    value: {
+      name,
+      typeAnnotation,
+      arity,
+      bodyStr,
+      bodyIsRef,
+      tag,
+      fullMatch: input.slice(pos, innerR.position),
+      startIdx: pos,
+      endIdx: innerR.position,
+    },
     remaining: input.slice(innerR.position),
     position: innerR.position,
   }
@@ -338,16 +404,32 @@ const arrowFnP: Parser<InlineBody> = (input, pos) => {
 
   // Skip optional return type annotation before =>
   let after = input.slice(cursor).trim()
-  let trimOff = input.length - input.slice(cursor).trimStart().length - (input.length - input.slice(cursor).length)
+  let trimOff =
+    input.length -
+    input.slice(cursor).trimStart().length -
+    (input.length - input.slice(cursor).length)
   cursor += input.slice(cursor).length - after.length
 
   if (after.startsWith(':') && !after.startsWith('=>')) {
-    let depth = 0, i = 1
+    let depth = 0,
+      i = 1
     while (i < after.length - 1) {
       const ch = after[i]
-      if ('<({['.includes(ch)) { depth++; i++; continue }
-      if ('>)}]'.includes(ch)) { depth--; i++; continue }
-      if (ch === '=' && after[i + 1] === '>' && depth === 0) { after = after.slice(i); cursor += i; break }
+      if ('<({['.includes(ch)) {
+        depth++
+        i++
+        continue
+      }
+      if ('>)}]'.includes(ch)) {
+        depth--
+        i++
+        continue
+      }
+      if (ch === '=' && after[i + 1] === '>' && depth === 0) {
+        after = after.slice(i)
+        cursor += i
+        break
+      }
       i++
     }
   }
@@ -363,11 +445,19 @@ const arrowFnP: Parser<InlineBody> = (input, pos) => {
   if (rest.startsWith('{')) {
     const blockR = innerOf(input, cursor)
     if (!blockR.success) return blockR as ParseResult<InlineBody>
-    return { success: true, value: { params, bodyText: blockR.value.trim(), isExpression: false },
-             remaining: input.slice(blockR.position), position: blockR.position }
+    return {
+      success: true,
+      value: { params, bodyText: blockR.value.trim(), isExpression: false },
+      remaining: input.slice(blockR.position),
+      position: blockR.position,
+    }
   }
-  return { success: true, value: { params, bodyText: rest, isExpression: true },
-           remaining: '', position: input.length }
+  return {
+    success: true,
+    value: { params, bodyText: rest, isExpression: true },
+    remaining: '',
+    position: input.length,
+  }
 }
 
 // Convenience: run a parser and return the value or null
@@ -428,7 +518,10 @@ function generateArityN(dc: DualCall): string {
 function generateArityNRef(dc: DualCall, n: number, opcode: number, hasTag: boolean): string {
   const ref = dc.bodyStr
   const argsList = Array.from({ length: n }, (_, i) => `arguments[${i}]`).join(', ')
-  const curryCapture = Array.from({ length: n - 1 }, (_, i) => `const _a${i} = arguments[${i}]`).join('; ')
+  const curryCapture = Array.from(
+    { length: n - 1 },
+    (_, i) => `const _a${i} = arguments[${i}]`,
+  ).join('; ')
   const curryCall = `${ref}(data, ${Array.from({ length: n - 1 }, (_, i) => `_a${i}`).join(', ')})`
   const decl = typeDecl(dc.name, dc.typeAnnotation)
 
@@ -457,8 +550,14 @@ function generateArityNInline(dc: DualCall, n: number, opcode: number, hasTag: b
   const dfAssign = params.map((p, i) => `${p} = arguments[${i}]`).join(', ')
 
   // Data-last path: capture curried args, closure receives data as first param
-  const curryAssign = params.slice(1).map((p, i) => `${p} = _a${i}`).join(', ')
-  const captureLines = params.slice(1).map((p, i) => `const _a${i} = arguments[${i}]`).join('; ')
+  const curryAssign = params
+    .slice(1)
+    .map((p, i) => `${p} = _a${i}`)
+    .join(', ')
+  const captureLines = params
+    .slice(1)
+    .map((p, i) => `const _a${i} = arguments[${i}]`)
+    .join('; ')
   const dlAssign = `const ${params[0]} = data, ${curryAssign}`
 
   let closureProps = ''
@@ -514,7 +613,11 @@ function generateDecl(dc: DualCall, rsMap?: Map<string, RSFunction>): string {
 
 // --- Module Transformer ---
 
-function collectRSHelpers(generatedCode: string, rsMap: Map<string, RSFunction>, exportedNames: Set<string>): string {
+function collectRSHelpers(
+  generatedCode: string,
+  rsMap: Map<string, RSFunction>,
+  exportedNames: Set<string>,
+): string {
   const helpers: string[] = []
   const emitted = new Set<string>()
 
@@ -528,7 +631,7 @@ function collectRSHelpers(generatedCode: string, rsMap: Map<string, RSFunction>,
       A.filter(([name]: [string, RSFunction]) => !emitted.has(name) && !exportedNames.has(name)),
       A.filter(([name]: [string, RSFunction]) => {
         const pat = new RegExp(`\\b${name}\\b`)
-        return pat.test(code) || helpers.some(h => pat.test(h))
+        return pat.test(code) || helpers.some((h) => pat.test(h))
       }),
       A.filter(([_, fn]: [string, RSFunction]) => !usesRescriptRuntime(fn.body)),
       A.map(([name, fn]: [string, RSFunction]) => {
@@ -544,11 +647,16 @@ function collectRSHelpers(generatedCode: string, rsMap: Map<string, RSFunction>,
   }
 
   return helpers.length > 0
-    ? '// Internal helpers (auto-extracted from ReScript compiled output)\n' + pipe(helpers, A.join('\n\n')) + '\n\n'
+    ? '// Internal helpers (auto-extracted from ReScript compiled output)\n' +
+        pipe(helpers, A.join('\n\n')) +
+        '\n\n'
     : ''
 }
 
-function transformModule(src: string, rsMap?: Map<string, RSFunction>): { output: string; rsResolved: number; rsKept: number } {
+function transformModule(
+  src: string,
+  rsMap?: Map<string, RSFunction>,
+): { output: string; rsResolved: number; rsKept: number } {
   const lines = src.split('\n')
   const outputLines: string[] = []
   let rsResolved = 0
@@ -651,8 +759,13 @@ function transformModule(src: string, rsMap?: Map<string, RSFunction>): { output
 }
 
 const countBraces = (s: string): number =>
-  pipe([...s], A.reduce((d: number, ch: string) =>
-    '({['.includes(ch) ? d + 1 : ')}]'.includes(ch) ? d - 1 : d, 0))
+  pipe(
+    Array.from(s),
+    A.reduce(
+      (d: number, ch: string) => ('({['.includes(ch) ? d + 1 : ')}]'.includes(ch) ? d - 1 : d),
+      0,
+    ),
+  )
 
 function isDeclarationComplete(text: string): boolean {
   // A declaration is complete when all braces/parens are balanced
@@ -671,7 +784,10 @@ const processModule = (mod: string) => {
   const { output, rsResolved, rsKept } = transformModule(src, rsFunctionMaps.get(mod))
   const dualCount = (src.match(/= dual\(/g) || []).length
   writeFileSync(join(SRC_DIR, `${mod}.ts`), output)
-  const rsInfo = rsResolved > 0 ? ` (${rsResolved} RS bodies auto-inlined${rsKept > 0 ? `, ${rsKept} kept as ref` : ''})` : ''
+  const rsInfo =
+    rsResolved > 0
+      ? ` (${rsResolved} RS bodies auto-inlined${rsKept > 0 ? `, ${rsKept} kept as ref` : ''})`
+      : ''
   console.log(`  ${mod}.ts: ${dualCount} dual() calls${rsInfo}`)
   return { dualCount, rsResolved, rsKept }
 }
@@ -680,10 +796,17 @@ const totals = pipe(
   MODULES,
   A.map(processModule),
   A.reduce(
-    (acc, r) => ({ fns: acc.fns + r.dualCount, rs: acc.rs + r.rsResolved, kept: acc.kept + r.rsKept }),
+    (acc, r) => ({
+      fns: acc.fns + r.dualCount,
+      rs: acc.rs + r.rsResolved,
+      kept: acc.kept + r.rsKept,
+    }),
     { fns: 0, rs: 0, kept: 0 },
   ),
 )
 
 console.log(`\nGenerated ${MODULES.length} modules, ${totals.fns} functions inlined`)
-console.log(`RS bodies: ${totals.rs} auto-inlined, ${totals.kept} kept as ref (runtime deps) → src/`)
+console.log(
+  `RS bodies: ${totals.rs} auto-inlined, ${totals.kept} kept as ref (runtime deps) → src/`,
+)
+/// <reference types="bun" />

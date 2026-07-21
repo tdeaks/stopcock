@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { Mat } from '@stopcock/la'
 import {
   add,
@@ -70,8 +70,7 @@ const scalarSteps = 17
 
 const scalarAd = differentiable((x: Var<number>) => {
   let y = x
-  for (let i = 0; i < scalarSteps; i++)
-    y = sin(add(square(y), 0.001))
+  for (let i = 0; i < scalarSteps; i++) y = sin(add(square(y), 0.001))
   return y
 })
 
@@ -90,8 +89,7 @@ const scalarAnalytical = (x0: number) => {
 const scalarMicrograd = (x0: number) => {
   let x = new Value(x0)
   const input = x
-  for (let i = 0; i < scalarSteps; i++)
-    x = x.square().add(0.001).sin()
+  for (let i = 0; i < scalarSteps; i++) x = x.square().add(0.001).sin()
   x.backward()
   return input.grad
 }
@@ -119,17 +117,12 @@ const randomMat = (rows: number, cols: number): AdMat => ({
 
 const a64 = randomMat(64, 64)
 const b64 = randomMat(64, 64)
-const matAd = differentiable((a: Var<AdMat>, b: Var<AdMat>) =>
-  matNormSquared(matMul(a, b))
-)
+const matAd = differentiable((a: Var<AdMat>, b: Var<AdMat>) => matNormSquared(matMul(a, b)))
 
 const analyticalMatMulGrad = (a: AdMat, b: AdMat) => {
   const out = Mat.multiply(a, b)
   const g = Mat.scale(out, 2)
-  return [
-    Mat.multiply(g, Mat.transpose(b)),
-    Mat.multiply(Mat.transpose(a), g),
-  ] as const
+  return [Mat.multiply(g, Mat.transpose(b)), Mat.multiply(Mat.transpose(a), g)] as const
 }
 
 describe('autodiff matrix gradient', () => {

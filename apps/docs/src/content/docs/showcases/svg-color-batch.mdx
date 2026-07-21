@@ -5,10 +5,19 @@ description: Whole-image CVD simulation feeding a procedural SVG pattern and bad
 
 This stack runs image pixels through `@stopcock/img`, color math through `@stopcock/color`, then uses `@stopcock/svg` and `@stopcock/svg/la` to build the final vector overlay.
 
-<svg viewBox="0 0 420 220" role="img" aria-label="A patterned image tile with a procedural badge overlay" style="width: 100%; max-width: 720px; border: 1px solid var(--sl-color-gray-5); background: var(--sl-color-bg);">
+<svg
+  viewBox="0 0 420 220"
+  role="img"
+  aria-label="A patterned image tile with a procedural badge overlay"
+  style="width: 100%; max-width: 720px; border: 1px solid var(--sl-color-gray-5); background: var(--sl-color-bg);"
+>
   <defs>
     <pattern id="simulated-roof" width="96" height="96" patternUnits="userSpaceOnUse">
-      <image width="96" height="96" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%23d6d1c8'/%3E%3Cpath d='M-20 88 L96 -8 M0 104 L112 -8 M20 112 L120 12' stroke='%236f8c91' stroke-width='12' opacity='.9'/%3E%3Cpath d='M0 80 L96 -16 M16 104 L112 8' stroke='%239a8372' stroke-width='5' opacity='.75'/%3E%3C/svg%3E" />
+      <image
+        width="96"
+        height="96"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%23d6d1c8'/%3E%3Cpath d='M-20 88 L96 -8 M0 104 L112 -8 M20 112 L120 12' stroke='%236f8c91' stroke-width='12' opacity='.9'/%3E%3Cpath d='M0 80 L96 -16 M16 104 L112 8' stroke='%239a8372' stroke-width='5' opacity='.75'/%3E%3C/svg%3E"
+      />
     </pattern>
     <linearGradient id="badge-fill" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="oklch(0.77 0.16 145)" />
@@ -17,7 +26,13 @@ This stack runs image pixels through `@stopcock/img`, color math through `@stopc
   </defs>
   <rect x="24" y="24" width="260" height="168" fill="url(#simulated-roof)" />
   <path d="M300 58 L380 42 L396 112 L316 132 Z" fill="url(#badge-fill)" opacity=".94" />
-  <path d="M316 80 L372 68 L381 104 L325 116 Z" fill="none" stroke="white" stroke-width="5" stroke-linejoin="round" />
+  <path
+    d="M316 80 L372 68 L381 104 L325 116 Z"
+    fill="none"
+    stroke="white"
+    stroke-width="5"
+    stroke-linejoin="round"
+  />
   <circle cx="340" cy="92" r="7" fill="white" />
   <circle cx="358" cy="88" r="7" fill="white" />
 </svg>
@@ -50,20 +65,21 @@ const badgeFill = linear([
   { offset: 1, color: rgb(0.1, 0.4, 0.9) },
 ])
 
-const badge = toQuad([[300, 58], [380, 42], [396, 112], [316, 132]])(
-  fill(badgeFill)(rect(1, 1)),
-)
+const badge = toQuad([
+  [300, 58],
+  [380, 42],
+  [396, 112],
+  [316, 132],
+])(fill(badgeFill)(rect(1, 1)))
 
 const dots = symmetry(fill(rgb(1, 1, 1))(circle(7)), 2, [1, 0, 0, 1, 18, -4])
 
-const doc = viewBox(0, 0, 420, 220)(
-  group([
-    fill(tile)(rect(260, 168)),
-    badge,
-    stroke(rgb(1, 1, 1), 5)(use(badge)),
-    dots,
-  ]),
-)
+const doc = viewBox(
+  0,
+  0,
+  420,
+  220,
+)(group([fill(tile)(rect(260, 168)), badge, stroke(rgb(1, 1, 1), 5)(use(badge)), dots]))
 
 render(doc)
 ```

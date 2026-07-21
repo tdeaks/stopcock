@@ -47,18 +47,21 @@ import { pipe, prop, path, view, set, over } from '@stopcock/fp'
 const nameLens = prop<User, 'name'>('name')
 
 // Data-first
-view(user, nameLens)                          // 'Alice'
-set(user, nameLens, 'Bob')                    // { ...user, name: 'Bob' }
-over(user, nameLens, s => s.toUpperCase())    // { ...user, name: 'ALICE' }
+view(user, nameLens) // 'Alice'
+set(user, nameLens, 'Bob') // { ...user, name: 'Bob' }
+over(user, nameLens, (s) => s.toUpperCase()) // { ...user, name: 'ALICE' }
 
 // Data-last (works in pipe)
-pipe(user, view(nameLens))                    // 'Alice'
-pipe(user, set(nameLens, 'Bob'))              // { ...user, name: 'Bob' }
-pipe(user, over(nameLens, s => s.toUpperCase()))
+pipe(user, view(nameLens)) // 'Alice'
+pipe(user, set(nameLens, 'Bob')) // { ...user, name: 'Bob' }
+pipe(
+  user,
+  over(nameLens, (s) => s.toUpperCase()),
+)
 
 // Nested paths
 const cityLens = path<User, 'address', 'city'>('address', 'city')
-view(user, cityLens)                          // 'Portland'
+view(user, cityLens) // 'Portland'
 set(user, cityLens, 'London')
 ```
 
@@ -78,10 +81,10 @@ type Prism<S, A> = {
 import { somePrism, okPrism, preview, setPrism, overPrism } from '@stopcock/fp'
 
 const p = somePrism<number>()
-preview(optSome(42), p)     // Some(42)
-preview(none, p)            // None
+preview(optSome(42), p) // Some(42)
+preview(none, p) // None
 setPrism(optSome(42), p, 99) // Some(99)
-setPrism(none, p, 99)        // None (unchanged)
+setPrism(none, p, 99) // None (unchanged)
 ```
 
 ## Traversal
@@ -99,12 +102,12 @@ type Traversal<S, A> = {
 ```ts
 import { each, filtered, toArray, modify } from '@stopcock/fp'
 
-const evens = filtered<number>(n => n % 2 === 0)
-toArray([1, 2, 3, 4], evens)                  // [2, 4]
-modify([1, 2, 3, 4], evens, x => x * 10)      // [1, 20, 3, 40]
+const evens = filtered<number>((n) => n % 2 === 0)
+toArray([1, 2, 3, 4], evens) // [2, 4]
+modify([1, 2, 3, 4], evens, (x) => x * 10) // [1, 20, 3, 40]
 
 const all = each<number>()
-modify([1, 2, 3], all, x => x + 1)            // [2, 3, 4]
+modify([1, 2, 3], all, (x) => x + 1) // [2, 3, 4]
 ```
 
 ## Iso
@@ -122,16 +125,25 @@ type Iso<S, A> = {
 ```ts
 import { iso, reverse } from '@stopcock/fp'
 
-const celsiusToF = iso<number, number>(c => c * 9/5 + 32, f => (f - 32) * 5/9)
-celsiusToF.get(100)          // 212
-celsiusToF.reverseGet(212)   // 100
+const celsiusToF = iso<number, number>(
+  (c) => (c * 9) / 5 + 32,
+  (f) => ((f - 32) * 5) / 9,
+)
+celsiusToF.get(100) // 212
+celsiusToF.reverseGet(212) // 100
 reverse(celsiusToF).get(212) // 100
 ```
 
 ## Composition
 
 ```ts
-import { composeLens, composePrism, composeTraversal, composeIso, composeOptics } from '@stopcock/fp'
+import {
+  composeLens,
+  composePrism,
+  composeTraversal,
+  composeIso,
+  composeOptics,
+} from '@stopcock/fp'
 ```
 
 Each `compose*` function combines two optics of the same kind. `composeOptics` composes any combination. The result type is the weakest optic in the chain: Lens + Prism = Prism, anything + Traversal = Traversal.

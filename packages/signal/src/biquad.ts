@@ -4,14 +4,14 @@ import { dual } from './dual'
 
 function assertKind(kind: string): asserts kind is FilterKind {
   if (
-    kind !== 'lowpass'
-    && kind !== 'highpass'
-    && kind !== 'bandpass'
-    && kind !== 'notch'
-    && kind !== 'peak'
-    && kind !== 'lowshelf'
-    && kind !== 'highshelf'
-    && kind !== 'allpass'
+    kind !== 'lowpass' &&
+    kind !== 'highpass' &&
+    kind !== 'bandpass' &&
+    kind !== 'notch' &&
+    kind !== 'peak' &&
+    kind !== 'lowshelf' &&
+    kind !== 'highshelf' &&
+    kind !== 'allpass'
   ) {
     fail('kind must be a supported FilterKind')
   }
@@ -21,7 +21,8 @@ export function design(spec: FilterSpec): BiquadCoeffs {
   assertKind(spec.kind)
   assertPositiveFinite(spec.sampleRate, 'sampleRate')
   assertFinite(spec.freq, 'freq')
-  if (spec.freq <= 0 || spec.freq >= spec.sampleRate / 2) fail('freq must be in (0, sampleRate / 2)')
+  if (spec.freq <= 0 || spec.freq >= spec.sampleRate / 2)
+    fail('freq must be in (0, sampleRate / 2)')
   assertPositiveFinite(spec.q, 'q')
   const gainDb = spec.gainDb ?? 0
   assertFinite(gainDb, 'gainDb')
@@ -90,23 +91,23 @@ export function design(spec: FilterSpec): BiquadCoeffs {
     case 'lowshelf': {
       const sqrtA = Math.sqrt(a)
       const twoSqrtAAlpha = 2 * sqrtA * alpha
-      b0 = a * ((a + 1) - (a - 1) * cos + twoSqrtAAlpha)
-      b1 = 2 * a * ((a - 1) - (a + 1) * cos)
-      b2 = a * ((a + 1) - (a - 1) * cos - twoSqrtAAlpha)
-      a0 = (a + 1) + (a - 1) * cos + twoSqrtAAlpha
-      a1 = -2 * ((a - 1) + (a + 1) * cos)
-      a2 = (a + 1) + (a - 1) * cos - twoSqrtAAlpha
+      b0 = a * (a + 1 - (a - 1) * cos + twoSqrtAAlpha)
+      b1 = 2 * a * (a - 1 - (a + 1) * cos)
+      b2 = a * (a + 1 - (a - 1) * cos - twoSqrtAAlpha)
+      a0 = a + 1 + (a - 1) * cos + twoSqrtAAlpha
+      a1 = -2 * (a - 1 + (a + 1) * cos)
+      a2 = a + 1 + (a - 1) * cos - twoSqrtAAlpha
       break
     }
     case 'highshelf': {
       const sqrtA = Math.sqrt(a)
       const twoSqrtAAlpha = 2 * sqrtA * alpha
-      b0 = a * ((a + 1) + (a - 1) * cos + twoSqrtAAlpha)
-      b1 = -2 * a * ((a - 1) + (a + 1) * cos)
-      b2 = a * ((a + 1) + (a - 1) * cos - twoSqrtAAlpha)
-      a0 = (a + 1) - (a - 1) * cos + twoSqrtAAlpha
-      a1 = 2 * ((a - 1) - (a + 1) * cos)
-      a2 = (a + 1) - (a - 1) * cos - twoSqrtAAlpha
+      b0 = a * (a + 1 + (a - 1) * cos + twoSqrtAAlpha)
+      b1 = -2 * a * (a - 1 + (a + 1) * cos)
+      b2 = a * (a + 1 + (a - 1) * cos - twoSqrtAAlpha)
+      a0 = a + 1 - (a - 1) * cos + twoSqrtAAlpha
+      a1 = 2 * (a - 1 - (a + 1) * cos)
+      a2 = a + 1 - (a - 1) * cos - twoSqrtAAlpha
       break
     }
   }

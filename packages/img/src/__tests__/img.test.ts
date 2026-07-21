@@ -1,18 +1,42 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import {
-  create, clone, fromRGBA,
-  rgbToHsl, hslToRgb, rgbToGray, grayscale,
-  brightness, contrast, invert, threshold, sepia, saturate,
-  convolve, blur, gaussianBlur, sharpen, edgeDetect,
-  resize, crop, flipH, flipV, rotate90,
-  histogram, equalize,
-  houghLines, lineToEndpoints, connectedComponents,
+  create,
+  clone,
+  fromRGBA,
+  rgbToHsl,
+  hslToRgb,
+  rgbToGray,
+  grayscale,
+  brightness,
+  contrast,
+  invert,
+  threshold,
+  sepia,
+  saturate,
+  convolve,
+  blur,
+  gaussianBlur,
+  sharpen,
+  edgeDetect,
+  resize,
+  crop,
+  flipH,
+  flipV,
+  rotate90,
+  histogram,
+  equalize,
+  houghLines,
+  lineToEndpoints,
+  connectedComponents,
 } from '../index'
 import type { Image } from '../types'
 
 const fill = (img: Image, r: number, g: number, b: number, a = 255) => {
   for (let i = 0; i < img.data.length; i += 4) {
-    img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = a
+    img.data[i] = r
+    img.data[i + 1] = g
+    img.data[i + 2] = b
+    img.data[i + 3] = a
   }
   return img
 }
@@ -28,7 +52,7 @@ describe('create', () => {
     expect(img.width).toBe(4)
     expect(img.height).toBe(4)
     expect(img.data.length).toBe(64)
-    expect(img.data.every(v => v === 0)).toBe(true)
+    expect(img.data.every((v) => v === 0)).toBe(true)
   })
 
   it('clones image', () => {
@@ -40,7 +64,9 @@ describe('create', () => {
   })
 
   it('fromRGBA copies data', () => {
-    const data = new Uint8ClampedArray([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255])
+    const data = new Uint8ClampedArray([
+      255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+    ])
     const img = fromRGBA(data, 2, 2)
     expect(px(img, 0, 0)).toEqual([255, 0, 0, 255])
     expect(px(img, 1, 0)).toEqual([0, 255, 0, 255])
@@ -120,7 +146,10 @@ describe('convolution', () => {
       for (let x = 0; x < 4; x++) {
         const v = (x + y) % 2 === 0 ? 255 : 0
         const i = (y * 4 + x) * 4
-        img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v; img.data[i + 3] = 255
+        img.data[i] = v
+        img.data[i + 1] = v
+        img.data[i + 2] = v
+        img.data[i + 3] = 255
       }
     }
     const blurred = blur(img, 1)
@@ -144,7 +173,10 @@ describe('transform', () => {
     for (let y = 0; y < 4; y++)
       for (let x = 0; x < 4; x++) {
         const i = (y * 4 + x) * 4
-        img.data[i] = x * 60; img.data[i + 1] = y * 60; img.data[i + 2] = 0; img.data[i + 3] = 255
+        img.data[i] = x * 60
+        img.data[i + 1] = y * 60
+        img.data[i + 2] = 0
+        img.data[i + 3] = 255
       }
     const c = crop(img, 1, 1, 2, 2)
     expect(c.width).toBe(2)
@@ -313,10 +345,7 @@ describe('2x2 exact pixel filters', () => {
     const img = create(2, 2)
     // px(0,0)=100,150,200,255  px(1,0)=50,75,100,255
     // px(0,1)=200,100,50,255   px(1,1)=0,0,0,255
-    img.data.set([
-      100, 150, 200, 255, 50, 75, 100, 255,
-      200, 100, 50, 255, 0, 0, 0, 255,
-    ])
+    img.data.set([100, 150, 200, 255, 50, 75, 100, 255, 200, 100, 50, 255, 0, 0, 0, 255])
     return img
   }
 
@@ -359,7 +388,10 @@ describe('houghLines', () => {
     const img = create(10, 10)
     for (let x = 0; x < 10; x++) {
       const i = (5 * 10 + x) * 4
-      img.data[i] = 255; img.data[i + 1] = 255; img.data[i + 2] = 255; img.data[i + 3] = 255
+      img.data[i] = 255
+      img.data[i + 1] = 255
+      img.data[i + 2] = 255
+      img.data[i + 3] = 255
     }
     const lines = houghLines(img, { threshold: 5 })
     expect(lines.length).toBeGreaterThan(0)
@@ -373,7 +405,10 @@ describe('houghLines', () => {
     const img = create(10, 10)
     for (let y = 0; y < 10; y++) {
       const i = (y * 10 + 3) * 4
-      img.data[i] = 255; img.data[i + 1] = 255; img.data[i + 2] = 255; img.data[i + 3] = 255
+      img.data[i] = 255
+      img.data[i + 1] = 255
+      img.data[i + 2] = 255
+      img.data[i + 3] = 255
     }
     const lines = houghLines(img, { threshold: 5 })
     expect(lines.length).toBeGreaterThan(0)
@@ -393,7 +428,10 @@ describe('houghLines', () => {
     const img = create(10, 10)
     for (let x = 0; x < 10; x++) {
       const i = (5 * 10 + x) * 4
-      img.data[i] = 255; img.data[i + 1] = 255; img.data[i + 2] = 255; img.data[i + 3] = 255
+      img.data[i] = 255
+      img.data[i + 1] = 255
+      img.data[i + 2] = 255
+      img.data[i + 3] = 255
     }
     const fn = houghLines({ threshold: 5 })
     const lines = fn(img)
@@ -414,14 +452,30 @@ describe('connectedComponents', () => {
     // 10x10 image with two 2x2 white squares
     const img = create(10, 10)
     // blob 1 at (1,1)
-    for (const [x, y] of [[1,1],[2,1],[1,2],[2,2]]) {
+    for (const [x, y] of [
+      [1, 1],
+      [2, 1],
+      [1, 2],
+      [2, 2],
+    ]) {
       const i = (y * 10 + x) * 4
-      img.data[i] = 255; img.data[i + 1] = 255; img.data[i + 2] = 255; img.data[i + 3] = 255
+      img.data[i] = 255
+      img.data[i + 1] = 255
+      img.data[i + 2] = 255
+      img.data[i + 3] = 255
     }
     // blob 2 at (7,7)
-    for (const [x, y] of [[7,7],[8,7],[7,8],[8,8]]) {
+    for (const [x, y] of [
+      [7, 7],
+      [8, 7],
+      [7, 8],
+      [8, 8],
+    ]) {
       const i = (y * 10 + x) * 4
-      img.data[i] = 255; img.data[i + 1] = 255; img.data[i + 2] = 255; img.data[i + 3] = 255
+      img.data[i] = 255
+      img.data[i + 1] = 255
+      img.data[i + 2] = 255
+      img.data[i + 3] = 255
     }
     const result = connectedComponents(img)
     expect(result.components.length).toBe(2)
@@ -432,9 +486,17 @@ describe('connectedComponents', () => {
   it('one connected region', () => {
     // L-shape
     const img = create(5, 5)
-    for (const [x, y] of [[0,0],[1,0],[0,1],[0,2]]) {
+    for (const [x, y] of [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [0, 2],
+    ]) {
       const i = (y * 5 + x) * 4
-      img.data[i] = 255; img.data[i + 1] = 255; img.data[i + 2] = 255; img.data[i + 3] = 255
+      img.data[i] = 255
+      img.data[i + 1] = 255
+      img.data[i + 2] = 255
+      img.data[i + 3] = 255
     }
     const result = connectedComponents(img)
     expect(result.components.length).toBe(1)
@@ -449,9 +511,19 @@ describe('connectedComponents', () => {
   it('bbox and centroid are correct', () => {
     const img = create(10, 10)
     // 3x2 block at (2,3)
-    for (const [x, y] of [[2,3],[3,3],[4,3],[2,4],[3,4],[4,4]]) {
+    for (const [x, y] of [
+      [2, 3],
+      [3, 3],
+      [4, 3],
+      [2, 4],
+      [3, 4],
+      [4, 4],
+    ]) {
       const i = (y * 10 + x) * 4
-      img.data[i] = 255; img.data[i + 1] = 255; img.data[i + 2] = 255; img.data[i + 3] = 255
+      img.data[i] = 255
+      img.data[i + 1] = 255
+      img.data[i + 2] = 255
+      img.data[i + 3] = 255
     }
     const result = connectedComponents(img)
     expect(result.components.length).toBe(1)
@@ -466,11 +538,14 @@ describe('convolve with identity kernel', () => {
   it('identity kernel preserves pixel values exactly', () => {
     const img = create(3, 3)
     img.data.set([
-      10, 20, 30, 255,   40, 50, 60, 255,   70, 80, 90, 255,
-      100, 110, 120, 255, 130, 140, 150, 255, 160, 170, 180, 255,
-      190, 200, 210, 255, 220, 230, 240, 255, 250, 245, 235, 255,
+      10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255, 100, 110, 120, 255, 130, 140, 150, 255,
+      160, 170, 180, 255, 190, 200, 210, 255, 220, 230, 240, 255, 250, 245, 235, 255,
     ])
-    const identity = [[0, 0, 0], [0, 1, 0], [0, 0, 0]]
+    const identity = [
+      [0, 0, 0],
+      [0, 1, 0],
+      [0, 0, 0],
+    ]
     const out = convolve(img, identity, 1)
     expect(px(out, 0, 0)).toEqual([10, 20, 30, 255])
     expect(px(out, 1, 1)).toEqual([130, 140, 150, 255])
@@ -479,10 +554,17 @@ describe('convolve with identity kernel', () => {
 
   it('identity kernel on uniform image returns same values', () => {
     const img = fill(create(4, 4), 77, 88, 99)
-    const out = convolve(img, [[0, 0, 0], [0, 1, 0], [0, 0, 0]], 1)
+    const out = convolve(
+      img,
+      [
+        [0, 0, 0],
+        [0, 1, 0],
+        [0, 0, 0],
+      ],
+      1,
+    )
     for (let y = 0; y < 4; y++)
-      for (let x = 0; x < 4; x++)
-        expect(px(out, x, y)).toEqual([77, 88, 99, 255])
+      for (let x = 0; x < 4; x++) expect(px(out, x, y)).toEqual([77, 88, 99, 255])
   })
 })
 
@@ -504,12 +586,12 @@ describe('contrast pixel-level', () => {
     const out = contrast(img, 255)
     // f = (259 * 510) / (255 * 4) = huge, pushes everything far from 128
     const [r0, g0, b0] = px(out, 0, 0)
-    expect(r0).toBe(0)     // 50 < 128 => 0
-    expect(g0).toBe(255)   // 200 > 128 => 255
-    expect(b0).toBe(128)   // 128 is midpoint => stays 128
+    expect(r0).toBe(0) // 50 < 128 => 0
+    expect(g0).toBe(255) // 200 > 128 => 255
+    expect(b0).toBe(128) // 128 is midpoint => stays 128
     const [r1, g1] = px(out, 1, 0)
-    expect(r1).toBe(0)     // 127 < 128 => 0
-    expect(g1).toBe(255)   // 129 > 128 => 255
+    expect(r1).toBe(0) // 127 < 128 => 0
+    expect(g1).toBe(255) // 129 > 128 => 255
   })
 
   it('negative contrast pulls values toward 128', () => {
@@ -577,15 +659,16 @@ describe('gaussianBlur pixel checks', () => {
   it('uniform image stays uniform', () => {
     const img = fill(create(5, 5), 100, 100, 100)
     const out = gaussianBlur(img, 2)
-    for (let y = 0; y < 5; y++)
-      for (let x = 0; x < 5; x++)
-        expect(px(out, x, y)[0]).toBe(100)
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) expect(px(out, x, y)[0]).toBe(100)
   })
 
   it('blurs a single bright pixel into neighbors', () => {
     const img = fill(create(5, 5), 0, 0, 0)
     const ci = (2 * 5 + 2) * 4
-    img.data[ci] = 255; img.data[ci + 1] = 255; img.data[ci + 2] = 255; img.data[ci + 3] = 255
+    img.data[ci] = 255
+    img.data[ci + 1] = 255
+    img.data[ci + 2] = 255
+    img.data[ci + 3] = 255
     const out = gaussianBlur(img, 1)
     // center should still be brightest
     const center = px(out, 2, 2)[0]
@@ -609,23 +692,22 @@ describe('edgeDetect on gradient', () => {
       for (let x = 0; x < 8; x++) {
         const v = Math.round((x / 7) * 255)
         const i = (y * 8 + x) * 4
-        img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v; img.data[i + 3] = 255
+        img.data[i] = v
+        img.data[i + 1] = v
+        img.data[i + 2] = v
+        img.data[i + 3] = 255
       }
     const out = edgeDetect(img)
     // interior pixels should have non-zero edge response due to gradient
     let nonZero = 0
-    for (let y = 1; y < 7; y++)
-      for (let x = 1; x < 7; x++)
-        if (px(out, x, y)[0] > 0) nonZero++
+    for (let y = 1; y < 7; y++) for (let x = 1; x < 7; x++) if (px(out, x, y)[0] > 0) nonZero++
     expect(nonZero).toBeGreaterThan(0)
   })
 
   it('uniform image produces zero edges', () => {
     const img = fill(create(5, 5), 128, 128, 128)
     const out = edgeDetect(img)
-    for (let y = 0; y < 5; y++)
-      for (let x = 0; x < 5; x++)
-        expect(px(out, x, y)[0]).toBe(0)
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) expect(px(out, x, y)[0]).toBe(0)
   })
 })
 
@@ -634,20 +716,24 @@ describe('equalize on skewed histogram', () => {
     // all pixels clustered in 100-110 range
     const img = create(10, 10)
     for (let i = 0; i < img.data.length; i += 4) {
-      const v = 100 + (i / 4) % 11  // values 100..110
-      img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v; img.data[i + 3] = 255
+      const v = 100 + ((i / 4) % 11) // values 100..110
+      img.data[i] = v
+      img.data[i + 1] = v
+      img.data[i + 2] = v
+      img.data[i + 3] = 255
     }
     const before = histogram(img)
     const eq = equalize(img)
     const after = histogram(eq)
 
     // count how many distinct values are used
-    const distinctBefore = before.r.filter(v => v > 0).length
-    const distinctAfter = after.r.filter(v => v > 0).length
+    const distinctBefore = before.r.filter((v) => v > 0).length
+    const distinctAfter = after.r.filter((v) => v > 0).length
     expect(distinctAfter).toBeGreaterThanOrEqual(distinctBefore)
 
     // the range should be wider
-    let minAfter = 255, maxAfter = 0
+    let minAfter = 255,
+      maxAfter = 0
     for (let i = 0; i < 256; i++) {
       if (after.r[i] > 0) {
         if (i < minAfter) minAfter = i
@@ -662,7 +748,7 @@ describe('equalize on skewed histogram', () => {
     const img = fill(create(4, 4), 50, 50, 50)
     const eq = equalize(img)
     const h = histogram(eq)
-    const usedBins = h.r.filter(v => v > 0).length
+    const usedBins = h.r.filter((v) => v > 0).length
     expect(usedBins).toBe(1)
   })
 })
@@ -695,10 +781,7 @@ describe('resize interpolation on known pattern', () => {
   it('upscale 2x2 to 4x4 interpolates corners', () => {
     const img = create(2, 2)
     // top-left=0, top-right=255, bottom-left=255, bottom-right=0
-    img.data.set([
-      0, 0, 0, 255,     255, 255, 255, 255,
-      255, 255, 255, 255, 0, 0, 0, 255,
-    ])
+    img.data.set([0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 255])
     const out = resize(img, 4, 4)
     expect(out.width).toBe(4)
     expect(out.height).toBe(4)
@@ -720,7 +803,10 @@ describe('resize interpolation on known pattern', () => {
       for (let x = 0; x < 4; x++) {
         const v = x < 2 ? 0 : 255
         const i = (y * 4 + x) * 4
-        img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v; img.data[i + 3] = 255
+        img.data[i] = v
+        img.data[i + 1] = v
+        img.data[i + 2] = v
+        img.data[i + 3] = 255
       }
     const out = resize(img, 2, 2)
     // left column samples from black region, right from white
@@ -737,4 +823,3 @@ describe('resize interpolation on known pattern', () => {
     expect(px(out, 3, 3)[3]).toBe(128)
   })
 })
-

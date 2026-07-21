@@ -14,7 +14,7 @@ export function reverse<S, A>(i: Iso<S, A>): Iso<A, S> {
 
 export function compose<S, A, B>(outer: Iso<S, A>, inner: Iso<A, B>): Iso<S, B> {
   return iso(
-    s => inner.get(outer.get(s)),
-    b => outer.reverseGet(inner.reverseGet(b)),
+    (s) => inner.get(outer.get(s)),
+    (b) => outer.reverseGet(inner.reverseGet(b)),
   )
 }

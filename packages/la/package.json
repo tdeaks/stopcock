@@ -7,6 +7,9 @@
     "url": "git+https://github.com/tdeaks/stopcock.git",
     "directory": "packages/la"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -26,11 +29,5 @@
       "types": "./dist/primitives.d.ts",
       "import": "./dist/primitives.js"
     }
-  },
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly"
   }
 }

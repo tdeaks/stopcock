@@ -1,8 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { iso, reverse, compose } from '../iso'
 
 describe('Iso', () => {
-  const strToNum = iso<string, number>(s => parseInt(s, 10), n => String(n))
+  const strToNum = iso<string, number>(
+    (s) => parseInt(s, 10),
+    (n) => String(n),
+  )
 
   it('get', () => expect(strToNum.get('42')).toBe(42))
   it('reverseGet', () => expect(strToNum.reverseGet(42)).toBe('42'))
@@ -15,15 +18,24 @@ describe('Iso', () => {
   })
 
   it('compose chains two isos', () => {
-    const double = iso<number, number>(n => n * 2, n => n / 2)
+    const double = iso<number, number>(
+      (n) => n * 2,
+      (n) => n / 2,
+    )
     const composed = compose(strToNum, double)
     expect(composed.get('5')).toBe(10)
     expect(composed.reverseGet(10)).toBe('5')
   })
 
   it('compose roundtrip', () => {
-    const celsius = iso<number, number>(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9)
-    const offset = iso<number, number>(n => n + 10, n => n - 10)
+    const celsius = iso<number, number>(
+      (c) => (c * 9) / 5 + 32,
+      (f) => ((f - 32) * 5) / 9,
+    )
+    const offset = iso<number, number>(
+      (n) => n + 10,
+      (n) => n - 10,
+    )
     const composed = compose(celsius, offset)
     expect(composed.reverseGet(composed.get(100))).toBeCloseTo(100)
   })

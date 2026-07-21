@@ -4,9 +4,9 @@ import type { HttpError } from './error.js'
 
 export type ResponseType = 'json' | 'text' | 'blob' | 'arrayBuffer'
 
-export type QueryParams = Record<string,
-  string | number | boolean | undefined | null |
-  Array<string | number | boolean>
+export type QueryParams = Record<
+  string,
+  string | number | boolean | undefined | null | Array<string | number | boolean>
 >
 
 export type PathParams = Record<string, string | number>

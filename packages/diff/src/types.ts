@@ -4,7 +4,12 @@ export type Path = readonly PathSegment[]
 export type Operation =
   | { readonly op: 'add'; readonly path: Path; readonly value: unknown }
   | { readonly op: 'remove'; readonly path: Path; readonly oldValue: unknown }
-  | { readonly op: 'replace'; readonly path: Path; readonly oldValue: unknown; readonly newValue: unknown }
+  | {
+      readonly op: 'replace'
+      readonly path: Path
+      readonly oldValue: unknown
+      readonly newValue: unknown
+    }
   | { readonly op: 'move'; readonly from: Path; readonly path: Path }
   | { readonly op: 'rename'; readonly path: Path; readonly oldKey: string; readonly newKey: string }
   | { readonly op: 'test'; readonly path: Path; readonly value: unknown }

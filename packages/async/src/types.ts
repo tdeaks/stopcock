@@ -1,6 +1,8 @@
 export class CancelledError extends Error {
   readonly _tag = 'CancelledError' as const
-  constructor(message = 'Task was cancelled') { super(message) }
+  constructor(message = 'Task was cancelled') {
+    super(message)
+  }
 }
 
 export class TimeoutError extends Error {

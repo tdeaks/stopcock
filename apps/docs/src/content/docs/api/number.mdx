@@ -38,17 +38,21 @@ import { pipe, A, N } from '@stopcock/fp'
 
 // stats on response times
 const times = [120, 95, 200, 88, 150, 300, 110]
-N.mean(times)               // ~151.9
-N.median(times)             // 120
-N.standardDeviation(times)  // ~68.6
-N.percentile(times, 95)     // 300
+N.mean(times) // ~151.9
+N.median(times) // 120
+N.standardDeviation(times) // ~68.6
+N.percentile(times, 95) // 300
 
 // clamp user input
 pipe(userAge, N.clamp(0, 150))
 
 // average score, ignoring zeros
-pipe(scores, A.filter(s => s > 0), N.mean)
+pipe(
+  scores,
+  A.filter((s) => s > 0),
+  N.mean,
+)
 
 // feature vector similarity
-N.dotProduct([1, 0, 1], [0, 1, 1])  // 1
+N.dotProduct([1, 0, 1], [0, 1, 1]) // 1
 ```

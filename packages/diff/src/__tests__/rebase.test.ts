@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { rebase } from '../rebase'
 import { patch, empty } from '../patch'
 

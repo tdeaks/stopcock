@@ -4,12 +4,18 @@ import { epochDays, epochDaysToCivil, MS_DAY, MS_HOUR, MS_MINUTE, MS_SECOND } fr
 function _diff(a: number, b: number, unit: DateUnit): number {
   const delta = a - b
   switch (unit) {
-    case 'millisecond': return delta
-    case 'second': return (delta / MS_SECOND) | 0
-    case 'minute': return (delta / MS_MINUTE) | 0
-    case 'hour': return (delta / MS_HOUR) | 0
-    case 'day': return (delta / MS_DAY) | 0
-    case 'week': return (delta / (MS_DAY * 7)) | 0
+    case 'millisecond':
+      return delta
+    case 'second':
+      return (delta / MS_SECOND) | 0
+    case 'minute':
+      return (delta / MS_MINUTE) | 0
+    case 'hour':
+      return (delta / MS_HOUR) | 0
+    case 'day':
+      return (delta / MS_DAY) | 0
+    case 'week':
+      return (delta / (MS_DAY * 7)) | 0
     case 'month': {
       const ac = epochDaysToCivil(epochDays(a as Timestamp))
       const bc = epochDaysToCivil(epochDays(b as Timestamp))
@@ -28,7 +34,8 @@ export const diff: {
   (b: Timestamp, unit: DateUnit): (a: Timestamp) => number
 } = function diff(_p0: any, _p1: any, _p2: any) {
   if (_p2 !== undefined) return _diff(_p0, _p1, _p2)
-  const b = _p0, unit = _p1
+  const b = _p0,
+    unit = _p1
   return (a: any) => _diff(a, b, unit)
 } as any
 
@@ -89,7 +96,8 @@ export const diffInYears: {
   (a: Timestamp, b: Timestamp): number
   (b: Timestamp): (a: Timestamp) => number
 } = function diffInYears(_p0: any, _p1: any) {
-  if (_p1 !== undefined) return epochDaysToCivil(epochDays(_p0)).year - epochDaysToCivil(epochDays(_p1)).year
+  if (_p1 !== undefined)
+    return epochDaysToCivil(epochDays(_p0)).year - epochDaysToCivil(epochDays(_p1)).year
   const b = _p0
   return (a: any) => epochDaysToCivil(epochDays(a)).year - epochDaysToCivil(epochDays(b)).year
 } as any

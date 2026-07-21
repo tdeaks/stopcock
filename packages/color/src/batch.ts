@@ -1,11 +1,16 @@
 import { getColorMatrix3x3Float } from '@stopcock/la/accel'
 import type { Color, ColorSpace } from './types'
 import {
-  LIN_SRGB_TO_XYZ_D65, XYZ_D65_TO_LIN_SRGB,
-  XYZ_D65_TO_XYZ_D50, XYZ_D50_TO_XYZ_D65,
-  LIN_P3_TO_XYZ_D65, XYZ_D65_TO_LIN_P3,
-  XYZ_D65_TO_LMS, LMS_TO_XYZ_D65,
-  LMS_PRIME_TO_OKLAB, OKLAB_TO_LMS_PRIME,
+  LIN_SRGB_TO_XYZ_D65,
+  XYZ_D65_TO_LIN_SRGB,
+  XYZ_D65_TO_XYZ_D50,
+  XYZ_D50_TO_XYZ_D65,
+  LIN_P3_TO_XYZ_D65,
+  XYZ_D65_TO_LIN_P3,
+  XYZ_D65_TO_LMS,
+  LMS_TO_XYZ_D65,
+  LMS_PRIME_TO_OKLAB,
+  OKLAB_TO_LMS_PRIME,
 } from './matrices'
 import { srgbToLinear, linearToSrgb, p3ToLinear, linearToP3 } from './transfer'
 import { matrixFor, type CVDType } from './cvd'
@@ -14,8 +19,7 @@ import { toGamut } from './gamut'
 export type ChannelBuffer = Float64Array
 
 const validateBuffer = (name: string, buf: ChannelBuffer): void => {
-  if (buf.length % 3 !== 0)
-    throw new Error(`${name} length must be a multiple of 3`)
+  if (buf.length % 3 !== 0) throw new Error(`${name} length must be a multiple of 3`)
 }
 
 const validateOut = (src: ChannelBuffer, out?: ChannelBuffer): void => {
@@ -39,34 +43,50 @@ export const applyMatrix3x3 = (
     return out
   }
 
-  const m0 = matrix[0], m1 = matrix[1], m2 = matrix[2]
-  const m3 = matrix[3], m4 = matrix[4], m5 = matrix[5]
-  const m6 = matrix[6], m7 = matrix[7], m8 = matrix[8]
+  const m0 = matrix[0],
+    m1 = matrix[1],
+    m2 = matrix[2]
+  const m3 = matrix[3],
+    m4 = matrix[4],
+    m5 = matrix[5]
+  const m6 = matrix[6],
+    m7 = matrix[7],
+    m8 = matrix[8]
   let i = 0
   const n = src.length
   for (; i + 12 <= n; i += 12) {
-    const r0 = src[i], g0 = src[i + 1], b0 = src[i + 2]
+    const r0 = src[i],
+      g0 = src[i + 1],
+      b0 = src[i + 2]
     out[i] = m0 * r0 + m1 * g0 + m2 * b0
     out[i + 1] = m3 * r0 + m4 * g0 + m5 * b0
     out[i + 2] = m6 * r0 + m7 * g0 + m8 * b0
 
-    const r1 = src[i + 3], g1 = src[i + 4], b1 = src[i + 5]
+    const r1 = src[i + 3],
+      g1 = src[i + 4],
+      b1 = src[i + 5]
     out[i + 3] = m0 * r1 + m1 * g1 + m2 * b1
     out[i + 4] = m3 * r1 + m4 * g1 + m5 * b1
     out[i + 5] = m6 * r1 + m7 * g1 + m8 * b1
 
-    const r2 = src[i + 6], g2 = src[i + 7], b2 = src[i + 8]
+    const r2 = src[i + 6],
+      g2 = src[i + 7],
+      b2 = src[i + 8]
     out[i + 6] = m0 * r2 + m1 * g2 + m2 * b2
     out[i + 7] = m3 * r2 + m4 * g2 + m5 * b2
     out[i + 8] = m6 * r2 + m7 * g2 + m8 * b2
 
-    const r3 = src[i + 9], g3 = src[i + 10], b3 = src[i + 11]
+    const r3 = src[i + 9],
+      g3 = src[i + 10],
+      b3 = src[i + 11]
     out[i + 9] = m0 * r3 + m1 * g3 + m2 * b3
     out[i + 10] = m3 * r3 + m4 * g3 + m5 * b3
     out[i + 11] = m6 * r3 + m7 * g3 + m8 * b3
   }
   for (; i < n; i += 3) {
-    const r = src[i], g = src[i + 1], b = src[i + 2]
+    const r = src[i],
+      g = src[i + 1],
+      b = src[i + 2]
     out[i] = m0 * r + m1 * g + m2 * b
     out[i + 1] = m3 * r + m4 * g + m5 * b
     out[i + 2] = m6 * r + m7 * g + m8 * b
@@ -93,7 +113,7 @@ const D50_Z = 0.8251046025104602
 const LAB_E = 216 / 24389
 const LAB_K = 24389 / 27
 
-const cbrtLab = (t: number): number => t > LAB_E ? Math.cbrt(t) : (LAB_K * t + 16) / 116
+const cbrtLab = (t: number): number => (t > LAB_E ? Math.cbrt(t) : (LAB_K * t + 16) / 116)
 const invLab = (f: number): number => {
   const f3 = f * f * f
   return f3 > LAB_E ? f3 : (116 * f - 16) / LAB_K
@@ -101,7 +121,9 @@ const invLab = (f: number): number => {
 
 const toPolarBuffer: BatchEdge = (src, out) => {
   for (let i = 0; i < src.length; i += 3) {
-    const l = src[i], a = src[i + 1], b = src[i + 2]
+    const l = src[i],
+      a = src[i + 1],
+      b = src[i + 2]
     const c = Math.hypot(a, b)
     let h = (Math.atan2(b, a) * 180) / Math.PI
     if (h < 0) h += 360
@@ -137,7 +159,9 @@ const xyz50ToLabBuffer: BatchEdge = (src, out) => {
 
 const labToXyz50Buffer: BatchEdge = (src, out) => {
   for (let i = 0; i < src.length; i += 3) {
-    const l = src[i], a = src[i + 1], b = src[i + 2]
+    const l = src[i],
+      a = src[i + 1],
+      b = src[i + 2]
     const fy = (l + 16) / 116
     const fx = a / 500 + fy
     const fz = fy - b / 200
@@ -162,10 +186,14 @@ const oklabToXyz65Buffer: BatchEdge = (src, out, scratch) => {
 
 const srgbToHslBuffer: BatchEdge = (src, out) => {
   for (let i = 0; i < src.length; i += 3) {
-    const r = src[i], g = src[i + 1], b = src[i + 2]
-    const max = Math.max(r, g, b), min = Math.min(r, g, b)
+    const r = src[i],
+      g = src[i + 1],
+      b = src[i + 2]
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b)
     const l = (max + min) / 2
-    let h = 0, s = 0
+    let h = 0,
+      s = 0
     if (max !== min) {
       const d = max - min
       s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
@@ -182,7 +210,9 @@ const srgbToHslBuffer: BatchEdge = (src, out) => {
 
 const hslToSrgbBuffer: BatchEdge = (src, out) => {
   for (let i = 0; i < src.length; i += 3) {
-    const h = src[i], s = src[i + 1], l = src[i + 2]
+    const h = src[i],
+      s = src[i + 1],
+      l = src[i + 2]
     if (s === 0) {
       out[i] = l
       out[i + 1] = l
@@ -210,8 +240,11 @@ const hslToSrgbBuffer: BatchEdge = (src, out) => {
 
 const srgbToHwbBuffer: BatchEdge = (src, out) => {
   for (let i = 0; i < src.length; i += 3) {
-    const r = src[i], g = src[i + 1], b = src[i + 2]
-    const max = Math.max(r, g, b), min = Math.min(r, g, b)
+    const r = src[i],
+      g = src[i + 1],
+      b = src[i + 2]
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b)
     let h = 0
     if (max !== min) {
       const d = max - min
@@ -228,7 +261,9 @@ const srgbToHwbBuffer: BatchEdge = (src, out) => {
 
 const hwbToSrgbBuffer: BatchEdge = (src, out, scratch) => {
   for (let i = 0; i < src.length; i += 3) {
-    const h = src[i], w = src[i + 1], bl = src[i + 2]
+    const h = src[i],
+      w = src[i + 1],
+      bl = src[i + 2]
     if (w + bl >= 1) {
       const gray = w / (w + bl)
       out[i] = gray
@@ -242,7 +277,8 @@ const hwbToSrgbBuffer: BatchEdge = (src, out, scratch) => {
   }
   hslToSrgbBuffer(scratch, scratch, out)
   for (let i = 0; i < src.length; i += 3) {
-    const w = src[i + 1], bl = src[i + 2]
+    const w = src[i + 1],
+      bl = src[i + 2]
     if (w + bl >= 1) continue
     const span = 1 - w - bl
     out[i] = scratch[i] * span + w
@@ -336,7 +372,7 @@ export const convertBuffer = (
 
   for (let i = 0; i < path.length; i++) {
     const isLast = i === path.length - 1
-    const dst = isLast ? scratchB : (i % 2 === 0 ? scratchA : scratchB)
+    const dst = isLast ? scratchB : i % 2 === 0 ? scratchA : scratchB
     path[i](cur, dst, edgeScratch)
     cur = dst
   }
@@ -344,16 +380,14 @@ export const convertBuffer = (
   return cur
 }
 
-const clamp01 = (value: number): number => value < 0 ? 0 : value > 1 ? 1 : value
+const clamp01 = (value: number): number => (value < 0 ? 0 : value > 1 ? 1 : value)
 
 const combine3x3 = (a: Float64Array, b: Float64Array): Float64Array => {
   const out = new Float64Array(9)
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
       out[row * 3 + col] =
-        a[row * 3] * b[col] +
-        a[row * 3 + 1] * b[3 + col] +
-        a[row * 3 + 2] * b[6 + col]
+        a[row * 3] * b[col] + a[row * 3 + 1] * b[3 + col] + a[row * 3 + 2] * b[6 + col]
     }
   }
   return out
@@ -376,12 +410,24 @@ const byteFromUnit = (value: number): number => {
 }
 
 const srgbToOklabDirect = (src: ChannelBuffer, out: ChannelBuffer): ChannelBuffer => {
-  const l0 = LIN_SRGB_TO_LMS[0], l1 = LIN_SRGB_TO_LMS[1], l2 = LIN_SRGB_TO_LMS[2]
-  const m0 = LIN_SRGB_TO_LMS[3], m1 = LIN_SRGB_TO_LMS[4], m2 = LIN_SRGB_TO_LMS[5]
-  const s0 = LIN_SRGB_TO_LMS[6], s1 = LIN_SRGB_TO_LMS[7], s2 = LIN_SRGB_TO_LMS[8]
-  const o0 = LMS_PRIME_TO_OKLAB[0], o1 = LMS_PRIME_TO_OKLAB[1], o2 = LMS_PRIME_TO_OKLAB[2]
-  const o3 = LMS_PRIME_TO_OKLAB[3], o4 = LMS_PRIME_TO_OKLAB[4], o5 = LMS_PRIME_TO_OKLAB[5]
-  const o6 = LMS_PRIME_TO_OKLAB[6], o7 = LMS_PRIME_TO_OKLAB[7], o8 = LMS_PRIME_TO_OKLAB[8]
+  const l0 = LIN_SRGB_TO_LMS[0],
+    l1 = LIN_SRGB_TO_LMS[1],
+    l2 = LIN_SRGB_TO_LMS[2]
+  const m0 = LIN_SRGB_TO_LMS[3],
+    m1 = LIN_SRGB_TO_LMS[4],
+    m2 = LIN_SRGB_TO_LMS[5]
+  const s0 = LIN_SRGB_TO_LMS[6],
+    s1 = LIN_SRGB_TO_LMS[7],
+    s2 = LIN_SRGB_TO_LMS[8]
+  const o0 = LMS_PRIME_TO_OKLAB[0],
+    o1 = LMS_PRIME_TO_OKLAB[1],
+    o2 = LMS_PRIME_TO_OKLAB[2]
+  const o3 = LMS_PRIME_TO_OKLAB[3],
+    o4 = LMS_PRIME_TO_OKLAB[4],
+    o5 = LMS_PRIME_TO_OKLAB[5]
+  const o6 = LMS_PRIME_TO_OKLAB[6],
+    o7 = LMS_PRIME_TO_OKLAB[7],
+    o8 = LMS_PRIME_TO_OKLAB[8]
   const keys = new Uint32Array(src.length / 3)
   const values = new Map<number, readonly [number, number, number]>()
   for (let i = 0; i < src.length; i += 3) {
@@ -414,12 +460,24 @@ const srgbToOklabDirect = (src: ChannelBuffer, out: ChannelBuffer): ChannelBuffe
 }
 
 const oklabToSrgbDirect = (src: ChannelBuffer, out: ChannelBuffer): ChannelBuffer => {
-  const p0 = OKLAB_TO_LMS_PRIME[0], p1 = OKLAB_TO_LMS_PRIME[1], p2 = OKLAB_TO_LMS_PRIME[2]
-  const p3 = OKLAB_TO_LMS_PRIME[3], p4 = OKLAB_TO_LMS_PRIME[4], p5 = OKLAB_TO_LMS_PRIME[5]
-  const p6 = OKLAB_TO_LMS_PRIME[6], p7 = OKLAB_TO_LMS_PRIME[7], p8 = OKLAB_TO_LMS_PRIME[8]
-  const r0 = LMS_TO_LIN_SRGB[0], r1 = LMS_TO_LIN_SRGB[1], r2 = LMS_TO_LIN_SRGB[2]
-  const g0 = LMS_TO_LIN_SRGB[3], g1 = LMS_TO_LIN_SRGB[4], g2 = LMS_TO_LIN_SRGB[5]
-  const b0 = LMS_TO_LIN_SRGB[6], b1 = LMS_TO_LIN_SRGB[7], b2 = LMS_TO_LIN_SRGB[8]
+  const p0 = OKLAB_TO_LMS_PRIME[0],
+    p1 = OKLAB_TO_LMS_PRIME[1],
+    p2 = OKLAB_TO_LMS_PRIME[2]
+  const p3 = OKLAB_TO_LMS_PRIME[3],
+    p4 = OKLAB_TO_LMS_PRIME[4],
+    p5 = OKLAB_TO_LMS_PRIME[5]
+  const p6 = OKLAB_TO_LMS_PRIME[6],
+    p7 = OKLAB_TO_LMS_PRIME[7],
+    p8 = OKLAB_TO_LMS_PRIME[8]
+  const r0 = LMS_TO_LIN_SRGB[0],
+    r1 = LMS_TO_LIN_SRGB[1],
+    r2 = LMS_TO_LIN_SRGB[2]
+  const g0 = LMS_TO_LIN_SRGB[3],
+    g1 = LMS_TO_LIN_SRGB[4],
+    g2 = LMS_TO_LIN_SRGB[5]
+  const b0 = LMS_TO_LIN_SRGB[6],
+    b1 = LMS_TO_LIN_SRGB[7],
+    b2 = LMS_TO_LIN_SRGB[8]
   const meta = out === src ? undefined : BYTE_OKLAB_SOURCE.get(src)
   for (let i = 0; i < src.length; i += 3) {
     if (meta) {
@@ -432,7 +490,9 @@ const oklabToSrgbDirect = (src: ChannelBuffer, out: ChannelBuffer): ChannelBuffe
         continue
       }
     }
-    const l = src[i], a = src[i + 1], b = src[i + 2]
+    const l = src[i],
+      a = src[i + 1],
+      b = src[i + 2]
     const lp = p0 * l + p1 * a + p2 * b
     const mp = p3 * l + p4 * a + p5 * b
     const sp = p6 * l + p7 * a + p8 * b

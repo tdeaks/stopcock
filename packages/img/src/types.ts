@@ -8,4 +8,9 @@ export type Component = {
   centroid: { x: number; y: number }
   bbox: { x: number; y: number; w: number; h: number }
 }
-export type ComponentResult = { labels: Int32Array; width: number; height: number; components: Component[] }
+export type ComponentResult = {
+  labels: Int32Array
+  width: number
+  height: number
+  components: Component[]
+}

@@ -17,12 +17,10 @@ input tuple.
 import { pipe } from '@stopcock/fp'
 import { differentiable, sin, square, add, type Var } from '@stopcock/autodiff'
 
-const f = differentiable((x: Var<number>) =>
-  pipe(x, square, add(3), sin)
-)
+const f = differentiable((x: Var<number>) => pipe(x, square, add(3), sin))
 
-f.forward(2)   // Math.sin(7)
-f.gradient(2)  // Math.cos(7) * 4
+f.forward(2) // Math.sin(7)
+f.gradient(2) // Math.cos(7) * 4
 ```
 
 Use `valueAndGradient()` when you need both results from one forward pass.
@@ -33,37 +31,21 @@ Vectors use `Float64Array`. Raw vectors and numbers are auto-lifted as
 constants, so the only values you annotate are differentiable inputs.
 
 ```ts
-import {
-  differentiable,
-  add,
-  square,
-  sub,
-  vecDot,
-  type Var,
-  type Vec,
-} from '@stopcock/autodiff'
+import { differentiable, add, square, sub, vecDot, type Var, type Vec } from '@stopcock/autodiff'
 
-const xs = [
-  new Float64Array([1, 0]),
-  new Float64Array([0, 1]),
-  new Float64Array([1, 1]),
-]
+const xs = [new Float64Array([1, 0]), new Float64Array([0, 1]), new Float64Array([1, 1])]
 const ys = [2, -1, 1]
 
 const loss = differentiable((w: Var<Vec>) => {
   let total = square(sub(vecDot(w, xs[0]), ys[0]))
-  for (let i = 1; i < xs.length; i++)
-    total = add(total, square(sub(vecDot(w, xs[i]), ys[i])))
+  for (let i = 1; i < xs.length; i++) total = add(total, square(sub(vecDot(w, xs[i]), ys[i])))
   return total
 })
 
 let w = new Float64Array([0, 0])
 for (let i = 0; i < 100; i++) {
   const grad = loss.gradient(w)
-  w = new Float64Array([
-    w[0] - 0.03 * grad[0],
-    w[1] - 0.03 * grad[1],
-  ])
+  w = new Float64Array([w[0] - 0.03 * grad[0], w[1] - 0.03 * grad[1]])
 }
 ```
 
@@ -84,9 +66,7 @@ import {
 const x: Mat = { rows: 4, cols: 2, data: new Float64Array([0, 0, 0, 1, 1, 0, 1, 1]) }
 const y: Mat = { rows: 4, cols: 1, data: new Float64Array([0, -1, 2, 1]) }
 
-const loss = differentiable((w: Var<Mat>) =>
-  matNormSquared(matSub(matMul(x, w), y))
-)
+const loss = differentiable((w: Var<Mat>) => matNormSquared(matSub(matMul(x, w), y)))
 
 const gradient = loss.gradient({ rows: 2, cols: 1, data: new Float64Array([0, 0]) })
 ```

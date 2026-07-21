@@ -3,10 +3,10 @@
 // Source of truth: codegen/defs/
 import * as RS from './Logic.gen'
 
-
 // Arity 1. Predicate combinators (return predicates, no dual)
 export const both: <A>(p1: (a: A) => boolean, p2: (a: A) => boolean) => (a: A) => boolean = RS.both
-export const either: <A>(p1: (a: A) => boolean, p2: (a: A) => boolean) => (a: A) => boolean = RS.either
+export const either: <A>(p1: (a: A) => boolean, p2: (a: A) => boolean) => (a: A) => boolean =
+  RS.either
 export const allPass: <A>(preds: ((a: A) => boolean)[]) => (a: A) => boolean = RS.allPass
 export const anyPass: <A>(preds: ((a: A) => boolean)[]) => (a: A) => boolean = RS.anyPass
 
@@ -21,24 +21,24 @@ export const equals: {
   return _dl
 } as any
 
-
 // RS.defaultTo has (fallback, opt). We want data-first as (opt, fallback)
 export const defaultTo: {
   <A>(opt: A | undefined, fallback: A): A
   <A>(fallback: A): (opt: A | undefined) => A
 } = function defaultTo() {
   if (arguments.length >= 2) {
-    const opt = arguments[0], fallback = arguments[1]
+    const opt = arguments[0],
+      fallback = arguments[1]
     return RS.defaultTo(fallback, opt)
   }
   const _a0 = arguments[0]
-  const _dl: any = function(data: any) {
-    const opt = data, fallback = _a0
+  const _dl: any = function (data: any) {
+    const opt = data,
+      fallback = _a0
     return RS.defaultTo(fallback, opt)
   }
   return _dl
 } as any
-
 
 // RS.cond has (conditions, value). We want data-first as (value, conditions)
 export const cond: {
@@ -46,17 +46,18 @@ export const cond: {
   <A, B>(conditions: [(a: A) => boolean, (a: A) => B][]): (value: A) => B | undefined
 } = function cond() {
   if (arguments.length >= 2) {
-    const value = arguments[0], conditions = arguments[1]
+    const value = arguments[0],
+      conditions = arguments[1]
     return RS.cond(conditions, value)
   }
   const _a0 = arguments[0]
-  const _dl: any = function(data: any) {
-    const value = data, conditions = _a0
+  const _dl: any = function (data: any) {
+    const value = data,
+      conditions = _a0
     return RS.cond(conditions, value)
   }
   return _dl
 } as any
-
 
 // Arity 3
 export const when_: {
@@ -64,47 +65,55 @@ export const when_: {
   <A>(pred: (a: A) => boolean, f: (a: A) => A): (value: A) => A
 } = function when_() {
   if (arguments.length >= 3) {
-    const value = arguments[0], pred = arguments[1], f = arguments[2]
+    const value = arguments[0],
+      pred = arguments[1],
+      f = arguments[2]
     if (pred(value)) {
-    return f(value);
-  } else {
-    return value;
+      return f(value)
+    } else {
+      return value
+    }
   }
-  }
-  const _a0 = arguments[0]; const _a1 = arguments[1]
-  const _dl: any = function(data: any) {
-    const value = data, pred = _a0, f = _a1
+  const _a0 = arguments[0]
+  const _a1 = arguments[1]
+  const _dl: any = function (data: any) {
+    const value = data,
+      pred = _a0,
+      f = _a1
     if (pred(value)) {
-    return f(value);
-  } else {
-    return value;
-  }
+      return f(value)
+    } else {
+      return value
+    }
   }
   return _dl
 } as any
-
 
 export const unless: {
   <A>(value: A, pred: (a: A) => boolean, f: (a: A) => A): A
   <A>(pred: (a: A) => boolean, f: (a: A) => A): (value: A) => A
 } = function unless() {
   if (arguments.length >= 3) {
-    const value = arguments[0], pred = arguments[1], f = arguments[2]
+    const value = arguments[0],
+      pred = arguments[1],
+      f = arguments[2]
     if (pred(value)) {
-    return value;
-  } else {
-    return f(value);
+      return value
+    } else {
+      return f(value)
+    }
   }
-  }
-  const _a0 = arguments[0]; const _a1 = arguments[1]
-  const _dl: any = function(data: any) {
-    const value = data, pred = _a0, f = _a1
+  const _a0 = arguments[0]
+  const _a1 = arguments[1]
+  const _dl: any = function (data: any) {
+    const value = data,
+      pred = _a0,
+      f = _a1
     if (pred(value)) {
-    return value;
-  } else {
-    return f(value);
-  }
+      return value
+    } else {
+      return f(value)
+    }
   }
   return _dl
 } as any
-

@@ -17,7 +17,9 @@ export const ceilTo: {
   (unit: DateUnit): (ts: Timestamp) => Timestamp
 } = dual(2, (ts: Timestamp, unit: DateUnit): Timestamp => {
   const s = startOf(ts, unit)
-  return (s as number) === (ts as number) ? ts : (startOf as any)(stamp((s as number) + unitMs(unit)), unit) as Timestamp
+  return (s as number) === (ts as number)
+    ? ts
+    : ((startOf as any)(stamp((s as number) + unitMs(unit)), unit) as Timestamp)
 })
 
 export const floorTo: {
@@ -35,13 +37,21 @@ export const snapTo: {
 
 function unitMs(unit: DateUnit): number {
   switch (unit) {
-    case 'millisecond': return 1
-    case 'second': return MS_SECOND
-    case 'minute': return MS_MINUTE
-    case 'hour': return MS_HOUR
-    case 'day': return MS_DAY
-    case 'week': return MS_DAY * 7
-    case 'month': return MS_DAY * 30
-    case 'year': return MS_DAY * 365
+    case 'millisecond':
+      return 1
+    case 'second':
+      return MS_SECOND
+    case 'minute':
+      return MS_MINUTE
+    case 'hour':
+      return MS_HOUR
+    case 'day':
+      return MS_DAY
+    case 'week':
+      return MS_DAY * 7
+    case 'month':
+      return MS_DAY * 30
+    case 'year':
+      return MS_DAY * 365
   }
 }

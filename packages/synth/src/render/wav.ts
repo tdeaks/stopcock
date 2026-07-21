@@ -40,6 +40,6 @@ function writeAscii(out: Uint8Array, offset: number, value: string): void {
 
 function writeSample(view: DataView, offset: number, sample: number): number {
   const clamped = clamp(sample, -1, 1)
-  view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF, true)
+  view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true)
   return offset + 2
 }

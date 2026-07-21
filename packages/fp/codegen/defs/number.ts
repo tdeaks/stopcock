@@ -18,16 +18,13 @@ export const sum = (nums: number[]): number => {
   return total
 }
 
-export const mean = (nums: number[]): number =>
-  nums.length === 0 ? NaN : sum(nums) / nums.length
+export const mean = (nums: number[]): number => (nums.length === 0 ? NaN : sum(nums) / nums.length)
 
 export const median = (nums: number[]): number => {
   if (nums.length === 0) return NaN
   const sorted = [...nums].sort((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 !== 0
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
 export const variance = (nums: number[]): number => {
@@ -37,7 +34,10 @@ export const variance = (nums: number[]): number => {
   for (let i = 0; i < n; i++) total += nums[i]
   const m = total / n
   let v = 0
-  for (let i = 0; i < n; i++) { const d = nums[i] - m; v += d * d }
+  for (let i = 0; i < n; i++) {
+    const d = nums[i] - m
+    v += d * d
+  }
   return v / n
 }
 
@@ -48,7 +48,10 @@ export const standardDeviation = (nums: number[]): number => {
   for (let i = 0; i < n; i++) total += nums[i]
   const m = total / n
   let v = 0
-  for (let i = 0; i < n; i++) { const d = nums[i] - m; v += d * d }
+  for (let i = 0; i < n; i++) {
+    const d = nums[i] - m
+    v += d * d
+  }
   return Math.sqrt(v / n)
 }
 

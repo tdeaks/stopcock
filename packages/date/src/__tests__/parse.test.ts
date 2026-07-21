@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { compose, decompose } from '../core'
 import { parse, parser, parseISO, tryParse, tryParser } from '../parse'
 
@@ -42,7 +42,15 @@ describe('parseISO', () => {
   it('full ISO', () => {
     const ts = parseISO('2024-03-15T14:30:45.123Z')
     const parts = decompose(ts)
-    expect(parts).toMatchObject({ year: 2024, month: 3, day: 15, hour: 14, minute: 30, second: 45, millisecond: 123 })
+    expect(parts).toMatchObject({
+      year: 2024,
+      month: 3,
+      day: 15,
+      hour: 14,
+      minute: 30,
+      second: 45,
+      millisecond: 123,
+    })
   })
 
   it('roundtrips with compose', () => {

@@ -13,8 +13,11 @@ export const sumOfSquares = (a: Float64Array, n: number): number => {
 }
 
 export const convolve1dFloat = (
-  out: Float64Array, src: Float64Array, kernel: Float64Array,
-  srcLen: number, kernelLen: number,
+  out: Float64Array,
+  src: Float64Array,
+  kernel: Float64Array,
+  srcLen: number,
+  kernelLen: number,
 ): void => {
   const wasmConv = getConvolve1d()
   if (wasmConv && srcLen > 64) {
@@ -32,34 +35,49 @@ export const convolve1dFloat = (
 }
 
 export const complexMulAccum = (
-  out: Float64Array, a: Float64Array, b: Float64Array, n: number,
+  out: Float64Array,
+  a: Float64Array,
+  b: Float64Array,
+  n: number,
 ): void => {
   for (let i = 0; i < n; i++) {
-    const ar = a[2 * i], ai = a[2 * i + 1]
-    const br = b[2 * i], bi = b[2 * i + 1]
+    const ar = a[2 * i],
+      ai = a[2 * i + 1]
+    const br = b[2 * i],
+      bi = b[2 * i + 1]
     out[2 * i] = ar * br - ai * bi
     out[2 * i + 1] = ar * bi + ai * br
   }
 }
 
-const clamp = (v: number): number => v < 0 ? 0 : v > 255 ? 255 : v + 0.5 | 0
+const clamp = (v: number): number => (v < 0 ? 0 : v > 255 ? 255 : (v + 0.5) | 0)
 
 export const applyColorMatrix3x3 = (
-  out: Uint8ClampedArray, src: Uint8ClampedArray,
-  matrix: Float64Array, numPixels: number,
+  out: Uint8ClampedArray,
+  src: Uint8ClampedArray,
+  matrix: Float64Array,
+  numPixels: number,
 ): void => {
   const wasmCM = getColorMatrix3x3()
   if (wasmCM && numPixels > 64) {
     wasmCM(src, out, matrix, numPixels)
     return
   }
-  const m00 = matrix[0], m01 = matrix[1], m02 = matrix[2]
-  const m10 = matrix[3], m11 = matrix[4], m12 = matrix[5]
-  const m20 = matrix[6], m21 = matrix[7], m22 = matrix[8]
+  const m00 = matrix[0],
+    m01 = matrix[1],
+    m02 = matrix[2]
+  const m10 = matrix[3],
+    m11 = matrix[4],
+    m12 = matrix[5]
+  const m20 = matrix[6],
+    m21 = matrix[7],
+    m22 = matrix[8]
   for (let i = 0; i < numPixels; i++) {
     const p = i * 4
-    const r = src[p], g = src[p + 1], b = src[p + 2]
-    out[p]     = clamp(m00 * r + m01 * g + m02 * b)
+    const r = src[p],
+      g = src[p + 1],
+      b = src[p + 2]
+    out[p] = clamp(m00 * r + m01 * g + m02 * b)
     out[p + 1] = clamp(m10 * r + m11 * g + m12 * b)
     out[p + 2] = clamp(m20 * r + m21 * g + m22 * b)
     out[p + 3] = src[p + 3]
@@ -67,14 +85,18 @@ export const applyColorMatrix3x3 = (
 }
 
 export const convolve2dSeparable = (
-  out: Uint8ClampedArray, src: Uint8ClampedArray,
-  width: number, height: number, channels: number,
-  hKernel: Float64Array, vKernel: Float64Array,
+  out: Uint8ClampedArray,
+  src: Uint8ClampedArray,
+  width: number,
+  height: number,
+  channels: number,
+  hKernel: Float64Array,
+  vKernel: Float64Array,
 ): void => {
   const hLen = hKernel.length
   const vLen = vKernel.length
-  const hHalf = (hLen - 1) / 2 | 0
-  const vHalf = (vLen - 1) / 2 | 0
+  const hHalf = ((hLen - 1) / 2) | 0
+  const vHalf = ((vLen - 1) / 2) | 0
   const stride = width * channels
 
   const tmp = new Float64Array(width * height * channels)

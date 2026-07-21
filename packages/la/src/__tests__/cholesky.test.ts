@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { Mat } from '../index'
 
 describe('cholesky', () => {
@@ -8,8 +8,7 @@ describe('cholesky', () => {
     expect(L).not.toBeNull()
     // L * L^T should equal m
     const result = Mat.multiply(L!, Mat.transpose(L!))
-    for (let i = 0; i < 4; i++)
-      expect(result.data[i]).toBeCloseTo(m.data[i])
+    for (let i = 0; i < 4; i++) expect(result.data[i]).toBeCloseTo(m.data[i])
   })
 
   it('decomposes 3x3 positive definite matrix', () => {
@@ -17,16 +16,14 @@ describe('cholesky', () => {
     const L = Mat.cholesky(m)
     expect(L).not.toBeNull()
     const result = Mat.multiply(L!, Mat.transpose(L!))
-    for (let i = 0; i < 9; i++)
-      expect(result.data[i]).toBeCloseTo(m.data[i])
+    for (let i = 0; i < 9; i++) expect(result.data[i]).toBeCloseTo(m.data[i])
   })
 
   it('decomposes identity', () => {
     const I = Mat.identity(3)
     const L = Mat.cholesky(I)
     expect(L).not.toBeNull()
-    for (let i = 0; i < 9; i++)
-      expect(L!.data[i]).toBeCloseTo(I.data[i])
+    for (let i = 0; i < 9; i++) expect(L!.data[i]).toBeCloseTo(I.data[i])
   })
 
   it('returns null for non-positive-definite', () => {

@@ -8,33 +8,32 @@ function hasOwn(o, k) {
 }
 
 function emptyObj() {
-  return {};
+  return {}
 }
 
 function mergeDeep(left, right, leftWins) {
-  let out = Object.assign(emptyObj(), left);
-  let ks = Object.keys(right);
+  let out = Object.assign(emptyObj(), left)
+  let ks = Object.keys(right)
   for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
-    let k = ks[i];
-    let outV = out[k];
-    let rightV = right[k];
+    let k = ks[i]
+    let outV = out[k]
+    let rightV = right[k]
     if (isPlainObject(outV) && isPlainObject(rightV)) {
-      out[k] = mergeDeep(outV, rightV, leftWins);
+      out[k] = mergeDeep(outV, rightV, leftWins)
     } else if (leftWins && hasOwn(out, k)) {
-      
     } else {
-      out[k] = rightV;
+      out[k] = rightV
     }
   }
-  return out;
+  return out
 }
 
 function keys(obj) {
-  return Object.keys(obj);
+  return Object.keys(obj)
 }
 
 function isPlainObject(v) {
-  return typeof v === "object" && v !== null && !Array.isArray(v)
+  return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
 import type { PathSegments, PathValue, PathValueOrDefault } from './types'
@@ -86,127 +85,142 @@ export const pick: {
   <T extends Record<string, unknown>, K extends keyof T>(keys: K[]): (obj: T) => Pick<T, K>
 } = function pick() {
   if (arguments.length >= 2) {
-    const obj = arguments[0], ks = arguments[1]
-    let out = emptyObj();
-  for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
-    let k = ks[i];
-    if (hasOwn(obj, k)) {
-      out[k] = obj[k];
+    const obj = arguments[0],
+      ks = arguments[1]
+    let out = emptyObj()
+    for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
+      let k = ks[i]
+      if (hasOwn(obj, k)) {
+        out[k] = obj[k]
+      }
     }
-  }
-  return out;
+    return out
   }
   const _a0 = arguments[0]
-  const _dl: any = function(data: any) {
-    const obj = data, ks = _a0
-    let out = emptyObj();
-  for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
-    let k = ks[i];
-    if (hasOwn(obj, k)) {
-      out[k] = obj[k];
+  const _dl: any = function (data: any) {
+    const obj = data,
+      ks = _a0
+    let out = emptyObj()
+    for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
+      let k = ks[i]
+      if (hasOwn(obj, k)) {
+        out[k] = obj[k]
+      }
     }
-  }
-  return out;
+    return out
   }
   return _dl
 } as any
-
 
 export const omit: {
   <T extends Record<string, unknown>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K>
   <T extends Record<string, unknown>, K extends keyof T>(keys: K[]): (obj: T) => Omit<T, K>
 } = function omit() {
   if (arguments.length >= 2) {
-    const obj = arguments[0], ks = arguments[1]
-    var idx = {}, i = 0, len = ks.length;
-    while (i < len) { idx[ks[i]] = 1; i++; }
-    var out = {};
-    for (var k in obj) {
-      if (!idx.hasOwnProperty(k)) out[k] = obj[k];
+    const obj = arguments[0],
+      ks = arguments[1]
+    var idx = {},
+      i = 0,
+      len = ks.length
+    while (i < len) {
+      idx[ks[i]] = 1
+      i++
     }
-    return out;
+    var out = {}
+    for (var k in obj) {
+      if (!idx.hasOwnProperty(k)) out[k] = obj[k]
+    }
+    return out
   }
   const _a0 = arguments[0]
-  const _dl: any = function(data: any) {
-    const obj = data, ks = _a0
-    var idx = {}, i = 0, len = ks.length;
-    while (i < len) { idx[ks[i]] = 1; i++; }
-    var out = {};
-    for (var k in obj) {
-      if (!idx.hasOwnProperty(k)) out[k] = obj[k];
+  const _dl: any = function (data: any) {
+    const obj = data,
+      ks = _a0
+    var idx = {},
+      i = 0,
+      len = ks.length
+    while (i < len) {
+      idx[ks[i]] = 1
+      i++
     }
-    return out;
+    var out = {}
+    for (var k in obj) {
+      if (!idx.hasOwnProperty(k)) out[k] = obj[k]
+    }
+    return out
   }
   return _dl
 } as any
-
 
 export const dissoc: {
   <T extends Record<string, unknown>>(obj: T, key: string): Partial<T>
   (key: string): <T extends Record<string, unknown>>(obj: T) => Partial<T>
 } = function dissoc() {
   if (arguments.length >= 2) {
-    const obj = arguments[0], key = arguments[1]
-    let out = emptyObj();
-  let allKeys = Object.keys(obj);
-  for (let i = 0, i_finish = allKeys.length; i < i_finish; ++i) {
-    let k = allKeys[i];
-    if (k !== key) {
-      out[k] = obj[k];
+    const obj = arguments[0],
+      key = arguments[1]
+    let out = emptyObj()
+    let allKeys = Object.keys(obj)
+    for (let i = 0, i_finish = allKeys.length; i < i_finish; ++i) {
+      let k = allKeys[i]
+      if (k !== key) {
+        out[k] = obj[k]
+      }
     }
-  }
-  return out;
+    return out
   }
   const _a0 = arguments[0]
-  const _dl: any = function(data: any) {
-    const obj = data, key = _a0
-    let out = emptyObj();
-  let allKeys = Object.keys(obj);
-  for (let i = 0, i_finish = allKeys.length; i < i_finish; ++i) {
-    let k = allKeys[i];
-    if (k !== key) {
-      out[k] = obj[k];
+  const _dl: any = function (data: any) {
+    const obj = data,
+      key = _a0
+    let out = emptyObj()
+    let allKeys = Object.keys(obj)
+    for (let i = 0, i_finish = allKeys.length; i < i_finish; ++i) {
+      let k = allKeys[i]
+      if (k !== key) {
+        out[k] = obj[k]
+      }
     }
-  }
-  return out;
+    return out
   }
   return _dl
 } as any
-
 
 export const mergeDeepLeft: {
   <A extends object, B extends object>(a: A, b: B): A & B
   <B extends object>(b: B): <A extends object>(a: A) => A & B
 } = function mergeDeepLeft() {
   if (arguments.length >= 2) {
-    const a = arguments[0], b = arguments[1]
-    return mergeDeep(a, b, true);
+    const a = arguments[0],
+      b = arguments[1]
+    return mergeDeep(a, b, true)
   }
   const _a0 = arguments[0]
-  const _dl: any = function(data: any) {
-    const a = data, b = _a0
-    return mergeDeep(a, b, true);
+  const _dl: any = function (data: any) {
+    const a = data,
+      b = _a0
+    return mergeDeep(a, b, true)
   }
   return _dl
 } as any
-
 
 export const mergeDeepRight: {
   <A extends object, B extends object>(a: A, b: B): A & B
   <B extends object>(b: B): <A extends object>(a: A) => A & B
 } = function mergeDeepRight() {
   if (arguments.length >= 2) {
-    const a = arguments[0], b = arguments[1]
-    return mergeDeep(a, b, false);
+    const a = arguments[0],
+      b = arguments[1]
+    return mergeDeep(a, b, false)
   }
   const _a0 = arguments[0]
-  const _dl: any = function(data: any) {
-    const a = data, b = _a0
-    return mergeDeep(a, b, false);
+  const _dl: any = function (data: any) {
+    const a = data,
+      b = _a0
+    return mergeDeep(a, b, false)
   }
   return _dl
 } as any
-
 
 // ReScript wrappers, arity 3
 export const assoc: {
@@ -214,14 +228,19 @@ export const assoc: {
   <T extends Record<string, unknown>, V>(key: string, value: V): (obj: T) => T & Record<string, V>
 } = function assoc() {
   if (arguments.length >= 3) {
-    const obj = arguments[0], key = arguments[1], value = arguments[2]
+    const obj = arguments[0],
+      key = arguments[1],
+      value = arguments[2]
     const out = { ...obj }
     out[key] = value
     return out
   }
-  const _a0 = arguments[0]; const _a1 = arguments[1]
-  const _dl: any = function(data: any) {
-    const obj = data, key = _a0, value = _a1
+  const _a0 = arguments[0]
+  const _a1 = arguments[1]
+  const _dl: any = function (data: any) {
+    const obj = data,
+      key = _a0,
+      value = _a1
     const out = { ...obj }
     out[key] = value
     return out
@@ -234,37 +253,41 @@ export const mergeWith: {
   <T, V>(b: T, resolver: (l: V, r: V) => V): (a: T) => T
 } = function mergeWith() {
   if (arguments.length >= 3) {
-    const a = arguments[0], b = arguments[1], resolver = arguments[2]
-    let out = Object.assign(emptyObj(), a);
-  let ks = Object.keys(b);
-  for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
-    let k = ks[i];
-    if (hasOwn(out, k)) {
-      out[k] = resolver(out[k], b[k]);
-    } else {
-      out[k] = b[k];
+    const a = arguments[0],
+      b = arguments[1],
+      resolver = arguments[2]
+    let out = Object.assign(emptyObj(), a)
+    let ks = Object.keys(b)
+    for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
+      let k = ks[i]
+      if (hasOwn(out, k)) {
+        out[k] = resolver(out[k], b[k])
+      } else {
+        out[k] = b[k]
+      }
     }
+    return out
   }
-  return out;
-  }
-  const _a0 = arguments[0]; const _a1 = arguments[1]
-  const _dl: any = function(data: any) {
-    const a = data, b = _a0, resolver = _a1
-    let out = Object.assign(emptyObj(), a);
-  let ks = Object.keys(b);
-  for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
-    let k = ks[i];
-    if (hasOwn(out, k)) {
-      out[k] = resolver(out[k], b[k]);
-    } else {
-      out[k] = b[k];
+  const _a0 = arguments[0]
+  const _a1 = arguments[1]
+  const _dl: any = function (data: any) {
+    const a = data,
+      b = _a0,
+      resolver = _a1
+    let out = Object.assign(emptyObj(), a)
+    let ks = Object.keys(b)
+    for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
+      let k = ks[i]
+      if (hasOwn(out, k)) {
+        out[k] = resolver(out[k], b[k])
+      } else {
+        out[k] = b[k]
+      }
     }
-  }
-  return out;
+    return out
   }
   return _dl
 } as any
-
 
 // Pure TypeScript: path
 export const path: {
@@ -274,12 +297,13 @@ export const path: {
   <P extends PathSegments>(path: P): <T>(obj: T) => PathValue<T, P> | undefined
 } = function path() {
   if (arguments.length >= 2) {
-    const obj = arguments[0], p = arguments[1]
+    const obj = arguments[0],
+      p = arguments[1]
     return readPath(obj, p)
   }
   const _a0 = arguments[0]
   const segments = pathSegments(_a0)
-  const _dl: any = function(data: any) {
+  const _dl: any = function (data: any) {
     return readPath(data, segments)
   }
   return _dl
@@ -293,13 +317,16 @@ export const pathOr: {
   <P extends PathSegments, D>(path: P, defaultValue: D): <T>(obj: T) => PathValueOrDefault<T, P, D>
 } = function pathOr() {
   if (arguments.length >= 3) {
-    const obj = arguments[0], p = arguments[1], defaultValue = arguments[2]
+    const obj = arguments[0],
+      p = arguments[1],
+      defaultValue = arguments[2]
     const result = readPath(obj, p)
     return result === undefined ? defaultValue : result
   }
-  const _a0 = arguments[0]; const _a1 = arguments[1]
+  const _a0 = arguments[0]
+  const _a1 = arguments[1]
   const segments = pathSegments(_a0)
-  const _dl: any = function(data: any) {
+  const _dl: any = function (data: any) {
     const defaultValue = _a1
     const result = readPath(data, segments)
     return result === undefined ? defaultValue : result
@@ -309,30 +336,36 @@ export const pathOr: {
 
 // Pure TypeScript: evolve
 export const evolve: {
-  <T extends Record<string, unknown>>(obj: T, transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>): T
-  <T extends Record<string, unknown>>(transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>): (obj: T) => T
+  <T extends Record<string, unknown>>(
+    obj: T,
+    transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>,
+  ): T
+  <T extends Record<string, unknown>>(
+    transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>,
+  ): (obj: T) => T
 } = function evolve() {
   if (arguments.length >= 2) {
-    const obj = arguments[0], transformations = arguments[1]
+    const obj = arguments[0],
+      transformations = arguments[1]
     const result = { ...obj }
-  for (const key of Object.keys(transformations)) {
-    if (key in result) {
-      result[key] = transformations[key](result[key])
+    for (const key of Object.keys(transformations)) {
+      if (key in result) {
+        result[key] = transformations[key](result[key])
+      }
     }
-  }
-  return result
+    return result
   }
   const _a0 = arguments[0]
-  const _dl: any = function(data: any) {
-    const obj = data, transformations = _a0
+  const _dl: any = function (data: any) {
+    const obj = data,
+      transformations = _a0
     const result = { ...obj }
-  for (const key of Object.keys(transformations)) {
-    if (key in result) {
-      result[key] = transformations[key](result[key])
+    for (const key of Object.keys(transformations)) {
+      if (key in result) {
+        result[key] = transformations[key](result[key])
+      }
     }
-  }
-  return result
+    return result
   }
   return _dl
 } as any
-

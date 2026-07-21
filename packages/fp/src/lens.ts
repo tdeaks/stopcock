@@ -12,25 +12,37 @@ export function lens<S, A>(get: (s: S) => A, set: (s: S, a: A) => S): Lens<S, A>
 }
 
 export function prop<S, K extends keyof S>(key: K): Lens<S, S[K]> {
-  return lens(s => s[key], (s, a) => ({ ...s, [key]: a }))
+  return lens(
+    (s) => s[key],
+    (s, a) => ({ ...s, [key]: a }),
+  )
 }
 
 export function index<A>(i: number): Lens<A[], A> {
   return lens(
-    s => s[i],
-    (s, a) => { const c = [...s]; c[i] = a; return c },
+    (s) => s[i],
+    (s, a) => {
+      const c = [...s]
+      c[i] = a
+      return c
+    },
   )
 }
 
 export function path<S, K1 extends keyof S>(k1: K1): Lens<S, S[K1]>
-export function path<S, K1 extends keyof S, K2 extends keyof S[K1]>(k1: K1, k2: K2): Lens<S, S[K1][K2]>
-export function path<S, K1 extends keyof S, K2 extends keyof S[K1], K3 extends keyof S[K1][K2]>(k1: K1, k2: K2, k3: K3): Lens<S, S[K1][K2][K3]>
+export function path<S, K1 extends keyof S, K2 extends keyof S[K1]>(
+  k1: K1,
+  k2: K2,
+): Lens<S, S[K1][K2]>
+export function path<S, K1 extends keyof S, K2 extends keyof S[K1], K3 extends keyof S[K1][K2]>(
+  k1: K1,
+  k2: K2,
+  k3: K3,
+): Lens<S, S[K1][K2][K3]>
 export function path<S, P extends PathSegments>(keys: P): Lens<S, PathValue<S, P>>
 export function path(...keysOrPath: Array<PropertyKey | PathSegments>): Lens<any, any> {
   const keys = (
-    keysOrPath.length === 1 && Array.isArray(keysOrPath[0])
-      ? keysOrPath[0]
-      : keysOrPath
+    keysOrPath.length === 1 && Array.isArray(keysOrPath[0]) ? keysOrPath[0] : keysOrPath
   ) as readonly PropertyKey[]
   const cloneContainer = (value: any, nextKey?: PropertyKey) => {
     if (Array.isArray(value)) return value.slice()
@@ -39,7 +51,7 @@ export function path(...keysOrPath: Array<PropertyKey | PathSegments>): Lens<any
   }
 
   return lens(
-    s => {
+    (s) => {
       let current: any = s
       for (const key of keys) {
         if (current == null) return undefined
@@ -88,7 +100,7 @@ export const over: {
 
 export function compose<S, A, B>(outer: Lens<S, A>, inner: Lens<A, B>): Lens<S, B> {
   return lens(
-    s => inner.get(outer.get(s)),
+    (s) => inner.get(outer.get(s)),
     (s, b) => outer.set(s, inner.set(outer.get(s), b)),
   )
 }

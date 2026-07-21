@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { compose } from '../core'
 import { compare, min, max, clamp, earliest, latest } from '../compare'
 

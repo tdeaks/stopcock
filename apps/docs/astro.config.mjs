@@ -40,7 +40,8 @@ export default defineConfig({
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
             name: 'stopcock',
-            description: 'High-performance functional programming library for TypeScript with pipeline fusion',
+            description:
+              'High-performance functional programming library for TypeScript with pipeline fusion',
             url: 'https://stopcock.dev',
             applicationCategory: 'DeveloperApplication',
             operatingSystem: 'Any',
@@ -69,9 +70,7 @@ export default defineConfig({
         '@fontsource-variable/jetbrains-mono',
         './src/styles/theme.css',
       ],
-      social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/tdeaks/stopcock' },
-      ],
+      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/tdeaks/stopcock' }],
       expressiveCode: {
         themes: ['github-dark'],
         styleOverrides: {
@@ -146,9 +145,7 @@ export default defineConfig({
         },
         {
           label: 'svg',
-          items: [
-            { label: 'Overview', slug: 'libraries/svg' },
-          ],
+          items: [{ label: 'Overview', slug: 'libraries/svg' }],
         },
         { label: 'Benchmarks', slug: 'performance/benchmarks' },
       ],
@@ -158,20 +155,62 @@ export default defineConfig({
   vite: {
     resolve: {
       alias: [
-        { find: '@stopcock/la/accel', replacement: path.resolve(__dirname, '../../packages/la/src/accel.ts') },
-        { find: '@stopcock/la/fast', replacement: path.resolve(__dirname, '../../packages/la/src/fast.ts') },
-        { find: '@stopcock/la/primitives', replacement: path.resolve(__dirname, '../../packages/la/src/primitives.ts') },
-        { find: '@stopcock/fp/dual', replacement: path.resolve(__dirname, '../../packages/fp/src/dual-lite.ts') },
-        { find: '@stopcock/fp/option', replacement: path.resolve(__dirname, '../../packages/fp/src/option.ts') },
-        { find: '@stopcock/fp/result', replacement: path.resolve(__dirname, '../../packages/fp/src/result.ts') },
-        { find: '@stopcock/svg/la', replacement: path.resolve(__dirname, '../../packages/svg/src/la/index.ts') },
-        { find: '@stopcock/color', replacement: path.resolve(__dirname, '../../packages/color/src/index.ts') },
-        { find: '@stopcock/autodiff/tape', replacement: path.resolve(__dirname, '../../packages/autodiff/src/tape.ts') },
-        { find: '@stopcock/autodiff', replacement: path.resolve(__dirname, '../../packages/autodiff/src/index.ts') },
-        { find: '@stopcock/la', replacement: path.resolve(__dirname, '../../packages/la/src/index.ts') },
-        { find: '@stopcock/signal', replacement: path.resolve(__dirname, '../../packages/signal/src/index.ts') },
-        { find: '@stopcock/fp', replacement: path.resolve(__dirname, '../../packages/fp/src/index.ts') },
-        { find: '@stopcock/svg', replacement: path.resolve(__dirname, '../../packages/svg/src/index.ts') },
+        {
+          find: '@stopcock/la/accel',
+          replacement: path.resolve(__dirname, '../../packages/la/src/accel.ts'),
+        },
+        {
+          find: '@stopcock/la/fast',
+          replacement: path.resolve(__dirname, '../../packages/la/src/fast.ts'),
+        },
+        {
+          find: '@stopcock/la/primitives',
+          replacement: path.resolve(__dirname, '../../packages/la/src/primitives.ts'),
+        },
+        {
+          find: '@stopcock/fp/dual',
+          replacement: path.resolve(__dirname, '../../packages/fp/src/dual-lite.ts'),
+        },
+        {
+          find: '@stopcock/fp/option',
+          replacement: path.resolve(__dirname, '../../packages/fp/src/option.ts'),
+        },
+        {
+          find: '@stopcock/fp/result',
+          replacement: path.resolve(__dirname, '../../packages/fp/src/result.ts'),
+        },
+        {
+          find: '@stopcock/svg/la',
+          replacement: path.resolve(__dirname, '../../packages/svg/src/la/index.ts'),
+        },
+        {
+          find: '@stopcock/color',
+          replacement: path.resolve(__dirname, '../../packages/color/src/index.ts'),
+        },
+        {
+          find: '@stopcock/autodiff/tape',
+          replacement: path.resolve(__dirname, '../../packages/autodiff/src/tape.ts'),
+        },
+        {
+          find: '@stopcock/autodiff',
+          replacement: path.resolve(__dirname, '../../packages/autodiff/src/index.ts'),
+        },
+        {
+          find: '@stopcock/la',
+          replacement: path.resolve(__dirname, '../../packages/la/src/index.ts'),
+        },
+        {
+          find: '@stopcock/signal',
+          replacement: path.resolve(__dirname, '../../packages/signal/src/index.ts'),
+        },
+        {
+          find: '@stopcock/fp',
+          replacement: path.resolve(__dirname, '../../packages/fp/src/index.ts'),
+        },
+        {
+          find: '@stopcock/svg',
+          replacement: path.resolve(__dirname, '../../packages/svg/src/index.ts'),
+        },
       ],
     },
   },

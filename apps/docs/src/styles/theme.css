@@ -64,12 +64,19 @@
 
 /* ── Typography ──────────────────────────────────────────── */
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   letter-spacing: -0.025em;
   font-weight: 600;
 }
 
-h1 { font-weight: 700; }
+h1 {
+  font-weight: 700;
+}
 
 /* ── Code ────────────────────────────────────────────────── */
 
@@ -125,7 +132,7 @@ nav.sidebar a {
   font-size: var(--sl-text-sm);
 }
 
-nav.sidebar a[aria-current="page"] {
+nav.sidebar a[aria-current='page'] {
   border-left: 3px solid var(--sl-color-accent);
   padding-left: calc(0.75rem - 3px);
   font-weight: 600;
@@ -151,8 +158,8 @@ nav.sidebar {
 }
 
 /* Right sidebar (TOC): accent border on active item */
-.right-sidebar-panel starlight-toc a[aria-current="true"],
-.right-sidebar-panel starlight-toc a[aria-current="true"] span {
+.right-sidebar-panel starlight-toc a[aria-current='true'],
+.right-sidebar-panel starlight-toc a[aria-current='true'] span {
   color: var(--sl-color-accent);
   font-weight: 600;
 }
@@ -162,7 +169,7 @@ nav.sidebar {
   padding-left: 0.75rem;
 }
 
-.right-sidebar-panel starlight-toc li:has(> a[aria-current="true"]) {
+.right-sidebar-panel starlight-toc li:has(> a[aria-current='true']) {
   border-left-color: var(--sl-color-accent);
 }
 

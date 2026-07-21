@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vite-plus/test'
 import { create } from '../index.js'
 import { asyncAction } from '../async.js'
 
@@ -11,25 +11,29 @@ describe('asyncAction', () => {
     const store = create(initial())
     const action = asyncAction(store, {
       task: { run: async () => 'hello' },
-      onStart: (s) => s.set(s => s.loading, true),
-      onSuccess: (s, result) => s.set(s => s.data, result),
-      onFinally: (s) => s.set(s => s.loading, false),
+      onStart: (s) => s.set((s) => s.loading, true),
+      onSuccess: (s, result) => s.set((s) => s.data, result),
+      onFinally: (s) => s.set((s) => s.loading, false),
     })
     await action.result
-    expect(store.get(s => s.data)).toBe('hello')
-    expect(store.get(s => s.loading)).toBe(false)
+    expect(store.get((s) => s.data)).toBe('hello')
+    expect(store.get((s) => s.loading)).toBe(false)
   })
 
   it('calls onError on failure', async () => {
     const store = create(initial())
     const action = asyncAction(store, {
-      task: { run: async () => { throw new Error('fail') } },
+      task: {
+        run: async () => {
+          throw new Error('fail')
+        },
+      },
       onSuccess: () => {},
-      onError: (s, err) => s.set(s => s.error, (err as Error).message),
-      onFinally: (s) => s.set(s => s.loading, false),
+      onError: (s, err) => s.set((s) => s.error, (err as Error).message),
+      onFinally: (s) => s.set((s) => s.loading, false),
     })
     await expect(action.result).rejects.toThrow('fail')
-    expect(store.get(s => s.error)).toBe('fail')
+    expect(store.get((s) => s.error)).toBe('fail')
   })
 
   it('abort() signals cancellation', async () => {
@@ -45,7 +49,7 @@ describe('asyncAction', () => {
         },
       },
       onSuccess: () => {},
-      onError: (s, err) => s.set(s => s.error, (err as Error).message),
+      onError: (s, err) => s.set((s) => s.error, (err as Error).message),
     })
     action.abort()
     await expect(action.result).rejects.toThrow('aborted')
@@ -65,7 +69,11 @@ describe('asyncAction', () => {
     expect(finallyFn).toHaveBeenCalledTimes(1)
 
     const fail = asyncAction(store, {
-      task: { run: async () => { throw new Error('x') } },
+      task: {
+        run: async () => {
+          throw new Error('x')
+        },
+      },
       onSuccess: () => {},
       onFinally: finallyFn,
     })
@@ -77,9 +85,9 @@ describe('asyncAction', () => {
     const store = create(initial())
     const action = asyncAction(store, {
       task: { run: async () => 'data' },
-      onSuccess: (s, result) => s.set(s => s.data, result),
+      onSuccess: (s, result) => s.set((s) => s.data, result),
     })
     await action.result
-    expect(store.get(s => s.data)).toBe('data')
+    expect(store.get((s) => s.data)).toBe('data')
   })
 })

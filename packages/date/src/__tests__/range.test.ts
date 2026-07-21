@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { compose, decompose } from '../core'
 import { range, rangeBy, daysIn, weekdaysIn, sequence } from '../range'
 import { add } from '../arithmetic'

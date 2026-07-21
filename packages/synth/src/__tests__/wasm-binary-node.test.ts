@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { effects, filter, input } from '../nodes'
 import { BinaryWriter, kindCode } from '../render/wasm-binary-writer'
 import { spaceEchoHeads, writeBinaryNode } from '../render/wasm-binary-node'
@@ -35,7 +35,10 @@ describe('WASM binary node serialization', () => {
   it('serializes tilt EQ fields after its input edge', () => {
     const mic = input(0)
     const tilt = effects.tiltEq({ freq: 900, gainDb: 6, mix: 0.75 })(mic)
-    const indexes = new WeakMap([[mic, 0], [tilt, 1]])
+    const indexes = new WeakMap([
+      [mic, 0],
+      [tilt, 1],
+    ])
     const writer = new BinaryWriter()
 
     writeBinaryNode(writer, tilt, indexes)
@@ -55,7 +58,10 @@ describe('WASM binary node serialization', () => {
   it('serializes stereo spread fields after its input edge', () => {
     const mic = input(0)
     const spread = effects.stereoSpread({ width: 0.8, delayMs: 11, mix: 0.5 })(mic)
-    const indexes = new WeakMap([[mic, 0], [spread, 1]])
+    const indexes = new WeakMap([
+      [mic, 0],
+      [spread, 1],
+    ])
     const writer = new BinaryWriter()
 
     writeBinaryNode(writer, spread, indexes)
@@ -75,7 +81,10 @@ describe('WASM binary node serialization', () => {
   it('serializes frequency shifter fields after its input edge', () => {
     const mic = input(0)
     const shifter = effects.frequencyShifter({ shiftHz: 110, mix: 0.75 })(mic)
-    const indexes = new WeakMap([[mic, 0], [shifter, 1]])
+    const indexes = new WeakMap([
+      [mic, 0],
+      [shifter, 1],
+    ])
     const writer = new BinaryWriter()
 
     writeBinaryNode(writer, shifter, indexes)
@@ -101,7 +110,10 @@ describe('WASM binary node serialization', () => {
       width: 1,
       crossoverHz: 900,
     })(mic)
-    const indexes = new WeakMap([[mic, 0], [rotary, 1]])
+    const indexes = new WeakMap([
+      [mic, 0],
+      [rotary, 1],
+    ])
     const writer = new BinaryWriter()
 
     writeBinaryNode(writer, rotary, indexes)
@@ -128,7 +140,10 @@ describe('WASM binary node serialization', () => {
       drive: 0.2,
       mix: 0.8,
     })(mic)
-    const indexes = new WeakMap([[mic, 0], [svf, 1]])
+    const indexes = new WeakMap([
+      [mic, 0],
+      [svf, 1],
+    ])
     const writer = new BinaryWriter()
 
     writeBinaryNode(writer, svf, indexes)
@@ -157,7 +172,10 @@ describe('WASM binary node serialization', () => {
       mix: 0.65,
       output: 0.85,
     })(mic)
-    const indexes = new WeakMap([[mic, 0], [folded, 1]])
+    const indexes = new WeakMap([
+      [mic, 0],
+      [folded, 1],
+    ])
     const writer = new BinaryWriter()
 
     writeBinaryNode(writer, folded, indexes)

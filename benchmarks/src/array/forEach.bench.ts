@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { A } from '@stopcock/fp'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
@@ -7,7 +7,9 @@ import { A as TB } from '@mobily/ts-belt'
 import { getData } from '../setup'
 
 let sink = 0
-const fn = (x: number) => { sink += x }
+const fn = (x: number) => {
+  sink += x
+}
 
 describe.each([100, 1_000, 10_000, 100_000])('forEach — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)

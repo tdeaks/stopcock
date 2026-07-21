@@ -114,7 +114,7 @@ export const record = <G extends Grad>(
   const tape = currentTape()
   const id = tape.entries.length
   const entry: TapeEntry<G> = {
-    parents: parents.map(parent => parent.id),
+    parents: parents.map((parent) => parent.id),
     value,
     backward,
     grad: undefined,
@@ -123,8 +123,7 @@ export const record = <G extends Grad>(
   return { _tag: 'Var', id, value }
 }
 
-export const variable = <G extends Grad>(value: G): Var<G> =>
-  record(value, [], () => [])
+export const variable = <G extends Grad>(value: G): Var<G> => record(value, [], () => [])
 
 export const backward = (output: Var<Grad>, tape: Tape): void => {
   for (const entry of tape.entries) entry.grad = undefined

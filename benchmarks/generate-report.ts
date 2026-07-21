@@ -11,12 +11,7 @@ const MAX_BAR = 68
 
 export type Result = { name: string; hz: number; rme: string; samples: number }
 export type Suite = { title: string; results: Result[] }
-export type BenchmarkRowKind =
-  | 'stopcock'
-  | 'library'
-  | 'native-chain'
-  | 'native-loop'
-  | 'manual-js'
+export type BenchmarkRowKind = 'stopcock' | 'library' | 'native-chain' | 'native-loop' | 'manual-js'
 
 type BaselineKind = Exclude<BenchmarkRowKind, 'stopcock'>
 
@@ -153,10 +148,12 @@ export function parseVitestJsonOutput(raw: string): Suite[] {
 
   for (const file of parsed.files ?? []) {
     for (const group of file.groups ?? []) {
-      const title = normalizeJsonSuiteTitle(group.fullName ?? group.name ?? file.filepath ?? 'benchmarks')
+      const title = normalizeJsonSuiteTitle(
+        group.fullName ?? group.name ?? file.filepath ?? 'benchmarks',
+      )
       const results = (group.benchmarks ?? [])
-        .filter(benchmark => Number.isFinite(benchmark.hz))
-        .map(benchmark => ({
+        .filter((benchmark) => Number.isFinite(benchmark.hz))
+        .map((benchmark) => ({
           name: benchmark.name,
           hz: benchmark.hz,
           rme: benchmark.rme == null ? '' : `±${benchmark.rme.toFixed(2)}%`,
@@ -207,11 +204,13 @@ export function summarizeLossLedger(suites: Suite[]): LossLedgerSummary {
   const entries: LossLedgerEntry[] = []
 
   for (const suite of suites) {
-    const stopcockRows = suite.results.filter(row => classifyBenchmarkRow(row.name) === 'stopcock')
+    const stopcockRows = suite.results.filter(
+      (row) => classifyBenchmarkRow(row.name) === 'stopcock',
+    )
     if (stopcockRows.length === 0) continue
 
     const stopcock = fastestRow(stopcockRows)
-    const baselines = suite.results.filter(row => !stopcockRows.includes(row))
+    const baselines = suite.results.filter((row) => !stopcockRows.includes(row))
     if (baselines.length === 0) continue
 
     allTotal += 1
@@ -219,7 +218,7 @@ export function summarizeLossLedger(suites: Suite[]): LossLedgerSummary {
       allWins += 1
     }
 
-    const libraryRows = baselines.filter(row => classifyBenchmarkRow(row.name) === 'library')
+    const libraryRows = baselines.filter((row) => classifyBenchmarkRow(row.name) === 'library')
     if (libraryRows.length > 0) {
       libraryTotal += 1
       if (stopcock.hz >= fastestRow(libraryRows).hz) {
@@ -252,7 +251,7 @@ export function summarizeLossLedger(suites: Suite[]): LossLedgerSummary {
       allBaselines: toWinRate(allWins, allTotal),
     },
     entries,
-    actionableLosses: entries.filter(entry => entry.actionable),
+    actionableLosses: entries.filter((entry) => entry.actionable),
   }
 
   return summary
@@ -301,15 +300,16 @@ function renderSuite(suite: Suite): string {
   const { results } = suite
   if (results.length === 0) return ''
 
-  const fastest = Math.max(...results.map(result => result.hz))
-  const slowest = Math.min(...results.map(result => result.hz))
-  const nameWidth = Math.max(...results.map(result => result.name.length), 8)
-  const hzWidth = Math.max(...results.map(result => formatHz(result.hz).length), 9)
-  const rmeWidth = Math.max(...results.map(result => result.rme.length), 6)
-  const samplesWidth = Math.max(...results.map(result => String(result.samples).length), 7)
+  const fastest = Math.max(...results.map((result) => result.hz))
+  const slowest = Math.min(...results.map((result) => result.hz))
+  const nameWidth = Math.max(...results.map((result) => result.name.length), 8)
+  const hzWidth = Math.max(...results.map((result) => formatHz(result.hz).length), 9)
+  const rmeWidth = Math.max(...results.map((result) => result.rme.length), 6)
+  const samplesWidth = Math.max(...results.map((result) => String(result.samples).length), 7)
 
-  const lines = results.map(result => {
-    const diff = result.hz === fastest ? 'fastest' : `-${((1 - result.hz / fastest) * 100).toFixed(2)}%`
+  const lines = results.map((result) => {
+    const diff =
+      result.hz === fastest ? 'fastest' : `-${((1 - result.hz / fastest) * 100).toFixed(2)}%`
     const barWidth = Math.max(1, Math.round((result.hz / fastest) * MAX_BAR))
     const bar = '#'.repeat(barWidth)
 
@@ -324,7 +324,7 @@ function renderSuite(suite: Suite): string {
     ].join(' ')
   })
 
-  const fastestName = results.find(result => result.hz === fastest)?.name ?? 'unknown'
+  const fastestName = results.find((result) => result.hz === fastest)?.name ?? 'unknown'
   const speedup = (fastest / slowest).toFixed(1)
 
   return [
@@ -358,18 +358,19 @@ function toStructuredJSON(groups: Map<string, Suite[]>): BenchmarkSuite[] {
     for (const suite of groupSuites) {
       const paramMatch = suite.title.match(/n=([\d,_]+)/)
       const arraySize = paramMatch ? Number.parseInt(paramMatch[1].replace(/[,_]/g, ''), 10) : null
-      const fastest = Math.max(...suite.results.map(result => result.hz))
+      const fastest = Math.max(...suite.results.map((result) => result.hz))
 
       out.push({
         category: group,
         arraySize,
-        entries: suite.results.map(result => ({
+        entries: suite.results.map((result) => ({
           library: result.name,
           kind: classifyBenchmarkRow(result.name),
           opsPerSec: result.hz,
           margin: result.rme,
           runs: result.samples,
-          diff: result.hz === fastest ? 'fastest' : `-${((1 - result.hz / fastest) * 100).toFixed(2)}%`,
+          diff:
+            result.hz === fastest ? 'fastest' : `-${((1 - result.hz / fastest) * 100).toFixed(2)}%`,
         })),
       })
     }
@@ -394,9 +395,18 @@ async function readBenchmarkDependencyVersions(): Promise<Record<string, string>
   return versions
 }
 
-async function createMetadata(runtime: string, summary: LossLedgerSummary): Promise<BenchmarkMetadata> {
+async function createMetadata(
+  runtime: string,
+  summary: LossLedgerSummary,
+): Promise<BenchmarkMetadata> {
   const versions = process.versions as NodeJS.ProcessVersions & { bun?: string; deno?: string }
-  const runtimeName = versions.bun ? 'bun' : versions.deno ? 'deno' : versions.node ? 'node' : 'unknown'
+  const runtimeName = versions.bun
+    ? 'bun'
+    : versions.deno
+      ? 'deno'
+      : versions.node
+        ? 'node'
+        : 'unknown'
 
   return {
     benchmarkRuntimeLabel: runtime,
@@ -513,7 +523,9 @@ async function main(): Promise<void> {
   const raw = await readStdin()
 
   if (!raw.trim()) {
-    console.error('Pipe vitest bench output: bunx vitest bench 2>&1 | bun run benchmarks/generate-report.ts')
+    console.error(
+      'Pipe vitest bench output: bunx vitest bench 2>&1 | bun run benchmarks/generate-report.ts',
+    )
     process.exit(1)
   }
 

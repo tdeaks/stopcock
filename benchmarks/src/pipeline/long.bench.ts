@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { pipe, A } from '@stopcock/fp'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
@@ -16,8 +16,7 @@ describe.each([1_000, 10_000, 100_000])('filter→map→flatMap→filter→take(
       A.flatMap((x: number) => [x, x + 1]),
       A.filter((x: number) => x % 3 === 0),
       A.take(20),
-    ),
-  )
+    ))
   bench('ts-belt', () =>
     tbPipe(
       data,
@@ -27,8 +26,7 @@ describe.each([1_000, 10_000, 100_000])('filter→map→flatMap→filter→take(
       (arr: number[]) => arr.flatMap((x: number) => [x, x + 1]),
       TB.filter((x: number) => x % 3 === 0),
       TB.take(20),
-    ),
-  )
+    ))
   bench('remeda', () =>
     R.pipe(
       data,
@@ -37,15 +35,14 @@ describe.each([1_000, 10_000, 100_000])('filter→map→flatMap→filter→take(
       R.flatMap((x: number) => [x, x + 1]),
       R.filter((x: number) => x % 3 === 0),
       R.take(20),
-    ),
-  )
+    ))
+  bench('native', () =>
     data
-      .filter(x => x > 0.2)
-      .map(x => x * 100)
-      .flatMap(x => [x, x + 1])
-      .filter(x => x % 3 === 0)
-      .slice(0, 20),
-  )
+      .filter((x) => x > 0.2)
+      .map((x) => x * 100)
+      .flatMap((x) => [x, x + 1])
+      .filter((x) => x % 3 === 0)
+      .slice(0, 20))
 })
 
 describe.each([1_000, 10_000, 100_000])('map→map→map→map→map — n=%i', (n) => {

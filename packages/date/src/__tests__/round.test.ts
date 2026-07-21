@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import { compose, decompose } from '../core'
 import { roundTo, ceilTo, floorTo, snapTo } from '../round'

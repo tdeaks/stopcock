@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import { differentiable } from '../differentiable'
 import { sin } from '../math'
@@ -14,9 +14,7 @@ describe('differentiable', () => {
   })
 
   it('records through untagged pipe stages', () => {
-    const piped = differentiable((x: Var<number>) =>
-      pipe(x, square, add(3), sin)
-    )
+    const piped = differentiable((x: Var<number>) => pipe(x, square, add(3), sin))
     const nested = differentiable((x: Var<number>) => sin(add(square(x), 3)))
 
     expect(piped.forward(2)).toBeCloseTo(nested.forward(2), 10)
@@ -24,9 +22,7 @@ describe('differentiable', () => {
   })
 
   it('returns tuples for multi-input gradients', () => {
-    const f = differentiable((x: Var<number>, y: Var<number>) =>
-      add(mul(x, y), square(x))
-    )
+    const f = differentiable((x: Var<number>, y: Var<number>) => add(mul(x, y), square(x)))
 
     expect(f.gradient(2, 3)).toEqual([7, 2])
   })

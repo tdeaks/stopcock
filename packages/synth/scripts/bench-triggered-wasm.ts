@@ -26,7 +26,9 @@ type BenchResult = {
 const SAMPLE_RATE = 48_000
 
 if (!isSynthWasmRuntimeResetAvailable()) {
-  throw new Error('embedded synth WASM does not expose stopcock_synth_runtime_reset_event; run bun run build:wasm first')
+  throw new Error(
+    'embedded synth WASM does not expose stopcock_synth_runtime_reset_event; run bun run build:wasm first',
+  )
 }
 
 const cases: BenchCase[] = [
@@ -36,11 +38,28 @@ const cases: BenchCase[] = [
       mix([
         pipe(oscillator('saw', 110), gain(0.55)),
         pipe(oscillator('triangle', 55), gain(0.25)),
-        pipe(noise('pink', { seed: 0xBEEF }), gain(0.035)),
+        pipe(noise('pink', { seed: 0xbeef }), gain(0.035)),
       ]),
       envelope({ attack: 0.002, decay: 0.08, sustain: 0.45, release: 0.18 }),
-      effects.spaceEcho({ timeMs: 92, feedback: 0.34, mix: 0.32, reverbMix: 0.08, wow: 0.12, flutter: 0.05, tapeAge: 0.32, drive: 0.12 }),
-      effects.plateReverb({ preDelayMs: 8, decay: 0.45, damping: 0.45, diffusion: 0.7, modulation: 0.14, mix: 0.18, width: 0.95 }),
+      effects.spaceEcho({
+        timeMs: 92,
+        feedback: 0.34,
+        mix: 0.32,
+        reverbMix: 0.08,
+        wow: 0.12,
+        flutter: 0.05,
+        tapeAge: 0.32,
+        drive: 0.12,
+      }),
+      effects.plateReverb({
+        preDelayMs: 8,
+        decay: 0.45,
+        damping: 0.45,
+        diffusion: 0.7,
+        modulation: 0.14,
+        mix: 0.18,
+        width: 0.95,
+      }),
       effects.saturator({ drive: 0.18, asymmetry: 0.08, tone: 0.76, mix: 0.42, output: 0.9 }),
     ),
     opts: {
@@ -200,8 +219,14 @@ const cases: BenchCase[] = [
 for (const bench of cases) {
   const selectedMode = triggeredWasmModeForTest(bench.graph)
   const selected = measure(() => renderWasmForTest(bench.graph, bench.opts), bench.iterations)
-  const runtime = measure(() => renderWasmTriggeredRuntimeForBench(bench.graph, bench.opts), bench.iterations)
-  const legacy = measure(() => renderWasmTriggeredLegacyForBench(bench.graph, bench.opts), bench.iterations)
+  const runtime = measure(
+    () => renderWasmTriggeredRuntimeForBench(bench.graph, bench.opts),
+    bench.iterations,
+  )
+  const legacy = measure(
+    () => renderWasmTriggeredLegacyForBench(bench.graph, bench.opts),
+    bench.iterations,
+  )
   const selectedDiff = maxAbsDiff(
     renderWasmForTest(bench.graph, bench.opts),
     selectedMode === 'runtime'
@@ -217,16 +242,26 @@ for (const bench of cases) {
   const diff = Math.abs(runtime.checksum - legacy.checksum)
 
   if (selectedDiff > 1e-4) {
-    throw new Error(`${bench.name}: selected ${selectedMode} renderer diverged by max ${selectedDiff}`)
+    throw new Error(
+      `${bench.name}: selected ${selectedMode} renderer diverged by max ${selectedDiff}`,
+    )
   }
   if (maxDiff > 1e-4) {
-    throw new Error(`${bench.name}: runtime and legacy samples diverged by max ${maxDiff} (checksum delta ${diff})`)
+    throw new Error(
+      `${bench.name}: runtime and legacy samples diverged by max ${maxDiff} (checksum delta ${diff})`,
+    )
   }
 
   console.log(`${bench.name}`)
-  console.log(`  selected ${selectedMode}: ${formatMs(selected.avgMs)} avg (${formatMs(selected.minMs)} min, ${formatMs(selected.maxMs)} max), ${selectedVsLegacy.toFixed(2)}x vs legacy`)
-  console.log(`  runtime reset: ${formatMs(runtime.avgMs)} avg (${formatMs(runtime.minMs)} min, ${formatMs(runtime.maxMs)} max)`)
-  console.log(`  legacy render: ${formatMs(legacy.avgMs)} avg (${formatMs(legacy.minMs)} min, ${formatMs(legacy.maxMs)} max)`)
+  console.log(
+    `  selected ${selectedMode}: ${formatMs(selected.avgMs)} avg (${formatMs(selected.minMs)} min, ${formatMs(selected.maxMs)} max), ${selectedVsLegacy.toFixed(2)}x vs legacy`,
+  )
+  console.log(
+    `  runtime reset: ${formatMs(runtime.avgMs)} avg (${formatMs(runtime.minMs)} min, ${formatMs(runtime.maxMs)} max)`,
+  )
+  console.log(
+    `  legacy render: ${formatMs(legacy.avgMs)} avg (${formatMs(legacy.minMs)} min, ${formatMs(legacy.maxMs)} max)`,
+  )
   console.log(`  speedup: ${speedup.toFixed(2)}x`)
   console.log(`  max diff: ${maxDiff.toExponential(2)}; checksum: ${runtime.checksum.toFixed(6)}`)
 }
@@ -253,7 +288,8 @@ function measure(render: () => Samples, iterations: number): BenchResult {
 }
 
 function checksumSamples(samples: Samples): number {
-  if (Array.isArray(samples)) return checksumChannel(samples[0]) * 0.67 + checksumChannel(samples[1]) * 0.33
+  if (Array.isArray(samples))
+    return checksumChannel(samples[0]) * 0.67 + checksumChannel(samples[1]) * 0.33
   return checksumChannel(samples)
 }
 
@@ -265,7 +301,8 @@ function checksumChannel(samples: Float32Array): number {
 
 function maxAbsDiff(a: Samples, b: Samples): number {
   if (Array.isArray(a) !== Array.isArray(b)) return Number.POSITIVE_INFINITY
-  if (Array.isArray(a) && Array.isArray(b)) return Math.max(maxAbsDiffChannel(a[0], b[0]), maxAbsDiffChannel(a[1], b[1]))
+  if (Array.isArray(a) && Array.isArray(b))
+    return Math.max(maxAbsDiffChannel(a[0], b[0]), maxAbsDiffChannel(a[1], b[1]))
   return maxAbsDiffChannel(a as Float32Array, b as Float32Array)
 }
 
@@ -276,7 +313,12 @@ function maxAbsDiffChannel(a: Float32Array, b: Float32Array): number {
   return max
 }
 
-function chromaticStack(count: number, spacingSec: number, baseMidi: number, gateSec: number): Trigger[] {
+function chromaticStack(
+  count: number,
+  spacingSec: number,
+  baseMidi: number,
+  gateSec: number,
+): Trigger[] {
   return Array.from({ length: count }, (_, index) => ({
     midi: baseMidi + (index % 24),
     atSec: index * spacingSec,
@@ -293,11 +335,12 @@ function samplerZones() {
     for (let i = 0; i < samples.length; i++) {
       const t = i / SAMPLE_RATE
       const env = Math.exp(-i / (samples.length * 0.72))
-      samples[i] = (
-        Math.sin(2 * Math.PI * base * t)
-        + Math.sin(2 * Math.PI * base * 2.01 * t) * 0.38
-        + Math.sin(2 * Math.PI * base * 3.02 * t) * 0.16
-      ) * env * 0.55
+      samples[i] =
+        (Math.sin(2 * Math.PI * base * t) +
+          Math.sin(2 * Math.PI * base * 2.01 * t) * 0.38 +
+          Math.sin(2 * Math.PI * base * 3.02 * t) * 0.16) *
+        env *
+        0.55
     }
 
     return {

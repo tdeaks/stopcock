@@ -19,7 +19,12 @@ import RuntimeSelector from '../../../components/charts/RuntimeSelector.astro'
 ### Fully fused: filter → map → take
 
 ```ts
-pipe(data, A.filter(x => x > threshold), A.map(x => x * 2), A.take(10))
+pipe(
+  data,
+  A.filter((x) => x > threshold),
+  A.map((x) => x * 2),
+  A.take(10),
+)
 ```
 
 All three operations fuse into a single loop. `take(10)` halts after 10 results. The loop never visits the rest of the array.
@@ -33,7 +38,13 @@ stopcock holds ~4M ops/s from n=100 to n=100K (the flat line). Every other libra
 ### Partial fusion: filter → map → sort → take
 
 ```ts
-pipe(data, A.filter(x => x > 0), A.map(x => x * 2), A.sortBy((a, b) => a - b), A.take(5))
+pipe(
+  data,
+  A.filter((x) => x > 0),
+  A.map((x) => x * 2),
+  A.sortBy((a, b) => a - b),
+  A.take(5),
+)
 ```
 
 `sort` can't fuse because it needs the full array. `filter → map` fuses into one loop, materializes the result, then `sort` runs, then `take` slices.

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vite-plus/test'
 import { create, logger, history, devtools } from '../index.js'
 import type { Patch } from '@stopcock/diff'
 
@@ -11,9 +11,11 @@ describe('logger middleware', () => {
     const ge = vi.spyOn(console, 'groupEnd').mockImplementation(() => {})
     const ct = vi.spyOn(console, 'table').mockImplementation(() => {})
     const store = create(initial(), { middleware: [logger({ collapsed: true })] })
-    store.set(s => s.count, 1)
+    store.set((s) => s.count, 1)
     expect(gc).toHaveBeenCalled()
-    gc.mockRestore(); ge.mockRestore(); ct.mockRestore()
+    gc.mockRestore()
+    ge.mockRestore()
+    ct.mockRestore()
   })
 
   it('logs individual ops when table=false', () => {
@@ -21,9 +23,11 @@ describe('logger middleware', () => {
     const gc = vi.spyOn(console, 'group').mockImplementation(() => {})
     const ge = vi.spyOn(console, 'groupEnd').mockImplementation(() => {})
     const store = create(initial(), { middleware: [logger({ table: false })] })
-    store.set(s => s.count, 1)
+    store.set((s) => s.count, 1)
     expect(log).toHaveBeenCalled()
-    log.mockRestore(); gc.mockRestore(); ge.mockRestore()
+    log.mockRestore()
+    gc.mockRestore()
+    ge.mockRestore()
   })
 })
 
@@ -33,7 +37,7 @@ describe('history middleware', () => {
     const store = create(initial(), { middleware: [h.middleware] })
     expect(h.canUndo).toBe(false)
     expect(h.canRedo).toBe(false)
-    store.set(s => s.count, 1)
+    store.set((s) => s.count, 1)
     expect(h.canUndo).toBe(true)
     h.undo(store)
     expect(h.canRedo).toBe(true)
@@ -43,41 +47,41 @@ describe('history middleware', () => {
   it('new change after undo clears redo stack', () => {
     const h = history<State>()
     const store = create(initial(), { middleware: [h.middleware] })
-    store.set(s => s.count, 1)
-    store.set(s => s.count, 2)
+    store.set((s) => s.count, 1)
+    store.set((s) => s.count, 2)
     h.undo(store)
-    store.set(s => s.count, 99)
+    store.set((s) => s.count, 99)
     expect(h.canRedo).toBe(false)
   })
 
   it('respects maxDepth', () => {
     const h = history<State>({ maxDepth: 2 })
     const store = create(initial(), { middleware: [h.middleware] })
-    store.set(s => s.count, 1)
-    store.set(s => s.count, 2)
-    store.set(s => s.count, 3)
+    store.set((s) => s.count, 1)
+    store.set((s) => s.count, 2)
+    store.set((s) => s.count, 3)
     // only 2 undos available
     h.undo(store)
-    expect(store.get(s => s.count)).toBe(2)
+    expect(store.get((s) => s.count)).toBe(2)
     h.undo(store)
-    expect(store.get(s => s.count)).toBe(1)
+    expect(store.get((s) => s.count)).toBe(1)
     // no more undos
     h.undo(store)
-    expect(store.get(s => s.count)).toBe(1)
+    expect(store.get((s) => s.count)).toBe(1)
   })
 
   it('undo on empty stack is a noop', () => {
     const h = history<State>()
     const store = create(initial(), { middleware: [h.middleware] })
     h.undo(store) // should not throw
-    expect(store.get(s => s.count)).toBe(0)
+    expect(store.get((s) => s.count)).toBe(0)
   })
 
   it('redo on empty stack is a noop', () => {
     const h = history<State>()
     const store = create(initial(), { middleware: [h.middleware] })
     h.redo(store)
-    expect(store.get(s => s.count)).toBe(0)
+    expect(store.get((s) => s.count)).toBe(0)
   })
 })
 
@@ -87,7 +91,7 @@ describe('onCommit', () => {
     const store = create(initial(), {
       onCommit: (patch, prev, next) => commits.push({ patch, prev, next }),
     })
-    store.set(s => s.count, 42)
+    store.set((s) => s.count, 42)
     expect(commits).toHaveLength(1)
     expect(commits[0].prev.count).toBe(0)
     expect(commits[0].next.count).toBe(42)
@@ -100,8 +104,8 @@ describe('onCommit', () => {
       onCommit: (patch) => commits.push(patch),
     })
     store.batch(() => {
-      store.set(s => s.count, 1)
-      store.set(s => s.name, 'Alice')
+      store.set((s) => s.count, 1)
+      store.set((s) => s.name, 'Alice')
     })
     expect(commits).toHaveLength(1)
   })
@@ -112,7 +116,7 @@ describe('onCommit', () => {
       middleware: [() => null],
       onCommit: (patch) => commits.push(patch),
     })
-    store.set(s => s.count, 1)
+    store.set((s) => s.count, 1)
     expect(commits).toHaveLength(0)
   })
 })
@@ -142,7 +146,7 @@ describe('devtools', () => {
       dt.connect(store)
       expect(init).toHaveBeenCalledWith(initial())
 
-      store.set(s => s.count, 5)
+      store.set((s) => s.count, 5)
       expect(send).toHaveBeenCalledTimes(1)
       const label = send.mock.calls[0][0].type
       expect(label).toContain('count')
@@ -156,7 +160,7 @@ describe('middleware transforms', () => {
   it('middleware can transform a patch', () => {
     // middleware that doubles any count replace
     const doubler = (patch: Patch): Patch => {
-      const ops = patch.ops.map(op => {
+      const ops = patch.ops.map((op) => {
         if (op.op === 'replace' && op.path[0] === 'count') {
           return { ...op, newValue: (op.newValue as number) * 2 }
         }
@@ -165,7 +169,7 @@ describe('middleware transforms', () => {
       return { _tag: 'Patch', ops }
     }
     const store = create(initial(), { middleware: [doubler] })
-    store.set(s => s.count, 5)
-    expect(store.get(s => s.count)).toBe(10)
+    store.set((s) => s.count, 5)
+    expect(store.get((s) => s.count)).toBe(10)
   })
 })

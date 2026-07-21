@@ -23,12 +23,22 @@ export const Spectrum: Component = () => {
       </div>
       <div class="viz-body">
         <div class="spectrum">
-          <For each={Array.from({ length: SPECTRUM_BAR_COUNT }, (_, i) => i)}>{(i) => (
-            <div class="spectrum-bar" ref={(el) => { bars[i] = el }} style="height:2%" />
-          )}</For>
+          <For each={Array.from({ length: SPECTRUM_BAR_COUNT }, (_, i) => i)}>
+            {(i) => (
+              <div
+                class="spectrum-bar"
+                ref={(el) => {
+                  bars[i] = el
+                }}
+                style="height:2%"
+              />
+            )}
+          </For>
         </div>
         <div class="spectrum-axis">
-          {AXIS_LABELS.map(l => <span>{l}</span>)}
+          {AXIS_LABELS.map((l) => (
+            <span>{l}</span>
+          ))}
         </div>
       </div>
     </div>

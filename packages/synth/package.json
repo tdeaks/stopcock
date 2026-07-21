@@ -8,6 +8,9 @@
     "url": "git+https://github.com/tdeaks/stopcock.git",
     "directory": "packages/synth"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -20,18 +23,14 @@
       "import": "./dist/types.js"
     }
   },
-  "files": [
-    "dist"
-  ],
-  "dependencies": {
-    "@stopcock/fp": "workspace:*",
-    "@stopcock/signal": "workspace:*"
-  },
   "scripts": {
-    "build": "bun run build:wasm && tsup && tsc --emitDeclarationOnly",
     "build:wasm": "cargo build --manifest-path Cargo.toml --release --target wasm32-unknown-unknown --package stopcock_synth_wasm --target-dir wasm/target && bun run scripts/embed-wasm.ts",
     "bench:triggered": "bun run scripts/bench-triggered-wasm.ts",
     "test:wasm": "cargo test --manifest-path Cargo.toml --workspace",
-    "test": "bun run test:wasm && bun run build:wasm && vitest run"
+    "test": "bun run test:wasm && bun run build:wasm && vp test run"
+  },
+  "dependencies": {
+    "@stopcock/fp": "workspace:*",
+    "@stopcock/signal": "workspace:*"
   }
 }

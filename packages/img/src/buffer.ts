@@ -9,10 +9,12 @@ export const validateImage = (img: Image): void => {
   if (img.width <= 0 || img.height <= 0)
     throw new Error('Invalid image: width and height must be positive')
   if (img.data.length !== img.width * img.height * 4)
-    throw new Error(`Invalid image: data length ${img.data.length} doesn't match ${img.width}x${img.height}x4`)
+    throw new Error(
+      `Invalid image: data length ${img.data.length} doesn't match ${img.width}x${img.height}x4`,
+    )
 }
 
-const clamp01 = (v: number): number => v < 0 ? 0 : v > 1 ? 1 : v
+const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v)
 
 export const rgbaBytesToChannelBuffer = (src: Uint8ClampedArray): ChannelBufferResult => {
   if (src.length % 4 !== 0) throw new Error('RGBA byte buffer length must be a multiple of 4')
@@ -36,9 +38,13 @@ export const channelBufferToRgbaBytes = (
   dst: Uint8ClampedArray = new Uint8ClampedArray(alpha.length * 4),
 ): Uint8ClampedArray => {
   if (rgb.length !== alpha.length * 3)
-    throw new Error(`RGB channel buffer length ${rgb.length} doesn't match alpha length ${alpha.length}`)
+    throw new Error(
+      `RGB channel buffer length ${rgb.length} doesn't match alpha length ${alpha.length}`,
+    )
   if (dst.length !== alpha.length * 4)
-    throw new Error(`destination RGBA length ${dst.length} doesn't match alpha length ${alpha.length}`)
+    throw new Error(
+      `destination RGBA length ${dst.length} doesn't match alpha length ${alpha.length}`,
+    )
   for (let pixel = 0; pixel < alpha.length; pixel++) {
     const byte = pixel * 4
     const channel = pixel * 3
@@ -55,7 +61,12 @@ export const imageToChannelBuffer = (img: Image): ChannelBufferResult => {
   return rgbaBytesToChannelBuffer(img.data)
 }
 
-export const channelBufferToImage = (rgb: Float64Array, alpha: Uint8ClampedArray, width: number, height: number): Image => ({
+export const channelBufferToImage = (
+  rgb: Float64Array,
+  alpha: Uint8ClampedArray,
+  width: number,
+  height: number,
+): Image => ({
   data: channelBufferToRgbaBytes(rgb, alpha),
   width,
   height,

@@ -6,7 +6,7 @@ export function dual(arity: number, body: Function, tag?: { op: string }): any {
   if (tag) {
     if (arity <= 1) {
       // Arity-1 tagged: tag the body directly, skip wrapper
-      (body as any)._op = opcode
+      ;(body as any)._op = opcode
       return body
     }
     if (arity === 2) {
@@ -23,7 +23,8 @@ export function dual(arity: number, body: Function, tag?: { op: string }): any {
     if (arity === 3) {
       return function () {
         if (arguments.length >= 3) return body(arguments[0], arguments[1], arguments[2])
-        const a0 = arguments[0], a1 = arguments[1]
+        const a0 = arguments[0],
+          a1 = arguments[1]
         const dataLast = (data: any) => body(data, a0, a1)
         dataLast._op = opcode
         dataLast._fn = a0
@@ -33,8 +34,11 @@ export function dual(arity: number, body: Function, tag?: { op: string }): any {
     }
     if (arity === 4) {
       return function () {
-        if (arguments.length >= 4) return body(arguments[0], arguments[1], arguments[2], arguments[3])
-        const a0 = arguments[0], a1 = arguments[1], a2 = arguments[2]
+        if (arguments.length >= 4)
+          return body(arguments[0], arguments[1], arguments[2], arguments[3])
+        const a0 = arguments[0],
+          a1 = arguments[1],
+          a2 = arguments[2]
         const dataLast = (data: any) => body(data, a0, a1, a2)
         dataLast._op = opcode
         dataLast._fn = a0
@@ -56,7 +60,8 @@ export function dual(arity: number, body: Function, tag?: { op: string }): any {
   if (arity === 3) {
     return function () {
       if (arguments.length >= 3) return body(arguments[0], arguments[1], arguments[2])
-      const a0 = arguments[0], a1 = arguments[1]
+      const a0 = arguments[0],
+        a1 = arguments[1]
       return (data: any) => body(data, a0, a1)
     }
   }
@@ -64,7 +69,9 @@ export function dual(arity: number, body: Function, tag?: { op: string }): any {
   if (arity === 4) {
     return function () {
       if (arguments.length >= 4) return body(arguments[0], arguments[1], arguments[2], arguments[3])
-      const a0 = arguments[0], a1 = arguments[1], a2 = arguments[2]
+      const a0 = arguments[0],
+        a1 = arguments[1],
+        a2 = arguments[2]
       return (data: any) => body(data, a0, a1, a2)
     }
   }

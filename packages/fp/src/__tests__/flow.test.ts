@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import fc from 'fast-check'
 import { flow } from '../flow'
 import { pipe } from '../pipe'
@@ -34,10 +34,26 @@ describe('flow', () => {
     it('handles 20 functions', () => {
       const inc = (n: number) => n + 1
       const f = flow(
-        inc, inc, inc, inc, inc,
-        inc, inc, inc, inc, inc,
-        inc, inc, inc, inc, inc,
-        inc, inc, inc, inc, inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
+        inc,
       )
       expect(f(0)).toBe(20)
     })
@@ -53,11 +69,13 @@ describe('flow', () => {
 
   describe('properties', () => {
     it('flow(f, g)(x) === pipe(x, f, g)', () => {
-      fc.assert(fc.property(fc.integer(), (x) => {
-        const f = (n: number) => n * 2
-        const g = (n: number) => n + 1
-        expect(flow(f, g)(x)).toBe(pipe(x, f, g))
-      }))
+      fc.assert(
+        fc.property(fc.integer(), (x) => {
+          const f = (n: number) => n * 2
+          const g = (n: number) => n + 1
+          expect(flow(f, g)(x)).toBe(pipe(x, f, g))
+        }),
+      )
     })
   })
 })

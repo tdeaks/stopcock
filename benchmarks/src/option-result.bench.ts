@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { O, R, ok, pipe, some, tryCatch } from '@stopcock/fp'
 import { O as BeltO, R as BeltR, pipe as beltPipe } from '@mobily/ts-belt'
 
@@ -15,8 +15,7 @@ describe('Option.map chain (5 steps)', () => {
       O.map(increment),
       O.filter(greaterThanFive),
       O.getOrElse(() => 0),
-    ),
-  )
+    ))
 
   bench('ts-belt', () =>
     beltPipe(
@@ -25,8 +24,7 @@ describe('Option.map chain (5 steps)', () => {
       BeltO.map(increment),
       BeltO.filter(greaterThanFive),
       BeltO.getWithDefault(0),
-    ),
-  )
+    ))
 })
 
 describe('Option.flatMap chain', () => {
@@ -35,34 +33,20 @@ describe('Option.flatMap chain', () => {
       some({ user: { name: 'Tom' } }),
       O.map((x) => x.user),
       O.map((x) => x.name),
-    ),
-  )
+    ))
 
   bench('ts-belt', () =>
     beltPipe(
       BeltO.Some({ user: { name: 'Tom' } }),
       BeltO.map((x) => x.user),
       BeltO.map((x) => x.name),
-    ),
-  )
+    ))
 })
 
 describe('Result.map chain', () => {
-  bench('stopcock', () =>
-    pipe(
-      ok(5),
-      R.map(double),
-      R.map(increment),
-    ),
-  )
+  bench('stopcock', () => pipe(ok(5), R.map(double), R.map(increment)))
 
-  bench('ts-belt', () =>
-    beltPipe(
-      BeltR.Ok(5),
-      BeltR.map(double),
-      BeltR.map(increment),
-    ),
-  )
+  bench('ts-belt', () => beltPipe(BeltR.Ok(5), BeltR.map(double), BeltR.map(increment)))
 })
 
 describe('Result.tryCatch', () => {

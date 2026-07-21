@@ -10,7 +10,10 @@ type SvelteReadable<T> = { subscribe: (fn: (value: T) => void) => () => void }
  *   const name = slice(store, s => s.user.name)
  *   // in template: {$name}
  */
-export function slice<S extends object, A>(store: Store<S>, accessor: Accessor<S, A>): SvelteReadable<A> {
+export function slice<S extends object, A>(
+  store: Store<S>,
+  accessor: Accessor<S, A>,
+): SvelteReadable<A> {
   return {
     subscribe(fn: (value: A) => void) {
       fn(store.get(accessor))

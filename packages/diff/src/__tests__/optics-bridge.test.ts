@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { toLens, fromLens, fromTraversal } from '../optics-bridge'
 import { prop, view, set } from '@stopcock/fp'
 import type { Lens, Traversal } from '@stopcock/fp'
@@ -10,7 +10,12 @@ describe('toLens', () => {
   })
 
   it('creates lens for all-string path', () => {
-    const op = { op: 'replace' as const, path: ['user', 'name'] as const, oldValue: 'a', newValue: 'b' }
+    const op = {
+      op: 'replace' as const,
+      path: ['user', 'name'] as const,
+      oldValue: 'a',
+      newValue: 'b',
+    }
     const l = toLens(op)
     expect(l).not.toBeNull()
     expect(l!.get({ user: { name: 'Tom' } })).toBe('Tom')
@@ -26,7 +31,12 @@ describe('toLens', () => {
   })
 
   it('creates lens for mixed path (with numeric segments)', () => {
-    const op = { op: 'replace' as const, path: ['items', 0, 'name'] as const, oldValue: 'a', newValue: 'b' }
+    const op = {
+      op: 'replace' as const,
+      path: ['items', 0, 'name'] as const,
+      oldValue: 'a',
+      newValue: 'b',
+    }
     const l = toLens(op)
     expect(l).not.toBeNull()
     const data = { items: [{ name: 'first' }, { name: 'second' }] }
@@ -59,7 +69,7 @@ describe('fromTraversal', () => {
       getAll: (s) => [...s],
       modify: (s, f) => s.map(f),
     }
-    const p = fromTraversal([1, 2, 3], t, n => n * 2)
+    const p = fromTraversal([1, 2, 3], t, (n) => n * 2)
     expect(p.ops).toHaveLength(3)
     for (const op of p.ops) {
       expect(op.op).toBe('replace')
@@ -71,7 +81,7 @@ describe('fromTraversal', () => {
       getAll: (s) => [...s],
       modify: (s, f) => s.map(f),
     }
-    const p = fromTraversal([1, 2, 3], t, n => n > 2 ? n * 2 : n)
+    const p = fromTraversal([1, 2, 3], t, (n) => (n > 2 ? n * 2 : n))
     expect(p.ops).toHaveLength(1)
     expect((p.ops[0] as any).newValue).toBe(6)
   })

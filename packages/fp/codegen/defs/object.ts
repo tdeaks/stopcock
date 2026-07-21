@@ -75,14 +75,19 @@ export const assoc: {
   <T extends Record<string, unknown>, V>(key: string, value: V): (obj: T) => T & Record<string, V>
 } = function assoc() {
   if (arguments.length >= 3) {
-    const obj = arguments[0], key = arguments[1], value = arguments[2]
+    const obj = arguments[0],
+      key = arguments[1],
+      value = arguments[2]
     const out = { ...obj }
     out[key] = value
     return out
   }
-  const _a0 = arguments[0]; const _a1 = arguments[1]
-  const _dl: any = function(data: any) {
-    const obj = data, key = _a0, value = _a1
+  const _a0 = arguments[0]
+  const _a1 = arguments[1]
+  const _dl: any = function (data: any) {
+    const obj = data,
+      key = _a0,
+      value = _a1
     const out = { ...obj }
     out[key] = value
     return out
@@ -103,12 +108,13 @@ export const path: {
   <P extends PathSegments>(path: P): <T>(obj: T) => PathValue<T, P> | undefined
 } = function path() {
   if (arguments.length >= 2) {
-    const obj = arguments[0], p = arguments[1]
+    const obj = arguments[0],
+      p = arguments[1]
     return readPath(obj, p)
   }
   const _a0 = arguments[0]
   const segments = pathSegments(_a0)
-  const _dl: any = function(data: any) {
+  const _dl: any = function (data: any) {
     return readPath(data, segments)
   }
   return _dl
@@ -122,13 +128,16 @@ export const pathOr: {
   <P extends PathSegments, D>(path: P, defaultValue: D): <T>(obj: T) => PathValueOrDefault<T, P, D>
 } = function pathOr() {
   if (arguments.length >= 3) {
-    const obj = arguments[0], p = arguments[1], defaultValue = arguments[2]
+    const obj = arguments[0],
+      p = arguments[1],
+      defaultValue = arguments[2]
     const result = readPath(obj, p)
     return result === undefined ? defaultValue : result
   }
-  const _a0 = arguments[0]; const _a1 = arguments[1]
+  const _a0 = arguments[0]
+  const _a1 = arguments[1]
   const segments = pathSegments(_a0)
-  const _dl: any = function(data: any) {
+  const _dl: any = function (data: any) {
     const defaultValue = _a1
     const result = readPath(data, segments)
     return result === undefined ? defaultValue : result
@@ -138,8 +147,13 @@ export const pathOr: {
 
 // Pure TypeScript: evolve
 export const evolve: {
-  <T extends Record<string, unknown>>(obj: T, transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>): T
-  <T extends Record<string, unknown>>(transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>): (obj: T) => T
+  <T extends Record<string, unknown>>(
+    obj: T,
+    transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>,
+  ): T
+  <T extends Record<string, unknown>>(
+    transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>,
+  ): (obj: T) => T
 } = dual(2, (obj: any, transformations: any) => {
   const result = { ...obj }
   for (const key of Object.keys(transformations)) {

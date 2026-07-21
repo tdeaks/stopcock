@@ -1,45 +1,54 @@
 import type { Node, Note, WebAudioHandle, WebAudioPlayOptions } from '../types'
 import { defaultFor } from '../params'
 import { cloneForTrigger, compile, SynthCompileError } from '../internal/graph'
-import { noteToFreq } from '../internal/util'
+import { noteToFreq, unrefTimer } from '../internal/util'
 import { compileWorklet } from './worklet'
 
-export function play(ctx: AudioContext, node: Node, opts: WebAudioPlayOptions = {}): WebAudioHandle {
+export function play(
+  ctx: AudioContext,
+  node: Node,
+  opts: WebAudioPlayOptions = {},
+): WebAudioHandle {
   const compiled = compile(node, 'web')
   let underruns = 0
   const output = ctx.createGain()
   output.gain.value = 1
-  const workletBindings = new Map<number, Array<{ node: AudioWorkletNode, inputIndex: number }>>()
+  const workletBindings = new Map<number, Array<{ node: AudioWorkletNode; inputIndex: number }>>()
   const pendingInputs = new Map<number, AudioNode[]>()
   const workletNodes: AudioWorkletNode[] = []
   const childHandles: WebAudioHandle[] = []
   let stopped = false
 
   try {
-    void compileWorklet(ctx, node).then((wm) => {
-      if (stopped) return
-      const worklet = new AudioWorkletNode(ctx, wm.processorName, {
-        numberOfInputs: wm.numberOfInputs,
-        numberOfOutputs: wm.numberOfOutputs,
-        outputChannelCount: wm.outputChannelCount,
-        processorOptions: wm.processorOptions,
-        parameterData: Object.fromEntries(wm.params.map((item) => [item.audioParamName, defaultFor(item.node, item.param)])),
+    void compileWorklet(ctx, node)
+      .then((wm) => {
+        if (stopped) return
+        const worklet = new AudioWorkletNode(ctx, wm.processorName, {
+          numberOfInputs: wm.numberOfInputs,
+          numberOfOutputs: wm.numberOfOutputs,
+          outputChannelCount: wm.outputChannelCount,
+          processorOptions: wm.processorOptions,
+          parameterData: Object.fromEntries(
+            wm.params.map((item) => [item.audioParamName, defaultFor(item.node, item.param)]),
+          ),
+        })
+        if (stopped) {
+          worklet.disconnect()
+          return
+        }
+        workletNodes.push(worklet)
+        for (const inputHandle of wm.inputs) {
+          const list = workletBindings.get(inputHandle.channel) ?? []
+          list.push({ node: worklet, inputIndex: inputHandle.channel })
+          workletBindings.set(inputHandle.channel, list)
+          for (const source of pendingInputs.get(inputHandle.channel) ?? [])
+            source.connect(worklet, 0, inputHandle.channel)
+        }
+        worklet.connect(output)
       })
-      if (stopped) {
-        worklet.disconnect()
-        return
-      }
-      workletNodes.push(worklet)
-      for (const inputHandle of wm.inputs) {
-        const list = workletBindings.get(inputHandle.channel) ?? []
-        list.push({ node: worklet, inputIndex: inputHandle.channel })
-        workletBindings.set(inputHandle.channel, list)
-        for (const source of pendingInputs.get(inputHandle.channel) ?? []) source.connect(worklet, 0, inputHandle.channel)
-      }
-      worklet.connect(output)
-    }).catch(() => {
-      underruns++
-    })
+      .catch(() => {
+        underruns++
+      })
   } catch {
     underruns++
   }
@@ -66,9 +75,9 @@ export function play(ctx: AudioContext, node: Node, opts: WebAudioPlayOptions = 
             handle.stop()
             forget()
           }, 1200)
-          if (typeof stopTimeout === 'object' && 'unref' in stopTimeout) stopTimeout.unref()
+          unrefTimer(stopTimeout)
         }, note.gateMs)
-        if (typeof timeout === 'object' && 'unref' in timeout) timeout.unref()
+        unrefTimer(timeout)
       }
     },
     release() {
@@ -84,7 +93,11 @@ export function play(ctx: AudioContext, node: Node, opts: WebAudioPlayOptions = 
         // GC it. Without this the AudioWorkletProcessor keeps running forever
         // even after disconnect — a slow leak that saturates the worklet
         // thread after enough notes.
-        try { item.port.postMessage({ type: 'terminate' }) } catch { /* port closed */ }
+        try {
+          item.port.postMessage({ type: 'terminate' })
+        } catch {
+          /* port closed */
+        }
         item.disconnect()
       }
       try {

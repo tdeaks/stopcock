@@ -26,7 +26,9 @@ export const Scope: Component = () => {
           </svg>
         </div>
         <div class="osc-axis">
-          <span>−25 ms</span><span>0</span><span>+25 ms</span>
+          <span>−25 ms</span>
+          <span>0</span>
+          <span>+25 ms</span>
         </div>
       </div>
     </div>

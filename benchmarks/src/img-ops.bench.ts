@@ -1,8 +1,22 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import {
-  create, brightness, contrast, invert, sepia, saturate, threshold, grayscale,
-  convolve, blur, gaussianBlur, sharpen, edgeDetect,
-  resize, flipH, rotate90, equalize,
+  create,
+  brightness,
+  contrast,
+  invert,
+  sepia,
+  saturate,
+  threshold,
+  grayscale,
+  convolve,
+  blur,
+  gaussianBlur,
+  sharpen,
+  edgeDetect,
+  resize,
+  flipH,
+  rotate90,
+  equalize,
 } from '@stopcock/img'
 
 // Generate test images with pseudo-random pixel data
@@ -62,7 +76,11 @@ describe('saturate', () => {
 // -- Convolution --
 
 describe('convolve 3x3', () => {
-  const kernel = [[0, -1, 0], [-1, 5, -1], [0, -1, 0]]
+  const kernel = [
+    [0, -1, 0],
+    [-1, 5, -1],
+    [0, -1, 0],
+  ]
   bench('64x64', () => convolve(img64, kernel))
   bench('256x256', () => convolve(img256, kernel))
   bench('512x512', () => convolve(img512, kernel))
@@ -120,4 +138,3 @@ describe('equalize', () => {
   bench('256x256', () => equalize(img256))
   bench('1920x1080', () => equalize(img1080))
 })
-

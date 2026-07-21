@@ -43,7 +43,8 @@ export function spectralCentroid(spectrum: Spectrum): number {
   if (total === 0) return 0
   const binHz = spectrum.sampleRate / spectrum.fftSize
   let weighted = 0
-  for (let i = 0; i < spectrum.magnitudes.length; i++) weighted += i * binHz * spectrum.magnitudes[i]
+  for (let i = 0; i < spectrum.magnitudes.length; i++)
+    weighted += i * binHz * spectrum.magnitudes[i]
   return weighted / total
 }
 

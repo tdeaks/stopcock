@@ -98,11 +98,15 @@ const glassWavetable = createWavetable({ partials: [1, 0.72, 0.38, 0.18, 0.08, 0
 
 const lfoWaveform = (engine: LfoEngine): Waveform => {
   switch (engine) {
-    case 'tri':    return 'triangle'
-    case 'square': return 'square'
-    case 'sh':     return 'square'  // No S&H primitive; square is the closest stepped feel
+    case 'tri':
+      return 'triangle'
+    case 'square':
+      return 'square'
+    case 'sh':
+      return 'square' // No S&H primitive; square is the closest stepped feel
     case 'sine':
-    default:       return 'sine'
+    default:
+      return 'sine'
   }
 }
 
@@ -129,20 +133,22 @@ const oscLayers = (state: RackState): Node => {
 
     case 'fm':
       return pipe(
-        vibrato(fm({
-          freq: baseFreq,
-          index: 1.4 + osc.detune * 2.4,
-          operators: [
-            operator.sine({ ratio: 1, level: 1, output: 0 }),
-            operator.polyblep('square', { ratio: 2, level: 0.46, output: 1 }),
-            operator.sine({ ratio: 3, level: 0.2, output: 0.18 }),
-          ],
-          matrix: [
-            [0, 1, 0],
-            [0, 0, 0.4],
-            [0, 0, 0],
-          ],
-        })),
+        vibrato(
+          fm({
+            freq: baseFreq,
+            index: 1.4 + osc.detune * 2.4,
+            operators: [
+              operator.sine({ ratio: 1, level: 1, output: 0 }),
+              operator.polyblep('square', { ratio: 2, level: 0.46, output: 1 }),
+              operator.sine({ ratio: 3, level: 0.2, output: 0.18 }),
+            ],
+            matrix: [
+              [0, 1, 0],
+              [0, 0, 0.4],
+              [0, 0, 0],
+            ],
+          }),
+        ),
         gain(osc.level),
       )
 
@@ -155,38 +161,41 @@ const oscLayers = (state: RackState): Node => {
       // Detune knob has no natural meaning for an FM patch.
       const tineBrightness = Math.max(0, Math.min(1, osc.detune))
       const tine = envelope({ attack: 0.001, decay: 0.35, sustain: 0, release: 0.25 })(
-        vibrato(fm({
+        vibrato(
+          fm({
+            freq: baseFreq,
+            index: 1,
+            operators: [
+              operator.sine({ ratio: 1, level: 1, output: 1 }),
+              operator.sine({
+                ratio: 14,
+                level: 0.9,
+                output: 0,
+                feedback: 0.25 + tineBrightness * 0.5,
+              }),
+            ],
+            matrix: [
+              [0, 0],
+              [1, 0],
+            ],
+          }),
+        ),
+      )
+      const body = vibrato(
+        fm({
           freq: baseFreq,
           index: 1,
           operators: [
-            operator.sine({ ratio: 1,  level: 1,    output: 1 }),
-            operator.sine({ ratio: 14, level: 0.9,  output: 0, feedback: 0.25 + tineBrightness * 0.5 }),
+            operator.sine({ ratio: 1, level: 1, output: 1 }),
+            operator.sine({ ratio: 1, level: 0.35, output: 0 }),
           ],
           matrix: [
             [0, 0],
             [1, 0],
           ],
-        })),
+        }),
       )
-      const body = vibrato(fm({
-        freq: baseFreq,
-        index: 1,
-        operators: [
-          operator.sine({ ratio: 1, level: 1,    output: 1 }),
-          operator.sine({ ratio: 1, level: 0.35, output: 0 }),
-        ],
-        matrix: [
-          [0, 0],
-          [1, 0],
-        ],
-      }))
-      return pipe(
-        mix([
-          pipe(tine, gain(0.7)),
-          pipe(body, gain(0.55)),
-        ]),
-        gain(osc.level),
-      )
+      return pipe(mix([pipe(tine, gain(0.7)), pipe(body, gain(0.55))]), gain(osc.level))
     }
 
     case 'acid':
@@ -204,25 +213,27 @@ const oscLayers = (state: RackState): Node => {
       })
 
     case 'poly':
-      return vibrato(instrument.polySynth({
-        freq: baseFreq,
-        detune: osc.detune * 24,
-        pulseWidth: 0.5,
-        sub: 0.22,
-        noise: 0.02,
-        cutoff: 4200,
-        resonance: 0.2,
-        envMod: 0.3,
-        attack: 0.008,
-        decay: 0.22,
-        sustain: 0.4,
-        release: 0.4,
-        drive: 0.1,
-        chorus: 0.3,
-        modulation: 0.18,
-        width: 1,
-        level: osc.level,
-      }))
+      return vibrato(
+        instrument.polySynth({
+          freq: baseFreq,
+          detune: osc.detune * 24,
+          pulseWidth: 0.5,
+          sub: 0.22,
+          noise: 0.02,
+          cutoff: 4200,
+          resonance: 0.2,
+          envMod: 0.3,
+          attack: 0.008,
+          decay: 0.22,
+          sustain: 0.4,
+          release: 0.4,
+          drive: 0.1,
+          chorus: 0.3,
+          modulation: 0.18,
+          width: 1,
+          level: osc.level,
+        }),
+      )
 
     case 'wavetable':
     default: {
@@ -248,7 +259,10 @@ const oscLayers = (state: RackState): Node => {
       }
       // Wavetable component for character; placed at low mix so unison saw still dominates
       layers.push(
-        pipe(vibrato(oscillator.wavetable(glassWavetable, baseFreq, { position: 0.3 })), gain(osc.level * 0.18)),
+        pipe(
+          vibrato(oscillator.wavetable(glassWavetable, baseFreq, { position: 0.3 })),
+          gain(osc.level * 0.18),
+        ),
       )
       return mix(layers)
     }
@@ -257,11 +271,15 @@ const oscLayers = (state: RackState): Node => {
 
 const fltKind = (mode: FltMode): FilterKind => {
   switch (mode) {
-    case 'hp': return 'highpass'
-    case 'bp': return 'bandpass'
-    case 'notch': return 'notch'
+    case 'hp':
+      return 'highpass'
+    case 'bp':
+      return 'bandpass'
+    case 'notch':
+      return 'notch'
     case 'lp':
-    default: return 'lowpass'
+    default:
+      return 'lowpass'
   }
 }
 
@@ -350,15 +368,16 @@ const buildVoiceGraph = (state: RackState): Node => {
  */
 const buildFxBusGraph = (state: RackState): Node => {
   const userChain = state.fx
-    .filter(s => s.enabled && s.kind !== 'none')
-    .map(s => fxCatalog[s.kind].build(s.params))
-  const masterCompress = (node: Node): Node => effects.compressor({
-    threshold: -14,
-    ratio: 6,
-    attack: 0.005,
-    release: 0.12,
-    knee: 8,
-  })(node)
+    .filter((s) => s.enabled && s.kind !== 'none')
+    .map((s) => fxCatalog[s.kind].build(s.params))
+  const masterCompress = (node: Node): Node =>
+    effects.compressor({
+      threshold: -14,
+      ratio: 6,
+      attack: 0.005,
+      release: 0.12,
+      knee: 8,
+    })(node)
   const masterWall = (node: Node): Node => effects.distortion(0.5, 'tanh')(node)
   return [...userChain, masterCompress, masterWall].reduce<Node>((acc, fn) => fn(acc), input(0))
 }
@@ -389,7 +408,7 @@ export type EngineHandle = {
 }
 
 const MAX_VOICES = 8
-const STOP_TAIL_MS = 200  // extra grace after the gain ramp before disconnecting
+const STOP_TAIL_MS = 200 // extra grace after the gain ramp before disconnecting
 
 type VoiceEntry = {
   handle: WebAudioHandle
@@ -442,7 +461,7 @@ export async function createEngine(initial: RackState): Promise<EngineHandle> {
 
   // ── Per-note voice registry ────────────────────────────────
   const voices = new Map<number, VoiceEntry>()
-  let retiredUnderruns = 0  // underruns from handles that have been stopped
+  let retiredUnderruns = 0 // underruns from handles that have been stopped
 
   /**
    * Hard-stop a voice and remove it from the registry. Idempotent: calling
@@ -452,8 +471,16 @@ export async function createEngine(initial: RackState): Promise<EngineHandle> {
   const hardStop = (entry: VoiceEntry): void => {
     clearTimeout(entry.stopTimer)
     retiredUnderruns += entry.handle.underruns
-    try { entry.handle.stop() } catch { /* already stopped */ }
-    try { entry.gain.disconnect() } catch { /* already disconnected */ }
+    try {
+      entry.handle.stop()
+    } catch {
+      /* already stopped */
+    }
+    try {
+      entry.gain.disconnect()
+    } catch {
+      /* already disconnected */
+    }
   }
 
   /**
@@ -468,9 +495,12 @@ export async function createEngine(initial: RackState): Promise<EngineHandle> {
     param.cancelScheduledValues(now)
     param.setValueAtTime(param.value, now)
     param.linearRampToValueAtTime(0.0001, now + releaseSec)
-    entry.stopTimer = window.setTimeout(() => {
-      hardStop(entry)
-    }, releaseSec * 1000 + STOP_TAIL_MS)
+    entry.stopTimer = window.setTimeout(
+      () => {
+        hardStop(entry)
+      },
+      releaseSec * 1000 + STOP_TAIL_MS,
+    )
   }
 
   const stealOldest = (): void => {
@@ -517,11 +547,14 @@ export async function createEngine(initial: RackState): Promise<EngineHandle> {
     voices.set(midi, entry)
 
     if (gateMs !== undefined && Number.isFinite(gateMs) && gateMs > 0) {
-      entry.stopTimer = window.setTimeout(() => {
-        if (voices.get(midi) !== entry) return
-        voices.delete(midi)
-        fadeAndStop(midi, entry)
-      }, Math.max(12, gateMs))
+      entry.stopTimer = window.setTimeout(
+        () => {
+          if (voices.get(midi) !== entry) return
+          voices.delete(midi)
+          fadeAndStop(midi, entry)
+        },
+        Math.max(12, gateMs),
+      )
     }
   }
 
@@ -575,7 +608,11 @@ export async function createEngine(initial: RackState): Promise<EngineHandle> {
       for (const entry of voices.values()) hardStop(entry)
       voices.clear()
       fxBusHandle?.stop()
-      try { fxBusInput.disconnect() } catch { /* already disconnected */ }
+      try {
+        fxBusInput.disconnect()
+      } catch {
+        /* already disconnected */
+      }
       void ctx.close()
     },
     get state() {

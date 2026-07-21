@@ -21,14 +21,22 @@ export const LfoViz: Component<LfoVizProps> = (props) => {
       const phase = (i / SAMPLES) * Math.PI * 2 * cycles + (props.phase / 360) * Math.PI * 2
       let y: number
       switch (props.shape) {
-        case 'tri':    y = (2 / Math.PI) * Math.asin(Math.sin(phase)); break
-        case 'square': y = Math.sin(phase) >= 0 ? 1 : -1; break
-        case 'sh':     y = Math.sin(Math.floor(phase / Math.PI) * 1.61803); break
+        case 'tri':
+          y = (2 / Math.PI) * Math.asin(Math.sin(phase))
+          break
+        case 'square':
+          y = Math.sin(phase) >= 0 ? 1 : -1
+          break
+        case 'sh':
+          y = Math.sin(Math.floor(phase / Math.PI) * 1.61803)
+          break
         case 'sine':
-        default:       y = Math.sin(phase)
+        default:
+          y = Math.sin(phase)
       }
       const yPos = 30 - y * 22 * props.depth
-      d += (i === 0 ? 'M' : 'L') + ((i / (SAMPLES - 1)) * 200).toFixed(1) + ',' + yPos.toFixed(1) + ' '
+      d +=
+        (i === 0 ? 'M' : 'L') + ((i / (SAMPLES - 1)) * 200).toFixed(1) + ',' + yPos.toFixed(1) + ' '
     }
     return d
   })

@@ -51,7 +51,10 @@ export const rgb255 = (r: number, g: number, b: number, alpha: number = DEFAULT_
 export const fromHex = (hex: string): Color => {
   let h = hex.startsWith('#') ? hex.slice(1) : hex
   if (h.length === 3 || h.length === 4) {
-    h = h.split('').map((c) => c + c).join('')
+    h = h
+      .split('')
+      .map((c) => c + c)
+      .join('')
   }
   if (h.length !== 6 && h.length !== 8) {
     throw new Error(`Invalid hex color: ${hex}`)

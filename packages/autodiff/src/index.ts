@@ -1,25 +1,7 @@
-export type {
-  DiffFn,
-  Grad,
-  GradReturn,
-  Mat,
-  Tape,
-  UnvarsOf,
-  Var,
-  VarId,
-  Vec,
-} from './types'
+export type { DiffFn, Grad, GradReturn, Mat, Tape, UnvarsOf, Var, VarId, Vec } from './types'
 export { NoActiveTapeError, ShapeError } from './types'
 
-export {
-  accumulate,
-  backward,
-  constant,
-  currentTape,
-  gradOf,
-  variable,
-  withTape,
-} from './tape'
+export { accumulate, backward, constant, currentTape, gradOf, variable, withTape } from './tape'
 export { differentiable } from './differentiable'
 export { add, div, mul, neg, pow, square, sub, type ScalarInput } from './scalar'
 export {

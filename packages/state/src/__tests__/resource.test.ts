@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test'
 import { resource, mutation, type Resource } from '../resource.js'
 import { create } from '../index.js'
 
 function delay(ms: number) {
-  return new Promise(r => setTimeout(r, ms))
+  return new Promise((r) => setTimeout(r, ms))
 }
 
 function mockFetch<T>(value: T, ms = 0) {
@@ -72,10 +72,14 @@ describe('resource (standalone)', () => {
   it('refetch aborts previous in-flight request', async () => {
     let aborted = false
     const r = resource({
-      fetch: (signal) => new Promise((resolve, reject) => {
-        signal.addEventListener('abort', () => { aborted = true; reject(new DOMException('Aborted', 'AbortError')) })
-        setTimeout(() => resolve('old'), 100)
-      }),
+      fetch: (signal) =>
+        new Promise((resolve, reject) => {
+          signal.addEventListener('abort', () => {
+            aborted = true
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+          setTimeout(() => resolve('old'), 100)
+        }),
     })
     await delay(5)
     r.refetch()
@@ -85,9 +89,13 @@ describe('resource (standalone)', () => {
   it('abort() cancels current fetch', async () => {
     let aborted = false
     const r = resource({
-      fetch: (signal) => new Promise((_, reject) => {
-        signal.addEventListener('abort', () => { aborted = true; reject(new DOMException('Aborted', 'AbortError')) })
-      }),
+      fetch: (signal) =>
+        new Promise((_, reject) => {
+          signal.addEventListener('abort', () => {
+            aborted = true
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+        }),
     })
     await delay(5)
     r.abort()
@@ -109,16 +117,16 @@ describe('resource (store deps)', () => {
   it('refetches when store dependency changes', async () => {
     const store = create({ role: 'admin' })
     const fetch = vi.fn((deps: { role: string }, _signal: AbortSignal) =>
-      Promise.resolve(`users-${deps.role}`)
+      Promise.resolve(`users-${deps.role}`),
     )
     const r = resource({
-      deps: (get) => ({ role: get(store, s => s.role) }),
+      deps: (get) => ({ role: get(store, (s) => s.role) }),
       fetch,
     })
     await delay(5)
     expect(r.data).toBe('users-admin')
 
-    store.set(s => s.role, 'user')
+    store.set((s) => s.role, 'user')
     // microtask coalescing - need to wait
     await delay(5)
     expect(r.data).toBe('users-user')
@@ -127,19 +135,17 @@ describe('resource (store deps)', () => {
 
   it('coalesces rapid dep changes', async () => {
     const store = create({ a: 1, b: 2 })
-    const fetch = vi.fn((deps: { a: number; b: number }) =>
-      Promise.resolve(deps.a + deps.b)
-    )
+    const fetch = vi.fn((deps: { a: number; b: number }) => Promise.resolve(deps.a + deps.b))
     const r = resource({
-      deps: (get) => ({ a: get(store, s => s.a), b: get(store, s => s.b) }),
+      deps: (get) => ({ a: get(store, (s) => s.a), b: get(store, (s) => s.b) }),
       fetch: (deps, _signal) => fetch(deps),
     })
     await delay(5)
     fetch.mockClear()
 
     // rapid changes without batch
-    store.set(s => s.a, 10)
-    store.set(s => s.b, 20)
+    store.set((s) => s.a, 10)
+    store.set((s) => s.b, 20)
     await delay(5)
 
     // should coalesce into one or two fetches, not three
@@ -151,14 +157,14 @@ describe('resource (store deps)', () => {
     const store = create({ x: 1 })
     const fetch = vi.fn((_deps: { x: number }, _signal: AbortSignal) => Promise.resolve(0))
     const r = resource({
-      deps: (get) => ({ x: get(store, s => s.x) }),
+      deps: (get) => ({ x: get(store, (s) => s.x) }),
       fetch,
     })
     await delay(5)
     fetch.mockClear()
 
     r.destroy()
-    store.set(s => s.x, 99)
+    store.set((s) => s.x, 99)
     await delay(5)
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -256,7 +262,7 @@ describe('resource (generation counter)', () => {
   it('discards stale promise resolutions', async () => {
     let resolvers: Array<(v: string) => void> = []
     const r = resource({
-      fetch: (_signal) => new Promise<string>(resolve => resolvers.push(resolve)),
+      fetch: (_signal) => new Promise<string>((resolve) => resolvers.push(resolve)),
     })
 
     await delay(1)
@@ -313,7 +319,7 @@ describe('resource (retry)', () => {
 describe('resource (update / optimistic)', () => {
   it('update directly sets data', () => {
     const r = resource({ fetch: mockFetch([1, 2]), initialData: [1, 2, 3] })
-    r.update(prev => [...(prev ?? []), 4])
+    r.update((prev) => [...(prev ?? []), 4])
     expect(r.data).toEqual([1, 2, 3, 4])
     expect(r.status).toBe('ok')
   })
@@ -365,7 +371,9 @@ describe('mutation', () => {
     })
 
     expect(r.data).toEqual([1, 2, 3])
-    try { await m.run(null) } catch {}
+    try {
+      await m.run(null)
+    } catch {}
 
     expect(optimisticSpy).toHaveBeenCalled()
     // invalidation should have been called on error to rollback
@@ -382,9 +390,13 @@ describe('mutation', () => {
   it('abort cancels running mutation', async () => {
     let aborted = false
     const m = mutation({
-      fn: (_input, signal) => new Promise((_, reject) => {
-        signal.addEventListener('abort', () => { aborted = true; reject(new DOMException('Aborted', 'AbortError')) })
-      }),
+      fn: (_input, signal) =>
+        new Promise((_, reject) => {
+          signal.addEventListener('abort', () => {
+            aborted = true
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+        }),
     })
     const promise = m.run(null)
     m.abort()
@@ -406,7 +418,9 @@ describe('mutation (reactivity)', () => {
     const states: string[] = []
     const m = mutation({ fn: () => Promise.reject(new Error('fail')) })
     m.subscribe((next) => states.push(next.status))
-    try { await m.run(null) } catch {}
+    try {
+      await m.run(null)
+    } catch {}
     expect(states).toEqual(['running', 'error'])
   })
 
@@ -432,7 +446,9 @@ describe('mutation (reactivity)', () => {
   it('subscriber error does not break other subscribers', async () => {
     const spy = vi.fn()
     const m = mutation({ fn: () => Promise.resolve('ok') })
-    m.subscribe(() => { throw new Error('boom') })
+    m.subscribe(() => {
+      throw new Error('boom')
+    })
     m.subscribe(spy)
     await m.run(null)
     expect(spy).toHaveBeenCalled()
@@ -451,10 +467,10 @@ describe('resource (into store)', () => {
       into: handle,
     })
 
-    expect(store.get(s => s.data).status).toBe('loading')
+    expect(store.get((s) => s.data).status).toBe('loading')
     await delay(10)
-    expect(store.get(s => s.data).status).toBe('ok')
-    expect(store.get(s => s.data).data).toBe('hello')
+    expect(store.get((s) => s.data).status).toBe('ok')
+    expect(store.get((s) => s.data).data).toBe('hello')
     r.destroy()
   })
 
@@ -464,7 +480,7 @@ describe('resource (into store)', () => {
     const store = create({ result: idle<number>() as RS })
     const handle = store.at<RS>(['result'])
     const spy = vi.fn()
-    store.subscribe(s => s.result, spy)
+    store.subscribe((s) => s.result, spy)
 
     const r = resource({
       fetch: () => delay(5).then(() => 42),
@@ -494,14 +510,14 @@ describe('resource + HTTP integration', () => {
     const api = createClient({ baseUrl: 'https://api.test', fetch: mockFetch })
     const store = create({ search: '' })
     const r = resource({
-      deps: (get) => ({ q: get(store, s => s.search) }),
+      deps: (get) => ({ q: get(store, (s) => s.search) }),
       fetch: ({ q }, signal) => api.get<{ name: string }[]>('/users', { query: { q }, signal }),
     })
 
     await delay(10)
     expect(r.data).toEqual([{ name: 'all' }])
 
-    store.set(s => s.search, 'tom')
+    store.set((s) => s.search, 'tom')
     await delay(10)
     expect(r.data).toEqual([{ name: 'tom' }])
     expect(mockFetch).toHaveBeenCalledTimes(2)
@@ -509,8 +525,13 @@ describe('resource + HTTP integration', () => {
 
   it('HTTP error puts resource in error state', async () => {
     const { createClient } = await import('../../../http/src/client')
-    const mockFetch = vi.fn(async () =>
-      new Response('{"message":"not found"}', { status: 404, statusText: 'Not Found', headers: new Headers({ 'content-type': 'application/json' }) })
+    const mockFetch = vi.fn(
+      async () =>
+        new Response('{"message":"not found"}', {
+          status: 404,
+          statusText: 'Not Found',
+          headers: new Headers({ 'content-type': 'application/json' }),
+        }),
     )
     const api = createClient({ fetch: mockFetch })
     const r = resource({
@@ -539,7 +560,9 @@ describe('resource (error isolation)', () => {
   it('one subscriber throwing does not break others', async () => {
     const r = resource({ fetch: mockFetch('data', 5) })
     const spy = vi.fn()
-    r.subscribe(() => { throw new Error('boom') })
+    r.subscribe(() => {
+      throw new Error('boom')
+    })
     r.subscribe(spy)
     await delay(10)
     expect(spy).toHaveBeenCalled()
@@ -552,11 +575,11 @@ describe('resource (re-entrancy)', () => {
     const r = resource({ fetch: mockFetch('data', 5) })
 
     r.subscribe(() => {
-      store.set(s => s.count, 1)
+      store.set((s) => s.count, 1)
     })
 
     await delay(10)
-    expect(store.get(s => s.count)).toBe(1)
+    expect(store.get((s) => s.count)).toBe(1)
     expect(r.data).toBe('data')
   })
 })

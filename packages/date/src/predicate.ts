@@ -58,9 +58,11 @@ export const isSameYear: {
   (ts: Timestamp, other: Timestamp): boolean
   (other: Timestamp): (ts: Timestamp) => boolean
 } = function isSameYear(_p0: any, _p1: any) {
-  if (_p1 !== undefined) return epochDaysToCivil(epochDays(_p0)).year === epochDaysToCivil(epochDays(_p1)).year
+  if (_p1 !== undefined)
+    return epochDaysToCivil(epochDays(_p0)).year === epochDaysToCivil(epochDays(_p1)).year
   const other = _p0
-  return (ts: any) => epochDaysToCivil(epochDays(ts)).year === epochDaysToCivil(epochDays(other)).year
+  return (ts: any) =>
+    epochDaysToCivil(epochDays(ts)).year === epochDaysToCivil(epochDays(other)).year
 } as any
 
 export const isBetween: {
@@ -68,13 +70,14 @@ export const isBetween: {
   (start: Timestamp, end: Timestamp): (ts: Timestamp) => boolean
 } = function isBetween(_p0: any, _p1: any, _p2: any) {
   if (_p2 !== undefined) return _p0 >= _p1 && _p0 <= _p2
-  const start = _p0, end = _p1
+  const start = _p0,
+    end = _p1
   return (ts: any) => ts >= start && ts <= end
 } as any
 
 export function isWeekend(ts: Timestamp): boolean {
   const d = epochDays(ts)
-  const dow = ((d + 4) % 7 + 7) % 7
+  const dow = (((d + 4) % 7) + 7) % 7
   return dow === 0 || dow === 6
 }
 

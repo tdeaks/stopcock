@@ -2,7 +2,10 @@ import type { Node, NodeKind } from '../types'
 
 export type KernelTemplate = (node: Node, paramRef: (param: string) => string) => string
 
-const comment = (kind: NodeKind): KernelTemplate => (node) => `/* ${kind} kernel for ${node.kind} */`
+const comment =
+  (kind: NodeKind): KernelTemplate =>
+  (node) =>
+    `/* ${kind} kernel for ${node.kind} */`
 
 export const kernels: Record<NodeKind, KernelTemplate> = {
   osc: comment('osc'),

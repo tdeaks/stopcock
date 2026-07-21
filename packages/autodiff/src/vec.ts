@@ -35,23 +35,20 @@ export const vecAdd = dual(2, (a: VecInput, b: VecInput): Var<Vec> => {
   const av = asVar(a)
   const bv = asVar(b)
   assertSameLength('vecAdd', av.value, bv.value)
-  return record(LaVec.add(av.value, bv.value), [av, bv], grad => [grad, grad])
+  return record(LaVec.add(av.value, bv.value), [av, bv], (grad) => [grad, grad])
 }) as BinaryVecOp
 
 export const vecSub = dual(2, (a: VecInput, b: VecInput): Var<Vec> => {
   const av = asVar(a)
   const bv = asVar(b)
   assertSameLength('vecSub', av.value, bv.value)
-  return record(LaVec.sub(av.value, bv.value), [av, bv], grad => [
-    grad,
-    LaVec.scale(grad, -1),
-  ])
+  return record(LaVec.sub(av.value, bv.value), [av, bv], (grad) => [grad, LaVec.scale(grad, -1)])
 }) as BinaryVecOp
 
 export const vecScale = dual(2, (v: VecInput, s: ScalarInput): Var<Vec> => {
   const vv = asVar(v)
   const sv = asVar(s)
-  return record(LaVec.scale(vv.value, sv.value), [vv, sv], grad => [
+  return record(LaVec.scale(vv.value, sv.value), [vv, sv], (grad) => [
     LaVec.scale(grad, sv.value),
     LaVec.dot(grad, vv.value),
   ])
@@ -61,7 +58,7 @@ export const vecDot = dual(2, (a: VecInput, b: VecInput): Var<number> => {
   const av = asVar(a)
   const bv = asVar(b)
   assertSameLength('vecDot', av.value, bv.value)
-  return record(LaVec.dot(av.value, bv.value), [av, bv], grad => [
+  return record(LaVec.dot(av.value, bv.value), [av, bv], (grad) => [
     LaVec.scale(bv.value, grad),
     LaVec.scale(av.value, grad),
   ])
@@ -70,7 +67,7 @@ export const vecDot = dual(2, (a: VecInput, b: VecInput): Var<number> => {
 export const vecNorm = (v: VecInput): Var<number> => {
   const vv = asVar(v)
   const value = LaVec.norm(vv.value)
-  return record(value, [vv], grad => [
+  return record(value, [vv], (grad) => [
     value === 0 ? new Float64Array(vv.value.length) : LaVec.scale(vv.value, grad / value),
   ])
 }
@@ -79,5 +76,5 @@ export const vecSum = (v: VecInput): Var<number> => {
   const vv = asVar(v)
   let value = 0
   for (let i = 0; i < vv.value.length; i++) value += vv.value[i]
-  return record(value, [vv], grad => [LaVec.scale(ones(vv.value.length), grad)])
+  return record(value, [vv], (grad) => [LaVec.scale(ones(vv.value.length), grad)])
 }

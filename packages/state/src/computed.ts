@@ -25,7 +25,9 @@ export function computed<S extends object, A, D>(
     dirty = false
     if (!eq(prev, cached)) {
       for (const fn of listeners) {
-        try { fn(cached, prev) } catch {}
+        try {
+          fn(cached, prev)
+        } catch {}
       }
     }
   })
@@ -40,7 +42,9 @@ export function computed<S extends object, A, D>(
     },
     subscribe(listener: Listener<D>): Unsubscribe {
       listeners.push(listener)
-      return () => { listeners = listeners.filter(l => l !== listener) }
+      return () => {
+        listeners = listeners.filter((l) => l !== listener)
+      }
     },
     destroy() {
       destroyed = true

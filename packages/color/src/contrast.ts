@@ -9,8 +9,10 @@ export const luminance = (c: Color): number => {
 }
 
 const contrastImpl = (a: Color, b: Color): number => {
-  const La = luminance(a), Lb = luminance(b)
-  const lighter = Math.max(La, Lb), darker = Math.min(La, Lb)
+  const La = luminance(a),
+    Lb = luminance(b)
+  const lighter = Math.max(La, Lb),
+    darker = Math.min(La, Lb)
   return (lighter + 0.05) / (darker + 0.05)
 }
 
@@ -19,8 +21,7 @@ export const contrastRatio: {
   (b: Color): (a: Color) => number
 } = dual(2, contrastImpl)
 
-const threshold = (limit: number) =>
-  dual(2, (a: Color, b: Color) => contrastImpl(a, b) >= limit)
+const threshold = (limit: number) => dual(2, (a: Color, b: Color) => contrastImpl(a, b) >= limit)
 
 export const meetsAA: {
   (a: Color, b: Color): boolean
@@ -84,11 +85,12 @@ const deltaEImpl = (c1: Color, c2: Color): number => {
     hbarp /= 2
   }
 
-  const T = 1
-    - 0.17 * Math.cos(deg2rad(hbarp - 30))
-    + 0.24 * Math.cos(deg2rad(2 * hbarp))
-    + 0.32 * Math.cos(deg2rad(3 * hbarp + 6))
-    - 0.20 * Math.cos(deg2rad(4 * hbarp - 63))
+  const T =
+    1 -
+    0.17 * Math.cos(deg2rad(hbarp - 30)) +
+    0.24 * Math.cos(deg2rad(2 * hbarp)) +
+    0.32 * Math.cos(deg2rad(3 * hbarp + 6)) -
+    0.2 * Math.cos(deg2rad(4 * hbarp - 63))
 
   const dTheta = 30 * Math.exp(-(((hbarp - 275) / 25) ** 2))
   const Rc = 2 * Math.sqrt(Cbarp ** 7 / (Cbarp ** 7 + 25 ** 7))
@@ -98,10 +100,7 @@ const deltaEImpl = (c1: Color, c2: Color): number => {
   const Rt = -Math.sin(deg2rad(2 * dTheta)) * Rc
 
   return Math.sqrt(
-    (dLp / Sl) ** 2 +
-    (dCp / Sc) ** 2 +
-    (dHp / Sh) ** 2 +
-    Rt * (dCp / Sc) * (dHp / Sh)
+    (dLp / Sl) ** 2 + (dCp / Sc) ** 2 + (dHp / Sh) ** 2 + Rt * (dCp / Sc) * (dHp / Sh),
   )
 }
 

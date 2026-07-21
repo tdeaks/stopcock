@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { analysis, biquad, convolve, fft, fir, onepole, resample, window } from '../index'
 
 const f32 = (values: number[]) => new Float32Array(values)
@@ -23,32 +23,13 @@ describe('window functions', () => {
 
 describe('fft', () => {
   it('matches a hand-computed 4-point complex transform', () => {
-    const buf = new Float64Array([
-      1, 0,
-      0, 0,
-      -1, 0,
-      0, 0,
-    ])
+    const buf = new Float64Array([1, 0, 0, 0, -1, 0, 0, 0])
     fft.fft(buf)
-    expectCloseArray(buf, new Float64Array([
-      0, 0,
-      2, 0,
-      0, 0,
-      2, 0,
-    ]), 12)
+    expectCloseArray(buf, new Float64Array([0, 0, 2, 0, 0, 0, 2, 0]), 12)
   })
 
   it('matches a hand-computed 8-point DC transform and validates plan sizes', () => {
-    const buf = new Float64Array([
-      1, 0,
-      1, 0,
-      1, 0,
-      1, 0,
-      1, 0,
-      1, 0,
-      1, 0,
-      1, 0,
-    ])
+    const buf = new Float64Array([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0])
     fft.fftInto(buf, fft.plan(8))
     expect(buf[0]).toBeCloseTo(8, 12)
     for (let i = 1; i < 8; i++) {
@@ -84,13 +65,14 @@ describe('fft', () => {
 describe('filters', () => {
   it('designs RBJ low-pass coefficients from the cookbook fixture', () => {
     const coeffs = biquad.design({ kind: 'lowpass', freq: 1, q: 0.7071, sampleRate: 10 })
-    expectCloseArray(coeffs, [
-      0.0674550839587033,
-      0.134910167917407,
-      0.0674550839587033,
-      -1.14297728430809,
-      0.412797620142905,
-    ], 12)
+    expectCloseArray(
+      coeffs,
+      [
+        0.0674550839587033, 0.134910167917407, 0.0674550839587033, -1.14297728430809,
+        0.412797620142905,
+      ],
+      12,
+    )
   })
 
   it('validates biquad design failure modes', () => {
@@ -191,7 +173,11 @@ describe('filters', () => {
 })
 
 describe('convolution', () => {
-  const streamConvolution = (signal: Float32Array, kernel: Float32Array, blockSize: number): Float32Array => {
+  const streamConvolution = (
+    signal: Float32Array,
+    kernel: Float32Array,
+    blockSize: number,
+  ): Float32Array => {
     const plan = convolve.plan(kernel, blockSize)
     const state = convolve.state(plan)
     const chunks: number[] = []
@@ -281,7 +267,7 @@ describe('resampling', () => {
     input.fill(3)
     const normalized = new Float32Array(24)
     for (let i = 0; i < normalized.length; i++) normalized[i] = 0.25
-    const out = new Float32Array(Math.floor(input.length * 2 / 1))
+    const out = new Float32Array(Math.floor((input.length * 2) / 1))
     resample.polyphase(input, 2, 1, normalized, out)
     for (let i = normalized.length; i < out.length; i++) expect(out[i]).toBeCloseTo(3, 6)
 
@@ -294,21 +280,21 @@ describe('resampling', () => {
   it('checks a hand-computed polyphase fixture', () => {
     const input = f32([1, 2, 3])
     const taps = f32([1, 2, 3, 4, 5, 6, 7])
-    const out = new Float32Array(Math.floor(input.length * 3 / 2))
+    const out = new Float32Array(Math.floor((input.length * 3) / 2))
     resample.polyphase(input, 3, 2, taps, out)
     expectCloseArray(out, f32([1, 3, 9, 18]), 6)
   })
 
   it('locks in one-shot chunking semantics', () => {
     const taps = f32([1])
-    const first = new Float32Array(Math.floor(1 * 1 / 2))
-    const second = new Float32Array(Math.floor(1 * 1 / 2))
+    const first = new Float32Array(Math.floor((1 * 1) / 2))
+    const second = new Float32Array(Math.floor((1 * 1) / 2))
     resample.polyphase(f32([1]), 1, 2, taps, first)
     resample.polyphase(f32([2]), 1, 2, taps, second)
     expect(first.length).toBe(0)
     expect(second.length).toBe(0)
 
-    const together = new Float32Array(Math.floor(2 * 1 / 2))
+    const together = new Float32Array(Math.floor((2 * 1) / 2))
     resample.polyphase(f32([1, 2]), 1, 2, taps, together)
     expect(together.length).toBe(1)
   })
@@ -324,8 +310,15 @@ describe('analysis', () => {
 
   it('validates analysis inputs', () => {
     expect(() => analysis.rms(new Float32Array())).toThrow(RangeError)
-    expect(() => analysis.spectralCentroid({ magnitudes: new Float32Array(2), fftSize: 8, sampleRate: 48000 })).toThrow(RangeError)
-    expect(() => analysis.spectralRolloff({ magnitudes: new Float32Array(5), fftSize: 8, sampleRate: 48000 }, 1)).toThrow(RangeError)
+    expect(() =>
+      analysis.spectralCentroid({ magnitudes: new Float32Array(2), fftSize: 8, sampleRate: 48000 }),
+    ).toThrow(RangeError)
+    expect(() =>
+      analysis.spectralRolloff(
+        { magnitudes: new Float32Array(5), fftSize: 8, sampleRate: 48000 },
+        1,
+      ),
+    ).toThrow(RangeError)
   })
 
   it('returns falsy spectral values for zero energy', () => {

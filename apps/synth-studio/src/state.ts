@@ -2,7 +2,13 @@ import { createStore, produce, type SetStoreFunction } from 'solid-js/store'
 import { createMemo, createRoot, createSignal, type Accessor } from 'solid-js'
 import { defaultState, type EngineHandle, type RackState } from './engine'
 import { createSlot, type FxKind, type FxSlot } from './fx'
-import { DEFAULT_PATTERN, toggleStep as toggleStepPure, clearPattern as clearPatternPure, type DrumPattern, type StepValue } from './drumPattern'
+import {
+  DEFAULT_PATTERN,
+  toggleStep as toggleStepPure,
+  clearPattern as clearPatternPure,
+  type DrumPattern,
+  type StepValue,
+} from './drumPattern'
 import type { DrumEngineHandle } from './drumEngine'
 import type { DrumPieceId } from './drumKit'
 
@@ -86,16 +92,20 @@ export function setDrumPlaying(playing: boolean): void {
   setDrumPattern('playing', playing)
 }
 export function toggleDrumStep(rowIndex: number, stepIndex: number): void {
-  setDrumPattern(produce<DrumPattern>((draft) => {
-    const next = toggleStepPure(draft, rowIndex, stepIndex)
-    draft.rows = next.rows
-  }))
+  setDrumPattern(
+    produce<DrumPattern>((draft) => {
+      const next = toggleStepPure(draft, rowIndex, stepIndex)
+      draft.rows = next.rows
+    }),
+  )
 }
 export function clearDrumPattern(): void {
-  setDrumPattern(produce<DrumPattern>((draft) => {
-    const next = clearPatternPure(draft)
-    draft.rows = next.rows
-  }))
+  setDrumPattern(
+    produce<DrumPattern>((draft) => {
+      const next = clearPatternPure(draft)
+      draft.rows = next.rows
+    }),
+  )
 }
 
 const [drumPlayhead, setDrumPlayhead] = createSignal<number>(-1)
@@ -133,10 +143,12 @@ export function toggleFxBypass(index: number): void {
  */
 export function moveFxSlot(from: number, to: number): void {
   if (from === to || from < 0 || to < 0) return
-  setState(produce<RackState>((draft) => {
-    const [moved] = draft.fx.splice(from, 1)
-    if (moved) draft.fx.splice(to, 0, moved)
-  }))
+  setState(
+    produce<RackState>((draft) => {
+      const [moved] = draft.fx.splice(from, 1)
+      if (moved) draft.fx.splice(to, 0, moved)
+    }),
+  )
 }
 
 export function setRouting<K extends keyof RackState['routing']>(key: K, value: boolean): void {
@@ -161,19 +173,21 @@ export type Preset = {
 }
 
 export function applyPreset(preset: Preset): void {
-  setState(produce<RackState>((draft) => {
-    if (preset.state.osc) Object.assign(draft.osc, preset.state.osc)
-    if (preset.state.flt) Object.assign(draft.flt, preset.state.flt)
-    if (preset.state.env) Object.assign(draft.env, preset.state.env)
-    if (preset.state.lfo) Object.assign(draft.lfo, preset.state.lfo)
-    if (preset.state.arp) Object.assign(draft.arp, preset.state.arp)
-    if (preset.state.fx) {
-      // Ensure we always have 4 slots
-      const slots = [...preset.state.fx]
-      while (slots.length < 4) slots.push(createSlot('none'))
-      draft.fx = slots.slice(0, 4)
-    }
-  }))
+  setState(
+    produce<RackState>((draft) => {
+      if (preset.state.osc) Object.assign(draft.osc, preset.state.osc)
+      if (preset.state.flt) Object.assign(draft.flt, preset.state.flt)
+      if (preset.state.env) Object.assign(draft.env, preset.state.env)
+      if (preset.state.lfo) Object.assign(draft.lfo, preset.state.lfo)
+      if (preset.state.arp) Object.assign(draft.arp, preset.state.arp)
+      if (preset.state.fx) {
+        // Ensure we always have 4 slots
+        const slots = [...preset.state.fx]
+        while (slots.length < 4) slots.push(createSlot('none'))
+        draft.fx = slots.slice(0, 4)
+      }
+    }),
+  )
 }
 
 // ─────────────────────────── note tracking (active midi set)
@@ -192,7 +206,7 @@ export function markArpNotes(notes: readonly number[]): void {
 }
 
 export function clearArpNotes(): void {
-  setActiveArpNotes((prev) => prev.size === 0 ? prev : new Set<number>())
+  setActiveArpNotes((prev) => (prev.size === 0 ? prev : new Set<number>()))
 }
 
 const releaseNotes = (notes: Iterable<number>): void => {
@@ -212,14 +226,18 @@ export function setArpEnabled(enabled: boolean): void {
   setState('arp', 'enabled', enabled)
 }
 
-export function setArpParam<K extends keyof RackState['arp']>(key: K, value: RackState['arp'][K]): void {
+export function setArpParam<K extends keyof RackState['arp']>(
+  key: K,
+  value: RackState['arp'][K],
+): void {
   if (key === 'enabled') {
     setArpEnabled(Boolean(value))
     return
   }
   if (key === 'latch') {
     const latch = Boolean(value)
-    if (latch && latchedNotes().size === 0 && activeNotes().size > 0) setLatchedNotes(new Set<number>(activeNotes()))
+    if (latch && latchedNotes().size === 0 && activeNotes().size > 0)
+      setLatchedNotes(new Set<number>(activeNotes()))
     if (!latch) setLatchedNotes(new Set<number>())
   }
   setState('arp', key, value)

@@ -24,7 +24,9 @@ const clamp01 = (n: number): number => Math.max(0, Math.min(1, n))
 const valueToNormalized = (raw: number, min: number, max: number, log: boolean): number => {
   if (log) {
     const safeMin = Math.max(min, 1e-6)
-    return clamp01((Math.log(Math.max(raw, safeMin)) - Math.log(safeMin)) / (Math.log(max) - Math.log(safeMin)))
+    return clamp01(
+      (Math.log(Math.max(raw, safeMin)) - Math.log(safeMin)) / (Math.log(max) - Math.log(safeMin)),
+    )
   }
   return clamp01((raw - min) / (max - min))
 }
@@ -48,12 +50,14 @@ const defaultFormat = (raw: number, unit?: string): string => {
 }
 
 export const Knob: Component<KnobProps> = (props) => {
-  const normalized = createMemo(() => valueToNormalized(props.value, props.min, props.max, props.log ?? false))
+  const normalized = createMemo(() =>
+    valueToNormalized(props.value, props.min, props.max, props.log ?? false),
+  )
   const dashOffset = createMemo(() => CIRCUMFERENCE - ARC_SPAN * normalized())
   const indicatorAngle = createMemo(() => -135 + normalized() * 270)
-  const displayed = createMemo(() => props.formatValue
-    ? props.formatValue(props.value)
-    : defaultFormat(props.value, props.unit))
+  const displayed = createMemo(() =>
+    props.formatValue ? props.formatValue(props.value) : defaultFormat(props.value, props.unit),
+  )
 
   const emit = (next01: number): void => {
     props.onChange(normalizedToValue(clamp01(next01), props.min, props.max, props.log ?? false))

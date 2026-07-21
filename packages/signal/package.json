@@ -7,6 +7,9 @@
     "url": "git+https://github.com/tdeaks/stopcock.git",
     "directory": "packages/signal"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -51,11 +54,7 @@
       "import": "./dist/window.js"
     }
   },
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly",
-    "test": "vitest run"
+    "test": "vp test run"
   }
 }

@@ -48,10 +48,26 @@ export function buildLens<S, A>(segments: Path): Lens<S, A> {
 // --- direct get/set, bypassing lens function chain ---
 
 function makeGetter(path: Path): (state: any) => any {
-  if (path.length === 1) { const k = path[0]; return (s) => s[k] }
-  if (path.length === 2) { const a = path[0], b = path[1]; return (s) => s[a][b] }
-  if (path.length === 3) { const a = path[0], b = path[1], c = path[2]; return (s) => s[a][b][c] }
-  return (s) => { let r = s; for (let i = 0; i < path.length; i++) r = r[path[i]]; return r }
+  if (path.length === 1) {
+    const k = path[0]
+    return (s) => s[k]
+  }
+  if (path.length === 2) {
+    const a = path[0],
+      b = path[1]
+    return (s) => s[a][b]
+  }
+  if (path.length === 3) {
+    const a = path[0],
+      b = path[1],
+      c = path[2]
+    return (s) => s[a][b][c]
+  }
+  return (s) => {
+    let r = s
+    for (let i = 0; i < path.length; i++) r = r[path[i]]
+    return r
+  }
 }
 
 function cloneLevel(obj: any): any {
@@ -66,8 +82,12 @@ function makeSetter(path: Path): (state: any, value: any) => any {
   }
   // Depth 2: root is object, second level might be array
   if (path.length === 2) {
-    const a = path[0], b = path[1]
-    return (s, v) => ({ ...s, [a]: (Array.isArray(s[a]) ? setIdx(s[a], b as number, v) : { ...s[a], [b]: v }) })
+    const a = path[0],
+      b = path[1]
+    return (s, v) => ({
+      ...s,
+      [a]: Array.isArray(s[a]) ? setIdx(s[a], b as number, v) : { ...s[a], [b]: v },
+    })
   }
   // General case
   return (s, v) => {

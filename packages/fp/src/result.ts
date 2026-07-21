@@ -80,7 +80,7 @@ export const match =
 
 export function tryCatch<A>(thunk: () => A): Result<A, unknown>
 export function tryCatch<A, E>(thunk: () => A, onError: (e: unknown) => E): Result<A, E>
-export function tryCatch<A, E>(thunk: () => A, onError?: (e: unknown) => E): Result<A, E | unknown> {
+export function tryCatch<A, E>(thunk: () => A, onError?: (e: unknown) => E): Result<A, unknown> {
   try {
     return ok(thunk())
   } catch (e) {
@@ -91,11 +91,14 @@ export function tryCatch<A, E>(thunk: () => A, onError?: (e: unknown) => E): Res
 export const fromThrowable = tryCatch
 
 export async function tryCatchAsync<A>(thunk: () => Promise<A>): Promise<Result<A, unknown>>
-export async function tryCatchAsync<A, E>(thunk: () => Promise<A>, onError: (e: unknown) => E): Promise<Result<A, E>>
+export async function tryCatchAsync<A, E>(
+  thunk: () => Promise<A>,
+  onError: (e: unknown) => E,
+): Promise<Result<A, E>>
 export async function tryCatchAsync<A, E>(
   thunk: () => Promise<A>,
   onError?: (e: unknown) => E,
-): Promise<Result<A, E | unknown>> {
+): Promise<Result<A, unknown>> {
   try {
     return ok(await thunk())
   } catch (e) {
@@ -108,8 +111,7 @@ export const fromNullable =
   <A>(value: A | null | undefined): Result<NonNullable<A>, E> =>
     value == null ? err(defaultError) : ok(value as NonNullable<A>)
 
-export const toOption = <A, E>(r: Result<A, E>): Option<A> =>
-  r._tag === 1 ? some(r.value) : none
+export const toOption = <A, E>(r: Result<A, E>): Option<A> => (r._tag === 1 ? some(r.value) : none)
 
 export const tap =
   <A>(f: (a: A) => void) =>

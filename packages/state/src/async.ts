@@ -16,18 +16,21 @@ export function asyncAction<S extends object, A>(
 
   if (config.onStart) config.onStart(store)
 
-  const result = config.task.run(controller.signal).then(
-    (value) => {
-      config.onSuccess(store, value)
-      return value
-    },
-    (error) => {
-      if (config.onError) config.onError(store, error)
-      throw error
-    },
-  ).finally(() => {
-    if (config.onFinally) config.onFinally(store)
-  })
+  const result = config.task
+    .run(controller.signal)
+    .then(
+      (value) => {
+        config.onSuccess(store, value)
+        return value
+      },
+      (error) => {
+        if (config.onError) config.onError(store, error)
+        throw error
+      },
+    )
+    .finally(() => {
+      if (config.onFinally) config.onFinally(store)
+    })
 
   return {
     abort: () => controller.abort(),

@@ -20,16 +20,18 @@ export type SegmentsProps<T extends string> = {
 export function Segments<T extends string>(props: SegmentsProps<T>): JSX.Element {
   return (
     <div class={'seg' + (props.class ? ' ' + props.class : '')}>
-      <For each={props.options}>{(opt) => (
-        <button
-          type="button"
-          class={opt.value === props.current ? 'active' : ''}
-          data-value={opt.value}
-          onClick={() => props.onSelect(opt.value)}
-        >
-          {opt.icon ?? opt.label}
-        </button>
-      )}</For>
+      <For each={props.options}>
+        {(opt) => (
+          <button
+            type="button"
+            class={opt.value === props.current ? 'active' : ''}
+            data-value={opt.value}
+            onClick={() => props.onSelect(opt.value)}
+          >
+            {opt.icon ?? opt.label}
+          </button>
+        )}
+      </For>
     </div>
   )
 }

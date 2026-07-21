@@ -30,7 +30,9 @@ export const toCSS = (c: Color): string => {
 
 export const toRGBString = (c: Color): string => {
   const s = toSRGB(c)
-  const r = byte(s.channels[0]), g = byte(s.channels[1]), b = byte(s.channels[2])
+  const r = byte(s.channels[0]),
+    g = byte(s.channels[1]),
+    b = byte(s.channels[2])
   if (c.alpha < 1) return `rgb(${r} ${g} ${b} / ${num(c.alpha)})`
   return `rgb(${r} ${g} ${b})`
 }

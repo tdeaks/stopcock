@@ -44,7 +44,10 @@ const isColor = (paint: Paint): paint is Color =>
   typeof paint === 'object' && paint !== null && 'space' in paint && 'channels' in paint
 
 const isGradient = (paint: Paint): paint is Gradient =>
-  typeof paint === 'object' && paint !== null && 'kind' in paint && (paint.kind === 'linear' || paint.kind === 'radial')
+  typeof paint === 'object' &&
+  paint !== null &&
+  'kind' in paint &&
+  (paint.kind === 'linear' || paint.kind === 'radial')
 
 const collectPaint = (paint: Paint | undefined, defs: Defs): void => {
   if (!paint || paint === 'none' || isColor(paint)) return
@@ -116,33 +119,74 @@ const renderStroke = (stroke: Stroke, defs: Defs): Array<[string, string | numbe
   ['stroke-linejoin', stroke.linejoin],
 ]
 
-const renderPathData = (path: Path): string => path.map((cmd) => {
-  switch (cmd.c) {
-    case 'M': return `M ${num(cmd.x)} ${num(cmd.y)}`
-    case 'L': return `L ${num(cmd.x)} ${num(cmd.y)}`
-    case 'C': return `C ${num(cmd.x1)} ${num(cmd.y1)} ${num(cmd.x2)} ${num(cmd.y2)} ${num(cmd.x)} ${num(cmd.y)}`
-    case 'Q': return `Q ${num(cmd.x1)} ${num(cmd.y1)} ${num(cmd.x)} ${num(cmd.y)}`
-    case 'A': return `A ${num(cmd.rx)} ${num(cmd.ry)} 0 ${cmd.large ? 1 : 0} ${cmd.sweep ? 1 : 0} ${num(cmd.x)} ${num(cmd.y)}`
-    case 'Z': return 'Z'
-  }
-}).join(' ')
+const renderPathData = (path: Path): string =>
+  path
+    .map((cmd) => {
+      switch (cmd.c) {
+        case 'M':
+          return `M ${num(cmd.x)} ${num(cmd.y)}`
+        case 'L':
+          return `L ${num(cmd.x)} ${num(cmd.y)}`
+        case 'C':
+          return `C ${num(cmd.x1)} ${num(cmd.y1)} ${num(cmd.x2)} ${num(cmd.y2)} ${num(cmd.x)} ${num(cmd.y)}`
+        case 'Q':
+          return `Q ${num(cmd.x1)} ${num(cmd.y1)} ${num(cmd.x)} ${num(cmd.y)}`
+        case 'A':
+          return `A ${num(cmd.rx)} ${num(cmd.ry)} 0 ${cmd.large ? 1 : 0} ${cmd.sweep ? 1 : 0} ${num(cmd.x)} ${num(cmd.y)}`
+        case 'Z':
+          return 'Z'
+      }
+    })
+    .join(' ')
 
 const renderNode = (node: Node, defs: Defs): string => {
   switch (node.kind) {
     case 'circle':
-      return `<circle${attrs([['r', num(node.r)], ['cx', num(node.cx)], ['cy', num(node.cy)]])}${commonAttrs(node, defs)} />`
+      return `<circle${attrs([
+        ['r', num(node.r)],
+        ['cx', num(node.cx)],
+        ['cy', num(node.cy)],
+      ])}${commonAttrs(node, defs)} />`
     case 'rect':
-      return `<rect${attrs([['width', num(node.w)], ['height', num(node.h)], ['x', num(node.x)], ['y', num(node.y)], ['rx', node.rx === undefined ? undefined : num(node.rx)], ['ry', node.ry === undefined ? undefined : num(node.ry)]])}${commonAttrs(node, defs)} />`
+      return `<rect${attrs([
+        ['width', num(node.w)],
+        ['height', num(node.h)],
+        ['x', num(node.x)],
+        ['y', num(node.y)],
+        ['rx', node.rx === undefined ? undefined : num(node.rx)],
+        ['ry', node.ry === undefined ? undefined : num(node.ry)],
+      ])}${commonAttrs(node, defs)} />`
     case 'ellipse':
-      return `<ellipse${attrs([['rx', num(node.rx)], ['ry', num(node.ry)], ['cx', num(node.cx)], ['cy', num(node.cy)]])}${commonAttrs(node, defs)} />`
+      return `<ellipse${attrs([
+        ['rx', num(node.rx)],
+        ['ry', num(node.ry)],
+        ['cx', num(node.cx)],
+        ['cy', num(node.cy)],
+      ])}${commonAttrs(node, defs)} />`
     case 'image':
-      return `<image${attrs([['href', node.href], ['width', num(node.w)], ['height', num(node.h)], ['x', num(node.x)], ['y', num(node.y)]])}${commonAttrs(node, defs)} />`
+      return `<image${attrs([
+        ['href', node.href],
+        ['width', num(node.w)],
+        ['height', num(node.h)],
+        ['x', num(node.x)],
+        ['y', num(node.y)],
+      ])}${commonAttrs(node, defs)} />`
     case 'line':
-      return `<line${attrs([['x1', num(node.x1)], ['y1', num(node.y1)], ['x2', num(node.x2)], ['y2', num(node.y2)]])}${commonAttrs(node, defs)} />`
+      return `<line${attrs([
+        ['x1', num(node.x1)],
+        ['y1', num(node.y1)],
+        ['x2', num(node.x2)],
+        ['y2', num(node.y2)],
+      ])}${commonAttrs(node, defs)} />`
     case 'path':
       return `<path${attrs([['d', renderPathData(node.d)]])}${commonAttrs(node, defs)} />`
     case 'text':
-      return `<text${attrs([['x', num(node.x)], ['y', num(node.y)], ['font-size', num(node.size)], ['font-family', node.family]])}${commonAttrs(node, defs)}>${esc(node.text)}</text>`
+      return `<text${attrs([
+        ['x', num(node.x)],
+        ['y', num(node.y)],
+        ['font-size', num(node.size)],
+        ['font-family', node.family],
+      ])}${commonAttrs(node, defs)}>${esc(node.text)}</text>`
     case 'group':
       return `<g${commonAttrs(node, defs)}>${node.children.map((child) => renderNode(child, defs)).join('')}</g>`
     case 'use':
@@ -159,13 +203,17 @@ const gradientVector = (angle: number): [number, number, number, number] => {
   return [0.5 - x, 0.5 - y, 0.5 + x, 0.5 + y]
 }
 
-const renderStops = (gradient: Gradient): string => gradient.stops.map((stop) =>
-  `<stop${attrs([
-    ['offset', stop.offset <= 1 ? `${num(stop.offset * 100)}%` : num(stop.offset)],
-    ['stop-color', toCSS(stop.color)],
-    ['stop-opacity', stop.opacity === undefined ? undefined : num(stop.opacity)],
-  ])} />`
-).join('')
+const renderStops = (gradient: Gradient): string =>
+  gradient.stops
+    .map(
+      (stop) =>
+        `<stop${attrs([
+          ['offset', stop.offset <= 1 ? `${num(stop.offset * 100)}%` : num(stop.offset)],
+          ['stop-color', toCSS(stop.color)],
+          ['stop-opacity', stop.opacity === undefined ? undefined : num(stop.opacity)],
+        ])} />`,
+    )
+    .join('')
 
 const renderGradient = (gradient: Gradient, id: string): string => {
   if (gradient.kind === 'linear') {
@@ -198,11 +246,18 @@ const renderPattern = (pattern: Pattern, id: string, defs: Defs): string =>
   ])}>${renderNode(pattern.child, defs)}</pattern>`
 
 const renderFilterStage = (stage: Filter['stages'][number]): string => {
-  if (stage.kind === 'blur') return `<feGaussianBlur${attrs([['stdDeviation', num(stage.stdDev)]])} />`
-  if (stage.values.length !== 20) throw new Error(`Color matrix must contain 20 values, got ${stage.values.length}`)
+  if (stage.kind === 'blur')
+    return `<feGaussianBlur${attrs([['stdDeviation', num(stage.stdDev)]])} />`
+  if (stage.values.length !== 20)
+    throw new Error(`Color matrix must contain 20 values, got ${stage.values.length}`)
   return `<feColorMatrix${attrs([
     ['type', 'matrix'],
-    ['values', Array.from(stage.values).map((value) => num(value)).join(' ')],
+    [
+      'values',
+      Array.from(stage.values)
+        .map((value) => num(value))
+        .join(' '),
+    ],
   ])} />`
 }
 
@@ -210,10 +265,16 @@ const renderDefs = (defs: Defs): string => {
   const parts: string[] = []
   for (const [gradient, id] of defs.gradients) parts.push(renderGradient(gradient, id))
   for (const [pattern, id] of defs.patterns) parts.push(renderPattern(pattern, id, defs))
-  for (const [clip, id] of defs.clips) parts.push(`<clipPath${attrs([['id', id]])}>${renderNode(clip.child, defs)}</clipPath>`)
-  for (const [mask, id] of defs.masks) parts.push(`<mask${attrs([['id', id]])}>${renderNode(mask.child, defs)}</mask>`)
-  for (const [filter, id] of defs.filters) parts.push(`<filter${attrs([['id', id]])}>${filter.stages.map(renderFilterStage).join('')}</filter>`)
-  for (const [symbol, id] of defs.symbols) parts.push(`<symbol${attrs([['id', id]])}>${renderNode(symbol, defs)}</symbol>`)
+  for (const [clip, id] of defs.clips)
+    parts.push(`<clipPath${attrs([['id', id]])}>${renderNode(clip.child, defs)}</clipPath>`)
+  for (const [mask, id] of defs.masks)
+    parts.push(`<mask${attrs([['id', id]])}>${renderNode(mask.child, defs)}</mask>`)
+  for (const [filter, id] of defs.filters)
+    parts.push(
+      `<filter${attrs([['id', id]])}>${filter.stages.map(renderFilterStage).join('')}</filter>`,
+    )
+  for (const [symbol, id] of defs.symbols)
+    parts.push(`<symbol${attrs([['id', id]])}>${renderNode(symbol, defs)}</symbol>`)
   return parts.length > 0 ? `<defs>${parts.join('')}</defs>` : ''
 }
 
@@ -224,7 +285,8 @@ const renderRoot = (node: Extract<Node, { kind: 'root' }>, defs: Defs): string =
   ])}>${renderDefs(defs)}${renderNode(node.child, defs)}</svg>`
 
 export const render = (node: Node, _opts: { pretty?: boolean } = {}): string => {
-  const root = node.kind === 'root' ? node : ({ kind: 'root', child: node, viewBox: [0, 0, 100, 100] } as Node)
+  const root =
+    node.kind === 'root' ? node : ({ kind: 'root', child: node, viewBox: [0, 0, 100, 100] } as Node)
   const defs = makeDefs()
   collectNode(root, defs)
   return renderNode(root, defs)

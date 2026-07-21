@@ -7,6 +7,9 @@
     "url": "git+https://github.com/tdeaks/stopcock.git",
     "directory": "packages/fp"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -75,14 +78,10 @@
       "import": "./dist/function.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "scripts": {
+    "codegen": "bun run codegen/aot-compile.ts && bun run codegen/dual-inline.ts"
+  },
   "devDependencies": {
     "@rescript/runtime": "^12.0.0"
-  },
-  "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly",
-    "codegen": "bun run codegen/aot-compile.ts && bun run codegen/dual-inline.ts"
   }
 }

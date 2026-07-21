@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { compose } from '../compose'
 import { patch, empty } from '../patch'
 
@@ -76,9 +76,7 @@ describe('compose', () => {
       { op: 'replace', path: ['a'], oldValue: 1, newValue: 2 },
       { op: 'replace', path: ['b'], oldValue: 10, newValue: 20 },
     ])
-    const p2 = patch([
-      { op: 'replace', path: ['a'], oldValue: 2, newValue: 3 },
-    ])
+    const p2 = patch([{ op: 'replace', path: ['a'], oldValue: 2, newValue: 3 }])
     const result = compose(p1, p2)
     // a:1->2 and b:10->20 from p1, then a:2->3 from p2
     // only the last two (b and a) are adjacent in the combined array

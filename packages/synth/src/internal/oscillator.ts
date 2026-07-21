@@ -21,7 +21,12 @@ export function polyBlep(t: number, dt: number): number {
   return 0
 }
 
-export function samplePolyblep(wave: Waveform, phase: number, dt: number, triangleState?: { value: number }): number {
+export function samplePolyblep(
+  wave: Waveform,
+  phase: number,
+  dt: number,
+  triangleState?: { value: number },
+): number {
   const t = wrapPhase(phase)
   if (wave === 'sine') return Math.sin(TAU * t)
   if (wave === 'saw') return 2 * t - 1 - polyBlep(t, dt)
@@ -32,7 +37,13 @@ export function samplePolyblep(wave: Waveform, phase: number, dt: number, triang
   return triangleState.value
 }
 
-export function samplePolyblepAt(wave: Waveform, phase: number, dt: number, triangle: Float64Array, index: number): number {
+export function samplePolyblepAt(
+  wave: Waveform,
+  phase: number,
+  dt: number,
+  triangle: Float64Array,
+  index: number,
+): number {
   const t = wrapPhase(phase)
   if (wave === 'sine') return Math.sin(TAU * t)
   if (wave === 'saw') return 2 * t - 1 - polyBlep(t, dt)
@@ -42,7 +53,13 @@ export function samplePolyblepAt(wave: Waveform, phase: number, dt: number, tria
   return triangle[index]
 }
 
-export function sampleWavetable(bank: WavetableBank, phase: number, freq: number, sampleRate: number, position: number): number {
+export function sampleWavetable(
+  bank: WavetableBank,
+  phase: number,
+  freq: number,
+  sampleRate: number,
+  position: number,
+): number {
   const size = bank.size
   const level = tableLevelFor(bank, Math.max(1, Math.abs(freq)), sampleRate)
   const table = bank.levels[level] ?? bank.levels[0]
@@ -88,7 +105,16 @@ export function renderFmSample(
       phaseMod += previous[src] * amount * globalIndex
     }
 
-    current[op] = sampleOperator(spec, wrapPhase(phase[op] + phaseMod / TAU), dt, freq, sampleRate, triangle, op) * level
+    current[op] =
+      sampleOperator(
+        spec,
+        wrapPhase(phase[op] + phaseMod / TAU),
+        dt,
+        freq,
+        sampleRate,
+        triangle,
+        op,
+      ) * level
     phase[op] = wrapPhase(phase[op] + dt)
     sum += current[op] * output
     norm += Math.abs(output)
@@ -107,17 +133,16 @@ function sampleOperator(
   triangle: Float64Array,
   op: number,
 ): number {
-  if (spec.kind === 'wavetable') return sampleWavetable(spec.bank, phase, freq, sampleRate, spec.position)
+  if (spec.kind === 'wavetable')
+    return sampleWavetable(spec.bank, phase, freq, sampleRate, spec.position)
   return samplePolyblepAt(spec.kind === 'polyblep' ? spec.wave : 'sine', phase, dt, triangle, op)
 }
 
 function tableLevelFor(bank: WavetableBank, freq: number, sampleRate: number): number {
   const allowed = Math.max(1, sampleRate / (2 * freq))
   let level = 0
-  while (
-    level + 1 < bank.levelMaxHarmonics.length
-    && bank.levelMaxHarmonics[level] > allowed
-  ) level++
+  while (level + 1 < bank.levelMaxHarmonics.length && bank.levelMaxHarmonics[level] > allowed)
+    level++
   return level
 }
 

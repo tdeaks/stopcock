@@ -12,6 +12,17 @@ export function noteToFreq(note: Note): number {
   return 'freq' in note && note.freq !== undefined ? note.freq : midiToFreq(note.midi)
 }
 
+export function unrefTimer(timer: unknown): void {
+  if (
+    typeof timer === 'object' &&
+    timer !== null &&
+    'unref' in timer &&
+    typeof timer.unref === 'function'
+  ) {
+    timer.unref()
+  }
+}
+
 export function isTypedArray(value: unknown): value is Float32Array {
   return value instanceof Float32Array
 }
@@ -19,7 +30,7 @@ export function isTypedArray(value: unknown): value is Float32Array {
 export function mulberry32(seed: number): () => number {
   let state = seed >>> 0
   return () => {
-    state += 0x6D2B79F5
+    state += 0x6d2b79f5
     let t = state
     t = Math.imul(t ^ (t >>> 15), t | 1)
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61)

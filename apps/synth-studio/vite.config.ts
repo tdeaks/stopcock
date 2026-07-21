@@ -1,9 +1,9 @@
-import { defineConfig } from 'vite'
+import { defineConfig, lazyPlugins } from 'vite-plus'
 import solid from 'vite-plugin-solid'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [solid()],
+  plugins: lazyPlugins(() => [solid()]),
   resolve: {
     alias: {
       '@stopcock/synth': path.resolve(__dirname, '../../packages/synth/src/index.ts'),
@@ -14,6 +14,11 @@ export default defineConfig({
   server: {
     fs: {
       allow: ['../..'],
+    },
+  },
+  run: {
+    tasks: {
+      build: ['vp build'],
     },
   },
 })

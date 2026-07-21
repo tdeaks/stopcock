@@ -24,8 +24,8 @@ try {
   await api.get<User, ApiError>('/users/999')
 } catch (e) {
   if (e instanceof HttpError) {
-    e.status    // number
-    e.data      // ApiError
+    e.status // number
+    e.data // ApiError
   }
 }
 ```

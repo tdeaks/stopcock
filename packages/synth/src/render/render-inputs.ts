@@ -8,7 +8,8 @@ export function validateRenderInputs(
 ): void {
   if (inputNodes.length === 0) return
   const maxChannel = Math.max(...inputNodes.map((node) => node.channel))
-  if (!inputs || inputs.length <= maxChannel) throw new SynthCompileError(`render inputs must include channel ${maxChannel}`)
+  if (!inputs || inputs.length <= maxChannel)
+    throw new SynthCompileError(`render inputs must include channel ${maxChannel}`)
   for (const node of inputNodes) {
     const input = inputs[node.channel]
     if (!input || input.length !== length) {

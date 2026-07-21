@@ -38,11 +38,14 @@ export function objectDiff(
     }
 
     for (let i = 0; i < removed.length; i++)
-      if (!usedRemoved.has(i)) ops.push({ op: 'remove', path: [...path, removed[i].key], oldValue: removed[i].value })
+      if (!usedRemoved.has(i))
+        ops.push({ op: 'remove', path: [...path, removed[i].key], oldValue: removed[i].value })
     for (let i = 0; i < added.length; i++)
-      if (!usedAdded.has(i)) ops.push({ op: 'add', path: [...path, added[i].key], value: added[i].value })
+      if (!usedAdded.has(i))
+        ops.push({ op: 'add', path: [...path, added[i].key], value: added[i].value })
   } else {
-    for (const { key, value } of removed) ops.push({ op: 'remove', path: [...path, key], oldValue: value })
+    for (const { key, value } of removed)
+      ops.push({ op: 'remove', path: [...path, key], oldValue: value })
     for (const { key, value } of added) ops.push({ op: 'add', path: [...path, key], value: value })
   }
 

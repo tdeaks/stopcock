@@ -9,35 +9,31 @@ type BinaryScalarOp = {
   (b: ScalarInput): (a: ScalarInput) => Var<number>
 }
 
-const binaryScalar = (
-  body: (a: ScalarInput, b: ScalarInput) => Var<number>,
-): BinaryScalarOp => dual(2, body) as BinaryScalarOp
+const binaryScalar = (body: (a: ScalarInput, b: ScalarInput) => Var<number>): BinaryScalarOp =>
+  dual(2, body) as BinaryScalarOp
 
 export const add = binaryScalar((a, b) => {
   const av = asVar(a)
   const bv = asVar(b)
-  return record(av.value + bv.value, [av, bv], grad => [grad, grad])
+  return record(av.value + bv.value, [av, bv], (grad) => [grad, grad])
 })
 
 export const sub = binaryScalar((a, b) => {
   const av = asVar(a)
   const bv = asVar(b)
-  return record(av.value - bv.value, [av, bv], grad => [grad, -grad])
+  return record(av.value - bv.value, [av, bv], (grad) => [grad, -grad])
 })
 
 export const mul = binaryScalar((a, b) => {
   const av = asVar(a)
   const bv = asVar(b)
-  return record(av.value * bv.value, [av, bv], grad => [
-    grad * bv.value,
-    grad * av.value,
-  ])
+  return record(av.value * bv.value, [av, bv], (grad) => [grad * bv.value, grad * av.value])
 })
 
 export const div = binaryScalar((a, b) => {
   const av = asVar(a)
   const bv = asVar(b)
-  return record(av.value / bv.value, [av, bv], grad => [
+  return record(av.value / bv.value, [av, bv], (grad) => [
     grad / bv.value,
     -(grad * av.value) / (bv.value * bv.value),
   ])
@@ -45,12 +41,12 @@ export const div = binaryScalar((a, b) => {
 
 export const neg = (x: ScalarInput): Var<number> => {
   const xv = asVar(x)
-  return record(-xv.value, [xv], grad => [-grad])
+  return record(-xv.value, [xv], (grad) => [-grad])
 }
 
 export const square = (x: ScalarInput): Var<number> => {
   const xv = asVar(x)
-  return record(xv.value * xv.value, [xv], grad => [2 * grad * xv.value])
+  return record(xv.value * xv.value, [xv], (grad) => [2 * grad * xv.value])
 }
 
 export const pow = binaryScalar((a, b) => {
@@ -58,8 +54,8 @@ export const pow = binaryScalar((a, b) => {
   const av = asVar(a)
   const bv = asVar(b)
   const value = av.value ** bv.value
-  return record(value, [av, bv], grad => [
-    grad * bv.value * (av.value ** (bv.value - 1)),
+  return record(value, [av, bv], (grad) => [
+    grad * bv.value * av.value ** (bv.value - 1),
     exponentIsVar ? grad * value * Math.log(av.value) : 0,
   ])
 })

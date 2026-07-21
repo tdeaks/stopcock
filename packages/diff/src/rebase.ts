@@ -22,7 +22,10 @@ function conflictError(message: string, local: Operation, remote: Operation): Co
   return { _tag: 'ConflictError', message, local, remote }
 }
 
-function transformOp(op: Operation, remoteOps: readonly Operation[]): Result<Operation | null, ConflictError> {
+function transformOp(
+  op: Operation,
+  remoteOps: readonly Operation[],
+): Result<Operation | null, ConflictError> {
   let current: Operation | null = op
   for (const remote of remoteOps) {
     if (current === null) return ok(null)
@@ -33,7 +36,10 @@ function transformOp(op: Operation, remoteOps: readonly Operation[]): Result<Ope
   return ok(current)
 }
 
-function transformPair(local: Operation, remote: Operation): Result<Operation | null, ConflictError> {
+function transformPair(
+  local: Operation,
+  remote: Operation,
+): Result<Operation | null, ConflictError> {
   const lPath = getPath(local)
   const rPath = getPath(remote)
 
@@ -46,10 +52,8 @@ function transformPair(local: Operation, remote: Operation): Result<Operation | 
       return err(conflictError('Both sides replace the same path', local, remote))
     if (local.op === 'add' && remote.op === 'add')
       return err(conflictError('Both sides add at the same path', local, remote))
-    if (local.op === 'remove' && remote.op === 'remove')
-      return ok(null)
-    if (remote.op === 'remove' && (local.op === 'replace' || local.op === 'rename'))
-      return ok(null)
+    if (local.op === 'remove' && remote.op === 'remove') return ok(null)
+    if (remote.op === 'remove' && (local.op === 'replace' || local.op === 'rename')) return ok(null)
   }
 
   if (lPath.length > 0 && rPath.length > 0) {
@@ -84,16 +88,24 @@ function adjustIndex(local: Operation, remote: Operation): Operation | null {
 function shiftOp(op: Operation, parent: Path, newIdx: number): Operation {
   const newPath = [...parent, newIdx]
   switch (op.op) {
-    case 'add': return { ...op, path: newPath }
-    case 'remove': return { ...op, path: newPath }
-    case 'replace': return { ...op, path: newPath }
-    case 'test': return { ...op, path: newPath }
-    case 'rename': return { ...op, path: newPath }
-    case 'move': return { ...op, path: newPath }
+    case 'add':
+      return { ...op, path: newPath }
+    case 'remove':
+      return { ...op, path: newPath }
+    case 'replace':
+      return { ...op, path: newPath }
+    case 'test':
+      return { ...op, path: newPath }
+    case 'rename':
+      return { ...op, path: newPath }
+    case 'move':
+      return { ...op, path: newPath }
   }
 }
 
-function getPath(op: Operation): Path { return op.path }
+function getPath(op: Operation): Path {
+  return op.path
+}
 
 function pathEquals(a: Path, b: Path): boolean {
   if (a.length !== b.length) return false

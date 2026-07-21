@@ -1,6 +1,6 @@
 import { pipe } from '@stopcock/fp'
 import { biquad } from '@stopcock/signal'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   SynthCompileError,
   buffer,
@@ -52,7 +52,11 @@ const closeArray = (actual: Float32Array, expected: ArrayLike<number>, digits = 
   for (let i = 0; i < actual.length; i++) expect(actual[i]).toBeCloseTo(expected[i], digits)
 }
 
-const closeSamples = (actual: ReturnType<typeof render>, expected: ReturnType<typeof render>, digits = 5) => {
+const closeSamples = (
+  actual: ReturnType<typeof render>,
+  expected: ReturnType<typeof render>,
+  digits = 5,
+) => {
   expect(Array.isArray(actual)).toBe(Array.isArray(expected))
   if (Array.isArray(actual) && Array.isArray(expected)) {
     closeArray(actual[0], expected[0], digits)
@@ -66,7 +70,7 @@ const toneEnergy = (samples: Float32Array, freq: number, sampleRate: number, sta
   let real = 0
   let imag = 0
   for (let i = start; i < samples.length; i++) {
-    const phase = 2 * Math.PI * freq * (i - start) / sampleRate
+    const phase = (2 * Math.PI * freq * (i - start)) / sampleRate
     real += samples[i] * Math.cos(phase)
     imag -= samples[i] * Math.sin(phase)
   }
@@ -103,7 +107,11 @@ describe('graph construction', () => {
     const ctx = fakeAudioContext()
     const wm = await compileWorklet(ctx, graph)
 
-    expect(new Set(wm.params.filter((handle) => handle.node === lfo).map((handle) => handle.audioParamName)).size).toBe(3)
+    expect(
+      new Set(
+        wm.params.filter((handle) => handle.node === lfo).map((handle) => handle.audioParamName),
+      ).size,
+    ).toBe(3)
   })
 })
 
@@ -111,9 +119,13 @@ describe('offline render', () => {
   it('renders a sine oscillator matching Math.sin', () => {
     const sampleRate = 48_000
     const freq = 440
-    const samples = render(oscillator('sine', freq), { duration: 8 / sampleRate, sampleRate }) as Float32Array
+    const samples = render(oscillator('sine', freq), {
+      duration: 8 / sampleRate,
+      sampleRate,
+    }) as Float32Array
     const expected = new Float32Array(8)
-    for (let i = 0; i < expected.length; i++) expected[i] = Math.sin(2 * Math.PI * freq * i / sampleRate)
+    for (let i = 0; i < expected.length; i++)
+      expected[i] = Math.sin((2 * Math.PI * freq * i) / sampleRate)
 
     closeArray(samples, expected, 6)
   })
@@ -126,11 +138,7 @@ describe('offline render', () => {
   })
 
   it('applies audio-rate modulation as a summed bias over the base param', () => {
-    const graph = pipe(
-      constant(2),
-      gain(3),
-      modulate(params.gain.amount, constant(2), 0.5),
-    )
+    const graph = pipe(constant(2), gain(3), modulate(params.gain.amount, constant(2), 0.5))
 
     const out = render(graph, { duration: 4 / 48_000, sampleRate: 48_000 }) as Float32Array
 
@@ -139,13 +147,16 @@ describe('offline render', () => {
 
   it('reads input(channel) buffers and validates missing inputs', () => {
     const graph = pipe(input(1), gain(2))
-    const samples = [
-      new Float32Array([0, 0, 0]),
-      new Float32Array([1, 2, 3]),
-    ]
+    const samples = [new Float32Array([0, 0, 0]), new Float32Array([1, 2, 3])]
 
-    expect(() => render(graph, { duration: 3 / 48_000, sampleRate: 48_000 })).toThrow(SynthCompileError)
-    const out = render(graph, { duration: 3 / 48_000, sampleRate: 48_000, inputs: samples }) as Float32Array
+    expect(() => render(graph, { duration: 3 / 48_000, sampleRate: 48_000 })).toThrow(
+      SynthCompileError,
+    )
+    const out = render(graph, {
+      duration: 3 / 48_000,
+      sampleRate: 48_000,
+      inputs: samples,
+    }) as Float32Array
     closeArray(out, new Float32Array([2, 4, 6]), 6)
   })
 
@@ -155,7 +166,12 @@ describe('offline render', () => {
     const graph = pipe(buffer(impulse), filter.lowpass(4800, 0.7071))
     const out = render(graph, { duration: impulse.length / sampleRate, sampleRate }) as Float32Array
     const expected = new Float32Array(impulse.length)
-    biquad.process(impulse, biquad.design({ kind: 'lowpass', freq: 4800, q: 0.7071, sampleRate }), biquad.state(), expected)
+    biquad.process(
+      impulse,
+      biquad.design({ kind: 'lowpass', freq: 4800, q: 0.7071, sampleRate }),
+      biquad.state(),
+      expected,
+    )
 
     closeArray(out, expected, 6)
   })
@@ -195,17 +211,65 @@ describe('offline render', () => {
       effects.delay(40, 0.2, 0.5),
       effects.chorus(1, 4, 0.3),
       effects.ensembleChorus({ rate: 0.4, depth: 4.44, mix: 0.35, width: 1, tone: 0.84 }),
-      effects.spaceEcho({ timeMs: 60, feedback: 0.28, mix: 0.22, reverbMix: 0.04, wow: 0.1, flutter: 0.05, tapeAge: 0.35, drive: 0.12 }),
-      effects.tapeDelay({ timeMs: 90, feedback: 0.22, mix: 0.24, wow: 0.08, flutter: 0.04, tapeAge: 0.2, drive: 0.1, tone: 0.8, width: 0.7 }),
-      effects.plateReverb({ preDelayMs: 8, decay: 0.48, damping: 0.38, diffusion: 0.72, modulation: 0.12, mix: 0.2, width: 1 }),
-      effects.springReverb({ decay: 0.58, damping: 0.34, tension: 0.55, drip: 0.25, mix: 0.18, width: 0.9 }),
-      effects.nonlinearReverb({ timeMs: 120, decay: 0.62, damping: 0.32, drive: 0.22, mix: 0.16, width: 0.9 }),
+      effects.spaceEcho({
+        timeMs: 60,
+        feedback: 0.28,
+        mix: 0.22,
+        reverbMix: 0.04,
+        wow: 0.1,
+        flutter: 0.05,
+        tapeAge: 0.35,
+        drive: 0.12,
+      }),
+      effects.tapeDelay({
+        timeMs: 90,
+        feedback: 0.22,
+        mix: 0.24,
+        wow: 0.08,
+        flutter: 0.04,
+        tapeAge: 0.2,
+        drive: 0.1,
+        tone: 0.8,
+        width: 0.7,
+      }),
+      effects.plateReverb({
+        preDelayMs: 8,
+        decay: 0.48,
+        damping: 0.38,
+        diffusion: 0.72,
+        modulation: 0.12,
+        mix: 0.2,
+        width: 1,
+      }),
+      effects.springReverb({
+        decay: 0.58,
+        damping: 0.34,
+        tension: 0.55,
+        drip: 0.25,
+        mix: 0.18,
+        width: 0.9,
+      }),
+      effects.nonlinearReverb({
+        timeMs: 120,
+        decay: 0.62,
+        damping: 0.32,
+        drive: 0.22,
+        mix: 0.16,
+        width: 0.9,
+      }),
       effects.microPitch({ detune: 12, width: 0.8, delayMs: 10, mix: 0.25 }),
       effects.frequencyShifter({ shiftHz: 12, mix: 0.08 }),
       effects.rotarySpeaker({ rate: 5.8, depth: 0.65, mix: 0.12, drive: 0.08, width: 0.8 }),
       effects.multiTapDelay({ timeMs: 32, feedback: 0.18, mix: 0.25, tone: 0.8, width: 1 }),
       effects.saturator({ drive: 0.45, asymmetry: 0.2, tone: 0.8, mix: 0.7, output: 0.9 }),
-      effects.wavefolder({ drive: 0.55, depth: 0.7, asymmetry: 0.1, tone: 0.82, mix: 0.6, output: 0.9 }),
+      effects.wavefolder({
+        drive: 0.55,
+        depth: 0.7,
+        asymmetry: 0.1,
+        tone: 0.82,
+        mix: 0.6,
+        output: 0.9,
+      }),
       effects.degrade({ bits: 9, downsample: 2, jitter: 0.05, noise: 0.1, tone: 0.8, mix: 0.5 }),
       effects.distortion(0.2),
       effects.bitcrush(8, 2),
@@ -218,26 +282,29 @@ describe('offline render', () => {
     const out = render(graph, { duration: 0.02, sampleRate: 8_000 })
     const channels = Array.isArray(out) ? out : [out]
     expect(channels[0].length).toBe(160)
-    expect(channels.flatMap(channel => Array.from(channel)).every(Number.isFinite)).toBe(true)
+    expect(channels.flatMap((channel) => Array.from(channel)).every(Number.isFinite)).toBe(true)
   })
 
   it('renders a multi-head tape echo from one impulse', () => {
     const impulse = new Float32Array(80)
     impulse[0] = 1
-    const out = render(pipe(
-      buffer(impulse),
-      effects.spaceEcho({
-        timeMs: 10,
-        feedback: 0,
-        mix: 1,
-        reverbMix: 0,
-        wow: 0,
-        flutter: 0,
-        tapeAge: 0,
-        drive: 0,
-        mode: 'heads-1-2-3',
-      }),
-    ), { duration: 80 / 1000, sampleRate: 1000 })
+    const out = render(
+      pipe(
+        buffer(impulse),
+        effects.spaceEcho({
+          timeMs: 10,
+          feedback: 0,
+          mix: 1,
+          reverbMix: 0,
+          wow: 0,
+          flutter: 0,
+          tapeAge: 0,
+          drive: 0,
+          mode: 'heads-1-2-3',
+        }),
+      ),
+      { duration: 80 / 1000, sampleRate: 1000 },
+    )
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out as [Float32Array, Float32Array]
@@ -252,20 +319,23 @@ describe('offline render', () => {
   it('renders tape delay as a stereo WASM effect', () => {
     const impulse = new Float32Array(80)
     impulse[0] = 1
-    const out = render(pipe(
-      buffer(impulse),
-      effects.tapeDelay({
-        timeMs: 20,
-        feedback: 0.5,
-        mix: 1,
-        wow: 0,
-        flutter: 0,
-        tapeAge: 0,
-        drive: 0,
-        tone: 1,
-        width: 0,
-      }),
-    ), { duration: 80 / 1000, sampleRate: 1000 })
+    const out = render(
+      pipe(
+        buffer(impulse),
+        effects.tapeDelay({
+          timeMs: 20,
+          feedback: 0.5,
+          mix: 1,
+          wow: 0,
+          flutter: 0,
+          tapeAge: 0,
+          drive: 0,
+          tone: 1,
+          width: 0,
+        }),
+      ),
+      { duration: 80 / 1000, sampleRate: 1000 },
+    )
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out as [Float32Array, Float32Array]
@@ -280,23 +350,28 @@ describe('offline render', () => {
   it('renders plate reverb as a stereo WASM effect', () => {
     const impulse = new Float32Array(700)
     impulse[0] = 1
-    const out = render(pipe(
-      buffer(impulse),
-      effects.plateReverb({
-        preDelayMs: 0,
-        decay: 0.8,
-        damping: 0.2,
-        diffusion: 0.75,
-        modulation: 0,
-        mix: 1,
-        width: 1,
-      }),
-    ), { duration: 700 / 1000, sampleRate: 1000 })
+    const out = render(
+      pipe(
+        buffer(impulse),
+        effects.plateReverb({
+          preDelayMs: 0,
+          decay: 0.8,
+          damping: 0.2,
+          diffusion: 0.75,
+          modulation: 0,
+          mix: 1,
+          width: 1,
+        }),
+      ),
+      { duration: 700 / 1000, sampleRate: 1000 },
+    )
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out as [Float32Array, Float32Array]
-    const tailEnergy = Array.from(left.subarray(120)).reduce((sum, sample, index) =>
-      sum + Math.abs(sample) + Math.abs(right[index + 120]), 0)
+    const tailEnergy = Array.from(left.subarray(120)).reduce(
+      (sum, sample, index) => sum + Math.abs(sample) + Math.abs(right[index + 120]),
+      0,
+    )
     expect(tailEnergy).toBeGreaterThan(0.01)
     expect(left.some((sample, index) => Math.abs(sample - right[index]) > 1e-5)).toBe(true)
     expect(Array.from(left).every(Number.isFinite)).toBe(true)
@@ -306,22 +381,27 @@ describe('offline render', () => {
   it('renders spring reverb as a dispersive stereo WASM effect', () => {
     const impulse = new Float32Array(650)
     impulse[0] = 1
-    const out = render(pipe(
-      buffer(impulse),
-      effects.springReverb({
-        decay: 0.82,
-        damping: 0.18,
-        tension: 0.72,
-        drip: 0.35,
-        mix: 1,
-        width: 1,
-      }),
-    ), { duration: 650 / 1000, sampleRate: 1000 })
+    const out = render(
+      pipe(
+        buffer(impulse),
+        effects.springReverb({
+          decay: 0.82,
+          damping: 0.18,
+          tension: 0.72,
+          drip: 0.35,
+          mix: 1,
+          width: 1,
+        }),
+      ),
+      { duration: 650 / 1000, sampleRate: 1000 },
+    )
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out as [Float32Array, Float32Array]
-    const tailEnergy = Array.from(left.subarray(120)).reduce((sum, sample, index) =>
-      sum + Math.abs(sample) + Math.abs(right[index + 120]), 0)
+    const tailEnergy = Array.from(left.subarray(120)).reduce(
+      (sum, sample, index) => sum + Math.abs(sample) + Math.abs(right[index + 120]),
+      0,
+    )
     expect(tailEnergy).toBeGreaterThan(0.01)
     expect(left.some((sample, index) => Math.abs(sample - right[index]) > 1e-5)).toBe(true)
     expect(Array.from(left).every(Number.isFinite)).toBe(true)
@@ -331,24 +411,31 @@ describe('offline render', () => {
   it('renders nonlinear reverb as a gated stereo WASM effect', () => {
     const impulse = new Float32Array(500)
     impulse[0] = 1
-    const out = render(pipe(
-      buffer(impulse),
-      effects.nonlinearReverb({
-        timeMs: 140,
-        decay: 0.8,
-        damping: 0.2,
-        drive: 0.4,
-        mix: 1,
-        width: 1,
-      }),
-    ), { duration: 500 / 1000, sampleRate: 1000 })
+    const out = render(
+      pipe(
+        buffer(impulse),
+        effects.nonlinearReverb({
+          timeMs: 140,
+          decay: 0.8,
+          damping: 0.2,
+          drive: 0.4,
+          mix: 1,
+          width: 1,
+        }),
+      ),
+      { duration: 500 / 1000, sampleRate: 1000 },
+    )
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out as [Float32Array, Float32Array]
-    const openEnergy = Array.from(left.subarray(40, 130)).reduce((sum, sample, index) =>
-      sum + Math.abs(sample) + Math.abs(right[index + 40]), 0)
-    const closedEnergy = Array.from(left.subarray(220)).reduce((sum, sample, index) =>
-      sum + Math.abs(sample) + Math.abs(right[index + 220]), 0)
+    const openEnergy = Array.from(left.subarray(40, 130)).reduce(
+      (sum, sample, index) => sum + Math.abs(sample) + Math.abs(right[index + 40]),
+      0,
+    )
+    const closedEnergy = Array.from(left.subarray(220)).reduce(
+      (sum, sample, index) => sum + Math.abs(sample) + Math.abs(right[index + 220]),
+      0,
+    )
     expect(openEnergy).toBeGreaterThan(0.01)
     expect(closedEnergy).toBeLessThan(openEnergy * 0.1)
     expect(left.some((sample, index) => Math.abs(sample - right[index]) > 1e-5)).toBe(true)
@@ -358,11 +445,11 @@ describe('offline render', () => {
 
   it('renders micro-pitch as a stereo WASM effect', () => {
     const samples = new Float32Array(4096)
-    for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(2 * Math.PI * 220 * i / 48_000)
-    const out = render(pipe(
-      buffer(samples),
-      effects.microPitch({ detune: 18, width: 1, delayMs: 12, mix: 1 }),
-    ), { duration: samples.length / 48_000, sampleRate: 48_000 })
+    for (let i = 0; i < samples.length; i++) samples[i] = Math.sin((2 * Math.PI * 220 * i) / 48_000)
+    const out = render(
+      pipe(buffer(samples), effects.microPitch({ detune: 18, width: 1, delayMs: 12, mix: 1 })),
+      { duration: samples.length / 48_000, sampleRate: 48_000 },
+    )
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out as [Float32Array, Float32Array]
@@ -378,20 +465,23 @@ describe('offline render', () => {
   it('renders multi-tap delay as a panned stereo WASM effect', () => {
     const impulse = new Float32Array(80)
     impulse[0] = 1
-    const out = render(pipe(
-      buffer(impulse),
-      effects.multiTapDelay({
-        timeMs: 10,
-        feedback: 0,
-        mix: 1,
-        tone: 1,
-        width: 1,
-        taps: [
-          { ratio: 1, gain: 1, pan: -1 },
-          { ratio: 2, gain: 1, pan: 1 },
-        ],
-      }),
-    ), { duration: 80 / 1000, sampleRate: 1000 })
+    const out = render(
+      pipe(
+        buffer(impulse),
+        effects.multiTapDelay({
+          timeMs: 10,
+          feedback: 0,
+          mix: 1,
+          tone: 1,
+          width: 1,
+          taps: [
+            { ratio: 1, gain: 1, pan: -1 },
+            { ratio: 2, gain: 1, pan: 1 },
+          ],
+        }),
+      ),
+      { duration: 80 / 1000, sampleRate: 1000 },
+    )
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out as [Float32Array, Float32Array]
@@ -405,11 +495,14 @@ describe('offline render', () => {
 
   it('renders ensemble chorus as a stereo WASM effect', () => {
     const samples = new Float32Array(4096)
-    for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(2 * Math.PI * 220 * i / 48_000)
-    const out = render(pipe(
-      buffer(samples),
-      effects.ensembleChorus({ rate: 0.7, depth: 8, mix: 1, width: 1, tone: 1, noise: 0 }),
-    ), { duration: samples.length / 48_000, sampleRate: 48_000 })
+    for (let i = 0; i < samples.length; i++) samples[i] = Math.sin((2 * Math.PI * 220 * i) / 48_000)
+    const out = render(
+      pipe(
+        buffer(samples),
+        effects.ensembleChorus({ rate: 0.7, depth: 8, mix: 1, width: 1, tone: 1, noise: 0 }),
+      ),
+      { duration: samples.length / 48_000, sampleRate: 48_000 },
+    )
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out as [Float32Array, Float32Array]
@@ -424,11 +517,15 @@ describe('offline render', () => {
 
   it('renders saturator as a WASM-only nonlinear effect', () => {
     const samples = new Float32Array(512)
-    for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(2 * Math.PI * 110 * i / 8_000) * 1.25
-    const out = render(pipe(
-      buffer(samples),
-      effects.saturator({ drive: 1, asymmetry: 0.35, tone: 1, mix: 1, output: 1 }),
-    ), { duration: samples.length / 8_000, sampleRate: 8_000 }) as Float32Array
+    for (let i = 0; i < samples.length; i++)
+      samples[i] = Math.sin((2 * Math.PI * 110 * i) / 8_000) * 1.25
+    const out = render(
+      pipe(
+        buffer(samples),
+        effects.saturator({ drive: 1, asymmetry: 0.35, tone: 1, mix: 1, output: 1 }),
+      ),
+      { duration: samples.length / 8_000, sampleRate: 8_000 },
+    ) as Float32Array
 
     expect(out.length).toBe(samples.length)
     expect(Array.from(out).every(Number.isFinite)).toBe(true)
@@ -441,7 +538,7 @@ describe('offline render', () => {
     const sampleRate = 8_000
     const samples = new Float32Array(1024)
     for (let i = 0; i < samples.length; i++) {
-      samples[i] = Math.sin(2 * Math.PI * 110 * i / sampleRate) * 0.7
+      samples[i] = Math.sin((2 * Math.PI * 110 * i) / sampleRate) * 0.7
     }
     const graph = pipe(
       buffer(samples),
@@ -449,7 +546,9 @@ describe('offline render', () => {
     )
     const out = render(graph, { duration: samples.length / sampleRate, sampleRate }) as Float32Array
 
-    expect(() => renderReference(graph, { duration: samples.length / sampleRate, sampleRate })).toThrow(SynthCompileError)
+    expect(() =>
+      renderReference(graph, { duration: samples.length / sampleRate, sampleRate }),
+    ).toThrow(SynthCompileError)
     expect(out.length).toBe(samples.length)
     expect(Array.from(out).every(Number.isFinite)).toBe(true)
     expect(Math.max(...out)).toBeLessThan(1.5)
@@ -459,11 +558,15 @@ describe('offline render', () => {
 
   it('renders degrade as a WASM-only lofi effect', () => {
     const samples = new Float32Array(512)
-    for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(2 * Math.PI * 330 * i / 8_000) * 0.8
-    const out = render(pipe(
-      buffer(samples),
-      effects.degrade({ bits: 4, downsample: 4, jitter: 0, noise: 0, tone: 1, mix: 1 }),
-    ), { duration: samples.length / 8_000, sampleRate: 8_000 }) as Float32Array
+    for (let i = 0; i < samples.length; i++)
+      samples[i] = Math.sin((2 * Math.PI * 330 * i) / 8_000) * 0.8
+    const out = render(
+      pipe(
+        buffer(samples),
+        effects.degrade({ bits: 4, downsample: 4, jitter: 0, noise: 0, tone: 1, mix: 1 }),
+      ),
+      { duration: samples.length / 8_000, sampleRate: 8_000 },
+    ) as Float32Array
 
     expect(out.length).toBe(samples.length)
     expect(Array.from(out).every(Number.isFinite)).toBe(true)
@@ -476,14 +579,14 @@ describe('offline render', () => {
   it('renders tilt EQ as a WASM-only tone shaping effect', () => {
     const samples = new Float32Array(1024)
     for (let i = 0; i < samples.length; i++) samples[i] = i % 2 === 0 ? 0.35 : -0.35
-    const bright = render(pipe(
-      buffer(samples),
-      effects.tiltEq({ freq: 900, gainDb: 12, mix: 1 }),
-    ), { duration: samples.length / 48_000, sampleRate: 48_000 }) as Float32Array
-    const dark = render(pipe(
-      buffer(samples),
-      effects.tiltEq({ freq: 900, gainDb: -12, mix: 1 }),
-    ), { duration: samples.length / 48_000, sampleRate: 48_000 }) as Float32Array
+    const bright = render(
+      pipe(buffer(samples), effects.tiltEq({ freq: 900, gainDb: 12, mix: 1 })),
+      { duration: samples.length / 48_000, sampleRate: 48_000 },
+    ) as Float32Array
+    const dark = render(pipe(buffer(samples), effects.tiltEq({ freq: 900, gainDb: -12, mix: 1 })), {
+      duration: samples.length / 48_000,
+      sampleRate: 48_000,
+    }) as Float32Array
 
     const brightEnergy = Array.from(bright).reduce((sum, sample) => sum + Math.abs(sample), 0)
     const darkEnergy = Array.from(dark).reduce((sum, sample) => sum + Math.abs(sample), 0)
@@ -495,10 +598,10 @@ describe('offline render', () => {
   it('renders stereo spread as a WASM-only Haas widening effect', () => {
     const samples = new Float32Array(256)
     samples[0] = 1
-    const out = render(pipe(
-      buffer(samples),
-      effects.stereoSpread({ width: 1, delayMs: 3, mix: 1 }),
-    ), { duration: samples.length / 1_000, sampleRate: 1_000 }) as [Float32Array, Float32Array]
+    const out = render(
+      pipe(buffer(samples), effects.stereoSpread({ width: 1, delayMs: 3, mix: 1 })),
+      { duration: samples.length / 1_000, sampleRate: 1_000 },
+    ) as [Float32Array, Float32Array]
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out
@@ -512,23 +615,27 @@ describe('offline render', () => {
   it('renders frequency shifter as a WASM-only analytic-signal effect', () => {
     const sampleRate = 8_000
     const samples = new Float32Array(4096)
-    for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(2 * Math.PI * 440 * i / sampleRate)
-    const out = render(pipe(
-      buffer(samples),
-      effects.frequencyShifter({ shiftHz: 110, mix: 1 }),
-    ), { duration: samples.length / sampleRate, sampleRate }) as Float32Array
+    for (let i = 0; i < samples.length; i++)
+      samples[i] = Math.sin((2 * Math.PI * 440 * i) / sampleRate)
+    const out = render(pipe(buffer(samples), effects.frequencyShifter({ shiftHz: 110, mix: 1 })), {
+      duration: samples.length / sampleRate,
+      sampleRate,
+    }) as Float32Array
 
     expect(out.length).toBe(samples.length)
     expect(Array.from(out).every(Number.isFinite)).toBe(true)
-    expect(toneEnergy(out, 550, sampleRate, 512)).toBeGreaterThan(toneEnergy(out, 440, sampleRate, 512) * 4)
+    expect(toneEnergy(out, 550, sampleRate, 512)).toBeGreaterThan(
+      toneEnergy(out, 440, sampleRate, 512) * 4,
+    )
   })
 
   it('renders state variable filters as WASM-only resonant multimode filters', () => {
     const sampleRate = 8_000
     const samples = new Float32Array(4096)
     for (let i = 0; i < samples.length; i++) {
-      samples[i] = Math.sin(2 * Math.PI * 220 * i / sampleRate)
-        + 0.7 * Math.sin(2 * Math.PI * 2_200 * i / sampleRate)
+      samples[i] =
+        Math.sin((2 * Math.PI * 220 * i) / sampleRate) +
+        0.7 * Math.sin((2 * Math.PI * 2_200 * i) / sampleRate)
     }
     const graph = pipe(
       buffer(samples),
@@ -536,20 +643,35 @@ describe('offline render', () => {
     )
     const out = render(graph, { duration: samples.length / sampleRate, sampleRate }) as Float32Array
 
-    expect(() => renderReference(graph, { duration: samples.length / sampleRate, sampleRate })).toThrow(SynthCompileError)
+    expect(() =>
+      renderReference(graph, { duration: samples.length / sampleRate, sampleRate }),
+    ).toThrow(SynthCompileError)
     expect(out.length).toBe(samples.length)
     expect(Array.from(out).every(Number.isFinite)).toBe(true)
-    expect(toneEnergy(out, 220, sampleRate, 512)).toBeGreaterThan(toneEnergy(out, 2_200, sampleRate, 512) * 2)
+    expect(toneEnergy(out, 220, sampleRate, 512)).toBeGreaterThan(
+      toneEnergy(out, 2_200, sampleRate, 512) * 2,
+    )
   })
 
   it('renders rotary speaker as a WASM-only stereo Doppler effect', () => {
     const sampleRate = 8_000
     const samples = new Float32Array(4096)
-    for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.7
-    const out = render(pipe(
-      buffer(samples),
-      effects.rotarySpeaker({ rate: 6, depth: 1, mix: 1, drive: 0.1, width: 1, crossoverHz: 800 }),
-    ), { duration: samples.length / sampleRate, sampleRate }) as [Float32Array, Float32Array]
+    for (let i = 0; i < samples.length; i++)
+      samples[i] = Math.sin((2 * Math.PI * 440 * i) / sampleRate) * 0.7
+    const out = render(
+      pipe(
+        buffer(samples),
+        effects.rotarySpeaker({
+          rate: 6,
+          depth: 1,
+          mix: 1,
+          drive: 0.1,
+          width: 1,
+          crossoverHz: 800,
+        }),
+      ),
+      { duration: samples.length / sampleRate, sampleRate },
+    ) as [Float32Array, Float32Array]
 
     expect(Array.isArray(out)).toBe(true)
     const [left, right] = out
@@ -564,7 +686,7 @@ describe('offline render', () => {
   it('renders wavetable oscillators from single-cycle and decoded-audio sources', () => {
     const size = 2048
     const cycle = new Float32Array(size)
-    for (let i = 0; i < size; i++) cycle[i] = Math.sin(2 * Math.PI * i / size)
+    for (let i = 0; i < size; i++) cycle[i] = Math.sin((2 * Math.PI * i) / size)
     const bank = createWavetable(cycle)
     const imported = wavetableFromAudio({
       sampleRate: 48_000,
@@ -572,11 +694,17 @@ describe('offline render', () => {
       getChannelData: () => cycle,
     })
 
-    const fromCycle = render(oscillator.wavetable(bank, 440), { duration: 16 / 48_000, sampleRate: 48_000 }) as Float32Array
-    const fromAudio = render(oscillator.wavetable(imported, 440), { duration: 16 / 48_000, sampleRate: 48_000 }) as Float32Array
+    const fromCycle = render(oscillator.wavetable(bank, 440), {
+      duration: 16 / 48_000,
+      sampleRate: 48_000,
+    }) as Float32Array
+    const fromAudio = render(oscillator.wavetable(imported, 440), {
+      duration: 16 / 48_000,
+      sampleRate: 48_000,
+    }) as Float32Array
 
     for (let i = 0; i < fromCycle.length; i++) {
-      const expected = Math.sin(2 * Math.PI * 440 * i / 48_000)
+      const expected = Math.sin((2 * Math.PI * 440 * i) / 48_000)
       expect(fromCycle[i]).toBeCloseTo(expected, 2)
       expect(fromAudio[i]).toBeCloseTo(expected, 2)
     }
@@ -634,14 +762,16 @@ describe('offline render', () => {
   it('loops sampler zones between loop points', () => {
     const patch = sampler.instrument({
       freq: 440,
-      zones: [{
-        samples: new Float32Array([0, 1, 0.5, -1]),
-        sampleRate: 1_000,
-        rootMidi: 69,
-        loop: true,
-        loopStart: 1,
-        loopEnd: 3,
-      }],
+      zones: [
+        {
+          samples: new Float32Array([0, 1, 0.5, -1]),
+          sampleRate: 1_000,
+          rootMidi: 69,
+          loop: true,
+          loopStart: 1,
+          loopEnd: 3,
+        },
+      ],
     })
 
     const out = render(patch, { duration: 8 / 1_000, sampleRate: 1_000 })
@@ -680,7 +810,8 @@ describe('offline render', () => {
       sampleRate: 1_000,
       triggers: [{ freq: 440, velocity: 0.95, atSec: 0, gateMs: 6 }],
     })
-    const peak = (values: Float32Array) => values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
+    const peak = (values: Float32Array) =>
+      values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
 
     expect(Array.isArray(quietOut)).toBe(true)
     expect(Array.isArray(loudOut)).toBe(true)
@@ -715,7 +846,8 @@ describe('offline render', () => {
       sampleRate: 8_000,
       triggers: [{ freq: 110, velocity: 1, atSec: 0, gateMs: 20 }],
     }) as Float32Array
-    const peak = (values: Float32Array) => values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
+    const peak = (values: Float32Array) =>
+      values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
 
     expect(Array.from(loud).every(Number.isFinite)).toBe(true)
     expect(peak(loud)).toBeGreaterThan(peak(quiet) * 1.5)
@@ -734,9 +866,16 @@ describe('offline render', () => {
       sampleRate: 8_000,
       triggers: [{ freq: 55, velocity: 1, atSec: 0, gateMs: 60 }],
     }) as Float32Array
-    const snare = render(instrument.drumVoice({ kind: 'snare', noise: 0.85, snap: 0.7 }), { duration: 0.08, sampleRate: 8_000 }) as Float32Array
-    const hat = render(instrument.drumVoice({ kind: 'hat', decay: 0.04, tone: 0.9 }), { duration: 0.04, sampleRate: 8_000 }) as Float32Array
-    const peak = (values: Float32Array) => values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
+    const snare = render(instrument.drumVoice({ kind: 'snare', noise: 0.85, snap: 0.7 }), {
+      duration: 0.08,
+      sampleRate: 8_000,
+    }) as Float32Array
+    const hat = render(instrument.drumVoice({ kind: 'hat', decay: 0.04, tone: 0.9 }), {
+      duration: 0.04,
+      sampleRate: 8_000,
+    }) as Float32Array
+    const peak = (values: Float32Array) =>
+      values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
 
     expect(Array.from(loud).every(Number.isFinite)).toBe(true)
     expect(Array.from(snare).every(Number.isFinite)).toBe(true)
@@ -767,7 +906,8 @@ describe('offline render', () => {
       sampleRate: 8_000,
       triggers: [{ freq: 220, velocity: 1, atSec: 0, gateMs: 40 }],
     })
-    const peak = (values: Float32Array) => values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
+    const peak = (values: Float32Array) =>
+      values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
 
     expect(Array.isArray(quiet)).toBe(true)
     expect(Array.isArray(loud)).toBe(true)
@@ -810,7 +950,8 @@ describe('offline render', () => {
       sampleRate: 8_000,
       triggers: [{ freq: 220, velocity: 1, atSec: 0, gateMs: 40 }],
     })
-    const peak = (values: Float32Array) => values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
+    const peak = (values: Float32Array) =>
+      values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
 
     expect(Array.isArray(quiet)).toBe(true)
     expect(Array.isArray(loud)).toBe(true)
@@ -835,24 +976,37 @@ describe('offline render', () => {
   })
 
   it('rejects invalid wavetable and FM patch inputs', () => {
-    expect(() => createWavetable(new Float32Array([0, 1, 0]), { size: 1000 })).toThrow(SynthCompileError)
-    expect(() => wavetableFromAudio({
-      sampleRate: 48_000,
-      length: 0,
-      getChannelData: () => new Float32Array(),
-    })).toThrow(SynthCompileError)
-    expect(() => fm({
-      freq: 110,
-      operators: [
-        operator.sine(), operator.sine(), operator.sine(), operator.sine(),
-        operator.sine(), operator.sine(), operator.sine(),
-      ],
-    })).toThrow(SynthCompileError)
-    expect(() => fm({
-      freq: 110,
-      operators: [operator.sine()],
-      matrix: [[0, 0, 0, 0, 0, 0, 0]],
-    })).toThrow(SynthCompileError)
+    expect(() => createWavetable(new Float32Array([0, 1, 0]), { size: 1000 })).toThrow(
+      SynthCompileError,
+    )
+    expect(() =>
+      wavetableFromAudio({
+        sampleRate: 48_000,
+        length: 0,
+        getChannelData: () => new Float32Array(),
+      }),
+    ).toThrow(SynthCompileError)
+    expect(() =>
+      fm({
+        freq: 110,
+        operators: [
+          operator.sine(),
+          operator.sine(),
+          operator.sine(),
+          operator.sine(),
+          operator.sine(),
+          operator.sine(),
+          operator.sine(),
+        ],
+      }),
+    ).toThrow(SynthCompileError)
+    expect(() =>
+      fm({
+        freq: 110,
+        operators: [operator.sine()],
+        matrix: [[0, 0, 0, 0, 0, 0, 0]],
+      }),
+    ).toThrow(SynthCompileError)
   })
 })
 
@@ -861,10 +1015,7 @@ describe('wasm render acceleration', () => {
     expect(isSynthWasmAvailable()).toBe(true)
     expect(isSynthWasmBinaryAvailable()).toBe(true)
     const graph = pipe(
-      mix([
-        oscillator('saw', 110),
-        pipe(oscillator('triangle', 55), gain(0.35)),
-      ]),
+      mix([oscillator('saw', 110), pipe(oscillator('triangle', 55), gain(0.35))]),
       filter.lowpass(1400, 0.9),
       modulate(params.biquad.freq, oscillator('sine', 3), 120),
       effects.distortion(0.08),
@@ -885,7 +1036,16 @@ describe('wasm render acceleration', () => {
         pipe(noise('pink', { seed: 42 }), gain(0.03)),
       ]),
       envelope({ attack: 0.001, decay: 0.004, sustain: 0.4, release: 0.01 }),
-      effects.spaceEcho({ timeMs: 24, feedback: 0.18, mix: 0.3, reverbMix: 0.03, wow: 0.05, flutter: 0.02, tapeAge: 0.2, drive: 0.08 }),
+      effects.spaceEcho({
+        timeMs: 24,
+        feedback: 0.18,
+        mix: 0.3,
+        reverbMix: 0.03,
+        wow: 0.05,
+        flutter: 0.02,
+        tapeAge: 0.2,
+        drive: 0.08,
+      }),
     )
     const opts = {
       duration: 0.05,
@@ -902,11 +1062,7 @@ describe('wasm render acceleration', () => {
   it('exposes a stateful block runtime that matches full-buffer WASM rendering', () => {
     expect(isSynthWasmRuntimeAvailable()).toBe(true)
     expect(isSynthWasmRuntimeDirectAvailable()).toBe(true)
-    const graph = pipe(
-      oscillator('saw', 123),
-      effects.delay(1, 0.2, 0.4),
-      effects.distortion(0.05),
-    )
+    const graph = pipe(oscillator('saw', 123), effects.delay(1, 0.2, 0.4), effects.distortion(0.05))
     const opts = { duration: 384 / 48_000, sampleRate: 48_000 }
 
     closeSamples(renderWasmRuntimeForTest(graph, opts, 128), renderWasmForTest(graph, opts), 4)
@@ -928,14 +1084,16 @@ describe('wasm render acceleration', () => {
     expect(isSynthWasmRuntimeDirectAvailable()).toBe(true)
     const graph = instrument.lofiSampler({
       freq: 440,
-      zones: [{
-        samples: new Float32Array([0.5, 0.45, 0.4, 0.35]),
-        sampleRate: 1_000,
-        rootMidi: 69,
-        loop: true,
-        loopStart: 0,
-        loopEnd: 4,
-      }],
+      zones: [
+        {
+          samples: new Float32Array([0.5, 0.45, 0.4, 0.35]),
+          sampleRate: 1_000,
+          rootMidi: 69,
+          loop: true,
+          loopStart: 0,
+          loopEnd: 4,
+        },
+      ],
       attack: 0,
       release: 0.01,
       bits: 6,
@@ -980,7 +1138,9 @@ describe('wasm render acceleration', () => {
     const reference = renderReference(graph, opts)
 
     closeSamples(wasm, reference, 6)
-    expect((wasm as Float32Array).subarray(0, 27).some((value) => Math.abs(value) > 1e-4)).toBe(true)
+    expect((wasm as Float32Array).subarray(0, 27).some((value) => Math.abs(value) > 1e-4)).toBe(
+      true,
+    )
     expect(Math.max(...(wasm as Float32Array).subarray(27).map((value) => Math.abs(value)))).toBe(0)
   })
 
@@ -1121,7 +1281,9 @@ describe('wasm render acceleration', () => {
 
     expect(triggerRenderFramesForTest(graph, 80, 1_000, opts.triggers[0])).toBe(32)
     closeSamples(wasm, reference, 6)
-    expect((wasm as Float32Array).subarray(12, 32).some((value) => Math.abs(value) > 1e-4)).toBe(true)
+    expect((wasm as Float32Array).subarray(12, 32).some((value) => Math.abs(value) > 1e-4)).toBe(
+      true,
+    )
     expect(Math.max(...(wasm as Float32Array).subarray(32).map((value) => Math.abs(value)))).toBe(0)
   })
 
@@ -1158,7 +1320,9 @@ describe('wasm render acceleration', () => {
 
     expect(triggerRenderFramesForTest(graph, 80, 1_000, opts.triggers[0])).toBe(40)
     closeSamples(wasm, reference, 6)
-    expect((wasm as Float32Array).subarray(8, 40).some((value) => Math.abs(value) > 1e-4)).toBe(true)
+    expect((wasm as Float32Array).subarray(8, 40).some((value) => Math.abs(value) > 1e-4)).toBe(
+      true,
+    )
     expect(Math.max(...(wasm as Float32Array).subarray(40).map((value) => Math.abs(value)))).toBe(0)
   })
 
@@ -1182,13 +1346,15 @@ describe('wasm render acceleration', () => {
     closeSamples(bounded, unbounded, 6)
     const [left, right] = bounded as [Float32Array, Float32Array]
     expect(
-      left.subarray(8, 60).some((value) => Math.abs(value) > 1e-4)
-      || right.subarray(8, 60).some((value) => Math.abs(value) > 1e-4),
+      left.subarray(8, 60).some((value) => Math.abs(value) > 1e-4) ||
+        right.subarray(8, 60).some((value) => Math.abs(value) > 1e-4),
     ).toBe(true)
-    expect(Math.max(
-      ...left.subarray(60).map((value) => Math.abs(value)),
-      ...right.subarray(60).map((value) => Math.abs(value)),
-    )).toBe(0)
+    expect(
+      Math.max(
+        ...left.subarray(60).map((value) => Math.abs(value)),
+        ...right.subarray(60).map((value) => Math.abs(value)),
+      ),
+    ).toBe(0)
   })
 
   it('bounds no-feedback multi-tap delay tails when tone is fully open', () => {
@@ -1221,13 +1387,15 @@ describe('wasm render acceleration', () => {
     closeSamples(bounded, unbounded, 6)
     const [left, right] = bounded as [Float32Array, Float32Array]
     expect(
-      left.subarray(12, 44).some((value) => Math.abs(value) > 1e-4)
-      || right.subarray(12, 44).some((value) => Math.abs(value) > 1e-4),
+      left.subarray(12, 44).some((value) => Math.abs(value) > 1e-4) ||
+        right.subarray(12, 44).some((value) => Math.abs(value) > 1e-4),
     ).toBe(true)
-    expect(Math.max(
-      ...left.subarray(44).map((value) => Math.abs(value)),
-      ...right.subarray(44).map((value) => Math.abs(value)),
-    )).toBe(0)
+    expect(
+      Math.max(
+        ...left.subarray(44).map((value) => Math.abs(value)),
+        ...right.subarray(44).map((value) => Math.abs(value)),
+      ),
+    ).toBe(0)
   })
 
   it('uses the per-trigger binary WASM path for small open-tone multi-tap tails', () => {
@@ -1266,7 +1434,8 @@ describe('worklet compiler', () => {
 
   it('returns fresh module handles while caching addModule registration by graph shape', async () => {
     let moduleSource = ''
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:stopcock-synth')
+    vi.spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:stopcock-synth')
       .mockImplementation((blob) => {
         void blob.text().then((source) => {
           moduleSource = source
@@ -1297,7 +1466,9 @@ describe('worklet compiler', () => {
     expect(moduleSource).toContain('stopcock_synth_runtime_output_right_ptr')
     expect(moduleSource).toContain('this.leftPtr = this.hasDirectRuntime ? 0')
     expect(moduleSource).not.toContain('function samplePolyblep')
-    expect(() => new Function('AudioWorkletProcessor', 'registerProcessor', 'sampleRate', moduleSource)).not.toThrow()
+    expect(
+      () => new Function('AudioWorkletProcessor', 'registerProcessor', 'sampleRate', moduleSource),
+    ).not.toThrow()
   })
 
   it('exposes throwing lookup helpers for params and inputs', async () => {
@@ -1334,14 +1505,18 @@ describe('worklet compiler', () => {
     expect(wm.processorOptions.wasmInputChannels).toBe(1)
     expect(wm.processorOptions.wasmInputMap).toEqual([7])
     expect(source).toContain('this.inputMap')
-    expect(source).toContain('var hostChannel = this.inputMap ? this.inputMap[channelIndex] : channelIndex')
+    expect(source).toContain(
+      'var hostChannel = this.inputMap ? this.inputMap[channelIndex] : channelIndex',
+    )
     expect(Processor).toBeDefined()
 
     const processor = new Processor!({ processorOptions: wm.processorOptions })
-    const parameters = Object.fromEntries(wm.params.map((handle) => [
-      handle.audioParamName,
-      new Float32Array([defaultFor(handle.node, handle.param)]),
-    ])) as Record<string, Float32Array>
+    const parameters = Object.fromEntries(
+      wm.params.map((handle) => [
+        handle.audioParamName,
+        new Float32Array([defaultFor(handle.node, handle.param)]),
+      ]),
+    ) as Record<string, Float32Array>
     const inputs: Float32Array[][] = Array.from({ length: 8 }, () => [])
     inputs[7] = [new Float32Array(128)]
     inputs[7][0][0] = 0.25
@@ -1373,10 +1548,12 @@ describe('worklet compiler', () => {
     expect(Processor).toBeDefined()
 
     const processor = new Processor!({ processorOptions: wm.processorOptions })
-    const parameters = Object.fromEntries(wm.params.map((handle) => [
-      handle.audioParamName,
-      new Float32Array([defaultFor(handle.node, handle.param)]),
-    ])) as Record<string, Float32Array>
+    const parameters = Object.fromEntries(
+      wm.params.map((handle) => [
+        handle.audioParamName,
+        new Float32Array([defaultFor(handle.node, handle.param)]),
+      ]),
+    ) as Record<string, Float32Array>
     const inputs = [[new Float32Array(128)]]
     const outputs = [[new Float32Array(128)]]
 
@@ -1415,10 +1592,12 @@ describe('worklet compiler', () => {
 
     const processor = new Processor!({ processorOptions: wm.processorOptions })
     const amount = workletParam(wm, graph, 'amount').audioParamName
-    const parameters = Object.fromEntries(wm.params.map((handle) => [
-      handle.audioParamName,
-      new Float32Array([defaultFor(handle.node, handle.param)]),
-    ])) as Record<string, Float32Array>
+    const parameters = Object.fromEntries(
+      wm.params.map((handle) => [
+        handle.audioParamName,
+        new Float32Array([defaultFor(handle.node, handle.param)]),
+      ]),
+    ) as Record<string, Float32Array>
     parameters[amount] = new Float32Array([0.5])
     const outputs = [[new Float32Array(128)]]
 
@@ -1472,10 +1651,12 @@ describe('worklet compiler', () => {
     }
 
     const amount = workletParam(wm, graph, 'amount').audioParamName
-    const parameters = Object.fromEntries(wm.params.map((handle) => [
-      handle.audioParamName,
-      new Float32Array([defaultFor(handle.node, handle.param)]),
-    ])) as Record<string, Float32Array>
+    const parameters = Object.fromEntries(
+      wm.params.map((handle) => [
+        handle.audioParamName,
+        new Float32Array([defaultFor(handle.node, handle.param)]),
+      ]),
+    ) as Record<string, Float32Array>
     const amountBlock = new Float32Array(128).fill(0.5)
     parameters[amount] = amountBlock
     const outputs = [[new Float32Array(128)]]
@@ -1510,7 +1691,16 @@ describe('worklet compiler', () => {
         instrument.polySynth({ freq: 82.41, cutoff: 900, chorus: 0.35, level: 0.08 }),
         instrument.lofiSampler({
           freq: 110,
-          zones: [{ samples: new Float32Array([0, 0.45, 0.2, 0]), sampleRate: 48_000, rootMidi: 45, loop: true, loopStart: 1, loopEnd: 3 }],
+          zones: [
+            {
+              samples: new Float32Array([0, 0.45, 0.2, 0]),
+              sampleRate: 48_000,
+              rootMidi: 45,
+              loop: true,
+              loopStart: 1,
+              loopEnd: 3,
+            },
+          ],
           bits: 10,
           downsample: 2,
           noise: 0.02,
@@ -1518,7 +1708,16 @@ describe('worklet compiler', () => {
         }),
         sampler.instrument({
           freq: 110,
-          zones: [{ samples: new Float32Array([0, 0.4, 0.2, 0]), sampleRate: 48_000, rootMidi: 45, loop: true, loopStart: 1, loopEnd: 3 }],
+          zones: [
+            {
+              samples: new Float32Array([0, 0.4, 0.2, 0]),
+              sampleRate: 48_000,
+              rootMidi: 45,
+              loop: true,
+              loopStart: 1,
+              loopEnd: 3,
+            },
+          ],
           level: 0.2,
         }),
       ]),
@@ -1528,10 +1727,42 @@ describe('worklet compiler', () => {
       effects.chorus(1, 4, 0.3),
       effects.ensembleChorus({ rate: 0.36, depth: 5.5, mix: 0.22, width: 0.85, tone: 0.82 }),
       effects.spaceEcho({ timeMs: 96, feedback: 0.4, mix: 0.22, reverbMix: 0.08 }),
-      effects.tapeDelay({ timeMs: 132, feedback: 0.32, mix: 0.18, wow: 0.12, flutter: 0.06, tapeAge: 0.24, drive: 0.12, tone: 0.78, width: 0.85 }),
-      effects.plateReverb({ preDelayMs: 10, decay: 0.5, damping: 0.45, diffusion: 0.72, modulation: 0.14, mix: 0.12, width: 1 }),
-      effects.springReverb({ decay: 0.6, damping: 0.34, tension: 0.52, drip: 0.25, mix: 0.1, width: 0.9 }),
-      effects.nonlinearReverb({ timeMs: 130, decay: 0.62, damping: 0.35, drive: 0.2, mix: 0.08, width: 0.85 }),
+      effects.tapeDelay({
+        timeMs: 132,
+        feedback: 0.32,
+        mix: 0.18,
+        wow: 0.12,
+        flutter: 0.06,
+        tapeAge: 0.24,
+        drive: 0.12,
+        tone: 0.78,
+        width: 0.85,
+      }),
+      effects.plateReverb({
+        preDelayMs: 10,
+        decay: 0.5,
+        damping: 0.45,
+        diffusion: 0.72,
+        modulation: 0.14,
+        mix: 0.12,
+        width: 1,
+      }),
+      effects.springReverb({
+        decay: 0.6,
+        damping: 0.34,
+        tension: 0.52,
+        drip: 0.25,
+        mix: 0.1,
+        width: 0.9,
+      }),
+      effects.nonlinearReverb({
+        timeMs: 130,
+        decay: 0.62,
+        damping: 0.35,
+        drive: 0.2,
+        mix: 0.08,
+        width: 0.85,
+      }),
       effects.microPitch({ detune: 8, width: 0.6, delayMs: 14, mix: 0.18 }),
       effects.multiTapDelay({ timeMs: 48, feedback: 0.22, mix: 0.18, tone: 0.74, width: 0.9 }),
       effects.saturator({ drive: 0.35, asymmetry: 0.12, tone: 0.82, mix: 0.7, output: 0.9 }),
@@ -1570,7 +1801,16 @@ describe('worklet compiler', () => {
         oscillator.wavetable(bank, 110),
         sampler.instrument({
           freq: 110,
-          zones: [{ samples: new Float32Array([0, 0.3, 0.1, 0]), sampleRate: 48_000, rootMidi: 45, loop: true, loopStart: 1, loopEnd: 3 }],
+          zones: [
+            {
+              samples: new Float32Array([0, 0.3, 0.1, 0]),
+              sampleRate: 48_000,
+              rootMidi: 45,
+              loop: true,
+              loopStart: 1,
+              loopEnd: 3,
+            },
+          ],
           level: 0.18,
         }),
         instrument.acidBass({
@@ -1584,11 +1824,32 @@ describe('worklet compiler', () => {
           level: 0.18,
         }),
         instrument.drumVoice({ kind: 'kick', freq: 55, decay: 0.16, snap: 0.6, level: 0.16 }),
-        instrument.stringMachine({ freq: 110, attack: 0.01, release: 0.2, depth: 0.5, level: 0.12 }),
-        instrument.polySynth({ freq: 82.41, cutoff: 1_100, resonance: 0.3, chorus: 0.3, level: 0.12 }),
+        instrument.stringMachine({
+          freq: 110,
+          attack: 0.01,
+          release: 0.2,
+          depth: 0.5,
+          level: 0.12,
+        }),
+        instrument.polySynth({
+          freq: 82.41,
+          cutoff: 1_100,
+          resonance: 0.3,
+          chorus: 0.3,
+          level: 0.12,
+        }),
         instrument.lofiSampler({
           freq: 110,
-          zones: [{ samples: new Float32Array([0, 0.42, 0.2, 0]), sampleRate: 48_000, rootMidi: 45, loop: true, loopStart: 1, loopEnd: 3 }],
+          zones: [
+            {
+              samples: new Float32Array([0, 0.42, 0.2, 0]),
+              sampleRate: 48_000,
+              rootMidi: 45,
+              loop: true,
+              loopStart: 1,
+              loopEnd: 3,
+            },
+          ],
           bits: 11,
           downsample: 2,
           tone: 0.76,
@@ -1608,11 +1869,49 @@ describe('worklet compiler', () => {
       effects.delay(64, 0.22, 0.35),
       effects.chorus(0.4, 10, 0.25),
       effects.ensembleChorus({ rate: 0.4, depth: 4.44, mix: 0.2, width: 1 }),
-      effects.spaceEcho({ timeMs: 120, feedback: 0.38, mix: 0.2, reverbMix: 0.04, mode: 'heads-1-3' }),
-      effects.tapeDelay({ timeMs: 144, feedback: 0.28, mix: 0.16, wow: 0.1, flutter: 0.05, tapeAge: 0.2, drive: 0.1, tone: 0.72, width: 0.75 }),
-      effects.plateReverb({ preDelayMs: 12, decay: 0.46, damping: 0.42, diffusion: 0.7, modulation: 0.12, mix: 0.1, width: 1 }),
-      effects.springReverb({ decay: 0.58, damping: 0.32, tension: 0.48, drip: 0.2, mix: 0.08, width: 0.85 }),
-      effects.nonlinearReverb({ timeMs: 120, decay: 0.58, damping: 0.36, drive: 0.18, mix: 0.07, width: 0.8 }),
+      effects.spaceEcho({
+        timeMs: 120,
+        feedback: 0.38,
+        mix: 0.2,
+        reverbMix: 0.04,
+        mode: 'heads-1-3',
+      }),
+      effects.tapeDelay({
+        timeMs: 144,
+        feedback: 0.28,
+        mix: 0.16,
+        wow: 0.1,
+        flutter: 0.05,
+        tapeAge: 0.2,
+        drive: 0.1,
+        tone: 0.72,
+        width: 0.75,
+      }),
+      effects.plateReverb({
+        preDelayMs: 12,
+        decay: 0.46,
+        damping: 0.42,
+        diffusion: 0.7,
+        modulation: 0.12,
+        mix: 0.1,
+        width: 1,
+      }),
+      effects.springReverb({
+        decay: 0.58,
+        damping: 0.32,
+        tension: 0.48,
+        drip: 0.2,
+        mix: 0.08,
+        width: 0.85,
+      }),
+      effects.nonlinearReverb({
+        timeMs: 120,
+        decay: 0.58,
+        damping: 0.36,
+        drive: 0.18,
+        mix: 0.07,
+        width: 0.8,
+      }),
       effects.microPitch({ detune: 7, width: 0.5, delayMs: 16, mix: 0.14 }),
       effects.multiTapDelay({ timeMs: 72, feedback: 0.2, mix: 0.16, tone: 0.7, width: 0.8 }),
       effects.saturator({ drive: 0.22, tone: 0.75, mix: 0.5, output: 0.95 }),
@@ -1635,7 +1934,7 @@ describe('worklet compiler', () => {
 
     expect(registerProcessor).toHaveBeenCalledTimes(1)
     expect(Processor).toBeDefined()
-    const globalWithCodecs = globalThis as typeof globalThis & { Buffer?: unknown, atob?: unknown }
+    const globalWithCodecs = globalThis as typeof globalThis & { Buffer?: unknown; atob?: unknown }
     const originalBuffer = globalWithCodecs.Buffer
     const originalAtob = globalWithCodecs.atob
     let processor: GeneratedProcessor
@@ -1647,10 +1946,12 @@ describe('worklet compiler', () => {
       globalWithCodecs.Buffer = originalBuffer
       globalWithCodecs.atob = originalAtob
     }
-    const parameters = Object.fromEntries(wm.params.map((handle) => [
-      handle.audioParamName,
-      new Float32Array([defaultFor(handle.node, handle.param)]),
-    ])) as Record<string, Float32Array>
+    const parameters = Object.fromEntries(
+      wm.params.map((handle) => [
+        handle.audioParamName,
+        new Float32Array([defaultFor(handle.node, handle.param)]),
+      ]),
+    ) as Record<string, Float32Array>
     const outputs = [[new Float32Array(128), new Float32Array(128)]]
 
     for (let block = 0; block < 4; block++) {
@@ -1659,7 +1960,9 @@ describe('worklet compiler', () => {
 
     const automated = wm.params[0]
     if (!automated) throw new Error('expected generated worklet params')
-    parameters[automated.audioParamName] = new Float32Array(128).fill(defaultFor(automated.node, automated.param))
+    parameters[automated.audioParamName] = new Float32Array(128).fill(
+      defaultFor(automated.node, automated.param),
+    )
     expect(processor.process([], outputs, parameters)).toBe(true)
 
     const rendered = [...outputs[0][0], ...outputs[0][1]]
@@ -1669,12 +1972,18 @@ describe('worklet compiler', () => {
 })
 
 type GeneratedProcessor = {
-  process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean
+  process(
+    inputs: Float32Array[][],
+    outputs: Float32Array[][],
+    parameters: Record<string, Float32Array>,
+  ): boolean
 }
 
-type GeneratedProcessorConstructor = new (options?: { processorOptions?: WorkletModule['processorOptions'] }) => GeneratedProcessor
+type GeneratedProcessorConstructor = new (options?: {
+  processorOptions?: WorkletModule['processorOptions']
+}) => GeneratedProcessor
 
-async function captureWorkletSource(graph: Node): Promise<{ wm: WorkletModule, source: string }> {
+async function captureWorkletSource(graph: Node): Promise<{ wm: WorkletModule; source: string }> {
   let moduleSource = ''
   vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
     void blob.text().then((source) => {
@@ -1689,7 +1998,9 @@ async function captureWorkletSource(graph: Node): Promise<{ wm: WorkletModule, s
   return { wm, source: moduleSource }
 }
 
-function fakeAudioContext(): AudioContext & { audioWorklet: { addModule: ReturnType<typeof vi.fn> } } {
+function fakeAudioContext(): AudioContext & {
+  audioWorklet: { addModule: ReturnType<typeof vi.fn> }
+} {
   return {
     audioWorklet: {
       addModule: vi.fn(() => Promise.resolve()),

@@ -1,16 +1,34 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { pipe, ok, err, some, none } from '@stopcock/fp'
 import {
-  of, resolve, reject, fromPromise, fromResult, fromOption, delay, never,
-  map, flatMap, tap, mapError, catchError, flatMapError, match,
-  run, runSafe, runWithCancel,
+  of,
+  resolve,
+  reject,
+  fromPromise,
+  fromResult,
+  fromOption,
+  delay,
+  never,
+  map,
+  flatMap,
+  tap,
+  mapError,
+  catchError,
+  flatMapError,
+  match,
+  run,
+  runSafe,
+  runWithCancel,
 } from '../task'
 import { CancelledError } from '../types'
 
 describe('constructors', () => {
   it('of: lazy. thunk not called until run', async () => {
     let called = false
-    const task = of(async () => { called = true; return 42 })
+    const task = of(async () => {
+      called = true
+      return 42
+    })
     expect(called).toBe(false)
     expect(await run(task)).toBe(42)
     expect(called).toBe(true)
@@ -54,12 +72,18 @@ describe('constructors', () => {
 
 describe('combinators', () => {
   it('map: transforms success', async () => {
-    const task = pipe(resolve(5), map((x: number) => x * 2))
+    const task = pipe(
+      resolve(5),
+      map((x: number) => x * 2),
+    )
     expect(await run(task)).toBe(10)
   })
 
   it('map: propagates error', async () => {
-    const task = pipe(reject('err'), map(() => 'should not reach'))
+    const task = pipe(
+      reject('err'),
+      map(() => 'should not reach'),
+    )
     await expect(run(task)).rejects.toBe('err')
   })
 
@@ -75,7 +99,10 @@ describe('combinators', () => {
     let reached = false
     const task = pipe(
       reject('early'),
-      flatMap(() => { reached = true; return resolve(99) }),
+      flatMap(() => {
+        reached = true
+        return resolve(99)
+      }),
     )
     await expect(run(task)).rejects.toBe('early')
     expect(reached).toBe(false)
@@ -83,23 +110,37 @@ describe('combinators', () => {
 
   it('tap: side effect, returns original', async () => {
     let seen: number | undefined
-    const task = pipe(resolve(7), tap((x: number) => { seen = x }))
+    const task = pipe(
+      resolve(7),
+      tap((x: number) => {
+        seen = x
+      }),
+    )
     expect(await run(task)).toBe(7)
     expect(seen).toBe(7)
   })
 
   it('mapError: transforms error', async () => {
-    const task = pipe(reject('raw'), mapError((e: string) => `wrapped: ${e}`))
+    const task = pipe(
+      reject('raw'),
+      mapError((e: string) => `wrapped: ${e}`),
+    )
     await expect(run(task)).rejects.toBe('wrapped: raw')
   })
 
   it('catchError: recovers from error', async () => {
-    const task = pipe(reject('fail'), catchError(() => 'recovered'))
+    const task = pipe(
+      reject('fail'),
+      catchError(() => 'recovered'),
+    )
     expect(await run(task)).toBe('recovered')
   })
 
   it('catchError: passes through success', async () => {
-    const task = pipe(resolve(42), catchError(() => 0))
+    const task = pipe(
+      resolve(42),
+      catchError(() => 0),
+    )
     expect(await run(task)).toBe(42)
   })
 
@@ -115,7 +156,10 @@ describe('combinators', () => {
     const okTask = pipe(resolve(5), match({ ok: (x: number) => `got ${x}`, err: () => 'nope' }))
     expect(await run(okTask)).toBe('got 5')
 
-    const errTask = pipe(reject('bad'), match({ ok: () => 'nope', err: (e: string) => `err: ${e}` }))
+    const errTask = pipe(
+      reject('bad'),
+      match({ ok: () => 'nope', err: (e: string) => `err: ${e}` }),
+    )
     expect(await run(errTask)).toBe('err: bad')
   })
 })
@@ -143,11 +187,11 @@ describe('cancellation', () => {
     let receivedSignal: AbortSignal | undefined
     const task = of(async (signal?) => {
       receivedSignal = signal
-      await new Promise(r => setTimeout(r, 100))
+      await new Promise((r) => setTimeout(r, 100))
       return 'done'
     })
     const [_, cancel] = runWithCancel(task)
-    await new Promise(r => setTimeout(r, 10))
+    await new Promise((r) => setTimeout(r, 10))
     cancel()
     expect(receivedSignal?.aborted).toBe(true)
   })
@@ -155,11 +199,19 @@ describe('cancellation', () => {
   it('cancel between flatMap steps', async () => {
     let secondRan = false
     const task = pipe(
-      of(async () => { await new Promise(r => setTimeout(r, 10)); return 1 }),
-      flatMap(() => of(async () => { secondRan = true; return 2 })),
+      of(async () => {
+        await new Promise((r) => setTimeout(r, 10))
+        return 1
+      }),
+      flatMap(() =>
+        of(async () => {
+          secondRan = true
+          return 2
+        }),
+      ),
     )
     const [promise, cancel] = runWithCancel(task)
-    await new Promise(r => setTimeout(r, 15))
+    await new Promise((r) => setTimeout(r, 15))
     cancel()
     await promise.catch(() => {})
     // second task may or may not have started depending on timing,
@@ -187,21 +239,36 @@ describe('monad laws', () => {
   it('associativity', async () => {
     const m = resolve(5)
     const left = await run(pipe(m, flatMap(f), flatMap(g)))
-    const right = await run(pipe(m, flatMap((x: number) => pipe(f(x), flatMap(g)))))
+    const right = await run(
+      pipe(
+        m,
+        flatMap((x: number) => pipe(f(x), flatMap(g))),
+      ),
+    )
     expect(left).toBe(right)
   })
 })
 
 describe('functor laws', () => {
   it('identity: map(x => x) === identity', async () => {
-    const left = await run(pipe(resolve(5), map((x: number) => x)))
+    const left = await run(
+      pipe(
+        resolve(5),
+        map((x: number) => x),
+      ),
+    )
     expect(left).toBe(5)
   })
 
   it('composition: map(f . g) === map(g) then map(f)', async () => {
     const f = (x: number) => x * 2
     const g = (x: number) => x + 1
-    const left = await run(pipe(resolve(5), map((x: number) => f(g(x)))))
+    const left = await run(
+      pipe(
+        resolve(5),
+        map((x: number) => f(g(x))),
+      ),
+    )
     const right = await run(pipe(resolve(5), map(g), map(f)))
     expect(left).toBe(right)
   })
@@ -221,7 +288,9 @@ describe('pipe integration', () => {
 
 describe('fromPromise edge cases', () => {
   it('thunk that throws synchronously rejects', async () => {
-    const task = fromPromise(() => { throw new Error('sync boom') })
+    const task = fromPromise(() => {
+      throw new Error('sync boom')
+    })
     await expect(run(task)).rejects.toThrow('sync boom')
   })
 })

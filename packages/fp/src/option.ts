@@ -33,8 +33,7 @@ export const flatMap =
 
 export const andThen = flatMap
 
-export const flatten = <A>(o: Option<Option<A>>): Option<A> =>
-  o._tag === 1 ? o.value : none
+export const flatten = <A>(o: Option<Option<A>>): Option<A> => (o._tag === 1 ? o.value : none)
 
 export const orElse =
   <B>(that: Option<B>) =>
@@ -103,15 +102,11 @@ export const tap =
     return o
   }
 
-export const toNullable = <A>(o: Option<A>): A | null =>
-  o._tag === 1 ? o.value : null
+export const toNullable = <A>(o: Option<A>): A | null => (o._tag === 1 ? o.value : null)
 
-export const toUndefined = <A>(o: Option<A>): A | undefined =>
-  o._tag === 1 ? o.value : undefined
+export const toUndefined = <A>(o: Option<A>): A | undefined => (o._tag === 1 ? o.value : undefined)
 
 export const toResult =
   <E>(defaultError: E) =>
   <A>(o: Option<A>): Result<A, E> =>
-    o._tag === 1
-      ? { _tag: 1, value: o.value }
-      : { _tag: 0, error: defaultError }
+    o._tag === 1 ? { _tag: 1, value: o.value } : { _tag: 0, error: defaultError }

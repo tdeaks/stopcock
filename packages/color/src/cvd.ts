@@ -16,57 +16,50 @@ import { luminance } from './contrast'
 
 export type CVDType = 'protanopia' | 'deuteranopia' | 'tritanopia' | 'achromatopsia'
 
-const IDENTITY = new Float64Array([
-  1, 0, 0,
-  0, 1, 0,
-  0, 0, 1,
-])
+const IDENTITY = new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
 
 // Severity 1.0 (full dichromacy) — Machado et al. 2009, Table 1 row 100
 const PROTAN_100 = new Float64Array([
-   0.152286, 1.052583, -0.204868,
-   0.114503, 0.786281,  0.099216,
-  -0.003882, -0.048116, 1.051998,
+  0.152286, 1.052583, -0.204868, 0.114503, 0.786281, 0.099216, -0.003882, -0.048116, 1.051998,
 ])
 const DEUTAN_100 = new Float64Array([
-   0.367322, 0.860646, -0.227968,
-   0.280085, 0.672501,  0.047413,
-  -0.011820, 0.042940,  0.968881,
+  0.367322, 0.860646, -0.227968, 0.280085, 0.672501, 0.047413, -0.01182, 0.04294, 0.968881,
 ])
 const TRITAN_100 = new Float64Array([
-   1.255528, -0.076749, -0.178779,
-  -0.078411,  0.930809,  0.147602,
-   0.004733,  0.691367,  0.303900,
+  1.255528, -0.076749, -0.178779, -0.078411, 0.930809, 0.147602, 0.004733, 0.691367, 0.3039,
 ])
 
 // Severity 0.5 — Machado et al. 2009, Table 1 row 50
 const PROTAN_50 = new Float64Array([
-   0.458064, 0.679578, -0.137642,
-   0.092785, 0.846313,  0.060902,
-  -0.007494, -0.016807, 1.024301,
+  0.458064, 0.679578, -0.137642, 0.092785, 0.846313, 0.060902, -0.007494, -0.016807, 1.024301,
 ])
 const DEUTAN_50 = new Float64Array([
-   0.547494, 0.607765, -0.155259,
-   0.181692, 0.781742,  0.036566,
-  -0.010410, 0.027275,  0.983136,
+  0.547494, 0.607765, -0.155259, 0.181692, 0.781742, 0.036566, -0.01041, 0.027275, 0.983136,
 ])
 const TRITAN_50 = new Float64Array([
-   1.193214, -0.109812, -0.083402,
-  -0.058496,  0.979410,  0.079086,
-  -0.002346,  0.403492,  0.598854,
+  1.193214, -0.109812, -0.083402, -0.058496, 0.97941, 0.079086, -0.002346, 0.403492, 0.598854,
 ])
 
 // Linear interpolation between two 3x3 matrices into `out`.
-const lerpMatrix = (a: Float64Array, b: Float64Array, t: number, out: Float64Array): Float64Array => {
+const lerpMatrix = (
+  a: Float64Array,
+  b: Float64Array,
+  t: number,
+  out: Float64Array,
+): Float64Array => {
   for (let i = 0; i < 9; i++) out[i] = a[i] + (b[i] - a[i]) * t
   return out
 }
 
-export const matrixFor = (type: Exclude<CVDType, 'achromatopsia'>, severity: number): Float64Array => {
+export const matrixFor = (
+  type: Exclude<CVDType, 'achromatopsia'>,
+  severity: number,
+): Float64Array => {
   const m = new Float64Array(9)
   if (severity <= 0) return IDENTITY.slice() as Float64Array
   const half = type === 'protanopia' ? PROTAN_50 : type === 'deuteranopia' ? DEUTAN_50 : TRITAN_50
-  const full = type === 'protanopia' ? PROTAN_100 : type === 'deuteranopia' ? DEUTAN_100 : TRITAN_100
+  const full =
+    type === 'protanopia' ? PROTAN_100 : type === 'deuteranopia' ? DEUTAN_100 : TRITAN_100
   if (severity <= 0.5) return lerpMatrix(IDENTITY, half, severity / 0.5, m)
   return lerpMatrix(half, full, (severity - 0.5) / 0.5, m)
 }
@@ -90,13 +83,21 @@ export const simulate = (c: Color, type: CVDType, severity: number = 1): Color =
     // Replace with grayscale of the same WCAG luminance.
     // We pick the gray in linear-srgb so it has the right luminance.
     const L = luminance(c)
-    const linGray: Color = { space: 'linear-srgb', channels: new Float64Array([L, L, L]), alpha: c.alpha }
+    const linGray: Color = {
+      space: 'linear-srgb',
+      channels: new Float64Array([L, L, L]),
+      alpha: c.alpha,
+    }
     return convert(linGray, c.space)
   }
 
   const m = matrixFor(type, Math.max(0, Math.min(1, severity)))
   const lin = toLinearRGB(c)
   const [r, g, b] = apply3x3(m, lin.channels[0], lin.channels[1], lin.channels[2])
-  const simulated: Color = { space: 'linear-srgb', channels: new Float64Array([r, g, b]), alpha: c.alpha }
+  const simulated: Color = {
+    space: 'linear-srgb',
+    channels: new Float64Array([r, g, b]),
+    alpha: c.alpha,
+  }
   return convert(simulated, c.space)
 }

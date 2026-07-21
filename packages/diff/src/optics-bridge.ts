@@ -5,10 +5,14 @@ import { patch } from './patch'
 export function toLens(op: Operation): Lens<any, any> | null {
   const p = op.path
   if (p.length === 0) return null
-  const allStrings = p.filter(s => typeof s === 'string')
+  const allStrings = p.filter((s) => typeof s === 'string')
   if (allStrings.length !== p.length) {
     return lens(
-      (s: any) => { let o = s; for (const seg of p) o = o[seg]; return o },
+      (s: any) => {
+        let o = s
+        for (const seg of p) o = o[seg]
+        return o
+      },
       (s: any, v: any) => {
         const root = Array.isArray(s) ? [...s] : { ...s }
         let parent: any = root

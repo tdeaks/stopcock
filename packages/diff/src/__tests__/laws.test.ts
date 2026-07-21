@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { diff } from '../diff'
 import { apply, applyUnsafe } from '../apply'
 import { invert } from '../invert'
@@ -11,7 +11,11 @@ describe('diff laws', () => {
     { name: 'flat object', a: { x: 1, y: 2 }, b: { x: 1, y: 3, z: 4 } },
     { name: 'nested object', a: { a: { b: { c: 1 } } }, b: { a: { b: { c: 2, d: 3 } } } },
     { name: 'array', a: [1, 2, 3], b: [1, 3, 4] },
-    { name: 'nested array', a: { items: [{ id: 1 }, { id: 2 }] }, b: { items: [{ id: 2 }, { id: 3 }] } },
+    {
+      name: 'nested array',
+      a: { items: [{ id: 1 }, { id: 2 }] },
+      b: { items: [{ id: 2 }, { id: 3 }] },
+    },
     { name: 'empty to populated', a: {}, b: { a: 1, b: [2] } },
     { name: 'populated to empty', a: { a: 1, b: [2] }, b: {} },
     { name: 'type change', a: { x: 'string' }, b: { x: 42 } },

@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
 import * as R from 'remeda'
 import * as Ra from 'ramda'
@@ -34,7 +34,76 @@ describe('scalar pipe — 10 functions', () => {
 })
 
 describe('scalar pipe — 20 functions', () => {
-  bench('stopcock', () => pipe(5, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl))
-  bench('ts-belt', () => tbPipe(5, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl))
-  bench('remeda', () => R.pipe(5, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl, neg, inc, dbl))
+  bench('stopcock', () =>
+    pipe(
+      5,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+    ))
+  bench('ts-belt', () =>
+    tbPipe(
+      5,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+    ))
+  bench('remeda', () =>
+    R.pipe(
+      5,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+      neg,
+      inc,
+      dbl,
+    ))
 })

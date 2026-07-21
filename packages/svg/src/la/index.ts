@@ -19,28 +19,19 @@ export const lerpTransform = (a: Mat, b: Mat, t: number): Mat => {
   const sy = lerp(syA, syB, t)
   const cos = Math.cos(angle)
   const sin = Math.sin(angle)
-  return [
-    cos * sx,
-    sin * sx,
-    -sin * sy,
-    cos * sy,
-    lerp(a[4], b[4], t),
-    lerp(a[5], b[5], t),
-  ]
+  return [cos * sx, sin * sx, -sin * sy, cos * sy, lerp(a[4], b[4], t), lerp(a[5], b[5], t)]
 }
 
-export const toQuad = (corners: readonly [Pt, Pt, Pt, Pt]) => (node: Node): Node => {
-  const [topLeft, topRight, , bottomLeft] = corners
-  const basis = LaMat.fromArray(3, 3, [
-    0, 0, 1,
-    1, 0, 1,
-    0, 1, 1,
-  ])
-  const x = LaMat.solve(basis, new Float64Array([topLeft[0], topRight[0], bottomLeft[0]]))
-  const y = LaMat.solve(basis, new Float64Array([topLeft[1], topRight[1], bottomLeft[1]]))
-  const transform: Mat = [x[0], y[0], x[1], y[1], x[2], y[2]]
-  return { ...node, transform: mul(transform, node.transform ?? identity) } as Node
-}
+export const toQuad =
+  (corners: readonly [Pt, Pt, Pt, Pt]) =>
+  (node: Node): Node => {
+    const [topLeft, topRight, , bottomLeft] = corners
+    const basis = LaMat.fromArray(3, 3, [0, 0, 1, 1, 0, 1, 0, 1, 1])
+    const x = LaMat.solve(basis, new Float64Array([topLeft[0], topRight[0], bottomLeft[0]]))
+    const y = LaMat.solve(basis, new Float64Array([topLeft[1], topRight[1], bottomLeft[1]]))
+    const transform: Mat = [x[0], y[0], x[1], y[1], x[2], y[2]]
+    return { ...node, transform: mul(transform, node.transform ?? identity) } as Node
+  }
 
 const localPoint = (node: Node, point: Pt): Pt | null => {
   const inv = inverseAffine(node.transform ?? identity)
@@ -50,14 +41,22 @@ const localPoint = (node: Node, point: Pt): Pt | null => {
 const containsLocal = (node: Node, point: Pt): boolean => {
   const [x, y] = point
   switch (node.kind) {
-    case 'circle': return Math.hypot(x - node.cx, y - node.cy) <= node.r
-    case 'rect': return x >= node.x && x <= node.x + node.w && y >= node.y && y <= node.y + node.h
-    case 'ellipse': return ((x - node.cx) / node.rx) ** 2 + ((y - node.cy) / node.ry) ** 2 <= 1
-    case 'image': return x >= node.x && x <= node.x + node.w && y >= node.y && y <= node.y + node.h
-    case 'line': return false
-    case 'path': return false
-    case 'text': return x >= node.x && y <= node.y && y >= node.y - node.size
-    case 'use': return containsLocal(node.target, point)
+    case 'circle':
+      return Math.hypot(x - node.cx, y - node.cy) <= node.r
+    case 'rect':
+      return x >= node.x && x <= node.x + node.w && y >= node.y && y <= node.y + node.h
+    case 'ellipse':
+      return ((x - node.cx) / node.rx) ** 2 + ((y - node.cy) / node.ry) ** 2 <= 1
+    case 'image':
+      return x >= node.x && x <= node.x + node.w && y >= node.y && y <= node.y + node.h
+    case 'line':
+      return false
+    case 'path':
+      return false
+    case 'text':
+      return x >= node.x && y <= node.y && y >= node.y - node.size
+    case 'use':
+      return containsLocal(node.target, point)
     case 'group':
     case 'root':
       return false
@@ -99,7 +98,9 @@ export const alignToPrincipalAxis = (node: Node, points: ReadonlyArray<Pt>) => {
   if (points.length === 0) return node
   const cx = points.reduce((sum, point) => sum + point[0], 0) / points.length
   const cy = points.reduce((sum, point) => sum + point[1], 0) / points.length
-  let xx = 0, xy = 0, yy = 0
+  let xx = 0,
+    xy = 0,
+    yy = 0
   for (const [x, y] of points) {
     const dx = x - cx
     const dy = y - cy
@@ -112,35 +113,36 @@ export const alignToPrincipalAxis = (node: Node, points: ReadonlyArray<Pt>) => {
   return rotate(angle, cx, cy)(node)
 }
 
-const bakePath = (path: Path, transform: Mat): Path => path.map((cmd) => {
-  switch (cmd.c) {
-    case 'M': {
-      const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
-      return { ...cmd, x, y }
+const bakePath = (path: Path, transform: Mat): Path =>
+  path.map((cmd) => {
+    switch (cmd.c) {
+      case 'M': {
+        const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
+        return { ...cmd, x, y }
+      }
+      case 'L': {
+        const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
+        return { ...cmd, x, y }
+      }
+      case 'C': {
+        const [x1, y1] = applyToPoint(transform, [cmd.x1, cmd.y1])
+        const [x2, y2] = applyToPoint(transform, [cmd.x2, cmd.y2])
+        const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
+        return { ...cmd, x1, y1, x2, y2, x, y }
+      }
+      case 'Q': {
+        const [x1, y1] = applyToPoint(transform, [cmd.x1, cmd.y1])
+        const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
+        return { ...cmd, x1, y1, x, y }
+      }
+      case 'A': {
+        const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
+        return { ...cmd, x, y }
+      }
+      case 'Z':
+        return cmd
     }
-    case 'L': {
-      const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
-      return { ...cmd, x, y }
-    }
-    case 'C': {
-      const [x1, y1] = applyToPoint(transform, [cmd.x1, cmd.y1])
-      const [x2, y2] = applyToPoint(transform, [cmd.x2, cmd.y2])
-      const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
-      return { ...cmd, x1, y1, x2, y2, x, y }
-    }
-    case 'Q': {
-      const [x1, y1] = applyToPoint(transform, [cmd.x1, cmd.y1])
-      const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
-      return { ...cmd, x1, y1, x, y }
-    }
-    case 'A': {
-      const [x, y] = applyToPoint(transform, [cmd.x, cmd.y])
-      return { ...cmd, x, y }
-    }
-    case 'Z':
-      return cmd
-  }
-})
+  })
 
 export const bakeTransform = (node: Node): Node => {
   if (node.kind === 'path' && node.transform) {
