@@ -6,7 +6,7 @@ export default defineConfig({
     'src/types.ts',
   ],
   format: ['esm'],
-  dts: true,
+  dts: false,
   clean: true,
   treeshake: true,
   minify: true,

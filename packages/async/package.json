@@ -4,7 +4,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tdeaks/stopcock",
+    "url": "git+https://github.com/tdeaks/stopcock.git",
     "directory": "packages/async"
   },
   "type": "module",
@@ -22,6 +22,6 @@
     "@stopcock/fp": "0.0.3"
   },
   "scripts": {
-    "build": "tsup"
+    "build": "tsup && tsc --emitDeclarationOnly"
   }
 }

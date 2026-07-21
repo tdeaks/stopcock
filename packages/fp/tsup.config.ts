@@ -19,7 +19,7 @@ export default defineConfig({
     'src/function.ts',
   ],
   format: ['esm'],
-  dts: true,
+  dts: false,
   clean: true,
   treeshake: true,
   minify: true,

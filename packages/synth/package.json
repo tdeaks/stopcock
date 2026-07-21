@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tdeaks/stopcock",
+    "url": "git+https://github.com/tdeaks/stopcock.git",
     "directory": "packages/synth"
   },
   "type": "module",
@@ -28,7 +28,7 @@
     "@stopcock/signal": "workspace:*"
   },
   "scripts": {
-    "build": "bun run build:wasm && tsup",
+    "build": "bun run build:wasm && tsup && tsc --emitDeclarationOnly",
     "build:wasm": "cargo build --manifest-path Cargo.toml --release --target wasm32-unknown-unknown --package stopcock_synth_wasm --target-dir wasm/target && bun run scripts/embed-wasm.ts",
     "bench:triggered": "bun run scripts/bench-triggered-wasm.ts",
     "test:wasm": "cargo test --manifest-path Cargo.toml --workspace",
