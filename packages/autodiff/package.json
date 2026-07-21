@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/autodiff",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -40,8 +40,8 @@
     "README.md"
   ],
   "dependencies": {
-    "@stopcock/fp": "0.0.3",
-    "@stopcock/la": "0.0.3"
+    "@stopcock/fp": "1.0.0",
+    "@stopcock/la": "1.0.0"
   },
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly",

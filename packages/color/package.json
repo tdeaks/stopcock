@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/color",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -22,7 +22,7 @@
     "build": "tsup && tsc --emitDeclarationOnly"
   },
   "dependencies": {
-    "@stopcock/fp": "0.0.3",
-    "@stopcock/la": "0.0.3"
+    "@stopcock/fp": "1.0.0",
+    "@stopcock/la": "1.0.0"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/http",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -19,8 +19,8 @@
     "dist"
   ],
   "dependencies": {
-    "@stopcock/async": "0.0.3",
-    "@stopcock/fp": "0.0.3"
+    "@stopcock/async": "1.0.0",
+    "@stopcock/fp": "1.0.0"
   },
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly"

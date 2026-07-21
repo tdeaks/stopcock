@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/svg",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -23,8 +23,8 @@
     "dist"
   ],
   "dependencies": {
-    "@stopcock/color": "0.0.2",
-    "@stopcock/la": "0.0.3"
+    "@stopcock/color": "1.0.0",
+    "@stopcock/la": "1.0.0"
   },
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly"
