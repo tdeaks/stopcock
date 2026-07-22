@@ -67,6 +67,7 @@ import {
   OP_UNIQ_INLINE,
   OP_WITHOUT,
 } from '../../../packages/fp/src/opcodes'
+import { mergeSortAsc, mergeSortBy, mergeSortDesc } from '../../../packages/fp/src/sort-kernel'
 
 export type StreamStepKind =
   | 'map'
@@ -363,11 +364,11 @@ function emitBoundarySegment(seg: BoundarySegment): string[] {
   switch (stepKind) {
     case 'sort':
     case 'sortAsc':
-      return ['data = data.slice().sort((a, b) => a - b);']
+      return ['data = __sortKernel.asc(data);']
     case 'sortDesc':
-      return ['data = data.slice().sort((a, b) => b - a);']
+      return ['data = __sortKernel.desc(data);']
     case 'sortBy':
-      return [`data = data.slice().sort(bindings[${index}].fn);`]
+      return [`data = __sortKernel.by(data, bindings[${index}].fn);`]
     case 'reverse':
       return ['data = data.slice().reverse();']
     case 'uniq':
@@ -403,9 +404,17 @@ export function emitPipeline(desc: PipelineDesc): string {
 
 export type EmittedRunner = (input: unknown, bindings: readonly EmitterBinding[]) => unknown
 
+// Sort steps call the shared merge-sort kernel rather than emitting
+// Array.prototype.sort: since the library tiers hand-write their sorts
+// (sort-kernel.ts), comparator call traces are kernel-defined, and the
+// fuzz oracle's exact-trace check requires the emitter to match. Passed as
+// a parameter because new Function bodies can't reach module scope.
+const __sortKernel = { asc: mergeSortAsc, desc: mergeSortDesc, by: mergeSortBy }
+
 /** Compiles emitted source via `new Function`. Harness-only: never used outside benchmarks/. */
 export function compileEmittedPipeline(desc: PipelineDesc): EmittedRunner {
   const body = emitPipeline(desc)
   // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-  return new Function('input', 'bindings', body) as EmittedRunner
+  const raw = new Function('input', 'bindings', '__sortKernel', body)
+  return ((input, bindings) => raw(input, bindings, __sortKernel)) as EmittedRunner
 }

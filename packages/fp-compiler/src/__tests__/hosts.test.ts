@@ -58,13 +58,14 @@ describe('real-host smoke tests', () => {
     })
     const { output } = await bundle.generate({ format: 'es' })
     await bundle.close()
-    const code = output[0].code
+    // Rollup may split the build into a facade entry plus real chunks, so
+    // assert over and write out every chunk, then import the entry.
+    const chunks = output.filter((o) => o.type === 'chunk')
+    assertFused(chunks.map((c) => c.code).join('\n'), 'rollup')
 
-    assertFused(code, 'rollup')
-
-    const outFile = join(dir, 'out.mjs')
-    await writeFile(outFile, code)
-    const mod = await import(pathToFileURL(outFile).href)
+    for (const c of chunks) await writeFile(join(dir, c.fileName), c.code)
+    const entryChunk = chunks.find((c) => c.isEntry) ?? chunks[0]
+    const mod = await import(pathToFileURL(join(dir, entryChunk.fileName)).href)
     expect(mod.result).toEqual(EXPECTED)
   })
 
