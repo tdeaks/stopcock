@@ -1,74 +1,178 @@
-import { fuse, fuseArray, tryInlineSource } from './fuse'
-import { OP_MAP, OP_TAKE_UNTIL } from './opcodes'
+// pipe() routes tagged pipelines through the same buildPlan/lowerShape
+// machinery and shape cache as compile(). Direct arity dispatch (2-6 args)
+// avoids allocating a steps array. Two caches sit in front of compile():
+// a 4-entry identity cache keyed on exact callback references (zero-alloc
+// hit: skips straight to a bound runner), and, behind that, a front cache
+// keyed on the opcode sequence alone. The opcode sequence determines the
+// Plan shape (segments derive only from each op's registry metadata, never
+// from bound values), so an opcode-key hit reaches the shape runner without
+// paying buildPlan/planShapeKey/shapeCache-lookup on every call -- this is
+// what fixes fresh-closure-per-call pipelines (e.g. inline arrows in a
+// loop), which used to miss the identity cache every time and pay full
+// compile() per call. See docs/superpowers/plans/
+// 2026-07-21-stopcock-fp-absolute-performance-implementation.md, "Runtime
+// caches and tiering".
+import { compile, dispatchAndTrack, planAndLowerFast, toArrayInput, type Runner } from './compile'
+import { extractBinding, type StepBinding } from './plan'
+import type { ShapeEntry } from './shape-entry'
 
-// Fast tag check. Inlined to avoid function call overhead in hot path
 const _hasOp = (fn: any): boolean => typeof fn._op === 'number' && fn._op > 0
 
-// Fast array-op check: fuseable/terminal array ops, accessor terminals. Keep
-// sort opcodes out; they are materialization boundaries handled by fuse().
-const _isArrayOp = (op: number): boolean =>
-  (op >= 1 && op <= 19) || op === 22 || (op >= 30 && op <= 43)
-
-// Shared buffer for general path. Avoids per-call array allocation
-const _pipeBuf: any[] = new Array(32)
-
-type _MapTakeUntilRunner = (src: readonly any[]) => any[]
-
-type _MapTakeUntilFallback = (
-  src: readonly any[],
-  mapFn: (value: any) => any,
-  pred: (value: any) => boolean,
-) => any[]
-
-let _mapTakeUntilMapFn: Function | null = null
-let _mapTakeUntilPred: Function | null = null
-let _mapTakeUntilRunner: _MapTakeUntilRunner | null = null
-
-const _runArrayMapTakeUntilFallback: _MapTakeUntilFallback = (src, mapFn, pred) => {
-  const out: any[] = []
-  let count = 0
-  for (let i = 0, len = src.length; i < len; i++) {
-    const value = mapFn(src[i])
-    if (pred(value)) break
-    out[count++] = value
-  }
-  return out
+// Two shapes share this slot type: a plain Runner (untagged/opaque fallback,
+// from compile()) or a (ShapeEntry, bindings) pair (tagged fast path). The
+// latter avoids allocating a wrapper closure per store -- on churny call
+// sites (fresh closures per call, so this slot is written far more often
+// than it's read) that closure would almost always be thrown away unread.
+interface CacheEntry {
+  readonly fns: readonly unknown[]
+  readonly runner?: Runner
+  readonly entry?: ShapeEntry
+  readonly bindings?: readonly StepBinding[]
+  used: number
 }
 
-const _getArrayMapTakeUntilRunner = (
-  mapFn: (value: any) => any,
-  pred: (value: any) => boolean,
-): _MapTakeUntilRunner => {
-  if (mapFn === _mapTakeUntilMapFn && pred === _mapTakeUntilPred && _mapTakeUntilRunner) {
-    return _mapTakeUntilRunner
+const CACHE_SIZE = 4
+const cache: Array<CacheEntry | undefined> = [undefined, undefined, undefined, undefined]
+let clock = 0
+
+// Front cache: opcode-sequence key -> ShapeEntry, the canonical mutable cell
+// for that shape's execution identity (never a bare runner function: a tier
+// swap or eviction on the entry must be visible through this cache too, see
+// shape-entry.ts). Bounded like the shape-entry registry it sits in front
+// of; never holds callbacks (PortableRunner takes bindings per call, see
+// lower.ts).
+//
+// Two keying schemes share the cache: sequences of up to NUM_KEY_MAX_LEN
+// steps (pipe's direct run2-run5 arities, i.e. every argc<=6 call) pack the
+// opcodes into a single number in a Map<number, ...> -- no string
+// allocation on the hot path. Opcodes are small positive integers (see
+// opcodes.ts; OP_CODES tops out well under NUM_KEY_BASE), so packing them as
+// base-NUM_KEY_BASE digits is collision-free: each digit occupies its own
+// place value and is always in [1, NUM_KEY_BASE), so no digit can borrow
+// into a neighboring position, and since every packed opcode is >=1 a
+// shorter sequence's key can never reach the value range a longer sequence
+// occupies (see the opcodes.test.ts range assertion). Longer sequences
+// (argc>6 varargs form) fall back to the original comma-joined string key.
+const FRONT_CACHE_LIMIT = 256
+export const NUM_KEY_BASE = 128
+export const NUM_KEY_MAX_LEN = 5
+const frontCacheNum = new Map<number, ShapeEntry>()
+const frontCacheStr = new Map<string, ShapeEntry>()
+
+function frontCacheSet<K>(cache: Map<K, ShapeEntry>, key: K, entry: ShapeEntry): void {
+  cache.set(key, entry)
+  if (cache.size > FRONT_CACHE_LIMIT) {
+    const oldest = cache.keys().next().value
+    if (oldest !== undefined) cache.delete(oldest)
+  }
+}
+
+function matchesArgs(fns: readonly unknown[], args: ArrayLike<unknown>, argc: number): boolean {
+  if (fns.length !== argc - 1) return false
+  for (let i = 0; i < fns.length; i++) if (fns[i] !== args[i + 1]) return false
+  return true
+}
+
+function lookupCache(args: ArrayLike<unknown>, argc: number): CacheEntry | undefined {
+  for (let i = 0; i < CACHE_SIZE; i++) {
+    const entry = cache[i]
+    if (entry && matchesArgs(entry.fns, args, argc)) {
+      entry.used = ++clock
+      return entry
+    }
+  }
+  return undefined
+}
+
+function cacheSlot(): number {
+  let slot = 0
+  let oldest = Infinity
+  for (let i = 0; i < CACHE_SIZE; i++) {
+    const entry = cache[i]
+    if (!entry) return i
+    if (entry.used < oldest) {
+      oldest = entry.used
+      slot = i
+    }
+  }
+  return slot
+}
+
+function storeCacheRunner(fns: readonly unknown[], runner: Runner): void {
+  cache[cacheSlot()] = { fns, runner, used: ++clock }
+}
+
+function storeCacheTagged(fns: readonly unknown[], entry: ShapeEntry, bindings: readonly StepBinding[]): void {
+  cache[cacheSlot()] = { fns, entry, bindings, used: ++clock }
+}
+
+// Runs a tagged multi-step pipeline. Identity cache first (zero-alloc hit).
+// On identity miss, tries the opcode-keyed front cache: if every step is
+// tagged, the opcode sequence alone picks the shape runner, so bindings are
+// extracted directly (no buildPlan, no shapeCache lookup). Untagged/opaque
+// steps bail to the original compile() path, which still populates the
+// identity cache for that call site.
+function runTagged(a: unknown, args: ArrayLike<unknown>, argc: number): unknown {
+  const cached = lookupCache(args, argc)
+  if (cached) {
+    if (cached.entry) return dispatchAndTrack(cached.entry, toArrayInput(a), cached.bindings!)
+    return cached.runner!(a)
   }
 
-  const mapSrc = tryInlineSource(mapFn)
-  const predSrc = tryInlineSource(pred)
-  let runner: _MapTakeUntilRunner = (src) => _runArrayMapTakeUntilFallback(src, mapFn, pred)
-
-  if (mapSrc && predSrc) {
-    try {
-      runner = new Function(
-        'src',
-        `var out=[];var count=0;for(var i=0,len=src.length;i<len;i++){var v=src[i];v=${mapSrc};if(${predSrc})break;out[count++]=v}return out`,
-      ) as _MapTakeUntilRunner
-    } catch {
-      runner = (src) => _runArrayMapTakeUntilFallback(src, mapFn, pred)
+  const len = argc - 1
+  const fns = new Array(len)
+  const useNumKey = len <= NUM_KEY_MAX_LEN
+  let numKey = 0
+  let strKey = ''
+  let allTagged = true
+  for (let i = 0; i < len; i++) {
+    const step = args[i + 1]
+    fns[i] = step
+    if (!allTagged) continue
+    const op = (step as any)._op
+    if (typeof op !== 'number' || op <= 0) allTagged = false
+    else if (useNumKey) {
+      numKey = numKey * NUM_KEY_BASE + op
+    } else {
+      strKey += op
+      strKey += ','
     }
   }
 
-  _mapTakeUntilMapFn = mapFn
-  _mapTakeUntilPred = pred
-  _mapTakeUntilRunner = runner
-  return runner
-}
+  if (!allTagged) {
+    const runner = compile(...fns)
+    storeCacheRunner(fns, runner)
+    return runner(a)
+  }
 
-const _runArrayMapTakeUntil = (
-  src: readonly any[],
-  mapFn: (value: any) => any,
-  pred: (value: any) => boolean,
-): any[] => _getArrayMapTakeUntilRunner(mapFn, pred)(src)
+  let entry: ShapeEntry
+  let bindings: readonly StepBinding[]
+  const cachedEntry = useNumKey ? frontCacheNum.get(numKey) : frontCacheStr.get(strKey)
+  if (cachedEntry) {
+    entry = cachedEntry
+    const bound = new Array(len)
+    for (let i = 0; i < len; i++) bound[i] = extractBinding(fns[i] as any)
+    bindings = bound
+  } else {
+    const built = planAndLowerFast(fns)
+    entry = built.entry
+    bindings = built.bindings
+    if (useNumKey) frontCacheSet(frontCacheNum, numKey, entry)
+    else frontCacheSet(frontCacheStr, strKey, entry)
+  }
+
+  // Reads entry.run at call time on every invocation, never a captured
+  // runner: a tier swap or eviction on entry is visible through the identity
+  // cache the same way it is through the front caches above (the identity
+  // slot stores entry + bindings directly, not a closure over them -- see
+  // CacheEntry). Bare pipe is the adaptive promotion path: dispatchAndTrack
+  // counts executions and consumed elements against the shared entry and
+  // requests generation once a threshold crosses, but only while the entry
+  // is still tier 0 -- once promoted, dispatch is a direct call with no
+  // bookkeeping overhead.
+  storeCacheTagged(fns, entry, bindings)
+  return dispatchAndTrack(entry, toArrayInput(a), bindings)
+}
 
 export function pipe<A, B>(a: A, f1: (a: A) => B): B
 export function pipe<A, B, C>(a: A, f1: (a: A) => B, f2: (b: B) => C): C
@@ -328,65 +432,49 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,
   f19: (s: S) => T,
   f20: (t: T) => U,
 ): U
-export function pipe(): unknown {
+export function pipe(
+  a?: unknown,
+  f1?: any,
+  f2?: any,
+  f3?: any,
+  f4?: any,
+  f5?: any,
+): unknown {
   const argc = arguments.length
-  if (argc <= 1) return arguments[0]
-
-  const a = arguments[0]
-  const f1 = arguments[1]
+  if (argc <= 1) return a
 
   if (argc === 2) return f1(a)
-  const f2 = arguments[2]
+
   if (argc === 3) {
     if (!_hasOp(f1) && !_hasOp(f2)) return f2(f1(a))
-    if (Array.isArray(a) && f1._op === OP_MAP && f2._op === OP_TAKE_UNTIL) {
-      return _runArrayMapTakeUntil(a, f1._fn, f2._fn)
-    }
-    return fuse(a, [f1, f2])
+    return runTagged(a, arguments, 3)
   }
-  const f3 = arguments[3]
   if (argc === 4) {
     if (!_hasOp(f1) && !_hasOp(f2) && !_hasOp(f3)) return f3(f2(f1(a)))
-    return fuse(a, [f1, f2, f3])
+    return runTagged(a, arguments, 4)
   }
-  const f4 = arguments[4]
   if (argc === 5) {
     if (!_hasOp(f1) && !_hasOp(f2) && !_hasOp(f3) && !_hasOp(f4)) return f4(f3(f2(f1(a))))
-    return fuse(a, [f1, f2, f3, f4])
+    return runTagged(a, arguments, 5)
   }
   if (argc === 6) {
-    const f5 = arguments[5]
     if (!_hasOp(f1) && !_hasOp(f2) && !_hasOp(f3) && !_hasOp(f4) && !_hasOp(f5))
       return f5(f4(f3(f2(f1(a)))))
-    return fuse(a, [f1, f2, f3, f4, f5])
+    return runTagged(a, arguments, 6)
   }
 
-  // General path (argc > 6): single tag check on first fn
-  const len = argc - 1
-  if (!(f1._op > 0)) {
-    let r: any = f4(f3(f2(f1(a))))
-    for (let i = 5; i < argc; i++) r = arguments[i](r)
-    return r
-  }
-
-  // Tagged: populate buffer and classify
-  let allArrayOps = true
+  // argc > 6: general path, no fixed formals
+  let anyTagged = false
   for (let i = 1; i < argc; i++) {
-    const fn = arguments[i]
-    _pipeBuf[i - 1] = fn
-    if (allArrayOps) {
-      const op = fn._op
-      if (typeof op === 'number' && op > 0) {
-        if (!_isArrayOp(op)) allArrayOps = false
-      } else {
-        allArrayOps = false
-      }
+    if (_hasOp(arguments[i])) {
+      anyTagged = true
+      break
     }
   }
-
-  if (allArrayOps) return fuseArray(a, _pipeBuf, len)
-
-  const fns = new Array(len)
-  for (let i = 0; i < len; i++) fns[i] = _pipeBuf[i]
-  return fuse(a, fns)
+  if (!anyTagged) {
+    let r: any = a
+    for (let i = 1; i < argc; i++) r = arguments[i](r)
+    return r
+  }
+  return runTagged(a, arguments, argc)
 }

@@ -1,0 +1,451 @@
+{
+  "generatedAt": "2026-07-21T16:00:23.999Z",
+  "baselinePath": "/private/tmp/claude-501/-Users-tomdeakin-IdeaProjects-lay-some-pipe/5bc8621a-36b8-4907-ae38-7441eacb078b/scratchpad/baseline-003",
+  "baselineTag": "@stopcock/fp@0.0.3",
+  "corpusVersion": 1,
+  "geomeanRatio": 0.40186648718356655,
+  "regressionCount": 34,
+  "results": [
+    {
+      "name": "single-op map (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.8047619047619048,
+      "ciLow": 0.7476599325189843,
+      "ciHigh": 0.8296555594942692,
+      "signTestP": 0.0001821658297558314,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "single-op filter (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.9767881190716503,
+      "ciLow": 0.8370461177585282,
+      "ciHigh": 1.0793351743624222,
+      "signTestP": 0.6358280026288424,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "single-op reject (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 1.0117278261013092,
+      "ciLow": 0.9967394585234225,
+      "ciHigh": 1.0310994388831751,
+      "signTestP": 0.2681872510547695,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "single-op filterMap (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 1.0429206680584553,
+      "ciLow": 1,
+      "ciHigh": 1.0603956496328109,
+      "signTestP": 0.057612672913819586,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "single-op take (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 1,
+      "ciLow": 0.9202546125461255,
+      "ciHigh": 1.0714228782287822,
+      "signTestP": 1,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "single-op drop (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.9974394418477857,
+      "ciLow": 0.9697756672283452,
+      "ciHigh": 1.004422415096974,
+      "signTestP": 0.40503224614076383,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.7397248906558179,
+      "ciLow": 0.7085270705297044,
+      "ciHigh": 0.785590600170779,
+      "signTestP": 0.0000013826120266457992,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.7465461817824892,
+      "ciLow": 0.6613062314960543,
+      "ciHigh": 0.885699412594126,
+      "signTestP": 1.9465005607344154e-8,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 1.3249643433794742,
+      "ciLow": 1.3033893798187584,
+      "ciHigh": 1.371689686928534,
+      "signTestP": 7.457856554538008e-11,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 1.2978408424255257,
+      "ciLow": 1.1779784126984127,
+      "ciHigh": 1.4560391744381591,
+      "signTestP": 0.006426576095691424,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.12031288571243468,
+      "ciLow": 0.11343105577999804,
+      "ciHigh": 0.15833875738764358,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": false,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.7420207440382977,
+      "ciLow": 0.6906724511930585,
+      "ciHigh": 0.8143437023095703,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": false,
+      "regression": true
+    },
+    {
+      "name": "map -> filter -> reduce (sentinel)",
+      "rounds": 40,
+      "medianRatio": 0.34180142536664276,
+      "ciLow": 0.3154662800058548,
+      "ciHigh": 0.3644833427442123,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=none (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.09885143875749844,
+      "ciLow": 0.09679802662154272,
+      "ciHigh": 0.23935571074566345,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=none (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.13773652531856867,
+      "ciLow": 0.1361572701377102,
+      "ciHigh": 0.13888520101057283,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.8612681683824515,
+      "ciLow": 0.8176485530345646,
+      "ciHigh": 0.8923844117766828,
+      "signTestP": 0.00004227702265779948,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.06784452379546746,
+      "ciLow": 0.06683060535870564,
+      "ciHigh": 0.08149906629318393,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": false,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.3449293731939322,
+      "ciLow": 0.32132689749100096,
+      "ciHigh": 0.36743711760707004,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.2235898139079334,
+      "ciLow": 0.2176409185803758,
+      "ciHigh": 0.24465011564202455,
+      "signTestP": 1.8570244719739966e-7,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.0838478336874934,
+      "ciLow": 0.08205128205128205,
+      "ciHigh": 0.08902840627991984,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.09815931902962113,
+      "ciLow": 0.09738029360723924,
+      "ciHigh": 0.09913232469901559,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.9140703422053232,
+      "ciLow": 0.8615254117480737,
+      "ciHigh": 1.0094830100052945,
+      "signTestP": 0.10812902140605776,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.0031580863830455,
+      "ciLow": 0.002838221381267739,
+      "ciHigh": 0.004036770730958339,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.09557456539181824,
+      "ciLow": 0.09015913003257665,
+      "ciHigh": 0.1020442012699603,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.3023532650500169,
+      "ciLow": 0.28208857979620844,
+      "ciHigh": 0.3386458333333333,
+      "signTestP": 0.00000836458457342813,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.36700274649609044,
+      "ciLow": 0.35541203900568813,
+      "ciHigh": 0.388322120628642,
+      "signTestP": 7.457856554538008e-11,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.3343816704965249,
+      "ciLow": 0.3282708254038177,
+      "ciHigh": 0.3439817473544057,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.5618590575672895,
+      "ciLow": 0.5462893329003367,
+      "ciHigh": 0.6013513513513513,
+      "signTestP": 7.457856554538008e-11,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.25115285450840724,
+      "ciLow": 0.24702300649856096,
+      "ciHigh": 0.2534379156242864,
+      "signTestP": 7.457856554538008e-11,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.45886682254844413,
+      "ciLow": 0.42151337634076835,
+      "ciHigh": 0.4904329131201745,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.7376237623762376,
+      "ciLow": 0.7161481481481482,
+      "ciHigh": 0.7525235966259347,
+      "signTestP": 1.9465005607344154e-8,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.38554064716427927,
+      "ciLow": 0.3729311061836632,
+      "ciHigh": 0.39278648462473237,
+      "signTestP": 7.457856554538008e-11,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.7466462271733261,
+      "ciLow": 0.740897427035907,
+      "ciHigh": 0.7619486494978811,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.7583041689262093,
+      "ciLow": 0.7434537364040888,
+      "ciHigh": 0.7910489724861554,
+      "signTestP": 1.9465005607344154e-8,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.3248583308932579,
+      "ciLow": 0.3220660458451786,
+      "ciHigh": 0.33075171886356675,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.6021923467221576,
+      "ciLow": 0.5817995883406963,
+      "ciHigh": 0.6322575971062789,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.7449410133039984,
+      "ciLow": 0.7142122616909625,
+      "ciHigh": 0.7683478260869565,
+      "signTestP": 7.457856554538008e-11,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.4703326203272087,
+      "ciLow": 0.4597634856154669,
+      "ciHigh": 0.4847305421022702,
+      "signTestP": 7.457856554538008e-11,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 1.1725995409374959,
+      "ciLow": 1.150060024009604,
+      "ciHigh": 1.250562781672227,
+      "signTestP": 0.00000836458457342813,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (trivial, n=100)",
+      "rounds": 40,
+      "medianRatio": 0.5918571216896589,
+      "ciLow": 0.5780754010695187,
+      "ciHigh": 0.6292655013141348,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (arithmetic, n=10000)",
+      "rounds": 40,
+      "medianRatio": 0.3083661725427915,
+      "ciLow": 0.3027895338062899,
+      "ciHigh": 0.31671271937535,
+      "signTestP": 7.457856554538008e-11,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (allocating, n=100000)",
+      "rounds": 40,
+      "medianRatio": 0.6222650250330894,
+      "ciLow": 0.6149947287314965,
+      "ciHigh": 0.6355145530148931,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": true,
+      "regression": true
+    },
+    {
+      "name": "filterMap -> take (sentinel)",
+      "rounds": 40,
+      "medianRatio": 1.1436193760340827,
+      "ciLow": 1.1112434674772844,
+      "ciHigh": 1.1838232045216726,
+      "signTestP": 0.00000836458457342813,
+      "correctnessOk": true,
+      "regression": false
+    },
+    {
+      "name": "flatMap -> uniq -> count (sentinel)",
+      "rounds": 40,
+      "medianRatio": 0.28161100049115195,
+      "ciLow": 0.27295062459381786,
+      "ciHigh": 0.28571882066120435,
+      "signTestP": 1.8189894035458532e-12,
+      "correctnessOk": false,
+      "regression": true
+    }
+  ],
+  "skipped": []
+}

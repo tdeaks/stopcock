@@ -20,8 +20,8 @@ export default defineConfig({
       boolean: 'src/boolean.ts',
       logic: 'src/logic.ts',
       function: 'src/function.ts',
+      'jit-chunk': 'src/jit-chunk.ts',
     },
-    ['@rescript/runtime'],
   ),
   run: {
     tasks: {

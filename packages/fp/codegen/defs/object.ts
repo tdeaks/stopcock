@@ -1,6 +1,39 @@
 import { dual } from './dual'
-import * as RS from './Object.gen'
 import type { PathSegments, PathValue, PathValueOrDefault } from './types'
+
+function hasOwn(o, k) {
+  return Object.prototype.hasOwnProperty.call(o, k)
+}
+
+function emptyObj() {
+  return {};
+}
+
+function isPlainObject(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v)
+}
+
+function mergeDeep(left, right, leftWins) {
+  let out = Object.assign(emptyObj(), left);
+  let ks = Object.keys(right);
+  for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
+    let k = ks[i];
+    let outV = out[k];
+    let rightV = right[k];
+    if (isPlainObject(outV) && isPlainObject(rightV)) {
+      out[k] = mergeDeep(outV, rightV, leftWins);
+    } else if (leftWins && hasOwn(out, k)) {
+      
+    } else {
+      out[k] = rightV;
+    }
+  }
+  return out;
+}
+
+function keys(obj) {
+  return Object.keys(obj);
+}
 
 type RuntimePath = string | PathSegments
 
@@ -47,27 +80,58 @@ function readPath(obj: any, path: RuntimePath) {
 export const pick: {
   <T extends Record<string, unknown>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>
   <T extends Record<string, unknown>, K extends keyof T>(keys: K[]): (obj: T) => Pick<T, K>
-} = dual(2, RS.pick)
+} = dual(2, (obj: any, ks: any) => {
+  let out = emptyObj();
+  for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
+    let k = ks[i];
+    if (hasOwn(obj, k)) {
+      out[k] = obj[k];
+    }
+  }
+  return out;
+})
 
 export const omit: {
   <T extends Record<string, unknown>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K>
   <T extends Record<string, unknown>, K extends keyof T>(keys: K[]): (obj: T) => Omit<T, K>
-} = dual(2, RS.omit)
+} = dual(2, (obj: any, ks: any) => {
+  var idx = {}, i = 0, len = ks.length;
+    while (i < len) { idx[ks[i]] = 1; i++; }
+    var out = {};
+    for (var k in obj) {
+      if (!idx.hasOwnProperty(k)) out[k] = obj[k];
+    }
+    return out;
+})
 
 export const dissoc: {
   <T extends Record<string, unknown>>(obj: T, key: string): Partial<T>
   (key: string): <T extends Record<string, unknown>>(obj: T) => Partial<T>
-} = dual(2, RS.dissoc)
+} = dual(2, (obj: any, key: any) => {
+  let out = emptyObj();
+  let allKeys = Object.keys(obj);
+  for (let i = 0, i_finish = allKeys.length; i < i_finish; ++i) {
+    let k = allKeys[i];
+    if (k !== key) {
+      out[k] = obj[k];
+    }
+  }
+  return out;
+})
 
 export const mergeDeepLeft: {
   <A extends object, B extends object>(a: A, b: B): A & B
   <B extends object>(b: B): <A extends object>(a: A) => A & B
-} = dual(2, RS.mergeDeepLeft)
+} = dual(2, (a: any, b: any) => {
+  return mergeDeep(a, b, true);
+})
 
 export const mergeDeepRight: {
   <A extends object, B extends object>(a: A, b: B): A & B
   <B extends object>(b: B): <A extends object>(a: A) => A & B
-} = dual(2, RS.mergeDeepRight)
+} = dual(2, (a: any, b: any) => {
+  return mergeDeep(a, b, false);
+})
 
 // ReScript wrappers, arity 3
 export const assoc: {
@@ -98,7 +162,19 @@ export const assoc: {
 export const mergeWith: {
   <T, V>(a: T, b: T, resolver: (l: V, r: V) => V): T
   <T, V>(b: T, resolver: (l: V, r: V) => V): (a: T) => T
-} = dual(3, RS.mergeWith)
+} = dual(3, (a: any, b: any, resolver: any) => {
+  let out = Object.assign(emptyObj(), a);
+  let ks = Object.keys(b);
+  for (let i = 0, i_finish = ks.length; i < i_finish; ++i) {
+    let k = ks[i];
+    if (hasOwn(out, k)) {
+      out[k] = resolver(out[k], b[k]);
+    } else {
+      out[k] = b[k];
+    }
+  }
+  return out;
+})
 
 // Pure TypeScript: path
 export const path: {

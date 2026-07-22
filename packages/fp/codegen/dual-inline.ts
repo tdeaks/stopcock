@@ -16,18 +16,7 @@ const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const DEFS_DIR = join(ROOT, 'codegen', 'defs')
 const SRC_DIR = join(ROOT, 'src')
 
-const RESCRIPT_DIR = join(ROOT, 'src')
-
 const MODULES = ['array', 'string', 'dict', 'object', 'logic', 'boolean', 'math', 'number']
-
-// Maps defs module → rescript module name (for RS.* resolution)
-const RS_MODULE_MAP: Record<string, string> = {
-  array: 'Array',
-  object: 'Object',
-  logic: 'Logic',
-  boolean: 'Boolean',
-  math: 'Math',
-}
 
 // --- Brace-counting utilities ---
 
@@ -105,124 +94,6 @@ function findTopLevelSep(src: string, start: number): { pos: number; ch: string 
   }
   return { pos: src.length, ch: '' }
 }
-
-// --- ReScript .res.js body resolver ---
-
-interface RSFunction {
-  params: string[]
-  body: string
-}
-
-function parseResJs(filePath: string): Map<string, RSFunction> {
-  let src: string
-  try {
-    src = readFileSync(filePath, 'utf8')
-  } catch {
-    return new Map()
-  }
-
-  const fns = new Map<string, RSFunction>()
-  const aliases = new Map<string, string>()
-  let i = 0
-
-  while (i < src.length) {
-    // Pattern A: function NAME(PARAMS) { BODY }
-    const fnMatch = src.slice(i).match(/^function\s+(\w+)\s*\(/)
-    if (fnMatch) {
-      const name = fnMatch[1]
-      const paramStart = i + fnMatch[0].length - 1
-      const paramClose = findMatchingClose(src, paramStart)
-      const params = src
-        .slice(paramStart + 1, paramClose)
-        .split(',')
-        .map((p) => p.trim())
-        .filter(Boolean)
-
-      // Find the opening { after )
-      let bi = paramClose + 1
-      while (bi < src.length && src[bi] !== '{') bi++
-      if (bi < src.length) {
-        const bodyClose = findMatchingClose(src, bi)
-        const body = src.slice(bi + 1, bodyClose).trim()
-        fns.set(name, { params, body })
-        i = bodyClose + 1
-        continue
-      }
-    }
-
-    // Pattern B: let NAME = (function(PARAMS) { BODY });
-    const letFnMatch = src.slice(i).match(/^let\s+(\w+)\s*=\s*\(function\s*\(/)
-    if (letFnMatch) {
-      const name = letFnMatch[1]
-      const fnStart = i + letFnMatch[0].indexOf('(function')
-      const outerParenStart = i + letFnMatch[0].indexOf('(function') - 0
-      // Find the ( before 'function'
-      let pp = i + src.slice(i).indexOf('(function')
-      const outerClose = findMatchingClose(src, pp)
-
-      // Inside: function(PARAMS) { BODY }
-      const inner = src.slice(pp + 1, outerClose)
-      const innerParamMatch = inner.match(/^function\s*\(/)
-      if (innerParamMatch) {
-        const paramStart = innerParamMatch[0].length - 1
-        const paramClose = findMatchingClose(inner, paramStart)
-        const params = inner
-          .slice(paramStart + 1, paramClose)
-          .split(',')
-          .map((p) => p.trim())
-          .filter(Boolean)
-
-        let bi = paramClose + 1
-        while (bi < inner.length && inner[bi] !== '{') bi++
-        if (bi < inner.length) {
-          const bodyClose = findMatchingClose(inner, bi)
-          const body = inner.slice(bi + 1, bodyClose).trim()
-          fns.set(name, { params, body })
-        }
-      }
-      i = outerClose + 1
-      continue
-    }
-
-    // Pattern C: let NAME = EXISTING;
-    const aliasMatch = src.slice(i).match(/^let\s+(\w+)\s*=\s*([A-Za-z_$][\w$]*)\s*;/)
-    if (aliasMatch) {
-      aliases.set(aliasMatch[1], aliasMatch[2])
-      i += aliasMatch[0].length
-      continue
-    }
-
-    // Advance to next line
-    const nl = src.indexOf('\n', i)
-    i = nl === -1 ? src.length : nl + 1
-  }
-
-  // Resolve aliases
-  for (const [alias, target] of aliases) {
-    const resolved = fns.get(target)
-    if (resolved) fns.set(alias, resolved)
-  }
-
-  return fns
-}
-
-function usesRescriptRuntime(body: string): boolean {
-  return /Primitive_|Belt_|Caml_/.test(body)
-}
-
-// Pre-load all RS function maps
-const rsFunctionMaps = new Map(
-  pipe(
-    Object.entries(RS_MODULE_MAP),
-    A.map(
-      ([mod, rsName]: [string, string]) =>
-        [mod, parseResJs(join(RESCRIPT_DIR, `${rsName}.res.js`))] as [
-          string,
-          Map<string, RSFunction>,
-        ],
-    ),
-  ),
-)
 
 // --- Parser combinators (built on @stopcock/parse) ---
 
@@ -308,9 +179,15 @@ const singleQuoted: Parser<string> = (input, pos) => {
   }
 }
 
-// Tag parser: { op: 'name' } → name
+// Optional trailing comma before a closing delimiter
+const optComma: Parser<null> = (input, pos) => {
+  const r = char(',')(input, pos)
+  return r.success ? { success: true, value: null, remaining: r.remaining, position: r.position } : { success: true, value: null, remaining: input.slice(pos), position: pos }
+}
+
+// Tag parser: { op: 'name' } → name (tolerates a trailing comma: { op: 'name', })
 const tagP: Parser<string> = map(
-  seq(ws, char('{'), ws, pStr('op'), ws, char(':'), ws, singleQuoted, ws, char('}')),
+  seq(ws, char('{'), ws, pStr('op'), ws, char(':'), ws, singleQuoted, ws, optComma, ws, char('}')),
   ([, , , , , , , name]) => name,
 )
 
@@ -569,101 +446,31 @@ function generateArityNInline(dc: DualCall, n: number, opcode: number, hasTag: b
   }
 
   return `${decl} = function ${dc.name}() {
-  if (arguments.length >= ${n}) {
-    const ${dfAssign}
-    ${bodyCode}
+  if (arguments.length < ${n}) {
+    ${captureLines}
+    const _dl: any = function(data: any) {
+      ${dlAssign}
+      ${bodyCode}
+    }${closureProps}
+    return _dl
   }
-  ${captureLines}
-  const _dl: any = function(data: any) {
-    ${dlAssign}
-    ${bodyCode}
-  }${closureProps}
-  return _dl
+  const ${dfAssign}
+  ${bodyCode}
 } as any\n`
 }
 
-function tryResolveRS(dc: DualCall, rsMap: Map<string, RSFunction> | undefined): DualCall {
-  if (!dc.bodyIsRef || !rsMap) return dc
-
-  // Body is like "RS.take" or "RS.sort". Extract the function name after "RS."
-  const rsMatch = dc.bodyStr.match(/^RS\.(\w+)$/)
-  if (!rsMatch) return dc
-
-  const rsName = rsMatch[1]
-  const resolved = rsMap.get(rsName)
-  if (!resolved) return dc
-
-  // Skip functions that use ReScript runtime
-  if (usesRescriptRuntime(resolved.body)) return dc
-
-  // Convert to an inline body that the existing generator can handle
-  const paramList = resolved.params.join(': any, ') + (resolved.params.length ? ': any' : '')
-  const inlineBody = `(${paramList}) => {\n  ${resolved.body}\n}`
-
-  return { ...dc, bodyStr: inlineBody, bodyIsRef: false }
-}
-
-function generateDecl(dc: DualCall, rsMap?: Map<string, RSFunction>): string {
-  const resolved = tryResolveRS(dc, rsMap)
-  if (resolved.arity <= 1) {
-    return resolved.tag ? generateArity1Tagged(resolved) : generateArity1Untagged(resolved)
+function generateDecl(dc: DualCall): string {
+  if (dc.arity <= 1) {
+    return dc.tag ? generateArity1Tagged(dc) : generateArity1Untagged(dc)
   }
-  return generateArityN(resolved)
+  return generateArityN(dc)
 }
 
 // --- Module Transformer ---
 
-function collectRSHelpers(
-  generatedCode: string,
-  rsMap: Map<string, RSFunction>,
-  exportedNames: Set<string>,
-): string {
-  const helpers: string[] = []
-  const emitted = new Set<string>()
-
-  // Iteratively resolve. Helpers may reference other helpers
-  let changed = true
-  let code = generatedCode
-  while (changed) {
-    changed = false
-    const found = pipe(
-      [...rsMap.entries()],
-      A.filter(([name]: [string, RSFunction]) => !emitted.has(name) && !exportedNames.has(name)),
-      A.filter(([name]: [string, RSFunction]) => {
-        const pat = new RegExp(`\\b${name}\\b`)
-        return pat.test(code) || helpers.some((h) => pat.test(h))
-      }),
-      A.filter(([_, fn]: [string, RSFunction]) => !usesRescriptRuntime(fn.body)),
-      A.map(([name, fn]: [string, RSFunction]) => {
-        emitted.add(name)
-        return `function ${name}(${pipe(fn.params, A.join(', '))}) {\n  ${fn.body}\n}`
-      }),
-    )
-    if (found.length > 0) {
-      helpers.push(...found)
-      code += '\n' + pipe(found, A.join('\n'))
-      changed = true
-    }
-  }
-
-  return helpers.length > 0
-    ? '// Internal helpers (auto-extracted from ReScript compiled output)\n' +
-        pipe(helpers, A.join('\n\n')) +
-        '\n\n'
-    : ''
-}
-
-function transformModule(
-  src: string,
-  rsMap?: Map<string, RSFunction>,
-): { output: string; rsResolved: number; rsKept: number } {
+function transformModule(src: string): string {
   const lines = src.split('\n')
   const outputLines: string[] = []
-  let rsResolved = 0
-  let rsKept = 0
-  let hasUnresolvedRS = false
-
-  const deferredRSImports: string[] = []
 
   // Add header
   outputLines.push('// @ts-nocheck')
@@ -681,13 +488,6 @@ function transformModule(
       continue
     }
 
-    // Defer RS import lines. Emit later only if needed
-    if (/import\s+\*\s+as\s+RS\s+from\s+/.test(line)) {
-      deferredRSImports.push(line)
-      i++
-      continue
-    }
-
     // Check if this starts an export const with dual()
     if (line.match(/^export\s+const\s+\w+/)) {
       let declText = line
@@ -701,61 +501,22 @@ function transformModule(
       if (declText.includes('= dual(')) {
         const dc = tryParse(dualCallP, declText)
         if (dc) {
-          // Try to resolve RS reference
-          const resolved = tryResolveRS(dc, rsMap)
-          if (dc.bodyIsRef && dc.bodyStr.startsWith('RS.') && !resolved.bodyIsRef) {
-            rsResolved++
-          } else if (dc.bodyIsRef && dc.bodyStr.startsWith('RS.')) {
-            rsKept++
-            hasUnresolvedRS = true
-          }
-          outputLines.push(generateDecl(dc, rsMap))
+          outputLines.push(generateDecl(dc))
           i = j
           continue
         }
       }
-
-      // Not a dual call. Check if it references RS directly (non-dual RS usage)
-      if (declText.includes('RS.')) hasUnresolvedRS = true
 
       for (let k = i; k < j; k++) outputLines.push(lines[k])
       i = j
       continue
     }
 
-    // Non-export lines that reference RS
-    if (line.includes('RS.')) hasUnresolvedRS = true
-
     outputLines.push(line)
     i++
   }
 
-  // Insert RS imports at the top (after header) if any unresolved references remain
-  if (hasUnresolvedRS && deferredRSImports.length > 0) {
-    outputLines.splice(3, 0, ...deferredRSImports)
-  }
-
-  let output = outputLines.join('\n')
-
-  // Collect and prepend internal helpers referenced by inlined RS bodies
-  if (rsMap && rsResolved > 0) {
-    // Gather names that are exported from this module
-    const exportedNames = new Set<string>()
-    for (const line of outputLines) {
-      const m = line.match(/^export\s+(?:const|function)\s+(\w+)/)
-      if (m) exportedNames.add(m[1])
-    }
-    const helpers = collectRSHelpers(output, rsMap, exportedNames)
-    if (helpers) {
-      // Insert after header and imports
-      const insertIdx = output.indexOf('\n\n', output.indexOf('// Source of truth'))
-      if (insertIdx !== -1) {
-        output = output.slice(0, insertIdx + 2) + helpers + output.slice(insertIdx + 2)
-      }
-    }
-  }
-
-  return { output, rsResolved, rsKept }
+  return outputLines.join('\n')
 }
 
 const countBraces = (s: string): number =>
@@ -781,32 +542,18 @@ function isDeclarationComplete(text: string): boolean {
 
 const processModule = (mod: string) => {
   const src = readFileSync(join(DEFS_DIR, `${mod}.ts`), 'utf8')
-  const { output, rsResolved, rsKept } = transformModule(src, rsFunctionMaps.get(mod))
+  const output = transformModule(src)
   const dualCount = (src.match(/= dual\(/g) || []).length
   writeFileSync(join(SRC_DIR, `${mod}.ts`), output)
-  const rsInfo =
-    rsResolved > 0
-      ? ` (${rsResolved} RS bodies auto-inlined${rsKept > 0 ? `, ${rsKept} kept as ref` : ''})`
-      : ''
-  console.log(`  ${mod}.ts: ${dualCount} dual() calls${rsInfo}`)
-  return { dualCount, rsResolved, rsKept }
+  console.log(`  ${mod}.ts: ${dualCount} dual() calls`)
+  return dualCount
 }
 
-const totals = pipe(
+const totalFns = pipe(
   MODULES,
   A.map(processModule),
-  A.reduce(
-    (acc, r) => ({
-      fns: acc.fns + r.dualCount,
-      rs: acc.rs + r.rsResolved,
-      kept: acc.kept + r.rsKept,
-    }),
-    { fns: 0, rs: 0, kept: 0 },
-  ),
+  A.reduce((acc, n) => acc + n, 0),
 )
 
-console.log(`\nGenerated ${MODULES.length} modules, ${totals.fns} functions inlined`)
-console.log(
-  `RS bodies: ${totals.rs} auto-inlined, ${totals.kept} kept as ref (runtime deps) → src/`,
-)
+console.log(`\nGenerated ${MODULES.length} modules, ${totalFns} functions inlined → src/`)
 /// <reference types="bun" />

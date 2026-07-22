@@ -83,6 +83,26 @@ export const OP_GUARD_IS_FUNCTION = 86
 export const OP_SORT_ASC = 90
 export const OP_SORT_DESC = 91
 
+// Stream-dialect ops: Stream's take/scan disagree with the array Plan IR's
+// take/scan on exact semantics (see registry.ts's registration comment and
+// docs/superpowers/plans/2026-07-21-stopcock-fp-tiered-execution-implementation.md,
+// W5). Both dialects are preserved as distinct opcodes rather than one
+// silently overriding the other; this is a pending sign-off item.
+export const OP_TAKE_STREAM = 100
+export const OP_SCAN_STREAM = 101
+
+// Array-domain scan (array.ts's codegen'd scan, tagged { op: 'scan' }).
+// Emits the initial accumulator before any element is processed: output
+// length is n+1 for n inputs, out[0] is the seed. See registry.ts's
+// OP_SCAN_STREAM comment for why this needed its own opcode rather than
+// reusing the stream dialect.
+export const OP_SCAN = 102
+
+// without(arr, values): a whole-array materializer, values is a single
+// array-valued argument (not variadic at the dual() call site), so it fits
+// bindings: ['a1'] cleanly.
+export const OP_WITHOUT = 103
+
 // Non-fuseable (tagged but materialization boundary)
 export const OP_NON_FUSEABLE = 0
 
@@ -124,6 +144,8 @@ export const OP_CODES: Record<string, number> = {
   sum: OP_SUM,
   min: OP_MIN,
   max: OP_MAX,
+  scan: OP_SCAN,
+  without: OP_WITHOUT,
   // Sort
   sort: OP_SORT,
   sortBy: OP_SORT_BY,
@@ -166,7 +188,10 @@ export const isFuseableOp = (op: number): boolean =>
   op === OP_FILTER_MAP ||
   op === OP_MAP_WHILE ||
   op === OP_REJECT ||
-  op === OP_TAKE_UNTIL
+  op === OP_TAKE_UNTIL ||
+  op === OP_TAKE_STREAM ||
+  op === OP_SCAN_STREAM ||
+  op === OP_SCAN
 
 export const isTerminalOp = (op: number): boolean =>
   (op >= OP_REDUCE && op <= OP_FIND_INDEX) ||
@@ -174,7 +199,8 @@ export const isTerminalOp = (op: number): boolean =>
   op === OP_COUNT ||
   op === OP_FIND_MAP
 
-export const isAccessorOp = (op: number): boolean => op >= OP_HEAD && op <= OP_MAX
+export const isAccessorOp = (op: number): boolean =>
+  (op >= OP_HEAD && op <= OP_MAX) || op === OP_WITHOUT
 
 export const isScalarOp = (op: number): boolean =>
   (op >= OP_STR_TRIM && op <= OP_STR_IS_EMPTY) ||

@@ -3,72 +3,98 @@ import { pipe } from '../pipe'
 import * as A from '../array'
 import * as S from '../string'
 import * as M from '../math'
-import {
-  type FusionMode,
-  explainFusion,
-  getFusionMode,
-  getFusionStats,
-  resetFusionStats,
-  setFusionMode,
-} from '../fuse'
-
-function withFusionMode<T>(mode: FusionMode, run: () => T): T {
-  const previous = getFusionMode()
-  setFusionMode(mode)
-  resetFusionStats()
-  try {
-    return run()
-  } finally {
-    setFusionMode(previous)
-    resetFusionStats()
-  }
-}
+import { explainPipeline, getOptimizerStats, resetOptimizerStats } from '../compile'
 
 describe('pipe fusion', () => {
-  describe('fusion mode controls', () => {
-    it('forces interpreted array fallback in no-jit mode', () =>
-      withFusionMode('no-jit', () => {
-        const result = pipe(
-          [1, 2, 3, 4, 5, 6],
-          A.filterMap((x: number) => (x % 2 === 0 ? x * 10 : undefined)),
-          A.takeUntil((x: number) => x > 40),
-        )
+  describe('optimizer diagnostics', () => {
+    it('runs a tagged pipeline through the plan/lower engine', () => {
+      const result = pipe(
+        [1, 2, 3, 4, 5, 6],
+        A.filterMap((x: number) => (x % 2 === 0 ? x * 10 : undefined)),
+        A.takeUntil((x: number) => x > 40),
+      )
+      expect(result).toEqual([20, 40])
+    })
 
-        expect(result).toEqual([20, 40])
-        expect(getFusionStats()).toMatchObject({
-          mode: 'no-jit',
-          jitCompiles: 0,
-        })
-        expect(getFusionStats().interpretedCompiles).toBeGreaterThan(0)
-      }))
+    it('records optimizer stats for tagged pipelines', () => {
+      resetOptimizerStats()
+      const result = pipe(
+        [1, 2, 3, 4, 5],
+        A.map((x: number) => x + 1),
+        A.mapWhile((x: number) => (x < 5 ? x * 2 : undefined)),
+      )
+      expect(result).toEqual([4, 6, 8])
+      expect(getOptimizerStats().plansBuilt).toBeGreaterThan(0)
+    })
 
-    it('keeps representative pipelines working in auto mode', () =>
-      withFusionMode('auto', () => {
-        const result = pipe(
-          [1, 2, 3, 4, 5],
-          A.map((x: number) => x + 1),
-          A.mapWhile((x: number) => (x < 5 ? x * 2 : undefined)),
-        )
+    it('explains tagged fusion inputs without executing them', () => {
+      const explanation = explainPipeline(
+        A.filterMap((x: number) => (x > 1 ? String(x) : undefined)),
+        A.takeUntil((x: string) => x === '4'),
+      )
+      expect(explanation.executor).toBe('portable')
+      expect(explanation.semantics).toBe('exact')
+      // filterMap and takeUntil are both array-domain stream ops: one
+      // contiguous segment, not one per op.
+      expect(explanation.domains).toEqual(['array'])
+    })
+  })
 
-        expect(result).toEqual([4, 6, 8])
-        expect(getFusionStats().mode).toBe('auto')
-        expect(getFusionStats().segmentsRun).toBeGreaterThan(0)
-      }))
+  describe('filterMap -> take fusion', () => {
+    it('fuses into a single array-domain segment', () => {
+      const explanation = explainPipeline(
+        A.filterMap((x: number) => (x % 2 === 0 ? x : undefined)),
+        A.take(2),
+      )
+      expect(explanation.domains).toEqual(['array'])
+    })
 
-    it('explains tagged fusion inputs without executing them', () =>
-      withFusionMode('no-jit', () => {
-        const explanation = explainFusion(
-          A.filterMap((x: number) => (x > 1 ? String(x) : undefined)),
-          A.takeUntil((x: string) => x === '4'),
-        )
+    it('stops calling the callback shortly after take is satisfied', () => {
+      // take's quota check happens before processing the next item, so one
+      // extra upstream call occurs after the quota-filling item (matching
+      // interpret()'s oracle semantics exactly — see plan-interpreter.test.ts).
+      let calls = 0
+      const result = pipe(
+        [1, 2, 3, 4, 5, 6, 7, 8],
+        A.filterMap((x: number) => {
+          calls++
+          return x % 2 === 0 ? x : undefined
+        }),
+        A.take(2),
+      )
+      expect(result).toEqual([2, 4])
+      expect(calls).toBe(6)
+    })
 
-        expect(explanation).toMatchObject({
-          mode: 'no-jit',
-          fuseable: true,
-          willUseJit: false,
-          operations: ['filterMap', 'takeUntil'],
-        })
-      }))
+    it('matches interpret-oracle output and callback count', () => {
+      const src = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      let compiledCalls = 0
+      const compiled = pipe(
+        src,
+        A.filterMap((x: number) => {
+          compiledCalls++
+          return x % 3 === 0 ? x * 2 : undefined
+        }),
+        A.take(2),
+      )
+      // reference mirrors the oracle's check-before-increment take semantics:
+      // take's quota is only checked against values that pass filterMap, so
+      // the loop keeps calling filterMap on non-matching items after the
+      // quota fills, stopping only once another matching item arrives.
+      let refCalls = 0
+      const ref: number[] = []
+      let taken = 0
+      for (const x of src) {
+        refCalls++
+        if (x % 3 === 0) {
+          if (taken >= 2) break
+          taken++
+          ref.push(x * 2)
+        }
+      }
+      expect(compiled).toEqual(ref)
+      expect(compiledCalls).toBe(refCalls)
+    })
   })
 
   describe('new fused array operators', () => {
@@ -127,60 +153,40 @@ describe('pipe fusion', () => {
       expect(visited).toBe(4)
     })
 
-    it('auto mode mapWhile after flatMap matches interpreted fallback', () => {
-      const run = () =>
-        pipe(
-          [1, 2, 3],
-          A.flatMap((x: number) => [x, x + 10]),
-          A.mapWhile((x: number) => (x < 12 ? x : undefined)),
-        )
-
-      const interpreted = withFusionMode('no-jit', run)
-      const auto = withFusionMode('auto', run)
-      expect(interpreted).toEqual([1, 11, 2])
-      expect(auto).toEqual(interpreted)
+    it('mapWhile after flatMap', () => {
+      const result = pipe(
+        [1, 2, 3],
+        A.flatMap((x: number) => [x, x + 10]),
+        A.mapWhile((x: number) => (x < 12 ? x : undefined)),
+      )
+      expect(result).toEqual([1, 11, 2])
     })
 
-    it('auto mode takeUntil after flatMap matches interpreted fallback', () => {
-      const run = () =>
-        pipe(
-          [1, 2, 3],
-          A.flatMap((x: number) => [x, x + 10]),
-          A.takeUntil((x: number) => x >= 12),
-        )
-
-      const interpreted = withFusionMode('no-jit', run)
-      const auto = withFusionMode('auto', run)
-      expect(interpreted).toEqual([1, 11, 2])
-      expect(auto).toEqual(interpreted)
+    it('takeUntil after flatMap', () => {
+      const result = pipe(
+        [1, 2, 3],
+        A.flatMap((x: number) => [x, x + 10]),
+        A.takeUntil((x: number) => x >= 12),
+      )
+      expect(result).toEqual([1, 11, 2])
     })
 
-    it('auto mode take after flatMap matches interpreted fallback', () => {
-      const run = () =>
-        pipe(
-          [1, 2, 3],
-          A.flatMap((x: number) => [x, x + 10]),
-          A.take(3),
-        )
-
-      const interpreted = withFusionMode('no-jit', run)
-      const auto = withFusionMode('auto', run)
-      expect(interpreted).toEqual([1, 11, 2])
-      expect(auto).toEqual(interpreted)
+    it('take after flatMap', () => {
+      const result = pipe(
+        [1, 2, 3],
+        A.flatMap((x: number) => [x, x + 10]),
+        A.take(3),
+      )
+      expect(result).toEqual([1, 11, 2])
     })
 
-    it('auto mode takeWhile after flatMap matches interpreted fallback', () => {
-      const run = () =>
-        pipe(
-          [1, 2, 3],
-          A.flatMap((x: number) => [x, x + 10]),
-          A.takeWhile((x: number) => x < 12),
-        )
-
-      const interpreted = withFusionMode('no-jit', run)
-      const auto = withFusionMode('auto', run)
-      expect(interpreted).toEqual([1, 11, 2])
-      expect(auto).toEqual(interpreted)
+    it('takeWhile after flatMap', () => {
+      const result = pipe(
+        [1, 2, 3],
+        A.flatMap((x: number) => [x, x + 10]),
+        A.takeWhile((x: number) => x < 12),
+      )
+      expect(result).toEqual([1, 11, 2])
     })
   })
 
@@ -596,7 +602,7 @@ describe('pipe fusion', () => {
     })
   })
 
-  describe('toString() callback inlining', () => {
+  describe('callback closures run correctly (no source-text splicing)', () => {
     it('inlines arithmetic in map', () => {
       expect(
         pipe(
@@ -606,7 +612,7 @@ describe('pipe fusion', () => {
       ).toEqual([2, 4, 6])
     })
 
-    it('inlines property access in map', () => {
+    it('property access in map', () => {
       expect(
         pipe(
           [{ n: 'a' }, { n: 'b' }],
@@ -615,7 +621,7 @@ describe('pipe fusion', () => {
       ).toEqual(['a', 'b'])
     })
 
-    it('inlines comparison in filter', () => {
+    it('comparison in filter', () => {
       expect(
         pipe(
           [1, 2, 3, 4, 5],
@@ -624,7 +630,7 @@ describe('pipe fusion', () => {
       ).toEqual([4, 5])
     })
 
-    it('inlines property comparison in filter', () => {
+    it('property comparison in filter', () => {
       expect(
         pipe(
           [{ age: 10 }, { age: 20 }, { age: 30 }],
@@ -634,7 +640,7 @@ describe('pipe fusion', () => {
       ).toEqual([20, 30])
     })
 
-    it('inlines typeof checks', () => {
+    it('typeof checks', () => {
       expect(
         pipe(
           [1, 'a', 2, 'b'] as any[],
@@ -643,7 +649,7 @@ describe('pipe fusion', () => {
       ).toEqual([1, 2])
     })
 
-    it('inlines negation in filter', () => {
+    it('negation in filter', () => {
       expect(
         pipe(
           [true, false, true],
@@ -652,7 +658,7 @@ describe('pipe fusion', () => {
       ).toEqual([false])
     })
 
-    it('inlines method calls', () => {
+    it('method calls', () => {
       expect(
         pipe(
           ['  a  ', '  b  '],
@@ -661,7 +667,7 @@ describe('pipe fusion', () => {
       ).toEqual(['a', 'b'])
     })
 
-    it('inlines chained property access', () => {
+    it('chained property access', () => {
       const data = [{ name: { first: 'Tom' } }, { name: { first: 'Jo' } }]
       expect(
         pipe(
@@ -671,7 +677,7 @@ describe('pipe fusion', () => {
       ).toEqual(['Tom', 'Jo'])
     })
 
-    it('inlines in every terminal', () => {
+    it('every terminal', () => {
       expect(
         pipe(
           [2, 4, 6],
@@ -686,7 +692,7 @@ describe('pipe fusion', () => {
       ).toBe(false)
     })
 
-    it('inlines in some terminal', () => {
+    it('some terminal', () => {
       expect(
         pipe(
           [1, 2, 3],
@@ -701,7 +707,7 @@ describe('pipe fusion', () => {
       ).toBe(false)
     })
 
-    it('inlines in find terminal', () => {
+    it('find terminal', () => {
       expect(
         pipe(
           [1, 2, 3, 4],
@@ -710,7 +716,7 @@ describe('pipe fusion', () => {
       ).toBe(3)
     })
 
-    it('falls back for closures (still works correctly)', () => {
+    it('closures over free variables', () => {
       const threshold = 3
       expect(
         pipe(
@@ -720,7 +726,7 @@ describe('pipe fusion', () => {
       ).toEqual([4, 5])
     })
 
-    it('falls back for block bodies (still works correctly)', () => {
+    it('block bodies', () => {
       expect(
         pipe(
           [1, 2, 3],
@@ -732,7 +738,7 @@ describe('pipe fusion', () => {
       ).toEqual([2, 4, 6])
     })
 
-    it('full fused pipeline with inlining', () => {
+    it('full fused pipeline', () => {
       const data = Array.from({ length: 1000 }, (_, i) => ({ id: i, score: i * 0.1 }))
       const result = pipe(
         data,
@@ -744,7 +750,7 @@ describe('pipe fusion', () => {
       expect(result).toEqual([501, 502, 503, 504, 505])
     })
 
-    it('multi-expression inlining', () => {
+    it('multi-expression callback', () => {
       expect(
         pipe(
           [
@@ -757,7 +763,7 @@ describe('pipe fusion', () => {
       ).toEqual([3, 7, 11])
     })
 
-    it('inlines takeWhile callback', () => {
+    it('takeWhile callback', () => {
       expect(
         pipe(
           [1, 2, 3, 4, 5],
@@ -766,7 +772,7 @@ describe('pipe fusion', () => {
       ).toEqual([1, 2, 3])
     })
 
-    it('inlines dropWhile callback', () => {
+    it('dropWhile callback', () => {
       expect(
         pipe(
           [1, 2, 3, 4, 5],
@@ -775,7 +781,7 @@ describe('pipe fusion', () => {
       ).toEqual([3, 4, 5])
     })
 
-    it('inlines reduce callback', () => {
+    it('reduce callback', () => {
       expect(
         pipe(
           [1, 2, 3, 4],
@@ -784,7 +790,7 @@ describe('pipe fusion', () => {
       ).toBe(10)
     })
 
-    it('inlines reduce with property access', () => {
+    it('reduce with property access', () => {
       const data = [{ v: 10 }, { v: 20 }, { v: 30 }]
       expect(
         pipe(
@@ -794,7 +800,7 @@ describe('pipe fusion', () => {
       ).toBe(60)
     })
 
-    it('pre-alloc for pure map chain', () => {
+    it('pure map chain', () => {
       const result = pipe(
         [1, 2, 3, 4, 5],
         A.map((x: number) => x * 2),
@@ -803,13 +809,40 @@ describe('pipe fusion', () => {
       expect(result).toEqual([3, 5, 7, 9, 11])
     })
 
-    it('push for filter+map chain (not pre-alloc)', () => {
+    it('filter+map chain', () => {
       const result = pipe(
         [1, 2, 3, 4, 5],
         A.filter((x: number) => x > 2),
         A.map((x: number) => x * 10),
       )
       expect(result).toEqual([30, 40, 50])
+    })
+
+    it('map callback closing over an outer variable of a different name', () => {
+      const factor = 10
+      const bump = (n: number) => n * factor + 1
+      expect(pipe([1, 2, 3], A.map(bump), A.filter((x: number) => x > 10))).toEqual([11, 21, 31])
+    })
+
+    it('filter callback referencing an outer object property', () => {
+      const config = { threshold: 2 }
+      const pred = (x: number) => x > config.threshold
+      expect(pipe([1, 2, 3, 4], A.filter(pred))).toEqual([3, 4])
+    })
+
+    it('reduce callback with parameter names unrelated to acc/v', () => {
+      const combine = (total: number, item: number) => total + item * 2
+      expect(pipe([1, 2, 3], A.reduce(combine, 0))).toBe(12)
+    })
+
+    it('takeUntil callback closing over outer state', () => {
+      let calls = 0
+      const stop = (x: number) => {
+        calls++
+        return x > 2
+      }
+      expect(pipe([1, 2, 3, 4], A.takeUntil(stop))).toEqual([1, 2])
+      expect(calls).toBe(3)
     })
   })
 
@@ -918,8 +951,8 @@ describe('pipe fusion', () => {
     })
   })
 
-  describe('sortBy + take (quickselect)', () => {
-    it('sortBy then take triggers takeSorted', () => {
+  describe('sortBy + take', () => {
+    it('sortBy then take', () => {
       const data = [9, 1, 5, 3, 7, 2, 8, 4, 6, 10]
       expect(
         pipe(
@@ -1177,7 +1210,7 @@ describe('pipe fusion', () => {
       expect(pipe([5, 3, 8, 1, 9], A.sort, A.last)).toBe(9)
     })
 
-    it('sort then head then sort then last (MRU collision)', () => {
+    it('sort then head then sort then last (cache collision)', () => {
       expect(pipe([5, 3, 8, 1, 9], A.sort, A.head)).toBe(1)
       expect(pipe([5, 3, 8, 1, 9], A.sort, A.last)).toBe(9)
     })
@@ -1216,7 +1249,7 @@ describe('pipe fusion', () => {
     })
   })
 
-  describe('scalar JIT string ops', () => {
+  describe('scalar ops', () => {
     it('trimStart', () => {
       expect(pipe('  hello', S.trimStart)).toBe('hello')
     })
@@ -1247,7 +1280,7 @@ describe('pipe fusion', () => {
     })
   })
 
-  describe('scalar JIT math ops', () => {
+  describe('scalar math ops', () => {
     it('add then multiply then subtract', () => {
       expect(pipe(5, M.add(3), M.multiply(2), M.subtract(1))).toBe(15)
     })
@@ -1261,8 +1294,8 @@ describe('pipe fusion', () => {
     })
   })
 
-  describe('sortDesc + take fusion', () => {
-    it('sortDesc then take triggers takeSorted', () => {
+  describe('sortDesc + take', () => {
+    it('sortDesc then take', () => {
       const data = [9, 1, 5, 3, 7, 2, 8, 4, 6, 10]
       expect(pipe(data, A.sortDesc, A.take(3))).toEqual([10, 9, 8])
     })
@@ -1289,8 +1322,8 @@ describe('pipe fusion', () => {
     })
   })
 
-  describe('AOT cache hit', () => {
-    it('filter + map hits AOT (block-body callbacks bypass inlining)', () => {
+  describe('block-body callbacks', () => {
+    it('filter + map with block-body callbacks', () => {
       const f = (x: number) => {
         const r = x > 2
         return r
@@ -1302,7 +1335,7 @@ describe('pipe fusion', () => {
       expect(pipe([1, 2, 3, 4, 5], A.filter(f), A.map(g))).toEqual([30, 40, 50])
     })
 
-    it('map + take hits AOT', () => {
+    it('map + take with block-body callback', () => {
       const f = (x: number) => {
         const r = x * 2
         return r
@@ -1310,7 +1343,7 @@ describe('pipe fusion', () => {
       expect(pipe([1, 2, 3, 4, 5], A.map(f), A.take(3))).toEqual([2, 4, 6])
     })
 
-    it('filter + reduce hits AOT', () => {
+    it('filter + reduce with block-body callbacks', () => {
       const f = (x: number) => {
         const r = x % 2 === 0
         return r
@@ -1320,6 +1353,39 @@ describe('pipe fusion', () => {
         return s
       }
       expect(pipe([1, 2, 3, 4, 5], A.filter(f), A.reduce(r, 0))).toBe(6)
+    })
+  })
+
+  describe('flatMap followed by take: exact single-pass semantics', () => {
+    it('flatMap then take matches exact semantics (early-exit mid-expansion)', () => {
+      const result = pipe(
+        [1, 2, 3],
+        A.flatMap((x: number) => [x, x + 10]),
+        A.take(3),
+      )
+      expect(result).toEqual([1, 11, 2])
+    })
+
+    it('filter then flatMap then take matches exact semantics', () => {
+      const result = pipe(
+        [1, 2, 3, 4],
+        A.filter((x: number) => x % 2 === 1),
+        A.flatMap((x: number) => [x, x + 100]),
+        A.take(3),
+      )
+      expect(result).toEqual([1, 101, 3])
+    })
+
+    it('filter, map, flatMap, filter, take matches exact semantics', () => {
+      const result = pipe(
+        [1, 2, 3, 4, 5],
+        A.filter((x: number) => x % 2 === 1),
+        A.map((x: number) => x * 10),
+        A.flatMap((x: number) => [x, x + 1]),
+        A.filter((x: number) => x % 2 === 0),
+        A.take(2),
+      )
+      expect(result).toEqual([10, 30])
     })
   })
 })

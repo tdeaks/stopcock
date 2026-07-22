@@ -1,20 +1,28 @@
-import {
-  identity as _identity,
-  always as _always,
-  flip as _flip,
-  complement as _complement,
-  memoize as _memoize,
-  once as _once,
-  converge as _converge,
-  juxt as _juxt,
-} from './Function.gen'
+export const identity: <A>(a: A) => A = (a) => a
 
-export const identity: <A>(a: A) => A = _identity
-export const always: <T, A>(a: A) => (_: T) => A = _always
-export const flip: <A, B, C>(fn: (a: A, b: B) => C) => (b: B, a: A) => C = _flip
-export const complement: <A>(pred: (a: A) => boolean) => (a: A) => boolean = _complement
-export const memoize: <A, B>(fn: (a: A) => B) => (a: A) => B = _memoize
-export const once: <A, B>(fn: (a: A) => B) => (a: A) => B = _once
+export const always: <T, A>(a: A) => (_: T) => A = (a) => () => a
+
+export const flip: <A, B, C>(fn: (a: A, b: B) => C) => (b: B, a: A) => C =
+  (fn) => (b, a) => fn(a, b)
+
+export const complement: <A>(pred: (a: A) => boolean) => (a: A) => boolean =
+  (pred) => (a) => !pred(a)
+
+export const once: <A, B>(fn: (a: A) => B) => (a: A) => B = <A, B>(fn: (a: A) => B) => {
+  let called = false
+  let result: B
+  return (a: A) => {
+    if (called) return result
+    result = fn(a)
+    called = true
+    return result
+  }
+}
+
+export const memoize: <A, B>(fn: (a: A) => B) => (a: A) => B = once
+
 export const converge: <A, B, C>(after: (bs: B[]) => C, fns: Array<(a: A) => B>) => (a: A) => C =
-  _converge
-export const juxt: <A, B>(fns: Array<(a: A) => B>) => (a: A) => B[] = _juxt
+  (after, fns) => (a) => after(fns.map((f) => f(a)))
+
+export const juxt: <A, B>(fns: Array<(a: A) => B>) => (a: A) => B[] =
+  (fns) => (a) => fns.map((f) => f(a))

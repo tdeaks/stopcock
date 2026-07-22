@@ -23,6 +23,13 @@ describe('array', () => {
     it('isEmpty', () => expect(A.isEmpty([])).toBe(true))
     it('length', () => expect(A.length([1, 2])).toBe(2))
     it('reverse', () => expect(A.reverse([1, 2, 3])).toEqual([3, 2, 1]))
+    it('reverse does not mutate the input', () => {
+      const arr = [1, 2, 3]
+      const out = A.reverse(arr)
+      expect(arr).toEqual([1, 2, 3])
+      expect(out).toEqual([3, 2, 1])
+      expect(out).not.toBe(arr)
+    })
     it('flatten', () => expect(A.flatten([[1], [2, 3]])).toEqual([1, 2, 3]))
     it('first (alias for head)', () => expect(A.first([1, 2])).toBe(1))
     it('uniq', () => expect(A.uniq([1, 2, 2, 3])).toEqual([1, 2, 3]))
@@ -184,6 +191,15 @@ describe('array', () => {
     it('chunk data-first', () => expect(A.chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]))
     it('chunk data-last', () =>
       expect(pipe([1, 2, 3, 4, 5], A.chunk(2))).toEqual([[1, 2], [3, 4], [5]]))
+    it('chunk with empty input returns []', () => expect(A.chunk([], 2)).toEqual([]))
+    it('chunk with size 0 returns []', () => expect(A.chunk([1, 2, 3], 0)).toEqual([]))
+    it('chunk with negative size returns []', () => expect(A.chunk([1, 2, 3], -1)).toEqual([]))
+    it('chunk with size 1 returns singleton chunks', () =>
+      expect(A.chunk([1, 2, 3], 1)).toEqual([[1], [2], [3]]))
+    it('chunk with size >= length returns one chunk', () =>
+      expect(A.chunk([1, 2, 3], 10)).toEqual([[1, 2, 3]]))
+    it('chunk final short chunk keeps remainder length', () =>
+      expect(A.chunk([1, 2, 3, 4, 5, 6, 7], 3)).toEqual([[1, 2, 3], [4, 5, 6], [7]]))
 
     it('slidingWindow data-first', () =>
       expect(A.slidingWindow([1, 2, 3, 4], 2)).toEqual([
@@ -267,6 +283,11 @@ describe('array', () => {
       A.forEach([1, 2, 3], (x) => result.push(x))
       expect(result).toEqual([1, 2, 3])
     })
+    it('data-first returns undefined, does not fall through to the curried branch', () => {
+      const result: number[] = []
+      const ret = A.forEach([1, 2, 3], (x) => result.push(x))
+      expect(ret).toBeUndefined()
+    })
     it('data-last', () => {
       const result: number[] = []
       pipe(
@@ -281,6 +302,22 @@ describe('array', () => {
     it('data-first', () => {
       const result: [number, number][] = []
       A.forEachWithIndex([10, 20], (x, i) => result.push([x, i]))
+      expect(result).toEqual([
+        [10, 0],
+        [20, 1],
+      ])
+    })
+    it('data-first returns undefined, does not fall through to the curried branch', () => {
+      const result: [number, number][] = []
+      const ret = A.forEachWithIndex([10, 20], (x, i) => result.push([x, i]))
+      expect(ret).toBeUndefined()
+    })
+    it('data-last', () => {
+      const result: [number, number][] = []
+      pipe(
+        [10, 20],
+        A.forEachWithIndex((x, i) => result.push([x, i])),
+      )
       expect(result).toEqual([
         [10, 0],
         [20, 1],
@@ -514,6 +551,39 @@ describe('array', () => {
 
     it('without data-first', () => expect(A.without([1, 2, 3, 4], [2, 4])).toEqual([1, 3]))
     it('without curried', () => expect(pipe([1, 2, 3, 4], A.without([2, 4]))).toEqual([1, 3]))
+    it('without empty exclusions returns a copy', () => {
+      const arr = [1, 2, 3]
+      const out = A.without(arr, [])
+      expect(out).toEqual([1, 2, 3])
+      expect(out).not.toBe(arr)
+    })
+    it('without excludes NaN via SameValueZero', () =>
+      expect(A.without([1, NaN, 2, NaN], [NaN])).toEqual([1, 2]))
+    it('without treats +0 and -0 as equal', () => {
+      expect(A.without([0, -0, 1], [0])).toEqual([1])
+      expect(A.without([0, 1], [-0])).toEqual([1])
+    })
+    it('without dedupes exclusions and preserves duplicate survivors', () =>
+      expect(A.without([1, 1, 2, 3, 3], [2])).toEqual([1, 1, 3, 3]))
+    it('without with 8 exclusions (unrolled tier boundary)', () =>
+      expect(A.without([1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8])).toEqual([9]))
+    it('without with 9 exclusions (linear-scan tier)', () =>
+      expect(
+        A.without(
+          [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        ),
+      ).toEqual([10]))
+    it('without with 40 exclusions (Set tier)', () => {
+      const excl = Array.from({ length: 40 }, (_, i) => i)
+      expect(A.without([...excl, 40, 41], excl)).toEqual([40, 41])
+    })
+    it('without rebuilds membership per call when exclusions mutate', () => {
+      const excl = [2]
+      expect(A.without([1, 2, 3], excl)).toEqual([1, 3])
+      excl.push(3)
+      expect(A.without([1, 2, 3], excl)).toEqual([1])
+    })
 
     it('pluck data-first', () => expect(A.pluck([{ x: 1 }, { x: 2 }], 'x')).toEqual([1, 2]))
     it('pluck curried', () => expect(pipe([{ x: 1 }, { x: 2 }], A.pluck('x'))).toEqual([1, 2]))

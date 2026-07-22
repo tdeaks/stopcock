@@ -2,7 +2,7 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   test: {
-    include: ['packages/*/src/**/__tests__/**/*.test.ts'],
+    include: ['packages/*/src/**/__tests__/**/*.test.ts', 'benchmarks/src/reference/**/*.test.ts'],
     maxWorkers: 2,
     typecheck: {
       enabled: true,

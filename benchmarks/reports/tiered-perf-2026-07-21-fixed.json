@@ -1,0 +1,1788 @@
+{
+  "generatedAt": "2026-07-21T16:23:23.053Z",
+  "corpusVersion": 1,
+  "args": {
+    "tier": "all",
+    "rounds": 40,
+    "quick": false,
+    "corpusPath": "/Users/tomdeakin/IdeaProjects/lay-some-pipe/benchmarks/src/reference/perf-corpus.json",
+    "out": "reports/tiered-perf-2026-07-21-fixed.json"
+  },
+  "summary": {
+    "tier0": {
+      "count": 44,
+      "geomeanRatio": 1.258142061619687,
+      "minRatio": 0.5603644901928231,
+      "allCorrect": true
+    },
+    "tier1": {
+      "count": 44,
+      "geomeanRatio": 1.221985161598024,
+      "minRatio": 0.14993935571399572,
+      "allCorrect": true
+    }
+  },
+  "cases": [
+    {
+      "name": "single-op map (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.7331824297712202,
+      "meanRatio": 2.5209140307446356,
+      "ciLow": 1.4809774349816802,
+      "ciHigh": 2.0855384615384613,
+      "signTestP": 1.4933903003111459e-9
+    },
+    {
+      "name": "single-op map (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.2226666666666666,
+      "meanRatio": 1.4421877483635601,
+      "ciLow": 1.1244403085720451,
+      "ciHigh": 1.288659793814433,
+      "signTestP": 0.001065019634552303
+    },
+    {
+      "name": "single-op filter (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.2228278709705434,
+      "meanRatio": 1.2999149842466209,
+      "ciLow": 1.154393255770278,
+      "ciHigh": 1.3186576206810505,
+      "signTestP": 0.006426576095691424
+    },
+    {
+      "name": "single-op filter (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.5161983830542733,
+      "meanRatio": 1.5209686146833532,
+      "ciLow": 1.3443253629520664,
+      "ciHigh": 1.6515159095161476,
+      "signTestP": 7.457856554538008e-11
+    },
+    {
+      "name": "single-op reject (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.5672456920548574,
+      "meanRatio": 1.593821900481402,
+      "ciLow": 1.5244000802166253,
+      "ciHigh": 1.6285552633551343,
+      "signTestP": 1.4933903003111459e-9
+    },
+    {
+      "name": "single-op reject (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.7328057254629536,
+      "meanRatio": 1.6755051609690166,
+      "ciLow": 1.6821866139647232,
+      "ciHigh": 1.7749232992908248,
+      "signTestP": 7.457856554538008e-11
+    },
+    {
+      "name": "single-op filterMap (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.2224505695250376,
+      "meanRatio": 1.3596702056915542,
+      "ciLow": 1.1988523409363745,
+      "ciHigh": 1.2564025610244096,
+      "signTestP": 0.0000013826120266457992
+    },
+    {
+      "name": "single-op filterMap (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.2672,
+      "meanRatio": 1.189404542693117,
+      "ciLow": 1.235104447776112,
+      "ciHigh": 1.3328,
+      "signTestP": 0.00000836458457342813
+    },
+    {
+      "name": "single-op take (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 6.184634767742555,
+      "meanRatio": 6.405498857315024,
+      "ciLow": 4.997815180625084,
+      "ciHigh": 6.860955423750333,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "single-op take (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 4.664875816993464,
+      "meanRatio": 4.932758092188741,
+      "ciLow": 3.501300223214286,
+      "ciHigh": 5.069768073434361,
+      "signTestP": 7.457856554538008e-11
+    },
+    {
+      "name": "single-op drop (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 20.175887550200805,
+      "meanRatio": 20.686562039001835,
+      "ciLow": 18.936552762641156,
+      "ciHigh": 21.14620520917451,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "single-op drop (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 17.837849745624144,
+      "meanRatio": 17.83923761636812,
+      "ciLow": 17.102022460066856,
+      "ciHigh": 19.23463688787134,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.6808126014227757,
+      "meanRatio": 0.802773783981517,
+      "ciLow": 0.5906334918259948,
+      "ciHigh": 0.8190083359707228,
+      "signTestP": 0.0000013826120266457992
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.14993935571399572,
+      "meanRatio": 0.1600523701820866,
+      "ciLow": 0.14558165452207458,
+      "ciHigh": 0.16507263596276334,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.3291582597963214,
+      "meanRatio": 1.4084442667812207,
+      "ciLow": 1.3007798092628695,
+      "ciHigh": 1.3968622269663364,
+      "signTestP": 7.457856554538008e-11
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.2206261426533187,
+      "meanRatio": 1.2095229158724021,
+      "ciLow": 1.186003807776789,
+      "ciHigh": 1.2470752018905171,
+      "signTestP": 1.4933903003111459e-9
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.3435700336506993,
+      "meanRatio": 1.3562095652569695,
+      "ciLow": 1.2835729203454291,
+      "ciHigh": 1.4137837026483855,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.5823463571400826,
+      "meanRatio": 1.5846676302758156,
+      "ciLow": 1.5783732868122864,
+      "ciHigh": 1.598093224840921,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0252627302747754,
+      "meanRatio": 0.9966206149453336,
+      "ciLow": 0.9785702040116578,
+      "ciHigh": 1.0861274427388965,
+      "signTestP": 0.15385994416283216
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9880005989354599,
+      "meanRatio": 0.9742056163636528,
+      "ciLow": 0.962246035728866,
+      "ciHigh": 1,
+      "signTestP": 0.13249816396273692
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0219048091362315,
+      "meanRatio": 1.0039733815874259,
+      "ciLow": 1.0096111866478725,
+      "ciHigh": 1.0352649949077581,
+      "signTestP": 0.006426576095691424
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0162321578373343,
+      "meanRatio": 1.0078856325711718,
+      "ciLow": 0.9798496732026144,
+      "ciHigh": 1.039190258442917,
+      "signTestP": 0.2681872510547695
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 3.023117775006397,
+      "meanRatio": 2.9735915868418608,
+      "ciLow": 2.871867770410639,
+      "ciHigh": 3.0979840958045255,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 3.1475848901298566,
+      "meanRatio": 3.0984502904002604,
+      "ciLow": 3.075064057280777,
+      "ciHigh": 3.2302284934685748,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "map -> filter -> reduce (sentinel)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.1395856052344602,
+      "meanRatio": 1.3187760613870256,
+      "ciLow": 1.0932562704471103,
+      "ciHigh": 1.1668571428571428,
+      "signTestP": 0.00007025478407740609
+    },
+    {
+      "name": "map -> filter -> reduce (sentinel)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.8992805755395683,
+      "meanRatio": 0.8550095892064242,
+      "ciLow": 0.8169934640522876,
+      "ciHigh": 0.8992805755395683,
+      "signTestP": 5.529727786779421e-10
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.6277238051841465,
+      "meanRatio": 1.2773542813427878,
+      "ciLow": 0.9755168150041986,
+      "ciHigh": 1.6896761904761903,
+      "signTestP": 0.0806904677519924
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9950073400909987,
+      "meanRatio": 0.9832844007708065,
+      "ciLow": 0.988771117608837,
+      "ciHigh": 1,
+      "signTestP": 0.02430651010945438
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.3172500463116708,
+      "meanRatio": 1.3074928771589875,
+      "ciLow": 1.3008972162593895,
+      "ciHigh": 1.3452105355782198,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.4033492359611823,
+      "meanRatio": 1.3964237063280023,
+      "ciLow": 1.3919719013144585,
+      "ciHigh": 1.4146898198243334,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.989463744810245,
+      "meanRatio": 0.9906192878376852,
+      "ciLow": 0.9440841489291274,
+      "ciHigh": 1.02936301883722,
+      "signTestP": 0.6358280026288424
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9938536728124086,
+      "meanRatio": 1.0042479965754123,
+      "ciLow": 0.9870684889770948,
+      "ciHigh": 1.0125228522852285,
+      "signTestP": 0.40503224614076383
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0430976792632036,
+      "meanRatio": 1.0244479052813014,
+      "ciLow": 1.0227600334473776,
+      "ciHigh": 1.0648870239482997,
+      "signTestP": 0.006426576095691424
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.051615928265493,
+      "meanRatio": 1.0599523031402898,
+      "ciLow": 1.0248680255264415,
+      "ciHigh": 1.0640402381604233,
+      "signTestP": 0.0006795482549932783
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 2.312280693482286,
+      "meanRatio": 2.269405250808793,
+      "ciLow": 2.206875969772395,
+      "ciHigh": 2.3843026196550436,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 2.535918294993005,
+      "meanRatio": 2.52432726194877,
+      "ciLow": 2.4532548151021434,
+      "ciHigh": 2.6215453651349545,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.099639855942377,
+      "meanRatio": 1.288699066736557,
+      "ciLow": 1.062968515742129,
+      "ciHigh": 1.1244377811094453,
+      "signTestP": 6.038535502739235e-7
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1,
+      "meanRatio": 1.0013079307415649,
+      "ciLow": 1,
+      "ciHigh": 1,
+      "signTestP": 1
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.361921568627451,
+      "meanRatio": 1.4046475509416396,
+      "ciLow": 1.3520764227642275,
+      "ciHigh": 1.4227560975609754,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.354082275246527,
+      "meanRatio": 1.3634576256837427,
+      "ciLow": 1.3518518518518519,
+      "ciHigh": 1.3601369775099634,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.230737631800614,
+      "meanRatio": 1.2441966136625378,
+      "ciLow": 1.2169610472170325,
+      "ciHigh": 1.2672068687593163,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.359994459833795,
+      "meanRatio": 1.356882410592078,
+      "ciLow": 1.3591058011697144,
+      "ciHigh": 1.3605819365091998,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9742638755850447,
+      "meanRatio": 0.9595647070735615,
+      "ciLow": 0.9478582378460694,
+      "ciHigh": 1,
+      "signTestP": 0.13249816396273692
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9752524585791913,
+      "meanRatio": 0.9688239317753856,
+      "ciLow": 0.9659121898009272,
+      "ciHigh": 0.9872306248352387,
+      "signTestP": 0.0033778479119064403
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0340541230750617,
+      "meanRatio": 1.1053366594460219,
+      "ciLow": 1.0271813630266022,
+      "ciHigh": 1.0537493692460314,
+      "signTestP": 1.8570244719739966e-7
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0209467773756897,
+      "meanRatio": 1.0361292979916612,
+      "ciLow": 1.0079390073311314,
+      "ciHigh": 1.0489840038073583,
+      "signTestP": 0.016589003374974726
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 2.4658079527821526,
+      "meanRatio": 2.410416358121095,
+      "ciLow": 2.3947010334355623,
+      "ciHigh": 2.5536177800058235,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 2.7130089700119058,
+      "meanRatio": 2.683717498340472,
+      "ciLow": 2.630173145307824,
+      "ciHigh": 2.796007504441934,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.5603644901928231,
+      "meanRatio": 0.8646527210150211,
+      "ciLow": 0.4953999307893164,
+      "ciHigh": 0.5851746456868653,
+      "signTestP": 1.4933903003111459e-9
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.5957101449275363,
+      "meanRatio": 0.5835140534373537,
+      "ciLow": 0.5541807232084155,
+      "ciHigh": 0.6052328109798627,
+      "signTestP": 7.457856554538008e-11
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0658635520935256,
+      "meanRatio": 1.022109438666773,
+      "ciLow": 1.0547680010921359,
+      "ciHigh": 1.070874088123256,
+      "signTestP": 0.00000836458457342813
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0647953117207278,
+      "meanRatio": 1.0333997714149659,
+      "ciLow": 1.0375761148111258,
+      "ciHigh": 1.0732183161435587,
+      "signTestP": 0.0000013826120266457992
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.1859889262566772,
+      "meanRatio": 1.2059168461890863,
+      "ciLow": 1.1706512877465078,
+      "ciHigh": 1.2229205021756826,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.1512597135360907,
+      "meanRatio": 1.1270120101368535,
+      "ciLow": 1.1092230906570533,
+      "ciHigh": 1.177904641047811,
+      "signTestP": 0.00000836458457342813
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.8252973110096398,
+      "meanRatio": 0.7971098593089385,
+      "ciLow": 0.792700439784755,
+      "ciHigh": 0.8438924237432391,
+      "signTestP": 1.4933903003111459e-9
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9384438055274951,
+      "meanRatio": 0.924119541661274,
+      "ciLow": 0.9241247670807453,
+      "ciHigh": 0.9583333333333333,
+      "signTestP": 0.00007025478407740609
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0399166148807892,
+      "meanRatio": 1.0797108979158048,
+      "ciLow": 1.0344031618460976,
+      "ciHigh": 1.050046461991812,
+      "signTestP": 0.00000836458457342813
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0197065375141499,
+      "meanRatio": 1.0446695710729774,
+      "ciLow": 1.0027886224205242,
+      "ciHigh": 1.035380060471824,
+      "signTestP": 0.038477308284200276
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.377039666527696,
+      "meanRatio": 1.3548739712647992,
+      "ciLow": 1.3249513511441329,
+      "ciHigh": 1.4062609856102495,
+      "signTestP": 7.457856554538008e-11
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.3903668100699909,
+      "meanRatio": 1.3864739957487617,
+      "ciLow": 1.357482693126973,
+      "ciHigh": 1.4158646530893866,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.63553173377022,
+      "meanRatio": 0.633110135948592,
+      "ciLow": 0.6218399163644679,
+      "ciHigh": 0.6425032672915927,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.7831438602357268,
+      "meanRatio": 0.7946694744030532,
+      "ciLow": 0.7501363884342608,
+      "ciHigh": 0.8190889929742389,
+      "signTestP": 2.8412614483386344e-9
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0753607563662353,
+      "meanRatio": 1.011636811182846,
+      "ciLow": 1.0153497670698557,
+      "ciHigh": 1.1008279442940259,
+      "signTestP": 0.038477308284200276
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0630304749690715,
+      "meanRatio": 1.1065901094321844,
+      "ciLow": 1.0385506653019447,
+      "ciHigh": 1.0738823529411765,
+      "signTestP": 0.00000836458457342813
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0522021525271037,
+      "meanRatio": 1.0543830684786353,
+      "ciLow": 1.039192035405712,
+      "ciHigh": 1.0703585870777816,
+      "signTestP": 0.0006795482549932783
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0644818950837647,
+      "meanRatio": 1.0614322208785478,
+      "ciLow": 1.052133169377548,
+      "ciHigh": 1.0814626716461035,
+      "signTestP": 0.0001821658297558314
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.8313485396001572,
+      "meanRatio": 0.8507010465261058,
+      "ciLow": 0.8094567465434258,
+      "ciHigh": 0.85434935692662,
+      "signTestP": 0.00000836458457342813
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9184683823252299,
+      "meanRatio": 0.9101762658349895,
+      "ciLow": 0.8969439170619167,
+      "ciHigh": 0.9348503428801936,
+      "signTestP": 1.4933903003111459e-9
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0350154601184918,
+      "meanRatio": 1.066382232033153,
+      "ciLow": 1.0223247557726733,
+      "ciHigh": 1.0446077878889057,
+      "signTestP": 0.0001821658297558314
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.001881930773492,
+      "meanRatio": 0.9903661701339459,
+      "ciLow": 0.9886741022140704,
+      "ciHigh": 1.0403837724556002,
+      "signTestP": 0.749258624760845
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.4415181948438436,
+      "meanRatio": 1.4165607988652904,
+      "ciLow": 1.3852261819705287,
+      "ciHigh": 1.473165534347029,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.4111812139340159,
+      "meanRatio": 1.4086304921255817,
+      "ciLow": 1.3891819383449162,
+      "ciHigh": 1.434042728543594,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.6532766746237753,
+      "meanRatio": 0.6579894328514928,
+      "ciLow": 0.6285204561191798,
+      "ciHigh": 0.6699536567299764,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.8515894772496331,
+      "meanRatio": 0.8465091186247168,
+      "ciLow": 0.8266203899291766,
+      "ciHigh": 0.8775411363809774,
+      "signTestP": 7.457856554538008e-11
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0800199402761343,
+      "meanRatio": 1.0690683708177156,
+      "ciLow": 1.0260725831956639,
+      "ciHigh": 1.1167164118218964,
+      "signTestP": 0.016589003374974726
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.068645851280077,
+      "meanRatio": 1.0869823016920264,
+      "ciLow": 1.0546120973551787,
+      "ciHigh": 1.0929659125457274,
+      "signTestP": 1.9465005607344154e-8
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.5645203300825206,
+      "meanRatio": 0.5569440320367064,
+      "ciLow": 0.5177882554650665,
+      "ciHigh": 0.585046357615894,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.6830808080808081,
+      "meanRatio": 0.7200769065850721,
+      "ciLow": 0.6471416732407385,
+      "ciHigh": 0.7279199383359167,
+      "signTestP": 3.608874976634988e-8
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9229373541163903,
+      "meanRatio": 0.8588503430411064,
+      "ciLow": 0.8619524067063278,
+      "ciHigh": 0.9342213426273385,
+      "signTestP": 7.457856554538008e-11
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9381248670765931,
+      "meanRatio": 0.9501716869820338,
+      "ciLow": 0.9233155574692158,
+      "ciHigh": 0.9567831830494637,
+      "signTestP": 0.000004255962267052371
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0386540987791384,
+      "meanRatio": 1.0714425803040453,
+      "ciLow": 1.0174995210469486,
+      "ciHigh": 1.0599654246549806,
+      "signTestP": 0.006426576095691424
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0326213556383663,
+      "meanRatio": 1.0941923561897862,
+      "ciLow": 0.9990641468811183,
+      "ciHigh": 1.0634872210274602,
+      "signTestP": 0.15385994416283216
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.3269556757149787,
+      "meanRatio": 1.3246241558499958,
+      "ciLow": 1.27739732875061,
+      "ciHigh": 1.3601104697197264,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.3450100923245505,
+      "meanRatio": 1.3263606272201207,
+      "ciLow": 1.292020330431295,
+      "ciHigh": 1.3647820822596324,
+      "signTestP": 7.457856554538008e-11
+    },
+    {
+      "name": "filterMap -> take (sentinel)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.2333941497058671,
+      "meanRatio": 1.218557668662683,
+      "ciLow": 1.2110300907498428,
+      "ciHigh": 1.2529932503174357,
+      "signTestP": 1.9465005607344154e-8
+    },
+    {
+      "name": "filterMap -> take (sentinel)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.466874159234588,
+      "meanRatio": 1.4801483669411568,
+      "ciLow": 1.4509200271288676,
+      "ciHigh": 1.506864952027735,
+      "signTestP": 1.8189894035458532e-12
+    },
+    {
+      "name": "flatMap -> uniq -> count (sentinel)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 0,
+      "tierAttribution": "construction",
+      "promoted": null,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 1.0054225061161335,
+      "meanRatio": 1.0202563799024256,
+      "ciLow": 0.9802641459606314,
+      "ciHigh": 1.0494390411513255,
+      "signTestP": 1
+    },
+    {
+      "name": "flatMap -> uniq -> count (sentinel)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "tier": 1,
+      "tierAttribution": "explainRunner",
+      "promoted": true,
+      "correctnessOk": true,
+      "rounds": 40,
+      "medianRatio": 0.9936728762199424,
+      "meanRatio": 0.9713635865244322,
+      "ciLow": 0.9733634138784121,
+      "ciHigh": 1.0077032720408472,
+      "signTestP": 0.4295905078433869
+    }
+  ],
+  "skipped": []
+}

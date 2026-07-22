@@ -1,17 +1,24 @@
 export type { Fn, LazyValue } from './types'
 export { pipe } from './pipe'
 export { flow } from './flow'
-export {
-  type FusionExplanation,
-  type FusionMode,
-  type FusionStats,
-  explainFusion,
-  getFusionMode,
-  getFusionStats,
-  resetFusionStats,
-  setFusionMode,
-} from './fuse'
 export { dual } from './dual'
+
+export {
+  type Runner,
+  type PipelineExplanation,
+  type OptimizerStats,
+  type JitCompileOptions,
+  type RunnerExplanation,
+  compile,
+  compilePure,
+  compileJit,
+  JitUnavailableError,
+  explainPipeline,
+  explainRunner,
+  explainSteps,
+  getOptimizerStats,
+  resetOptimizerStats,
+} from './compile'
 
 export {
   type None,

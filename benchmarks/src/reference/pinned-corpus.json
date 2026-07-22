@@ -1,0 +1,2332 @@
+[
+  {
+    "name": "take(0)",
+    "input": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "steps": [
+      {
+        "kind": "take",
+        "n": 0
+      }
+    ]
+  },
+  {
+    "name": "take over flatMap",
+    "input": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": 0
+        }
+      },
+      {
+        "kind": "take",
+        "n": 4
+      }
+    ]
+  },
+  {
+    "name": "dropWhile never false",
+    "input": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "steps": [
+      {
+        "kind": "dropWhile",
+        "spec": {
+          "kind": "constTrue"
+        }
+      }
+    ]
+  },
+  {
+    "name": "empty input, map -> filter -> reduce",
+    "input": [],
+    "steps": [
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 2,
+          "b": 0
+        }
+      },
+      {
+        "kind": "filter",
+        "spec": {
+          "kind": "mod",
+          "m": 2,
+          "r": 0
+        }
+      },
+      {
+        "kind": "reduce",
+        "spec": {
+          "kind": "reduceAdd"
+        },
+        "a1": 0
+      }
+    ]
+  },
+  {
+    "name": "holes array through map",
+    "input": [
+      1,
+      0,
+      3
+    ],
+    "holeIndices": [
+      1
+    ],
+    "steps": [
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "reduce alone, no downstream early exit",
+    "input": [
+      5,
+      3,
+      8,
+      1,
+      9
+    ],
+    "steps": [
+      {
+        "kind": "reduce",
+        "spec": {
+          "kind": "reduceAdd"
+        },
+        "a1": 0
+      }
+    ]
+  },
+  {
+    "name": "sum after map (boundary, not fused sink)",
+    "input": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "steps": [
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 2,
+          "b": 0
+        }
+      },
+      {
+        "kind": "sum"
+      }
+    ]
+  },
+  {
+    "name": "filter -> take exact quota boundary",
+    "input": [
+      5,
+      3,
+      8,
+      1,
+      9,
+      2,
+      7,
+      4,
+      6,
+      0
+    ],
+    "steps": [
+      {
+        "kind": "filter",
+        "spec": {
+          "kind": "mod",
+          "m": 2,
+          "r": 0
+        }
+      },
+      {
+        "kind": "take",
+        "n": 2
+      }
+    ]
+  },
+  {
+    "name": "single element, every true then some false",
+    "input": [
+      42
+    ],
+    "steps": [
+      {
+        "kind": "every",
+        "spec": {
+          "kind": "mod",
+          "m": 2,
+          "r": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "uniq then sortAsc then take",
+    "input": [
+      3,
+      1,
+      3,
+      2,
+      1,
+      5,
+      2
+    ],
+    "steps": [
+      {
+        "kind": "uniq"
+      },
+      {
+        "kind": "sortAsc"
+      },
+      {
+        "kind": "take",
+        "n": 2
+      }
+    ]
+  },
+  {
+    "name": "drop over full length",
+    "input": [
+      1,
+      2,
+      3
+    ],
+    "steps": [
+      {
+        "kind": "drop",
+        "n": 10
+      }
+    ]
+  },
+  {
+    "name": "flatMap producing zero items for some inputs",
+    "input": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 0,
+          "a": 1,
+          "b": 0
+        }
+      },
+      {
+        "kind": "count",
+        "spec": {
+          "kind": "constTrue"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 12: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -425
+    ],
+    "steps": [
+      {
+        "kind": "sortDesc"
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": -1
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": 2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 0,
+          "a": 5,
+          "b": -5
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 17: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -308
+    ],
+    "steps": [
+      {
+        "kind": "take",
+        "n": 60
+      },
+      {
+        "kind": "sortAsc"
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 1,
+          "b": 0
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 37: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      497,
+      -474,
+      239,
+      -303,
+      88,
+      -324
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 2,
+          "b": -1
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 0,
+          "a": 2,
+          "b": -5
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 85: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -110
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 0
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 5,
+          "b": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 147: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -315
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 3,
+          "b": 2
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 5,
+          "b": -2
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 186: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -60
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 2,
+          "b": 1
+        }
+      },
+      {
+        "kind": "take",
+        "n": 15
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 200: interpret did not throw, pipe threw: Assignment to constant variable.",
+    "input": [
+      109
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 2,
+          "b": 2
+        }
+      },
+      {
+        "kind": "take",
+        "n": 35
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "allocLinear",
+          "a": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 354: interpret did not throw, pipe threw: Assignment to constant variable.",
+    "input": [
+      -298
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": -1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 3,
+          "b": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 357: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      122
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": -1
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 4,
+          "r": 3,
+          "a": 4,
+          "b": 5
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 414: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -463
+    ],
+    "steps": [
+      {
+        "kind": "take",
+        "n": 21
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 0
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 419: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      105
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": -2
+        }
+      },
+      {
+        "kind": "dropWhile",
+        "spec": {
+          "kind": "mod",
+          "m": 5,
+          "r": 2
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 442: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -291
+    ],
+    "steps": [
+      {
+        "kind": "sort"
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": -1
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 3,
+          "r": 0,
+          "a": 2,
+          "b": -3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 466: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      433,
+      295
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 0
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 2,
+          "a": 2,
+          "b": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 489: interpret did not throw, pipe threw: Assignment to constant variable.",
+    "input": [
+      410,
+      240,
+      220
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 4,
+          "r": 3,
+          "a": 3,
+          "b": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 12: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -425
+    ],
+    "steps": [
+      {
+        "kind": "sortDesc"
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": -1
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": 2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 0,
+          "a": 5,
+          "b": -5
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 17: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -308
+    ],
+    "steps": [
+      {
+        "kind": "take",
+        "n": 60
+      },
+      {
+        "kind": "sortAsc"
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 1,
+          "b": 0
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 37: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      497,
+      -474,
+      239,
+      -303,
+      88,
+      -324
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 2,
+          "b": -1
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 0,
+          "a": 2,
+          "b": -5
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 85: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -110
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 0
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 5,
+          "b": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 147: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -315
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 3,
+          "b": 2
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 5,
+          "b": -2
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 186: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -60
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 2,
+          "b": 1
+        }
+      },
+      {
+        "kind": "take",
+        "n": 15
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 200: interpret did not throw, pipe threw: Assignment to constant variable.",
+    "input": [
+      109
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 2,
+          "b": 2
+        }
+      },
+      {
+        "kind": "take",
+        "n": 35
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "allocLinear",
+          "a": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 354: interpret did not throw, pipe threw: Assignment to constant variable.",
+    "input": [
+      -298
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": -1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 3,
+          "b": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 357: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      122
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": -1
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 4,
+          "r": 3,
+          "a": 4,
+          "b": 5
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 414: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -463
+    ],
+    "steps": [
+      {
+        "kind": "take",
+        "n": 21
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 0
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 419: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      105
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": -2
+        }
+      },
+      {
+        "kind": "dropWhile",
+        "spec": {
+          "kind": "mod",
+          "m": 5,
+          "r": 2
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 442: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -291
+    ],
+    "steps": [
+      {
+        "kind": "sort"
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": -1
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 3,
+          "r": 0,
+          "a": 2,
+          "b": -3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 466: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      433,
+      295
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 0
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 2,
+          "a": 2,
+          "b": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 489: interpret did not throw, pipe threw: Assignment to constant variable.",
+    "input": [
+      410,
+      240,
+      220
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 4,
+          "r": 3,
+          "a": 3,
+          "b": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 510: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -232
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 2,
+          "b": 2
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 4,
+          "b": -2
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 516: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -233
+    ],
+    "steps": [
+      {
+        "kind": "dropWhile",
+        "spec": {
+          "kind": "mod",
+          "m": 2,
+          "r": 1
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 3,
+          "b": 1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 573: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -30,
+      445,
+      68
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": 2
+        }
+      },
+      {
+        "kind": "reject",
+        "spec": {
+          "kind": "mod",
+          "m": 3,
+          "r": 2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 3,
+          "r": 1,
+          "a": 4,
+          "b": -3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 579: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -137,
+      247
+    ],
+    "steps": [
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "allocLinear",
+          "a": 2
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 1,
+          "b": 1
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 4,
+          "r": 1,
+          "a": 3,
+          "b": -1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 625: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      318
+    ],
+    "steps": [
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 3,
+          "r": 0,
+          "a": 3,
+          "b": 4
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": 2
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": 2
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 5,
+          "b": -1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 683: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      266
+    ],
+    "steps": [
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      },
+      {
+        "kind": "sortBy",
+        "spec": {
+          "kind": "sortCmpAsc"
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 1,
+          "a": 3,
+          "b": -4
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 699: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -6,
+      151,
+      -4
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 1,
+          "a": 5,
+          "b": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 747: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -472
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": 1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 4,
+          "b": 4
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 814: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -43
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "allocLinear",
+          "a": 2
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 832: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -68
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 4,
+          "r": 0,
+          "a": 3,
+          "b": 2
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 873: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      415
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 1,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 1,
+          "a": 2,
+          "b": -2
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 903: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      278
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": 2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 1,
+          "a": 5,
+          "b": -1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 906: interpret did not throw, pipe threw: Assignment to constant variable.",
+    "input": [
+      246
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": 1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 2,
+          "b": -3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 943: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -34,
+      -258,
+      -273,
+      330,
+      -262,
+      -249,
+      -115,
+      -181,
+      76,
+      415,
+      270,
+      -379,
+      467,
+      15,
+      -434,
+      -467,
+      -273,
+      -347,
+      -169
+    ],
+    "steps": [
+      {
+        "kind": "filter",
+        "spec": {
+          "kind": "allocMod",
+          "m": 2,
+          "r": 1
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": 0
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 979: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -490,
+      488,
+      -170,
+      -156,
+      189,
+      -178,
+      -23,
+      119,
+      343,
+      356,
+      -354,
+      366,
+      357,
+      314,
+      -364,
+      -58,
+      4,
+      423,
+      -159,
+      -222,
+      -180,
+      224,
+      -84,
+      495,
+      -57,
+      177,
+      -137,
+      -400,
+      -463,
+      -121,
+      -51,
+      -465,
+      409,
+      -460,
+      -418,
+      469,
+      -332,
+      -30,
+      -165,
+      136,
+      38,
+      360,
+      233,
+      184,
+      -213,
+      -416,
+      -307,
+      422,
+      37,
+      227,
+      398,
+      86,
+      181,
+      309,
+      -379,
+      422,
+      134,
+      -296,
+      205,
+      307,
+      95,
+      -20,
+      -77,
+      -419,
+      -251,
+      289,
+      389,
+      -417,
+      -53,
+      -294,
+      -294,
+      -121,
+      -424,
+      -307,
+      449,
+      435,
+      -299,
+      -480,
+      400,
+      -318,
+      309,
+      234,
+      437,
+      60,
+      315
+    ],
+    "steps": [
+      {
+        "kind": "drop",
+        "n": 68
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": 0
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 1,
+          "a": 1,
+          "b": -3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1008: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      226
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 2,
+          "b": -1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 2,
+          "b": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1012: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      48
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 1
+        }
+      },
+      {
+        "kind": "reject",
+        "spec": {
+          "kind": "mod",
+          "m": 3,
+          "r": 2
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 3,
+          "b": -1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1028: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -327
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 2,
+          "b": 1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1064: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -343,
+      -319,
+      221,
+      -369,
+      -248,
+      313,
+      64,
+      -272,
+      -239,
+      233,
+      388
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": 0
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 4,
+          "a": 1,
+          "b": -1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1091: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -103
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": -1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "allocLinear",
+          "a": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1163: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      228,
+      16,
+      254,
+      -100,
+      -462,
+      223,
+      -260,
+      22,
+      216,
+      -171,
+      -425,
+      -29,
+      36,
+      -124,
+      392,
+      48,
+      -435
+    ],
+    "steps": [
+      {
+        "kind": "reject",
+        "spec": {
+          "kind": "mod",
+          "m": 2,
+          "r": 0
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 0,
+          "a": 5,
+          "b": -5
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1271: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -54
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 1,
+          "b": 1
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 1,
+          "b": 2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 3,
+          "r": 0,
+          "a": 2,
+          "b": -5
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1282: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -3,
+      -88
+    ],
+    "steps": [
+      {
+        "kind": "filter",
+        "spec": {
+          "kind": "allocMod",
+          "m": 4,
+          "r": 0
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 2,
+          "b": 2
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1325: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -335
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": 2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 0,
+          "a": 1,
+          "b": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1339: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      496
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 3,
+          "b": 1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "allocLinear",
+          "a": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1387: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -322,
+      36,
+      381,
+      169,
+      32,
+      370,
+      -11,
+      91,
+      346
+    ],
+    "steps": [
+      {
+        "kind": "reject",
+        "spec": {
+          "kind": "allocMod",
+          "m": 4,
+          "r": 0
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 2,
+          "b": 2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 4,
+          "r": 2,
+          "a": 4,
+          "b": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1418: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      159
+    ],
+    "steps": [
+      {
+        "kind": "takeWhile",
+        "spec": {
+          "kind": "mod",
+          "m": 2,
+          "r": 1
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 1,
+          "b": 1
+        }
+      },
+      {
+        "kind": "dropWhile",
+        "spec": {
+          "kind": "allocMod",
+          "m": 4,
+          "r": 1
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 0,
+          "a": 3,
+          "b": 4
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1519: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      361
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 1,
+          "a": 2,
+          "b": -3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1529: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      211,
+      260,
+      249
+    ],
+    "steps": [
+      {
+        "kind": "reject",
+        "spec": {
+          "kind": "mod",
+          "m": 2,
+          "r": 1
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": 1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "identity"
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1550: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -487,
+      -36,
+      364,
+      -110,
+      -286,
+      354,
+      54,
+      -457,
+      363,
+      47
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 1,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 1,
+          "a": 3,
+          "b": 4
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1599: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -203,
+      -211,
+      86
+    ],
+    "steps": [
+      {
+        "kind": "dropWhile",
+        "spec": {
+          "kind": "mod",
+          "m": 3,
+          "r": 1
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 3,
+          "b": 1
+        }
+      },
+      {
+        "kind": "take",
+        "n": 121
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 1,
+          "a": 3,
+          "b": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1724: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -107
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 3,
+          "b": 1
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 2,
+          "r": 0,
+          "a": 5,
+          "b": 4
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1805: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -175
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 2,
+          "b": -2
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 1,
+          "b": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1896: interpret did not throw, pipe threw: Assignment to constant variable.",
+    "input": [
+      -42
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 3,
+          "a": 2,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 5,
+          "r": 0,
+          "a": 3,
+          "b": -3
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1917: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      87,
+      -99,
+      -107,
+      379,
+      150
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 1,
+          "a": 2,
+          "b": 0
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 4,
+          "r": 0,
+          "a": 5,
+          "b": 4
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1918: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      57
+    ],
+    "steps": [
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "linear",
+          "a": 2,
+          "b": 2
+        }
+      },
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": 1
+        }
+      },
+      {
+        "kind": "map",
+        "spec": {
+          "kind": "allocLinear",
+          "a": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "shrunk from seed 1928: interpret did not throw, jit threw: Assignment to constant variable.",
+    "input": [
+      -101,
+      -215,
+      35,
+      123
+    ],
+    "steps": [
+      {
+        "kind": "flatMap",
+        "spec": {
+          "kind": "flatMapRange",
+          "factor": 2,
+          "a": 1,
+          "b": -2
+        }
+      },
+      {
+        "kind": "filterMap",
+        "spec": {
+          "kind": "filterMapMod",
+          "m": 4,
+          "r": 1,
+          "a": 5,
+          "b": 0
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,1847 @@
+{
+  "version": 1,
+  "comment": "Fixed stratified perf corpus (W0b), derived from the W0a grammar (StreamStepKind/SinkStepKind/BoundaryStepKind/CallbackSpec in generate.ts and binding-specs.ts). Cases are built deterministically from that vocabulary rather than searched out of the seeded fuzz generator, so every stratum cell is guaranteed populated instead of hoped-for by RNG luck.",
+  "cases": [
+    {
+      "name": "single-op map (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 1,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        }
+      ]
+    },
+    {
+      "name": "single-op filter (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 2,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "single-op reject (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 3,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "reject",
+          "spec": {
+            "kind": "allocMod",
+            "m": 5,
+            "r": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "single-op filterMap (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 4,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 2,
+            "r": 1,
+            "a": 2,
+            "b": 3
+          }
+        }
+      ]
+    },
+    {
+      "name": "single-op take (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 5,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "take",
+          "n": 3000
+        }
+      ]
+    },
+    {
+      "name": "single-op drop (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "1",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 6,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "drop",
+          "n": 10000
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 7,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 2,
+            "r": 0
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 8,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 1,
+            "b": -5
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 0
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 9,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 3
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 2,
+            "r": 0
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 10,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "sort"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 2,
+            "r": 1
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 11,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 5,
+            "b": 3
+          }
+        },
+        {
+          "kind": "uniq"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 1
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=collect, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 12,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 3
+          }
+        },
+        {
+          "kind": "reverse"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 5,
+            "r": 2
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "map -> filter -> reduce (sentinel)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 13,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 2,
+            "r": 1
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceSub"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 14,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 2,
+            "b": -2
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 0
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceAdd"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 15,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 3
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 4,
+            "r": 2
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceAdd"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 16,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "sort"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 2,
+            "r": 0
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceAdd"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 17,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 4,
+            "b": -4
+          }
+        },
+        {
+          "kind": "uniq"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 1
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceSub"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=reduce-like, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 18,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 1
+          }
+        },
+        {
+          "kind": "reverse"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 4,
+            "r": 1
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceSub"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 19,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 2
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 5,
+            "r": 3
+          }
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 20,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 4,
+            "b": 1
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 3
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 21,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 1
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 2,
+            "r": 0
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 22,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "sort"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 5,
+            "r": 1
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 5,
+            "r": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 23,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 2,
+            "b": 4
+          }
+        },
+        {
+          "kind": "uniq"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 2,
+            "r": 0
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "2-3 ops, sink=short-circuit, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 24,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 3
+          }
+        },
+        {
+          "kind": "reverse"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 4,
+            "r": 3
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 25,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 1,
+            "b": 2
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 5,
+            "r": 0
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 2,
+            "r": 1,
+            "a": 5,
+            "b": -5
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 26,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 1,
+            "b": 2
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 3,
+            "b": 1
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 2,
+            "r": 0
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 3,
+            "r": 2,
+            "a": 4,
+            "b": 0
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 27,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 3
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 2,
+            "a": 3,
+            "b": -1
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 4,
+            "r": 0
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 2,
+            "r": 0,
+            "a": 1,
+            "b": -1
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 28,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 3,
+            "b": -2
+          }
+        },
+        {
+          "kind": "sort"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 2
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 3,
+            "r": 1,
+            "a": 4,
+            "b": 3
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 29,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 5,
+            "b": -4
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 1,
+            "b": 2
+          }
+        },
+        {
+          "kind": "uniq"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 1
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 5,
+            "r": 1,
+            "a": 2,
+            "b": -1
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=collect, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "collect",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 30,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 2
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 3,
+            "b": 1
+          }
+        },
+        {
+          "kind": "reverse"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 2,
+            "r": 1
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 3,
+            "r": 0,
+            "a": 2,
+            "b": 5
+          }
+        },
+        {
+          "kind": "toArray"
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 31,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 2,
+            "a": 1,
+            "b": 2
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 2,
+            "r": 0
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 5,
+            "r": 3,
+            "a": 5,
+            "b": 4
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceSub"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 32,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 2,
+            "b": -3
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 1,
+            "b": 1
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 2,
+            "r": 1
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 4,
+            "r": 3,
+            "a": 2,
+            "b": 0
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceSub"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 33,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 3
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 2,
+            "b": 0
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 4,
+            "r": 3
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 3,
+            "r": 2,
+            "a": 1,
+            "b": 2
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceAdd"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 34,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 3,
+            "b": -2
+          }
+        },
+        {
+          "kind": "sort"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 0
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 3,
+            "r": 2,
+            "a": 2,
+            "b": 3
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceAdd"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 35,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 5,
+            "b": -5
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 3,
+            "b": 0
+          }
+        },
+        {
+          "kind": "uniq"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 3
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 4,
+            "r": 0,
+            "a": 2,
+            "b": 2
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceSub"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=reduce-like, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 36,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 2
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 1,
+            "b": -1
+          }
+        },
+        {
+          "kind": "reverse"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 4,
+            "r": 0
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 4,
+            "r": 1,
+            "a": 3,
+            "b": 4
+          }
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceAdd"
+          },
+          "a1": 0
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 37,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 1,
+            "b": -1
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 2
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 2,
+            "r": 1,
+            "a": 4,
+            "b": 4
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 2,
+            "r": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 38,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 2,
+            "b": 4
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 1,
+            "b": 2
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 2
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 5,
+            "r": 2,
+            "a": 1,
+            "b": 1
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 5,
+            "r": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=none (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "none",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 39,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 3
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 2,
+            "b": -1
+          }
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 5,
+            "r": 0
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 3,
+            "r": 0,
+            "a": 1,
+            "b": -2
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 3,
+            "r": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (trivial, n=100)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100,
+        "callbackClass": "trivial"
+      },
+      "inputSeed": 40,
+      "size": 100,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "identity"
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 2,
+            "a": 3,
+            "b": -2
+          }
+        },
+        {
+          "kind": "sort"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 0
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 4,
+            "r": 1,
+            "a": 1,
+            "b": -1
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 5,
+            "r": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (arithmetic, n=10000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 41,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "linear",
+            "a": 5,
+            "b": 1
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 3,
+            "b": -1
+          }
+        },
+        {
+          "kind": "uniq"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 0
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 3,
+            "r": 1,
+            "a": 1,
+            "b": 4
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 4,
+            "r": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "4+ ops, sink=short-circuit, boundary=present (allocating, n=100000)",
+      "strata": {
+        "opCountBucket": "4+",
+        "sinkKind": "short-circuit",
+        "boundary": "present",
+        "size": 100000,
+        "callbackClass": "allocating"
+      },
+      "inputSeed": 42,
+      "size": 100000,
+      "steps": [
+        {
+          "kind": "map",
+          "spec": {
+            "kind": "allocLinear",
+            "a": 2
+          }
+        },
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 3,
+            "b": 1
+          }
+        },
+        {
+          "kind": "reverse"
+        },
+        {
+          "kind": "filter",
+          "spec": {
+            "kind": "allocMod",
+            "m": 2,
+            "r": 1
+          }
+        },
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 2,
+            "r": 0,
+            "a": 2,
+            "b": -2
+          }
+        },
+        {
+          "kind": "find",
+          "spec": {
+            "kind": "mod",
+            "m": 5,
+            "r": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "filterMap -> take (sentinel)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "none",
+        "boundary": "none",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 43,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "filterMap",
+          "spec": {
+            "kind": "filterMapMod",
+            "m": 4,
+            "r": 0,
+            "a": 1,
+            "b": 4
+          }
+        },
+        {
+          "kind": "take",
+          "n": 3000
+        }
+      ]
+    },
+    {
+      "name": "flatMap -> uniq -> count (sentinel)",
+      "strata": {
+        "opCountBucket": "2-3",
+        "sinkKind": "reduce-like",
+        "boundary": "present",
+        "size": 10000,
+        "callbackClass": "arithmetic"
+      },
+      "inputSeed": 44,
+      "size": 10000,
+      "steps": [
+        {
+          "kind": "flatMap",
+          "spec": {
+            "kind": "flatMapRange",
+            "factor": 1,
+            "a": 1,
+            "b": 2
+          }
+        },
+        {
+          "kind": "uniq"
+        },
+        {
+          "kind": "reduce",
+          "spec": {
+            "kind": "reduceAdd"
+          },
+          "a1": 0
+        }
+      ]
+    }
+  ]
+}

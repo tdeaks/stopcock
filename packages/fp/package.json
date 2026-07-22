@@ -12,6 +12,12 @@
   ],
   "type": "module",
   "sideEffects": false,
+  "imports": {
+    "#jit-loader": {
+      "stopcock-portable": "./src/jit-loader-portable.ts",
+      "default": "./src/jit-loader.ts"
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -79,9 +85,7 @@
     }
   },
   "scripts": {
-    "codegen": "bun run codegen/aot-compile.ts && bun run codegen/dual-inline.ts"
-  },
-  "devDependencies": {
-    "@rescript/runtime": "^12.0.0"
+    "codegen": "bun run codegen/dual-inline.ts && bun run codegen/portable-templates.ts",
+    "check:portable": "bun run scripts/check-portable-boundary.ts"
   }
 }

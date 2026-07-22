@@ -28,6 +28,7 @@ export default defineConfig({
     benchmark: {
       include: ['src/**/*.bench.ts'],
     },
+    setupFiles: ['./src/identity-setup.ts'],
     pool: 'forks',
     fileParallelism: true,
   },

@@ -1,4 +1,4 @@
-import { tryCompileFlow } from './fuse'
+import { compile } from './compile'
 
 export function flow<A, B>(f1: (a: A) => B): (a: A) => B
 export function flow<A, B, C>(f1: (a: A) => B, f2: (b: B) => C): (a: A) => C
@@ -244,35 +244,5 @@ export function flow<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,
 export function flow(...fns: Array<(x: unknown) => unknown>): (a: unknown) => unknown {
   const len = fns.length
   if (len === 1) return fns[0]
-  if (len === 2) {
-    const [f1, f2] = fns
-    return (a) => f2(f1(a))
-  }
-  if (len === 3) {
-    const [f1, f2, f3] = fns
-    return (a) => f3(f2(f1(a)))
-  }
-
-  // Try tagged fusion compilation first
-  const compiled = tryCompileFlow(fns)
-  if (compiled) return compiled
-
-  // Untagged. Return a direct composition closure (no fuse per call)
-  if (len === 4) {
-    const [f1, f2, f3, f4] = fns
-    return (a) => f4(f3(f2(f1(a))))
-  }
-  if (len === 5) {
-    const [f1, f2, f3, f4, f5] = fns
-    return (a) => f5(f4(f3(f2(f1(a)))))
-  }
-  if (len === 6) {
-    const [f1, f2, f3, f4, f5, f6] = fns
-    return (a) => f6(f5(f4(f3(f2(f1(a))))))
-  }
-  return (a: unknown) => {
-    let r = a
-    for (let i = 0; i < len; i++) r = (fns[i] as any)(r)
-    return r
-  }
+  return compile(...fns) as (a: unknown) => unknown
 }

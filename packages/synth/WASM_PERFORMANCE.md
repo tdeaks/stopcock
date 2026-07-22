@@ -172,7 +172,6 @@
 - The direct root-buffer ABI exposes stable runtime-owned left/right pointers to the generated worklet and offline runtime helpers, removing the extra Rust-side output copy in live playback and package render tests while preserving the older copied-output ABI for older embedded WASM blobs.
 - Sparse authored inputs are compacted for the WASM runtime: `workletInput()` and `connectInput()` still expose original channels, while `processorOptions.wasmInputMap` maps packed WASM lanes back to host input indices during the audio callback.
 - Connected but silent input buffers are detected in the generated worklet before copying into WASM. This still reads host-owned input samples, but it avoids repeated writes across the JS-to-WASM boundary for idle connected inputs and avoids stale samples when a lane goes from active to silent.
-- Browser smoke command used for the latest proof: `SYNTH_SMOKE_URL=http://127.0.0.1:4327/libraries/synth/ bun run --cwd apps/docs smoke:synth-wasm`.
 
 ## Native plugin path
 

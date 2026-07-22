@@ -11,13 +11,11 @@ import * as S from '../string'
 import type { Fn, LazyValue } from '../types'
 import {
   and as rootAnd,
-  explainFusion as rootExplainFusion,
-  getFusionMode as rootGetFusionMode,
-  getFusionStats as rootGetFusionStats,
-  resetFusionStats as rootResetFusionStats,
-  setFusionMode as rootSetFusionMode,
+  explainPipeline as rootExplainPipeline,
+  getOptimizerStats as rootGetOptimizerStats,
+  resetOptimizerStats as rootResetOptimizerStats,
   type Brand as RootBrand,
-  type FusionMode as RootFusionMode,
+  type OptimizerStats as RootOptimizerStats,
   type Predicate as RootPredicate,
 } from '..'
 
@@ -490,12 +488,11 @@ test('Root exports guard combinators and types', () => {
   expectTypeOf<RootUserId>().toEqualTypeOf<G.Brand<string, 'UserId'>>()
 })
 
-test('Root exports fusion control types', () => {
-  const explanation = rootExplainFusion(A.map((n: number) => n + 1))
+test('Root exports optimizer diagnostics types', () => {
+  const explanation = rootExplainPipeline(A.map((n: number) => n + 1))
 
-  expectTypeOf(rootSetFusionMode).toEqualTypeOf<(mode: RootFusionMode) => void>()
-  expectTypeOf(rootGetFusionMode()).toEqualTypeOf<RootFusionMode>()
-  expectTypeOf(rootGetFusionStats().mode).toEqualTypeOf<RootFusionMode>()
-  expectTypeOf(rootResetFusionStats).toEqualTypeOf<() => void>()
-  expectTypeOf(explanation.operations).toEqualTypeOf<readonly string[]>()
+  expectTypeOf(rootGetOptimizerStats()).toEqualTypeOf<Readonly<RootOptimizerStats>>()
+  expectTypeOf(rootResetOptimizerStats).toEqualTypeOf<() => void>()
+  expectTypeOf(explanation.segments).toEqualTypeOf<readonly import('../plan').SegmentShape[]>()
+  expectTypeOf(explanation.semantics).toEqualTypeOf<'exact' | 'pure'>()
 })

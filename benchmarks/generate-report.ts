@@ -1,19 +1,24 @@
 /**
- * Runs vitest bench and generates a markdown report.
- * Usage: bun run benchmarks/generate-report.ts "Bun 1.3 (dist)" --json
+ * Turns a vitest bench --outputJson file into a markdown report.
+ * Usage: bun run generate-report.ts --lane bun --results /tmp/bench-bun.json --identity /tmp/bench-bun-identity.json --json
  */
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { stdin } from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const MAX_BAR = 68
 
 export type Result = { name: string; hz: number; rme: string; samples: number }
 export type Suite = { title: string; results: Result[] }
-export type BenchmarkRowKind = 'stopcock' | 'library' | 'native-chain' | 'native-loop' | 'manual-js'
+export type BenchmarkRowKind =
+  | 'stopcock'
+  | 'library'
+  | 'native-chain'
+  | 'native-loop'
+  | 'manual-js'
+  | 'projection'
 
-type BaselineKind = Exclude<BenchmarkRowKind, 'stopcock'>
+type BaselineKind = Exclude<BenchmarkRowKind, 'stopcock' | 'projection'>
 
 export type WinRate = {
   wins: number
@@ -40,6 +45,7 @@ export type LossLedgerSummary = {
   }
   entries: LossLedgerEntry[]
   actionableLosses: LossLedgerEntry[]
+  projectionRowsExcluded: number
 }
 
 type BenchmarkEntry = {
@@ -57,9 +63,17 @@ type BenchmarkSuite = {
   entries: BenchmarkEntry[]
 }
 
+export type EngineIdentity = {
+  runtime: 'bun' | 'node' | 'deno' | 'unknown'
+  versions: { bun?: string; node?: string; deno?: string }
+  execPath: string
+  recordedAt: string
+}
+
 type BenchmarkMetadata = {
   benchmarkRuntimeLabel: string
   generatedAt: string
+  benchmarkEngine: EngineIdentity
   generator: {
     runtime: 'bun' | 'node' | 'deno' | 'unknown'
     versions: {
@@ -77,26 +91,27 @@ type BenchmarkMetadata = {
     allBaselines: number
   }
   includesNativeManualBaselines: boolean
+  projectionRowsExcluded: number
 }
 
 type VitestJsonBenchmark = {
-  name: string
-  hz: number
-  rme?: number
-  sampleCount?: number
-  samples?: unknown[]
+  name?: unknown
+  hz?: unknown
+  rme?: unknown
+  sampleCount?: unknown
+  samples?: unknown
 }
 
 type VitestJsonGroup = {
-  fullName?: string
-  name?: string
-  benchmarks?: VitestJsonBenchmark[]
+  fullName?: unknown
+  name?: unknown
+  benchmarks?: unknown
 }
 
 type VitestJsonOutput = {
   files?: Array<{
-    filepath?: string
-    groups?: VitestJsonGroup[]
+    filepath?: unknown
+    groups?: unknown
   }>
 }
 
@@ -114,51 +129,94 @@ const competitorPackages = [
   '@mobily/ts-belt',
 ]
 
-export function parseVitestTextOutput(raw: string): Suite[] {
-  const suites: Suite[] = []
-  let current: Suite | null = null
-
-  for (const line of raw.split('\n')) {
-    const suiteMatch = line.match(/[✓×]\s+\S+\s+>\s+(.+?)\s+\d+ms/)
-    if (suiteMatch) {
-      current = { title: suiteMatch[1].trim(), results: [] }
-      suites.push(current)
-      continue
-    }
-
-    const resultMatch = line.match(
-      /·\s+(.+?)\s{2,}([\d,]+\.\d+)\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+(±[\d.]+%)\s+(\d+)/,
-    )
-    if (resultMatch && current) {
-      current.results.push({
-        name: resultMatch[1].trim(),
-        hz: Number.parseFloat(resultMatch[2].replace(/,/g, '')),
-        rme: resultMatch[3],
-        samples: Number.parseInt(resultMatch[4], 10),
-      })
-    }
-  }
-
-  return suites
+type LaneConfig = {
+  engine: 'bun' | 'node' | 'deno'
+  label: string
+  sourceVsDist: 'source' | 'dist'
 }
 
+const LANES: Record<string, LaneConfig> = {
+  bun: { engine: 'bun', label: 'Bun', sourceVsDist: 'source' },
+  node: { engine: 'node', label: 'Node.js', sourceVsDist: 'source' },
+  deno: { engine: 'deno', label: 'Deno', sourceVsDist: 'source' },
+  'bun-dist': { engine: 'bun', label: 'Bun (dist)', sourceVsDist: 'dist' },
+  'node-dist': { engine: 'node', label: 'Node.js (dist)', sourceVsDist: 'dist' },
+  'deno-dist': { engine: 'deno', label: 'Deno (dist)', sourceVsDist: 'dist' },
+}
+
+class ReportError extends Error {}
+
+function fail(message: string): never {
+  throw new ReportError(message)
+}
+
+/** Validates and converts raw `vitest bench --outputJson` output. Throws on anything
+ * that would silently misrepresent the run: missing rows, duplicate names, non-finite hz. */
 export function parseVitestJsonOutput(raw: string): Suite[] {
-  const parsed = JSON.parse(raw) as VitestJsonOutput
+  let parsed: VitestJsonOutput
+  try {
+    parsed = JSON.parse(raw) as VitestJsonOutput
+  } catch (error) {
+    return fail(`results file is not valid JSON: ${(error as Error).message}`)
+  }
+
+  if (!Array.isArray(parsed.files) || parsed.files.length === 0) {
+    return fail('results JSON has no files — the bench run produced no output')
+  }
+
   const suites: Suite[] = []
 
-  for (const file of parsed.files ?? []) {
-    for (const group of file.groups ?? []) {
-      const title = normalizeJsonSuiteTitle(
-        group.fullName ?? group.name ?? file.filepath ?? 'benchmarks',
-      )
-      const results = (group.benchmarks ?? [])
-        .filter((benchmark) => Number.isFinite(benchmark.hz))
-        .map((benchmark) => ({
+  for (const file of parsed.files) {
+    const filepath = typeof file.filepath === 'string' ? file.filepath : '(unknown file)'
+    if (!Array.isArray(file.groups) || file.groups.length === 0) {
+      fail(`${filepath}: no benchmark groups — run may have failed or been filtered out`)
+    }
+
+    for (const group of file.groups as VitestJsonGroup[]) {
+      const rawTitle = group.fullName ?? group.name
+      if (typeof rawTitle !== 'string' || rawTitle.trim() === '') {
+        fail(`${filepath}: benchmark group missing a name`)
+      }
+      const title = normalizeJsonSuiteTitle(rawTitle)
+
+      if (!Array.isArray(group.benchmarks) || group.benchmarks.length === 0) {
+        fail(`${filepath} > ${title}: no benchmark rows — the group ran but produced nothing`)
+      }
+
+      const seenNames = new Set<string>()
+      const results: Result[] = []
+
+      for (const benchmark of group.benchmarks as VitestJsonBenchmark[]) {
+        if (typeof benchmark.name !== 'string' || benchmark.name.trim() === '') {
+          fail(`${filepath} > ${title}: benchmark row missing a name`)
+        }
+        if (seenNames.has(benchmark.name)) {
+          fail(`${filepath} > ${title}: duplicate benchmark row "${benchmark.name}"`)
+        }
+        seenNames.add(benchmark.name)
+
+        if (typeof benchmark.hz !== 'number' || !Number.isFinite(benchmark.hz)) {
+          fail(
+            `${filepath} > ${title} > ${benchmark.name}: hz is ${String(benchmark.hz)} — the benchmark did not complete cleanly`,
+          )
+        }
+
+        const rme = typeof benchmark.rme === 'number' ? benchmark.rme : undefined
+        const sampleCount =
+          typeof benchmark.sampleCount === 'number'
+            ? benchmark.sampleCount
+            : Array.isArray(benchmark.samples)
+              ? benchmark.samples.length
+              : 0
+
+        results.push({
           name: benchmark.name,
           hz: benchmark.hz,
-          rme: benchmark.rme == null ? '' : `±${benchmark.rme.toFixed(2)}%`,
-          samples: benchmark.sampleCount ?? benchmark.samples?.length ?? 0,
-        }))
+          rme: rme == null ? '' : `±${rme.toFixed(2)}%`,
+          samples: sampleCount,
+        })
+      }
+
       suites.push({ title, results })
     }
   }
@@ -166,20 +224,31 @@ export function parseVitestJsonOutput(raw: string): Suite[] {
   return suites
 }
 
-export function parseBenchmarkInput(raw: string): Suite[] {
-  const trimmed = raw.trim()
-  if (!trimmed) return []
-
-  if (trimmed.startsWith('{')) {
-    return parseVitestJsonOutput(trimmed)
+export function parseIdentity(raw: string): EngineIdentity {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch (error) {
+    return fail(`identity file is not valid JSON: ${(error as Error).message}`)
   }
 
-  return parseVitestTextOutput(raw)
+  const identity = parsed as Partial<EngineIdentity>
+  if (
+    identity == null ||
+    typeof identity.runtime !== 'string' ||
+    typeof identity.execPath !== 'string' ||
+    typeof identity.versions !== 'object'
+  ) {
+    return fail('identity file is malformed — missing runtime/execPath/versions')
+  }
+
+  return identity as EngineIdentity
 }
 
 export function classifyBenchmarkRow(name: string): BenchmarkRowKind {
   const lower = name.toLowerCase()
 
+  if (lower.includes('projected') || lower.includes('extrapolat')) return 'projection'
   if (lower.startsWith('stopcock')) return 'stopcock'
   if (lower.includes('native chain')) return 'native-chain'
   if (lower.includes('native loop')) return 'native-loop'
@@ -201,20 +270,27 @@ export function summarizeLossLedger(suites: Suite[]): LossLedgerSummary {
   let libraryTotal = 0
   let allWins = 0
   let allTotal = 0
+  let projectionRowsExcluded = 0
   const entries: LossLedgerEntry[] = []
 
   for (const suite of suites) {
-    const stopcockRows = suite.results.filter(
+    const nonProjectionResults = suite.results.filter((row) => {
+      const isProjection = classifyBenchmarkRow(row.name) === 'projection'
+      if (isProjection) projectionRowsExcluded += 1
+      return !isProjection
+    })
+
+    const stopcockRows = nonProjectionResults.filter(
       (row) => classifyBenchmarkRow(row.name) === 'stopcock',
     )
     if (stopcockRows.length === 0) continue
 
     const stopcock = fastestRow(stopcockRows)
-    const baselines = suite.results.filter((row) => !stopcockRows.includes(row))
+    const baselines = nonProjectionResults.filter((row) => !stopcockRows.includes(row))
     if (baselines.length === 0) continue
 
     allTotal += 1
-    if (stopcock.hz >= fastestRow(suite.results).hz) {
+    if (stopcock.hz >= fastestRow(nonProjectionResults).hz) {
       allWins += 1
     }
 
@@ -245,16 +321,15 @@ export function summarizeLossLedger(suites: Suite[]): LossLedgerSummary {
     }
   }
 
-  const summary: LossLedgerSummary = {
+  return {
     winRates: {
       libraryOnly: toWinRate(libraryWins, libraryTotal),
       allBaselines: toWinRate(allWins, allTotal),
     },
     entries,
     actionableLosses: entries.filter((entry) => entry.actionable),
+    projectionRowsExcluded,
   }
-
-  return summary
 }
 
 function normalizeJsonSuiteTitle(fullName: string): string {
@@ -301,15 +376,17 @@ function renderSuite(suite: Suite): string {
   if (results.length === 0) return ''
 
   const fastest = Math.max(...results.map((result) => result.hz))
-  const slowest = Math.min(...results.map((result) => result.hz))
   const nameWidth = Math.max(...results.map((result) => result.name.length), 8)
   const hzWidth = Math.max(...results.map((result) => formatHz(result.hz).length), 9)
   const rmeWidth = Math.max(...results.map((result) => result.rme.length), 6)
   const samplesWidth = Math.max(...results.map((result) => String(result.samples).length), 7)
 
   const lines = results.map((result) => {
+    const kind = classifyBenchmarkRow(result.name)
     const diff =
-      result.hz === fastest ? 'fastest' : `-${((1 - result.hz / fastest) * 100).toFixed(2)}%`
+      result.hz === fastest
+        ? 'fastest'
+        : `-${((1 - result.hz / fastest) * 100).toFixed(2)}%${kind === 'projection' ? ' (projection)' : ''}`
     const barWidth = Math.max(1, Math.round((result.hz / fastest) * MAX_BAR))
     const bar = '#'.repeat(barWidth)
 
@@ -324,7 +401,9 @@ function renderSuite(suite: Suite): string {
     ].join(' ')
   })
 
-  const fastestName = results.find((result) => result.hz === fastest)?.name ?? 'unknown'
+  const fastestResult = results.find((result) => result.hz === fastest)
+  const slowest = Math.min(...results.map((result) => result.hz))
+  const fastestName = fastestResult?.name ?? 'unknown'
   const speedup = (fastest / slowest).toFixed(1)
 
   return [
@@ -395,8 +474,14 @@ async function readBenchmarkDependencyVersions(): Promise<Record<string, string>
   return versions
 }
 
+function formatEngineLabel(lane: LaneConfig, identity: EngineIdentity): string {
+  const version = identity.versions[identity.runtime as 'bun' | 'node' | 'deno']
+  return version ? `${lane.label} ${version}` : lane.label
+}
+
 async function createMetadata(
-  runtime: string,
+  lane: LaneConfig,
+  identity: EngineIdentity,
   summary: LossLedgerSummary,
 ): Promise<BenchmarkMetadata> {
   const versions = process.versions as NodeJS.ProcessVersions & { bun?: string; deno?: string }
@@ -409,8 +494,9 @@ async function createMetadata(
         : 'unknown'
 
   return {
-    benchmarkRuntimeLabel: runtime,
+    benchmarkRuntimeLabel: formatEngineLabel(lane, identity),
     generatedAt: new Date().toISOString(),
+    benchmarkEngine: identity,
     generator: {
       runtime: runtimeName,
       versions: {
@@ -422,32 +508,47 @@ async function createMetadata(
       arch: process.arch,
     },
     dependencies: await readBenchmarkDependencyVersions(),
-    sourceVsDist: /dist/i.test(runtime) ? 'dist' : /source/i.test(runtime) ? 'source' : 'unknown',
+    sourceVsDist: lane.sourceVsDist,
     winRateDenominators: {
       libraryOnly: summary.winRates.libraryOnly.total,
       allBaselines: summary.winRates.allBaselines.total,
     },
     includesNativeManualBaselines: true,
+    projectionRowsExcluded: summary.projectionRowsExcluded,
   }
 }
 
 function renderMarkdown(
   groups: Map<string, Suite[]>,
-  runtime: string,
   summary: LossLedgerSummary,
   metadata: BenchmarkMetadata,
 ): string {
   const out: string[] = [
     '# Benchmarks',
     '',
-    `> **stopcock** wins **${summary.winRates.libraryOnly.wins}/${summary.winRates.libraryOnly.total}** library-only comparisons (${summary.winRates.libraryOnly.percentage}%) and **${summary.winRates.allBaselines.wins}/${summary.winRates.allBaselines.total}** comparisons including native/manual baselines (${summary.winRates.allBaselines.percentage}%) on ${runtime}.`,
+    `> **stopcock** wins **${summary.winRates.libraryOnly.wins}/${summary.winRates.libraryOnly.total}** comparisons against library peers only (${summary.winRates.libraryOnly.percentage}%), and **${summary.winRates.allBaselines.wins}/${summary.winRates.allBaselines.total}** comparisons counting every baseline including native-loop/manual-js ceiling rows (${summary.winRates.allBaselines.percentage}%), on ${metadata.benchmarkRuntimeLabel}.`,
     '',
-    'All numbers in ops/sec (higher is better). Native loops and manual JavaScript rows are ceiling baselines, not peer FP-library competitors.',
+    'All numbers in ops/sec (higher is better). Native loops and manual JavaScript rows are ceiling baselines, not peer FP-library competitors, and are only counted in the all-baselines denominator.',
     '',
+  ]
+
+  if (metadata.projectionRowsExcluded > 0) {
+    out.push(
+      `${metadata.projectionRowsExcluded} projected/extrapolated row(s) were found and excluded from every win-rate number above; they still appear in the per-suite tables below, labeled "(projection)".`,
+      '',
+    )
+  }
+
+  out.push(
     '## Metadata',
     '',
     `- Runtime: ${metadata.benchmarkRuntimeLabel}`,
-    `- Generated by: ${metadata.generator.runtime} (${Object.entries(metadata.generator.versions)
+    `- Bench engine (recorded from inside the worker process): ${metadata.benchmarkEngine.runtime} ${
+      metadata.benchmarkEngine.versions[
+        metadata.benchmarkEngine.runtime as 'bun' | 'node' | 'deno'
+      ] ?? ''
+    } (execPath: ${metadata.benchmarkEngine.execPath})`,
+    `- Report generated by: ${metadata.generator.runtime} (${Object.entries(metadata.generator.versions)
       .filter(([, version]) => version != null)
       .map(([name, version]) => `${name} ${version}`)
       .join(', ')})`,
@@ -455,10 +556,11 @@ function renderMarkdown(
     `- Competitor versions: ${Object.entries(metadata.dependencies)
       .map(([name, version]) => `${name}@${version}`)
       .join(', ')}`,
-    `- Win-rate denominator: library-only ${summary.winRates.libraryOnly.total}; all-baselines ${summary.winRates.allBaselines.total}`,
-    `- Native/manual baselines included: ${metadata.includesNativeManualBaselines ? 'yes' : 'no'}`,
+    `- Win-rate denominator "library-only" (${summary.winRates.libraryOnly.total}): counts only suites where stopcock has at least one library-peer baseline in the same suite.`,
+    `- Win-rate denominator "all-baselines" (${summary.winRates.allBaselines.total}): counts every suite with a stopcock row, against every baseline present including native-loop/manual-js ceiling rows.`,
+    `- Projection rows excluded from both denominators: ${metadata.projectionRowsExcluded}`,
     '',
-  ]
+  )
 
   if (summary.actionableLosses.length > 0) {
     out.push('## Actionable Losses')
@@ -489,13 +591,13 @@ function renderMarkdown(
   out.push('')
   out.push('## Scoreboard')
   out.push('')
-  out.push('| Denominator | Wins | Total | Win Rate |')
-  out.push('|---|---:|---:|---:|')
+  out.push('| Denominator | Wins | Total | Win Rate | What it counts |')
+  out.push('|---|---:|---:|---:|---|')
   out.push(
-    `| Library peers only | ${summary.winRates.libraryOnly.wins} | ${summary.winRates.libraryOnly.total} | ${summary.winRates.libraryOnly.percentage}% |`,
+    `| Library peers only | ${summary.winRates.libraryOnly.wins} | ${summary.winRates.libraryOnly.total} | ${summary.winRates.libraryOnly.percentage}% | Suites with at least one library-peer baseline (ramda, lodash-es, etc). Excludes native-loop/manual-js and projection rows. |`,
   )
   out.push(
-    `| All baselines | ${summary.winRates.allBaselines.wins} | ${summary.winRates.allBaselines.total} | ${summary.winRates.allBaselines.percentage}% |`,
+    `| All baselines | ${summary.winRates.allBaselines.wins} | ${summary.winRates.allBaselines.total} | ${summary.winRates.allBaselines.percentage}% | Every suite with a stopcock row, against every baseline present including native-loop/manual-js ceiling rows. Excludes projection rows. |`,
   )
   out.push('')
 
@@ -509,46 +611,76 @@ function runtimeSlug(runtime: string): string {
     .replace(/^-|-$/g, '')
 }
 
-async function readStdin(): Promise<string> {
-  const chunks: Buffer[] = []
+function parseArgs(argv: string[]): { lane: string; results: string; identity?: string; json: boolean } {
+  let lane: string | undefined
+  let results: string | undefined
+  let identity: string | undefined
+  let json = false
 
-  for await (const chunk of stdin) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg === '--lane') lane = argv[++i]
+    else if (arg === '--results') results = argv[++i]
+    else if (arg === '--identity') identity = argv[++i]
+    else if (arg === '--json') json = true
   }
 
-  return Buffer.concat(chunks).toString('utf8')
+  if (!lane) fail('missing --lane <bun|node|deno|bun-dist|node-dist|deno-dist>')
+  if (!results) fail('missing --results <path to vitest --outputJson file>')
+
+  return { lane: lane!, results: results!, identity, json }
 }
 
 async function main(): Promise<void> {
-  const raw = await readStdin()
+  const { lane: laneName, results: resultsPath, identity: identityPath, json } = parseArgs(
+    process.argv.slice(2),
+  )
 
-  if (!raw.trim()) {
-    console.error(
-      'Pipe vitest bench output: bunx vitest bench 2>&1 | bun run benchmarks/generate-report.ts',
+  const lane = LANES[laneName]
+  if (!lane) fail(`unknown lane "${laneName}" — expected one of: ${Object.keys(LANES).join(', ')}`)
+
+  const resultsRaw = await readFile(resultsPath, 'utf8').catch((error: NodeJS.ErrnoException) =>
+    fail(`could not read results file ${resultsPath}: ${error.message}`),
+  )
+  const suites = parseVitestJsonOutput(resultsRaw)
+
+  if (!identityPath) {
+    fail(
+      `missing --identity <path> — cannot verify the "${laneName}" lane actually ran under ${lane.engine} without the recorded engine identity`,
     )
-    process.exit(1)
+  }
+  const identityRaw = await readFile(identityPath, 'utf8').catch((error: NodeJS.ErrnoException) =>
+    fail(`could not read identity file ${identityPath}: ${error.message}`),
+  )
+  const identity = parseIdentity(identityRaw)
+
+  if (identity.runtime !== lane.engine) {
+    fail(
+      `lane "${laneName}" expects the bench worker to run under ${lane.engine}, but the recorded identity says it ran under ${identity.runtime} (execPath: ${identity.execPath}). Refusing to mislabel the report.`,
+    )
   }
 
-  const runtime = process.argv[2] ?? 'current runtime'
-  const suites = parseBenchmarkInput(raw)
   const groups = groupSuites(suites)
   const summary = summarizeLossLedger(suites)
-  const metadata = await createMetadata(runtime, summary)
+  const metadata = await createMetadata(lane, identity, summary)
 
-  if (process.argv.includes('--json')) {
+  if (json) {
     const jsonOut = {
       metadata,
       suites: toStructuredJSON(groups),
       lossLedger: summary,
     }
-    const jsonPath = path.resolve(__dirname, '../docs', `benchmarks-${runtimeSlug(runtime)}.json`)
+    const jsonPath = path.resolve(__dirname, '../docs', `benchmarks-${runtimeSlug(laneName)}.json`)
     await writeFile(jsonPath, `${JSON.stringify(jsonOut, null, 2)}\n`)
-    console.error(`Wrote docs/benchmarks-${runtimeSlug(runtime)}.json`)
+    console.error(`Wrote docs/benchmarks-${runtimeSlug(laneName)}.json`)
   }
 
-  console.log(renderMarkdown(groups, runtime, summary, metadata))
+  console.log(renderMarkdown(groups, summary, metadata))
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
-  await main()
+  main().catch((error: unknown) => {
+    console.error(error instanceof ReportError ? `generate-report: ${error.message}` : error)
+    process.exit(1)
+  })
 }
