@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0B
-Current slice: IMPLEMENT_COHORT_VERSION_AUTHORITY
-Last verified commit: a17e57e16332d5d5b4b9e66458ec4907de6cb528
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -53,7 +53,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED        | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                         |
 | S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready |
-| S0B   | IN_PROGRESS        | —                                                                                                                                                                                                                                                                                                                                                                                      |
+| S0B   | CHECKPOINT_PENDING | —; deterministic cohort version authority implemented and independently validated; live package manifests and lockfile remain unchanged                                                                                                                                                                                                                                               |
 | S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                                                                                                                                                                                                                                                                  |
 | S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                            |
 | S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                          |
@@ -128,6 +128,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-24) Completed S0R with all 20 base public packages and private
       Synth's bounded compatibility prerequisites marked ready; the
       fail-closed readiness promotion gate reports no blocker.
+- [x] (2026-07-24) Implemented and independently validated S0B's deterministic
+      cohort version authority, filtered Changesets integration, transactional
+      private-byte preservation, and guarded root command surface without
+      aligning the live manifests or lockfile.
 
 ## Evidence log
 
@@ -366,6 +370,40 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     all passed;
   - focused formatting and `git diff --check` passed, and every non-ledger
     dirty path remains inside the immutable `diff-source-types` target.
+- S0B cohort version authority:
+  - startup HEAD was
+    `76cb1a595c220fb9292efe88feb8f550efb69aeb`, with a clean worktree on the
+    recorded branch and isolated worktree;
+  - the frozen base and prior verified commit were ancestors, both preserved
+    source-plan hashes matched the canonical pins, and the trusted project
+    configuration plus custom Stopcock 2.0 agents were active;
+  - `tooling/v2-cohort.mjs` now derives the selected public inventory, consumes
+    the installed Changesets planner through its CLI-scoped dependency graph,
+    filters mixed, private-only, and synthetic excluded releases, and provides
+    deterministic `plan`, `align-next`, `advance-next`, `join-current`,
+    `check`, and evidence-gated `align-stable` operations;
+  - mutation operations snapshot and transactionally restore controlled
+    Changesets, manifest, changelog, and lockfile bytes on failure, and assert
+    excluded private workspace bytes both before and after lockfile work;
+  - the focused fixture suite passed 8 tests covering mixed starting versions,
+    patch/minor/major changesets, `0.0.0`, initial alignment, advancement,
+    conditional optimizer join, rollback, stable exit, exact range
+    normalization, private-only changeset retention, missing private versions,
+    and filtered synthetic prerelease-exit releases;
+  - two live `plan --target 2.0.0-next.0` runs were byte-identical with SHA-256
+    `72e9efdabe132e468e939ccfd2d8f281f3bb968b29becc15eeda94f10fb1bdf7`
+    and left the worktree unchanged;
+  - the readiness gate still reports 21 packages, comprising 20 public
+    packages and private Synth, with no blocker;
+  - the controller regression suite passed 19 tests, and syntax, focused lint,
+    focused formatting, and `git diff --check` all passed;
+  - an independent `v2_test_runner` repeated the 8 cohort tests, 19 controller
+    tests, readiness, syntax, lint, formatting, diff hygiene, and live plan
+    determinism without changing tracked files or leaving a process running;
+  - the slice changes only the root command surface, the cohort authority, its
+    focused tests, and this ledger. No package manifest, changelog, Changesets
+    state, lockfile, generated artifact, runtime source, or external state was
+    changed.
 
 ## Surprises and discoveries
 
@@ -424,6 +462,19 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   `unknown` through the current generic `dual` result. The intended overloads
   and executable two-argument dispatch were already sound, but Diff had no
   package-local public type or packed-consumer regression contract.
+- The installed Changesets implementation exposes the required planner,
+  prerelease, and applier modules only through `@changesets/cli`'s isolated
+  dependency graph. A CLI-package-scoped `createRequire` reaches those exact
+  installed modules without adding or hoisting another dependency.
+- The installed prerelease-exit planner really does synthesize excluded
+  releases when private workspaces are absent from `preVersions`: the fixture
+  observed Synth, a versioned private app, docs, and benchmarks. Filtering
+  those releases before the applier is therefore an exercised safety
+  requirement rather than a theoretical guard.
+- The S10J topology authority has one canonical artifact path,
+  `artifacts/v2/optimizer-topology-decision.json`. The cohort authority can
+  admit the optional optimizer only from an active prerelease join or a
+  schema-valid direct-package decision at that path.
 
 ## Decision log
 
@@ -538,19 +589,50 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   build and ship.
   Date: 2026-07-24.
 
+- Decision: Checkpoint S0B's version authority before any live version,
+  changelog, prerelease-state, or lockfile alignment.
+  Rationale: The additive authority and its destructive-boundary fixtures form
+  an independently valid working slice; packer and Synth evidence must exist
+  before the repository's live release metadata is normalized.
+  Date: 2026-07-24.
+
+- Decision: Normalize every selected public package to one explicit target,
+  use exact internal prerelease peer ranges, use `^2.0.0` stable peer ranges,
+  and keep workspace-only source dependency ranges as `workspace:*`.
+  Rationale: This prevents ordinary bump arithmetic or npm prerelease semantics
+  from splitting the coordinated cohort while preserving source-workspace
+  intent.
+  Date: 2026-07-24.
+
+- Decision: Admit `@stopcock/fp-optimizer` only through an explicit
+  optimizer-naming pending changeset plus active join, or the canonical S10J
+  direct-package decision.
+  Rationale: Merely discovering a new workspace or an unrelated pending
+  changeset cannot be allowed to mutate S0's frozen selected inventory.
+  Date: 2026-07-24.
+
+- Decision: Treat all cohort mutations as byte-restorable transactions and
+  verify excluded private workspace bytes immediately after filtered
+  Changesets application and again after lockfile generation.
+  Rationale: A post-lockfile-only assertion cannot distinguish an unsafe
+  Changesets mutation from a later lockfile-side effect, and failure recovery
+  cannot depend on Git metadata commands inside the controller.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-None. S0R's three recorded package-readiness blockers are remediated, the
-complete public cohort and private Synth prerequisites are ready, and S0B is
-dependency-eligible.
+None. The deterministic version-authority slice is independently valid. S0B
+still owns the immutable packer and packed-manifest checker, private Synth
+compatibility runner, live cohort alignment, and complete packed exit gate
+before S1 becomes eligible.
 
 ## Exact next action
 
-Start S0B from a clean worktree. Implement and focused-test the deterministic
-`tooling/v2-cohort.mjs` version authority as the first additive S0B slice,
-including filtered Changesets planning and private-workspace byte-preservation
-fixtures; do not align versions, rewrite the lockfile, or publish until that
-authority is independently valid.
+From the clean version-authority checkpoint, implement and focused-test
+`tooling/v2-pack-cohort.mjs` plus `tooling/v2-cohort.mjs check-packed` as the
+next independently valid S0B slice. Prove reproducible immutable development
+manifests and exact packed cohort identity; do not align the live manifests or
+lockfile, run Synth compatibility, or publish in that slice.
 
 ## Outcomes and retrospective
 
@@ -595,3 +677,11 @@ declaration-buildable, and source plus packed consumers freeze both call
 forms. The complete 20-package public readiness cohort and private Synth
 compatibility prerequisites now have no blocked or waived record, so S0R is
 complete and S0B is the next canonical stage.
+
+S0B now has an independently valid deterministic version authority with real
+Changesets integration, explicit conditional-inventory authority, private-byte
+preservation, and transaction rollback. The live package versions, dependency
+ranges, changelogs, prerelease state, and lockfile remain untouched, so this is
+a partial S0B checkpoint rather than the stage exit. The immutable packer,
+packed-manifest checker, private Synth runner, and live aligned cohort remain
+ordered follow-up work.

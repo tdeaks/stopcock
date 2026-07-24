@@ -12,6 +12,7 @@
   "scripts": {
     "test": "vp test run",
     "test:controller": "node --test tooling/__tests__/stopcock-v2-checkpoint.test.mjs",
+    "test:v2-cohort": "node --test tooling/__tests__/v2-cohort.test.mjs",
     "test:packages": "vp test run --exclude='packages/synth/**'",
     "test:types": "node tooling/check-package-type-tests.mjs",
     "lint": "vp lint . --report-unused-disable-directives",
@@ -19,7 +20,13 @@
     "lint:ci": "vp lint . --deny-warnings --report-unused-disable-directives",
     "test:coverage": "vp test run --coverage",
     "changeset": "vp exec changeset",
-    "changeset:version": "vp exec changeset version && vp install --lockfile-only"
+    "changeset:version": "vp exec changeset version && vp install --lockfile-only",
+    "release:v2:plan": "node tooling/v2-cohort.mjs plan",
+    "release:v2:align-next": "node tooling/v2-cohort.mjs align-next",
+    "release:v2:advance-next": "node tooling/v2-cohort.mjs advance-next",
+    "release:v2:join-current": "node tooling/v2-cohort.mjs join-current",
+    "release:v2:check-cohort": "node tooling/v2-cohort.mjs check",
+    "release:v2:align-stable": "node tooling/v2-cohort.mjs align-stable"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.7.0",
