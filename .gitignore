@@ -34,3 +34,6 @@ playground/
 !/docs/superpowers/plans/2026-07-24-stopcock-v2-performance-density-superplan.md
 !/docs/superpowers/plans/2026-07-24-stopcock-fp-performance-frontier-implementation.md
 !/docs/superpowers/plans/2026-07-24-fp-maximum-bundle-size-reduction.md
+!/docs/superpowers/contracts/
+/docs/superpowers/contracts/*
+!/docs/superpowers/contracts/stopcock-v2-s0-architecture-contract.md
