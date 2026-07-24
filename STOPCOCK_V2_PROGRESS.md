@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0R
-Current slice: REMEDIATE_DIFF_SOURCE_TYPES
-Last verified commit: c0fbb6e03b3accf3756242184d0a288f8319f72f
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -49,39 +49,39 @@ controller never performs that external mutation itself.
 Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 `GATE_PASSED`, `STOPPED_BY_PLAN`, and `BLOCKED`.
 
-| Stage | Status      | Verified commit or evidence                                                                                                                    |
-| ----- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| S0    | GATE_PASSED | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers |
-| S0R   | IN_PROGRESS | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains |
-| S0B   | NOT_STARTED | —                                                                                                                                              |
-| S1A   | NOT_STARTED | Consumer, size, and topology evidence                                                                                                          |
-| S1B   | NOT_STARTED | Dedicated performance-profile qualification                                                                                                    |
-| S1C   | NOT_STARTED | Frozen runtime, startup, and memory baselines                                                                                                  |
-| S2    | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                       |
-| S3A   | NOT_STARTED | Initializer purity                                                                                                                             |
-| S3B   | NOT_STARTED | Untagged internal duals                                                                                                                        |
-| S4    | NOT_STARTED | —                                                                                                                                              |
-| S5A   | NOT_STARTED | Trusted provenance                                                                                                                             |
-| S5B   | NOT_STARTED | Measured retention policy                                                                                                                      |
-| S6    | NOT_STARTED | —                                                                                                                                              |
-| S7    | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                       |
-| S8    | NOT_STARTED | —                                                                                                                                              |
-| S9    | NOT_STARTED | —                                                                                                                                              |
-| S10   | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                       |
-| S10X  | NOT_STARTED | Conditional optimizer extraction                                                                                                               |
-| S10J  | NOT_STARTED | Optimizer topology decision                                                                                                                    |
-| S11   | NOT_STARTED | —                                                                                                                                              |
-| P1A   | NOT_STARTED | Array Iter kernels                                                                                                                             |
-| P1B   | NOT_STARTED | Typed-array Iter admission                                                                                                                     |
-| P2    | NOT_STARTED | Typed-array policy                                                                                                                             |
-| P3A   | NOT_STARTED | Allocation evidence infrastructure                                                                                                             |
-| P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                 |
-| P4    | NOT_STARTED | Object, Record, and Map candidates                                                                                                             |
-| DISP  | NOT_STARTED | Optional-candidate dispositions                                                                                                                |
-| S12P  | NOT_STARTED | —                                                                                                                                              |
-| S12   | NOT_STARTED | —                                                                                                                                              |
-| S13   | NOT_STARTED | External RC publication remains user-authorized                                                                                                |
-| S14   | NOT_STARTED | Stable acceptance and publication remain user-authorized                                                                                       |
+| Stage | Status             | Verified commit or evidence                                                                                                                                                                                                                                                                                                                                                            |
+| ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S0    | GATE_PASSED        | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                         |
+| S0R   | CHECKPOINT_PENDING | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready |
+| S0B   | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
+| S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                                                                                                                                                                                                                                                                  |
+| S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                            |
+| S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                          |
+| S2    | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                               |
+| S3A   | NOT_STARTED        | Initializer purity                                                                                                                                                                                                                                                                                                                                                                     |
+| S3B   | NOT_STARTED        | Untagged internal duals                                                                                                                                                                                                                                                                                                                                                                |
+| S4    | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
+| S5A   | NOT_STARTED        | Trusted provenance                                                                                                                                                                                                                                                                                                                                                                     |
+| S5B   | NOT_STARTED        | Measured retention policy                                                                                                                                                                                                                                                                                                                                                              |
+| S6    | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
+| S7    | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                               |
+| S8    | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
+| S9    | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
+| S10   | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                               |
+| S10X  | NOT_STARTED        | Conditional optimizer extraction                                                                                                                                                                                                                                                                                                                                                       |
+| S10J  | NOT_STARTED        | Optimizer topology decision                                                                                                                                                                                                                                                                                                                                                            |
+| S11   | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
+| P1A   | NOT_STARTED        | Array Iter kernels                                                                                                                                                                                                                                                                                                                                                                     |
+| P1B   | NOT_STARTED        | Typed-array Iter admission                                                                                                                                                                                                                                                                                                                                                             |
+| P2    | NOT_STARTED        | Typed-array policy                                                                                                                                                                                                                                                                                                                                                                     |
+| P3A   | NOT_STARTED        | Allocation evidence infrastructure                                                                                                                                                                                                                                                                                                                                                     |
+| P3B   | NOT_STARTED        | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                         |
+| P4    | NOT_STARTED        | Object, Record, and Map candidates                                                                                                                                                                                                                                                                                                                                                     |
+| DISP  | NOT_STARTED        | Optional-candidate dispositions                                                                                                                                                                                                                                                                                                                                                        |
+| S12P  | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
+| S12   | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
+| S13   | NOT_STARTED        | External RC publication remains user-authorized                                                                                                                                                                                                                                                                                                                                        |
+| S14   | NOT_STARTED        | Stable acceptance and publication remain user-authorized                                                                                                                                                                                                                                                                                                                               |
 
 ## Progress
 
@@ -121,6 +121,13 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       overloads with Date-local length dispatch, added source and packed
       consumer contracts, and independently validated its complete
       current-version package surface.
+- [x] (2026-07-24) Repaired Diff's two rank-2 `dual` overload assignments with
+      package-local declaration assertions, added source and packed consumer
+      contracts, and independently validated its complete current-version
+      package surface.
+- [x] (2026-07-24) Completed S0R with all 20 base public packages and private
+      Synth's bounded compatibility prerequisites marked ready; the
+      fail-closed readiness promotion gate reports no blocker.
 
 ## Evidence log
 
@@ -325,6 +332,40 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     satisfy this corrective slice;
   - focused formatting and `git diff --check` passed, and every non-ledger
     dirty path remains inside the immutable `date-source-types` target.
+- S0R Diff remediation:
+  - startup HEAD was
+    `a9697d72ff81d9bf5647d52a8d73adae96e58dcd`, with a clean worktree on the
+    recorded branch and isolated worktree;
+  - both preserved source-plan hashes matched the canonical pins, the frozen
+    base and last verified commit were ancestors, and the trusted project
+    configuration plus the `v2_explorer` and `v2_test_runner` agents were
+    active;
+  - the initial source-type probe reproduced exactly two TS2322 failures at
+    `src/apply.ts:116` and `src/apply.ts:129`;
+  - Diff-local declaration-site assertions preserve the existing generic
+    data-first/data-last overloads and unchanged `dual(2, ...)` runtime calls
+    for `apply` and `applyUnsafe`;
+  - `vp exec tsc -p tsconfig.json --noEmit` and
+    `vp exec tsc -p tsconfig.type-tests.json` passed;
+  - the declared `vp run build` wrapper was denied before task execution by
+    the already-recorded sandbox communication restriction; its exact
+    configured command, `node ../../tooling/build-package.mjs`, passed and
+    produced the package runtime plus declarations;
+  - `vp test run` passed 10 files and 151 tests, including the real tarball,
+    extracted root runtime in both call forms, existing correctness coverage,
+    and packed declaration consumers under Bundler and NodeNext resolution;
+  - the independently repeated 29-file Diff tarball was 9.39 kB and the
+    primary run recorded Bun shasum
+    `ec493a9bab9ea786f1a27093c89ab851e3ed32f7`; it includes README,
+    CHANGELOG, and LICENSE and excludes source and tests;
+  - the readiness inventory validates all 21 package records with no blocker;
+    both `--check` and `--require-ready` passed;
+  - an independent `v2_test_runner` repeated source types, public type
+    contracts, the direct build, the 151-test package/pack suite, readiness,
+    formatting, diff, and immutable-scope checks without tracked-file edits;
+    all passed;
+  - focused formatting and `git diff --check` passed, and every non-ledger
+    dirty path remains inside the immutable `diff-source-types` target.
 
 ## Surprises and discoveries
 
@@ -379,6 +420,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   between direct default-disambiguation calls and curried explicit-
   disambiguation calls. Preserving length-only dispatch requires keeping the
   former and rejecting the latter instead of introducing value-based dispatch.
+- TypeScript 7 likewise collapses Diff's rank-2 generic target type to
+  `unknown` through the current generic `dual` result. The intended overloads
+  and executable two-argument dispatch were already sound, but Diff had no
+  package-local public type or packed-consumer regression contract.
 
 ## Decision log
 
@@ -475,25 +520,37 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   arity, so the working direct form and default data-last form remain public.
   Date: 2026-07-24.
 
+- Decision: Repair Diff's `apply` and `applyUnsafe` assignments with
+  Diff-local declaration-site overload assertions around their unchanged
+  `dual(2, ...)` calls.
+  Rationale: The failure is the same TypeScript higher-rank representation
+  limit already isolated in Async. Changing shared FP `dual` exceeds the
+  immutable package target and risks unrelated behavior, while focused source
+  and packed type contracts prove the existing public overloads in both call
+  forms.
+  Date: 2026-07-24.
+
+- Decision: Do not add a duplicate Diff changeset or migration note for this
+  remediation.
+  Rationale: The intended public overloads and emitted runtime behavior are
+  unchanged, and Diff already has pending major 2.0 and package-metadata
+  changesets. The package contract now proves those declarations can actually
+  build and ship.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-- `@stopcock/diff` fails source types and declaration build at
-  `src/apply.ts:116` and `src/apply.ts:129`.
-
-These are S0R remediation blockers. They block S0B, not the completed S0
-inventory/contract gate.
-
-- The former frozen-scope conflict is resolved by the predecessor setup
-  checkpoint. The exact shared transition test is now inside every affected
-  S0R target while the target contract remains immutable during each package
-  remediation iteration.
+None. S0R's three recorded package-readiness blockers are remediated, the
+complete public cohort and private Synth prerequisites are ready, and S0B is
+dependency-eligible.
 
 ## Exact next action
 
-Resume `diff-source-types` from a clean worktree. Repair only Diff-local
-overload typing, update the shared readiness inventory and exact transition
-assertion, and rerun the scoped correctness/type/build/pack/import/readiness
-gates without editing the dynamic-scope contract.
+Start S0B from a clean worktree. Implement and focused-test the deterministic
+`tooling/v2-cohort.mjs` version authority as the first additive S0B slice,
+including filtered Changesets planning and private-workspace byte-preservation
+fixtures; do not align versions, rewrite the lockfile, or publish until that
+authority is independently valid.
 
 ## Outcomes and retrospective
 
@@ -530,3 +587,11 @@ and public exports remain intact; false overloads were corrected, optional
 data-first disambiguation now reaches the runtime body, and packed migration
 and consumer evidence is checked in. S0R remains in progress for the separately
 scoped Diff blocker.
+
+The Diff remediation now passes its complete current-version package contract
+inside the literal `diff-source-types` target. Its runtime calls and intended
+public overloads are unchanged; package-local assertions make those overloads
+declaration-buildable, and source plus packed consumers freeze both call
+forms. The complete 20-package public readiness cohort and private Synth
+compatibility prerequisites now have no blocked or waived record, so S0R is
+complete and S0B is the next canonical stage.
