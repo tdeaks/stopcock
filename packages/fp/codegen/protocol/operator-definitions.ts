@@ -1691,11 +1691,28 @@ function createRecord(row: LegacyRowV1): OperatorDefinitionRecordV1 {
   }
 }
 
-export const OPERATOR_DEFINITION_RECORDS_V1: readonly OperatorDefinitionRecordV1[] =
-  LEGACY_ROWS.map(createRecord).sort((left, right) => {
-    const byId = left.semantic.semanticId.localeCompare(right.semantic.semanticId)
-    return byId !== 0 ? byId : left.semantic.semanticRevision - right.semantic.semanticRevision
+function freezeDefinitionRecordV1(record: OperatorDefinitionRecordV1): OperatorDefinitionRecordV1 {
+  return Object.freeze({
+    ...record,
+    lowerings: Object.freeze([...record.lowerings]),
+    legacyRuntime: Object.freeze({
+      ...record.legacyRuntime,
+      bindings: Object.freeze([...record.legacyRuntime.bindings]),
+    }),
+    previousCapabilityDeclarations: Object.freeze({
+      ...record.previousCapabilityDeclarations,
+    }),
   })
+}
+
+export const OPERATOR_DEFINITION_RECORDS_V1: readonly OperatorDefinitionRecordV1[] = Object.freeze(
+  LEGACY_ROWS.map(createRecord)
+    .map(freezeDefinitionRecordV1)
+    .sort((left, right) => {
+      const byId = left.semantic.semanticId.localeCompare(right.semantic.semanticId)
+      return byId !== 0 ? byId : left.semantic.semanticRevision - right.semantic.semanticRevision
+    }),
+)
 
 export function assertRuntimeEncodingCatalogueV1(
   records: readonly OperatorDefinitionRecordV1[],
@@ -1772,16 +1789,20 @@ export function assertRuntimeEncodingCatalogueV1(
   }
 }
 
-export const OPERATOR_SEMANTICS_V1: readonly OperatorSemanticV1[] =
-  OPERATOR_DEFINITION_RECORDS_V1.map((record) => record.semantic)
+export const OPERATOR_SEMANTICS_V1: readonly OperatorSemanticV1[] = Object.freeze(
+  OPERATOR_DEFINITION_RECORDS_V1.map((record) => record.semantic),
+)
 
-export const OPERATOR_LOWERINGS_V1: readonly OperatorLoweringV1[] =
+export const OPERATOR_LOWERINGS_V1: readonly OperatorLoweringV1[] = Object.freeze(
   OPERATOR_DEFINITION_RECORDS_V1.flatMap((record) => record.lowerings).sort((left, right) => {
     const byId = left.loweringId.localeCompare(right.loweringId)
     return byId !== 0 ? byId : left.loweringRevision - right.loweringRevision
-  })
+  }),
+)
 
-export const FUSION_RUNNER_DESCRIPTORS_V1 = OPERATOR_LOWERINGS_V1.map(projectRunnerDescriptorV1)
+export const FUSION_RUNNER_DESCRIPTORS_V1 = Object.freeze(
+  OPERATOR_LOWERINGS_V1.map(projectRunnerDescriptorV1),
+)
 
 assertRuntimeEncodingCatalogueV1(OPERATOR_DEFINITION_RECORDS_V1)
 assertOperatorCatalogueV1(
@@ -1814,7 +1835,9 @@ export function findRuntimeOpcodeByNameV1(name: string): number | undefined {
 }
 
 export function runtimeRecordsInOpcodeOrderV1(): readonly OperatorDefinitionRecordV1[] {
-  return [...OPERATOR_DEFINITION_RECORDS_V1].sort(
-    (left, right) => left.legacyRuntime.opcode - right.legacyRuntime.opcode,
+  return Object.freeze(
+    [...OPERATOR_DEFINITION_RECORDS_V1].sort(
+      (left, right) => left.legacyRuntime.opcode - right.legacyRuntime.opcode,
+    ),
   )
 }

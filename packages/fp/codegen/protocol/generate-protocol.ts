@@ -8,15 +8,20 @@ import {
   OPERATOR_DEFINITION_RECORDS_V1,
   OPERATOR_LOWERINGS_V1,
   OPERATOR_SEMANTICS_V1,
+  assertRuntimeEncodingCatalogueV1,
   runtimeRecordsInOpcodeOrderV1,
   type OperatorDefinitionRecordV1,
 } from './operator-definitions'
 import {
   assertEvidenceJoinsCurrentV1,
+  assertOperatorCatalogueV1,
   hashCanonical,
   sha256Text,
+  type FusionRunnerDescriptorV1,
   type OperatorEvidenceCorpusJoinV1,
   type OperatorEvidenceV1,
+  type OperatorLoweringV1,
+  type OperatorSemanticV1,
 } from './operator-v1'
 import {
   RECEIPT_SCHEMA_DEFINITION_V1,
@@ -31,6 +36,33 @@ export const RETAINED_COMPILER_OPERATION_CORPUS_V1 = Object.freeze<OperatorEvide
   corpusId: COMPILER_OPERATION_CORPUS_ID_V1,
   corpusHash: 'sha256:c1e5bad27b54b7b67a97e466d328cf39614ee5bd5c8e950d18997fb06306223b',
 })
+
+export interface ProtocolCatalogueV1 {
+  readonly definitions: readonly OperatorDefinitionRecordV1[]
+  readonly semantics: readonly OperatorSemanticV1[]
+  readonly lowerings: readonly OperatorLoweringV1[]
+  readonly runnerDescriptors: readonly FusionRunnerDescriptorV1[]
+}
+
+const CANONICAL_PROTOCOL_CATALOGUE_V1 = Object.freeze<ProtocolCatalogueV1>({
+  definitions: OPERATOR_DEFINITION_RECORDS_V1,
+  semantics: OPERATOR_SEMANTICS_V1,
+  lowerings: OPERATOR_LOWERINGS_V1,
+  runnerDescriptors: FUSION_RUNNER_DESCRIPTORS_V1,
+})
+
+export function emitAfterProtocolCatalogueValidationV1<Result>(
+  catalogue: ProtocolCatalogueV1,
+  emit: () => Result,
+): Result {
+  assertRuntimeEncodingCatalogueV1(catalogue.definitions)
+  assertOperatorCatalogueV1(catalogue.semantics, catalogue.lowerings, catalogue.runnerDescriptors)
+  return emit()
+}
+
+function emitAfterCanonicalProtocolValidationV1<Result>(emit: () => Result): Result {
+  return emitAfterProtocolCatalogueValidationV1(CANONICAL_PROTOCOL_CATALOGUE_V1, emit)
+}
 
 export const PROTOCOL_GENERATED_PATHS_V1 = [
   'packages/fp/src/opcodes.ts',
@@ -648,7 +680,9 @@ export const OPS_TABLE: readonly OpsTableEntry[] = ${JSON.stringify(entries, nul
 }
 
 export function writeCompilerOpsTableV1(): void {
-  writeGenerated('packages/fp-compiler/src/ops-table.ts', renderCompilerOpsTableV1())
+  emitAfterCanonicalProtocolValidationV1(() => {
+    writeGenerated('packages/fp-compiler/src/ops-table.ts', renderCompilerOpsTableV1())
+  })
 }
 
 export function formatGeneratedProtocolTypeScriptV1(
@@ -752,37 +786,41 @@ function evidenceIndexV1(): object {
 }
 
 export function writeOperatorEvidenceIndexV1(): void {
-  writeGenerated(
-    'packages/fp/codegen/generated/operator-evidence-v1.json',
-    jsonFile(evidenceIndexV1()),
-  )
+  emitAfterCanonicalProtocolValidationV1(() => {
+    writeGenerated(
+      'packages/fp/codegen/generated/operator-evidence-v1.json',
+      jsonFile(evidenceIndexV1()),
+    )
+  })
 }
 
 export function generateProtocolViewsV1(
   options: { readonly includeEvidence?: boolean } = {},
 ): readonly string[] {
-  const records = runtimeRecordsInOpcodeOrderV1()
-  writeGenerated('packages/fp/src/opcodes.ts', renderOpcodesV1(records))
-  writeGenerated('packages/fp/src/registry.ts', renderRegistryV1(records))
-  writeGenerated(
-    'packages/fp/codegen/generated/operator-manifest-v1.json',
-    jsonFile(operatorManifestV1()),
-  )
-  writeGenerated(
-    'packages/fp/codegen/generated/future-tier-manifest-v1.json',
-    jsonFile(futureTierManifestV1()),
-  )
-  writeGenerated(
-    'packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts',
-    renderReceiptSchemaViewV1('fp-fusion-debug'),
-  )
-  writeGenerated(
-    'packages/fp-compiler/src/receipt-schema.generated.ts',
-    renderReceiptSchemaViewV1('fp-compiler'),
-  )
-  writeCompilerOpsTableV1()
-  if (options.includeEvidence === true) writeOperatorEvidenceIndexV1()
-  return PROTOCOL_GENERATED_PATHS_V1
+  return emitAfterCanonicalProtocolValidationV1(() => {
+    const records = runtimeRecordsInOpcodeOrderV1()
+    writeGenerated('packages/fp/src/opcodes.ts', renderOpcodesV1(records))
+    writeGenerated('packages/fp/src/registry.ts', renderRegistryV1(records))
+    writeGenerated(
+      'packages/fp/codegen/generated/operator-manifest-v1.json',
+      jsonFile(operatorManifestV1()),
+    )
+    writeGenerated(
+      'packages/fp/codegen/generated/future-tier-manifest-v1.json',
+      jsonFile(futureTierManifestV1()),
+    )
+    writeGenerated(
+      'packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts',
+      renderReceiptSchemaViewV1('fp-fusion-debug'),
+    )
+    writeGenerated(
+      'packages/fp-compiler/src/receipt-schema.generated.ts',
+      renderReceiptSchemaViewV1('fp-compiler'),
+    )
+    writeCompilerOpsTableV1()
+    if (options.includeEvidence === true) writeOperatorEvidenceIndexV1()
+    return PROTOCOL_GENERATED_PATHS_V1
+  })
 }
 
 export function describeGeneratedProtocolPathsV1(): readonly string[] {

@@ -216,6 +216,8 @@ type PlainObject = Record<string, unknown>
 
 const HASH_PATTERN = /^sha256:[a-f0-9]{64}$/u
 const ID_PATTERN = /^[a-z0-9@][a-zA-Z0-9@/._:-]*$/u
+const PACKAGE_QUALIFIED_SEMANTIC_ID_PATTERN =
+  /^@[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9._-]*)+$/u
 
 const SEMANTIC_KEYS = [
   'protocol',
@@ -331,6 +333,13 @@ function assertString(value: unknown, path: string): asserts value is string {
 function assertId(value: unknown, path: string): asserts value is string {
   assertString(value, path)
   if (!ID_PATTERN.test(value)) fail(`${path} must be a stable namespaced ID`)
+}
+
+function assertPackageQualifiedSemanticId(value: unknown, path: string): asserts value is string {
+  assertString(value, path)
+  if (!PACKAGE_QUALIFIED_SEMANTIC_ID_PATTERN.test(value)) {
+    fail(`${path} must be a package-qualified semantic ID`)
+  }
 }
 
 function assertHash(value: unknown, path: string): asserts value is string {
@@ -662,7 +671,7 @@ function assertLinks(value: unknown): asserts value is OperatorLinksV1 {
 
 function assertSemanticIdentity(value: unknown, path: string): asserts value is SemanticIdentityV1 {
   assertExactKeys(value, ['semanticId', 'semanticRevision', 'semanticHash'], path)
-  assertId(value.semanticId, `${path}.semanticId`)
+  assertPackageQualifiedSemanticId(value.semanticId, `${path}.semanticId`)
   assertInteger(value.semanticRevision, `${path}.semanticRevision`)
   assertHash(value.semanticHash, `${path}.semanticHash`)
 }
@@ -674,7 +683,7 @@ export function defineOperatorV1(input: OperatorSemanticInputV1): OperatorSemant
   if (input.protocolVersion !== OPERATOR_PROTOCOL_VERSION_V1) {
     fail(`unsupported operator protocol version ${String(input.protocolVersion)}`)
   }
-  assertId(input.semanticId, 'semanticId')
+  assertPackageQualifiedSemanticId(input.semanticId, 'semanticId')
   assertInteger(input.semanticRevision, 'semanticRevision')
   assertString(input.publicName, 'publicName')
   assertEnum(input.inputDomain, ['array', 'scalar', 'iterable'], 'inputDomain')

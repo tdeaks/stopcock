@@ -9,10 +9,13 @@ import {
   assertRuntimeEncodingCatalogueV1,
   requireOperatorDefinitionByNameV1,
   runtimeOpcodeByNameV1,
+  runtimeRecordsInOpcodeOrderV1,
+  type OperatorDefinitionRecordV1,
 } from '../../codegen/protocol/operator-definitions'
 import {
   OPERATOR_SEMANTIC_FACTS_V1_HASH,
   RETAINED_COMPILER_OPERATION_CORPUS_V1,
+  emitAfterProtocolCatalogueValidationV1,
 } from '../../codegen/protocol/generate-protocol'
 import {
   assertEvidenceJoinsCurrentV1,
@@ -138,6 +141,70 @@ describe('OperatorSemanticV1 authoring', () => {
         },
       }),
     ).toThrow(/exactly project the public tagged-function slots/u)
+  })
+
+  it('requires package-qualified semantic identities', () => {
+    for (const semanticId of [
+      'map',
+      'stopcock/fp/array/map',
+      '@stopcock/fp',
+      '@Stopcock/fp/array/map',
+    ]) {
+      expect(() =>
+        defineOperatorV1({
+          ...semanticInput(),
+          semanticId,
+        }),
+      ).toThrow(/package-qualified semantic ID/u)
+    }
+  })
+
+  it('keeps the canonical catalogue immutable through every generated projection', () => {
+    const record = OPERATOR_DEFINITION_RECORDS_V1[0]
+    const recordsByOpcode = runtimeRecordsInOpcodeOrderV1()
+
+    expect(Object.isFrozen(OPERATOR_DEFINITION_RECORDS_V1)).toBe(true)
+    expect(Object.isFrozen(OPERATOR_SEMANTICS_V1)).toBe(true)
+    expect(Object.isFrozen(OPERATOR_LOWERINGS_V1)).toBe(true)
+    expect(Object.isFrozen(FUSION_RUNNER_DESCRIPTORS_V1)).toBe(true)
+    expect(Object.isFrozen(record)).toBe(true)
+    expect(Object.isFrozen(record.semantic)).toBe(true)
+    expect(Object.isFrozen(record.lowerings)).toBe(true)
+    expect(Object.isFrozen(record.legacyRuntime)).toBe(true)
+    expect(Object.isFrozen(record.legacyRuntime.bindings)).toBe(true)
+    expect(Object.isFrozen(record.previousCapabilityDeclarations)).toBe(true)
+    expect(Object.isFrozen(recordsByOpcode)).toBe(true)
+
+    expect(() =>
+      (OPERATOR_DEFINITION_RECORDS_V1 as OperatorDefinitionRecordV1[]).splice(0, 1),
+    ).toThrow()
+    expect(() => (record.legacyRuntime.bindings as string[]).push('_mutated')).toThrow()
+    expect(() => (recordsByOpcode as OperatorDefinitionRecordV1[]).reverse()).toThrow()
+  })
+
+  it('writes nothing when pre-emission catalogue validation finds stale semantics', () => {
+    const staleSemantics = OPERATOR_SEMANTICS_V1.map((semantic, index) =>
+      index === 0
+        ? {
+            ...semantic,
+            semanticHash: `sha256:${'0'.repeat(64)}`,
+          }
+        : semantic,
+    )
+    const writes: string[] = []
+
+    expect(() =>
+      emitAfterProtocolCatalogueValidationV1(
+        {
+          definitions: OPERATOR_DEFINITION_RECORDS_V1,
+          semantics: staleSemantics,
+          lowerings: OPERATOR_LOWERINGS_V1,
+          runnerDescriptors: FUSION_RUNNER_DESCRIPTORS_V1,
+        },
+        () => writes.push('partial-output'),
+      ),
+    ).toThrow(/semantic hash drift/u)
+    expect(writes).toEqual([])
   })
 
   it('requires every undeveloped backend capability to be explicit unsupported', () => {
