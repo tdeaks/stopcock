@@ -209,25 +209,25 @@ flowchart TD
 
 ### Public tier contract
 
-| Tier | Public entry | Role | Target consumer cost |
-|---|---|---|---:|
-| Sequential root | `@stopcock/fp` | Small synchronous fallback and ordinary composition | `pipe`/`flow` each at most 0.5 KiB gzip |
-| Direct specialist | `@stopcock/fp/*` | Direct and data-last operations without fusion-engine retention | selected direct op at most 0.5 KiB gzip |
-| Compiler | `@stopcock/fp-compiler` | Automatic fused output plus versioned receipts and `stopcock check` | common compiled consumer at most 1 KiB gzip, runtime engine absent |
-| Compact fusion | `@stopcock/fp/fusion` | Explicit CSP-safe runtime fusion with a small kernel set | 5.5 KiB interim, 5.0 KiB target |
-| Optimized fusion | `@stopcock/fp/fusion/optimized`, or direct opt-in `@stopcock/fp-optimizer` only after accepted S10X extraction | Explicit maximum portable throughput | at most 12 KiB, expected 9.5–11 KiB |
-| Fusion debug | `@stopcock/fp/fusion/debug` | Opt-in explanations and diagnostics | at most 3 KiB incremental gzip and absent by default |
+| Tier              | Public entry                                                                                                   | Role                                                                |                                               Target consumer cost |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | -----------------------------------------------------------------: |
+| Sequential root   | `@stopcock/fp`                                                                                                 | Small synchronous fallback and ordinary composition                 |                            `pipe`/`flow` each at most 0.5 KiB gzip |
+| Direct specialist | `@stopcock/fp/*`                                                                                               | Direct and data-last operations without fusion-engine retention     |                            selected direct op at most 0.5 KiB gzip |
+| Compiler          | `@stopcock/fp-compiler`                                                                                        | Automatic fused output plus versioned receipts and `stopcock check` | common compiled consumer at most 1 KiB gzip, runtime engine absent |
+| Compact fusion    | `@stopcock/fp/fusion`                                                                                          | Explicit CSP-safe runtime fusion with a small kernel set            |                                    5.5 KiB interim, 5.0 KiB target |
+| Optimized fusion  | `@stopcock/fp/fusion/optimized`, or direct opt-in `@stopcock/fp-optimizer` only after accepted S10X extraction | Explicit maximum portable throughput                                |                                at most 12 KiB, expected 9.5–11 KiB |
+| Fusion debug      | `@stopcock/fp/fusion/debug`                                                                                    | Opt-in explanations and diagnostics                                 |               at most 3 KiB incremental gzip and absent by default |
 
 ### Pinned 2.0 base API and conditional S10X mapping
 
-| Specifier | Required public surface | Fallback/compatibility meaning |
-|---|---|---|
-| `@stopcock/fp/fusion` | `pipeFused`, `flowFused`, `compile`, `compilePure` | compact explicit fusion after S9; before S9 it is clearly labelled a non-published compatibility alias to optimized fusion |
-| `@stopcock/fp/fusion/optimized` | `pipeFused`, `flowFused`, `compile`, `compilePure` | maximum-throughput same-package implementation when S10X is skipped; removed before the first RC if S10X selects the direct opt-in package |
-| `@stopcock/fp-optimizer` | conditional `pipeFused`, `flowFused`, `compile`, `compilePure` | direct opt-in maximum-throughput package only after S10X; never a dependency of `@stopcock/fp` |
-| `@stopcock/fp/fusion/debug` | `explain`, `explainPure`, `explainRunner`, `getOptimizerStats`, `resetOptimizerStats`, plus their intentional public types | debug/diagnostic code, absent from production tier closures unless explicitly imported |
-| `@stopcock/fp/compile` | current `compile`, `compilePure`, explanation/statistics compatibility surface during the documented window | deprecated compatibility facade to optimized fusion in the same-package topology; to compact fusion after S10X extraction, with a codemod to direct `@stopcock/fp-optimizer` for maximum throughput |
-| `@stopcock/fp/dual` | public generic `dual` and its existing public types | callable compatibility API; caller-supplied tags never grant trusted provenance |
+| Specifier                       | Required public surface                                                                                                    | Fallback/compatibility meaning                                                                                                                                                                      |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@stopcock/fp/fusion`           | `pipeFused`, `flowFused`, `compile`, `compilePure`                                                                         | compact explicit fusion after S9; before S9 it is clearly labelled a non-published compatibility alias to optimized fusion                                                                          |
+| `@stopcock/fp/fusion/optimized` | `pipeFused`, `flowFused`, `compile`, `compilePure`                                                                         | maximum-throughput same-package implementation when S10X is skipped; removed before the first RC if S10X selects the direct opt-in package                                                          |
+| `@stopcock/fp-optimizer`        | conditional `pipeFused`, `flowFused`, `compile`, `compilePure`                                                             | direct opt-in maximum-throughput package only after S10X; never a dependency of `@stopcock/fp`                                                                                                      |
+| `@stopcock/fp/fusion/debug`     | `explain`, `explainPure`, `explainRunner`, `getOptimizerStats`, `resetOptimizerStats`, plus their intentional public types | debug/diagnostic code, absent from production tier closures unless explicitly imported                                                                                                              |
+| `@stopcock/fp/compile`          | current `compile`, `compilePure`, explanation/statistics compatibility surface during the documented window                | deprecated compatibility facade to optimized fusion in the same-package topology; to compact fusion after S10X extraction, with a codemod to direct `@stopcock/fp-optimizer` for maximum throughput |
+| `@stopcock/fp/dual`             | public generic `dual` and its existing public types                                                                        | callable compatibility API; caller-supplied tags never grant trusted provenance                                                                                                                     |
 
 Compiler recognition, binding analysis, dead-import pruning, and fallback are
 keyed by both source specifier and exported symbol. A facade may not silently
@@ -605,27 +605,27 @@ build.
 
 ### Cross-tier hard floors
 
-| Surface | Release floor |
-|---|---|
-| Changed hot direct case | point estimate at least `0.97x`, lower confidence bound at least `0.90x`, changed-family geomean at least `1.00x` versus frozen Stopcock |
-| Same-process direct canary | geomean at least `0.98x`; no common operation below `0.95x` |
-| Sequential short pipe | geomean at least `0.98x`; every arity 1–5 at least `0.95x` |
-| Sequential long pipe | geomean at least `0.97x`; no extra array allocation |
-| Root bundle | `pipe` and `flow` each at most 512 gzip bytes in esbuild, Rollup, Rolldown, and Webpack |
-| Sequential common pipeline | at most 1.5 KiB gzip |
-| Direct `map` | at most 512 gzip bytes in every required bundler |
-| Two unrelated helpers | at most 512 gzip bytes in every required bundler |
-| Compiled common pipeline | at most 1 KiB in every supported host and no retained runtime engine |
-| Compiler execution | existing corpus geomean at least `0.90x` hand loop; no Bun row below `0.80x`; no Node row below `0.70x` |
-| Compact fusion | at most 5.5 KiB interim, 5.0 KiB target; size-first floor is geomean at least `0.75x` frozen current portable runtime and no common row below `0.60x`; claims remain limited to performance proven by the same artifact |
-| Optimized fusion | explicit-only closure at most 12 KiB; existing portable policies retained; candidate geomean at least `1.00x` frozen current engine |
-| Iter | old corpus geomean at least `1.00x`; no old row below `0.90x` |
-| Typed arrays | at least `0.90x` native for intrinsic-like operations, at least `0.85x` for filters, no non-target regression worse than 3% |
-| Cold import/first call | no regression greater than 10% or 1 ms, whichever allowance is larger |
-| Specialist entry size | no gzip growth over 5% without a named measured win and reviewed exception |
-| Retained heap/RSS | no attributable changed-family regression over 10% after calibration |
-| Main FP tarball before S12 topology work | no regression beyond reviewed evidence and never above the legacy 150 KiB ceiling |
-| Main FP tarball after S12 topology work | at most 105 KiB at the non-publishable S12 migration checkpoint; below 100 KiB for every published RC and stable 2.0 |
+| Surface                                  | Release floor                                                                                                                                                                                                           |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Changed hot direct case                  | point estimate at least `0.97x`, lower confidence bound at least `0.90x`, changed-family geomean at least `1.00x` versus frozen Stopcock                                                                                |
+| Same-process direct canary               | geomean at least `0.98x`; no common operation below `0.95x`                                                                                                                                                             |
+| Sequential short pipe                    | geomean at least `0.98x`; every arity 1–5 at least `0.95x`                                                                                                                                                              |
+| Sequential long pipe                     | geomean at least `0.97x`; no extra array allocation                                                                                                                                                                     |
+| Root bundle                              | `pipe` and `flow` each at most 512 gzip bytes in esbuild, Rollup, Rolldown, and Webpack                                                                                                                                 |
+| Sequential common pipeline               | at most 1.5 KiB gzip                                                                                                                                                                                                    |
+| Direct `map`                             | at most 512 gzip bytes in every required bundler                                                                                                                                                                        |
+| Two unrelated helpers                    | at most 512 gzip bytes in every required bundler                                                                                                                                                                        |
+| Compiled common pipeline                 | at most 1 KiB in every supported host and no retained runtime engine                                                                                                                                                    |
+| Compiler execution                       | existing corpus geomean at least `0.90x` hand loop; no Bun row below `0.80x`; no Node row below `0.70x`                                                                                                                 |
+| Compact fusion                           | at most 5.5 KiB interim, 5.0 KiB target; size-first floor is geomean at least `0.75x` frozen current portable runtime and no common row below `0.60x`; claims remain limited to performance proven by the same artifact |
+| Optimized fusion                         | explicit-only closure at most 12 KiB; existing portable policies retained; candidate geomean at least `1.00x` frozen current engine                                                                                     |
+| Iter                                     | old corpus geomean at least `1.00x`; no old row below `0.90x`                                                                                                                                                           |
+| Typed arrays                             | at least `0.90x` native for intrinsic-like operations, at least `0.85x` for filters, no non-target regression worse than 3%                                                                                             |
+| Cold import/first call                   | no regression greater than 10% or 1 ms, whichever allowance is larger                                                                                                                                                   |
+| Specialist entry size                    | no gzip growth over 5% without a named measured win and reviewed exception                                                                                                                                              |
+| Retained heap/RSS                        | no attributable changed-family regression over 10% after calibration                                                                                                                                                    |
+| Main FP tarball before S12 topology work | no regression beyond reviewed evidence and never above the legacy 150 KiB ceiling                                                                                                                                       |
+| Main FP tarball after S12 topology work  | at most 105 KiB at the non-publishable S12 migration checkpoint; below 100 KiB for every published RC and stable 2.0                                                                                                    |
 
 If compact fusion is advertised as equivalent to the old portable-performance
 runtime, it must additionally retain the encoded portable policies:
@@ -1381,10 +1381,15 @@ blocked until its relevant S1C baseline exists.
 ### Allowed changes
 
 - `packages/fp/codegen/**`
+- `packages/fp/package.json`, only for the unified generation and
+  reproducibility commands
 - canonical definition-only modules under `packages/fp/src/internal/**` if they
   contain no runtime initialization
-- generated FP runtime/manifest files, only through generators
+- generated FP runtime/manifest files, including `packages/fp/src/opcodes.ts`
+  and `packages/fp/src/registry.ts`, only through generators
 - `packages/fp-compiler/scripts/gen-ops-table.ts` and its generated snapshot
+- `packages/fp-compiler/src/ops.ts`, only to consume facts from that generated
+  snapshot instead of restating semantic classifications
 - generated receipt-schema validators/views in FP debug,
   `packages/fp-compiler/**`, and conditional `packages/fp-optimizer/**`
 - reproducibility scripts/tests
@@ -2210,10 +2215,10 @@ the existing portable strata.
   - tier/environment capability predicate with stable rejection codes;
   - exact fallback; and
   - no evidence or emitted-artifact backreference.
-  A runner ID is meaningful only with its protocol and bank identities. The
-  descriptor and bank hashes use documented canonical projections that exclude
-  their own identity fields, evidence, and emitted-artifact hashes, so neither
-  identity is self-referential.
+    A runner ID is meaningful only with its protocol and bank identities. The
+    descriptor and bank hashes use documented canonical projections that exclude
+    their own identity fields, evidence, and emitted-artifact hashes, so neither
+    identity is self-referential.
 - Generated bound/shared/fixed-arity optimized runners.
 - Stable fusion-runner IDs and truthful selection diagnostics.
 - Removal of equivalent hard-coded critical runner policy only after generated
@@ -2228,9 +2233,9 @@ the existing portable strata.
   - selection and observed-run receipt identities keyed by protocol, bank,
     plan, and runner hashes;
   - evidence class and qualification status for every claimed result.
-  This is an external `OperatorEvidenceV1` sidecar joining descriptor, bank,
-  emitted-artifact, corpus, size, and benchmark hashes. The generated runtime
-  bank excludes the Pareto/evidence sidecar entirely.
+    This is an external `OperatorEvidenceV1` sidecar joining descriptor, bank,
+    emitted-artifact, corpus, size, and benchmark hashes. The generated runtime
+    bank excludes the Pareto/evidence sidecar entirely.
 - An exhaustive shipped-or-stopped disposition for this initial fusion-runner
   descriptor matrix under direct-call bindings, prebuilt operators, and
   reusable `compile()` bindings:
@@ -3657,31 +3662,31 @@ created without rewriting the completed train.
 
 ## Canonical duplicate collapse
 
-| Duplicate work in source plans | Canonical owner here |
-|---|---|
-| Package readiness and coordinated prerelease alignment | S0, conditional S0R, then S0B |
-| Consumer/tree-shaking fixtures | S1A cross-bundler harness |
-| Dedicated profiles and frozen denominators | S1B plus S1C |
-| Existing topology-specific package gate | S1A topology-neutral gate, finalized in S12 |
-| Runtime/compiler codegen facts | S2 acyclic canonical generation |
-| Purity and internal non-fusible dual work | S3A plus S3B |
-| Direct leaf and construction measurement | S4 |
-| Numeric metadata, tag layout, trust, bounded caches | S5A plus S5B |
-| Explicit fusion entries and stable engine ownership | S6 |
-| Compiler import pruning, coverage, identity, sources maps, hosts | S7 |
-| Root narrowing and version 2 migration | S8 |
-| Compact metadata, debug split, compact specialization budget | S9 |
-| Portable fusion-runner descriptors and final optimizer topology | S10 plus conditional S10X and S10J |
-| Compiler expression/codegen performance | S11 |
-| Array Iter and typed-array Iter admission | P1A plus P1B |
-| Typed arrays | P2 |
-| Allocation evidence and production strategies | P3A plus P3B |
-| Object/Record/Map APIs | P4 |
-| Optional shipped-or-stopped join | DISP |
-| Final recomposed package feasibility | S12P |
-| Declaration/output topology and final package gate | S12 |
-| CI, docs, RC publication | S13 |
-| Stable version alignment and promotion | S14 |
+| Duplicate work in source plans                                   | Canonical owner here                        |
+| ---------------------------------------------------------------- | ------------------------------------------- |
+| Package readiness and coordinated prerelease alignment           | S0, conditional S0R, then S0B               |
+| Consumer/tree-shaking fixtures                                   | S1A cross-bundler harness                   |
+| Dedicated profiles and frozen denominators                       | S1B plus S1C                                |
+| Existing topology-specific package gate                          | S1A topology-neutral gate, finalized in S12 |
+| Runtime/compiler codegen facts                                   | S2 acyclic canonical generation             |
+| Purity and internal non-fusible dual work                        | S3A plus S3B                                |
+| Direct leaf and construction measurement                         | S4                                          |
+| Numeric metadata, tag layout, trust, bounded caches              | S5A plus S5B                                |
+| Explicit fusion entries and stable engine ownership              | S6                                          |
+| Compiler import pruning, coverage, identity, sources maps, hosts | S7                                          |
+| Root narrowing and version 2 migration                           | S8                                          |
+| Compact metadata, debug split, compact specialization budget     | S9                                          |
+| Portable fusion-runner descriptors and final optimizer topology  | S10 plus conditional S10X and S10J          |
+| Compiler expression/codegen performance                          | S11                                         |
+| Array Iter and typed-array Iter admission                        | P1A plus P1B                                |
+| Typed arrays                                                     | P2                                          |
+| Allocation evidence and production strategies                    | P3A plus P3B                                |
+| Object/Record/Map APIs                                           | P4                                          |
+| Optional shipped-or-stopped join                                 | DISP                                        |
+| Final recomposed package feasibility                             | S12P                                        |
+| Declaration/output topology and final package gate               | S12                                         |
+| CI, docs, RC publication                                         | S13                                         |
+| Stable version alignment and promotion                           | S14                                         |
 
 ## Dependencies that must not be inverted
 
@@ -3820,19 +3825,19 @@ their existing policies independently diagnosable.
 
 The owning root scripts and files are:
 
-| Root script | Owning command |
-|---|---|
-| `release:v2:plan` | `node tooling/v2-cohort.mjs plan` |
-| `release:v2:align-next` | `node tooling/v2-cohort.mjs align-next` |
+| Root script               | Owning command                            |
+| ------------------------- | ----------------------------------------- |
+| `release:v2:plan`         | `node tooling/v2-cohort.mjs plan`         |
+| `release:v2:align-next`   | `node tooling/v2-cohort.mjs align-next`   |
 | `release:v2:advance-next` | `node tooling/v2-cohort.mjs advance-next` |
 | `release:v2:join-current` | `node tooling/v2-cohort.mjs join-current` |
-| `release:v2:check-cohort` | `node tooling/v2-cohort.mjs check` |
-| `release:v2:pack-cohort` | `node tooling/v2-pack-cohort.mjs` |
+| `release:v2:check-cohort` | `node tooling/v2-cohort.mjs check`        |
+| `release:v2:pack-cohort`  | `node tooling/v2-pack-cohort.mjs`         |
 | `release:v2:check-packed` | `node tooling/v2-cohort.mjs check-packed` |
-| `release:v2:synth-compat` | `node tooling/v2-synth-compat.mjs` |
-| `release:v2:dry-run` | `node tooling/v2-publish-dry-run.mjs` |
-| `release:v2:accept` | `node tooling/v2-accept-cohort.mjs` |
-| `release:v2:publish` | `node tooling/v2-publish-cohort.mjs` |
+| `release:v2:synth-compat` | `node tooling/v2-synth-compat.mjs`        |
+| `release:v2:dry-run`      | `node tooling/v2-publish-dry-run.mjs`     |
+| `release:v2:accept`       | `node tooling/v2-accept-cohort.mjs`       |
+| `release:v2:publish`      | `node tooling/v2-publish-cohort.mjs`      |
 | `release:v2:align-stable` | `node tooling/v2-cohort.mjs align-stable` |
 
 The executable sequence is:
@@ -3991,28 +3996,28 @@ Proceed only if:
 
 ## Risk register
 
-| Risk | Mitigation | Rollback boundary |
-|---|---|---|
-| Root cutover silently removes runtime fusion before escape hatches exist | S6 stable engine-owned facades and S7 compiler/fallback gate are hard prerequisites | Revert S8 before stable |
-| Explicit fusion re-exports root and becomes sequential during cutover | Facade points to engine-owned module; executor-kind test | Reconnect facade to optimized engine |
-| Current size gate fails solely because intended topology changed | S1 topology-neutral gate lands first | Keep legacy mode until cutover |
-| Public numeric tags authorize forged plans | S5 private provenance and forgery corpus | Force generic callable path |
-| Provenance registration pollutes direct bundles or is tree-shaken incorrectly | Joint purity/provenance metafile and behavior fixtures | Revert provenance representation, retain generic path |
-| Generator depends on generated runtime and drifts on clean checkout | S2 canonical acyclic facts and unified reproducibility command | Restore previous generator as one slice |
-| Compact meets size but loses throughput | Separate pre-approved size-first floor; optimized remains proven | Before any RC, alias compact back to optimized and mark S9 incomplete, or keep a compact implementation only if its size-first floor passes |
-| Template deletion removes maximum-throughput path | Optimized retains full engine before compaction | Restore individual descriptor/template |
-| Compiler import pruning changes fallback tier | Binding-aware pruning and per-original-import fallback fixtures | Retain the live import |
-| Iter/typed-array metadata pulls engine code into root | Build-time fact sharing and tiny private inspection seams | Disable indexed/typed admission |
-| Engine policy applies stale tuning to a future runtime | Explicit qualified version bands and generic unknown fallback | Select generic policy |
-| Declaration pruning drops a reachable type | Export-map reachability and clean packed type fixtures | Restore previous declaration output |
-| Optimizer extraction hides a mandatory install cost | Direct opt-in package, no FP dependency/peer, and separate plus combined footprint reports | Restore the same-package bank and continue shrinking |
-| All-package 2.0 alignment leaves incompatible packed peers | Deterministic cohort and packed-manifest checks | Issue a new RC; do not promote |
-| Private Synth blocks or leaks into publication | Separate compatibility lane and private-manifest assertion | Keep Synth unpublished; fix compatibility in a bounded slice |
-| Multi-package publish stops halfway or scopes default private | Public-access preflight, dependency-ordered staging tag, integrity journal, and tag move only after all versions exist | Resume only identical hashes; stop on any mismatch |
-| Two stable attempts race after acceptance | One protected `concurrency.group: publish` workflow plus OIDC workflow/environment and pointer/journal revalidation before every registry mutation | Resume only the accepted hash and journal; forbid pointer replacement after journal start |
-| CI matrix becomes unbounded | Checked-in manifests and distinct PR/release/characterization lanes | Keep bounded sentinels; move excess to characterization |
-| Dirty baseline is overwritten | Re-read status, fingerprint inputs, edit generated sources only through generators | Revert isolated slice without touching unrelated state |
-| A blocked public package is versioned into apparent readiness | S0R requires a bounded remediation and forbids waivers/partial base cohorts | Restore explicit blocked status and stop S0B |
+| Risk                                                                          | Mitigation                                                                                                                                         | Rollback boundary                                                                                                                           |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Root cutover silently removes runtime fusion before escape hatches exist      | S6 stable engine-owned facades and S7 compiler/fallback gate are hard prerequisites                                                                | Revert S8 before stable                                                                                                                     |
+| Explicit fusion re-exports root and becomes sequential during cutover         | Facade points to engine-owned module; executor-kind test                                                                                           | Reconnect facade to optimized engine                                                                                                        |
+| Current size gate fails solely because intended topology changed              | S1 topology-neutral gate lands first                                                                                                               | Keep legacy mode until cutover                                                                                                              |
+| Public numeric tags authorize forged plans                                    | S5 private provenance and forgery corpus                                                                                                           | Force generic callable path                                                                                                                 |
+| Provenance registration pollutes direct bundles or is tree-shaken incorrectly | Joint purity/provenance metafile and behavior fixtures                                                                                             | Revert provenance representation, retain generic path                                                                                       |
+| Generator depends on generated runtime and drifts on clean checkout           | S2 canonical acyclic facts and unified reproducibility command                                                                                     | Restore previous generator as one slice                                                                                                     |
+| Compact meets size but loses throughput                                       | Separate pre-approved size-first floor; optimized remains proven                                                                                   | Before any RC, alias compact back to optimized and mark S9 incomplete, or keep a compact implementation only if its size-first floor passes |
+| Template deletion removes maximum-throughput path                             | Optimized retains full engine before compaction                                                                                                    | Restore individual descriptor/template                                                                                                      |
+| Compiler import pruning changes fallback tier                                 | Binding-aware pruning and per-original-import fallback fixtures                                                                                    | Retain the live import                                                                                                                      |
+| Iter/typed-array metadata pulls engine code into root                         | Build-time fact sharing and tiny private inspection seams                                                                                          | Disable indexed/typed admission                                                                                                             |
+| Engine policy applies stale tuning to a future runtime                        | Explicit qualified version bands and generic unknown fallback                                                                                      | Select generic policy                                                                                                                       |
+| Declaration pruning drops a reachable type                                    | Export-map reachability and clean packed type fixtures                                                                                             | Restore previous declaration output                                                                                                         |
+| Optimizer extraction hides a mandatory install cost                           | Direct opt-in package, no FP dependency/peer, and separate plus combined footprint reports                                                         | Restore the same-package bank and continue shrinking                                                                                        |
+| All-package 2.0 alignment leaves incompatible packed peers                    | Deterministic cohort and packed-manifest checks                                                                                                    | Issue a new RC; do not promote                                                                                                              |
+| Private Synth blocks or leaks into publication                                | Separate compatibility lane and private-manifest assertion                                                                                         | Keep Synth unpublished; fix compatibility in a bounded slice                                                                                |
+| Multi-package publish stops halfway or scopes default private                 | Public-access preflight, dependency-ordered staging tag, integrity journal, and tag move only after all versions exist                             | Resume only identical hashes; stop on any mismatch                                                                                          |
+| Two stable attempts race after acceptance                                     | One protected `concurrency.group: publish` workflow plus OIDC workflow/environment and pointer/journal revalidation before every registry mutation | Resume only the accepted hash and journal; forbid pointer replacement after journal start                                                   |
+| CI matrix becomes unbounded                                                   | Checked-in manifests and distinct PR/release/characterization lanes                                                                                | Keep bounded sentinels; move excess to characterization                                                                                     |
+| Dirty baseline is overwritten                                                 | Re-read status, fingerprint inputs, edit generated sources only through generators                                                                 | Revert isolated slice without touching unrelated state                                                                                      |
+| A blocked public package is versioned into apparent readiness                 | S0R requires a bounded remediation and forbids waivers/partial base cohorts                                                                        | Restore explicit blocked status and stop S0B                                                                                                |
 
 ## Final definition of done
 
