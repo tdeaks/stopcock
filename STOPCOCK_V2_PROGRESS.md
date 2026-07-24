@@ -15,7 +15,7 @@ Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0B
 Current slice: PACK_AND_VALIDATE_ALIGNED_COHORT
-Last verified commit: a627469cbeb7ba4626a3e3efbba92994e46622da
+Last verified commit: 7d2d2220dc4719b2c1b73cc85c94744c80aac7b6
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -158,6 +158,11 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       manifests and internal prerelease peers, consumed the six public
       changesets, generated prerelease changelogs/state, and regenerated
       `bun.lock`.
+- [x] (2026-07-24) Corrected all seven first-release public package allowlists
+      to include their newly generated `CHANGELOG.md`, then built and packed
+      the complete 20-package public cohort once into immutable development
+      artifact
+      `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`.
 
 ## Evidence log
 
@@ -631,6 +636,27 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   - the aligned metadata is ready for a clean checkpoint. Development packing
     deliberately remains the next slice because the immutable packer requires
     a clean canonical worktree.
+- S0B immutable aligned development cohort:
+  - the first live development pack failed closed because seven packages that
+    received their first generated changelog did not yet include
+    `CHANGELOG.md` in their package `files` allowlist;
+  - `@stopcock/eslint-plugin-fp`, `@stopcock/fp-codemod`,
+    `@stopcock/fp-compiler`, `@stopcock/fp-interop`,
+    `@stopcock/fp-testing`, `@stopcock/parser`, and `@stopcock/pattern` now
+    pack that public release file;
+  - direct `bun pm pack` checks for all seven packages passed and included
+    `CHANGELOG.md`; a non-frozen `bun install --lockfile-only` confirmed that
+    the allowlist-only manifest changes require no lockfile byte change;
+  - `bun run release:v2:pack-cohort --mode dev --target 2.0.0-next.0` built all
+    20 public packages once in dependency order and wrote
+    `artifacts/v2/dev/2.0.0-next.0/88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8/cohort-manifest.json`;
+  - the manifest reports cohort content hash
+    `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`
+    and 20 exact package/tarball records;
+  - the packer's integrated exact packed check passed, and an explicit
+    `release:v2:check-packed` replay passed against the same manifest;
+  - the immutable artifact is ready for a clean checkpoint. Private Synth
+    compatibility and byte-identical pack replay remain before S0B exit.
 
 ## Surprises and discoveries
 
@@ -954,13 +980,12 @@ execution in the recorded canonical worktree.
 
 ## Exact next action
 
-Checkpoint the aligned cohort, then rerun
-`bun run release:v2:align-next --target 2.0.0-next.0` from that clean checkpoint
-and prove it reports `changed: false` without changing bytes. Build and pack the
-selected public cohort once with development mode, run `check-packed`, run the
-private Synth compatibility command against that exact manifest, and complete
-the remaining S0B package/install/import/type evidence. Do not publish or
-change production runtime behavior.
+Checkpoint the immutable development artifact, run the private Synth
+compatibility command against that exact manifest, then rerun development
+packing from the clean checkpoint and prove it resolves to the same content
+hash without changing bytes. Complete the remaining S0B package/install/import/
+type evidence and stage gate. Do not publish or change production runtime
+behavior.
 
 ## Outcomes and retrospective
 
