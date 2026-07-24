@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -12,7 +13,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { createRequire } from 'node:module'
-import { dirname, join, relative, resolve, sep } from 'node:path'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const READINESS_INVENTORY = 'docs/superpowers/contracts/stopcock-v2-package-cohort-readiness.json'
@@ -22,6 +23,29 @@ const SYNTH_PACKAGE = '@stopcock/synth'
 const CONDITIONAL_OPTIMIZER_PACKAGE = '@stopcock/fp-optimizer'
 const NEXT_TARGET = /^2\.0\.0-next\.(0|[1-9]\d*)$/u
 const STABLE_TARGET = '2.0.0'
+const COHORT_MANIFEST_KIND = 'stopcock-v2-cohort'
+const COHORT_MANIFEST_SCHEMA_VERSION = 1
+const SHA256_ID = /^sha256:[0-9a-f]{64}$/u
+const PACKED_SECTIONS = Object.freeze([
+  'dependencies',
+  'optionalDependencies',
+  'peerDependencies',
+  'devDependencies',
+])
+const COHORT_BUILD_INPUT_PATHS = Object.freeze([
+  '.changeset/config.json',
+  '.changeset/pre.json',
+  'artifacts/v2/optimizer-topology-decision.json',
+  'bun.lock',
+  'docs/superpowers/contracts/stopcock-v2-package-cohort-readiness.json',
+  'package.json',
+  'tsconfig.base.json',
+  'tooling/build-package.mjs',
+  'tooling/fix-declaration-specifiers.mjs',
+  'tooling/pack.config.ts',
+  'tooling/v2-cohort.mjs',
+  'tooling/v2-pack-cohort.mjs',
+])
 const INTERNAL_SECTIONS = Object.freeze([
   'dependencies',
   'optionalDependencies',
@@ -55,6 +79,122 @@ const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'))
 const jsonBytes = (value) => `${JSON.stringify(value, null, 2)}\n`
 
 const sha256 = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`
+
+const toPosixPath = (path) => path.split(sep).join('/')
+
+const summarizeFileEntries = (entries) => {
+  const sorted = [...entries].sort((left, right) => left.path.localeCompare(right.path))
+  return {
+    sha256: sha256(jsonBytes(sorted)),
+    fileCount: sorted.length,
+    bytes: sorted.reduce((total, entry) => total + entry.bytes, 0),
+  }
+}
+
+const canonicalJsonValue = (value) => {
+  if (Array.isArray(value)) return value.map(canonicalJsonValue)
+  if (!isObject(value)) return value
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => [key, canonicalJsonValue(entry)]),
+  )
+}
+
+const jsonValuesEqual = (left, right) =>
+  JSON.stringify(canonicalJsonValue(left)) === JSON.stringify(canonicalJsonValue(right))
+
+const assertRegularContainedPath = ({ root, path, terminal, label }) => {
+  const resolvedRoot = resolve(root)
+  const resolvedPath = resolve(path)
+  const local = relative(resolvedRoot, resolvedPath)
+  assert(
+    local !== '' && !local.startsWith(`..${sep}`) && local !== '..' && !local.startsWith(sep),
+    `${label} must be contained by ${resolvedRoot}`,
+  )
+  const rootMetadata = lstatSync(resolvedRoot)
+  assert(
+    rootMetadata.isDirectory() && !rootMetadata.isSymbolicLink(),
+    `${resolvedRoot} must be a real directory`,
+  )
+  let current = resolvedRoot
+  const parts = local.split(sep)
+  for (const [index, part] of parts.entries()) {
+    current = join(current, part)
+    assert(existsSync(current), `${label} is missing: ${current}`)
+    const metadata = lstatSync(current)
+    assert(!metadata.isSymbolicLink(), `${label} cannot traverse a symbolic link: ${current}`)
+    if (index === parts.length - 1) {
+      assert(
+        terminal === 'file' ? metadata.isFile() : metadata.isDirectory(),
+        `${label} must be a ${terminal}`,
+      )
+    } else {
+      assert(metadata.isDirectory(), `${label} parent must be a directory: ${current}`)
+    }
+  }
+}
+
+export const hashDirectoryTree = (
+  root,
+  { excludeTopLevel = [], requireFiles = true, label = relative(repositoryRoot, root) } = {},
+) => {
+  const resolvedRoot = resolve(root)
+  assert(existsSync(resolvedRoot), `${label} does not exist`)
+  assert(lstatSync(resolvedRoot).isDirectory(), `${label} must be a directory`)
+  const excluded = new Set(excludeTopLevel)
+  const entries = []
+
+  const visit = (directory, localDirectory = '') => {
+    for (const entry of readdirSync(directory, { withFileTypes: true }).sort((left, right) =>
+      left.name.localeCompare(right.name),
+    )) {
+      const localPath = localDirectory === '' ? entry.name : join(localDirectory, entry.name)
+      if (localDirectory === '' && excluded.has(entry.name)) continue
+      const path = join(directory, entry.name)
+      const metadata = lstatSync(path)
+      assert(
+        !metadata.isSymbolicLink(),
+        `${label} contains a symbolic link: ${toPosixPath(localPath)}`,
+      )
+      if (metadata.isDirectory()) {
+        visit(path, localPath)
+      } else {
+        assert(metadata.isFile(), `${label} contains a non-file entry: ${toPosixPath(localPath)}`)
+        const bytes = readFileSync(path)
+        entries.push({
+          path: toPosixPath(localPath),
+          bytes: bytes.length,
+          sha256: sha256(bytes),
+        })
+      }
+    }
+  }
+
+  visit(resolvedRoot)
+  assert(!requireFiles || entries.length > 0, `${label} contains no files`)
+  return summarizeFileEntries(entries)
+}
+
+export const readCohortBuildInputs = (root = repositoryRoot) => {
+  const resolvedRoot = resolve(root)
+  return COHORT_BUILD_INPUT_PATHS.filter((path) => existsSync(join(resolvedRoot, path)))
+    .map((path) => {
+      const absolutePath = join(resolvedRoot, path)
+      const metadata = lstatSync(absolutePath)
+      assert(
+        metadata.isFile() && !metadata.isSymbolicLink(),
+        `cohort build input must be a regular file: ${path}`,
+      )
+      const bytes = readFileSync(absolutePath)
+      return {
+        path,
+        sha256: sha256(bytes),
+        bytes: bytes.length,
+      }
+    })
+    .sort((left, right) => left.path.localeCompare(right.path))
+}
 
 const writeBytesIfChanged = (path, bytes) => {
   const next = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes)
@@ -956,6 +1096,836 @@ export const checkCohort = async ({
   }
 }
 
+export const readCohortArtifactContext = async ({
+  root = repositoryRoot,
+  target,
+  runtime = loadChangesetsRuntime(),
+} = {}) => {
+  parseTarget(target)
+  const resolvedRoot = resolve(root)
+  const check = await checkCohort({ root: resolvedRoot, target, runtime })
+  const context = await readCohortContext({ root: resolvedRoot, runtime })
+  return {
+    root: resolvedRoot,
+    target,
+    check,
+    selectedPublicNames: [...context.selectedPublicNames],
+    selectedPublic: context.selectedPublic.map((workspace) => ({
+      name: workspaceName(workspace),
+      directory: toPosixPath(relative(resolvedRoot, workspace.dir)),
+      path: resolve(workspace.dir),
+      manifest: clone(workspace.packageJson),
+    })),
+    synth: {
+      name: workspaceName(context.synth),
+      directory: toPosixPath(relative(resolvedRoot, context.synth.dir)),
+      path: resolve(context.synth.dir),
+      manifest: clone(context.synth.packageJson),
+    },
+  }
+}
+
+const assertExactKeys = (value, expected, label) => {
+  assert(isObject(value), `${label} must be an object`)
+  const actual = Object.keys(value).sort(compareStrings)
+  const wanted = [...expected].sort(compareStrings)
+  assert(
+    JSON.stringify(actual) === JSON.stringify(wanted),
+    `${label} fields must be exactly ${wanted.join(', ')}; received ${actual.join(', ')}`,
+  )
+}
+
+const assertSha256 = (value, label) => {
+  assert(
+    typeof value === 'string' && SHA256_ID.test(value),
+    `${label} must be sha256:<64 lowercase hex>`,
+  )
+}
+
+const assertByteIdentity = (value, label) => {
+  assertExactKeys(value, ['bytes', 'sha256'], label)
+  assert(
+    Number.isSafeInteger(value.bytes) && value.bytes >= 0,
+    `${label}.bytes must be non-negative`,
+  )
+  assertSha256(value.sha256, `${label}.sha256`)
+}
+
+const assertTreeIdentity = (value, label) => {
+  assertExactKeys(value, ['bytes', 'fileCount', 'sha256'], label)
+  assert(
+    Number.isSafeInteger(value.bytes) && value.bytes >= 0,
+    `${label}.bytes must be non-negative`,
+  )
+  assert(
+    Number.isSafeInteger(value.fileCount) && value.fileCount > 0,
+    `${label}.fileCount must be positive`,
+  )
+  assertSha256(value.sha256, `${label}.sha256`)
+}
+
+const runTar = (tarballPath, args, members, encoding) => {
+  const result = spawnSync('tar', [...args, tarballPath, ...members], {
+    encoding,
+    maxBuffer: 16 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  assert(
+    result.status === 0,
+    `tar ${args.join(' ')} failed for ${tarballPath}: ${
+      Buffer.isBuffer(result.stderr)
+        ? result.stderr.toString('utf8').trim()
+        : result.stderr?.trim() || 'no output'
+    }`,
+  )
+  return result.stdout
+}
+
+const listTarballEntries = (tarballPath) => {
+  const output = runTar(tarballPath, ['-tzf'], [], 'utf8').trimEnd()
+  assert(output.length > 0, `${tarballPath} contains no archive entries`)
+  const rawEntries = output.split(/\r?\n/u)
+  const verboseOutput = runTar(tarballPath, ['-tvzf'], [], 'utf8').trimEnd()
+  const verboseEntries = verboseOutput.split(/\r?\n/u)
+  assert(
+    verboseEntries.length === rawEntries.length,
+    `${tarballPath} archive listings disagree about member count`,
+  )
+  const entries = []
+  const seen = new Set()
+  for (const [index, rawEntry] of rawEntries.entries()) {
+    const entry = rawEntry.endsWith('/') ? rawEntry.slice(0, -1) : rawEntry
+    assert(entry.length > 0, `${tarballPath} contains an empty archive path`)
+    assert(!entry.includes('\\'), `${tarballPath} contains a backslash path: ${entry}`)
+    assert(!entry.startsWith('/'), `${tarballPath} contains an absolute archive path: ${entry}`)
+    const parts = entry.split('/')
+    assert(
+      parts[0] === 'package' && parts.every((part) => part !== '' && part !== '.' && part !== '..'),
+      `${tarballPath} contains an unsafe archive path: ${entry}`,
+    )
+    assert(!seen.has(entry), `${tarballPath} contains duplicate archive path ${entry}`)
+    seen.add(entry)
+    const type = verboseEntries[index]?.[0]
+    assert(
+      type === '-' || type === 'd',
+      `${tarballPath} contains a non-regular archive member: ${entry}`,
+    )
+    entries.push({ path: entry, type })
+  }
+  return entries.sort((left, right) => left.path.localeCompare(right.path))
+}
+
+const readPackedManifestBytes = (tarballPath, entries) => {
+  assert(
+    entries.filter((entry) => entry.path === 'package/package.json' && entry.type === '-')
+      .length === 1,
+    `${tarballPath} must contain exactly one package/package.json`,
+  )
+  const bytes = runTar(tarballPath, ['-xOzf'], ['package/package.json'], null)
+  assert(Buffer.isBuffer(bytes) && bytes.length > 0, `${tarballPath} has an empty package manifest`)
+  return bytes
+}
+
+const validatePackedRelativeTarget = (target, label) => {
+  assert(typeof target === 'string' && target.startsWith('./'), `${label} must start with ./`)
+  assert(!target.includes('\\'), `${label} must use POSIX separators`)
+  assert(!/[*?[\]]/u.test(target), `${label} cannot contain a wildcard`)
+  const local = target.slice(2)
+  assert(
+    local.length > 0 &&
+      local.split('/').every((part) => part !== '' && part !== '.' && part !== '..'),
+    `${label} is not a safe package-relative path`,
+  )
+  return `package/${local}`
+}
+
+const collectPackedTargets = (value, label, targets) => {
+  if (value === null || value === undefined) return
+  if (typeof value === 'string') {
+    targets.add(validatePackedRelativeTarget(value, label))
+    return
+  }
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => collectPackedTargets(entry, `${label}[${index}]`, targets))
+    return
+  }
+  assert(isObject(value), `${label} must contain only objects, arrays, strings, or null`)
+  for (const [key, entry] of Object.entries(value)) {
+    collectPackedTargets(entry, `${label}.${key}`, targets)
+  }
+}
+
+const expectedTarballFilename = (name, version) => {
+  assert(
+    /^@stopcock\/[a-z0-9][a-z0-9._-]*$/u.test(name),
+    `unsupported public package name: ${name}`,
+  )
+  return `${name.slice(1).replace('/', '-')}-${version}.tgz`
+}
+
+const PACKED_MANIFEST_SURFACE_FIELDS = Object.freeze([
+  'bin',
+  'dependencies',
+  'exports',
+  'files',
+  'main',
+  'module',
+  'optionalDependencies',
+  'peerDependencies',
+  'peerDependenciesMeta',
+  'sideEffects',
+  'type',
+  'types',
+])
+
+const normalizeWorkspaceSurfaceForPacking = ({
+  field,
+  value,
+  selectedPublicNames,
+  expectedVersion,
+}) => {
+  if (!PACKED_SECTIONS.includes(field) || !isObject(value)) return value
+  const selected = new Set(selectedPublicNames)
+  return Object.fromEntries(
+    Object.entries(value).map(([name, range]) => [
+      name,
+      selected.has(name) && range === 'workspace:*' ? expectedVersion : range,
+    ]),
+  )
+}
+
+const assertPackedManifestSurface = ({
+  packedManifest,
+  workspaceManifest,
+  name,
+  selectedPublicNames,
+  expectedVersion,
+}) => {
+  assert(isObject(workspaceManifest), `${name} workspace manifest must be an object`)
+  assert(workspaceManifest.name === name, `${name} workspace manifest name does not match`)
+  for (const field of PACKED_MANIFEST_SURFACE_FIELDS) {
+    const expected = normalizeWorkspaceSurfaceForPacking({
+      field,
+      value: workspaceManifest[field],
+      selectedPublicNames,
+      expectedVersion,
+    })
+    assert(
+      jsonValuesEqual(packedManifest[field], expected),
+      `${name} packed ${field} does not match the workspace manifest`,
+    )
+  }
+}
+
+const packedDistributionIdentity = (tarballPath, entries, expectedName) => {
+  const files = entries
+    .filter((entry) => entry.type === '-' && entry.path.startsWith('package/dist/'))
+    .map((entry) => {
+      const bytes = runTar(tarballPath, ['-xOzf'], [entry.path], null)
+      assert(Buffer.isBuffer(bytes), `${expectedName} packed ${entry.path} is unreadable`)
+      return {
+        path: entry.path.slice('package/dist/'.length),
+        bytes: bytes.length,
+        sha256: sha256(bytes),
+      }
+    })
+  assert(files.length > 0, `${expectedName} packed distribution contains no files`)
+  return summarizeFileEntries(files)
+}
+
+const packedInternalDependencies = (manifest, selectedPublicNames, target) => {
+  const selected = new Set(selectedPublicNames)
+  const targetInfo = parseTarget(target)
+  const dependencies = []
+  for (const section of PACKED_SECTIONS) {
+    const values = manifest[section]
+    if (values === undefined) continue
+    assert(isObject(values), `${manifest.name} ${section} must be an object`)
+    for (const [name, range] of Object.entries(values).sort(([left], [right]) =>
+      left.localeCompare(right),
+    )) {
+      if (!name.startsWith('@stopcock/')) continue
+      assert(selected.has(name), `${manifest.name} ${section} names non-cohort package ${name}`)
+      assert(typeof range === 'string', `${manifest.name} ${section}.${name} must be a string`)
+      if (targetInfo.kind === 'next') {
+        assert(
+          range === target,
+          `${manifest.name} ${section}.${name} must be exact ${target} after packing; received ${range}`,
+        )
+      } else {
+        assert(
+          range === STABLE_TARGET || range === '^2.0.0',
+          `${manifest.name} ${section}.${name} must resolve to stable 2.0.0; received ${range}`,
+        )
+      }
+      dependencies.push({ section, name, range })
+    }
+  }
+  return dependencies.sort((left, right) =>
+    `${left.section}\0${left.name}`.localeCompare(`${right.section}\0${right.name}`),
+  )
+}
+
+export const inspectPackedTarball = ({
+  tarballPath,
+  expectedName,
+  expectedVersion,
+  selectedPublicNames,
+  expectedWorkspaceManifest,
+}) => {
+  const resolvedTarball = resolve(tarballPath)
+  assert(existsSync(resolvedTarball), `missing packed tarball: ${resolvedTarball}`)
+  const metadata = lstatSync(resolvedTarball)
+  assert(
+    metadata.isFile() && !metadata.isSymbolicLink(),
+    `${resolvedTarball} must be a regular file`,
+  )
+  const expectedFilename = expectedTarballFilename(expectedName, expectedVersion)
+  assert(
+    basename(resolvedTarball) === expectedFilename,
+    `${expectedName} tarball must be named ${expectedFilename}; received ${basename(resolvedTarball)}`,
+  )
+
+  const tarballBytes = readFileSync(resolvedTarball)
+  const entries = listTarballEntries(resolvedTarball)
+  const packedManifestBytes = readPackedManifestBytes(resolvedTarball, entries)
+  let packedManifest
+  try {
+    packedManifest = JSON.parse(packedManifestBytes.toString('utf8'))
+  } catch (error) {
+    fail(
+      `${expectedName} packed package.json is invalid JSON: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
+  }
+  assert(isObject(packedManifest), `${expectedName} packed package.json must be an object`)
+  assert(packedManifest.name === expectedName, `${expectedName} packed name does not match`)
+  assert(
+    packedManifest.version === expectedVersion,
+    `${expectedName} packed version must be ${expectedVersion}; received ${packedManifest.version}`,
+  )
+  assert(packedManifest.private !== true, `${expectedName} packed manifest must remain public`)
+  assert(isObject(packedManifest.exports), `${expectedName} packed exports must be an object`)
+  assert(
+    Object.keys(packedManifest.exports).length > 0,
+    `${expectedName} packed exports cannot be empty`,
+  )
+  if (expectedWorkspaceManifest !== undefined) {
+    assertPackedManifestSurface({
+      packedManifest,
+      workspaceManifest: expectedWorkspaceManifest,
+      name: expectedName,
+      selectedPublicNames,
+      expectedVersion,
+    })
+  }
+
+  const targets = new Set()
+  collectPackedTargets(packedManifest.exports, `${expectedName} exports`, targets)
+  if (typeof packedManifest.types === 'string') {
+    targets.add(validatePackedRelativeTarget(packedManifest.types, `${expectedName} types`))
+  }
+  if (typeof packedManifest.main === 'string') {
+    targets.add(validatePackedRelativeTarget(packedManifest.main, `${expectedName} main`))
+  }
+  if (typeof packedManifest.module === 'string') {
+    targets.add(validatePackedRelativeTarget(packedManifest.module, `${expectedName} module`))
+  }
+  if (typeof packedManifest.bin === 'string') {
+    targets.add(validatePackedRelativeTarget(packedManifest.bin, `${expectedName} bin`))
+  } else if (isObject(packedManifest.bin)) {
+    for (const [name, target] of Object.entries(packedManifest.bin)) {
+      targets.add(validatePackedRelativeTarget(target, `${expectedName} bin.${name}`))
+    }
+  }
+  const archiveSet = new Set(entries.map((entry) => entry.path))
+  const regularFileSet = new Set(
+    entries.filter((entry) => entry.type === '-').map((entry) => entry.path),
+  )
+  for (const target of [...targets].sort(compareStrings)) {
+    assert(regularFileSet.has(target), `${expectedName} packed target is missing: ${target}`)
+  }
+
+  assert(Array.isArray(packedManifest.files), `${expectedName} packed files must be an array`)
+  const packedFileRoots = []
+  for (const entry of packedManifest.files) {
+    assert(typeof entry === 'string', `${expectedName} packed files entries must be strings`)
+    const target = validatePackedRelativeTarget(
+      `./${entry.replace(/^\.\//u, '')}`,
+      `${expectedName} files`,
+    )
+    packedFileRoots.push(target)
+    assert(
+      archiveSet.has(target) ||
+        entries.some((archiveEntry) => archiveEntry.path.startsWith(`${target}/`)),
+      `${expectedName} packed files entry is missing: ${entry}`,
+    )
+  }
+  for (const required of ['README.md', 'CHANGELOG.md', 'LICENSE']) {
+    assert(archiveSet.has(`package/${required}`), `${expectedName} packed ${required} is missing`)
+  }
+  const automaticallyPacked = new Set([
+    'package',
+    'package/package.json',
+    'package/README.md',
+    'package/CHANGELOG.md',
+    'package/LICENSE',
+  ])
+  for (const { path } of entries) {
+    assert(
+      automaticallyPacked.has(path) ||
+        packedFileRoots.some((root) => path === root || path.startsWith(`${root}/`)),
+      `${expectedName} packed archive member is outside the files allowlist: ${path}`,
+    )
+  }
+  assert(
+    !entries.some(
+      (entry) =>
+        entry.path.startsWith('package/src/') ||
+        entry.path.includes('/__tests__/') ||
+        /(?:^|\/)(?:test|tests|fixtures)(?:\/|$)/u.test(entry.path.slice('package/'.length)),
+    ),
+    `${expectedName} packed archive contains source, test, or fixture files`,
+  )
+
+  return {
+    tarball: {
+      filename: expectedFilename,
+      sha256: sha256(tarballBytes),
+      bytes: tarballBytes.length,
+    },
+    packedManifest: {
+      sha256: sha256(packedManifestBytes),
+      bytes: packedManifestBytes.length,
+    },
+    distribution: packedDistributionIdentity(resolvedTarball, entries, expectedName),
+    exports: Object.keys(packedManifest.exports).sort(compareStrings),
+    internalDependencies: packedInternalDependencies(
+      packedManifest,
+      selectedPublicNames,
+      expectedVersion,
+    ),
+  }
+}
+
+export const buildCohortDependencyGraph = (packages) => {
+  const names = packages.map((entry) => entry.name)
+  assert(new Set(names).size === names.length, 'the packed cohort contains duplicate package names')
+  const selected = new Set(names)
+  return [...packages]
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .map((entry) => {
+      assert(
+        Array.isArray(entry.internalDependencies),
+        `${entry.name} internalDependencies must be an array`,
+      )
+      const dependsOn = [
+        ...new Set(
+          entry.internalDependencies.map((dependency) => {
+            assertExactKeys(
+              dependency,
+              ['name', 'range', 'section'],
+              `${entry.name} internal dependency`,
+            )
+            assert(
+              PACKED_SECTIONS.includes(dependency.section),
+              `${entry.name} has invalid internal dependency section ${dependency.section}`,
+            )
+            assert(
+              selected.has(dependency.name),
+              `${entry.name} depends on missing ${dependency.name}`,
+            )
+            assert(dependency.name !== entry.name, `${entry.name} cannot depend on itself`)
+            return dependency.name
+          }),
+        ),
+      ].sort(compareStrings)
+      return { name: entry.name, dependsOn }
+    })
+}
+
+export const topologicalCohortOrder = (dependencyGraph) => {
+  const remaining = new Map(dependencyGraph.map((entry) => [entry.name, new Set(entry.dependsOn)]))
+  assert(
+    remaining.size === dependencyGraph.length,
+    'the cohort dependency graph contains duplicate package names',
+  )
+  const completed = new Set()
+  const order = []
+  while (remaining.size > 0) {
+    const ready = [...remaining.entries()]
+      .filter(([, dependencies]) => [...dependencies].every((name) => completed.has(name)))
+      .map(([name]) => name)
+      .sort(compareStrings)
+    assert(
+      ready.length > 0,
+      `the cohort dependency graph contains a cycle: ${[...remaining.keys()]
+        .sort(compareStrings)
+        .join(', ')}`,
+    )
+    for (const name of ready) {
+      order.push(name)
+      completed.add(name)
+      remaining.delete(name)
+    }
+  }
+  return order
+}
+
+const cohortContentProjection = (manifest) => ({
+  schemaVersion: manifest.schemaVersion,
+  kind: manifest.kind,
+  target: manifest.target,
+  publicCount: manifest.publicCount,
+  privateCompatibility: manifest.privateCompatibility,
+  buildInputs: manifest.buildInputs,
+  buildOrder: manifest.buildOrder,
+  dependencyGraph: manifest.dependencyGraph,
+  packages: manifest.packages,
+})
+
+export const computeCohortContentHash = (manifest) =>
+  sha256(jsonBytes(cohortContentProjection(manifest)))
+
+export const expectedCohortManifestPath = ({ root, mode, target, contentHash }) => {
+  const targetInfo = parseTarget(target)
+  assert(['dev', 'candidate', 'release'].includes(mode), `unsupported pack mode: ${mode}`)
+  assertSha256(contentHash, 'cohort content hash')
+  const hash = contentHash.slice('sha256:'.length)
+  if (mode === 'release') {
+    assert(targetInfo.kind === 'stable', 'release mode requires target 2.0.0')
+    return join(resolve(root), 'artifacts', 'v2', 'release', target, hash, 'cohort-manifest.json')
+  }
+  assert(targetInfo.kind === 'next', `${mode} mode requires a 2.0.0-next.N target`)
+  if (mode === 'candidate') {
+    assert(target !== '2.0.0-next.0', 'candidate mode cannot use the local-only 2.0.0-next.0')
+    return join(resolve(root), 'artifacts', 'v2', target, 'cohort-manifest.json')
+  }
+  return join(resolve(root), 'artifacts', 'v2', 'dev', target, hash, 'cohort-manifest.json')
+}
+
+const validateBuildInput = (entry, index) => {
+  assertExactKeys(entry, ['bytes', 'path', 'sha256'], `buildInputs[${index}]`)
+  assert(
+    typeof entry.path === 'string' &&
+      entry.path.length > 0 &&
+      entry.path === toPosixPath(entry.path) &&
+      !entry.path.startsWith('/') &&
+      entry.path.split('/').every((part) => part !== '' && part !== '.' && part !== '..'),
+    `buildInputs[${index}].path must be a safe repo-relative path`,
+  )
+  assertByteIdentity({ bytes: entry.bytes, sha256: entry.sha256 }, `buildInputs[${index}] identity`)
+}
+
+const validatePackageRecord = (record, index, selectedPublicNames, target) => {
+  const label = `packages[${index}]`
+  assertExactKeys(
+    record,
+    [
+      'directory',
+      'distribution',
+      'exports',
+      'internalDependencies',
+      'name',
+      'packedManifest',
+      'source',
+      'tarball',
+      'version',
+      'workspaceManifest',
+    ],
+    label,
+  )
+  assert(selectedPublicNames.includes(record.name), `${label}.name is outside the selected cohort`)
+  assert(record.version === target, `${record.name} version must be ${target}`)
+  assert(
+    typeof record.directory === 'string' &&
+      /^packages\/[^/]+$/u.test(record.directory) &&
+      record.directory === toPosixPath(record.directory),
+    `${record.name} directory must name one literal packages/* workspace`,
+  )
+  assertTreeIdentity(record.source, `${record.name} source`)
+  assertTreeIdentity(record.distribution, `${record.name} distribution`)
+  assertByteIdentity(record.workspaceManifest, `${record.name} workspaceManifest`)
+  assertByteIdentity(record.packedManifest, `${record.name} packedManifest`)
+  assert(
+    Array.isArray(record.exports) &&
+      record.exports.length > 0 &&
+      record.exports.every((entry) => typeof entry === 'string') &&
+      JSON.stringify(record.exports) === JSON.stringify([...record.exports].sort(compareStrings)),
+    `${record.name} exports must be a non-empty sorted string array`,
+  )
+  assert(Array.isArray(record.internalDependencies), `${record.name} dependencies must be an array`)
+  assertExactKeys(record.tarball, ['bytes', 'filename', 'path', 'sha256'], `${record.name} tarball`)
+  assert(
+    record.tarball.filename === expectedTarballFilename(record.name, target),
+    `${record.name} tarball filename does not match`,
+  )
+  assert(
+    record.tarball.path === `tarballs/${record.tarball.filename}`,
+    `${record.name} tarball path must be tarballs/${record.tarball.filename}`,
+  )
+  assertByteIdentity(
+    { bytes: record.tarball.bytes, sha256: record.tarball.sha256 },
+    `${record.name} tarball identity`,
+  )
+}
+
+export const checkPackedCohort = async ({
+  root = repositoryRoot,
+  manifest,
+  runtime = loadChangesetsRuntime(),
+  verifyWorkspace = true,
+} = {}) => {
+  assert(
+    typeof manifest === 'string' && manifest.length > 0,
+    'a packed cohort manifest is required',
+  )
+  const resolvedRoot = resolve(root)
+  const manifestPath = resolve(resolvedRoot, manifest)
+  const artifactsRoot = resolve(resolvedRoot, 'artifacts', 'v2')
+  assert(
+    manifestPath.startsWith(`${artifactsRoot}${sep}`),
+    'the packed cohort manifest must be under artifacts/v2',
+  )
+  assert(
+    existsSync(manifestPath),
+    `missing packed cohort manifest: ${relative(resolvedRoot, manifestPath)}`,
+  )
+  assertRegularContainedPath({
+    root: resolvedRoot,
+    path: manifestPath,
+    terminal: 'file',
+    label: 'the packed cohort manifest',
+  })
+  const value = readJson(manifestPath)
+  assertExactKeys(
+    value,
+    [
+      'buildInputs',
+      'buildOrder',
+      'cohortContentHash',
+      'dependencyGraph',
+      'kind',
+      'mode',
+      'packages',
+      'privateCompatibility',
+      'publicCount',
+      'schemaVersion',
+      'target',
+    ],
+    'packed cohort manifest',
+  )
+  assert(
+    value.schemaVersion === COHORT_MANIFEST_SCHEMA_VERSION,
+    `packed cohort manifest must use schemaVersion ${COHORT_MANIFEST_SCHEMA_VERSION}`,
+  )
+  assert(
+    value.kind === COHORT_MANIFEST_KIND,
+    `packed cohort manifest kind must be ${COHORT_MANIFEST_KIND}`,
+  )
+  parseTarget(value.target)
+  assert(['dev', 'candidate', 'release'].includes(value.mode), 'packed cohort mode is invalid')
+  assertSha256(value.cohortContentHash, 'packed cohort content hash')
+  assertExactKeys(value.privateCompatibility, ['name', 'publication'], 'privateCompatibility')
+  assert(
+    value.privateCompatibility.name === SYNTH_PACKAGE,
+    `privateCompatibility must name ${SYNTH_PACKAGE}`,
+  )
+  assert(
+    value.privateCompatibility.publication === 'excluded',
+    `${SYNTH_PACKAGE} publication must be excluded`,
+  )
+  assert(Array.isArray(value.packages), 'packed cohort packages must be an array')
+  assert(
+    Number.isSafeInteger(value.publicCount) &&
+      value.publicCount > 0 &&
+      value.publicCount === value.packages.length,
+    'packed cohort publicCount must match packages.length',
+  )
+  const selectedPublicNames = value.packages.map((entry) => entry.name)
+  assert(!selectedPublicNames.includes(SYNTH_PACKAGE), `${SYNTH_PACKAGE} must not be packed`)
+  assert(
+    new Set(selectedPublicNames).size === selectedPublicNames.length,
+    'packed package names must be unique',
+  )
+  assert(
+    JSON.stringify(selectedPublicNames) ===
+      JSON.stringify([...selectedPublicNames].sort(compareStrings)),
+    'packed packages must be sorted by name',
+  )
+  value.packages.forEach((record, index) =>
+    validatePackageRecord(record, index, selectedPublicNames, value.target),
+  )
+
+  assert(
+    Array.isArray(value.buildInputs) && value.buildInputs.length > 0,
+    'buildInputs cannot be empty',
+  )
+  value.buildInputs.forEach(validateBuildInput)
+  assert(
+    new Set(value.buildInputs.map((entry) => entry.path)).size === value.buildInputs.length,
+    'buildInputs contains duplicate paths',
+  )
+  assert(
+    JSON.stringify(value.buildInputs.map((entry) => entry.path)) ===
+      JSON.stringify(value.buildInputs.map((entry) => entry.path).sort(compareStrings)),
+    'buildInputs must be sorted by path',
+  )
+
+  const derivedGraph = buildCohortDependencyGraph(value.packages)
+  assert(
+    JSON.stringify(value.dependencyGraph) === JSON.stringify(derivedGraph),
+    'packed cohort dependencyGraph does not match packed manifests',
+  )
+  const derivedOrder = topologicalCohortOrder(derivedGraph)
+  assert(
+    JSON.stringify(value.buildOrder) === JSON.stringify(derivedOrder),
+    'packed cohort buildOrder is not the deterministic dependency order',
+  )
+  assert(
+    computeCohortContentHash(value) === value.cohortContentHash,
+    'packed cohort content hash does not match the canonical manifest projection',
+  )
+  const expectedManifestPath = expectedCohortManifestPath({
+    root: resolvedRoot,
+    mode: value.mode,
+    target: value.target,
+    contentHash: value.cohortContentHash,
+  })
+  assert(
+    manifestPath === expectedManifestPath,
+    `packed cohort manifest path must be ${toPosixPath(relative(resolvedRoot, expectedManifestPath))}`,
+  )
+
+  let artifactContext
+  if (verifyWorkspace) {
+    artifactContext = await readCohortArtifactContext({
+      root: resolvedRoot,
+      target: value.target,
+      runtime,
+    })
+    assert(
+      JSON.stringify(artifactContext.selectedPublicNames) === JSON.stringify(selectedPublicNames),
+      'packed cohort inventory does not match the live selected public cohort',
+    )
+    const expectedBuildInputs = readCohortBuildInputs(resolvedRoot)
+    assert(
+      JSON.stringify(expectedBuildInputs) === JSON.stringify(value.buildInputs),
+      'packed cohort buildInputs do not match the complete canonical build-input set',
+    )
+    const workspaceByName = new Map(
+      artifactContext.selectedPublic.map((entry) => [entry.name, entry]),
+    )
+    for (const record of value.packages) {
+      const workspace = workspaceByName.get(record.name)
+      assert(workspace !== undefined, `live workspace is missing ${record.name}`)
+      assert(workspace.directory === record.directory, `${record.name} workspace directory drifted`)
+      const workspaceManifestBytes = readFileSync(join(workspace.path, 'package.json'))
+      assert(
+        workspaceManifestBytes.length === record.workspaceManifest.bytes &&
+          sha256(workspaceManifestBytes) === record.workspaceManifest.sha256,
+        `${record.name} workspace manifest drifted after packing`,
+      )
+      const source = hashDirectoryTree(workspace.path, {
+        excludeTopLevel: ['dist', 'node_modules'],
+        label: `${record.name} source`,
+      })
+      assert(
+        JSON.stringify(source) === JSON.stringify(record.source),
+        `${record.name} source drifted`,
+      )
+      const distribution = hashDirectoryTree(join(workspace.path, 'dist'), {
+        label: `${record.name} distribution`,
+      })
+      assert(
+        JSON.stringify(distribution) === JSON.stringify(record.distribution),
+        `${record.name} distribution drifted`,
+      )
+    }
+  }
+
+  const manifestDirectory = dirname(manifestPath)
+  const tarballsDirectory = join(manifestDirectory, 'tarballs')
+  assert(existsSync(tarballsDirectory), 'packed cohort tarballs directory is missing')
+  assertRegularContainedPath({
+    root: resolvedRoot,
+    path: tarballsDirectory,
+    terminal: 'directory',
+    label: 'the packed cohort tarballs directory',
+  })
+  const actualTarballs = readdirSync(tarballsDirectory, { withFileTypes: true })
+    .map((entry) => {
+      assert(
+        entry.isFile() && !entry.isSymbolicLink(),
+        `tarballs/${entry.name} must be a regular file`,
+      )
+      return entry.name
+    })
+    .sort(compareStrings)
+  const expectedTarballs = value.packages
+    .map((entry) => entry.tarball.filename)
+    .sort(compareStrings)
+  assert(
+    JSON.stringify(actualTarballs) === JSON.stringify(expectedTarballs),
+    'packed cohort tarball set does not match the manifest',
+  )
+
+  for (const record of value.packages) {
+    const workspaceManifest = artifactContext?.selectedPublic.find(
+      (entry) => entry.name === record.name,
+    )?.manifest
+    const inspected = inspectPackedTarball({
+      tarballPath: join(manifestDirectory, record.tarball.path),
+      expectedName: record.name,
+      expectedVersion: value.target,
+      selectedPublicNames,
+      expectedWorkspaceManifest: workspaceManifest,
+    })
+    assert(
+      JSON.stringify(inspected.tarball) ===
+        JSON.stringify({
+          filename: record.tarball.filename,
+          sha256: record.tarball.sha256,
+          bytes: record.tarball.bytes,
+        }),
+      `${record.name} tarball identity does not match`,
+    )
+    assert(
+      JSON.stringify(inspected.packedManifest) === JSON.stringify(record.packedManifest),
+      `${record.name} packed manifest identity does not match`,
+    )
+    assert(
+      JSON.stringify(inspected.distribution) === JSON.stringify(record.distribution),
+      `${record.name} packed distribution does not match`,
+    )
+    assert(
+      JSON.stringify(inspected.exports) === JSON.stringify(record.exports),
+      `${record.name} packed exports do not match`,
+    )
+    assert(
+      JSON.stringify(inspected.internalDependencies) ===
+        JSON.stringify(record.internalDependencies),
+      `${record.name} packed internal dependencies do not match`,
+    )
+  }
+
+  return {
+    schemaVersion: 1,
+    command: 'check-packed',
+    manifest: toPosixPath(relative(resolvedRoot, manifestPath)),
+    mode: value.mode,
+    target: value.target,
+    cohortContentHash: value.cohortContentHash,
+    publicCount: value.publicCount,
+    tarballs: value.packages.map((entry) => ({
+      name: entry.name,
+      filename: entry.tarball.filename,
+      sha256: entry.tarball.sha256,
+    })),
+  }
+}
+
 const runCohortMutation = async ({
   state,
   target,
@@ -1320,7 +2290,7 @@ const runGit = (root, args) => {
   return result.stdout.trim()
 }
 
-const assertCanonicalMutationContext = (root, { requireClean = true } = {}) => {
+export const assertCanonicalMutationContext = (root, { requireClean = true } = {}) => {
   const identity = readLedgerFields(root)
   assert(identity.authorization === 'AUTHORIZED', 'Execution authorization must be AUTHORIZED')
   assert(
@@ -1353,24 +2323,40 @@ class UsageError extends Error {
 }
 
 const usage =
-  'usage: node tooling/v2-cohort.mjs <plan|align-next|advance-next|join-current|check|align-stable> [--target <version>] [--package <name>] [--accepted-rc <path>]'
+  'usage: node tooling/v2-cohort.mjs <plan|align-next|advance-next|join-current|check|check-packed|align-stable> [--target <version>] [--package <name>] [--manifest <path>] [--accepted-rc <path>]'
 
 const parseArguments = (args) => {
   const command = args.shift()
   if (
-    !['plan', 'align-next', 'advance-next', 'join-current', 'check', 'align-stable'].includes(
-      command,
-    )
+    ![
+      'plan',
+      'align-next',
+      'advance-next',
+      'join-current',
+      'check',
+      'check-packed',
+      'align-stable',
+    ].includes(command)
   ) {
     throw new UsageError(usage)
   }
   const options = {}
   while (args.length > 0) {
     const flag = args.shift()
-    if (!['--target', '--package', '--accepted-rc'].includes(flag) || args.length === 0) {
+    if (
+      !['--target', '--package', '--manifest', '--accepted-rc'].includes(flag) ||
+      args.length === 0
+    ) {
       throw new UsageError(usage)
     }
-    const key = flag === '--target' ? 'target' : flag === '--package' ? 'packageName' : 'acceptedRc'
+    const key =
+      flag === '--target'
+        ? 'target'
+        : flag === '--package'
+          ? 'packageName'
+          : flag === '--manifest'
+            ? 'manifest'
+            : 'acceptedRc'
     if (options[key] !== undefined) throw new UsageError(`duplicate ${flag}\n${usage}`)
     options[key] = args.shift()
   }
@@ -1381,7 +2367,11 @@ const parseArguments = (args) => {
   if (command === 'join-current' && options.packageName === undefined) {
     throw new UsageError(`--package is required\n${usage}`)
   }
+  if (command === 'check-packed' && options.manifest === undefined) {
+    throw new UsageError(`--manifest is required\n${usage}`)
+  }
   if (command !== 'join-current' && options.packageName !== undefined) throw new UsageError(usage)
+  if (command !== 'check-packed' && options.manifest !== undefined) throw new UsageError(usage)
   if (command !== 'align-stable' && options.acceptedRc !== undefined) throw new UsageError(usage)
   return { command, options }
 }
@@ -1394,6 +2384,8 @@ const main = async () => {
       result = await planCohort(options)
     } else if (command === 'check') {
       result = await checkCohort(options)
+    } else if (command === 'check-packed') {
+      result = await checkPackedCohort(options)
     } else if (command === 'align-next') {
       assertCanonicalMutationContext(repositoryRoot)
       result = await alignNext(options)

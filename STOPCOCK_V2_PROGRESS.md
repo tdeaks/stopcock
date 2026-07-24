@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0B
-Current slice: IMPLEMENT_COHORT_PACKER
-Last verified commit: d2d6298188259c7914d839bcc7fff96f76bd4860
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -53,7 +53,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED        | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                         |
 | S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready |
-| S0B   | IN_PROGRESS | —; deterministic cohort version authority implemented and independently validated; live package manifests and lockfile remain unchanged                                                                                                                                                                                                                                               |
+| S0B   | CHECKPOINT_PENDING | —; deterministic cohort version authority implemented and independently validated; live package manifests and lockfile remain unchanged; immutable single-build cohort packer and exact packed-manifest checker implemented and independently validated                                                                                                                                     |
 | S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                                                                                                                                                                                                                                                                  |
 | S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                            |
 | S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                          |
@@ -132,6 +132,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       cohort version authority, filtered Changesets integration, transactional
       private-byte preservation, and guarded root command surface without
       aligning the live manifests or lockfile.
+- [x] (2026-07-24) Implemented and independently validated S0B's immutable
+      cohort packer and packed-manifest checker with deterministic dependency
+      order, exact workspace/packed identity, content-addressed development
+      evidence, and private Synth exclusion.
 
 ## Evidence log
 
@@ -404,6 +408,52 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     focused tests, and this ledger. No package manifest, changelog, Changesets
     state, lockfile, generated artifact, runtime source, or external state was
     changed.
+- S0B immutable cohort packer:
+  - startup HEAD was
+    `4c2ee6e48a7532666937322bcc04de142d78c4c1`, with a clean worktree on the
+    recorded branch and isolated worktree;
+  - the frozen base and prior verified commit were ancestors, both preserved
+    source-plan hashes matched the canonical pins, and the trusted project
+    configuration plus custom Stopcock 2.0 agents were active;
+  - `tooling/v2-pack-cohort.mjs` now derives the selected public inventory,
+    builds and packs each package exactly once in deterministic dependency
+    order, excludes private Synth, and emits immutable development, candidate,
+    or stable-attempt cohort manifests at their canonical paths;
+  - the manifest binds the complete canonical build-input set, package source,
+    workspace manifest, built distribution, packed manifest, packed
+    distribution, internal ranges, export keys, tarball bytes, dependency
+    graph, and build order into one content hash;
+  - `check-packed` validates the canonical artifact path and schema, exact
+    workspace and build-input identity, packed public surface, exact
+    same-cohort internal ranges, declared export targets, the package `files`
+    allowlist, tarball set and bytes, packed distribution bytes, archive path
+    safety, and symlink-free artifact traversal;
+  - candidate and release packing fail with pending public changesets,
+    candidate mode rejects the local-only `2.0.0-next.0`, and any differing
+    artifact at an immutable path is refused rather than overwritten;
+  - focused real-Bun fixture coverage proves `workspace:*` normalization,
+    dependency-ordered single builds, exact packed ranges, Synth exclusion,
+    byte-stable repeated packing, source-drift content addressing, immutable
+    tamper refusal, complete build-input enforcement, packed-surface binding,
+    undeclared-file rejection, and symlink rejection;
+  - the combined cohort, packer, and controller suites passed 29 tests; syntax,
+    focused lint, focused formatting, and `git diff --check` all passed;
+  - two live `plan --target 2.0.0-next.0` runs remained byte-identical at 11,930
+    bytes with SHA-256
+    `72e9efdabe132e468e939ccfd2d8f281f3bb968b29becc15eeda94f10fb1bdf7`;
+  - both readiness modes still report 21 packages, comprising 20 public
+    packages and private Synth, with no blocker;
+  - a bounded read-only `v2_explorer` audit returned `PASS` after verifying the
+    workspace-to-packed range transformation, root build inputs, archive
+    protections, immutable paths, and slice boundary;
+  - an independent `v2_test_runner` repeated both syntax checks, all 29 tests,
+    both readiness modes, live plan determinism, focused lint and formatting,
+    and diff hygiene; HEAD, every dirty path, and every dirty byte remained
+    unchanged, and it left no repository artifact or background process;
+  - the slice changes only the root command surface, the cohort authority, the
+    new packer, its focused test, and this ledger. No package manifest,
+    changelog, Changesets state, lockfile, generated cohort artifact, runtime
+    source, or external state was changed.
 
 ## Surprises and discoveries
 
@@ -475,6 +525,13 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   `artifacts/v2/optimizer-topology-decision.json`. The cohort authority can
   admit the optional optimizer only from an active prerelease join or a
   schema-valid direct-package decision at that path.
+- Bun resolves selected internal `workspace:*` dependencies to the package's
+  exact version in a packed manifest. Packed-surface validation must therefore
+  model that one packaging transformation while still requiring the exact
+  prerelease cohort range in the artifact.
+- Package declaration builds inherit `tsconfig.base.json` outside each package
+  tree. Reproducible packed identity must hash that root configuration as a
+  canonical build input rather than relying only on package-local source.
 
 ## Decision log
 
@@ -619,20 +676,35 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   cannot depend on Git metadata commands inside the controller.
   Date: 2026-07-24.
 
+- Decision: Bind immutable cohort identity to canonical root build inputs,
+  package source and distribution trees, workspace and packed manifests,
+  packed distribution bytes, dependency topology, and the exact tarballs.
+  Rationale: A hash of only workspace metadata or only tarball filenames would
+  allow build-config, export, archive-content, or emitted-byte drift to masquerade
+  as the same development or release artifact.
+  Date: 2026-07-24.
+
+- Decision: Checkpoint the immutable packer and `check-packed` before adding the
+  private Synth compatibility runner or normalizing live release metadata.
+  Rationale: Real-tar fixture evidence makes the packer an independently valid
+  additive slice, while Synth installation and live cohort alignment have
+  separate mutation and validation boundaries.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-None. The deterministic version-authority slice is independently valid. S0B
-still owns the immutable packer and packed-manifest checker, private Synth
-compatibility runner, live cohort alignment, and complete packed exit gate
-before S1 becomes eligible.
+None. The deterministic version authority plus immutable packer and
+packed-manifest checker are independently valid. S0B still owns the private
+Synth compatibility runner, live cohort alignment, and complete packed exit
+gate before S1 becomes eligible.
 
 ## Exact next action
 
-From the clean version-authority checkpoint, implement and focused-test
-`tooling/v2-pack-cohort.mjs` plus `tooling/v2-cohort.mjs check-packed` as the
-next independently valid S0B slice. Prove reproducible immutable development
-manifests and exact packed cohort identity; do not align the live manifests or
-lockfile, run Synth compatibility, or publish in that slice.
+From the clean immutable-packer checkpoint, implement and focused-test
+`tooling/v2-synth-compat.mjs` as the next independently valid S0B slice. Consume
+an explicit cohort manifest, prove Synth is private and absent from publication,
+install only its packed cohort dependencies, and run its bounded compatibility
+contract; do not align the live manifests or lockfile or publish in that slice.
 
 ## Outcomes and retrospective
 
@@ -685,3 +757,11 @@ ranges, changelogs, prerelease state, and lockfile remain untouched, so this is
 a partial S0B checkpoint rather than the stage exit. The immutable packer,
 packed-manifest checker, private Synth runner, and live aligned cohort remain
 ordered follow-up work.
+
+S0B now also has an independently valid immutable cohort packer and exact
+packed-manifest checker. A real Bun workspace fixture proves deterministic
+single-build packing, exact prerelease dependency materialization,
+content-addressed same-version snapshots, and fail-closed archive and overwrite
+behavior. Private Synth is asserted and excluded but its packed compatibility
+runner remains the next slice; live package versions, ranges, changelogs,
+prerelease state, lockfile, and external release state remain untouched.
