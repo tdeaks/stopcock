@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0
-Current slice: PACKAGE_COHORT_READINESS
-Last verified commit: dcf054568bc71f031b5a4b43ec152bf09a00866c
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -49,39 +49,39 @@ controller never performs that external mutation itself.
 Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 `GATE_PASSED`, `STOPPED_BY_PLAN`, and `BLOCKED`.
 
-| Stage | Status      | Verified commit or evidence                                     |
-| ----- | ----------- | --------------------------------------------------------------- |
-| S0    | IN_PROGRESS | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c` |
-| S0R   | NOT_STARTED | Conditional stage                                               |
-| S0B   | NOT_STARTED | —                                                               |
-| S1A   | NOT_STARTED | Consumer, size, and topology evidence                           |
-| S1B   | NOT_STARTED | Dedicated performance-profile qualification                     |
-| S1C   | NOT_STARTED | Frozen runtime, startup, and memory baselines                   |
-| S2    | NOT_STARTED | Requires independent `v2_verifier` audit                        |
-| S3A   | NOT_STARTED | Initializer purity                                              |
-| S3B   | NOT_STARTED | Untagged internal duals                                         |
-| S4    | NOT_STARTED | —                                                               |
-| S5A   | NOT_STARTED | Trusted provenance                                              |
-| S5B   | NOT_STARTED | Measured retention policy                                       |
-| S6    | NOT_STARTED | —                                                               |
-| S7    | NOT_STARTED | Requires independent `v2_verifier` audit                        |
-| S8    | NOT_STARTED | —                                                               |
-| S9    | NOT_STARTED | —                                                               |
-| S10   | NOT_STARTED | Requires independent `v2_verifier` audit                        |
-| S10X  | NOT_STARTED | Conditional optimizer extraction                                |
-| S10J  | NOT_STARTED | Optimizer topology decision                                     |
-| S11   | NOT_STARTED | —                                                               |
-| P1A   | NOT_STARTED | Array Iter kernels                                              |
-| P1B   | NOT_STARTED | Typed-array Iter admission                                      |
-| P2    | NOT_STARTED | Typed-array policy                                              |
-| P3A   | NOT_STARTED | Allocation evidence infrastructure                              |
-| P3B   | NOT_STARTED | Measured allocation strategies                                  |
-| P4    | NOT_STARTED | Object, Record, and Map candidates                              |
-| DISP  | NOT_STARTED | Optional-candidate dispositions                                 |
-| S12P  | NOT_STARTED | —                                                               |
-| S12   | NOT_STARTED | —                                                               |
-| S13   | NOT_STARTED | External RC publication remains user-authorized                 |
-| S14   | NOT_STARTED | Stable acceptance and publication remain user-authorized        |
+| Stage | Status             | Verified commit or evidence                                                                                                                    |
+| ----- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| S0    | CHECKPOINT_PENDING | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers |
+| S0R   | NOT_STARTED        | Conditional stage                                                                                                                              |
+| S0B   | NOT_STARTED        | —                                                                                                                                              |
+| S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                          |
+| S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                    |
+| S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                  |
+| S2    | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                       |
+| S3A   | NOT_STARTED        | Initializer purity                                                                                                                             |
+| S3B   | NOT_STARTED        | Untagged internal duals                                                                                                                        |
+| S4    | NOT_STARTED        | —                                                                                                                                              |
+| S5A   | NOT_STARTED        | Trusted provenance                                                                                                                             |
+| S5B   | NOT_STARTED        | Measured retention policy                                                                                                                      |
+| S6    | NOT_STARTED        | —                                                                                                                                              |
+| S7    | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                       |
+| S8    | NOT_STARTED        | —                                                                                                                                              |
+| S9    | NOT_STARTED        | —                                                                                                                                              |
+| S10   | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                       |
+| S10X  | NOT_STARTED        | Conditional optimizer extraction                                                                                                               |
+| S10J  | NOT_STARTED        | Optimizer topology decision                                                                                                                    |
+| S11   | NOT_STARTED        | —                                                                                                                                              |
+| P1A   | NOT_STARTED        | Array Iter kernels                                                                                                                             |
+| P1B   | NOT_STARTED        | Typed-array Iter admission                                                                                                                     |
+| P2    | NOT_STARTED        | Typed-array policy                                                                                                                             |
+| P3A   | NOT_STARTED        | Allocation evidence infrastructure                                                                                                             |
+| P3B   | NOT_STARTED        | Measured allocation strategies                                                                                                                 |
+| P4    | NOT_STARTED        | Object, Record, and Map candidates                                                                                                             |
+| DISP  | NOT_STARTED        | Optional-candidate dispositions                                                                                                                |
+| S12P  | NOT_STARTED        | —                                                                                                                                              |
+| S12   | NOT_STARTED        | —                                                                                                                                              |
+| S13   | NOT_STARTED        | External RC publication remains user-authorized                                                                                                |
+| S14   | NOT_STARTED        | Stable acceptance and publication remain user-authorized                                                                                       |
 
 ## Progress
 
@@ -99,7 +99,12 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       `dcf054568bc71f031b5a4b43ec152bf09a00866c`.
 - [x] (2026-07-24) Repaired the linked-worktree checkpoint boundary with a
       trusted outer helper, exact staged/tree digests, and idempotent recovery.
-- [ ] Complete the S0 package-cohort/readiness slice.
+- [x] Complete the S0 package-cohort/readiness slice.
+- [x] (2026-07-24) Enumerated all 21 package manifests into the checked-in S0
+      readiness inventory: 20 public packages plus private Synth.
+- [x] (2026-07-24) Recorded `@stopcock/async`, `@stopcock/date`, and
+      `@stopcock/diff` as explicit source-type/build blockers and bound each to
+      a predecessor-recorded, literal-package S0R scope.
 
 ## Evidence log
 
@@ -161,6 +166,44 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   - `shellcheck tooling/run-stopcock-v2-controller.sh`, JavaScript and shell
     syntax checks, JSON parsing, `git diff --check`, and focused `vp fmt
 --check` all passed.
+- S0 package-cohort/readiness evidence:
+  - `tooling/check-stopcock-v2-package-cohort-readiness.mjs --check` enumerated
+    every live `packages/*/package.json` exactly once and validated the
+    manifest-set SHA-256
+    `sha256:4baee38a8b79d0eb58e2b2636b631526552a4834329e36bedfcdbf3faee31d2c`;
+  - the inventory contains all 20 canonical public packages and private
+    `@stopcock/synth`, every declared export, package-local build/type/test/pack
+    command, internal Stopcock dependency/peer, README/LICENSE/changelog state,
+    and an explicit disposition;
+  - all eight public `0.0.0` packages passed independent source-type and direct
+    build probes and have pending first-release changeset provenance where a
+    changelog does not yet exist;
+  - source-type and declaration builds fail closed for `@stopcock/async`,
+    `@stopcock/date`, and `@stopcock/diff`; Async also has an existing
+    `CHANGELOG.md` absent from its package files allowlist;
+  - dependency-ordered retries proved the initial Autodiff, Color, and Img
+    missing-LA failures were build-order artifacts rather than package
+    blockers;
+  - `--require-ready` rejects promotion with the exact three blocked public
+    packages;
+  - the focused readiness test command passed 9 tests covering the live
+    inventory plus omission, duplication, unexpected membership, invalid
+    `0.0.0` disposition, peer-state drift, manifest-hash drift, missing dynamic
+    scope, and fail-closed promotion:
+
+    ```sh
+    node --test tooling/__tests__/stopcock-v2-package-cohort-readiness.test.mjs
+    ```
+
+  - the independent `v2_test_runner` re-ran the 3-file/27-test frozen S0
+    semantic suite, FP source/types, FP-compiler source types, the 19-test
+    controller safety suite, focused formatting, and `git diff --check`; all
+    passed after mechanical formatting;
+  - the broad root `test:packages` command remains unsuitable as S0 readiness
+    evidence: it includes benchmark gates, encountered two pre-existing pinned
+    benchmark-byte failures, and the sandboxed task orchestrator could not
+    create its communication channel. Bounded direct package commands provided
+    the disposition evidence instead.
 
 ## Surprises and discoveries
 
@@ -188,6 +231,16 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   every registered forged opcode and binding is accepted by the current 1.x
   planner, while remaining explicitly characterized as a vulnerability rather
   than a desired 2.0 contract.
+- The nominal root `test:packages` command also discovers benchmark tests, so
+  it is not a package-readiness-only lane. Its current pinned-byte failures do
+  not substitute for or erase the per-package source/build results.
+- Autodiff, Color, and Img require their internal LA dependency to be built
+  before declaration resolution. Their first direct probes failed only because
+  the audit ran alphabetically; all three passed when retried after LA.
+- The current FP dual return type is not assignable to several explicit
+  dependent-package overload surfaces under the repository's TypeScript
+  toolchain. Async, Date, and Diff are the only persistent source/build
+  failures found by the complete public-package probe.
 
 ## Decision log
 
@@ -242,15 +295,42 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   create exact local checkpoints.
   Date: 2026-07-24.
 
+- Decision: Treat a package as S0 `ready` only when its static release surface
+  is complete and the recorded source-type/direct-build probe passes; reserve
+  scoped correctness, pack, clean-install, and declared-export proof for the
+  S0R exit gate.
+  Rationale: S0 must expose real blockers without duplicating S0B's cohort
+  packer or pretending that the root benchmark-inclusive test command is a
+  package-readiness lane.
+  Date: 2026-07-24.
+
+- Decision: Record three immutable S0R dynamic targets:
+  `async-source-types`, `date-source-types`, and `diff-source-types`.
+  Rationale: Each target names one literal package and the shared readiness
+  inventory, so later remediation cannot expand into another package or widen
+  its own scope.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-None. The original Git-metadata blocker is recovered. Another canonical slice
-must not start until this controller-repair commit passes launcher `--check`.
+- `@stopcock/async` fails source types and declaration build at
+  `src/task.ts:94`, `src/task.ts:124`, and `src/task.ts:140`; its existing
+  changelog is also absent from the packed-files allowlist.
+- `@stopcock/date` fails source types and declaration build in `src/range.ts`
+  and `src/tz.ts`.
+- `@stopcock/diff` fails source types and declaration build at
+  `src/apply.ts:116` and `src/apply.ts:129`.
+
+These are S0R remediation blockers. They block S0B, not the completed S0
+inventory/contract gate.
 
 ## Exact next action
 
-After the committed controller repair passes launcher `--check`, resume with
-the S0 package-cohort/readiness slice.
+After this S0 readiness checkpoint is applied, enter S0R with scope target
+`async-source-types`. Repair only the Async package's overload typing and
+packed changelog metadata, rerun its scoped correctness/type/build/pack/import
+contract, and refresh the shared readiness disposition without editing the
+dynamic-scope contract.
 
 ## Outcomes and retrospective
 
@@ -259,3 +339,9 @@ distribution-, and pack-valid at
 `dcf054568bc71f031b5a4b43ec152bf09a00866c`. No production runtime, generated
 output, public export, package version, lockfile, or external release state has
 changed.
+
+S0 now has a machine-checked 21-package cohort/readiness contract, a complete
+public FP-dependant register, an explicit assertion for the intentional
+pre-S0B version mismatch, and durable S0R scope targets for every discovered
+blocker. This slice changes no package runtime, public export, package version,
+lockfile, generated product output, or external state.

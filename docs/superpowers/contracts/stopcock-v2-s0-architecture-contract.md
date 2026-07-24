@@ -126,6 +126,10 @@ migration note.
 - Runtime claims are tier-, artifact-, corpus-, runtime-, and profile-specific.
   Peer results are characterization, never a release denominator.
 
-The checked-in package-readiness inventory is a separate S0 artifact. A
-blocked public package stops S0B; it is never waived, silently dropped, or
-versioned into apparent readiness.
+The checked-in package-readiness inventory is the separate S0 artifact at
+`docs/superpowers/contracts/stopcock-v2-package-cohort-readiness.json`.
+`tooling/check-stopcock-v2-package-cohort-readiness.mjs` proves that it
+enumerates the live `packages/*` manifests exactly once, preserves the
+intentional pre-S0B version mismatch, and binds each blocker to a
+predecessor-recorded S0R scope. A blocked public package stops S0B; it is never
+waived, silently dropped, or versioned into apparent readiness.
