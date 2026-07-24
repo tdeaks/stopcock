@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0R
-Current slice: REMEDIATE_DATE_SOURCE_TYPES
-Last verified commit: 643a2ec9a82a9f359c756ba3c1d72d7c15cb2897
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -52,7 +52,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | Stage | Status      | Verified commit or evidence                                                                                                                    |
 | ----- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers |
-| S0R   | IN_PROGRESS | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain |
+| S0R   | CHECKPOINT_PENDING | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains |
 | S0B   | NOT_STARTED | —                                                                                                                                              |
 | S1A   | NOT_STARTED | Consumer, size, and topology evidence                                                                                                          |
 | S1B   | NOT_STARTED | Dedicated performance-profile qualification                                                                                                    |
@@ -117,6 +117,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       assignments without changing runtime behavior, packed its existing
       changelog, and independently validated its complete current-version
       package surface.
+- [x] (2026-07-24) Repaired Date's false range and optional-disambiguation
+      overloads with Date-local length dispatch, added source and packed
+      consumer contracts, and independently validated its complete
+      current-version package surface.
 
 ## Evidence log
 
@@ -278,6 +282,49 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     gates passed and the two-package fail-closed result matched;
   - focused formatting and `git diff --check` passed, and every non-ledger
     dirty path remains inside the immutable `async-source-types` target.
+- S0R Date remediation:
+  - startup HEAD was
+    `0973fb61d0407f7868bee16bcf7a2ab300d09cd3`, with a clean worktree on the
+    recorded branch and isolated worktree;
+  - both preserved source-plan hashes matched the canonical pins, the frozen
+    base and last verified commit were ancestors, and the trusted project
+    configuration plus the `v2_explorer` and `v2_test_runner` agents were
+    active;
+  - the initial source-type probe reproduced exactly 10 TypeScript failures in
+    `src/range.ts` and `src/tz.ts`;
+  - `range` and `rangeBy` now publish the unary data-last forms their existing
+    `dual(4)` runtime actually implements;
+  - Date-local three- and four-argument wrappers now preserve
+    `arguments.length` dispatch, forward optional disambiguation in data-first
+    calls, retain default-disambiguation data-last calls, and deliberately
+    reject ambiguous data-last-with-disambiguation forms;
+  - focused public type contracts cover both supported call forms and reject
+    the former false overloads; the fall-back-fold runtime test proves
+    explicit `earlier` and `later` disambiguation select timestamps one hour
+    apart;
+  - `vp exec tsc -p tsconfig.json --noEmit` and
+    `vp exec tsc -p tsconfig.type-tests.json` passed;
+  - the declared `vp run build` wrapper was denied before task execution by
+    the already-recorded sandbox communication restriction; its exact
+    configured command, `node ../../tooling/build-package.mjs`, passed and
+    produced the package runtime plus declarations;
+  - `vp test run` passed 16 files and 331 tests, including the real tarball,
+    declared root runtime, behavior smoke tests, and packed declaration
+    consumers under Bundler and NodeNext resolution;
+  - the independently repacked 39-file tarball was 17.20 kB with Bun shasum
+    `9259d6f5275a13683ef2272ff9c6e72573a2f020`; it includes the packaged
+    `Unreleased` migration note and excludes source and tests;
+  - the readiness inventory validates all 21 package records and now reports
+    exactly `@stopcock/diff` as blocked;
+  - the focused readiness command passed 9 tests, while `--require-ready`
+    failed closed with exactly that remaining blocker;
+  - the independent `v2_test_runner` repeated the 331-test package/pack suite,
+    readiness, formatting, and diff checks without source edits;
+  - the independent `v2_verifier` returned `PASS`, including confirmation that
+    the existing pending Date patch changesets plus the packaged migration note
+    satisfy this corrective slice;
+  - focused formatting and `git diff --check` passed, and every non-ledger
+    dirty path remains inside the immutable `date-source-types` target.
 
 ## Surprises and discoveries
 
@@ -324,6 +371,14 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   Declaration-site assertions restore the already-declared public overloads
   without changing `dual`, emitted runtime control flow, or another package's
   remediation scope.
+- Date's range overloads advertised binary data-last closures even though the
+  existing `dual(4)` runtime returns unary closures with the range end already
+  captured. The timezone overloads also advertised optional data-last
+  disambiguation forms that the fixed-arity `dual` helpers could not dispatch.
+- Optional timezone disambiguation creates an unavoidable arity collision
+  between direct default-disambiguation calls and curried explicit-
+  disambiguation calls. Preserving length-only dispatch requires keeping the
+  former and rejecting the latter instead of introducing value-based dispatch.
 
 ## Decision log
 
@@ -412,10 +467,16 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   zero-runtime and are covered in both call forms by public type contracts.
   Date: 2026-07-24.
 
+- Decision: Align Date's public overloads with its existing length-dispatched
+  runtime and use Date-local optional-argument wrappers for timezone operations.
+  Rationale: Casts would preserve false public contracts, while changing shared
+  FP `dual` exceeds the immutable target. Length-only dispatch can support
+  explicit disambiguation data-first or data-last, not both at the colliding
+  arity, so the working direct form and default data-last form remain public.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-- `@stopcock/date` fails source types and declaration build in `src/range.ts`
-  and `src/tz.ts`.
 - `@stopcock/diff` fails source types and declaration build at
   `src/apply.ts:116` and `src/apply.ts:129`.
 
@@ -429,7 +490,7 @@ inventory/contract gate.
 
 ## Exact next action
 
-Resume `date-source-types` from a clean worktree. Repair only Date-local
+Resume `diff-source-types` from a clean worktree. Repair only Diff-local
 overload typing, update the shared readiness inventory and exact transition
 assertion, and rerun the scoped correctness/type/build/pack/import/readiness
 gates without editing the dynamic-scope contract.
@@ -462,3 +523,10 @@ inside the literal `async-source-types` target. Its runtime behavior and public
 exports are unchanged; only its source typing, type regressions, packed
 changelog contract, readiness state, and focused evidence changed. S0R remains
 in progress for the separately scoped Date and Diff blockers.
+
+The Date remediation now passes its complete current-version package contract
+inside the literal `date-source-types` target. Its supported runtime behavior
+and public exports remain intact; false overloads were corrected, optional
+data-first disambiguation now reaches the runtime body, and packed migration
+and consumer evidence is checked in. S0R remains in progress for the separately
+scoped Diff blocker.

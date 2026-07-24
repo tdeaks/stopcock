@@ -28,8 +28,8 @@ test('accepts the complete live S0 package-cohort readiness inventory', () => {
   const result = validate(loadFixture())
   assert.equal(result.total, 21)
   assert.equal(result.public, 20)
-  assert.equal(result.ready, 19)
-  assert.deepEqual(result.blocked, ['@stopcock/date', '@stopcock/diff'])
+  assert.equal(result.ready, 20)
+  assert.deepEqual(result.blocked, ['@stopcock/diff'])
 })
 
 test('rejects an omitted package', () => {
@@ -75,11 +75,11 @@ test('rejects manifest-set identity drift', () => {
 test('rejects a remaining blocker without a predecessor-recorded dynamic target', () => {
   const fixture = loadFixture()
   fixture.dynamicScopes.stages.S0R = fixture.dynamicScopes.stages.S0R.filter(
-    (target) => target.id !== 'date-source-types',
+    (target) => target.id !== 'diff-source-types',
   )
   assert.throws(() => validate(fixture), /no start-HEAD S0R target/u)
 })
 
 test('require-ready fails closed on the exact blocked public packages', () => {
-  assert.throws(() => validate(loadFixture(), true), /@stopcock\/date, @stopcock\/diff/u)
+  assert.throws(() => validate(loadFixture(), true), /@stopcock\/diff/u)
 })

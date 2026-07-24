@@ -268,7 +268,7 @@
         "cwd": "packages/date",
         "build": "vp run build",
         "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
-        "typeContracts": null,
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
         "test": "vp test run",
         "pack": "bun pm pack --destination <temporary-directory>"
       },
@@ -301,17 +301,18 @@
         }
       },
       "disposition": {
-        "status": "blocked:source-types",
+        "status": "ready",
         "scopeTarget": "date-source-types",
-        "blockers": [
-          "Source types and declaration build fail in src/range.ts with DualOperation overload incompatibilities and in src/tz.ts with a tagged-unary mismatch plus overload resolution failures."
-        ],
+        "blockers": [],
         "evidence": [
           "2026-07-24: vp exec tsc -p tsconfig.json --noEmit exited 1.",
-          "2026-07-24: node ../../tooling/build-package.mjs emitted JavaScript, then exited 2 in declaration generation."
+          "2026-07-24: node ../../tooling/build-package.mjs emitted JavaScript, then exited 2 in declaration generation.",
+          "2026-07-24: source types and focused public type contracts passed after Date's range and timezone overloads were aligned with length-based runtime dispatch.",
+          "2026-07-24: the direct package build and 16-file, 331-test suite passed, including a real tarball, extracted runtime execution, and Bundler/NodeNext declaration consumers.",
+          "2026-07-24: the packed Date tarball contains every declared root target plus README.md, CHANGELOG.md, and LICENSE without source or test files."
         ],
         "transitionRequirements": [
-          "S0R must repair the Date overload typing, then rerun scoped types, tests, build, pack, clean install, and every declared export.",
+          "S0R remediation passed scoped source types, public type contracts, tests, direct build, pack, isolated extracted-consumer imports, and declarations.",
           "S0B must align the public version and internal FP range to the selected 2.0.0-next cohort."
         ]
       }

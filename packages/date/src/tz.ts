@@ -24,6 +24,54 @@ export type Disambiguation = 'earlier' | 'later' | 'compatible'
 
 type TransitionEntry = { at: number; offset: number }
 
+type OptionalDataFirstDual3<Data, A1, A2, Optional, Result> = {
+  (data: Data, a1: A1, a2: A2, optional?: Optional): Result
+  (a1: A1, a2: A2): (data: Data) => Result
+}
+
+function dual3WithOptionalDataFirst<Data, A1, A2, Optional, Result>(
+  body: (data: Data, a1: A1, a2: A2, optional?: Optional) => Result,
+): OptionalDataFirstDual3<Data, A1, A2, Optional, Result> {
+  return function () {
+    if (arguments.length >= 3) {
+      return body(
+        arguments[0] as Data,
+        arguments[1] as A1,
+        arguments[2] as A2,
+        arguments[3] as Optional | undefined,
+      )
+    }
+    const a1 = arguments[0] as A1
+    const a2 = arguments[1] as A2
+    return (data: Data): Result => body(data, a1, a2)
+  } as OptionalDataFirstDual3<Data, A1, A2, Optional, Result>
+}
+
+type OptionalDataFirstDual4<Data, A1, A2, A3, Optional, Result> = {
+  (data: Data, a1: A1, a2: A2, a3: A3, optional?: Optional): Result
+  (a1: A1, a2: A2, a3: A3): (data: Data) => Result
+}
+
+function dual4WithOptionalDataFirst<Data, A1, A2, A3, Optional, Result>(
+  body: (data: Data, a1: A1, a2: A2, a3: A3, optional?: Optional) => Result,
+): OptionalDataFirstDual4<Data, A1, A2, A3, Optional, Result> {
+  return function () {
+    if (arguments.length >= 4) {
+      return body(
+        arguments[0] as Data,
+        arguments[1] as A1,
+        arguments[2] as A2,
+        arguments[3] as A3,
+        arguments[4] as Optional | undefined,
+      )
+    }
+    const a1 = arguments[0] as A1
+    const a2 = arguments[1] as A2
+    const a3 = arguments[2] as A3
+    return (data: Data): Result => body(data, a1, a2, a3)
+  } as OptionalDataFirstDual4<Data, A1, A2, A3, Optional, Result>
+}
+
 // ── Cache ────────────────────────────────────────────────────────────
 
 const fmtCache = new Map<string, Intl.DateTimeFormat>()
@@ -306,9 +354,8 @@ export function isToday(ts: Timestamp, tz: string): boolean {
 // startOf / endOf in local time
 export const startOf: {
   (ts: Timestamp, unit: DateUnit, tz: string, disambig?: Disambiguation): Timestamp
-  (unit: DateUnit, tz: string, disambig?: Disambiguation): (ts: Timestamp) => Timestamp
-} = dual(
-  3,
+  (unit: DateUnit, tz: string): (ts: Timestamp) => Timestamp
+} = dual3WithOptionalDataFirst(
   (
     ts: Timestamp,
     unit: DateUnit,
@@ -329,9 +376,8 @@ export const startOf: {
 
 export const endOf: {
   (ts: Timestamp, unit: DateUnit, tz: string, disambig?: Disambiguation): Timestamp
-  (unit: DateUnit, tz: string, disambig?: Disambiguation): (ts: Timestamp) => Timestamp
-} = dual(
-  3,
+  (unit: DateUnit, tz: string): (ts: Timestamp) => Timestamp
+} = dual3WithOptionalDataFirst(
   (
     ts: Timestamp,
     unit: DateUnit,
@@ -347,14 +393,8 @@ export const endOf: {
 // add / subtract in local time (calendar units are tz-aware)
 export const add: {
   (ts: Timestamp, amount: number, unit: DateUnit, tz: string, disambig?: Disambiguation): Timestamp
-  (
-    amount: number,
-    unit: DateUnit,
-    tz: string,
-    disambig?: Disambiguation,
-  ): (ts: Timestamp) => Timestamp
-} = dual(
-  4,
+  (amount: number, unit: DateUnit, tz: string): (ts: Timestamp) => Timestamp
+} = dual4WithOptionalDataFirst(
   (
     ts: Timestamp,
     amount: number,
@@ -375,14 +415,8 @@ export const add: {
 
 export const subtract: {
   (ts: Timestamp, amount: number, unit: DateUnit, tz: string, disambig?: Disambiguation): Timestamp
-  (
-    amount: number,
-    unit: DateUnit,
-    tz: string,
-    disambig?: Disambiguation,
-  ): (ts: Timestamp) => Timestamp
-} = dual(
-  4,
+  (amount: number, unit: DateUnit, tz: string): (ts: Timestamp) => Timestamp
+} = dual4WithOptionalDataFirst(
   (
     ts: Timestamp,
     amount: number,
