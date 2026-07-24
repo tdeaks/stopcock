@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S1A
-Current slice: BUILD_CONSUMER_SIZE_TOPOLOGY_EVIDENCE
-Last verified commit: 551852a06c1c22a2241fb9e3c75815524fdbc9fb
+Current canonical stage: S2
+Current slice: BUILD_ACYCLIC_SEMANTIC_GENERATION
+Last verified commit: 81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -49,39 +49,39 @@ controller never performs that external mutation itself.
 Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 `GATE_PASSED`, `STOPPED_BY_PLAN`, and `BLOCKED`.
 
-| Stage | Status             | Verified commit or evidence                                                                                                                                                                                                                                                                                                                                                            |
-| ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S0    | GATE_PASSED        | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                         |
-| S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready |
+| Stage | Status      | Verified commit or evidence                                                                                                                                                                                                                                                                                                                                                                   |
+| ----- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S0    | GATE_PASSED | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                                |
+| S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready        |
 | S0B   | GATE_PASSED | Aligned 20-package public plus private Synth `2.0.0-next.0` cohort at `551852a06c1c22a2241fb9e3c75815524fdbc9fb`; no-write alignment replay, immutable 20-tarball development artifact `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`, exact packed checks, 117-export Bun/Node/type consumer, private Synth compatibility, and independent exit validation passed |
-| S1A   | IN_PROGRESS        | Consumer, size, and topology evidence                                                                                                                                                                                                                                                                                                                                                  |
-| S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                            |
-| S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                          |
-| S2    | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                               |
-| S3A   | NOT_STARTED        | Initializer purity                                                                                                                                                                                                                                                                                                                                                                     |
-| S3B   | NOT_STARTED        | Untagged internal duals                                                                                                                                                                                                                                                                                                                                                                |
-| S4    | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
-| S5A   | NOT_STARTED        | Trusted provenance                                                                                                                                                                                                                                                                                                                                                                     |
-| S5B   | NOT_STARTED        | Measured retention policy                                                                                                                                                                                                                                                                                                                                                              |
-| S6    | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
-| S7    | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                               |
-| S8    | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
-| S9    | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
-| S10   | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                               |
-| S10X  | NOT_STARTED        | Conditional optimizer extraction                                                                                                                                                                                                                                                                                                                                                       |
-| S10J  | NOT_STARTED        | Optimizer topology decision                                                                                                                                                                                                                                                                                                                                                            |
-| S11   | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
-| P1A   | NOT_STARTED        | Array Iter kernels                                                                                                                                                                                                                                                                                                                                                                     |
-| P1B   | NOT_STARTED        | Typed-array Iter admission                                                                                                                                                                                                                                                                                                                                                             |
-| P2    | NOT_STARTED        | Typed-array policy                                                                                                                                                                                                                                                                                                                                                                     |
-| P3A   | NOT_STARTED        | Allocation evidence infrastructure                                                                                                                                                                                                                                                                                                                                                     |
-| P3B   | NOT_STARTED        | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                         |
-| P4    | NOT_STARTED        | Object, Record, and Map candidates                                                                                                                                                                                                                                                                                                                                                     |
-| DISP  | NOT_STARTED        | Optional-candidate dispositions                                                                                                                                                                                                                                                                                                                                                        |
-| S12P  | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
-| S12   | NOT_STARTED        | —                                                                                                                                                                                                                                                                                                                                                                                      |
-| S13   | NOT_STARTED        | External RC publication remains user-authorized                                                                                                                                                                                                                                                                                                                                        |
-| S14   | NOT_STARTED        | Stable acceptance and publication remain user-authorized                                                                                                                                                                                                                                                                                                                               |
+| S1A   | GATE_PASSED | Cross-bundler packed consumer, behavior, size, identity, topology, and lower-bound package evidence checkpoint `81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`; independent consumer and topology audits passed                                                                                                                                                                                    |
+| S1B   | NOT_STARTED | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                                   |
+| S1C   | NOT_STARTED | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                                 |
+| S2    | IN_PROGRESS | Acyclic canonical generation; requires independent `v2_verifier` exit audit                                                                                                                                                                                                                                                                                                                   |
+| S3A   | NOT_STARTED | Initializer purity                                                                                                                                                                                                                                                                                                                                                                            |
+| S3B   | NOT_STARTED | Untagged internal duals                                                                                                                                                                                                                                                                                                                                                                       |
+| S4    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S5A   | NOT_STARTED | Trusted provenance                                                                                                                                                                                                                                                                                                                                                                            |
+| S5B   | NOT_STARTED | Measured retention policy                                                                                                                                                                                                                                                                                                                                                                     |
+| S6    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S7    | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
+| S8    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S9    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S10   | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
+| S10X  | NOT_STARTED | Conditional optimizer extraction                                                                                                                                                                                                                                                                                                                                                              |
+| S10J  | NOT_STARTED | Optimizer topology decision                                                                                                                                                                                                                                                                                                                                                                   |
+| S11   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| P1A   | NOT_STARTED | Array Iter kernels                                                                                                                                                                                                                                                                                                                                                                            |
+| P1B   | NOT_STARTED | Typed-array Iter admission                                                                                                                                                                                                                                                                                                                                                                    |
+| P2    | NOT_STARTED | Typed-array policy                                                                                                                                                                                                                                                                                                                                                                            |
+| P3A   | NOT_STARTED | Allocation evidence infrastructure                                                                                                                                                                                                                                                                                                                                                            |
+| P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                                |
+| P4    | NOT_STARTED | Object, Record, and Map candidates                                                                                                                                                                                                                                                                                                                                                            |
+| DISP  | NOT_STARTED | Optional-candidate dispositions                                                                                                                                                                                                                                                                                                                                                               |
+| S12P  | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S12   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S13   | NOT_STARTED | External RC publication remains user-authorized                                                                                                                                                                                                                                                                                                                                               |
+| S14   | NOT_STARTED | Stable acceptance and publication remain user-authorized                                                                                                                                                                                                                                                                                                                                      |
 
 ## Progress
 
@@ -168,6 +168,19 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       packed inspection, all-cohort clean install, 117-export Bun/Node runtime
       imports and declaration type-check, private Synth compatibility, 13
       focused tests, and independent exit validation all passed.
+- [x] (2026-07-24) Deliberately amended S1A's canonical scope to permit only
+      the exact benchmark dependency lockfile delta, then isolated the stale
+      S0B State peer normalization in prerequisite commit
+      `d51f016adb3448922b1107adea1e189ed4b2ec95`.
+- [x] (2026-07-24) Completed S1A's packed cross-bundler consumer harness,
+      frozen behavior/identity/size envelope, topology-neutral package gate,
+      and publish-style lower-bound feasibility projection.
+- [x] (2026-07-24) Closed independent S1A audit findings covering portable
+      workspace identity, Webpack closure attribution, legacy orphan
+      JavaScript, substituted tarball evidence, stable-tarball/file-graph
+      binding, and duplicate runtime artifacts in both topology modes.
+- [x] (2026-07-24) Checkpointed the independently validated S1A implementation
+      as `81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`.
 
 ## Evidence log
 
@@ -679,6 +692,62 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     consumer, diff hygiene, and final clean status without source edits;
   - S0B exits at clean verified commit
     `551852a06c1c22a2241fb9e3c75815524fdbc9fb`.
+- S1A consumer-size and topology evidence:
+  - canonical S1A lockfile authority was repaired at
+    `379f55ef5283cdbc0593d2bb4e39bb676198c596`; Bun's previously stale State
+    cohort peer record was isolated at
+    `d51f016adb3448922b1107adea1e189ed4b2ec95`;
+  - the final S1A `bun.lock` object delta contains exactly the five declared
+    benchmark tools—esbuild `0.28.1`, Rolldown `1.0.1`, Rollup `4.62.2`,
+    Terser `5.49.0`, and Webpack `5.108.4`—plus 21 Rolldown
+    optional/transitive records; no other workspace or existing package record
+    changed, and `bun install --frozen-lockfile` made no change;
+  - the consumer contract contains 26 fixture identities per bundler: 23
+    active fixtures and three future fusion fixtures represented as explicit
+    `expected-export-absent`; the release report contains 104 rows, 92 executed
+    measurements, 12 N/A rows, and 100 artifact records;
+  - every final minified artifact executed its independent behavior oracle;
+    all four bundler/minifier/version identities, frozen package/compiler
+    identities, raw/minified hashes, gzip/Brotli values, module attribution,
+    transitive closures, emitted compiler identities, and literal
+    artifact-origin receipts revalidated;
+  - release and PR profiles passed in all four bundlers. The final report is
+    reproducible across temporary-directory roots after removing only
+    `generatedAt`, with normalized SHA-256
+    `f344977f83994dad71668300fe0f1dd6b2a1f1025e4844103e65ce070cde80a3`;
+  - the frozen final-target rows remain separate from current baseline
+    ceilings: direct/root final targets are 512 bytes gzip, compiler rows are
+    1 KiB, compact is 5.5 KiB, optimized is 12 KiB, and debug is a 3 KiB
+    incremental closure;
+  - the topology gate detects legacy versus complete three-export tiered
+    layouts without relying on a chunk filename. The live legacy artifact
+    passes at 124,807 tarball bytes and 16,286 gzip bytes for its single shared
+    direct runtime artifact;
+  - source and projection tarballs are independently re-read and re-extracted;
+    schema v3 binds path, tar hash, byte count, file count, and file-set hash.
+    The source receipt is 109 files with file-set SHA-256
+    `719252da3e11207e9c07cb24017083719743191aaf5e740bc0c6f13c7d10ef7c`;
+    the projection receipt is 99 files with file-set SHA-256
+    `4bf005b1e054000e91217f7fdb8321665d71191135e7a7a148376528eb88d21b`;
+  - the source tarball is byte-identical to immutable S0B FP artifact
+    `sha256:631d228853b6603dae8cd2ef3e1c317c6ca3733564ec0905be5c693970d11deb`;
+    FP and FP-compiler source and distribution identities remain unchanged;
+  - the same-package lower-bound projection is 61,174 bytes, below the strict
+    100,000-byte stable ceiling, and retains the complete observed optimized
+    closure, 49 reachable declarations, README, LICENSE, and explicit
+    root/direct/compact/debug stubs. It remains labelled feasibility evidence,
+    not S12 release proof;
+  - the current legacy `dist/array.js` and `dist/readonly-array.js` duplicate
+    is frozen as the only permitted legacy duplicate group. Any other legacy
+    duplicate and every nontrivial tiered duplicate fail closed;
+  - focused validation passed 36 consumer/tamper tests and 9 topology/tamper
+    tests; strict TypeScript passed for every production harness file; focused
+    formatting, `git diff --check`, canonical S1A scope, and both independent
+    read-only audits passed;
+  - the repository-wide benchmark TypeScript project remains unsuitable as a
+    clean gate because it includes broad pre-existing Node-type and benchmark
+    callback-signature failures; S1A therefore used the strict focused
+    production type-check plus executable test suites without weakening either.
 
 ## Surprises and discoveries
 
@@ -783,6 +852,27 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   historical readiness evidence rather than a live cohort command;
   `release:v2:check-cohort` owns the aligned train. Rewriting the S0 inventory
   to chase prerelease metadata would erase its frozen boundary.
+- S1A originally required exact bundler versions but omitted `bun.lock` from
+  its allowed changes. The minimal canonical and policy amendment now permits
+  that path only for the declared S1A tools.
+- Bun's first S1A lock regeneration also normalized the already-aligned State
+  peer record left stale by S0B. Keeping that unrelated byte in S1A would have
+  violated the narrow exception, so it was isolated in its own prerequisite
+  cohort-lock checkpoint.
+- Rolldown inherited the invoking process directory, and Webpack emitted
+  absolute/composite attribution identities plus order-sensitive multi-entry
+  closures. Explicit consumer-root working directories, deterministic module
+  and chunk IDs, split entry closures, and root-relative attribution made the
+  evidence portable.
+- The initial topology evaluator checked unreachable JavaScript only in
+  tiered mode, excluded public targets from duplicate scans, and trusted
+  self-consistent tarball metadata. Independent adversarial review converted
+  each into a failing fixture and moved the production trust boundary to
+  stable-tarball re-extraction with exact file-set receipts.
+- The current legacy package intentionally contains one byte-identical public
+  pair, `array.js` and `readonly-array.js`. Schema v3 records and freezes that
+  exact compatibility exception while rejecting any new legacy duplicate;
+  tiered mode permits only identical trivial empty public stubs.
 
 ## Decision log
 
@@ -995,16 +1085,51 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   post-alignment version/range/prerelease validation.
   Date: 2026-07-24.
 
+- Decision: Measure the immutable S0B FP/FP-compiler tarballs for S1A consumer
+  baselines while measuring a freshly packed stable tarball for the
+  topology-neutral live-layout gate.
+  Rationale: The consumer denominator must not drift as production changes,
+  while the topology gate must prove each current layout and its exact packed
+  file graph rather than replay only the old cohort.
+  Date: 2026-07-24.
+
+- Decision: Freeze per-bundler current ceilings at the characterized result
+  plus 3%, keep final 2.0 absolute targets separate, and predeclare absent
+  fusion rows as fail-closed N/A records.
+  Rationale: This reproduces the current matrix inside the canonical 5%
+  tolerance without allowing a current baseline to weaken the final product
+  target or an unimplemented tier to disappear from the schema.
+  Date: 2026-07-24.
+
+- Decision: Treat `@stopcock/fp/compile` as the explicit optimized
+  compatibility facade in tiered topology checks.
+  Rationale: The canonical public-tier contract deliberately routes this
+  deprecated facade to optimized fusion in the same-package topology and to
+  compact fusion only after an accepted S10X extraction; it is not a root or
+  direct-specialist closure.
+  Date: 2026-07-24.
+
+- Decision: Preserve only the observed legacy `array.js`/`readonly-array.js`
+  duplicate group and require zero nontrivial duplicate runtime groups in the
+  future tiered layout.
+  Rationale: S1A must pass the exact current packed topology without making
+  legacy debt a general permission for new retained runtimes.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-None for the completed S0B gate.
+No blocker for S2's S1A-dependent, size-only generation work. S1B dedicated
+runner ownership and qualification remain unverified and will block S1C and
+later timing/memory promotion lanes until completed.
 
 ## Exact next action
 
-Implement S1A's additive behavior-valid cross-bundler consumer-size and
-topology evidence from the aligned packed cohort. Preserve the current runtime,
-exports, distribution bytes, legacy topology mode, and immutable S0B artifact.
-Do not begin hot-path implementation or replace a baseline in this slice.
+Trace the live FP and FP-compiler generation graph for S2, freeze its current
+generated identities, and implement the definition-only
+`OperatorSemanticV1`, `OperatorLoweringV1`, `OperatorEvidenceV1`,
+`ReceiptSchemaV1`, and internal `defineOperatorV1` boundary without changing
+runtime bytes or public behavior. Run the complete S2 reproducibility and
+refinement gates, then request the required independent `v2_verifier` audit.
 
 ## Outcomes and retrospective
 
@@ -1097,3 +1222,13 @@ validated, and retained as one immutable 20-tarball development artifact;
 private Synth is aligned, compatibility-green, and absent from the publication
 manifest. No registry or other external release state changed. S1A now owns
 the first post-alignment implementation work.
+
+S1A is complete at
+`81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`. The immutable aligned cohort now
+has portable, behavior-valid consumer-size evidence across esbuild, Rollup,
+Rolldown, and Webpack plus a topology-neutral live package gate with exact
+stable-tarball/file-graph receipts. The same-package optimized projection is
+plausible at 61,174 bytes but remains explicitly non-release evidence. No
+production source, public export, generated runtime, distribution byte, or
+external release state changed. The dependency graph now admits S2 even while
+the independent S1B/S1C performance-profile lane remains pending.
