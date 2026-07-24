@@ -6,14 +6,14 @@ superplan defines what must happen, while this file records what has actually
 happened.
 
 Execution authorization: AUTHORIZED
-Programme status: NOT_STARTED
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0
-Current slice: NOT_STARTED
-Last verified commit: UNSET
-Last controller run: NEVER
+Current slice: CONTRACTS_AND_SEMANTICS_VALIDATED_AWAITING_CHECKPOINT
+Last verified commit: CHECKPOINT_PENDING
+Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
 workflow has been installed. It changes only after the user explicitly asks to
@@ -36,12 +36,12 @@ start execution from a named, frozen base.
 
 ## Canonical stage status
 
-Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `GATE_PASSED`,
-`STOPPED_BY_PLAN`, and `BLOCKED`.
+Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
+`GATE_PASSED`, `STOPPED_BY_PLAN`, and `BLOCKED`.
 
 | Stage | Status | Verified commit or evidence |
 |---|---|---|
-| S0 | NOT_STARTED | — |
+| S0 | IN_PROGRESS | Contracts and semantics slice validated; checkpoint pending |
 | S0R | NOT_STARTED | Conditional stage |
 | S0B | NOT_STARTED | — |
 | S1 | NOT_STARTED | Includes its independently complete evidence slices |
@@ -67,17 +67,84 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `GATE_PASSED`,
       `624b25bc0cd226178bd46294d60b1a337fa11aee`.
 - [x] (2026-07-24) Created and trusted the isolated
       `codex/stopcock-v2` worktree and authorized future execution.
-- [ ] Begin S0.
+- [x] (2026-07-24) Began S0 after independently rechecking every start-gate
+      item against the live checkout.
+- [x] (2026-07-24) Implemented and focused-validated the additive S0
+      architecture, root-migration, eager/lazy `flatMap`, and public-tag
+      characterization slice.
+- [ ] Checkpoint the validated S0 contracts slice.
+- [ ] Complete the S0 package-cohort/readiness slice.
 
 ## Evidence log
 
-No implementation or release evidence has been produced by this workflow.
+- Start-gate evidence:
+  - live branch `codex/stopcock-v2`;
+  - live worktree
+    `/Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2`;
+  - live HEAD `6d6bdc03e4d6fdb987685b6b3507e7baa08a3309`;
+  - frozen base `624b25bc0cd226178bd46294d60b1a337fa11aee` is
+    an ancestor;
+  - startup status was clean;
+  - performance source-plan SHA-256
+    `e5b6c1a8bc2f7b72b65e85d07a8c9289b56c496b54050cf7a6e5b6ee6d5fc10e`;
+  - size source-plan SHA-256
+    `dc7127ee67dab6ae2f32caffe55425c6ffaf4da8ee8c02c3705cbd674dc47fbf`.
+- S0 contracts focused validation:
+  - `bunx vitest run
+    packages/fp/src/__tests__/v2-boundary-contract.test.ts
+    packages/fp/src/__tests__/v2-tag-authority-characterization.test.ts
+    packages/fp-compiler/src/__tests__/v2-flatmap-contract.test.ts`
+    passed: 3 files, 27 tests;
+  - `bun run --cwd packages/fp check:source` passed;
+  - `bun run --cwd packages/fp check:types` passed, including the root
+    type-export import contract;
+  - `bun run --cwd packages/fp-compiler check:source` passed;
+  - focused `vp fmt ... --check` passed;
+  - the independent `v2_test_runner` produced the initial 21-test and source
+    type-check evidence and made no source edits;
+  - the outer recovery review strengthened the fixtures, added the root
+    type-import contract, and independently re-ran the 27-test, type, format,
+    build, pack, and packed-import evidence recorded above.
+- Environment recovery/evidence:
+  - initial `vp run build:packages` could not resolve `vite-plus`;
+  - `bun install --frozen-lockfile` restored the exact locked dependency set
+    without changing tracked files;
+  - a retry reached package execution but the task orchestrator could not
+    create its sandboxed communication channel (`Operation not permitted`);
+  - direct FP and FP-compiler builds via
+    `node ../../tooling/build-package.mjs` passed and produced only ignored
+    `dist` artifacts;
+  - `bun pm pack --destination <temporary-directory>` produced real tarballs
+    for `@stopcock/fp@1.0.0` and `@stopcock/fp-compiler@0.0.0`;
+  - the final FP tarball contains no test or fixture artifact;
+  - extracted packed FP execution and packed FP-compiler import both passed.
 
 ## Surprises and discoveries
 
 - The canonical plan originally lived under an ignored `/docs/` directory.
   The repository ignore rules now expose it and its two hash-pinned source plans
   so all three can be committed and made available to isolated worktrees.
+- Current eager `Array.flatMap` behavior is not uniform across internal
+  execution surfaces. Generated direct execution and the build compiler use
+  the frozen indexed-Array contract; `interpret.ts`, portable lowering, and
+  multi-step runtime `compile()` also consume arbitrary returned iterables and
+  observe some live lengths. The independent S0 fixture records those surfaces
+  as ineligible comparison oracles until they conform.
+- The project task orchestrator requires an IPC/communication facility denied
+  by the current sandbox. Direct bounded package commands remain usable.
+- The worktree's Git metadata is stored at
+  `/Users/tomdeakin/IdeaProjects/lay-some-pipe/.git/worktrees/lay-some-pipe-stopcock-v2`,
+  outside the writable root. Source writes work, but Git cannot create
+  `index.lock`.
+- The first real FP tarball exposed
+  `dist/__tests__/v2-contract-fixtures.d.ts`. Moving the executable fixture to
+  `.mts` kept it outside the package build inputs; the rebuilt and repacked
+  artifact contains no test fixture.
+- The first public-tag characterization only collected observed forged values
+  and would pass without proving the authority problem. It now asserts that
+  every registered forged opcode and binding is accepted by the current 1.x
+  planner, while remaining explicitly characterized as a vulnerability rather
+  than a desired 2.0 contract.
 
 ## Decision log
 
@@ -104,18 +171,53 @@ No implementation or release evidence has been produced by this workflow.
   dormant controller scaffold and its three preserved plan artifacts.
   Date: 2026-07-24.
 
+- Decision: Freeze eager `Array.flatMap` as an indexed returned-Array contract
+  and lazy `Iter.flatMap` as the arbitrary-iterable/IteratorClose contract.
+  Rationale: This is the canonical semantic boundary; current internal
+  divergences are recorded rather than promoted to oracle behavior.
+  Date: 2026-07-24.
+
+- Decision: Approve a same-package private
+  `WeakMap<Function, TrustedOperatorMetadata>` or equivalently unforgeable
+  provenance mechanism populated only by generated internal factories.
+  Rationale: Public `_op`, `_fn`, `_a1`, and `_a2` fields are mutable,
+  forgeable compatibility data and cannot authenticate an optimized lowering.
+  Date: 2026-07-24.
+
+- Decision: Map every current root value and type export to the pinned 2.0
+  sequential, fusion, fusion-debug, dual, Option, or Result destination without
+  changing the live root in S0.
+  Rationale: S8 owns the atomic runtime/export cutover; S0 only freezes its
+  complete migration contract.
+  Date: 2026-07-24.
+
+- Decision: Keep implementation inside `workspace-write` and move scoped local
+  checkpoint application into the outer launcher.
+  Rationale: Noninteractive Codex cannot surface a fresh approval, and Git
+  metadata remains protected in `workspace-write`. A schema-validated handoff
+  preserves the sandbox while allowing the already-authorized outer process to
+  create exact local checkpoints.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-None. Execution is authorized but has not been launched.
+None. The original Git-metadata blocker is being recovered by the authorized
+outer process; another canonical slice must not start until that checkpoint and
+the launcher-side checkpoint handoff are committed.
 
 ## Exact next action
 
-When the user chooses to start implementation, run
-`./tooling/run-stopcock-v2-controller.sh` from
-`/Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2`.
+1. Have the authorized outer process stage only the five S0 contract files plus
+   this ledger.
+2. Create `test(fp): freeze 2.0 cross-tier semantics`.
+3. Record that checkpoint hash as `Last verified commit`.
+4. Commit the launcher-side checkpoint handoff and verify it without starting
+   another implementation run.
+5. Resume with the S0 package-cohort/readiness slice.
 
 ## Outcomes and retrospective
 
-The execution controller is installed, isolated, trusted, and authorized but
-remains dormant. No superplan stage has started, no implementation file has
-been changed by the controller, and no external action has been taken.
+Execution started and the first additive S0 slice is source-, type-,
+distribution-, and pack-valid. It is awaiting its outer checkpoint. No
+production runtime, generated output, public export, package version, lockfile,
+or external release state has changed.
