@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0B
-Current slice: ALIGN_LIVE_2_0_NEXT_COHORT
-Last verified commit: ad1213d80770f56b891a19c250665ce77d98dfdc
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -53,7 +53,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED        | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                         |
 | S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready |
-| S0B   | IN_PROGRESS | —; deterministic cohort version authority implemented and independently validated; live package manifests and lockfile remain unchanged; immutable single-build cohort packer and exact packed-manifest checker implemented and independently validated; private Synth packed-dependency compatibility runner implemented and independently validated                                  |
+| S0B   | CHECKPOINT_PENDING | —; deterministic cohort version authority implemented and independently validated; live package manifests and lockfile remain unchanged; immutable single-build cohort packer and exact packed-manifest checker implemented and independently validated; private Synth packed-dependency compatibility runner implemented and independently validated; credential-free deterministic cohort changelog rendering implemented and independently validated after the live alignment failed closed |
 | S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                                                                                                                                                                                                                                                                  |
 | S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                            |
 | S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                          |
@@ -140,6 +140,14 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       compatibility runner against exact packed FP/Signal dependency closures,
       copied live Synth source, and a bounded source-type/runtime contract
       without aligning live manifests, rebuilding Synth WASM, or publishing.
+- [x] (2026-07-24) Attempted the exact live `2.0.0-next.0` alignment; the
+      configured GitHub changelog adapter required unavailable credentials, and
+      the cohort transaction restored every controlled file to its starting
+      bytes.
+- [x] (2026-07-24) Implemented and independently validated an execution-only,
+      deterministic local Changesets changelog renderer for every cohort
+      mutation without changing the repository's normal Changesets config,
+      package manifests, changelogs, prerelease state, or lockfile.
 
 ## Evidence log
 
@@ -500,6 +508,49 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     runner, its focused test, and this ledger. No package manifest, changelog,
     Changesets state, lockfile, generated cohort artifact, production source,
     external state, or ignored repository evidence was changed.
+- S0B deterministic cohort changelog remediation:
+  - startup HEAD was
+    `1446dddf2f20f7b63bcecfc920e267f513d2ccc1`, with a clean worktree on the
+    recorded branch and isolated worktree;
+  - the frozen base and prior verified commit were ancestors, both preserved
+    source-plan hashes matched the canonical pins, and the trusted project
+    configuration plus custom Stopcock 2.0 agents were active;
+  - two pre-mutation live `plan --target 2.0.0-next.0` runs were byte-identical,
+    reported 20 public packages plus private Synth, and reported no readiness
+    blocker;
+  - the exact
+    `bun run release:v2:align-next --target 2.0.0-next.0` command reached
+    Changesets changelog generation and failed because
+    `@changesets/changelog-github` required `GITHUB_TOKEN`; the transaction
+    restored every controlled byte, left `.changeset/pre.json` absent, and
+    returned the tracked worktree to clean;
+  - `loadChangesetsRuntime` now resolves the installed
+    `@changesets/cli/changelog` renderer through the same CLI-scoped dependency
+    graph as the planner and applier, and `applyNormalizedReleasePlan` supplies
+    it through an execution-only cloned config for `align-next`,
+    `advance-next`, and `align-stable`;
+  - the checked-in `.changeset/config.json` remains unchanged, while the local
+    renderer preserves Changeset summaries and normal release/dependency
+    sections without GitHub API calls or credentials;
+  - the focused fixture now begins with the live GitHub changelog tuple, proves
+    the applier receives the deterministic renderer, preserves the original
+    config bytes and summary text, restores failed transactions, and produces a
+    byte-stable no-write second alignment;
+  - the cohort, packer, Synth, and controller suites passed 32 tests; both
+    JavaScript syntax checks, focused lint, focused formatting, readiness,
+    byte-identical live planning, and `git diff --check` passed;
+  - an independent `v2_explorer` traced the credential dependency and confirmed
+    the execution-only local renderer as the smallest S0B-scoped remediation;
+  - an independent `v2_test_runner` repeated all 32 tests, syntax, lint,
+    formatting, two byte-identical live plans, readiness, and diff hygiene
+    without changing HEAD or either implementation dirty byte; the pre-ledger
+    implementation diff SHA-256 remained
+    `101f0fab19f76c1096dc758213ab4b48794c8d60133c90fdb8510333c7618bed`,
+    and it left no attributable generated file or background process;
+  - this remediation changes only the cohort authority, its focused test, and
+    this ledger. No package manifest, package changelog, Changesets state,
+    lockfile, generated cohort artifact, runtime source, ignored source,
+    external state, or Git metadata was changed.
 
 ## Surprises and discoveries
 
@@ -583,6 +634,16 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   dependency. The isolated Synth install therefore needs hash-matched local
   overrides for the complete non-development closure; the unreachable
   registry fixture fails if any edge escapes that closure.
+- The live Changesets configuration uses
+  `@changesets/changelog-github`, and the installed applier resolves each
+  committed Changeset before rendering. Even a local development-cohort
+  alignment therefore attempted a GitHub API lookup and required
+  `GITHUB_TOKEN`; the original fixture used the credential-free CLI renderer
+  and could not expose that live-only failure.
+- Cohort mutations correctly require a clean canonical worktree. Once the
+  credential-free remediation itself made the worktree dirty, the controller
+  could not retry live alignment without weakening that guard; the remediation
+  must become its own checkpoint first.
 
 ## Decision log
 
@@ -752,22 +813,39 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   suite.
   Date: 2026-07-24.
 
+- Decision: Render every 2.0 cohort mutation with the installed
+  `@changesets/cli/changelog` through an execution-only cloned Changesets
+  config, while leaving `.changeset/config.json` unchanged.
+  Rationale: The cohort authority must preserve pending Changeset text and
+  normal changelog sections deterministically without requiring GitHub
+  credentials or network access. One shared path also prevents RC and stable
+  alignment from silently choosing different changelog bytes.
+  Date: 2026-07-24.
+
+- Decision: Checkpoint the deterministic changelog remediation before retrying
+  the live initial alignment.
+  Rationale: The cohort authority's clean-worktree guard is a required mutation
+  boundary. Bypassing or weakening it to combine the remediation with the live
+  metadata rewrite would invalidate the controller's provenance guarantees.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-None. The deterministic version authority, immutable packer/packed-manifest
-checker, and private Synth compatibility runner are independently valid. S0B
-still owns live cohort alignment and the complete real packed exit gate before
-S1 becomes eligible.
+None. The deterministic version authority, credential-free changelog path,
+immutable packer/packed-manifest checker, and private Synth compatibility
+runner are independently valid. S0B still owns live cohort alignment and the
+complete real packed exit gate before S1 becomes eligible.
 
 ## Exact next action
 
-From the clean private-Synth-runner checkpoint, run
+From the clean deterministic-changelog checkpoint, run
 `bun run release:v2:align-next --target 2.0.0-next.0` as the next independently
 valid S0B slice. Prove the filtered Changesets operation aligns all 20 selected
 public manifests plus private Synth, exact internal prerelease ranges,
-changelogs/prerelease state, and `bun.lock`; rerun `check-cohort` and the
-byte-stable second execution, but do not pack, publish, or change production
-runtime behavior in that alignment slice.
+changelogs/prerelease state, and `bun.lock`; rerun the live Changesets plan
+parser and `check-cohort`, then prove the exact second alignment is byte-stable
+and writes nothing. Recheck excluded private bytes, but do not pack, publish, or
+change production runtime behavior in that alignment slice.
 
 ## Outcomes and retrospective
 
@@ -836,3 +914,12 @@ type-checks and executes its bounded FP/Signal compatibility smoke. Live
 package versions, ranges, changelogs, prerelease state, lockfile, generated
 cohort artifacts, production source, and external release state remain
 untouched, so live `2.0.0-next.0` alignment is the next partial S0B slice.
+
+The first live alignment attempt exposed a credential dependency in the normal
+GitHub-enriched Changesets changelog adapter and rolled back without changing
+the cohort. S0B now has an independently validated, execution-only deterministic
+renderer that preserves the pending Changeset text and leaves the normal
+repository config untouched. The clean-worktree mutation guard intentionally
+requires this remediation to checkpoint before live alignment is retried; the
+package versions, ranges, changelogs, prerelease state, and lockfile therefore
+remain unchanged.

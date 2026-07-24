@@ -11,7 +11,14 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
-import { advanceNext, alignNext, alignStable, joinCurrent, planCohort } from '../v2-cohort.mjs'
+import {
+  advanceNext,
+  alignNext,
+  alignStable,
+  joinCurrent,
+  loadChangesetsRuntime,
+  planCohort,
+} from '../v2-cohort.mjs'
 
 const TARGET = '2.0.0-next.0'
 const PUBLIC = ['@stopcock/a', '@stopcock/b', '@stopcock/c']
@@ -59,7 +66,7 @@ const createFixture = (t) => {
     packageManager: 'bun@1.3.14',
   })
   writeJson(root, '.changeset/config.json', {
-    changelog: '@changesets/cli/changelog',
+    changelog: ['@changesets/changelog-github', { repo: 'tdeaks/stopcock' }],
     commit: false,
     fixed: [],
     linked: [],
@@ -245,15 +252,28 @@ test('mixed selected-public and private changesets fail closed without writes', 
 test('align-next filters Changesets, preserves private bytes, and is byte-stable on rerun', async (t) => {
   const root = createFixture(t)
   const privateBefore = snapshotPaths(root, PRIVATE_PATHS)
+  const configPath = join(root, '.changeset/config.json')
+  const configBefore = readFileSync(configPath)
+  const baseRuntime = loadChangesetsRuntime()
+  let appliedConfig
+  const runtime = {
+    ...baseRuntime,
+    applyReleasePlan: async (...arguments_) => {
+      appliedConfig = arguments_[2]
+      return baseRuntime.applyReleasePlan(...arguments_)
+    },
+  }
   let lockfileCalls = 0
   const runLockfile = async () => {
     lockfileCalls += 1
   }
 
-  const result = await alignNext({ root, target: TARGET, runLockfile })
+  const result = await alignNext({ root, target: TARGET, runLockfile, runtime })
   assert.equal(result.changed, true)
   assert.equal(lockfileCalls, 1)
   assert.deepEqual(result.consumedChangesets, ['public-c', 'public-mixed-bumps'])
+  assert.deepEqual(appliedConfig.changelog, [baseRuntime.deterministicChangelogPath, null])
+  assert.ok(readFileSync(configPath).equals(configBefore))
 
   for (const directory of [
     'packages/a/package.json',
@@ -286,7 +306,7 @@ test('align-next filters Changesets, preserves private bytes, and is byte-stable
   assert.match(readFileSync(join(root, 'packages/c/CHANGELOG.md'), 'utf8'), /PUBLIC_C_SUMMARY/u)
 
   const afterFirst = snapshotTree(root)
-  const repeat = await alignNext({ root, target: TARGET, runLockfile })
+  const repeat = await alignNext({ root, target: TARGET, runLockfile, runtime })
   assert.equal(repeat.changed, false)
   assert.equal(lockfileCalls, 1)
   assertSnapshotsEqual(snapshotTree(root), afterFirst)

@@ -300,6 +300,7 @@ export const loadChangesetsRuntime = () => {
     readChangesets: getDefaultExport(changesetsRequire('@changesets/read')),
     assembleReleasePlan: getDefaultExport(changesetsRequire('@changesets/assemble-release-plan')),
     applyReleasePlan: getDefaultExport(changesetsRequire('@changesets/apply-release-plan')),
+    deterministicChangelogPath: changesetsRequire.resolve('@changesets/cli/changelog'),
     enterPre: changesetsRequire('@changesets/pre').enterPre,
     exitPre: changesetsRequire('@changesets/pre').exitPre,
     readPreState: changesetsRequire('@changesets/pre').readPreState,
@@ -825,7 +826,21 @@ const applyNormalizedReleasePlan = async ({
     target,
     runtime,
   })
-  await runtime.applyReleasePlan(plan, context.packages, config, undefined, changelogContext)
+  assert(
+    typeof runtime.deterministicChangelogPath === 'string' &&
+      runtime.deterministicChangelogPath.length > 0,
+    'the Changesets runtime must provide a deterministic local changelog renderer',
+  )
+  await runtime.applyReleasePlan(
+    plan,
+    context.packages,
+    {
+      ...config,
+      changelog: [runtime.deterministicChangelogPath, null],
+    },
+    undefined,
+    changelogContext,
+  )
 
   const changed = []
   for (const workspace of context.selectedPublic) {
