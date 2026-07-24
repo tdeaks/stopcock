@@ -104,46 +104,223 @@ function operatorManifestV1(): object {
   }
 }
 
-function rangePredicate(opcodes: readonly number[]): string {
-  const sorted = [...new Set(opcodes)].sort((left, right) => left - right)
-  const ranges: Array<readonly [number, number]> = []
-  for (const opcode of sorted) {
+// These lists preserve the observable serialization order of the 1.x runtime
+// projection. They contain no semantic facts: every name must resolve to the
+// canonical catalogue before emission, and all values still come from that
+// catalogue.
+const LEGACY_RUNTIME_RECORD_ORDER_V1 = [
+  'map',
+  'filter',
+  'take',
+  'drop',
+  'takeWhile',
+  'dropWhile',
+  'flatMap',
+  'reduce',
+  'forEach',
+  'every',
+  'some',
+  'find',
+  'findIndex',
+  'filterMap',
+  'mapWhile',
+  'reject',
+  'takeUntil',
+  'none',
+  'count',
+  'findMap',
+  'sortBy',
+  'sort',
+  'head',
+  'last',
+  'length',
+  'isEmpty',
+  'tail',
+  'init',
+  'reverse',
+  'sortInline',
+  'uniq',
+  'join',
+  'flatten',
+  'sum',
+  'min',
+  'max',
+  'trim',
+  'toLowerCase',
+  'toUpperCase',
+  'trimStart',
+  'trimEnd',
+  'split',
+  'strLength',
+  'strIsEmpty',
+  'keys',
+  'values',
+  'dictIsEmpty',
+  'add',
+  'subtract',
+  'multiply',
+  'divide',
+  'negate',
+  'inc',
+  'dec',
+  'isNumber',
+  'isString',
+  'isBoolean',
+  'isNil',
+  'isArray',
+  'isObject',
+  'isFunction',
+  'sortAsc',
+  'sortDesc',
+  'scan',
+  'without',
+] as const
+
+const LEGACY_TAG_LOOKUP_ORDER_V1 = [
+  'map',
+  'filter',
+  'take',
+  'drop',
+  'takeWhile',
+  'dropWhile',
+  'flatMap',
+  'reject',
+  'filterMap',
+  'mapWhile',
+  'takeUntil',
+  'reduce',
+  'forEach',
+  'every',
+  'some',
+  'find',
+  'findIndex',
+  'none',
+  'count',
+  'findMap',
+  'head',
+  'last',
+  'length',
+  'isEmpty',
+  'tail',
+  'init',
+  'reverse',
+  'uniq',
+  'join',
+  'flatten',
+  'sum',
+  'min',
+  'max',
+  'scan',
+  'without',
+  'sort',
+  'sortBy',
+  'sortAsc',
+  'sortDesc',
+  'trim',
+  'toLowerCase',
+  'toUpperCase',
+  'trimStart',
+  'trimEnd',
+  'split',
+  'strLength',
+  'strIsEmpty',
+  'keys',
+  'values',
+  'dictIsEmpty',
+  'add',
+  'subtract',
+  'multiply',
+  'divide',
+  'negate',
+  'inc',
+  'dec',
+  'isNumber',
+  'isString',
+  'isBoolean',
+  'isNil',
+  'isArray',
+  'isObject',
+  'isFunction',
+] as const
+
+function recordsInNamedOrderV1(
+  records: readonly OperatorDefinitionRecordV1[],
+  names: readonly string[],
+  label: string,
+): readonly OperatorDefinitionRecordV1[] {
+  const byName = new Map(records.map((record) => [record.legacyRuntime.name, record]))
+  if (
+    byName.size !== records.length ||
+    names.length !== records.length ||
+    new Set(names).size !== names.length
+  ) {
+    throw new Error(`protocol generation: invalid ${label} compatibility order`)
+  }
+  return names.map((name) => {
+    const record = byName.get(name)
+    if (!record) throw new Error(`protocol generation: ${label} omits ${name}`)
+    return record
+  })
+}
+
+function symbolicRangePredicateV1(
+  records: readonly OperatorDefinitionRecordV1[],
+  forcedSingletonNames: ReadonlySet<string> = new Set(),
+): string {
+  const sorted = [...records].sort(
+    (left, right) => left.legacyRuntime.opcode - right.legacyRuntime.opcode,
+  )
+  const ranges: Array<readonly [OperatorDefinitionRecordV1, OperatorDefinitionRecordV1]> = []
+  for (const record of sorted) {
     const last = ranges[ranges.length - 1]
-    if (last && last[1] + 1 === opcode) {
-      ranges[ranges.length - 1] = [last[0], opcode]
+    if (
+      last &&
+      !forcedSingletonNames.has(last[1].legacyRuntime.name) &&
+      !forcedSingletonNames.has(record.legacyRuntime.name) &&
+      last[1].legacyRuntime.opcode + 1 === record.legacyRuntime.opcode
+    ) {
+      ranges[ranges.length - 1] = [last[0], record]
     } else {
-      ranges.push([opcode, opcode])
+      ranges.push([record, record])
     }
   }
   return ranges
-    .map(([start, end]) => (start === end ? `op === ${start}` : `(op >= ${start} && op <= ${end})`))
+    .map(([start, end]) =>
+      start === end
+        ? `op === ${start.legacyRuntime.opcodeConstant}`
+        : `(op >= ${start.legacyRuntime.opcodeConstant} && op <= ${end.legacyRuntime.opcodeConstant})`,
+    )
     .join(' ||\n  ')
 }
 
 function renderOpcodesV1(records: readonly OperatorDefinitionRecordV1[]): string {
-  const declarations = records
+  const ordered = recordsInNamedOrderV1(
+    records,
+    LEGACY_RUNTIME_RECORD_ORDER_V1,
+    'opcode declaration',
+  )
+  const declarations = ordered
     .map(
       ({ legacyRuntime }) =>
         `export const ${legacyRuntime.opcodeConstant} = ${legacyRuntime.opcode}`,
     )
     .join('\n')
-  const lookup = records
-    .filter(({ legacyRuntime }) => legacyRuntime.tagName !== null)
+  const lookup = recordsInNamedOrderV1(
+    records.filter(({ legacyRuntime }) => legacyRuntime.tagName !== null),
+    LEGACY_TAG_LOOKUP_ORDER_V1,
+    'tag lookup',
+  )
     .map(
       ({ legacyRuntime }) =>
         `  ${JSON.stringify(legacyRuntime.tagName)}: ${legacyRuntime.opcodeConstant},`,
     )
     .join('\n')
-  const fuseable = records
-    .filter(
-      ({ legacyRuntime }) =>
-        legacyRuntime.inputDomain === 'array' &&
-        ['one-to-one', 'filtering', 'expanding', 'stateful'].includes(legacyRuntime.cardinality),
-    )
-    .map(({ legacyRuntime }) => legacyRuntime.opcode)
-  const terminal = records
-    .filter(({ legacyRuntime }) => legacyRuntime.cardinality === 'sink')
-    .map(({ legacyRuntime }) => legacyRuntime.opcode)
+  const fuseable = records.filter(
+    ({ legacyRuntime }) =>
+      legacyRuntime.inputDomain === 'array' &&
+      ['one-to-one', 'filtering', 'expanding', 'stateful'].includes(legacyRuntime.cardinality),
+  )
+  const terminal = records.filter(({ legacyRuntime }) => legacyRuntime.cardinality === 'sink')
   const accessorNames = new Set([
     'head',
     'last',
@@ -161,12 +338,8 @@ function renderOpcodesV1(records: readonly OperatorDefinitionRecordV1[]): string
     'max',
     'without',
   ])
-  const accessor = records
-    .filter(({ legacyRuntime }) => accessorNames.has(legacyRuntime.name))
-    .map(({ legacyRuntime }) => legacyRuntime.opcode)
-  const scalar = records
-    .filter(({ legacyRuntime }) => legacyRuntime.inputDomain === 'scalar')
-    .map(({ legacyRuntime }) => legacyRuntime.opcode)
+  const accessor = records.filter(({ legacyRuntime }) => accessorNames.has(legacyRuntime.name))
+  const scalar = records.filter(({ legacyRuntime }) => legacyRuntime.inputDomain === 'scalar')
 
   return `// GENERATED FILE -- do not edit by hand.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
@@ -181,16 +354,16 @@ ${lookup}
 }
 
 export const isFuseableOp = (op: number): boolean =>
-  ${rangePredicate(fuseable)}
+  ${symbolicRangePredicateV1(fuseable, new Set(['filterMap', 'mapWhile', 'reject']))}
 
 export const isTerminalOp = (op: number): boolean =>
-  ${rangePredicate(terminal)}
+  ${symbolicRangePredicateV1(terminal, new Set(['none', 'count']))}
 
 export const isAccessorOp = (op: number): boolean =>
-  ${rangePredicate(accessor)}
+  ${symbolicRangePredicateV1(accessor)}
 
 export const isScalarOp = (op: number): boolean =>
-  ${rangePredicate(scalar)}
+  ${symbolicRangePredicateV1(scalar)}
 
 export const isFuseableOrTerminal = (op: number): boolean =>
   isFuseableOp(op) || isTerminalOp(op) || isAccessorOp(op) || isScalarOp(op)
@@ -199,29 +372,38 @@ export const isFuseableOrTerminal = (op: number): boolean =>
 
 function renderRegistryEntryV1(record: OperatorDefinitionRecordV1): string {
   const runtime = record.legacyRuntime
-  return `  {
-    op: OpCodes.${runtime.opcodeConstant},
-    name: ${JSON.stringify(runtime.name)},
-    inputDomain: ${JSON.stringify(runtime.inputDomain)},
-    outputDomain: ${JSON.stringify(runtime.outputDomain)},
-    cardinality: ${JSON.stringify(runtime.cardinality)},
-    callbackArity: ${runtime.callbackArity},
-    bindings: ${JSON.stringify(runtime.bindings)},
-    earlyTermination: ${runtime.earlyTermination},
-    constructorPreserving: ${runtime.constructorPreserving},
-    denseHoles: true,
-    reverseSafe: ${runtime.reverseSafe},
-    exactLowering: true,
-    pureLowering: ${runtime.pureLowering},
-    simdEligible: false,
-    workerEligible: false,
-    isMaterializationBoundary: ${runtime.isMaterializationBoundary},
-  }`
+  const optional: string[] = []
+  if (runtime.earlyTermination) optional.push('earlyTermination: true,')
+  if (runtime.constructorPreserving || runtime.name === 'without') {
+    optional.push(`constructorPreserving: ${runtime.constructorPreserving},`)
+  }
+  const defaultReverseSafe = runtime.cardinality !== 'stateful'
+  if (runtime.reverseSafe !== defaultReverseSafe || runtime.name === 'scan') {
+    optional.push(`reverseSafe: ${runtime.reverseSafe},`)
+  }
+  if (!runtime.pureLowering || runtime.name === 'sortBy') {
+    optional.push(`pureLowering: ${runtime.pureLowering},`)
+  }
+  if (runtime.simdEligible) optional.push('simdEligible: true,')
+  if (runtime.workerEligible) optional.push('workerEligible: true,')
+  const optionalSource =
+    optional.length === 0 ? '' : `\n${optional.map((line) => `        ${line}`).join('\n')}`
+  return `      meta({
+        op: OpCodes.${runtime.opcodeConstant},
+        name: ${JSON.stringify(runtime.name)},
+        inputDomain: ${JSON.stringify(runtime.inputDomain)},
+        outputDomain: ${JSON.stringify(runtime.outputDomain)},
+        cardinality: ${JSON.stringify(runtime.cardinality)},
+        callbackArity: ${runtime.callbackArity},
+        bindings: ${JSON.stringify(runtime.bindings)},${optionalSource}
+      })`
 }
 
 function renderRegistryV1(records: readonly OperatorDefinitionRecordV1[]): string {
+  const ordered = recordsInNamedOrderV1(records, LEGACY_RUNTIME_RECORD_ORDER_V1, 'runtime registry')
   return `// GENERATED FILE -- do not edit by hand.
 // Compatibility runtime projection of the canonical definition-only operator protocol.
+// Legacy callback/capability fields preserve 1.x bytes and never authorize a semantic or backend.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
 // Semantic facts hash: ${OPERATOR_SEMANTIC_FACTS_V1_HASH}
 import * as OpCodes from './opcodes'
@@ -257,16 +439,53 @@ export interface OpMeta {
   readonly isMaterializationBoundary: boolean
 }
 
-const REGISTRY_ENTRIES: readonly OpMeta[] = [
-${records.map(renderRegistryEntryV1).join(',\n')}
-]
+function meta(partial: {
+  op: OpCode
+  name: string
+  inputDomain: OpDomain
+  outputDomain: OpDomain
+  cardinality: OpCardinality
+  callbackArity: 0 | 1 | 2
+  bindings: readonly ArgBinding[]
+  earlyTermination?: boolean
+  constructorPreserving?: boolean
+  reverseSafe?: boolean
+  pureLowering?: boolean
+  simdEligible?: boolean
+  workerEligible?: boolean
+}): OpMeta {
+  const cardinality = partial.cardinality
+  return {
+    op: partial.op,
+    name: partial.name,
+    inputDomain: partial.inputDomain,
+    outputDomain: partial.outputDomain,
+    cardinality,
+    callbackArity: partial.callbackArity,
+    bindings: partial.bindings,
+    earlyTermination: partial.earlyTermination ?? false,
+    constructorPreserving: partial.constructorPreserving ?? false,
+    denseHoles: true,
+    reverseSafe: partial.reverseSafe ?? cardinality !== 'stateful',
+    exactLowering: true,
+    pureLowering: partial.pureLowering ?? true,
+    simdEligible: partial.simdEligible ?? false,
+    workerEligible: partial.workerEligible ?? false,
+    isMaterializationBoundary: cardinality === 'materializer' || cardinality === 'sink',
+  }
+}
 
 const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
-  REGISTRY_ENTRIES.map((entry) => [entry.op, entry]),
+  (
+    [
+${ordered.map(renderRegistryEntryV1).join(',\n')}
+    ] satisfies readonly OpMeta[]
+  ).map((entry) => [entry.op, entry]),
 )
 
+/** Every opcode covered by the registry, sorted ascending. */
 export const REGISTERED_OP_CODES: readonly OpCode[] = Object.freeze(
-  Array.from(REGISTRY.keys()).sort((left, right) => left - right),
+  Array.from(REGISTRY.keys()).sort((a, b) => a - b),
 )
 
 export function getOpMeta(op: OpCode): OpMeta | undefined {
@@ -294,7 +513,8 @@ export function isTerminal(op: OpCode): boolean {
 }
 
 export function isBoundary(op: OpCode): boolean {
-  return REGISTRY.get(op)?.isMaterializationBoundary === true
+  const found = REGISTRY.get(op)
+  return found !== undefined && found.isMaterializationBoundary
 }
 
 export function isStreamable(op: OpCode): boolean {
@@ -316,7 +536,7 @@ export function allSourceOpCodes(): readonly OpCode[] {
       codes.add(value)
     }
   }
-  return Object.freeze(Array.from(codes).sort((left, right) => left - right))
+  return Object.freeze(Array.from(codes).sort((a, b) => a - b))
 }
 
 export function opName(op: OpCode): string {
@@ -355,7 +575,7 @@ function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
         )
       }
       return {
-        name: record.legacyRuntime.name,
+        name: record.semantic.publicName,
         callbackArity: record.semantic.callback.arity,
         bindings: record.semantic.bindings.map(({ slot }) => slot),
         semanticId: record.semantic.semanticId,

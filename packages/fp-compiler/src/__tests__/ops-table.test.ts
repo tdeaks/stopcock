@@ -26,7 +26,7 @@ describe('ops-table snapshot', () => {
       .map((record) => {
         const lowering = record.lowerings.find((candidate) => candidate.targetTier === 'compiler')!
         return {
-          name: record.legacyRuntime.name,
+          name: record.semantic.publicName,
           callbackArity: record.semantic.callback.arity,
           bindings: record.semantic.bindings.map(({ slot }) => slot),
           semanticId: record.semantic.semanticId,
@@ -65,6 +65,20 @@ describe('ops-table snapshot', () => {
     expect(BOUNDARY_OP_NAMES).toEqual(names('boundary'))
     expect(FINAL_BOUNDARY_OP_NAMES).toEqual(
       OPS_TABLE.filter((entry) => entry.compilerFinalBoundary).map((entry) => entry.name),
+    )
+  })
+
+  it('keeps canonical comparator arity authoritative over legacy runtime metadata', () => {
+    const definition = OPERATOR_DEFINITION_RECORDS_V1.find(
+      (record) => record.legacyRuntime.name === 'sortBy',
+    )!
+    const compilerEntry = OPS_TABLE.find((entry) => entry.name === 'sortBy')!
+
+    expect(definition.semantic.callback.arity).toBe(2)
+    expect(compilerEntry.callbackArity).toBe(2)
+    expect(definition.legacyRuntime.callbackArity).toBe(1)
+    expect(definition.legacyRuntime.callbackArityDisposition).toBe(
+      'legacy-comparator-metadata-preserved',
     )
   })
 

@@ -27,6 +27,10 @@ export type OperatorNamespaceV1 = 'array' | 'string' | 'object' | 'math' | 'guar
 export const COMPILER_OPERATION_CORPUS_ID_V1 =
   'stopcock-fp-compiler-operation-complete-w0-v1' as const
 
+/**
+ * Byte-compatible projection of the 1.x runtime registry. These fields are
+ * never semantic, lowering, or backend-selection authority.
+ */
 export interface LegacyRuntimeFactV1 {
   readonly opcode: number
   readonly opcodeConstant: string
@@ -36,14 +40,15 @@ export interface LegacyRuntimeFactV1 {
   readonly outputDomain: LogicalDomainV1
   readonly cardinality: CardinalityV1
   readonly callbackArity: 0 | 1 | 2
+  readonly callbackArityDisposition: 'matches-semantic' | 'legacy-comparator-metadata-preserved'
   readonly bindings: readonly BindingSlotV1[]
   readonly earlyTermination: boolean
   readonly constructorPreserving: boolean
   readonly reverseSafe: boolean
   readonly exactLowering: true
   readonly pureLowering: boolean
-  readonly simdEligible: false
-  readonly workerEligible: false
+  readonly simdEligible: boolean
+  readonly workerEligible: boolean
   readonly isMaterializationBoundary: boolean
 }
 
@@ -61,6 +66,7 @@ export interface OperatorDefinitionRecordV1 {
   readonly previousCapabilityDeclarations: {
     readonly simd: boolean
     readonly worker: boolean
+    /** The canonical capability remains explicit unsupported. */
     readonly disposition: 'unsupported-without-owned-implementation-and-corpus'
   }
 }
@@ -544,7 +550,7 @@ const LEGACY_ROWS = [
     'array',
     'array',
     'materializer',
-    2,
+    1,
     ['fn'],
     false,
     true,
@@ -734,7 +740,7 @@ const LEGACY_ROWS = [
     'array',
     'array',
     'materializer',
-    2,
+    1,
     ['fn'],
     false,
     true,
@@ -1654,15 +1660,19 @@ function createRecord(row: LegacyRowV1): OperatorDefinitionRecordV1 {
       inputDomain: row.inputDomain,
       outputDomain: row.outputDomain,
       cardinality: row.cardinality,
-      callbackArity: semantic.callback.arity,
+      callbackArity: row.callbackArity,
+      callbackArityDisposition:
+        row.callbackArity === semantic.callback.arity
+          ? 'matches-semantic'
+          : 'legacy-comparator-metadata-preserved',
       bindings: row.bindings,
       earlyTermination: row.earlyTermination,
       constructorPreserving: row.constructorPreserving,
       reverseSafe: row.reverseSafe,
       exactLowering: true,
       pureLowering: row.pureLowering,
-      simdEligible: false,
-      workerEligible: false,
+      simdEligible: row.previousSimdDeclaration,
+      workerEligible: row.previousWorkerDeclaration,
       isMaterializationBoundary: row.cardinality === 'sink' || row.cardinality === 'materializer',
     },
     namespace: row.namespace,
@@ -1694,7 +1704,12 @@ export function assertRuntimeEncodingCatalogueV1(
   const constants = new Set<string>()
   const runtimeNames = new Set<string>()
   const publicTags = new Set<string>()
-  for (const { semantic, legacyRuntime } of records) {
+  for (const {
+    semantic,
+    legacyRuntime,
+    previousCapabilityDeclarations,
+    publicArrayExport,
+  } of records) {
     if (!Number.isSafeInteger(legacyRuntime.opcode) || legacyRuntime.opcode < 1) {
       throw new Error(`operator definitions v1: invalid opcode ${legacyRuntime.opcode}`)
     }
@@ -1709,12 +1724,31 @@ export function assertRuntimeEncodingCatalogueV1(
     if (runtimeNames.has(legacyRuntime.name)) {
       throw new Error(`operator definitions v1: duplicate runtime name ${legacyRuntime.name}`)
     }
+    if (publicArrayExport && legacyRuntime.name !== semantic.publicName) {
+      throw new Error(`operator definitions v1: runtime name contradicts ${semantic.semanticId}`)
+    }
     if (legacyRuntime.tagName !== null && publicTags.has(legacyRuntime.tagName)) {
       throw new Error(`operator definitions v1: duplicate public tag ${legacyRuntime.tagName}`)
     }
-    if (legacyRuntime.callbackArity !== semantic.callback.arity) {
+    const callbackArityMatches = legacyRuntime.callbackArity === semantic.callback.arity
+    if (callbackArityMatches !== (legacyRuntime.callbackArityDisposition === 'matches-semantic')) {
       throw new Error(
-        `operator definitions v1: runtime callback arity contradicts ${semantic.semanticId}`,
+        `operator definitions v1: runtime callback disposition contradicts ${semantic.semanticId}`,
+      )
+    }
+    if (
+      !callbackArityMatches &&
+      !(
+        legacyRuntime.callbackArityDisposition === 'legacy-comparator-metadata-preserved' &&
+        legacyRuntime.callbackArity === 1 &&
+        semantic.callback.arity === 2 &&
+        semantic.callback.arguments[0] === 'left' &&
+        semantic.callback.arguments[1] === 'right' &&
+        (legacyRuntime.name === 'sortBy' || legacyRuntime.name === 'sortInline')
+      )
+    ) {
+      throw new Error(
+        `operator definitions v1: undeclared runtime callback contradiction for ${semantic.semanticId}`,
       )
     }
     if (
@@ -1722,6 +1756,14 @@ export function assertRuntimeEncodingCatalogueV1(
       JSON.stringify(semantic.bindings.map(({ slot }) => slot))
     ) {
       throw new Error(`operator definitions v1: runtime bindings contradict ${semantic.semanticId}`)
+    }
+    if (
+      legacyRuntime.simdEligible !== previousCapabilityDeclarations.simd ||
+      legacyRuntime.workerEligible !== previousCapabilityDeclarations.worker
+    ) {
+      throw new Error(
+        `operator definitions v1: legacy capability projection drifted for ${semantic.semanticId}`,
+      )
     }
     opcodes.add(legacyRuntime.opcode)
     constants.add(legacyRuntime.opcodeConstant)

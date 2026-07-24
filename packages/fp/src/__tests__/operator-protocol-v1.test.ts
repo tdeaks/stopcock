@@ -162,7 +162,10 @@ describe('OperatorSemanticV1 authoring', () => {
         order: 'stable-merge-sort-order',
         evaluationPoint: 'during-full-materialization',
       })
-      expect(record.legacyRuntime.callbackArity).toBe(record.semantic.callback.arity)
+      expect(record.legacyRuntime.callbackArity).toBe(1)
+      expect(record.legacyRuntime.callbackArityDisposition).toBe(
+        'legacy-comparator-metadata-preserved',
+      )
     }
     expect(requireOperatorDefinitionByNameV1('reduce').semantic.callback).toMatchObject({
       arity: 2,
@@ -219,31 +222,87 @@ describe('OperatorSemanticV1 authoring', () => {
     ).toThrow(/duplicate opcode/u)
   })
 
-  it('rejects runtime callback and binding projections that contradict semantics', () => {
-    const record = requireOperatorDefinitionByNameV1('sortBy')
+  it('rejects a legacy runtime name that diverges from semantic authority', () => {
+    const record = requireOperatorDefinitionByNameV1('map')
     expect(() =>
       assertRuntimeEncodingCatalogueV1([
         {
           ...record,
           legacyRuntime: {
             ...record.legacyRuntime,
-            callbackArity: 1,
+            name: 'legacyMap',
           },
         },
       ]),
-    ).toThrow(/runtime callback arity contradicts/u)
+    ).toThrow(/runtime name contradicts/u)
+  })
 
+  it('allows only the declared byte-compatible comparator callback projection', () => {
+    const comparator = requireOperatorDefinitionByNameV1('sortBy')
     expect(() =>
       assertRuntimeEncodingCatalogueV1([
         {
-          ...record,
+          ...comparator,
           legacyRuntime: {
-            ...record.legacyRuntime,
+            ...comparator.legacyRuntime,
+            callbackArityDisposition: 'matches-semantic',
+          },
+        },
+      ]),
+    ).toThrow(/runtime callback disposition contradicts/u)
+
+    const mapRecord = requireOperatorDefinitionByNameV1('map')
+    expect(() =>
+      assertRuntimeEncodingCatalogueV1([
+        {
+          ...mapRecord,
+          legacyRuntime: {
+            ...mapRecord.legacyRuntime,
+            callbackArity: 0,
+            callbackArityDisposition: 'legacy-comparator-metadata-preserved',
+          },
+        },
+      ]),
+    ).toThrow(/undeclared runtime callback contradiction/u)
+  })
+
+  it('rejects legacy runtime binding or capability projection drift', () => {
+    const comparator = requireOperatorDefinitionByNameV1('sortBy')
+    expect(() =>
+      assertRuntimeEncodingCatalogueV1([
+        {
+          ...comparator,
+          legacyRuntime: {
+            ...comparator.legacyRuntime,
             bindings: [],
           },
         },
       ]),
     ).toThrow(/runtime bindings contradict/u)
+
+    const sumRecord = requireOperatorDefinitionByNameV1('sum')
+    expect(sumRecord.previousCapabilityDeclarations).toMatchObject({
+      simd: true,
+      worker: true,
+      disposition: 'unsupported-without-owned-implementation-and-corpus',
+    })
+    expect(sumRecord.semantic.capabilities).toEqual({
+      worker: 'unsupported',
+      simd: 'unsupported',
+      wasm: 'unsupported',
+      incremental: 'unsupported',
+    })
+    expect(() =>
+      assertRuntimeEncodingCatalogueV1([
+        {
+          ...sumRecord,
+          legacyRuntime: {
+            ...sumRecord.legacyRuntime,
+            simdEligible: false,
+          },
+        },
+      ]),
+    ).toThrow(/legacy capability projection drifted/u)
   })
 
   it('keeps numeric opcode outside semantic identity and authority', () => {

@@ -18,12 +18,12 @@ export const OP_FIND_INDEX = 13
 export const OP_FILTER_MAP = 14
 export const OP_MAP_WHILE = 15
 export const OP_REJECT = 16
+export const OP_TAKE_UNTIL = 19
 export const OP_NONE = 17
 export const OP_COUNT = 18
-export const OP_TAKE_UNTIL = 19
+export const OP_FIND_MAP = 22
 export const OP_SORT_BY = 20
 export const OP_SORT = 21
-export const OP_FIND_MAP = 22
 export const OP_HEAD = 30
 export const OP_LAST = 31
 export const OP_LENGTH = 32
@@ -78,20 +78,18 @@ export const OP_CODES: Record<string, number> = {
   takeWhile: OP_TAKE_WHILE,
   dropWhile: OP_DROP_WHILE,
   flatMap: OP_FLAT_MAP,
+  reject: OP_REJECT,
+  filterMap: OP_FILTER_MAP,
+  mapWhile: OP_MAP_WHILE,
+  takeUntil: OP_TAKE_UNTIL,
   reduce: OP_REDUCE,
   forEach: OP_FOR_EACH,
   every: OP_EVERY,
   some: OP_SOME,
   find: OP_FIND,
   findIndex: OP_FIND_INDEX,
-  filterMap: OP_FILTER_MAP,
-  mapWhile: OP_MAP_WHILE,
-  reject: OP_REJECT,
   none: OP_NONE,
   count: OP_COUNT,
-  takeUntil: OP_TAKE_UNTIL,
-  sortBy: OP_SORT_BY,
-  sort: OP_SORT,
   findMap: OP_FIND_MAP,
   head: OP_HEAD,
   last: OP_LAST,
@@ -106,6 +104,12 @@ export const OP_CODES: Record<string, number> = {
   sum: OP_SUM,
   min: OP_MIN,
   max: OP_MAX,
+  scan: OP_SCAN,
+  without: OP_WITHOUT,
+  sort: OP_SORT,
+  sortBy: OP_SORT_BY,
+  sortAsc: OP_SORT_ASC,
+  sortDesc: OP_SORT_DESC,
   trim: OP_STR_TRIM,
   toLowerCase: OP_STR_LOWER,
   toUpperCase: OP_STR_UPPER,
@@ -131,25 +135,30 @@ export const OP_CODES: Record<string, number> = {
   isArray: OP_GUARD_IS_ARRAY,
   isObject: OP_GUARD_IS_OBJECT,
   isFunction: OP_GUARD_IS_FUNCTION,
-  sortAsc: OP_SORT_ASC,
-  sortDesc: OP_SORT_DESC,
-  scan: OP_SCAN,
-  without: OP_WITHOUT,
 }
 
 export const isFuseableOp = (op: number): boolean =>
-  (op >= 1 && op <= 7) || (op >= 14 && op <= 16) || op === 19 || op === 102
+  (op >= OP_MAP && op <= OP_FLAT_MAP) ||
+  op === OP_FILTER_MAP ||
+  op === OP_MAP_WHILE ||
+  op === OP_REJECT ||
+  op === OP_TAKE_UNTIL ||
+  op === OP_SCAN
 
 export const isTerminalOp = (op: number): boolean =>
-  (op >= 8 && op <= 13) || (op >= 17 && op <= 18) || op === 22
+  (op >= OP_REDUCE && op <= OP_FIND_INDEX) ||
+  op === OP_NONE ||
+  op === OP_COUNT ||
+  op === OP_FIND_MAP
 
-export const isAccessorOp = (op: number): boolean => (op >= 30 && op <= 43) || op === 103
+export const isAccessorOp = (op: number): boolean =>
+  (op >= OP_HEAD && op <= OP_MAX) || op === OP_WITHOUT
 
 export const isScalarOp = (op: number): boolean =>
-  (op >= 50 && op <= 57) ||
-  (op >= 60 && op <= 62) ||
-  (op >= 70 && op <= 76) ||
-  (op >= 80 && op <= 86)
+  (op >= OP_STR_TRIM && op <= OP_STR_IS_EMPTY) ||
+  (op >= OP_DICT_KEYS && op <= OP_DICT_IS_EMPTY) ||
+  (op >= OP_MATH_ADD && op <= OP_MATH_DEC) ||
+  (op >= OP_GUARD_IS_NUMBER && op <= OP_GUARD_IS_FUNCTION)
 
 export const isFuseableOrTerminal = (op: number): boolean =>
   isFuseableOp(op) || isTerminalOp(op) || isAccessorOp(op) || isScalarOp(op)
