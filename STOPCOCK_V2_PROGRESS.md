@@ -9,12 +9,12 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: BLOCKED
+Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0R
-Current slice: SETUP_PREDECESSOR_SCOPE_REPAIR_FOR_ASYNC_S0R
+Current slice: REMEDIATE_ASYNC_SOURCE_TYPES_AND_PACKAGE_METADATA
 Last verified commit: 044dd5c39666fb204911c43f0b4898ee007f3846
 Last controller run: 2026-07-24
 
@@ -49,39 +49,39 @@ controller never performs that external mutation itself.
 Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 `GATE_PASSED`, `STOPPED_BY_PLAN`, and `BLOCKED`.
 
-| Stage | Status             | Verified commit or evidence                                                                                                                    |
-| ----- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stage | Status      | Verified commit or evidence                                                                                                                    |
+| ----- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers |
-| S0R   | BLOCKED | Conditional stage; blocked by the state-coupled readiness test's frozen S0R scope omission                                                     |
-| S0B   | NOT_STARTED        | —                                                                                                                                              |
-| S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                          |
-| S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                    |
-| S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                  |
-| S2    | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                       |
-| S3A   | NOT_STARTED        | Initializer purity                                                                                                                             |
-| S3B   | NOT_STARTED        | Untagged internal duals                                                                                                                        |
-| S4    | NOT_STARTED        | —                                                                                                                                              |
-| S5A   | NOT_STARTED        | Trusted provenance                                                                                                                             |
-| S5B   | NOT_STARTED        | Measured retention policy                                                                                                                      |
-| S6    | NOT_STARTED        | —                                                                                                                                              |
-| S7    | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                       |
-| S8    | NOT_STARTED        | —                                                                                                                                              |
-| S9    | NOT_STARTED        | —                                                                                                                                              |
-| S10   | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                       |
-| S10X  | NOT_STARTED        | Conditional optimizer extraction                                                                                                               |
-| S10J  | NOT_STARTED        | Optimizer topology decision                                                                                                                    |
-| S11   | NOT_STARTED        | —                                                                                                                                              |
-| P1A   | NOT_STARTED        | Array Iter kernels                                                                                                                             |
-| P1B   | NOT_STARTED        | Typed-array Iter admission                                                                                                                     |
-| P2    | NOT_STARTED        | Typed-array policy                                                                                                                             |
-| P3A   | NOT_STARTED        | Allocation evidence infrastructure                                                                                                             |
-| P3B   | NOT_STARTED        | Measured allocation strategies                                                                                                                 |
-| P4    | NOT_STARTED        | Object, Record, and Map candidates                                                                                                             |
-| DISP  | NOT_STARTED        | Optional-candidate dispositions                                                                                                                |
-| S12P  | NOT_STARTED        | —                                                                                                                                              |
-| S12   | NOT_STARTED        | —                                                                                                                                              |
-| S13   | NOT_STARTED        | External RC publication remains user-authorized                                                                                                |
-| S14   | NOT_STARTED        | Stable acceptance and publication remain user-authorized                                                                                       |
+| S0R   | IN_PROGRESS | Conditional stage; shared readiness-transition test added to every frozen package-remediation target                                           |
+| S0B   | NOT_STARTED | —                                                                                                                                              |
+| S1A   | NOT_STARTED | Consumer, size, and topology evidence                                                                                                          |
+| S1B   | NOT_STARTED | Dedicated performance-profile qualification                                                                                                    |
+| S1C   | NOT_STARTED | Frozen runtime, startup, and memory baselines                                                                                                  |
+| S2    | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                       |
+| S3A   | NOT_STARTED | Initializer purity                                                                                                                             |
+| S3B   | NOT_STARTED | Untagged internal duals                                                                                                                        |
+| S4    | NOT_STARTED | —                                                                                                                                              |
+| S5A   | NOT_STARTED | Trusted provenance                                                                                                                             |
+| S5B   | NOT_STARTED | Measured retention policy                                                                                                                      |
+| S6    | NOT_STARTED | —                                                                                                                                              |
+| S7    | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                       |
+| S8    | NOT_STARTED | —                                                                                                                                              |
+| S9    | NOT_STARTED | —                                                                                                                                              |
+| S10   | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                       |
+| S10X  | NOT_STARTED | Conditional optimizer extraction                                                                                                               |
+| S10J  | NOT_STARTED | Optimizer topology decision                                                                                                                    |
+| S11   | NOT_STARTED | —                                                                                                                                              |
+| P1A   | NOT_STARTED | Array Iter kernels                                                                                                                             |
+| P1B   | NOT_STARTED | Typed-array Iter admission                                                                                                                     |
+| P2    | NOT_STARTED | Typed-array policy                                                                                                                             |
+| P3A   | NOT_STARTED | Allocation evidence infrastructure                                                                                                             |
+| P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                 |
+| P4    | NOT_STARTED | Object, Record, and Map candidates                                                                                                             |
+| DISP  | NOT_STARTED | Optional-candidate dispositions                                                                                                                |
+| S12P  | NOT_STARTED | —                                                                                                                                              |
+| S12   | NOT_STARTED | —                                                                                                                                              |
+| S13   | NOT_STARTED | External RC publication remains user-authorized                                                                                                |
+| S14   | NOT_STARTED | Stable acceptance and publication remain user-authorized                                                                                       |
 
 ## Progress
 
@@ -110,6 +110,9 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-24) Stopped before package edits after an independent
       `v2_verifier` audit proved that the immutable Async target cannot produce
       an independently test-valid readiness transition.
+- [x] (2026-07-24) Added the exact shared readiness-transition test to all
+      three predecessor-owned S0R package targets and resumed S0R without
+      widening any target from inside its remediation iteration.
 
 ## Evidence log
 
@@ -231,6 +234,12 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     from editing or widening that target during its own iteration;
   - the independent `v2_verifier` returned `BLOCKED`; no package, inventory,
     dynamic-scope, test, generated, or ignored source file was changed.
+- S0R predecessor scope repair:
+  - `async-source-types`, `date-source-types`, and `diff-source-types` now each
+    admit exactly their literal package, the shared readiness inventory, and
+    `tooling/__tests__/stopcock-v2-package-cohort-readiness.test.mjs`;
+  - no package implementation, readiness disposition, test assertion, or
+    controller policy changed in the setup checkpoint.
 
 ## Surprises and discoveries
 
@@ -268,10 +277,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   dependent-package overload surfaces under the repository's TypeScript
   toolchain. Async, Date, and Diff are the only persistent source/build
   failures found by the complete public-package probe.
-- The focused readiness test encodes the mutable three-package blocker list,
-  but every predecessor-recorded S0R target omits that shared test path. A
-  correct per-package readiness transition therefore induces an out-of-scope
-  test failure, and no later S0R target can repair it.
+- The focused readiness test encodes the mutable three-package blocker list.
+  The original predecessor-recorded S0R targets omitted that shared test path;
+  the explicit setup checkpoint resolved the omission for all three targets
+  before any package remediation resumed.
 
 ## Decision log
 
@@ -364,20 +373,18 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 These are S0R remediation blockers. They block S0B, not the completed S0
 inventory/contract gate.
 
-- S0R execution is additionally blocked by a frozen-scope conflict:
-  `tooling/__tests__/stopcock-v2-package-cohort-readiness.test.mjs` asserts the
-  original three-package blocker set, while `async-source-types` permits only
-  Async and the inventory. A correct Async readiness transition makes that test
-  fail, but editing the test or dynamic contract from this iteration is
-  forbidden.
+- The former frozen-scope conflict is resolved by the predecessor setup
+  checkpoint. The exact shared transition test is now inside every affected
+  S0R target while the target contract remains immutable during each package
+  remediation iteration.
 
 ## Exact next action
 
-Create a clean, explicitly authorized setup/predecessor checkpoint outside an
-S0R controller iteration that makes the readiness test transition-stable, or
-records its exact path as a narrow shared test pattern for every affected S0R
-target. Then restore S0R to `IN_PROGRESS` and resume `async-source-types` from a
-clean worktree; do not widen a target during its own remediation iteration.
+Resume `async-source-types` from a clean worktree. Repair only Async-local
+source typing and packed changelog metadata, update the shared readiness
+inventory and exact transition assertion, and rerun the scoped
+correctness/type/build/pack/import/readiness gates without editing the
+dynamic-scope contract.
 
 ## Outcomes and retrospective
 
@@ -397,3 +404,7 @@ The first S0R controller iteration stopped before implementation because the
 predecessor-recorded target cannot keep the state-coupled readiness test green
 while clearing Async's disposition. The blocked checkpoint is ledger-only; no
 invalid package or inventory work is being handed to the launcher.
+
+The predecessor setup checkpoint resolves that scope omission without changing
+Async or weakening the readiness gate. S0R is ready to resume from the same
+literal `async-source-types` target.
