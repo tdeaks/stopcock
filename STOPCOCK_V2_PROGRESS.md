@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S2
-Current slice: BUILD_ACYCLIC_SEMANTIC_GENERATION
-Last verified commit: 81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0
+Current canonical stage: S3A
+Current slice: REPAIR_INITIALIZER_PURITY
+Last verified commit: cad86c15ae64b90a86675bbca96f6bea362d25ff
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -57,8 +57,8 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S1A   | GATE_PASSED | Cross-bundler packed consumer, behavior, size, identity, topology, and lower-bound package evidence checkpoint `81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`; independent consumer and topology audits passed                                                                                                                                                                                    |
 | S1B   | NOT_STARTED | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                                   |
 | S1C   | NOT_STARTED | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                                 |
-| S2    | IN_PROGRESS | Acyclic canonical generation; requires independent `v2_verifier` exit audit                                                                                                                                                                                                                                                                                                                   |
-| S3A   | NOT_STARTED | Initializer purity                                                                                                                                                                                                                                                                                                                                                                            |
+| S2    | GATE_PASSED | Acyclic canonical semantic/lowering/evidence/receipt generation checkpoint `cad86c15ae64b90a86675bbca96f6bea362d25ff`; complete clean gates and independent `v2_verifier` audit passed                                                                                                                                                                                                       |
+| S3A   | IN_PROGRESS | Initializer purity                                                                                                                                                                                                                                                                                                                                                                            |
 | S3B   | NOT_STARTED | Untagged internal duals                                                                                                                                                                                                                                                                                                                                                                       |
 | S4    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | S5A   | NOT_STARTED | Trusted provenance                                                                                                                                                                                                                                                                                                                                                                            |
@@ -181,6 +181,19 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       binding, and duplicate runtime artifacts in both topology modes.
 - [x] (2026-07-24) Checkpointed the independently validated S1A implementation
       as `81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`.
+- [x] (2026-07-24) Replaced live runtime/compiler discovery with one acyclic,
+      definition-only operator semantic, lowering, evidence, and receipt
+      protocol while preserving every generated FP runtime byte.
+- [x] (2026-07-24) Preserved the frozen legacy runtime projection only as
+      labelled byte-compatibility data while making canonical comparator,
+      capability, and compiler facts authoritative.
+- [x] (2026-07-24) Closed the first independent S2 audit's package-qualified-ID
+      and mutable-catalogue findings with deep-frozen catalogues, immediate
+      pre-emission validation, and a no-partial-write regression.
+- [x] (2026-07-24) Completed S2 at
+      `cad86c15ae64b90a86675bbca96f6bea362d25ff`; the clean release,
+      reproducibility, consumer/package-size, type-contract, and mandatory
+      independent exit gates all passed.
 
 ## Evidence log
 
@@ -748,6 +761,53 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     clean gate because it includes broad pre-existing Node-type and benchmark
     callback-signature failures; S1A therefore used the strict focused
     production type-check plus executable test suites without weakening either.
+- S2 canonical generation and protocol evidence:
+  - the implementation checkpoints are
+    `7295a2034649acf40f68c03b9c14283368df2e1b` for acyclic canonical
+    generation, `c4ee9e407465e4294d5964aeeece19f618531b6b` for frozen runtime
+    artifact identity, and
+    `cad86c15ae64b90a86675bbca96f6bea362d25ff` for the independently
+    verified fail-closed protocol boundary;
+  - one definition-only catalogue now owns 65 package-qualified semantic
+    identities, their separate legacy/compiler lowerings, lossless runner
+    descriptors, explicit unsupported worker/SIMD/Wasm/incremental
+    capabilities, and externally joined declared evidence;
+  - generated runtime and compiler views share semantic-facts SHA-256
+    `b8fc99c1023be40c96da6df4c393ed1a0f17c86d86c7d1d5546fd37ed10b5c16`,
+    manifest SHA-256
+    `3e5965cc012340e21667b4a1c07109a1637394e472f463e953198019f2dbcde5`,
+    and receipt-schema SHA-256
+    `d6b4843e9e8fc645a985eda698b94ed48c05c9370d17bfcc89b68e0895169d6e`;
+  - the clean reproducibility gate passed with aggregate SHA-256
+    `ce2d0d7e1aa2c22fda55341e44c1497cde98d91f05403fdbe634e9b9b6348c1e`;
+    the shared compile artifact remains
+    `241b4363b77371747f31d768e9303d515f8be872a79edfb19ee42f7d2cf04a0d`;
+  - every one of the 51 built FP JavaScript files is byte-identical to the
+    frozen pre-S2 tarball; the package remains 126,153 tarball bytes with a
+    16,286-byte shared-runtime gzip closure, and the retained lower-bound
+    projection remains 60,739 bytes;
+  - the clean FP release gate passed 41 files and 2,388 tests; FP-compiler
+    passed 6 files and 143 tests; the consumer-size and package-size suites
+    passed 36 and 9 tests respectively; all 9 package type-contract suites
+    passed;
+  - the accepted two-run consumer evidence retains current-product
+    characterization report SHA-256
+    `c1f3f922c4997ad21a520e1810539094a1fdb7c499501e07d530000b42a9447d`
+    and frozen-cohort release-replay SHA-256
+    `a64b432929f1f01f5c3f972e830632f5dc31bfe0ad34d36b4759dc439c205456`;
+    both contain 104 rows and 100 artifacts, and their stable
+    `{schemaVersion, fixtureManifest, tools, artifacts, rows}` projections are
+    byte-identical at SHA-256
+    `a4fa5891e632ec752e3a9bff00a5a90c71ee9c2a3a6c98dc0f68a3345b1e1fd7`;
+  - the first mandatory verifier audit correctly blocked unqualified semantic
+    IDs and mutable post-validation catalogues. The remediation rejects
+    malformed IDs, freezes every canonical container and nested record, and
+    validates the full catalogue immediately before every writer; its stale
+    semantic fixture proves no emission callback runs;
+  - the fresh mandatory `v2_verifier` audit returned `PASS` at exact clean
+    commit `cad86c15ae64b90a86675bbca96f6bea362d25ff`, confirmed both original
+    blockers closed, accepted the unchanged-byte two-run consumer evidence,
+    and found no new blocker.
 
 ## Surprises and discoveries
 
@@ -873,6 +933,23 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   pair, `array.js` and `readonly-array.js`. Schema v3 records and freezes that
   exact compatibility exception while rejecting any new legacy duplicate;
   tiered mode permits only identical trivial empty public stubs.
+- The historical runtime registry labelled several operations as
+  SIMD/worker-eligible without an owned implementation or corpus. S2 retains
+  those bits only in its explicitly non-authoritative byte-compatibility
+  projection; every canonical capability is `unsupported`.
+- Stable sort comparators historically carried callback arity 1 in runtime
+  metadata even though the observable comparator contract is binary. S2 makes
+  arity 2 canonical and preserves arity 1 only in the labelled legacy
+  projection required for frozen-byte compatibility.
+- S1A consumer origins bind source, distribution, tarball, and compiler
+  identities, so a current-source `release` replay correctly rejects S2 even
+  when the tested runtime bytes are unchanged. S2 therefore needs the accepted
+  pair of a frozen-denominator release replay and current-product
+  characterization; the frozen origin pins remain untouched.
+- The first S2 verifier found two genuine fail-open seams missed by the green
+  implementation tests: bare semantic IDs and mutable exported catalogue
+  arrays after module-initialization validation. The exit remediation now
+  freezes the complete catalogue and exercises the actual pre-emission gate.
 
 ## Decision log
 
@@ -1116,20 +1193,52 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   legacy debt a general permission for new retained runtimes.
   Date: 2026-07-24.
 
+- Decision: Make definition-only operator semantics authoritative while
+  retaining contradictory historical runtime facts only in a labelled legacy
+  projection when exact frozen-byte compatibility requires them.
+  Rationale: S2 must correct semantic authority without changing the current
+  runtime artifact; explicit disposition prevents compatibility metadata from
+  authorizing a future backend.
+  Date: 2026-07-24.
+
+- Decision: Keep reference implementation, law, corpus, and evidence IDs as
+  link fields outside the semantic hash.
+  Rationale: The canonical protocol requires those independently authored
+  joins to invalidate through evidence validation without creating a
+  self-referential semantic or emitted-artifact hash.
+  Date: 2026-07-24.
+
+- Decision: Satisfy S2 consumer compatibility with a frozen-denominator
+  release replay plus a current-product characterization whose stable
+  projections are byte-identical.
+  Rationale: S1A origin receipts intentionally include source identity, so
+  rebasing them after a codegen-only change would destroy the denominator.
+  Generated runtime and built artifact equality proves the S2 product claim
+  without mislabelling current source as release-qualified.
+  Date: 2026-07-24.
+
+- Decision: Freeze every canonical catalogue container and revalidate the
+  runtime encoding plus semantic/lowering/runner graph immediately around
+  every writer.
+  Rationale: Module-initialization validation alone is not fail-closed if an
+  exported array or definition record can be mutated before emission.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-No blocker for S2's S1A-dependent, size-only generation work. S1B dedicated
-runner ownership and qualification remain unverified and will block S1C and
-later timing/memory promotion lanes until completed.
+No blocker for S3A's S1A-dependent initializer-purity work. S1B dedicated
+runner ownership and qualification remain unverified and will block S1C, S3B,
+and later timing/memory promotion lanes until completed.
 
 ## Exact next action
 
-Trace the live FP and FP-compiler generation graph for S2, freeze its current
-generated identities, and implement the definition-only
-`OperatorSemanticV1`, `OperatorLoweringV1`, `OperatorEvidenceV1`,
-`ReceiptSchemaV1`, and internal `defineOperatorV1` boundary without changing
-runtime bytes or public behavior. Run the complete S2 reproducibility and
-refinement gates, then request the required independent `v2_verifier` audit.
+Implement S3A's central pure-annotation emitter with an explicit generated and
+manual initializer allowlist/denylist. Preserve tagged factories that mutate
+external aliases, tagged String factories, and Option's canonical `none`
+singleton outside the allowlist. Add built-dist marker/inlining checks and a
+fresh packed-versus-local consumer gate proving exact minified behavior,
+direct `map` at most 512 gzip bytes, Option flow at most 922 gzip bytes, and a
+per-row size delta no greater than 2%.
 
 ## Outcomes and retrospective
 
@@ -1232,3 +1341,15 @@ plausible at 61,174 bytes but remains explicitly non-release evidence. No
 production source, public export, generated runtime, distribution byte, or
 external release state changed. The dependency graph now admits S2 even while
 the independent S1B/S1C performance-profile lane remains pending.
+
+S2 is complete at
+`cad86c15ae64b90a86675bbca96f6bea362d25ff`. One acyclic, definition-only
+protocol now owns operator semantics, lowerings, runner descriptors, evidence
+joins, receipt schemas, runtime encodings, and compiler projections. Its
+catalogue is deeply immutable and every writer revalidates the complete graph
+before emission. All 51 built FP JavaScript artifacts remain byte-identical to
+the frozen S1A package, the accepted consumer projections remain identical,
+and the mandatory independent verifier passed after its original fail-open
+findings were closed. No public behavior, root fusion path, package topology,
+version, lockfile, or external release state changed. S3A is now admissible;
+S1B/S1C still gate S3B and later timing-dependent work.
