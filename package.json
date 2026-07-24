@@ -11,6 +11,7 @@
   "type": "module",
   "scripts": {
     "test": "vp test run",
+    "test:controller": "node --test tooling/__tests__/stopcock-v2-checkpoint.test.mjs",
     "test:packages": "vp test run --exclude='packages/synth/**'",
     "test:types": "node tooling/check-package-type-tests.mjs",
     "lint": "vp lint . --report-unused-disable-directives",

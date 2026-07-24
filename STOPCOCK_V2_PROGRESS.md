@@ -6,6 +6,9 @@ superplan defines what must happen, while this file records what has actually
 happened.
 
 Execution authorization: AUTHORIZED
+External mutation authorization: NONE
+External authorized action: NONE
+External authorized artifact: NONE
 Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
@@ -18,6 +21,13 @@ Last controller run: 2026-07-24
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
 workflow has been installed. It changes only after the user explicitly asks to
 start execution from a named, frozen base.
+
+`Execution authorization` covers local implementation only. RC or stable
+registry mutation requires a separate action-and-artifact-specific user
+authorization recorded in the three external fields above, execution through
+the protected external release workflow, and a deliberate setup commit that
+records `COMPLETED` only after registry evidence has been reconciled. The local
+controller never performs that external mutation itself.
 
 ## Start gate
 
@@ -39,26 +49,39 @@ start execution from a named, frozen base.
 Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 `GATE_PASSED`, `STOPPED_BY_PLAN`, and `BLOCKED`.
 
-| Stage | Status | Verified commit or evidence |
-|---|---|---|
-| S0 | IN_PROGRESS | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c` |
-| S0R | NOT_STARTED | Conditional stage |
-| S0B | NOT_STARTED | — |
-| S1 | NOT_STARTED | Includes its independently complete evidence slices |
-| S2 | NOT_STARTED | Requires independent `v2_verifier` audit |
-| S3 | NOT_STARTED | — |
-| S4 | NOT_STARTED | — |
-| S5 | NOT_STARTED | — |
-| S6 | NOT_STARTED | — |
-| S7 | NOT_STARTED | Requires independent `v2_verifier` audit |
-| S8 | NOT_STARTED | — |
-| S9 | NOT_STARTED | — |
-| S10 | NOT_STARTED | Includes conditional specialist decisions and requires independent audit |
-| S11 | NOT_STARTED | — |
-| S12P | NOT_STARTED | — |
-| S12 | NOT_STARTED | — |
-| S13 | NOT_STARTED | External RC publication remains user-authorized |
-| S14 | NOT_STARTED | Stable acceptance and publication remain user-authorized |
+| Stage | Status      | Verified commit or evidence                                     |
+| ----- | ----------- | --------------------------------------------------------------- |
+| S0    | IN_PROGRESS | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c` |
+| S0R   | NOT_STARTED | Conditional stage                                               |
+| S0B   | NOT_STARTED | —                                                               |
+| S1A   | NOT_STARTED | Consumer, size, and topology evidence                           |
+| S1B   | NOT_STARTED | Dedicated performance-profile qualification                     |
+| S1C   | NOT_STARTED | Frozen runtime, startup, and memory baselines                   |
+| S2    | NOT_STARTED | Requires independent `v2_verifier` audit                        |
+| S3A   | NOT_STARTED | Initializer purity                                              |
+| S3B   | NOT_STARTED | Untagged internal duals                                         |
+| S4    | NOT_STARTED | —                                                               |
+| S5A   | NOT_STARTED | Trusted provenance                                              |
+| S5B   | NOT_STARTED | Measured retention policy                                       |
+| S6    | NOT_STARTED | —                                                               |
+| S7    | NOT_STARTED | Requires independent `v2_verifier` audit                        |
+| S8    | NOT_STARTED | —                                                               |
+| S9    | NOT_STARTED | —                                                               |
+| S10   | NOT_STARTED | Requires independent `v2_verifier` audit                        |
+| S10X  | NOT_STARTED | Conditional optimizer extraction                                |
+| S10J  | NOT_STARTED | Optimizer topology decision                                     |
+| S11   | NOT_STARTED | —                                                               |
+| P1A   | NOT_STARTED | Array Iter kernels                                              |
+| P1B   | NOT_STARTED | Typed-array Iter admission                                      |
+| P2    | NOT_STARTED | Typed-array policy                                              |
+| P3A   | NOT_STARTED | Allocation evidence infrastructure                              |
+| P3B   | NOT_STARTED | Measured allocation strategies                                  |
+| P4    | NOT_STARTED | Object, Record, and Map candidates                              |
+| DISP  | NOT_STARTED | Optional-candidate dispositions                                 |
+| S12P  | NOT_STARTED | —                                                               |
+| S12   | NOT_STARTED | —                                                               |
+| S13   | NOT_STARTED | External RC publication remains user-authorized                 |
+| S14   | NOT_STARTED | Stable acceptance and publication remain user-authorized        |
 
 ## Progress
 
@@ -74,6 +97,8 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       characterization slice.
 - [x] (2026-07-24) Checkpointed the validated S0 contracts slice as
       `dcf054568bc71f031b5a4b43ec152bf09a00866c`.
+- [x] (2026-07-24) Repaired the linked-worktree checkpoint boundary with a
+      trusted outer helper, exact staged/tree digests, and idempotent recovery.
 - [ ] Complete the S0 package-cohort/readiness slice.
 
 ## Evidence log
@@ -95,11 +120,15 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     (`test(fp): freeze 2.0 cross-tier semantics`) contains only the five S0
     contract files and this ledger.
 - S0 contracts focused validation:
-  - `bunx vitest run
-    packages/fp/src/__tests__/v2-boundary-contract.test.ts
-    packages/fp/src/__tests__/v2-tag-authority-characterization.test.ts
-    packages/fp-compiler/src/__tests__/v2-flatmap-contract.test.ts`
-    passed: 3 files, 27 tests;
+  - the focused Vitest run passed 3 files and 27 tests:
+
+    ```sh
+    bunx vitest run \
+      packages/fp/src/__tests__/v2-boundary-contract.test.ts \
+      packages/fp/src/__tests__/v2-tag-authority-characterization.test.ts \
+      packages/fp-compiler/src/__tests__/v2-flatmap-contract.test.ts
+    ```
+
   - `bun run --cwd packages/fp check:source` passed;
   - `bun run --cwd packages/fp check:types` passed, including the root
     type-export import contract;
@@ -123,6 +152,15 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     for `@stopcock/fp@1.0.0` and `@stopcock/fp-compiler@0.0.0`;
   - the final FP tarball contains no test or fixture artifact;
   - extracted packed FP execution and packed FP-compiler import both passed.
+- Controller-repair evidence:
+  - `bun run test:controller` passed 19 focused safety tests covering
+    checkpoint application, three crash-recovery boundaries, trusted-helper
+    substitution, ignored state, every static and dynamic stage scope,
+    dependency transitions, durable blockers, S13 version policy, and S14
+    completion;
+  - `shellcheck tooling/run-stopcock-v2-controller.sh`, JavaScript and shell
+    syntax checks, JSON parsing, `git diff --check`, and focused `vp fmt
+--check` all passed.
 
 ## Surprises and discoveries
 
@@ -207,13 +245,12 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 ## Current blockers
 
 None. The original Git-metadata blocker is recovered. Another canonical slice
-must not start until the launcher-side checkpoint handoff is committed.
+must not start until this controller-repair commit passes launcher `--check`.
 
 ## Exact next action
 
-1. Commit the launcher-side checkpoint handoff and verify it without starting
-   another implementation run.
-2. Resume with the S0 package-cohort/readiness slice.
+After the committed controller repair passes launcher `--check`, resume with
+the S0 package-cohort/readiness slice.
 
 ## Outcomes and retrospective
 
