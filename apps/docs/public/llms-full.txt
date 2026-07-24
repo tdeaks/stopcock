@@ -676,71 +676,75 @@ tree-shakeable subpaths.
 
 ## Collections and sequences
 
-| Subpath | Purpose |
-| --- | --- |
-| `/array` | Eager array operators, fused pipeline steps, explicit `*Into` writes |
-| `/readonly-array` | Read-only alias of the array vocabulary |
-| `/non-empty-array` | Constructors and total operations for non-empty arrays |
-| `/tuple` | Typed tuple construction, mapping, zipping, and projection |
-| `/record` | Immutable property-keyed record operations |
-| `/map` | Immutable `Map` operations |
-| `/set` | Immutable `Set` operations |
-| `/typed-array` | Numeric typed-array transforms and explicit destination buffers |
-| `/indexed` | Shared indexed-collection operations |
-| [`/iter`](/api/iter) | Lazy synchronous sequences |
-| `/transducer` | Composable allocation-free reducing transformations |
-| `/collector` | Reusable terminal collectors |
+| Subpath              | Purpose                                                              |
+| -------------------- | -------------------------------------------------------------------- |
+| `/array`             | Eager array operators, fused pipeline steps, explicit `*Into` writes |
+| `/readonly-array`    | Read-only alias of the array vocabulary                              |
+| `/non-empty-array`   | Constructors and total operations for non-empty arrays               |
+| `/tuple`             | Typed tuple construction, mapping, zipping, and projection           |
+| `/record`            | Homogeneous property-keyed dictionaries with one value type          |
+| `/map`               | Immutable `Map` operations                                           |
+| `/set`               | Immutable `Set` operations                                           |
+| `/typed-array`       | Numeric typed-array transforms and explicit destination buffers      |
+| `/indexed`           | Shared indexed-collection operations                                 |
+| [`/iter`](/api/iter) | Lazy synchronous sequences                                           |
+| `/transducer`        | Composable allocation-free reducing transformations                  |
+| `/collector`         | Reusable terminal collectors                                         |
+
+Writable `*Into` operations preserve the concrete destination type. They
+reject fixed tuples, heterogeneous or refined record destinations, and
+ambiguous mutable target unions whenever mutation cannot be proven sound.
 
 ## Data and errors
 
-| Subpath | Purpose |
-| --- | --- |
-| [`/option`](/api/option) | Explicit absence |
-| [`/result`](/api/result) | Fail-fast recoverable errors |
-| [`/validation`](/api/validation) | Accumulating independent errors |
-| [`/schema`](/api/schema) | Standard Schema V1 production and consumption |
-| `/these` | Left, right, or both values |
-| `/nullable` | Focused nullable boundary helpers |
+| Subpath                          | Purpose                                       |
+| -------------------------------- | --------------------------------------------- |
+| [`/option`](/api/option)         | Explicit absence                              |
+| [`/result`](/api/result)         | Fail-fast recoverable errors                  |
+| [`/validation`](/api/validation) | Accumulating independent errors               |
+| [`/schema`](/api/schema)         | Standard Schema V1 production and consumption |
+| `/these`                         | Left, right, or both values                   |
+| `/nullable`                      | Focused nullable boundary helpers             |
 
 Asynchronous failures and asynchronous iteration are provided by
 `@stopcock/async`, not duplicated in the core package.
 
 ## Algebra and comparison
 
-| Subpath | Purpose |
-| --- | --- |
-| [`/eq`](/api/algebra) | Lawful equality relations |
-| [`/hash`](/api/algebra) | Composable deterministic hashing |
-| [`/ord`](/api/algebra) | Total ordering instances |
-| `/ordering` | Primitive ordering values and combinators |
-| [`/semigroup`](/api/algebra) | Associative combination |
-| [`/monoid`](/api/algebra) | Combination with an identity |
-| [`/group`](/api/algebra) | Combination with inversion |
+| Subpath                      | Purpose                                   |
+| ---------------------------- | ----------------------------------------- |
+| [`/eq`](/api/algebra)        | Lawful equality relations                 |
+| [`/hash`](/api/algebra)      | Composable deterministic hashing          |
+| [`/ord`](/api/algebra)       | Total ordering instances                  |
+| `/ordering`                  | Primitive ordering values and combinators |
+| [`/semigroup`](/api/algebra) | Associative combination                   |
+| [`/monoid`](/api/algebra)    | Combination with an identity              |
+| [`/group`](/api/algebra)     | Combination with inversion                |
 
 ## Functions and data transformation
 
-| Subpath | Purpose |
-| --- | --- |
-| `/function` | Composition, currying, memoization, predicates, and function utilities |
-| `/guard` | Structural guards and refinements |
-| `/object` | Immutable object/path operations |
-| `/string` | String transforms and predicates |
-| `/number` | Numeric predicates, statistics, and safe partials |
-| `/math` | Arithmetic pipeline operators |
-| `/boolean` | Boolean combinators |
-| `/dual` | Build data-first and data-last APIs |
-| `/compile` | Portable pipeline planning and explanations |
-| [`/optic`](/api/optic) | Lenses, optionals, prisms, traversals, and more |
-| `/match` | Exhaustive tagged-value matching |
+| Subpath                | Purpose                                                                |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `/function`            | Composition, currying, memoization, predicates, and function utilities |
+| `/guard`               | Structural guards and refinements                                      |
+| `/object`              | Immutable object/path operations                                       |
+| `/string`              | String transforms and predicates                                       |
+| `/number`              | Numeric predicates, statistics, and safe partials                      |
+| `/math`                | Arithmetic pipeline operators                                          |
+| `/boolean`             | Boolean combinators                                                    |
+| `/dual`                | Build data-first and data-last APIs                                    |
+| `/compile`             | Portable pipeline planning and explanations                            |
+| [`/optic`](/api/optic) | Lenses, optionals, prisms, traversals, and more                        |
+| `/match`               | Exhaustive tagged-value matching                                       |
 
 ## Functional models
 
-| Subpath | Purpose |
-| --- | --- |
-| `/reader` | Environment-dependent computations |
-| `/state-fn` | Pure state transitions |
-| `/writer` | Values paired with accumulated output |
-| `/recursion` | Stack-safe recursion schemes |
+| Subpath      | Purpose                               |
+| ------------ | ------------------------------------- |
+| `/reader`    | Environment-dependent computations    |
+| `/state-fn`  | Pure state transitions                |
+| `/writer`    | Values paired with accumulated output |
+| `/recursion` | Stack-safe recursion schemes          |
 
 The package export map is generated from one checked-in manifest. CI builds and
 imports every runtime and declaration entry from a real packed tarball, so this
@@ -888,17 +892,33 @@ Paths are readonly key tuples, not dotted strings:
 ```ts
 const cityPath = Obj.pathOf<User>()('profile', 'address', 'city')
 
-Obj.getPath(user, cityPath)            // Option<string>
+Obj.getPath(user, cityPath) // Option<string>
 Obj.getPathOrUndefined(user, cityPath) // string | undefined
 Obj.hasPath(user, cityPath)
 
 const moved = Obj.setPath(user, cityPath, 'Manchester')
 const upper = Obj.modifyPath(user, cityPath, String.toUpperCase)
-const withoutCity = Obj.removePath(user, cityPath)
+const nicknamePath = Obj.pathOf<User>()('profile', 'nickname')
+const withoutNickname = Obj.removePath(user, nicknamePath)
 ```
 
 Tuple paths distinguish numeric indices from string keys, reject unsafe write
-segments, and infer nested values to a bounded depth.
+segments, and infer nested values to a bounded depth. `removePath` accepts only
+optional leaves (or the empty no-op path), so its declared result can remain the
+original source type.
+
+Path writes traverse only ordinary arrays and plain objects. Missing object
+containers are created with normal `{}` semantics (and missing numeric
+containers as arrays). Unrelated own properties—including symbols,
+non-enumerables, accessors, and property flags—are preserved along each cloned
+branch. Class instances, callable objects, and array subclasses are not traversed:
+nominal and callable types are rejected statically when TypeScript can prove
+them, and structurally indistinguishable runtime values fail with `TypeError`.
+
+The literal keys `__proto__`, `constructor`, and `prototype` are rejected by the
+write APIs. A broad `string` key for an index signature cannot be ruled out
+statically, so it is checked at runtime and throws `TypeError` if its actual
+value is unsafe.
 
 ---
 # Optic
@@ -1675,6 +1695,225 @@ isomorphisms, getters, folds, setters, keyed `At` optics, composition, and lens
 law checks.
 
 ---
+# Inspect pipelines with explain()
+
+Source: https://stopcock.dev/concepts/explain/
+
+Read Stopcock's static pipeline plan, boundaries, executors, and pure rewrites
+
+`explain()` shows how Stopcock understands a pipeline before you run it. Pass
+it the same data-last operators you would give to `pipe` or `compile`, and it
+returns an immutable description of the resulting execution plan.
+
+It answers questions such as:
+
+- Will these operations share one streaming pass?
+- Which step needs the complete intermediate array?
+- Does a segment use a checked-in template or the generic portable executor?
+- Which opt-in pure rewrite would `compilePure` apply?
+- Did an ordinary user function make part of the pipeline opaque?
+
+<Aside type="note" title="Static inspection, not profiling">
+  `explain()` does not accept input data, invoke callbacks, execute the pipeline, measure elapsed
+  time, or count allocations. It describes the static plan for the supplied operators.
+</Aside>
+
+## Quick start
+
+```ts
+import { compile, explain } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+
+const steps = [
+  A.map((value: number) => value * 2),
+  A.filter((value) => value > 10),
+  A.take(3),
+] as const
+
+const report = explain(...steps)
+const run = compile(...steps)
+
+console.log(run([1, 6, 7, 8, 9]))
+// [12, 14, 16]
+```
+
+The report below is not copied documentation output. The docs component calls
+the current workspace implementation of `explain()` during the static Astro
+build and renders the returned object.
+
+
+This pipeline has one `stream` segment containing all three steps. The
+`template` executor means Stopcock has a checked-in specialized portable loop
+for this shape. There is no materialization boundary, so `map`, `filter`, and
+`take` can cooperate in one pass, and `take(3)` can stop upstream work after
+three matching values.
+
+## Reading the report
+
+| Field                       | Meaning                                                                                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `version`                   | Version of the explanation object, currently `1`.                                                                |
+| `domains`                   | The input domain of each segment, in segment order. This is not a set of unique domains.                         |
+| `segments`                  | Ordered regions of the pipeline: `stream`, `boundary`, or `opaque`.                                              |
+| `materializationBoundaries` | Zero-based step indexes for explicit whole-input boundaries.                                                     |
+| `semanticMode`              | `exact` for ordinary semantics or `pure` after an explicit purity promise.                                       |
+| `executor`                  | The top-level execution family. The current runtime executor is `portable`.                                      |
+| `segmentExecutors`          | `template` for a recognized checked-in kernel, otherwise `generic`. A generic stream segment can still be fused. |
+| `rewrites`                  | Additional transformations available in pure mode. Exact mode reports none.                                      |
+| `runtimeCodeGeneration`     | Always `false`: the runtime does not use `eval` or `new Function`.                                               |
+| `aotRecommended`            | Whether the optional build-time compiler is recommended. Version 1 currently reports `true` for every plan.      |
+
+Every segment contains:
+
+- `kind`: `stream`, `boundary`, or `opaque`;
+- `domain`: currently `array`, `scalar`, or `iterable`;
+- `startIndex`: the zero-based index of its first supplied step;
+- `length`: the number of steps in that segment.
+
+## Materialization boundaries
+
+Streaming operators can process one value at a time. Sorting cannot emit its
+first result until it has seen the complete input, so it becomes a boundary:
+
+```ts
+const steps = [
+  A.map((value: number) => value * 2), // index 0
+  A.sort, // index 1
+  A.take(3), // index 2
+] as const
+
+console.log(explain(...steps))
+
+compile(...steps)([3, 1, 2, 5, 4])
+// [2, 4, 6]
+```
+
+
+`materializationBoundaries: [1]` points to `A.sort`. The report therefore
+describes three regions:
+
+```text
+map → materialize and sort → take
+ 0             1             2
+```
+
+The boundary index identifies a semantic whole-input operation. It should not
+be read as a complete allocation count: specialized lowerings can sometimes
+optimize work across adjacent segments while preserving the same observable
+semantics.
+
+## Ordinary functions become opaque
+
+Any function can still appear in a Stopcock pipeline. If it does not carry
+Stopcock's internal operation metadata, the planner treats it as an `opaque`
+whole-domain step:
+
+```ts
+const reverseCopy = (values: readonly number[]) => values.slice().reverse()
+
+const steps = [
+  A.map((value: number) => value * 2),
+  reverseCopy,
+  A.filter((value) => value < 5),
+] as const
+
+compile(...steps)([1, 2, 3])
+// [4, 2]
+```
+
+
+Opaque does not mean invalid. Stopcock calls `reverseCopy` normally and can
+still recognize the tagged segments on either side. What it cannot do is
+inspect, fuse, reorder, or eliminate the opaque function.
+
+Likewise, `generic` does not mean “unfused.” A multi-operation `stream` segment
+without a matching shape-specific template still runs through Stopcock's
+general fused stream executor.
+
+## Exact plans and pure rewrites
+
+`explain()` always reports exact semantics. Stopcock preserves callback order,
+callback count, exceptions, and other observable behavior.
+
+`explainPure()` answers a different question: what could `compilePure()` do if
+you explicitly promise that the supplied callbacks are pure?
+
+```ts
+import { explainPure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'
+
+console.log(explainPure(A.sort, A.take(3)))
+```
+
+
+The `top-k` rewrite avoids completely sorting a large input when only its
+smallest three values are observed. The compiled result remains stable and
+sorted:
+
+```ts
+import { compilePure } from '@stopcock/fp'
+
+const smallestThree = compilePure(A.sort, A.take(3))
+
+smallestThree([9, 4, 1, 7, 3, 2])
+// [1, 2, 3]
+```
+
+Pure mode can also remove callbacks whose results cannot be observed:
+
+```ts
+explainPure(
+  A.map((value: number) => expensiveTransform(value)),
+  A.length,
+).rewrites
+// [{
+//   kind: 'elide-unused-map',
+//   description:
+//     'map callbacks are elided when only downstream length observes the segment'
+// }]
+```
+
+<Aside type="caution" title="Purity is a contract">
+  Use `compilePure` only when removed or reordered callback execution cannot be observed. A callback
+  that logs, mutates state, reads changing external state, or deliberately throws is not safe to
+  elide.
+</Aside>
+
+## How explain() builds the report
+
+1. Data-last Stopcock operators carry private operation and binding metadata.
+2. The planner resolves those tags into operation codes and callback bindings.
+3. It splits the operation codes at domain changes, whole-input boundaries,
+   and opaque functions.
+4. It checks whether each segment matches a checked-in template or would use
+   the generic closure-based executor.
+5. `explain()` freezes and returns the structural description. It never
+   compiles or executes the chosen runner, and it does not change optimizer
+   statistics.
+
+Callbacks and scalar arguments do not become part of the reusable shape key.
+Two pipelines with the same structure but different callbacks can therefore
+share the lowered shape without retaining or mixing up user functions.
+
+## What explain() does not currently show
+
+The version 1 report does not include:
+
+- actual elements consumed by a particular execution;
+- elapsed time, memory use, or allocation counts;
+- callback source code or captured values;
+- build-plugin transformation diagnostics;
+- why a particular AOT call site was accepted or rejected.
+
+Use the optional [`@stopcock/fp-compiler`](/libraries/fp-compiler) diagnostics
+for build-time lowering decisions, and use application benchmarks for measured
+performance. `explain()` is the reliable structural view of the portable
+runtime plan.
+
+Continue with [Fusion](/concepts/fusion) for the execution model or return to
+the [`@stopcock/fp` overview](/libraries/fp).
+
+---
 # Fusion
 
 Source: https://stopcock.dev/concepts/fusion/
@@ -1738,6 +1977,10 @@ steps.
 
 There is no runtime source generation. If nothing is fuseable, `pipe` applies
 functions one after another as expected.
+
+Use [`explain()`](/concepts/explain) to inspect streaming segments,
+materialization boundaries, executor selection, and pure rewrites for a
+specific pipeline.
 
 See [Benchmarks](/performance/benchmarks) for how fusion compares to lodash, ramda, and native JS.
 
@@ -3819,6 +4062,10 @@ console.log(
 )
 ```
 
+See [Inspect pipelines with `explain()`](/concepts/explain) for verified
+reports, field definitions, materialization boundaries, opaque functions, and
+pure rewrites.
+
 <Aside type="note">
   The optional `@stopcock/fp-compiler` build plugin can lower ordinary
   `pipe`/`flow` call sites at build time. Applications still import only
@@ -5470,8 +5717,73 @@ Source: https://stopcock.dev/performance/benchmarks/
 
 stopcock vs lodash, ramda, remeda, rambda, ts-belt, and native JS
 
-[vitest bench](https://vitest.dev/guide/features.html#benchmarking), Apple Silicon, seeded PRNG. Array sizes: 100, 1K, 10K, 100K.
+The interactive charts below are exploratory
+[Vitest benchmarks](https://vitest.dev/guide/features.html#benchmarking) with
+seeded inputs. Their absolute operations-per-second values vary by machine,
+runtime, thermal state, and benchmark version; they are not release promises.
 
+
+## FP 2.0 release gates
+
+FP 2.0 keeps each contract separate because its comparator answers a different
+question. Each number below is reference time divided by Stopcock time;
+greater than 1 means Stopcock was faster for that row.
+
+| Contract                           | Paired reference and cases                                | Bun/JSC geo / min | Node/V8 geo / min |
+| ---------------------------------- | --------------------------------------------------------- | ----------------: | ----------------: |
+| Portable `compile`                 | Frozen loop emitter, 44                                   |   1.677× / 0.943× |   1.379× / 0.973× |
+| Build compiler, stratified         | Frozen loop emitter, 44                                   |   2.044× / 0.906× |   1.572× / 0.997× |
+| Build compiler, operation-complete | Frozen operation emitter, 37 timed + 2 optimizer canaries |   1.105× / 0.866× |   1.181× / 0.924× |
+| Direct `Iter` terminal             | Hand-written early-exit loop, 3                           |   0.991× / 0.963× |   0.731× / 0.661× |
+| Broad `Iter` surface               | Frozen executor, 14                                       |   1.941× / 1.047× |   2.159× / 0.999× |
+| Transducers, collectors, `without` | Frozen implementations, 45                                |   1.762× / 0.993× |   1.597× / 0.993× |
+| Typed arrays                       | Frozen implementations, 48                                |   8.879× / 0.973× |   2.272× / 0.814× |
+| Typed arrays                       | Native typed-array equivalents, 48                        |   1.149× / 0.716× |   1.211× / 0.869× |
+| Callback-identity churn            | Frozen compile contract, 4                                |   2.254× / 1.013× |   1.615× / 0.985× |
+| `pipe` dispatch                    | Frozen dispatcher, 4                                      |   1.097× / 1.025× |   1.072× / 1.033× |
+| Core utilities                     | Frozen implementations, 18                                |   3.452× / 0.669× |   2.272× / 0.728× |
+| Data and functional modules        | Frozen implementations, 11                                |   2.353× / 0.790× |   1.454× / 0.861× |
+| Structural modules                 | Frozen implementations, 15                                |   1.813× / 0.967× |   2.113× / 0.847× |
+| Scalar, text, and hash             | Frozen implementations, 11                                |   2.031× / 0.985× |   1.344× / 0.928× |
+| Recursion, match, schema, writer   | Frozen implementations, 11                                |   3.229× / 0.988× |   4.345× / 0.946× |
+
+The table records the final 23 July 2026 local run on Darwin arm64 with Bun
+1.3.14/JavaScriptCore and Node 24.18.0/V8 13.6. It reports raw minima even
+where a pinned case documents semantic work or native-call overhead that
+cannot be removed. Ratios from different contracts are not interchangeable
+and should not be combined or compared with absolute throughput from another
+machine.
+
+Every gate writes raw and evaluated JSON and rejects provenance drift,
+missing populations, skipped or incorrect semantics, undersampling, malformed
+statistics, invalid confidence bounds, or missed floors. Above-ceiling
+measurement error is accepted only when the gate recomputes the full paired
+95% confidence interval and its lower bound still clears that case's floor.
+The operation compiler lane balances both lexical sampler roles in fresh
+workers and retains all four raw timing arrays. JavaScriptCore reduces
+fixed-input `length` and `isEmpty` repetitions to counter-loop work, so those
+two rows remain correctness and code-generation canaries rather than claimed
+latency measurements.
+
+CI runs the contracts with pinned Bun 1.3.14 and Node 22 on Linux x64 and
+macOS arm64, retains all artifacts, and separately gates the shared runtime
+chunk and published tarball size.
+
+```bash
+cd benchmarks
+bun run perf:portable:bun
+bun run perf:compiler:bun
+bun run perf:iter:bun
+bun run perf:hot-paths:bun
+bun run perf:typed-array:bun
+bun run perf:package-size
+```
+
+The normal `@stopcock/fp` runtime is strict-CSP compatible: it does not use
+`eval`, `new Function`, function-source parsing, or a dynamically loaded JIT
+chunk, and it does not require `unsafe-eval`. `@stopcock/fp-compiler` performs
+optional specialization during the build; the compiler is not imported into
+the emitted application's runtime graph.
 
 ---
 
@@ -5492,7 +5804,11 @@ All three operations fuse into a single loop. `take(10)` halts after 10 results.
 
 
 
-stopcock holds ~4M ops/s from n=100 to n=100K (the flat line). Every other library degrades linearly because they make three separate passes and allocate intermediate arrays. At 100K elements, native JS does 703 ops/s. Fusion does 4.2M.
+This shape can remain nearly flat as input grows because `take(10)` stops the
+fused loop once ten matches are produced. Treat the chart as an exploratory
+comparison, not a universal throughput claim: absolute rates depend on the
+selected runtime and host, while the release gate above uses paired,
+same-process ratios and correctness checks.
 
 ### Partial fusion: filter → map → sort → take
 

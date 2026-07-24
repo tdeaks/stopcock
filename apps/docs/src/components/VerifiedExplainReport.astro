@@ -1,0 +1,180 @@
+---
+import {
+  compile,
+  compilePure,
+  explain,
+  explainPure,
+  type PipelineExplanation,
+} from '../../../../packages/fp/src/compile'
+import * as A from '../../../../packages/fp/src/array'
+
+type Example = 'fused' | 'boundary' | 'opaque' | 'pure-top-k'
+
+interface Props {
+  example: Example
+}
+
+const { example } = Astro.props
+
+const double = (value: number): number => value * 2
+const aboveTen = (value: number): boolean => value > 10
+const belowFive = (value: number): boolean => value < 5
+const reverseCopy = (values: readonly number[]): readonly number[] =>
+  values.slice().reverse()
+
+interface VerifiedExample {
+  readonly report: PipelineExplanation
+  readonly result: unknown
+}
+
+interface ExpectedSummary {
+  readonly result: unknown
+  readonly segmentKinds: readonly string[]
+  readonly boundaries: readonly number[]
+  readonly segmentExecutors: readonly string[]
+  readonly semanticMode: 'exact' | 'pure'
+  readonly rewriteKinds: readonly string[]
+}
+
+const examples: Record<Example, VerifiedExample> = {
+  fused: {
+    report: explain(A.map(double), A.filter(aboveTen), A.take(3)),
+    result: compile(A.map(double), A.filter(aboveTen), A.take(3))([1, 6, 7, 8, 9]),
+  },
+  boundary: {
+    report: explain(A.map(double), A.sort, A.take(3)),
+    result: compile(A.map(double), A.sort, A.take(3))([3, 1, 2, 5, 4]),
+  },
+  opaque: {
+    report: explain(A.map(double), reverseCopy, A.filter(belowFive)),
+    result: compile(A.map(double), reverseCopy, A.filter(belowFive))([1, 2, 3]),
+  },
+  'pure-top-k': {
+    report: explainPure(A.sort, A.take(3)),
+    result: compilePure(A.sort, A.take(3))([9, 4, 1, 7, 3, 2]),
+  },
+}
+
+const verified = examples[example]
+const expected: Record<Example, ExpectedSummary> = {
+  fused: {
+    result: [12, 14, 16],
+    segmentKinds: ['stream'],
+    boundaries: [],
+    segmentExecutors: ['template'],
+    semanticMode: 'exact',
+    rewriteKinds: [],
+  },
+  boundary: {
+    result: [2, 4, 6],
+    segmentKinds: ['stream', 'boundary', 'stream'],
+    boundaries: [1],
+    segmentExecutors: ['template', 'generic', 'generic'],
+    semanticMode: 'exact',
+    rewriteKinds: [],
+  },
+  opaque: {
+    result: [4, 2],
+    segmentKinds: ['stream', 'opaque', 'stream'],
+    boundaries: [],
+    segmentExecutors: ['template', 'generic', 'template'],
+    semanticMode: 'exact',
+    rewriteKinds: [],
+  },
+  'pure-top-k': {
+    result: [1, 2, 3],
+    segmentKinds: ['boundary', 'stream'],
+    boundaries: [0],
+    segmentExecutors: ['generic', 'generic'],
+    semanticMode: 'pure',
+    rewriteKinds: ['top-k'],
+  },
+}
+
+const actualSummary: ExpectedSummary = {
+  result: verified.result,
+  segmentKinds: verified.report.segments.map((segment) => segment.kind),
+  boundaries: verified.report.materializationBoundaries,
+  segmentExecutors: verified.report.segmentExecutors,
+  semanticMode: verified.report.semanticMode,
+  rewriteKinds: verified.report.rewrites.map((rewrite) => rewrite.kind),
+}
+
+if (JSON.stringify(actualSummary) !== JSON.stringify(expected[example])) {
+  throw new Error(`Verified explain example "${example}" drifted from its documented contract`)
+}
+---
+
+<figure class="verified-report" data-example={example}>
+  <figcaption>
+    <span aria-hidden="true">✓</span>
+    Generated from the live Stopcock planner during this docs build
+  </figcaption>
+  <pre><code>{JSON.stringify(verified.report, null, 2)}</code></pre>
+  <p class="verified-result">
+    <strong>Verified runner output</strong>
+    <code>{JSON.stringify(verified.result)}</code>
+  </p>
+</figure>
+
+<style>
+  .verified-report {
+    margin: 1rem 0 1.5rem;
+    border: 1px solid var(--sl-color-gray-5, #1f211e);
+    background: var(--sl-color-gray-6, #161816);
+  }
+
+  figcaption {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--sl-color-gray-5, #1f211e);
+    background: var(--sl-color-accent-low, #0f2418);
+    color: var(--sl-color-accent-high, #8df0ad);
+    font-size: 0.75rem;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+  }
+
+  figcaption span {
+    color: var(--sl-color-accent, #34d26a);
+  }
+
+  pre {
+    margin: 0;
+    padding: 1rem;
+    overflow-x: auto;
+    background: transparent;
+    color: var(--sl-color-gray-1, #e8eae7);
+    font-family: var(--__sl-font-mono);
+    font-size: var(--sl-text-code);
+    line-height: 1.65;
+  }
+
+  code {
+    color: inherit;
+  }
+
+  .verified-result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0;
+    padding: 0.65rem 0.8rem;
+    border-top: 1px solid var(--sl-color-gray-5, #1f211e);
+    color: var(--sl-color-gray-2, #959991);
+    font-size: 0.8rem;
+  }
+
+  .verified-result strong {
+    color: var(--sl-color-gray-1, #e8eae7);
+    font-weight: 600;
+  }
+
+  .verified-result code {
+    color: var(--sl-color-accent, #34d26a);
+    font-weight: 600;
+  }
+</style>

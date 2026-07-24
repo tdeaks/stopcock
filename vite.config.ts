@@ -74,6 +74,7 @@ export default defineConfig({
       {
         files: [
           'apps/demo/**/*.{ts,tsx,js,jsx}',
+          'apps/diff-demo/**/*.{ts,tsx,js,jsx}',
           'packages/state/src/react.ts',
           'packages/state/src/__tests__/react.test.ts',
         ],

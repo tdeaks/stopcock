@@ -1,0 +1,26 @@
+{
+  "name": "@stopcock/diff-demo",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "test": "vp test run --config vitest.config.ts",
+    "preview": "vp preview"
+  },
+  "dependencies": {
+    "@stopcock/diff": "workspace:*",
+    "@stopcock/state": "workspace:*",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

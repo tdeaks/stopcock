@@ -18,6 +18,7 @@ bun add @stopcock/fp
 
 ## Concepts
 
+- [Inspect pipelines with explain()](https://stopcock.dev/concepts/explain/): Read Stopcock's static pipeline plan, boundaries, executors, and pure rewrites
 - [Fusion](https://stopcock.dev/concepts/fusion/): How pipe fuses array operations
 - [Option and Result](https://stopcock.dev/concepts/option-result/): Explicit absence and recoverable failure
 

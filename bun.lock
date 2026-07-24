@@ -59,6 +59,25 @@
         "vite-plus": "catalog:",
       },
     },
+    "apps/diff-demo": {
+      "name": "@stopcock/diff-demo",
+      "version": "0.0.1",
+      "dependencies": {
+        "@stopcock/diff": "workspace:*",
+        "@stopcock/state": "workspace:*",
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4",
+      },
+      "devDependencies": {
+        "@types/node": "^26.1.1",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^6.0.1",
+        "typescript": "catalog:",
+        "vite": "catalog:",
+        "vite-plus": "catalog:",
+      },
+    },
     "apps/docs": {
       "name": "@stopcock/docs",
       "dependencies": {
@@ -812,6 +831,8 @@
     "@stopcock/date": ["@stopcock/date@workspace:packages/date"],
 
     "@stopcock/diff": ["@stopcock/diff@workspace:packages/diff"],
+
+    "@stopcock/diff-demo": ["@stopcock/diff-demo@workspace:apps/diff-demo"],
 
     "@stopcock/docs": ["@stopcock/docs@workspace:apps/docs"],
 

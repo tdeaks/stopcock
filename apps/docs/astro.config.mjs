@@ -85,6 +85,7 @@ export default defineConfig({
           label: 'Concepts',
           items: [
             { label: 'Fusion', slug: 'concepts/fusion' },
+            { label: 'explain()', slug: 'concepts/explain' },
             { label: 'Option & Result', slug: 'concepts/option-result' },
           ],
         },

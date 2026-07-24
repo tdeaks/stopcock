@@ -61,4 +61,8 @@ steps.
 There is no runtime source generation. If nothing is fuseable, `pipe` applies
 functions one after another as expected.
 
+Use [`explain()`](/concepts/explain) to inspect streaming segments,
+materialization boundaries, executor selection, and pure rewrites for a
+specific pipeline.
+
 See [Benchmarks](/performance/benchmarks) for how fusion compares to lodash, ramda, and native JS.
