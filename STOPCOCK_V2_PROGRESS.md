@@ -5,11 +5,11 @@ superplan. It is deliberately separate from the architecture plan: the
 superplan defines what must happen, while this file records what has actually
 happened.
 
-Execution authorization: NOT_AUTHORIZED
+Execution authorization: AUTHORIZED
 Programme status: NOT_STARTED
-Base release ref: UNSET
-Execution branch: UNSET
-Execution worktree: UNSET
+Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
+Execution branch: codex/stopcock-v2
+Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0
 Current slice: NOT_STARTED
 Last verified commit: UNSET
@@ -21,18 +21,18 @@ start execution from a named, frozen base.
 
 ## Start gate
 
-- [ ] The current 1.x release decision is complete.
-- [ ] The exact base release ref is recorded above.
-- [ ] The workflow scaffold and canonical superplan are committed and available
+- [x] The current 1.x release decision is complete.
+- [x] The exact base release ref is recorded above.
+- [x] The workflow scaffold and canonical superplan are committed and available
       from that base or an explicitly identified setup commit.
-- [ ] A dedicated non-protected execution branch and isolated worktree exist.
-- [ ] The exact execution worktree is trusted by Codex, so its project config
+- [x] A dedicated non-protected execution branch and isolated worktree exist.
+- [x] The exact execution worktree is trusted by Codex, so its project config
       and custom agents are active.
-- [ ] The execution worktree is clean.
-- [ ] Both preserved source-plan SHA-256 values match the hashes recorded in the
+- [x] The execution worktree is clean.
+- [x] Both preserved source-plan SHA-256 values match the hashes recorded in the
       canonical superplan.
-- [ ] The user has explicitly authorized implementation to begin.
-- [ ] `Execution authorization` is `AUTHORIZED`.
+- [x] The user has explicitly authorized implementation to begin.
+- [x] `Execution authorization` is `AUTHORIZED`.
 
 ## Canonical stage status
 
@@ -63,8 +63,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `GATE_PASSED`,
 ## Progress
 
 - [x] (2026-07-24) Installed the dormant project-scoped Codex workflow.
-- [ ] Freeze and record the release baseline.
-- [ ] Authorize execution.
+- [x] (2026-07-24) Froze and recorded base commit
+      `624b25bc0cd226178bd46294d60b1a337fa11aee`.
+- [x] (2026-07-24) Created and trusted the isolated
+      `codex/stopcock-v2` worktree and authorized future execution.
 - [ ] Begin S0.
 
 ## Evidence log
@@ -95,22 +97,25 @@ No implementation or release evidence has been produced by this workflow.
   Rationale: These are external, difficult-to-reverse release mutations.
   Date: 2026-07-24.
 
+- Decision: Use `624b25bc0cd226178bd46294d60b1a337fa11aee` as
+  the frozen product/docs base and `e51a61976c6f189265a0691743a0c1129cfb6405`
+  as the setup-bearing execution branch starting point.
+  Rationale: The latter is a single descendant commit containing only the
+  dormant controller scaffold and its three preserved plan artifacts.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-- Execution has not been authorized.
-- The 1.x release baseline has not been frozen or recorded.
-- No isolated execution branch or worktree exists yet.
-- The future execution worktree has not yet been marked and verified as trusted.
+None. Execution is authorized but has not been launched.
 
 ## Exact next action
 
-After the current release decision is complete, create an isolated worktree from
-the chosen frozen ref, ensure this scaffold and the canonical plan are present,
-record the base/branch/worktree above, obtain explicit user authorization, and
-only then change `Execution authorization` to `AUTHORIZED`.
+When the user chooses to start implementation, run
+`./tooling/run-stopcock-v2-controller.sh` from
+`/Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2`.
 
 ## Outcomes and retrospective
 
-The execution controller is installed but dormant. No superplan stage has
-started, no implementation file has been changed by the controller, and no
-external action has been taken.
+The execution controller is installed, isolated, trusted, and authorized but
+remains dormant. No superplan stage has started, no implementation file has
+been changed by the controller, and no external action has been taken.
