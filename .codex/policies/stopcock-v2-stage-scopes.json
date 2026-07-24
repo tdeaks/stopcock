@@ -94,6 +94,7 @@
         "benchmarks/**/*topology*",
         "benchmarks/**/*package-gate*",
         "benchmarks/package.json",
+        "bun.lock",
         "tooling/**/*topology*",
         "tooling/**/*package-gate*",
         "artifacts/v2/baselines/size/**",

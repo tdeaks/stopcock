@@ -1140,6 +1140,8 @@ cannot satisfy any of these IDs.
 - `benchmarks/src/bundle-size/**`
 - `benchmarks/src/reference/fp-consumer-size-*`
 - `benchmarks/package.json`
+- `bun.lock`, only for the exact S1A benchmark dependencies declared in
+  `benchmarks/package.json`
 - focused topology/package gate files and tests
 - no production package source, public exports, generated runtime, or workflow
   release behavior
