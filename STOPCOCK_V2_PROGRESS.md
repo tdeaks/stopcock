@@ -6,13 +6,13 @@ superplan defines what must happen, while this file records what has actually
 happened.
 
 Execution authorization: AUTHORIZED
-Programme status: CHECKPOINT_PENDING
+Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0
-Current slice: CONTRACTS_AND_SEMANTICS_VALIDATED_AWAITING_CHECKPOINT
-Last verified commit: CHECKPOINT_PENDING
+Current slice: PACKAGE_COHORT_READINESS
+Last verified commit: dcf054568bc71f031b5a4b43ec152bf09a00866c
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -41,7 +41,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 
 | Stage | Status | Verified commit or evidence |
 |---|---|---|
-| S0 | IN_PROGRESS | Contracts and semantics slice validated; checkpoint pending |
+| S0 | IN_PROGRESS | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c` |
 | S0R | NOT_STARTED | Conditional stage |
 | S0B | NOT_STARTED | — |
 | S1 | NOT_STARTED | Includes its independently complete evidence slices |
@@ -72,7 +72,8 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-24) Implemented and focused-validated the additive S0
       architecture, root-migration, eager/lazy `flatMap`, and public-tag
       characterization slice.
-- [ ] Checkpoint the validated S0 contracts slice.
+- [x] (2026-07-24) Checkpointed the validated S0 contracts slice as
+      `dcf054568bc71f031b5a4b43ec152bf09a00866c`.
 - [ ] Complete the S0 package-cohort/readiness slice.
 
 ## Evidence log
@@ -89,6 +90,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     `e5b6c1a8bc2f7b72b65e85d07a8c9289b56c496b54050cf7a6e5b6ee6d5fc10e`;
   - size source-plan SHA-256
     `dc7127ee67dab6ae2f32caffe55425c6ffaf4da8ee8c02c3705cbd674dc47fbf`.
+- Local checkpoint evidence:
+  - `dcf054568bc71f031b5a4b43ec152bf09a00866c`
+    (`test(fp): freeze 2.0 cross-tier semantics`) contains only the five S0
+    contract files and this ledger.
 - S0 contracts focused validation:
   - `bunx vitest run
     packages/fp/src/__tests__/v2-boundary-contract.test.ts
@@ -201,23 +206,19 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 
 ## Current blockers
 
-None. The original Git-metadata blocker is being recovered by the authorized
-outer process; another canonical slice must not start until that checkpoint and
-the launcher-side checkpoint handoff are committed.
+None. The original Git-metadata blocker is recovered. Another canonical slice
+must not start until the launcher-side checkpoint handoff is committed.
 
 ## Exact next action
 
-1. Have the authorized outer process stage only the five S0 contract files plus
-   this ledger.
-2. Create `test(fp): freeze 2.0 cross-tier semantics`.
-3. Record that checkpoint hash as `Last verified commit`.
-4. Commit the launcher-side checkpoint handoff and verify it without starting
+1. Commit the launcher-side checkpoint handoff and verify it without starting
    another implementation run.
-5. Resume with the S0 package-cohort/readiness slice.
+2. Resume with the S0 package-cohort/readiness slice.
 
 ## Outcomes and retrospective
 
 Execution started and the first additive S0 slice is source-, type-,
-distribution-, and pack-valid. It is awaiting its outer checkpoint. No
-production runtime, generated output, public export, package version, lockfile,
-or external release state has changed.
+distribution-, and pack-valid at
+`dcf054568bc71f031b5a4b43ec152bf09a00866c`. No production runtime, generated
+output, public export, package version, lockfile, or external release state has
+changed.
