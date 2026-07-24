@@ -3,6 +3,7 @@ import { pipe } from '../pipe'
 import { flow } from '../flow'
 import * as A from '../array'
 import * as M from '../math'
+import * as O from '../option'
 
 describe('optimizer regressions', () => {
   describe('plan identity includes bound arguments', () => {
@@ -57,9 +58,9 @@ describe('optimizer regressions', () => {
         data,
         A.filter((x: number) => x > 0),
         A.min,
-        M.multiply(10),
+        O.map(M.multiply(10)),
       )
-      expect(result).toBe(10)
+      expect(result).toEqual(O.some(10))
     })
   })
 
@@ -81,7 +82,13 @@ describe('optimizer regressions', () => {
 
     it('accessor op used non-terminally is not silently dropped (pipe, few args)', () => {
       const data = [1, 2, 3, 4, 5]
-      expect(pipe(data, A.reverse, A.filter((x: number) => x > 2))).toEqual([5, 4, 3])
+      expect(
+        pipe(
+          data,
+          A.reverse,
+          A.filter((x: number) => x > 2),
+        ),
+      ).toEqual([5, 4, 3])
     })
 
     it('accessor op used non-terminally is not silently dropped (pipe, 7+ args)', () => {
@@ -156,7 +163,7 @@ describe('optimizer regressions', () => {
         A.filter((x: number) => x % 2 === 0),
         A.min,
       )
-      expect(result).toBe(2)
+      expect(result).toEqual(O.some(2))
     })
 
     it('two filters then max matches manual loop', () => {
@@ -167,7 +174,7 @@ describe('optimizer regressions', () => {
         A.filter((x: number) => x % 2 === 0),
         A.max,
       )
-      expect(result).toBe(8)
+      expect(result).toEqual(O.some(8))
     })
 
     it('two filters then count matches manual loop', () => {
@@ -218,7 +225,7 @@ describe('optimizer regressions', () => {
         A.flatMap((x: number) => [x, x + 10]),
         A.find((v: number) => v > 5),
       )
-      expect(result).toBe(11)
+      expect(result).toEqual(O.some(11))
     })
   })
 

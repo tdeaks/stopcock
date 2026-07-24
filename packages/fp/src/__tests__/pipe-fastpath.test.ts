@@ -327,6 +327,26 @@ describe('pipe() fast path: numeric front-cache key is collision-free', () => {
     expect(Number.isSafeInteger(key)).toBe(true)
   })
 
+  it('rejects an out-of-range forged opcode instead of hitting a colliding shape', () => {
+    // [map=1, 129] and [filter=2, map=1] both pack to 257 unless every
+    // numeric-cache digit is validated before lookup.
+    pipe(
+      [1, 2, 3],
+      A.filter((value: number) => value > 0),
+      A.map((value: number) => value * 10),
+    )
+    const forged = A.map((value: number) => value)
+    ;(forged as { _op: number })._op = NUM_KEY_BASE + 1
+
+    expect(() =>
+      pipe(
+        [1, 2, 3],
+        A.map((value: number) => value),
+        forged,
+      ),
+    ).toThrow(`registry: no metadata for opcode ${NUM_KEY_BASE + 1}`)
+  })
+
   it('6+ step pipelines (beyond the numeric-key length) still match interpret() via the string-key fallback', () => {
     const data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     for (let i = 0; i < ITERATIONS; i++) {
@@ -386,5 +406,45 @@ describe('pipe() fast path: plansBuilt stays flat across repeated inline calls',
       )
       expect(getOptimizerStats().plansBuilt).toBe(afterFirst)
     }
+  })
+})
+
+describe('pipe() fast path: bounded hot identity', () => {
+  it('stays binding-correct while more identities than the four-entry cache are cycled', () => {
+    const data = [1, 2, 3, 4, 5, 6]
+    const pipelines = Array.from({ length: 7 }, (_, index) => {
+      const delta = index + 1
+      const limit = (index % 4) + 1
+      return {
+        steps: [
+          A.map((value: number) => value + delta),
+          A.filter((value: number) => value % 2 === index % 2),
+          A.take(limit),
+        ],
+        delta,
+        limit,
+        parity: index % 2,
+      }
+    })
+
+    for (let pass = 0; pass < 20; pass++) {
+      for (const pipeline of pipelines) {
+        const actual = pipe(data, ...(pipeline.steps as [any, any, any]))
+        const expected = data
+          .map((value) => value + pipeline.delta)
+          .filter((value) => value % 2 === pipeline.parity)
+          .slice(0, pipeline.limit)
+        expect(actual).toEqual(expected)
+      }
+    }
+  })
+
+  it('reuses a mixed tagged/opaque hot entry without bypassing the opaque step', () => {
+    const data = [1, 2, 3, 4]
+    const tagged = A.map((value: number) => value * 2)
+    const opaque = (values: readonly number[]) => values.join(':')
+
+    expect(pipe(data, tagged, opaque)).toBe('2:4:6:8')
+    expect(pipe(data, tagged, opaque)).toBe('2:4:6:8')
   })
 })

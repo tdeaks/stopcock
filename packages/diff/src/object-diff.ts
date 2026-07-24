@@ -1,4 +1,4 @@
-import { isDeepEqual } from '@stopcock/fp'
+import { deep } from '@stopcock/fp/eq'
 import type { Operation, Path, DiffOptions } from './types'
 
 export function objectDiff(
@@ -23,7 +23,7 @@ export function objectDiff(
   if (options.detectRenames !== false && removed.length > 0 && added.length > 0) {
     const usedRemoved = new Set<number>()
     const usedAdded = new Set<number>()
-    const eq = options.eq ?? isDeepEqual
+    const eq = options.eq ?? deep.equals
 
     for (let i = 0; i < removed.length; i++) {
       for (let j = 0; j < added.length; j++) {

@@ -2,6 +2,7 @@ import { dual } from '@stopcock/fp/dual'
 import { ok, err, type Result } from '@stopcock/fp/result'
 import { isSome, type Option } from '@stopcock/fp/option'
 import { abortableDelay } from './internals'
+import { CancelledError } from './types'
 
 export type Task<A, E = never> = {
   readonly _tag: 'Task'
@@ -26,10 +27,44 @@ export const reject = <E>(error: E): Task<never, E> => ({
   run: () => Promise.reject(error),
 })
 
-export const fromPromise = <A>(thunk: () => Promise<A>): Task<A, unknown> => ({
+export const fromPromise = <A>(
+  thunk: (signal?: AbortSignal) => PromiseLike<A>,
+): Task<A, unknown> => ({
   _tag: 'Task',
-  run: async () => thunk(),
+  run: async (signal?) => thunk(signal),
 })
+
+/**
+ * Creates a lazy Task from a promise-producing operation and maps both
+ * synchronous throws and promise rejections into the Task's typed failure
+ * channel.
+ */
+export const tryPromise = <A, E>(
+  thunk: (signal?: AbortSignal) => PromiseLike<A>,
+  onThrow: (error: unknown) => E,
+): Task<A, E> => ({
+  _tag: 'Task',
+  run: async (signal?) => {
+    try {
+      return await thunk(signal)
+    } catch (error) {
+      throw onThrow(error)
+    }
+  },
+})
+
+/**
+ * Migration helper for an existing async function that throws or rejects.
+ * The returned function is still lazy: calling it builds a Task and the
+ * original function does not execute until that Task is run.
+ */
+export const fromAsyncThrowable =
+  <Args extends readonly unknown[], A, E>(
+    fn: (...args: Args) => PromiseLike<A>,
+    onThrow: (error: unknown) => E,
+  ) =>
+  (...args: Args): Task<A, E> =>
+    tryPromise(() => fn(...args), onThrow)
 
 export const fromResult = <A, E>(result: Result<A, E>): Task<A, E> => ({
   _tag: 'Task',
@@ -191,5 +226,8 @@ export const runSafe = <A, E>(task: Task<A, E>): Promise<Result<A, E>> =>
 
 export const runWithCancel = <A, E>(task: Task<A, E>): [Promise<A>, () => void] => {
   const controller = new AbortController()
-  return [task.run(controller.signal), () => controller.abort()]
+  return [
+    task.run(controller.signal),
+    () => controller.abort(new CancelledError()),
+  ]
 }

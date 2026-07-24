@@ -53,11 +53,9 @@ import {
   OP_STR_TRIM_START,
   OP_STR_UPPER,
   OP_SCAN,
-  OP_SCAN_STREAM,
   OP_SUM,
   OP_TAIL,
   OP_TAKE,
-  OP_TAKE_STREAM,
   OP_TAKE_UNTIL,
   OP_TAKE_WHILE,
   OP_UNIQ_INLINE,
@@ -77,6 +75,7 @@ import { type OpCode, requireOpMeta } from './registry'
 import { mergeSortAsc, mergeSortBy, mergeSortDesc } from './sort-kernel'
 import { type BoundPlan, type PlanShape, type SegmentShape, type StepBinding } from './plan'
 import { ARRAY_TEMPLATES, SINK_TEMPLATES, type PortableTemplateFn } from './portable-templates'
+import { none as optionNone, some as optionSome } from './option'
 
 export const HALT = Symbol('lower.halt')
 
@@ -89,8 +88,8 @@ for (const t of SINK_TEMPLATES) arrayTemplateByKey.set(t.key, t.run)
 const sumFusionByKey = new Map<string, PortableTemplateFn>()
 for (const t of SINK_TEMPLATES) if (t.kind === 'sum') sumFusionByKey.set(t.key, t.run)
 
-function unimplemented(op: OpCode): never {
-  throw new Error(`lower: unimplemented op ${op} (${requireOpMeta(op).name})`)
+function unsupportedOp(op: OpCode): never {
+  throw new Error(`lower: unsupported op ${op} (${requireOpMeta(op).name})`)
 }
 
 // ConsumeMeta is only meaningful for the first segment in a shape --
@@ -106,7 +105,11 @@ export type { ConsumeMeta }
  * retains callbacks itself — bindings are threaded through per call. `meta`
  * is only ever populated by whichever runner sees the real source directly.
  */
-export type PortableRunner = (input: unknown, bindings: readonly StepBinding[], meta?: ConsumeMeta) => unknown
+export type PortableRunner = (
+  input: unknown,
+  bindings: readonly StepBinding[],
+  meta?: ConsumeMeta,
+) => unknown
 
 function lengthOf(data: unknown): number {
   return Array.isArray(data) ? data.length : 1
@@ -123,9 +126,9 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
     case OP_SORT_DESC:
       return mergeSortDesc(data as readonly number[])
     case OP_HEAD:
-      return data[0]
+      return data.length === 0 ? optionNone : optionSome(data[0])
     case OP_LAST:
-      return data[data.length - 1]
+      return data.length === 0 ? optionNone : optionSome(data[data.length - 1])
     case OP_LENGTH:
       return data.length
     case OP_IS_EMPTY:
@@ -148,21 +151,23 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
       return sum
     }
     case OP_MIN: {
+      if (data.length === 0) return optionNone
       let min = data[0] as number
       for (let i = 1; i < data.length; i++) if ((data[i] as number) < min) min = data[i] as number
-      return min
+      return optionSome(min)
     }
     case OP_MAX: {
+      if (data.length === 0) return optionNone
       let max = data[0] as number
       for (let i = 1; i < data.length; i++) if ((data[i] as number) > max) max = data[i] as number
-      return max
+      return optionSome(max)
     }
     case OP_WITHOUT: {
       const exclude = new Set(binding.fn as readonly unknown[])
       return data.filter((x) => !exclude.has(x))
     }
     default:
-      return unimplemented(op)
+      return unsupportedOp(op)
   }
 }
 
@@ -262,7 +267,7 @@ export function lowerScalarSegment(codes: readonly OpCode[], seg: SegmentShape):
           v = typeof v === 'function'
           break
         default:
-          unimplemented(op)
+          unsupportedOp(op)
       }
     }
     return v
@@ -310,6 +315,7 @@ export function buildSink(op: OpCode, b: StepBinding): SinkResult {
       case OP_FIND:
         if (fn(value)) {
           found = value
+          foundIndex = 0
           throw HALT
         }
         return
@@ -317,6 +323,7 @@ export function buildSink(op: OpCode, b: StepBinding): SinkResult {
         const mapped = fn(value)
         if (mapped != null) {
           found = mapped
+          foundIndex = 0
           throw HALT
         }
         return
@@ -338,7 +345,7 @@ export function buildSink(op: OpCode, b: StepBinding): SinkResult {
         if (fn(value)) count++
         return
       default:
-        unimplemented(op)
+        unsupportedOp(op)
     }
   }
 
@@ -353,17 +360,17 @@ export function buildSink(op: OpCode, b: StepBinding): SinkResult {
       case OP_SOME:
         return some
       case OP_FIND:
-        return found
+        return foundIndex === -1 ? optionNone : optionSome(found)
       case OP_FIND_MAP:
-        return found
+        return foundIndex === -1 ? optionNone : optionSome(found)
       case OP_FIND_INDEX:
-        return foundIndex === -1 ? undefined : foundIndex
+        return foundIndex === -1 ? optionNone : optionSome(foundIndex)
       case OP_NONE:
         return none
       case OP_COUNT:
         return count
       default:
-        return unimplemented(op)
+        return unsupportedOp(op)
     }
   }
 
@@ -422,15 +429,11 @@ interface StageMachine {
   readonly hasTake: boolean
   readonly hasDrop: boolean
   readonly hasDropWhile: boolean
-  readonly hasScan: boolean
   /** Positions of array-domain OP_SCAN stages, descending. Empty when none. */
   readonly scanArrayPositions: readonly number[]
   /** Advances one element through stages [s..streamLen). Returns true when
    * downstream signals early exit (take/takeWhile/takeUntil satisfied, or
-   * the sink itself halting). Shared by the array-indexed runner
-   * (buildGenericStreamRunner) and the iterable-pull runner
-   * (buildIterableStreamRunner) below — the stage logic itself doesn't
-   * care whether the source is an array or an arbitrary Iterable. */
+   * the sink itself halting). */
   readonly advance: (
     fns: readonly unknown[],
     sinkFn: ((...args: unknown[]) => unknown) | undefined,
@@ -443,25 +446,33 @@ interface StageMachine {
 /** Builds the shared per-stage switch (advance/emitFinal) once per segment
  * shape, mirroring interpret.ts's runStreamSegment. See StageMachine's doc
  * comment for why this is factored out of buildGenericStreamRunner. */
-function buildStageMachine(codes: readonly OpCode[], start: number, streamLen: number, hasSink: boolean, lastOp: OpCode): StageMachine {
+function buildStageMachine(
+  codes: readonly OpCode[],
+  start: number,
+  streamLen: number,
+  hasSink: boolean,
+  lastOp: OpCode,
+): StageMachine {
   const ops: OpCode[] = new Array(streamLen)
   let hasTake = false
   let hasDrop = false
   let hasDropWhile = false
-  let hasScan = false
   const scanArrayPositions: number[] = []
   for (let s = 0; s < streamLen; s++) {
     const op = codes[start + s]
     ops[s] = op
-    if (op === OP_TAKE || op === OP_TAKE_STREAM) hasTake = true
+    if (op === OP_TAKE) hasTake = true
     else if (op === OP_DROP) hasDrop = true
     else if (op === OP_DROP_WHILE) hasDropWhile = true
-    else if (op === OP_SCAN_STREAM) hasScan = true
     else if (op === OP_SCAN) scanArrayPositions.unshift(s)
   }
 
   // Returns true when the whole element loop should stop (early exit).
-  function emitFinal(sinkFn: ((...args: unknown[]) => unknown) | undefined, state: StreamState, value: unknown): boolean {
+  function emitFinal(
+    sinkFn: ((...args: unknown[]) => unknown) | undefined,
+    state: StreamState,
+    value: unknown,
+  ): boolean {
     if (!hasSink) {
       state.out.push(value)
       return false
@@ -489,6 +500,7 @@ function buildStageMachine(codes: readonly OpCode[], start: number, streamLen: n
       case OP_FIND:
         if (fn(value)) {
           state.found = value
+          state.foundIndex = 0
           return true
         }
         return false
@@ -496,6 +508,7 @@ function buildStageMachine(codes: readonly OpCode[], start: number, streamLen: n
         const mapped = fn(value)
         if (mapped != null) {
           state.found = mapped
+          state.foundIndex = 0
           return true
         }
         return false
@@ -517,7 +530,7 @@ function buildStageMachine(codes: readonly OpCode[], start: number, streamLen: n
         if (fn(value)) state.count++
         return false
       default:
-        return unimplemented(lastOp)
+        return unsupportedOp(lastOp)
     }
   }
 
@@ -573,20 +586,6 @@ function buildStageMachine(codes: readonly OpCode[], start: number, streamLen: n
           state.takeCount[s]++
           s++
           continue
-        case OP_TAKE_STREAM: {
-          const n = fn as number
-          if (n <= 0) return true
-          state.takeCount[s]++
-          if (advance(fns, sinkFn, state, s + 1, value)) return true
-          return state.takeCount[s] >= n
-        }
-        case OP_SCAN_STREAM: {
-          const acc = (fn as (a: unknown, v: unknown) => unknown)(state.scanAcc[s], value)
-          state.scanAcc[s] = acc
-          value = acc
-          s++
-          continue
-        }
         case OP_SCAN: {
           // Per-element update only; the initial accumulator is emitted
           // once, before any element, by runScanArrayInits below.
@@ -625,12 +624,12 @@ function buildStageMachine(codes: readonly OpCode[], start: number, streamLen: n
           return false
         }
         default:
-          return unimplemented(op)
+          return unsupportedOp(op)
       }
     }
   }
 
-  return { ops, hasTake, hasDrop, hasDropWhile, hasScan, scanArrayPositions, advance }
+  return { ops, hasTake, hasDrop, hasDropWhile, scanArrayPositions, advance }
 }
 
 /**
@@ -665,17 +664,17 @@ function finishSink(hasSink: boolean, lastOp: OpCode, state: StreamState): unkno
     case OP_SOME:
       return state.some
     case OP_FIND:
-      return state.found
+      return state.foundIndex === -1 ? optionNone : optionSome(state.found)
     case OP_FIND_MAP:
-      return state.found
+      return state.foundIndex === -1 ? optionNone : optionSome(state.found)
     case OP_FIND_INDEX:
-      return state.foundIndex === -1 ? undefined : state.foundIndex
+      return state.foundIndex === -1 ? optionNone : optionSome(state.foundIndex)
     case OP_NONE:
       return state.none
     case OP_COUNT:
       return state.count
     default:
-      return unimplemented(lastOp)
+      return unsupportedOp(lastOp)
   }
 }
 
@@ -687,11 +686,11 @@ function makeStreamState(
   bindings: readonly StepBinding[],
   start: number,
 ): StreamState {
-  const needsScanAcc = machine.hasScan || machine.scanArrayPositions.length > 0
+  const needsScanAcc = machine.scanArrayPositions.length > 0
   const scanAcc: unknown[] = needsScanAcc ? new Array(streamLen) : EMPTY_UNKNOWNS
   if (needsScanAcc) {
     for (let s = 0; s < streamLen; s++) {
-      if (machine.ops[s] === OP_SCAN_STREAM || machine.ops[s] === OP_SCAN) scanAcc[s] = bindings[start + s].a1
+      if (machine.ops[s] === OP_SCAN) scanAcc[s] = bindings[start + s].a1
     }
   }
   return {
@@ -706,7 +705,9 @@ function makeStreamState(
     index: 0,
     takeCount: machine.hasTake ? new Array<number>(streamLen).fill(0) : EMPTY_NUMBERS,
     dropCount: machine.hasDrop ? new Array<number>(streamLen).fill(0) : EMPTY_NUMBERS,
-    dropWhileActive: machine.hasDropWhile ? new Array<boolean>(streamLen).fill(true) : EMPTY_BOOLEANS,
+    dropWhileActive: machine.hasDropWhile
+      ? new Array<boolean>(streamLen).fill(true)
+      : EMPTY_BOOLEANS,
     scanAcc,
   }
 }
@@ -722,17 +723,26 @@ function buildGenericStreamRunner(
 
   return (source, bindings, meta) => {
     const src = source as readonly unknown[]
+    // Public array operators snapshot length before invoking callbacks.
+    // Preserve that boundary for generic fused shapes and keep the property
+    // load out of the loop condition.
+    const sourceLength = src.length
     const fns: unknown[] = new Array(streamLen)
     for (let s = 0; s < streamLen; s++) fns[s] = bindings[start + s].fn
-    const sinkFn = hasSink ? (bindings[start + streamLen].fn as (...args: unknown[]) => unknown) : undefined
+    const sinkFn = hasSink
+      ? (bindings[start + streamLen].fn as (...args: unknown[]) => unknown)
+      : undefined
     const state = makeStreamState(streamLen, hasSink, lastOp, machine, bindings, start)
 
     // `i` is hoisted out of the loop so its final value (elements actually
     // read from `src`, the true source) can be reported back through `meta`
     // -- take(1) over a huge array must credit 1, not src.length.
     let i = 0
-    if (machine.scanArrayPositions.length === 0 || !runScanArrayInits(machine, fns, sinkFn, state)) {
-      for (; i < src.length; i++) {
+    if (
+      machine.scanArrayPositions.length === 0 ||
+      !runScanArrayInits(machine, fns, sinkFn, state)
+    ) {
+      for (; i < sourceLength; i++) {
         if (machine.advance(fns, sinkFn, state, 0, src[i])) {
           i++
           break
@@ -743,76 +753,6 @@ function buildGenericStreamRunner(
 
     return finishSink(hasSink, lastOp, state)
   }
-}
-
-/**
- * Iterable-pull variant of buildGenericStreamRunner: same shared stage
- * machine (buildStageMachine), but the outer loop is a for-of over an
- * arbitrary Iterable instead of an indexed array loop. Used by Stream's
- * terminals (see stream.ts) when the source isn't an array and the chain
- * has an early-termination op (take/takeWhile/find/every/some/...), so
- * materializing the source first would be wrong (it might be infinite or
- * merely expensive to fully drain). `break` out of a for-of triggers the
- * engine's own IteratorClose, so early exit here closes the source (and,
- * for a flatMap fanout inside `advance`, the inner iterable) for free —
- * no manual bookkeeping needed for that path. A callback throwing is a
- * loop-*body* exception, which also triggers IteratorClose automatically;
- * only a exception thrown by the *iterator protocol itself* (`.next()`)
- * would not, and that's not a case this runner needs to handle specially.
- * Also doubles as the tier-0 portable runner for iterable-sourced Stream
- * shapes (see lowerIterableShape below): `meta`, when given, is fed the
- * count of items pulled from the source iterator — the same "consumed"
- * accounting rule buildGenericStreamRunner uses for arrays — so
- * dispatchAndTrack's exec/consumed thresholds drive promotion for this path
- * exactly like every other ShapeEntry.
- */
-export function buildIterableStreamRunner(
-  codes: readonly OpCode[],
-  start: number,
-  streamLen: number,
-  hasSink: boolean,
-  lastOp: OpCode,
-): PortableRunner {
-  const machine = buildStageMachine(codes, start, streamLen, hasSink, lastOp)
-
-  return (source, bindings, meta) => {
-    const fns: unknown[] = new Array(streamLen)
-    for (let s = 0; s < streamLen; s++) fns[s] = bindings[start + s].fn
-    const sinkFn = hasSink ? (bindings[start + streamLen].fn as (...args: unknown[]) => unknown) : undefined
-    const state = makeStreamState(streamLen, hasSink, lastOp, machine, bindings, start)
-
-    let consumed = 0
-    if (machine.scanArrayPositions.length === 0 || !runScanArrayInits(machine, fns, sinkFn, state)) {
-      for (const item of source as Iterable<unknown>) {
-        consumed++
-        if (machine.advance(fns, sinkFn, state, 0, item)) break
-      }
-    }
-    if (meta) meta.consumed = consumed
-
-    return finishSink(hasSink, lastOp, state)
-  }
-}
-
-/**
- * Builds the tier-0 portable runner for an iterable-sourced Stream shape.
- * Every op Stream's own vocabulary can append is array-domain and never a
- * materializer (see plan.ts's segmentBoundSteps), so a Stream-built
- * PlanShape always segments into exactly one stream segment — this throws
- * otherwise rather than silently mishandling a shape it wasn't built for.
- */
-export function lowerIterableShape(shape: PlanShape): PortableRunner {
-  const { segments, codes } = shape
-  const seg = segments[0]
-  if (segments.length !== 1 || !seg || seg.kind !== 'stream') {
-    throw new Error('lowerIterableShape: expected a Stream shape (exactly one stream segment)')
-  }
-  const start = seg.startIndex
-  const len = seg.length
-  const lastOp = codes[start + len - 1]
-  const hasSink = requireOpMeta(lastOp).cardinality === 'sink'
-  const streamLen = hasSink ? len - 1 : len
-  return buildIterableStreamRunner(codes, start, streamLen, hasSink, lastOp)
 }
 
 function lowerStreamSegment(codes: readonly OpCode[], seg: SegmentShape): PortableRunner {
@@ -828,11 +768,9 @@ function lowerStreamSegment(codes: readonly OpCode[], seg: SegmentShape): Portab
   if (template) {
     const isTake = codes[start + len - 1] === OP_TAKE
     return (source, bindings, meta) => {
-      // Non-take templates always read the whole source; take-limited
-      // templates report their own exact count on early exit (see
-      // portable-templates.ts's emitArrayTemplate) and otherwise leave this
-      // default alone, which is already correct when the loop runs to
-      // completion.
+      // Default to the up-front source-length snapshot. Take-limited and
+      // short-circuit sink templates overwrite this with their exact count
+      // on early exit; full traversals leave the default intact.
       if (meta) meta.consumed = lengthOf(source)
       const limit = isTake ? (bindings[start + len - 1].fn as number) : -1
       return template(source as readonly unknown[], bindings, start, limit, meta)
@@ -858,13 +796,7 @@ export function lowerSegment(codes: readonly OpCode[], seg: SegmentShape): Porta
 function isBareSingleOpSegment(codes: readonly OpCode[], seg: SegmentShape): boolean {
   if (seg.kind !== 'stream' || seg.length !== 1) return false
   const op = codes[seg.startIndex]
-  return (
-    requireOpMeta(op).cardinality !== 'sink' &&
-    op !== OP_TAKE &&
-    op !== OP_TAKE_STREAM &&
-    op !== OP_SCAN_STREAM &&
-    op !== OP_SCAN
-  )
+  return requireOpMeta(op).cardinality !== 'sink' && op !== OP_TAKE && op !== OP_SCAN
 }
 
 /** Executor kind actually used for a segment, or a fused pair: 'template' when a checked-in fused-loop template exists, 'generic' otherwise. Mirrors the lookup performed by lowerSegment/lowerShape. */
@@ -931,9 +863,43 @@ export function lowerShape(shape: PlanShape): PortableRunner {
     runners.push(lowerSegment(codes, seg))
     i++
   }
+  // The overwhelmingly common fused shape is one segment. Returning its
+  // executor directly removes an otherwise permanent wrapper loop and call
+  // from every compiled invocation, which matters most for early exits that
+  // inspect only a handful of values.
+  if (runners.length === 1) return runners[0]
+  // Keep common boundary-heavy shapes monomorphic too. A generic loop here
+  // makes V8/JSC load the next executor from an array at every materialization
+  // boundary, even though the runner count is fixed for the lifetime of the
+  // compiled shape.
+  if (runners.length === 2) {
+    const run0 = runners[0]
+    const run1 = runners[1]
+    return (input, bindings, meta) =>
+      run1(run0(input, bindings, meta), bindings)
+  }
+  if (runners.length === 3) {
+    const run0 = runners[0]
+    const run1 = runners[1]
+    const run2 = runners[2]
+    return (input, bindings, meta) =>
+      run2(run1(run0(input, bindings, meta), bindings), bindings)
+  }
+  if (runners.length === 4) {
+    const run0 = runners[0]
+    const run1 = runners[1]
+    const run2 = runners[2]
+    const run3 = runners[3]
+    return (input, bindings, meta) =>
+      run3(
+        run2(run1(run0(input, bindings, meta), bindings), bindings),
+        bindings,
+      )
+  }
   return (input, bindings, meta) => {
     let data: unknown = input
-    for (let i = 0; i < runners.length; i++) data = runners[i](data, bindings, i === 0 ? meta : undefined)
+    for (let i = 0; i < runners.length; i++)
+      data = runners[i](data, bindings, i === 0 ? meta : undefined)
     return data
   }
 }

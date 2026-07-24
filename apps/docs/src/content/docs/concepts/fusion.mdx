@@ -29,7 +29,7 @@ One pass. `take(10)` breaks the loop after 10 results.
 | `reduce`, `find`, `every`, `some`, `count`                           | terminal folds/predicates | finish the fused pass and return a scalar or found value                                      |
 | `head`, `last`, `length`, `join`, `sum`, `min`, `max`                | accessor terminals        | end the chain with a scalar or aggregate result                                               |
 | `sort`, `sortBy`, `reverse`, `groupBy`, `uniq`                       | materialization boundary  | need a completed array before the next step                                                   |
-| `sortBy -> take(k)`, `sort -> take(k)`                               | top-k optimization        | uses a bounded top-k path instead of fully sorting when the take immediately follows the sort |
+| `sortBy -> take(k)`, `sort -> take(k)` under `compilePure`           | opt-in top-k rewrite      | uses a bounded, stable top-k path when the caller explicitly promises callback purity          |
 
 Operations that need the whole array break the streaming chain. Everything before them gets fused and runs first, then the materializing op runs on that result:
 
@@ -37,18 +37,28 @@ Operations that need the whole array break the streaming chain. Everything befor
 pipe(
   data,
   A.filter((x) => x > 3), // segment 1
-  A.map((x) => x * 2), // materializes here
+  A.map((x) => x * 2),
   A.sortBy((a, b) => a - b), // runs on the materialized array
-  A.take(3), // uses top-k because it immediately follows sortBy
+  A.take(3), // exact pipe semantics: take runs after the complete sort
 )
 ```
 
-When `take(k)` immediately follows `sortBy` or `sort`, pipe uses the top-k optimization for that pair. If you insert another operation between them, the sort boundary behaves like a normal materialization point.
+`compilePure(A.sortBy(compare), A.take(k))` may replace that exact pair with
+the bounded top-k rewrite. Ordinary `pipe` and `compile` keep exact callback
+semantics and complete the sort. Import `explainPure` from
+`@stopcock/fp/compile` to inspect the applied rewrite. Inserting another
+operation between sort and take prevents the rewrite.
 
 ## Mechanics
 
-Every function created by `dual()` carries metadata: `_op`, `_fn`, `_args`. `pipe` reads the tags and compiles consecutive fuseable ops into a single `for` loop with inlined predicates. `take(n)` emits `HALT` to break out early. Your own lambdas pass through unchanged.
+Functions created by `dual()` carry compact internal operation and binding
+metadata. `pipe` reads those tags and dispatches consecutive compatible
+operations to checked-in portable loop templates or a closure-based generic
+lowering. Early-exit operations stop the shared loop as soon as their contract
+allows. Untagged user functions pass through as ordinary opaque pipeline
+steps.
 
-If nothing is fuseable, `pipe` just applies functions one after another like you would expect.
+There is no runtime source generation. If nothing is fuseable, `pipe` applies
+functions one after another as expected.
 
 See [Benchmarks](/performance/benchmarks) for how fusion compares to lodash, ramda, and native JS.

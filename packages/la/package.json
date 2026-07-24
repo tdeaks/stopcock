@@ -1,6 +1,7 @@
 {
   "name": "@stopcock/la",
   "version": "1.0.0",
+  "description": "Typed-array linear algebra with vectors, matrices, decompositions, and acceleration hooks.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -8,7 +9,10 @@
     "directory": "packages/la"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -29,5 +33,8 @@
       "types": "./dist/primitives.d.ts",
       "import": "./dist/primitives.js"
     }
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

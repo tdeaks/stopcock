@@ -1,5 +1,6 @@
 import { bench, describe } from 'vite-plus/test'
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import * as Ra from 'ramda'
 import * as Rb from 'rambda'

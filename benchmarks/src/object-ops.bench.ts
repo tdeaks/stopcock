@@ -1,5 +1,5 @@
 import { bench, describe } from 'vite-plus/test'
-import { Obj } from '@stopcock/fp'
+import * as Obj from '@stopcock/fp/object'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
 import * as Ra from 'ramda'
@@ -25,17 +25,40 @@ describe('omit', () => {
 })
 
 describe('path', () => {
-  bench('stopcock', () => Obj.path(nested, 'user.address.city'))
+  const path = ['user', 'address', 'city'] as const
+
+  bench('stopcock getPathOrUndefined', () => Obj.getPathOrUndefined(nested, path))
   bench('rambda', () => Rb.path(['user', 'address', 'city'])(nested))
   bench('ramda', () => Ra.path(['user', 'address', 'city'], nested))
   bench('lodash', () => _.get(nested, 'user.address.city'))
 })
 
 describe('assoc', () => {
+  const exactPlainObjectAssoc = (): typeof obj => {
+    const output = Object.create(Object.getPrototypeOf(obj)) as typeof obj
+    for (const key of Reflect.ownKeys(obj)) {
+      if (!Object.prototype.propertyIsEnumerable.call(obj, key)) continue
+      Object.defineProperty(output, key, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: Reflect.get(obj, key),
+      })
+    }
+    Object.defineProperty(output, 'a', {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: 99,
+    })
+    return output
+  }
+
   bench('stopcock', () => Obj.assoc(obj, 'a', 99))
   bench('rambda', () => Rb.assoc('a', 99)(obj))
   bench('ramda', () => Ra.assoc('a', 99, obj))
-  bench('native immutable spread baseline', () => ({ ...obj, a: 99 }))
+  bench('manual equivalent prototype/symbol-safe clone', exactPlainObjectAssoc)
+  bench('native spread (plain string-record subset)', () => ({ ...obj, a: 99 }))
 })
 
 describe('dissoc', () => {
@@ -45,11 +68,11 @@ describe('dissoc', () => {
   bench('lodash', () => _.omit(obj, ['a']))
 })
 
-describe('mergeDeepRight', () => {
+describe('mergeDeep (right-biased)', () => {
   const a = { x: { y: 1, z: 2 }, w: 3 }
   const b = { x: { y: 10 }, v: 4 }
 
-  bench('stopcock', () => Obj.mergeDeepRight(a, b))
+  bench('stopcock', () => Obj.mergeDeep(a, b, { bias: 'right' }))
   bench('ramda', () => Ra.mergeDeepRight(a, b))
   bench('lodash', () => _.merge({}, a, b))
 })

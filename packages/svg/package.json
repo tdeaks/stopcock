@@ -1,6 +1,7 @@
 {
   "name": "@stopcock/svg",
   "version": "1.0.0",
+  "description": "Typed procedural SVG nodes, paths, transforms, paint, filters, and rendering.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -8,7 +9,10 @@
     "directory": "packages/svg"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -25,5 +29,8 @@
   "dependencies": {
     "@stopcock/color": "workspace:*",
     "@stopcock/la": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

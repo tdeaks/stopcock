@@ -7,8 +7,8 @@ import { buildPlan, planShapeKey } from '../plan'
 
 const data = [5, 3, 8, 1, 9, 2, 7, 4, 6, 0]
 
-describe('ShapeEntry ownership model', () => {
-  it('an identity-cache hit observes a tier swap written to entry.run', () => {
+describe('portable shape cache ownership', () => {
+  it('an identity-cache hit observes the shared entry runner', () => {
     const double = (x: number) => x * 2
     const even = (x: number) => x % 2 === 0
 
@@ -33,7 +33,7 @@ describe('ShapeEntry ownership model', () => {
     entry.run = original
   })
 
-  it('a front-cache hit (fresh closures, same opcode sequence) also observes a swap', () => {
+  it('a front-cache hit with fresh closures also observes the shared entry runner', () => {
     const entry = __shapeEntryForSteps([A.map((x: number) => x + 1), A.filter((x: number) => x > 0)])
     const original = entry.run
     let seen = 0
@@ -76,17 +76,16 @@ describe('ShapeEntry ownership model', () => {
     expect(executionIdentityKey(shapeKey, 'exact', 'none')).not.toBe(executionIdentityKey(shapeKey, 'pure', 'none'))
   })
 
-  it('eviction reverts entry.run to portableRun and drops the entry from the registry', () => {
-    const entry = __shapeEntryForSteps([A.map((x: number) => x * 3), A.reverse])
-    const spy = () => 'promoted'
-    entry.run = spy as unknown as typeof entry.run
-    expect(entry.run).not.toBe(entry.portableRun)
+  it('clearing the registry does not invalidate an existing compiled runner', () => {
+    const steps = [A.map((x: number) => x * 3), A.reverse] as const
+    const runner = compile(...steps)
+    const expected = runner(data)
 
     __clearEntries()
 
-    expect(entry.run).toBe(entry.portableRun)
+    expect(runner(data)).toEqual(expected)
 
-    const plan = buildPlan([A.map((x: number) => x * 3), A.reverse])
+    const plan = buildPlan(steps)
     const shapeKey = planShapeKey(plan.shape)
     expect(__lookupEntry(shapeKey, 'exact', 'none')).toBeUndefined()
   })

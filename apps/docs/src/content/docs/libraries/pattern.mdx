@@ -1,0 +1,40 @@
+---
+title: pattern
+description: Exhaustive structural pattern matching for TypeScript
+---
+
+```bash
+bun add @stopcock/pattern
+```
+
+Patterns are plain values plus small predicate objects. Matching has no
+runtime service, code-generation step, or global registry.
+
+```ts
+import { match, select, string } from '@stopcock/pattern'
+
+type Event =
+  | { type: 'created'; id: number }
+  | { type: 'renamed'; id: number; name: string }
+  | { type: 'deleted'; id: number }
+
+const label = (event: Event) =>
+  match(event)
+    .with({ type: 'created' }, ({ id }) => `created ${id}`)
+    .with(
+      { type: 'renamed', name: select('name', string) },
+      ({ id }, { name }) => `renamed ${id} to ${name}`,
+    )
+    .with({ type: 'deleted' }, ({ id }) => `deleted ${id}`)
+    .exhaustive()
+```
+
+`exhaustive()` becomes available only after every member of a discriminated
+union is covered. `otherwise(handler)` adds an explicit fallback, while
+`run()` returns `undefined` when no branch matches.
+
+Patterns include literals, nested objects and tuples, primitive predicates,
+unions and intersections, negation, guards, arrays, records, maps, sets,
+nullable and optional values, strict object keys, and typed named captures.
+Focused imports are available from `@stopcock/pattern/match` and
+`@stopcock/pattern/pattern`.

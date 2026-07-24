@@ -1,4 +1,5 @@
 {
+  "id": "stopcock-portable-stratified-w0b-v1",
   "version": 1,
   "comment": "Fixed stratified perf corpus (W0b), derived from the W0a grammar (StreamStepKind/SinkStepKind/BoundaryStepKind/CallbackSpec in generate.ts and binding-specs.ts). Cases are built deterministically from that vocabulary rather than searched out of the seeded fuzz generator, so every stratum cell is guaranteed populated instead of hoped-for by RNG luck.",
   "cases": [

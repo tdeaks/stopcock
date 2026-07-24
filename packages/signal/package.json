@@ -1,6 +1,7 @@
 {
   "name": "@stopcock/signal",
   "version": "1.0.0",
+  "description": "Typed-array digital signal processing for FFTs, filters, convolution, resampling, and analysis.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -8,7 +9,10 @@
     "directory": "packages/signal"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -56,5 +60,8 @@
   },
   "scripts": {
     "test": "vp test run"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

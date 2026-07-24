@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process'
+import { resolve } from 'node:path'
+import { fixDeclarationSpecifiers } from './fix-declaration-specifiers.mjs'
 
 const runVp = (...args) => {
   const result = spawnSync('vp', args, {
@@ -13,3 +15,6 @@ const runVp = (...args) => {
 // TypeScript repopulates it, so they must share one task-cache decision.
 runVp('pack')
 runVp('exec', 'tsc', '--emitDeclarationOnly')
+
+const result = await fixDeclarationSpecifiers(resolve('dist'))
+console.log(`Declaration specifiers fixed in ${result.changed}/${result.files} files`)

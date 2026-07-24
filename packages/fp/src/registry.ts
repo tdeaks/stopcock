@@ -727,47 +727,9 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         bindings: [],
       }),
 
-      // Stream-dialect ops. The previous plan (M3) skipped this decision;
-      // both behaviors are preserved via distinct opcodes. Signed off
-      // 2026-07-21 (see docs/superpowers/plans/
-      // 2026-07-21-stopcock-fp-tiered-execution-implementation.md, W5):
-      //   - take: the array Plan IR's OP_TAKE checks its quota *before*
-      //     processing the next upstream item, so one extra upstream
-      //     callback fires (on the item that trips the quota) before the
-      //     halt is detected — see pipe-fusion.test.ts. OP_TAKE_STREAM stops
-      //     the source immediately after the quota-filling item itself: no
-      //     extra upstream callback.
-      //   - scan: array.ts's scan (codegen/dual-inline.ts output) emits the
-      //     initial accumulator as output[0] (length n+1 for n inputs).
-      //     OP_SCAN_STREAM does not emit the initial value — exactly one
-      //     output per input (length n). Now registered as its own opcode,
-      //     OP_SCAN, below, rather than reusing this one.
-      meta({
-        op: OpCodes.OP_TAKE_STREAM,
-        name: 'takeStream',
-        inputDomain: 'array',
-        outputDomain: 'array',
-        cardinality: 'stateful',
-        callbackArity: 0,
-        bindings: ['fn'],
-        earlyTermination: true,
-        constructorPreserving: true,
-      }),
-      meta({
-        op: OpCodes.OP_SCAN_STREAM,
-        name: 'scanStream',
-        inputDomain: 'array',
-        outputDomain: 'array',
-        cardinality: 'stateful',
-        callbackArity: 2,
-        bindings: ['fn', 'a1'],
-        reverseSafe: false,
-      }),
-
       // Array-domain scan: emits the initial accumulator (a1) before any
       // element is processed, then one output per input -- length n+1 for
-      // n inputs. See opcodes.ts's OP_SCAN comment and the OP_SCAN_STREAM
-      // dialect note above.
+      // n inputs.
       meta({
         op: OpCodes.OP_SCAN,
         name: 'scan',

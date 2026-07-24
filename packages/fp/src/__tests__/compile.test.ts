@@ -3,7 +3,14 @@ import * as A from '../array'
 import * as S from '../string'
 import { buildPlan } from '../plan'
 import { interpret } from '../interpret'
-import { compile, compilePure, explainPipeline, getOptimizerStats, resetOptimizerStats } from '../compile'
+import {
+  compile,
+  compilePure,
+  explain,
+  explainPure,
+  getOptimizerStats,
+  resetOptimizerStats,
+} from '../compile'
 
 function tracked<F extends (...args: any[]) => any>(fn: F): F & { calls: unknown[][] } {
   const calls: unknown[][] = []
@@ -58,6 +65,17 @@ const cases: Case[] = [
     build: (t) => [
       A.flatMap(t((x: number) => [x, x + 100])),
       A.filter(t((x: number) => x < 100 || x > 102)),
+    ],
+  },
+  {
+    name: 'map -> flatMap -> filter -> filterMap -> reduce',
+    input: [1, 2, 3, 4],
+    build: (t) => [
+      A.map(t((x: number) => x + 1)),
+      A.flatMap(t((x: number) => [x, x * 2])),
+      A.filter(t((x: number) => (x & 1) === 0)),
+      A.filterMap(t((x: number) => (x === 4 ? undefined : x + 10))),
+      A.reduce(t((total: number, x: number) => total - x), 0),
     ],
   },
   {
@@ -232,6 +250,35 @@ describe('compile: differential against reference interpreter', () => {
   }
 })
 
+describe('compile: bound single-filter runner', () => {
+  it('snapshots length, visits sparse slots, and passes only the value', () => {
+    const input = new Array<number | undefined>(3)
+    input[1] = 2
+    const calls: unknown[][] = []
+    const runner = compile(
+      A.filter((...args: [number | undefined]) => {
+        calls.push(args)
+        if (calls.length === 1) input.push(99)
+        return true
+      }),
+    )
+
+    expect(runner(input)).toEqual([undefined, 2, undefined])
+    expect(calls).toEqual([[undefined], [2], [undefined]])
+  })
+
+  it('keeps alternating compiled predicates independently bound', () => {
+    const input = [1, 2, 3, 4, 5, 6]
+    const evens = compile(A.filter((value: number) => value % 2 === 0))
+    const overThree = compile(A.filter((value: number) => value > 3))
+
+    for (let iteration = 0; iteration < 20; iteration++) {
+      expect(evens(input)).toEqual([2, 4, 6])
+      expect(overThree(input)).toEqual([4, 5, 6])
+    }
+  })
+})
+
 describe('compilePure', () => {
   it('sort -> take produces the same set/order as exact for ascending sort', () => {
     const exact = compile(A.sort, A.take(3))(nums)
@@ -263,33 +310,33 @@ describe('compilePure', () => {
   })
 
   it('explanation lists the applied rewrite for sort -> take', () => {
-    const explanation = explainPipeline(A.sort, A.take(3))
-    expect(explanation.appliedRewrites.some((r) => r.kind === 'top-k')).toBe(true)
-    expect(explanation.semantics).toBe('pure')
+    const explanation = explainPure(A.sort, A.take(3))
+    expect(explanation.rewrites.some((rewrite) => rewrite.kind === 'top-k')).toBe(true)
+    expect(explanation.semanticMode).toBe('pure')
   })
 
   it('explanation lists the applied rewrite for map -> length', () => {
-    const explanation = explainPipeline(A.map((x: number) => x), A.length)
-    expect(explanation.appliedRewrites.some((r) => r.kind === 'elide-unused-map')).toBe(true)
+    const explanation = explainPure(A.map((x: number) => x), A.length)
+    expect(explanation.rewrites.some((rewrite) => rewrite.kind === 'elide-unused-map')).toBe(true)
   })
 
   it('reports exact semantics with no rewrites when none apply', () => {
-    const explanation = explainPipeline(A.map((x: number) => x * 2), A.sum)
-    expect(explanation.appliedRewrites.length).toBe(0)
-    expect(explanation.semantics).toBe('exact')
+    const explanation = explain(A.map((x: number) => x * 2), A.sum)
+    expect(explanation.rewrites.length).toBe(0)
+    expect(explanation.semanticMode).toBe('exact')
   })
 })
 
-describe('explainPipeline', () => {
+describe('explain', () => {
   it('reports domains and materialization boundaries for map -> sort -> take', () => {
-    const explanation = explainPipeline(A.map((x: number) => x), A.sort, A.take(3))
+    const explanation = explain(A.map((x: number) => x), A.sort, A.take(3))
     expect(explanation.domains).toEqual(['array', 'array', 'array'])
     expect(explanation.materializationBoundaries.length).toBe(1)
     expect(explanation.executor).toBe('portable')
   })
 
   it('snapshot: map -> filter -> reduce', () => {
-    const explanation = explainPipeline(
+    const explanation = explain(
       A.map((x: number) => x + 1),
       A.filter((x: number) => x > 0),
       A.reduce((acc: number, x: number) => acc + x, 0),
@@ -299,7 +346,7 @@ describe('explainPipeline', () => {
   })
 
   it('snapshot: sort -> take -> reverse', () => {
-    const explanation = explainPipeline(A.sort, A.take(3), A.reverse)
+    const explanation = explain(A.sort, A.take(3), A.reverse)
     expect(explanation.materializationBoundaries.length).toBe(2)
   })
 })

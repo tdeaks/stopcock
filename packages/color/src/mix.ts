@@ -1,4 +1,4 @@
-import { dual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
 import type { Color, ColorSpace } from './types'
 import { convert, toOKLab } from './convert'
 

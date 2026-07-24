@@ -67,7 +67,10 @@ describe('dual', () => {
 
     it('untagged dual has no _op or _fn', () => {
       const add = dual(2, (a: number, b: number) => a + b)
-      const dataLast = add(2)
+      const dataLast = add(2) as ((data: number) => number) & {
+        readonly _op?: number
+        readonly _fn?: unknown
+      }
       expect(dataLast._op).toBeUndefined()
       expect(dataLast._fn).toBeUndefined()
     })
@@ -86,7 +89,9 @@ describe('dual', () => {
     })
 
     it('arity-1 untagged: no _op on wrapper', () => {
-      const negate = dual(1, (x: number) => -x)
+      const negate = dual(1, (x: number) => -x) as ((x: number) => number) & {
+        readonly _op?: number
+      }
       expect(negate._op).toBeUndefined()
     })
   })

@@ -25,22 +25,9 @@
 // entry. toArray-as-a-real-op remains absent: it has no opcode at all (see
 // EMITTER_OPCODES below), synthetic sink only.
 //
-// 2026-07-21 W6 outlier investigation (map->flatMap->filter->filterMap->reduce
-// at ~0.2x vs this emitter): flatMap here fans out with an indexed for-loop
-// (`for (let j = 0; j < items.length; j++) { let v = items[j]; ... }`, see
-// emitChain's 'flatMap' case below), while jit-chunk.ts's tier-1/2 flatMap
-// (added by W5, shared with Stream) uses `for (const v of items) { ... }`.
-// The fuzz cross-tier extension (benchmarks/src/reference/fuzz-correctness.test.ts)
-// found this is not just a denominator-distortion style difference: jit-chunk's
-// `const v` throws "Assignment to constant variable" the moment any later
-// stage in the same segment reassigns v (map, filterMap, mapWhile, scan, a
-// second flatMap), because the for-of binding shadows the outer loop's `let
-// v` and can't be written to. That is a tier-1/2 correctness bug, not an
-// emitter concern — see CHANGELOG.md for the proposed jit-chunk.ts fix. This
-// emitter is NOT being changed to match jit-chunk's idiom: its indexed loop
-// is correct as written, and copying `for (const v of items)` here would
-// import the same bug into the oracle. Left as documentation only per the
-// frozen-emitter changelog discipline.
+// flatMap fans out with an indexed inner loop. This keeps reassignment by
+// downstream map/filterMap/scan stages explicit and gives the frozen emitter
+// a portable, engine-independent correctness baseline.
 import {
   OP_COUNT,
   OP_DROP,
@@ -68,6 +55,14 @@ import {
   OP_WITHOUT,
 } from '../../../packages/fp/src/opcodes'
 import { mergeSortAsc, mergeSortBy, mergeSortDesc } from '../../../packages/fp/src/sort-kernel'
+
+/**
+ * Stable identity for the benchmark-only reference implementation.
+ *
+ * The release gate also pins this file's SHA-256, so changing the reference
+ * implementation requires an explicit, reviewable benchmark contract update.
+ */
+export const FROZEN_EMITTER_ID = 'stopcock-reference-emitter-w0a-v1'
 
 export type StreamStepKind =
   | 'map'
@@ -289,7 +284,9 @@ function emitSinkStep(sink: StreamSegment['sink'], out: string[]): void {
       out.push(`if (bindings[${index}].fn(v)) { someResult = true; break outer; }`)
       return
     case 'find':
-      out.push(`if (bindings[${index}].fn(v)) { foundResult = v; break outer; }`)
+      out.push(
+        `if (bindings[${index}].fn(v)) { foundResult = { _tag: 1, value: v }; break outer; }`,
+      )
       return
     case 'count':
       out.push(`if (bindings[${index}].fn(v)) countResult++;`)
@@ -322,7 +319,7 @@ function emitStreamSegment(seg: StreamSegment): string[] {
     lines.push('let someResult = false;')
     result = 'someResult'
   } else if (sink.kind === 'find') {
-    lines.push('let foundResult = undefined;')
+    lines.push('let foundResult = { _tag: 0 };')
     result = 'foundResult'
   } else if (sink.kind === 'count') {
     lines.push('let countResult = 0;')

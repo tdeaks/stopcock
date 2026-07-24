@@ -27,6 +27,63 @@ export interface PairedRunResult {
   readonly signTestP: number
 }
 
+export const INTERLEAVED_PAIRED_SAMPLER_ID = 'stopcock-interleaved-paired-microbatch-ab-ba-v1'
+export const INTERLEAVED_PAIRED_SAMPLER_ORDER =
+  'AB/BA alternating by micro-batch pair and paired sample'
+
+export interface InterleavedPairedSampling {
+  readonly id: typeof INTERLEAVED_PAIRED_SAMPLER_ID
+  readonly order: typeof INTERLEAVED_PAIRED_SAMPLER_ORDER
+  readonly batchIterationsPerSide: number
+  readonly microBatchIterations: number
+  readonly microBatchesPerSide: number
+}
+
+export interface InterleavedPairedRunResult extends PairedRunResult {
+  readonly sampling: InterleavedPairedSampling
+}
+
+export const SYMMETRIC_PAIRED_SAMPLER_ID =
+  'stopcock-symmetric-two-orientation-interleaved-paired-v1'
+export const SYMMETRIC_PAIRED_SAMPLER_ORDER =
+  'fresh-process candidate@A/reference@B + reference@A/candidate@B'
+export const SYMMETRIC_PAIRED_COMBINATION =
+  'candidate=sqrt(candidateAtA*candidateAtB); reference=sqrt(referenceAtB*referenceAtA)'
+export const SYMMETRIC_PAIRED_ORIENTATION_ISOLATION = 'fresh-process'
+
+export interface SymmetricPairedSampling {
+  readonly id: typeof SYMMETRIC_PAIRED_SAMPLER_ID
+  readonly order: typeof SYMMETRIC_PAIRED_SAMPLER_ORDER
+  readonly combination: typeof SYMMETRIC_PAIRED_COMBINATION
+  readonly orientationIsolation: typeof SYMMETRIC_PAIRED_ORIENTATION_ISOLATION
+  readonly baseSamplerId: typeof INTERLEAVED_PAIRED_SAMPLER_ID
+  readonly orientations: 2
+  readonly batchIterationsPerSide: number
+  readonly microBatchIterations: number
+  readonly microBatchesPerSide: number
+}
+
+export interface SymmetricOrientationSamples {
+  readonly candidateAtA: {
+    readonly candidateSamples: readonly number[]
+    readonly referenceSamples: readonly number[]
+  }
+  readonly candidateAtB: {
+    readonly candidateSamples: readonly number[]
+    readonly referenceSamples: readonly number[]
+  }
+}
+
+export interface SymmetricPairedRunResult extends PairedRunResult {
+  readonly sampling: SymmetricPairedSampling
+  readonly orientationSamples: SymmetricOrientationSamples
+}
+
+export interface SymmetricPairedCombineOptions {
+  readonly batchIterations: number
+  readonly microBatchIterations: number
+}
+
 function median(xs: readonly number[]): number {
   const s = xs.slice().sort((x, y) => x - y)
   const n = s.length
@@ -52,7 +109,11 @@ function bootstrapRng(seed: number): () => number {
 }
 
 /** Percentile bootstrap CI on the median of paired ratios. B resamples, deterministic RNG. */
-function bootstrapMedianCI(xs: readonly number[], b = 2000, alpha = 0.05): { low: number; high: number } {
+export function bootstrapMedianCI(
+  xs: readonly number[],
+  b = 2000,
+  alpha = 0.05,
+): { low: number; high: number } {
   if (xs.length === 0) return { low: NaN, high: NaN }
   const rng = bootstrapRng(0x9e3779b9 ^ xs.length)
   const n = xs.length
@@ -93,6 +154,31 @@ function signTestP(xs: readonly number[]): number {
 export interface PairedRunOptions {
   readonly rounds: number
   readonly warmupRounds?: number
+}
+
+export interface InterleavedPairedRunOptions extends PairedRunOptions {
+  readonly batchIterations: number
+  readonly microBatchIterations: number
+  /** Observes the last value from each side outside the timed regions. */
+  readonly observe?: (aLast: unknown, bLast: unknown) => void
+}
+
+const summarizePairedSamples = (
+  aSamples: readonly number[],
+  bSamples: readonly number[],
+  pairedRatios: readonly number[],
+): PairedRunResult => {
+  const ci = bootstrapMedianCI(pairedRatios)
+  return {
+    aSamples,
+    bSamples,
+    pairedRatios,
+    medianRatio: median(pairedRatios),
+    meanRatio: mean(pairedRatios),
+    ciLow: ci.low,
+    ciHigh: ci.high,
+    signTestP: signTestP(pairedRatios),
+  }
 }
 
 /**
@@ -140,17 +226,179 @@ export function runPaired(a: () => void, b: () => void, opts: PairedRunOptions):
     }
   }
 
-  const ci = bootstrapMedianCI(pairedRatios)
-  return {
-    aSamples,
-    bSamples,
-    pairedRatios,
-    medianRatio: median(pairedRatios),
-    meanRatio: mean(pairedRatios),
-    ciLow: ci.low,
-    ciHigh: ci.high,
-    signTestP: signTestP(pairedRatios),
+  return summarizePairedSamples(aSamples, bSamples, pairedRatios)
+}
+
+/**
+ * Runs one invocation from each side in bounded, timed micro-batches. Every
+ * paired sample still executes exactly `batchIterations` invocations per side,
+ * but neither side owns an entire optimizer, GC, or frequency plateau.
+ *
+ * The first side alternates AB/BA both between successive micro-batch pairs
+ * and between paired samples. Each side's micro-batch timings are summed into
+ * the raw per-side sample retained in the report.
+ */
+export function runInterleavedPaired(
+  a: () => unknown,
+  b: () => unknown,
+  opts: InterleavedPairedRunOptions,
+): InterleavedPairedRunResult {
+  const { batchIterations, microBatchIterations } = opts
+  if (!Number.isSafeInteger(opts.rounds) || opts.rounds <= 0) {
+    throw new Error('rounds must be a positive integer')
   }
+  if (!Number.isSafeInteger(batchIterations) || batchIterations <= 0) {
+    throw new Error('batchIterations must be a positive integer')
+  }
+  if (!Number.isSafeInteger(microBatchIterations) || microBatchIterations <= 0) {
+    throw new Error('microBatchIterations must be a positive integer')
+  }
+
+  const warmup = opts.warmupRounds ?? 5
+  if (!Number.isSafeInteger(warmup) || warmup < 0) {
+    throw new Error('warmupRounds must be a non-negative integer')
+  }
+
+  // Keep distinct lexical call sites for each side. Passing both runners
+  // through one `fn()` call site makes V8's inline cache polymorphic and can
+  // itself trigger the tier transition this sampler is meant to observe.
+  let aMicroBatchLast: unknown
+  let bMicroBatchLast: unknown
+  const runAMicroBatch = (iterations: number): number => {
+    let last: unknown
+    const t0 = process.hrtime.bigint()
+    for (let index = 0; index < iterations; index++) last = a()
+    const t1 = process.hrtime.bigint()
+    aMicroBatchLast = last
+    return Number(t1 - t0)
+  }
+  const runBMicroBatch = (iterations: number): number => {
+    let last: unknown
+    const t0 = process.hrtime.bigint()
+    for (let index = 0; index < iterations; index++) last = b()
+    const t1 = process.hrtime.bigint()
+    bMicroBatchLast = last
+    return Number(t1 - t0)
+  }
+
+  let sampleANs = 0
+  let sampleBNs = 0
+  const runSample = (sampleIndex: number, timed: boolean): void => {
+    let aNs = 0
+    let bNs = 0
+    let completed = 0
+    let pairIndex = 0
+    while (completed < batchIterations) {
+      const iterations = Math.min(microBatchIterations, batchIterations - completed)
+      const aFirst = (sampleIndex + pairIndex) % 2 === 0
+      if (aFirst) {
+        aNs += runAMicroBatch(iterations)
+        bNs += runBMicroBatch(iterations)
+      } else {
+        bNs += runBMicroBatch(iterations)
+        aNs += runAMicroBatch(iterations)
+      }
+      completed += iterations
+      pairIndex++
+    }
+    opts.observe?.(aMicroBatchLast, bMicroBatchLast)
+    sampleANs = timed ? aNs : 0
+    sampleBNs = timed ? bNs : 0
+  }
+
+  for (let index = 0; index < warmup; index++) runSample(index, false)
+
+  const aSamples: number[] = new Array(opts.rounds)
+  const bSamples: number[] = new Array(opts.rounds)
+  const pairedRatios: number[] = new Array(opts.rounds)
+  for (let index = 0; index < opts.rounds; index++) {
+    // Measurement order starts from AB regardless of warmup count.
+    runSample(index, true)
+    aSamples[index] = sampleANs
+    bSamples[index] = sampleBNs
+    pairedRatios[index] = sampleBNs / sampleANs
+  }
+
+  return {
+    ...summarizePairedSamples(aSamples, bSamples, pairedRatios),
+    sampling: {
+      id: INTERLEAVED_PAIRED_SAMPLER_ID,
+      order: INTERLEAVED_PAIRED_SAMPLER_ORDER,
+      batchIterationsPerSide: batchIterations,
+      microBatchIterations,
+      microBatchesPerSide: Math.ceil(batchIterations / microBatchIterations),
+    },
+  }
+}
+
+/**
+ * Combines two independently measured call-site orientations. The caller must
+ * collect each orientation in a fresh process: running the reverse orientation
+ * after the forward orientation in one VM can contaminate inline-cache and JIT
+ * state. Keeping all four timed arrays makes the correction fully auditable.
+ */
+export function combineSymmetricPairedSamples(
+  orientationSamples: SymmetricOrientationSamples,
+  opts: SymmetricPairedCombineOptions,
+): SymmetricPairedRunResult {
+  const { candidateAtA, candidateAtB } = orientationSamples
+  const rounds = candidateAtA.candidateSamples.length
+  const arrays = [
+    candidateAtA.candidateSamples,
+    candidateAtA.referenceSamples,
+    candidateAtB.candidateSamples,
+    candidateAtB.referenceSamples,
+  ]
+  if (rounds === 0 || arrays.some((samples) => samples.length !== rounds)) {
+    throw new Error('symmetric orientations must contain the same positive sample count')
+  }
+  if (arrays.some((samples) => samples.some((sample) => !Number.isFinite(sample) || sample <= 0))) {
+    throw new Error('symmetric orientation samples must be finite and positive')
+  }
+  const candidateSamples = candidateAtA.candidateSamples.map(
+    (sample, index) => Math.sqrt(sample) * Math.sqrt(candidateAtB.candidateSamples[index]),
+  )
+  const referenceSamples = candidateAtA.referenceSamples.map(
+    (sample, index) => Math.sqrt(sample) * Math.sqrt(candidateAtB.referenceSamples[index]),
+  )
+  const pairedRatios = referenceSamples.map((sample, index) => sample / candidateSamples[index])
+  return {
+    ...summarizePairedSamples(candidateSamples, referenceSamples, pairedRatios),
+    sampling: {
+      id: SYMMETRIC_PAIRED_SAMPLER_ID,
+      order: SYMMETRIC_PAIRED_SAMPLER_ORDER,
+      combination: SYMMETRIC_PAIRED_COMBINATION,
+      orientationIsolation: SYMMETRIC_PAIRED_ORIENTATION_ISOLATION,
+      baseSamplerId: INTERLEAVED_PAIRED_SAMPLER_ID,
+      orientations: 2,
+      batchIterationsPerSide: opts.batchIterations,
+      microBatchIterations: opts.microBatchIterations,
+      microBatchesPerSide: Math.ceil(opts.batchIterations / opts.microBatchIterations),
+    },
+    orientationSamples,
+  }
+}
+
+/**
+ * Selects a bounded micro-batch containing roughly `targetConsumedItems`
+ * source reads, without ever exceeding the total per-side batch.
+ */
+export function consumedItemsMicroBatchIterations(
+  consumedInputItems: number,
+  batchIterations: number,
+  targetConsumedItems = 10_000,
+): number {
+  if (
+    !Number.isSafeInteger(consumedInputItems) ||
+    consumedInputItems <= 0 ||
+    !Number.isSafeInteger(batchIterations) ||
+    batchIterations <= 0 ||
+    !Number.isSafeInteger(targetConsumedItems) ||
+    targetConsumedItems <= 0
+  ) {
+    return 0
+  }
+  return Math.min(batchIterations, Math.max(1, Math.ceil(targetConsumedItems / consumedInputItems)))
 }
 
 /** Geometric mean of a set of positive ratios (per-case medians, typically). */

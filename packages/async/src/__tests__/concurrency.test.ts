@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vite-plus/test'
-import { ok, err } from '@stopcock/fp'
+import { err, ok } from '@stopcock/fp/result'
 import { resolve, reject, of, run, runSafe, runWithCancel, delay } from '../task'
 import { all, allSettled, race, any, parallel, sequential } from '../concurrency'
 import { CancelledError } from '../types'

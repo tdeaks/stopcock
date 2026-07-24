@@ -1,7 +1,7 @@
-// Op table this compiler wave understands, derived from @stopcock/fp's
-// registry so opcode metadata (arity, bindings) stays a single source of
-// truth. Only a subset of the registry is supported for fusion this wave;
-// anything else falls through untransformed.
+// Op table this compiler wave understands, derived from the intersection of
+// @stopcock/fp/array's public exports and the internal registry so opcode
+// metadata (arity, bindings) stays a single source of truth. Only a subset
+// is supported for fusion this wave; anything else falls through unchanged.
 //
 // The registry lives in @stopcock/fp's workspace source, not its public
 // entry, so a packed consumer of this package can't import it at runtime.
@@ -9,13 +9,15 @@
 // ops-table.test.ts asserts it hasn't drifted from the live registry.
 import { OPS_TABLE } from './ops-table'
 
-export type StreamOpName =
+export type ElementOpName =
   | 'map'
   | 'filter'
   | 'reject'
   | 'filterMap'
+  | 'mapWhile'
   | 'flatMap'
   | 'take'
+  | 'takeUntil'
   | 'drop'
   | 'takeWhile'
   | 'dropWhile'
@@ -31,16 +33,36 @@ export type TerminalOpName =
   | 'every'
   | 'some'
   | 'none'
+  | 'head'
+  | 'last'
+  | 'length'
+  | 'isEmpty'
+  | 'min'
+  | 'max'
 
-export type BoundaryOpName = 'sort' | 'sortBy' | 'sortAsc' | 'sortDesc' | 'reverse' | 'uniq'
+export type BoundaryOpName =
+  | 'sort'
+  | 'sortBy'
+  | 'sortAsc'
+  | 'sortDesc'
+  | 'reverse'
+  | 'uniq'
+  | 'tail'
+  | 'init'
+  | 'flatten'
+  | 'scan'
+  | 'without'
+  | 'join'
 
-export const STREAM_OPS: ReadonlySet<string> = new Set([
+export const ELEMENT_OPS: ReadonlySet<string> = new Set([
   'map',
   'filter',
   'reject',
   'filterMap',
+  'mapWhile',
   'flatMap',
   'take',
+  'takeUntil',
   'drop',
   'takeWhile',
   'dropWhile',
@@ -57,15 +79,19 @@ export const TERMINAL_OPS: ReadonlySet<string> = new Set([
   'every',
   'some',
   'none',
+  'head',
+  'last',
+  'length',
+  'isEmpty',
+  'min',
+  'max',
 ])
 
 // Boundary ops materialize the whole array (sort/reverse/uniq the entire
 // thing) rather than fusing per-item into the surrounding loop -- they split
-// a pipeline into loop / materialize / loop segments. sum is also classified
-// a boundary in the registry (see benchmarks/src/reference/emitter.ts's
-// header comment) but this compiler still fuses it as a terminal: summing
-// left-to-right is associative over the same item sequence either way, so
-// the output is identical and fusing it avoids an extra materialization.
+// a pipeline into loop / materialize / loop segments. The compiler still
+// fuses sum as a terminal: summing left-to-right over the same item sequence
+// is exact and avoids an extra materialization.
 export const BOUNDARY_OPS: ReadonlySet<string> = new Set([
   'sort',
   'sortBy',
@@ -73,21 +99,44 @@ export const BOUNDARY_OPS: ReadonlySet<string> = new Set([
   'sortDesc',
   'reverse',
   'uniq',
+  'tail',
+  'init',
+  'flatten',
+  'scan',
+  'without',
+  'join',
+])
+
+/**
+ * Whole-array boundaries that return a scalar/Option and therefore cannot
+ * feed another array stage in the compiler's domain.
+ */
+export const FINAL_BOUNDARY_OPS: ReadonlySet<string> = new Set([
+  'join',
 ])
 
 /** Ops this wave's fuser can lower, keyed by name for source-level lookup. */
-export const SUPPORTED_OP_NAMES: ReadonlySet<string> = new Set([...STREAM_OPS, ...TERMINAL_OPS, ...BOUNDARY_OPS])
+export const SUPPORTED_OP_NAMES: ReadonlySet<string> = new Set([
+  ...ELEMENT_OPS,
+  ...TERMINAL_OPS,
+  ...BOUNDARY_OPS,
+])
 
 const nameToArity = new Map<string, 0 | 1 | 2>()
+const nameToBindings = new Map<
+  string,
+  readonly ('fn' | 'a1' | 'a2')[]
+>()
 const bareOps = new Set<string>()
 for (const entry of OPS_TABLE) {
   if (!SUPPORTED_OP_NAMES.has(entry.name)) continue
   nameToArity.set(entry.name, entry.callbackArity)
+  nameToBindings.set(entry.name, entry.bindings)
   // Ops with no bound slots at all (registry bindings: []) are exported as
   // the tagged step value itself (e.g. `sum._op = 41`), not a factory you
   // call to produce one. Used bare in a pipeline: `A.sum`, never `A.sum()`
   // -- invoking them calls the data-first form with no data and throws.
-  if (entry.bindingCount === 0) bareOps.add(entry.name)
+  if (entry.bindings.length === 0) bareOps.add(entry.name)
 }
 
 /** Number of user-supplied callback/value arguments the op invokes, per the registry. */
@@ -95,12 +144,19 @@ export function callbackArity(name: string): 0 | 1 | 2 | undefined {
   return nameToArity.get(name)
 }
 
+/** Tagged step slots captured by the data-last operator factory. */
+export function bindingSlots(
+  name: string,
+): readonly ('fn' | 'a1' | 'a2')[] | undefined {
+  return nameToBindings.get(name)
+}
+
 /** True for ops that are used bare as a pipe step (no call), like `A.sum`. */
 export function isBareOp(name: string): boolean {
   return bareOps.has(name)
 }
 
-/** True if `name` is a real op in the fp registry (recognized even if unsupported this wave). */
+/** True if `name` is a registered public array op, even if unsupported this wave. */
 export function isRegistryOpName(name: string): boolean {
   return OPS_TABLE.some((entry) => entry.name === name)
 }

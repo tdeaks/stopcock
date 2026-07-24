@@ -1,17 +1,32 @@
-// W0b CLI: node --import=tsx run-perf.ts, or bun run-perf.ts (bun is the
-// primary supported runner here -- generate.ts and friends use extensionless
-// relative imports into packages/fp/src, which node's native ESM resolver
-// rejects even under --experimental-strip-types; bun and tsx both resolve
-// them fine). Flags: --tier 0|1|all, --cases <substring>, --rounds N, --quick.
-import { mkdir, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+// Portable-runtime corpus benchmark. Each seeded pipeline runs through the
+// public compile() API and the frozen reference emitter with paired,
+// allocation-free AB/BA micro-batch sampling. There are no runtime tiers or
+// runtime code generation states in fp 2.0, but host-engine optimization
+// tiers are deliberately warmed and sampled.
+import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { compile, compileJit, JitUnavailableError, __getJitRunnerState, type Runner } from '../../../packages/fp/src/compile'
-import { compileEmittedPipeline, type PipelineDesc } from './emitter'
-import { generateInputArray, resolvePipeline, type SerializedPipeline, type SerializedStep } from './generate'
-import { geomean, runPaired, type PairedRunResult } from './perf-runner'
+import { compile, type Runner } from '../../../packages/fp/src/compile'
+import { compileEmittedPipeline, FROZEN_EMITTER_ID, type PipelineDesc } from './emitter'
+import { generateInputArray, resolvePipeline, type SerializedStep } from './generate'
+import { currentPerfEngine, type PerfEngine } from './perf-engine'
+import {
+  consumedItemsMicroBatchIterations,
+  geomean,
+  runInterleavedPaired,
+  type InterleavedPairedSampling,
+} from './perf-runner'
+import {
+  EXPECTED_PORTABLE_SUBJECT,
+  minimumPortableBatchIterations,
+} from './portable-perf-contract'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
+const localDirectory = dirname(fileURLToPath(import.meta.url))
+const repositoryRoot = resolve(localDirectory, '..', '..', '..')
+
+export const PORTABLE_PERF_WORKER_MARKER = 'PORTABLE_PERF_RESULT_JSON:'
 
 interface PerfCaseFile {
   readonly name: string
@@ -22,254 +37,535 @@ interface PerfCaseFile {
 }
 
 interface Args {
-  tier: '0' | '1' | 'all'
-  casesFilter?: string
-  rounds: number
-  quick: boolean
-  out?: string
-  corpusPath: string
+  readonly casesFilter?: string
+  readonly rounds: number
+  readonly quick: boolean
+  readonly out?: string
+  readonly corpusPath: string
+  readonly minimumBatchInputItems: number
+  readonly warmupRounds: number
+  readonly caseIndex?: number
 }
 
-function parseArgs(argv: readonly string[]): Args {
-  const args: Args = { tier: 'all', rounds: 40, quick: false, corpusPath: join(__dirname, 'perf-corpus.json') }
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i]
-    if (a === '--tier') args.tier = argv[++i] as Args['tier']
-    else if (a === '--cases') args.casesFilter = argv[++i]
-    else if (a === '--rounds') args.rounds = Number(argv[++i])
-    else if (a === '--quick') args.quick = true
-    else if (a === '--out') args.out = argv[++i]
-    else if (a === '--corpus') args.corpusPath = argv[++i]
+const parseArgs = (argv: readonly string[]): Args => {
+  let rounds = 40
+  let quick = false
+  let casesFilter: string | undefined
+  let out: string | undefined
+  let corpusPath = join(localDirectory, 'perf-corpus.json')
+  let minimumBatchInputItems = 100_000
+  let warmupRounds = 10
+  let caseIndex: number | undefined
+
+  for (let index = 0; index < argv.length; index++) {
+    const argument = argv[index]
+    if (argument === '--cases') casesFilter = argv[++index]
+    else if (argument === '--rounds') rounds = Number(argv[++index])
+    else if (argument === '--quick') quick = true
+    else if (argument === '--out') out = argv[++index]
+    else if (argument === '--corpus') corpusPath = argv[++index]
+    else if (argument === '--batch-inputs') minimumBatchInputItems = Number(argv[++index])
+    else if (argument === '--warmup') warmupRounds = Number(argv[++index])
+    else if (argument === '--case-index') caseIndex = Number(argv[++index])
   }
-  if (args.quick) {
-    args.rounds = Math.min(args.rounds, 8)
+  if (
+    caseIndex !== undefined &&
+    (!Number.isSafeInteger(caseIndex) || caseIndex < 0)
+  ) {
+    throw new Error('--case-index must be a non-negative integer')
   }
-  return args
+  for (const [flag, value] of [
+    ['--rounds', rounds],
+    ['--batch-inputs', minimumBatchInputItems],
+    ['--warmup', warmupRounds],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      throw new Error(`${flag} must be a positive integer`)
+    }
+  }
+  if (quick) rounds = Math.min(rounds, 8)
+  return {
+    casesFilter,
+    rounds,
+    quick,
+    out,
+    corpusPath,
+    minimumBatchInputItems,
+    warmupRounds,
+    caseIndex,
+  }
 }
 
-function deepEqual(a: unknown, b: unknown): boolean {
-  if (typeof a === 'number' && typeof b === 'number') {
-    if (Number.isNaN(a) && Number.isNaN(b)) return true
-    return Object.is(a, b)
+const semanticEqual = (left: unknown, right: unknown): boolean => {
+  if (typeof left === 'number' && typeof right === 'number') {
+    if (Number.isNaN(left) && Number.isNaN(right)) return true
+    return Object.is(left, right)
   }
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false
-    for (let i = 0; i < a.length; i++) if (!deepEqual(a[i], b[i])) return false
+  if (Array.isArray(left) && Array.isArray(right)) {
+    if (left.length !== right.length) return false
+    for (let index = 0; index < left.length; index++) {
+      if (!semanticEqual(left[index], right[index])) return false
+    }
     return true
   }
-  return Object.is(a, b)
-}
-
-/** Forces tier-1 promotion deterministically: JIT_PROMOTE_EXECUTIONS is 8 regardless of input size, so 8 warm calls always cross that threshold. Verified afterward via __getJitRunnerState rather than assumed. */
-async function buildTier1Runner(
-  realSteps: readonly unknown[],
-  input: readonly number[],
-): Promise<{ runner: Runner; promoted: boolean; note?: string } | undefined> {
-  let runner: Runner
-  try {
-    runner = await compileJit({ onUnavailable: 'throw' }, ...realSteps)
-  } catch (e) {
-    if (e instanceof JitUnavailableError) return undefined
-    return { runner: (() => undefined) as Runner, promoted: false, note: `compileJit threw: ${(e as Error).message}` }
+  if (left !== null && right !== null && typeof left === 'object' && typeof right === 'object') {
+    const leftRecord = left as Record<PropertyKey, unknown>
+    const rightRecord = right as Record<PropertyKey, unknown>
+    const leftKeys = Reflect.ownKeys(leftRecord)
+    const rightKeys = Reflect.ownKeys(rightRecord)
+    if (leftKeys.length !== rightKeys.length) return false
+    for (const key of leftKeys) {
+      if (
+        !Object.prototype.hasOwnProperty.call(rightRecord, key) ||
+        !semanticEqual(leftRecord[key], rightRecord[key])
+      ) {
+        return false
+      }
+    }
+    return true
   }
-  for (let i = 0; i < 8; i++) runner(input)
-  const state = __getJitRunnerState(runner)
-  return { runner, promoted: state?.promoted ?? false }
+  return Object.is(left, right)
 }
 
-interface CaseReport {
+export interface PortableWorkerCaseReport {
   readonly name: string
   readonly strata: Record<string, unknown>
-  readonly tier: 0 | 1
-  readonly tierAttribution: 'construction' | 'explainRunner'
-  readonly promoted: boolean | null
+  readonly inputSize: number
+  readonly consumedInputItems: number
   readonly correctnessOk: boolean
+  readonly workerEngine: PerfEngine
   readonly rounds: number
+  readonly batchIterations: number
+  readonly sampling: InterleavedPairedSampling & {
+    readonly targetConsumedItemsPerMicroBatch: number
+    readonly nominalConsumedItemsPerMicroBatch: number
+  }
   readonly medianRatio: number
   readonly meanRatio: number
   readonly ciLow: number
   readonly ciHigh: number
   readonly signTestP: number
-  readonly note?: string
+  readonly relativeMarginOfError: number
+  /** Raw paired samples are retained so noisy or bimodal rows are auditable. */
+  readonly stopcockSamplesNs: readonly number[]
+  readonly referenceSamplesNs: readonly number[]
+  readonly pairedRatios: readonly number[]
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2))
-  const corpusRaw = await (await import('node:fs/promises')).readFile(args.corpusPath, 'utf8')
-  const corpus = JSON.parse(corpusRaw) as { version: number; comment: string; cases: readonly PerfCaseFile[] }
+interface WorkerSuccess {
+  readonly ok: true
+  readonly workerCaseIndex: number
+  readonly workerCaseName: string
+  readonly workerCaseSha256: string
+  readonly workerEngine: PerfEngine
+  readonly result: PortableWorkerCaseReport
+}
 
-  let cases = corpus.cases
-  if (args.casesFilter) cases = cases.filter((c) => c.name.includes(args.casesFilter!))
-  if (args.quick) cases = cases.filter((c) => c.size <= 10_000)
+interface WorkerFailure {
+  readonly ok: false
+  readonly reason: string
+}
 
-  // explainRunner does not exist yet in packages/fp/src as of this run (checked
-  // at the top of main so a late-landing export is picked up on the next
-  // invocation without code changes here). Until then tier attribution is by
-  // construction: compile() is tier 0, an awaited compileJit() forced to
-  // state.promoted is tier 1.
-  let explainRunner: ((r: Runner) => { tier: number }) | undefined
-  try {
-    const mod = (await import('../../../packages/fp/src/compile')) as { explainRunner?: (r: Runner) => { tier: number } }
-    explainRunner = mod.explainRunner
-  } catch {
-    explainRunner = undefined
-  }
+type WorkerOutcome = WorkerSuccess | WorkerFailure
 
-  const reports: CaseReport[] = []
-  const skipped: string[] = []
+interface ExpectedWorkerIdentity {
+  readonly caseIndex: number
+  readonly caseName: string
+  readonly caseSha256: string
+  readonly inputSize: number
+  readonly engine: PerfEngine
+}
 
-  for (const c of cases) {
-    const serialized: SerializedPipeline = { input: generateInputArray(c.inputSeed, c.size), steps: c.steps }
-    let g: ReturnType<typeof resolvePipeline>
-    try {
-      g = resolvePipeline(serialized)
-    } catch (e) {
-      skipped.push(`${c.name}: resolvePipeline threw: ${(e as Error).message}`)
-      continue
+const format = (value: number): string =>
+  Number.isFinite(value) ? value.toFixed(3) : String(value)
+
+const sha256 = (contents: string | Uint8Array): string =>
+  createHash('sha256').update(contents).digest('hex')
+
+const jsonSha256 = (value: unknown): string => sha256(JSON.stringify(value))
+
+const sameEngine = (left: PerfEngine, right: PerfEngine): boolean =>
+  JSON.stringify(left) === JSON.stringify(right)
+
+export const parsePortablePerfWorkerOutput = (
+  stdout: string,
+  status: number | null,
+  signal: string | null,
+  expected: ExpectedWorkerIdentity,
+): WorkerOutcome => {
+  const markers = stdout
+    .split('\n')
+    .filter((line) => line.startsWith(PORTABLE_PERF_WORKER_MARKER))
+  if (markers.length !== 1) {
+    return {
+      ok: false,
+      reason:
+        markers.length === 0
+          ? `worker produced no result (status ${String(status)}, signal ${String(signal)})`
+          : `worker produced ${markers.length} result markers`,
     }
-
-    const referenceCompiled = compileEmittedPipeline(g.desc as PipelineDesc)
-    const refFn = (): unknown => referenceCompiled(g.input, g.bindings)
-    const referenceOnce = refFn()
-
-    const wantTiers: Array<0 | 1> = args.tier === 'all' ? [0, 1] : [Number(args.tier) as 0 | 1]
-
-    for (const tier of wantTiers) {
-      try {
-        if (tier === 0) {
-          const tier0Runner = compile(...g.realSteps)
-          const tier0Once = tier0Runner(g.input)
-          const correctnessOk = deepEqual(tier0Once, referenceOnce)
-          const stopcockFn = (): void => {
-            tier0Runner(g.input)
-          }
-          const result: PairedRunResult = runPaired(stopcockFn, () => {
-            refFn()
-          }, { rounds: args.rounds })
-          reports.push({
-            name: c.name,
-            strata: c.strata,
-            tier: 0,
-            tierAttribution: 'construction',
-            promoted: null,
-            correctnessOk,
-            rounds: result.pairedRatios.length,
-            medianRatio: result.medianRatio,
-            meanRatio: result.meanRatio,
-            ciLow: result.ciLow,
-            ciHigh: result.ciHigh,
-            signTestP: result.signTestP,
-          })
-        } else {
-          const built = await buildTier1Runner(g.realSteps, g.input)
-          if (!built) {
-            skipped.push(`${c.name} (tier 1): JIT unavailable in this environment (probeDynamicCode false or chunk load failed)`)
-            continue
-          }
-          if (built.note) {
-            skipped.push(`${c.name} (tier 1): ${built.note}`)
-            continue
-          }
-          const tier1Once = built.runner(g.input)
-          const correctnessOk = deepEqual(tier1Once, referenceOnce)
-          const attribution = explainRunner ? explainRunner(built.runner) : undefined
-          const stopcockFn = (): void => {
-            built.runner(g.input)
-          }
-          const result: PairedRunResult = runPaired(stopcockFn, () => {
-            refFn()
-          }, { rounds: args.rounds })
-          reports.push({
-            name: c.name,
-            strata: c.strata,
-            tier: 1,
-            tierAttribution: attribution ? 'explainRunner' : 'construction',
-            promoted: built.promoted,
-            correctnessOk,
-            rounds: result.pairedRatios.length,
-            medianRatio: result.medianRatio,
-            meanRatio: result.meanRatio,
-            ciLow: result.ciLow,
-            ciHigh: result.ciHigh,
-            signTestP: result.signTestP,
-          })
-        }
-      } catch (e) {
-        skipped.push(`${c.name} (tier ${tier}): threw during run: ${(e as Error).message}`)
+  }
+  try {
+    const parsed = JSON.parse(
+      (markers[0] as string).slice(PORTABLE_PERF_WORKER_MARKER.length),
+    ) as unknown
+    if (parsed === null || typeof parsed !== 'object' || !('ok' in parsed)) {
+      return { ok: false, reason: 'worker result has an invalid envelope' }
+    }
+    if ((parsed as { readonly ok?: unknown }).ok === false) {
+      const reason = (parsed as { readonly reason?: unknown }).reason
+      return {
+        ok: false,
+        reason: typeof reason === 'string' ? reason : 'worker returned an invalid failure',
       }
     }
+    if ((parsed as { readonly ok?: unknown }).ok !== true) {
+      return { ok: false, reason: 'worker result has an invalid success discriminator' }
+    }
+    const outcome = parsed as WorkerSuccess
+    if (status !== 0 || signal !== null) {
+      return {
+        ok: false,
+        reason: `worker exited with status ${String(status)} and signal ${String(signal)}`,
+      }
+    }
+    if (
+      outcome.workerCaseIndex !== expected.caseIndex ||
+      outcome.workerCaseName !== expected.caseName ||
+      outcome.workerCaseSha256 !== expected.caseSha256
+    ) {
+      return {
+        ok: false,
+        reason: `worker case identity does not match ${expected.caseIndex}:${expected.caseName}`,
+      }
+    }
+    if (!sameEngine(outcome.workerEngine, expected.engine)) {
+      return { ok: false, reason: 'worker runtime identity does not match coordinator' }
+    }
+    const result = outcome.result
+    if (
+      result === null ||
+      typeof result !== 'object' ||
+      result.name !== expected.caseName ||
+      result.inputSize !== expected.inputSize
+    ) {
+      return { ok: false, reason: 'worker result does not match requested case' }
+    }
+    if (!sameEngine(result.workerEngine, expected.engine)) {
+      return { ok: false, reason: 'worker result runtime identity does not match coordinator' }
+    }
+    return outcome
+  } catch (error) {
+    return { ok: false, reason: `worker result was invalid JSON: ${(error as Error).message}` }
+  }
+}
+
+const relativeMarginOfError = (low: number, high: number, median: number): number =>
+  ((high - low) / (2 * median)) * 100
+
+let stopcockMeasurementSink: unknown
+let referenceMeasurementSink: unknown
+
+const consumedSourceItems = (
+  run: (input: unknown) => unknown,
+  input: readonly unknown[],
+  strata: Readonly<Record<string, unknown>>,
+): number => {
+  if (strata.sinkKind !== 'short-circuit' || strata.boundary !== 'none') {
+    return input.length
+  }
+  let consumed = 0
+  const observed = new Proxy(input, {
+    get(target, key, receiver) {
+      if (typeof key === 'string' && /^(?:0|[1-9]\d*)$/u.test(key) && Number(key) < target.length) {
+        consumed++
+      }
+      return Reflect.get(target, key, receiver)
+    },
+  })
+  run(observed)
+  return Math.max(1, consumed)
+}
+
+const measureCase = (
+  item: PerfCaseFile,
+  args: Args,
+  engine: PerfEngine,
+): PortableWorkerCaseReport => {
+  const input = generateInputArray(item.inputSeed, item.size)
+  const resolved = resolvePipeline({ input, steps: item.steps })
+  const reference = compileEmittedPipeline(resolved.desc as PipelineDesc)
+  const runner = compile(...(resolved.realSteps as readonly Runner[]))
+  const referenceRun = (): unknown => reference(resolved.input, resolved.bindings)
+  const stopcockRun = (): unknown => runner(resolved.input)
+  const correctnessOk = semanticEqual(stopcockRun(), referenceRun())
+  const consumedInputItems = consumedSourceItems(
+    (observedInput) => reference(observedInput, resolved.bindings),
+    resolved.input as readonly unknown[],
+    item.strata,
+  )
+  const batchIterations = minimumPortableBatchIterations(consumedInputItems, args)
+  const targetConsumedItemsPerMicroBatch = 10_000
+  const microBatchIterations = consumedItemsMicroBatchIterations(
+    consumedInputItems,
+    batchIterations,
+    targetConsumedItemsPerMicroBatch,
+  )
+  const measured = runInterleavedPaired(stopcockRun, referenceRun, {
+    rounds: args.rounds,
+    warmupRounds: args.warmupRounds,
+    batchIterations,
+    microBatchIterations,
+    observe: (stopcockLast, referenceLast) => {
+      stopcockMeasurementSink = stopcockLast
+      referenceMeasurementSink = referenceLast
+    },
+  })
+  return {
+    name: item.name,
+    strata: item.strata,
+    inputSize: item.size,
+    consumedInputItems,
+    correctnessOk,
+    workerEngine: engine,
+    rounds: measured.pairedRatios.length,
+    batchIterations,
+    sampling: {
+      ...measured.sampling,
+      targetConsumedItemsPerMicroBatch,
+      nominalConsumedItemsPerMicroBatch: microBatchIterations * consumedInputItems,
+    },
+    medianRatio: measured.medianRatio,
+    meanRatio: measured.meanRatio,
+    ciLow: measured.ciLow,
+    ciHigh: measured.ciHigh,
+    signTestP: measured.signTestP,
+    relativeMarginOfError: relativeMarginOfError(
+      measured.ciLow,
+      measured.ciHigh,
+      measured.medianRatio,
+    ),
+    stopcockSamplesNs: measured.aSamples,
+    referenceSamplesNs: measured.bSamples,
+    pairedRatios: measured.pairedRatios,
+  }
+}
+
+const workerArguments = (
+  engine: PerfEngine,
+  caseIndex: number,
+  args: Args,
+): readonly string[] => {
+  const benchmarkArguments = [
+    fileURLToPath(import.meta.url),
+    '--case-index',
+    String(caseIndex),
+    '--rounds',
+    String(args.rounds),
+    '--batch-inputs',
+    String(args.minimumBatchInputItems),
+    '--warmup',
+    String(args.warmupRounds),
+    '--corpus',
+    args.corpusPath,
+  ]
+  return engine.id === 'bun-jsc'
+    ? ['run', ...benchmarkArguments]
+    : ['--import=tsx', ...benchmarkArguments]
+}
+
+const runWorker = (
+  item: PerfCaseFile,
+  caseIndex: number,
+  args: Args,
+  engine: PerfEngine,
+): WorkerOutcome => {
+  const worker = spawnSync(process.execPath, workerArguments(engine, caseIndex, args), {
+    encoding: 'utf8',
+    maxBuffer: 5 * 1024 * 1024,
+  })
+  const parsed = parsePortablePerfWorkerOutput(
+    worker.stdout ?? '',
+    worker.status,
+    worker.signal,
+    {
+      caseIndex,
+      caseName: item.name,
+      caseSha256: jsonSha256(item),
+      inputSize: item.size,
+      engine,
+    },
+  )
+  if (!parsed.ok && (worker.stderr ?? '').length > 0) {
+    return {
+      ok: false,
+      reason: `${parsed.reason}; stderr: ${(worker.stderr ?? '').slice(0, 500)}`,
+    }
+  }
+  return parsed
+}
+
+const subjectSha256 = async (): Promise<string> => {
+  const hash = createHash('sha256')
+  for (const relativePath of EXPECTED_PORTABLE_SUBJECT.files) {
+    hash.update(relativePath)
+    hash.update('\0')
+    hash.update(await readFile(join(repositoryRoot, relativePath)))
+    hash.update('\0')
+  }
+  return hash.digest('hex')
+}
+
+const main = async (): Promise<void> => {
+  const args = parseArgs(process.argv.slice(2))
+  const engine = currentPerfEngine()
+  const corpusRaw = await readFile(args.corpusPath)
+  const corpus = JSON.parse(corpusRaw.toString('utf8')) as {
+    readonly id: string
+    readonly version: number
+    readonly comment: string
+    readonly cases: readonly PerfCaseFile[]
+  }
+  const emitterPath = fileURLToPath(new URL('./emitter.ts', import.meta.url))
+  const emitterSha256 = sha256(await readFile(emitterPath))
+  if (args.caseIndex !== undefined) {
+    const item = corpus.cases[args.caseIndex]
+    let outcome: WorkerOutcome
+    if (!item) {
+      outcome = {
+        ok: false,
+        reason: `unknown portable corpus case index ${args.caseIndex}`,
+      }
+      process.exitCode = 1
+    } else {
+      try {
+        const result = measureCase(item, args, engine)
+        outcome = {
+          ok: true,
+          workerCaseIndex: args.caseIndex,
+          workerCaseName: item.name,
+          workerCaseSha256: jsonSha256(item),
+          workerEngine: engine,
+          result,
+        }
+      } catch (error) {
+        outcome = { ok: false, reason: (error as Error).message }
+        process.exitCode = 1
+      }
+    }
+    console.log(`${PORTABLE_PERF_WORKER_MARKER}${JSON.stringify(outcome)}`)
+    return
   }
 
-  const byTier = (t: 0 | 1): CaseReport[] => reports.filter((r) => r.tier === t)
+  let cases = corpus.cases.map((item, caseIndex) => ({ item, caseIndex }))
+  if (args.casesFilter) {
+    cases = cases.filter(({ item }) => item.name.includes(args.casesFilter as string))
+  }
+  if (args.quick) cases = cases.filter(({ item }) => item.size <= 10_000)
+
+  const reports: PortableWorkerCaseReport[] = []
+  const skipped: string[] = []
+
+  for (const { item, caseIndex } of cases) {
+    const outcome = runWorker(item, caseIndex, args, engine)
+    if (outcome.ok) reports.push(outcome.result)
+    else skipped.push(`${item.name}: ${outcome.reason}`)
+  }
+
+  const ratios = reports.map((report) => report.medianRatio)
   const summary = {
-    tier0: {
-      count: byTier(0).length,
-      geomeanRatio: geomean(byTier(0).map((r) => r.medianRatio)),
-      minRatio: Math.min(...byTier(0).map((r) => r.medianRatio), Infinity),
-      allCorrect: byTier(0).every((r) => r.correctnessOk),
-    },
-    tier1: {
-      count: byTier(1).length,
-      geomeanRatio: geomean(byTier(1).map((r) => r.medianRatio)),
-      minRatio: Math.min(...byTier(1).map((r) => r.medianRatio), Infinity),
-      allCorrect: byTier(1).every((r) => r.correctnessOk),
-    },
+    count: reports.length,
+    expectedCount: cases.length,
+    geomeanRatio: geomean(ratios),
+    minRatio: Math.min(...ratios, Infinity),
+    maxRelativeMarginOfError: Math.max(
+      ...reports.map((report) => report.relativeMarginOfError),
+      Number.NEGATIVE_INFINITY,
+    ),
+    allCorrect: reports.every((report) => report.correctnessOk),
+    complete: reports.length === cases.length && skipped.length === 0,
   }
+  const outputPath =
+    args.out ??
+    join(
+      localDirectory,
+      '..',
+      '..',
+      'reports',
+      `portable-perf-${new Date().toISOString().slice(0, 10)}.json`,
+    )
+  await mkdir(dirname(outputPath), { recursive: true })
+  await writeFile(
+    outputPath,
+    `${JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        engine,
+        subject: {
+          id: EXPECTED_PORTABLE_SUBJECT.id,
+          files: EXPECTED_PORTABLE_SUBJECT.files,
+          sha256: await subjectSha256(),
+        },
+        corpus: {
+          id: corpus.id,
+          version: corpus.version,
+          sha256: sha256(corpusRaw),
+        },
+        reference: {
+          id: FROZEN_EMITTER_ID,
+          sha256: emitterSha256,
+        },
+        args,
+        summary,
+        cases: reports,
+        skipped,
+      },
+      null,
+      2,
+    )}\n`,
+  )
 
-  const report = {
-    generatedAt: new Date().toISOString(),
-    corpusVersion: corpus.version,
-    args,
-    summary,
-    cases: reports,
-    skipped,
-  }
-
-  const outPath = args.out ?? join(__dirname, '..', '..', 'reports', `tiered-perf-${new Date().toISOString().slice(0, 10)}.json`)
-  await mkdir(dirname(outPath), { recursive: true })
-  await writeFile(outPath, JSON.stringify(report, null, 2) + '\n')
-
-  printTable(reports, summary, skipped, outPath)
-}
-
-function fmt(n: number): string {
-  return Number.isFinite(n) ? n.toFixed(3) : String(n)
-}
-
-function printTable(
-  reports: readonly CaseReport[],
-  summary: { tier0: { count: number; geomeanRatio: number; allCorrect: boolean }; tier1: { count: number; geomeanRatio: number; allCorrect: boolean } },
-  skipped: readonly string[],
-  outPath: string,
-): void {
-  console.log(`\nW0b perf report (ratio = referenceNs / stopcockNs; >1 == stopcock faster than the frozen reference)\n`)
-  const header = ['tier', 'case', 'n', 'median', 'mean', 'CI95', 'signP', 'correct'].join('\t')
-  console.log(header)
-  for (const r of reports) {
+  console.log(
+    '\nPortable compile perf report (ratio = referenceNs / stopcockNs; >1 == stopcock faster)\n',
+  )
+  console.log(
+    ['case', 'input', 'consumed', 'batch', 'n', 'median', 'mean', 'CI95', 'RME', 'correct'].join(
+      '\t',
+    ),
+  )
+  for (const report of reports) {
     console.log(
       [
-        `t${r.tier}`,
-        r.name.length > 48 ? r.name.slice(0, 45) + '...' : r.name,
-        r.rounds,
-        fmt(r.medianRatio),
-        fmt(r.meanRatio),
-        `[${fmt(r.ciLow)},${fmt(r.ciHigh)}]`,
-        fmt(r.signTestP),
-        r.correctnessOk ? 'ok' : 'MISMATCH',
+        report.name.length > 52 ? `${report.name.slice(0, 49)}...` : report.name,
+        report.inputSize,
+        report.consumedInputItems,
+        report.batchIterations,
+        report.rounds,
+        format(report.medianRatio),
+        format(report.meanRatio),
+        `[${format(report.ciLow)},${format(report.ciHigh)}]`,
+        `${format(report.relativeMarginOfError)}%`,
+        report.correctnessOk ? 'ok' : 'MISMATCH',
       ].join('\t'),
     )
   }
-  console.log(`\nsummary:`)
-  console.log(`  tier0: n=${summary.tier0.count} geomean=${fmt(summary.tier0.geomeanRatio)} allCorrect=${summary.tier0.allCorrect}`)
-  console.log(`  tier1: n=${summary.tier1.count} geomean=${fmt(summary.tier1.geomeanRatio)} allCorrect=${summary.tier1.allCorrect}`)
+  console.log(
+    `\ncases: ${summary.count}/${summary.expectedCount}  geomean: ${format(summary.geomeanRatio)}  min: ${format(summary.minRatio)}  allCorrect: ${summary.allCorrect}`,
+  )
+  console.log(`report: ${outputPath}`)
   if (skipped.length > 0) {
-    console.log(`\nskipped/notes (${skipped.length}):`)
-    for (const s of skipped) console.log(`  - ${s}`)
+    console.log(`\nskipped (${skipped.length}):`)
+    for (const item of skipped) console.log(`  - ${item}`)
   }
-  console.log(`\nfull report: ${outPath}`)
+  void stopcockMeasurementSink
+  void referenceMeasurementSink
+  if (!summary.complete || !summary.allCorrect) process.exitCode = 1
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+const invokedPath = process.argv[1] === undefined ? undefined : resolve(process.argv[1])
+if (invokedPath === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}

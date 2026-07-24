@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vite-plus/test'
-import { pipe, A, S, D, N, Obj } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as D from '@stopcock/fp/record'
+import * as Obj from '@stopcock/fp/object'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
 import * as Ra from 'ramda'
@@ -84,7 +87,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('find', () => {
     const expected = nums.find(pred)
-    expect(A.find(nums, pred)).toBe(expected)
+    expect(A.findOrUndefined(nums, pred)).toBe(expected)
     expect(TB.getBy(nums, pred)).toBe(expected)
     expect(R.find(nums, pred)).toBe(expected)
     expect(Rb.find(pred)(nums)).toBe(expected)
@@ -94,7 +97,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('findIndex', () => {
     const idx = nums.findIndex(pred)
-    expect(A.findIndex(nums, pred)).toBe(idx)
+    expect(A.findIndexOrUndefined(nums, pred)).toBe(idx)
     expect(Rb.findIndex(pred)(nums)).toBe(idx)
     expect(Ra.findIndex(pred, nums)).toBe(idx)
     expect(_.findIndex(nums, pred)).toBe(idx)
@@ -145,7 +148,7 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('head', () => {
-    expect(A.head(nums)).toBe(5)
+    expect(A.headOrUndefined(nums)).toBe(5)
     expect(TB.head(nums)).toBe(5)
     expect(Rb.head(nums)).toBe(5)
     expect(Ra.head(nums)).toBe(5)
@@ -153,7 +156,7 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('last', () => {
-    expect(A.last(nums)).toBe(10)
+    expect(A.lastOrUndefined(nums)).toBe(10)
     expect(TB.last(nums)).toBe(10)
     expect(Rb.last(nums)).toBe(10)
     expect(Ra.last(nums)).toBe(10)
@@ -334,9 +337,9 @@ describe('correctness: all libraries produce identical output', () => {
     expect(Ra.fromPairs(entries)).toEqual({ a: 1, b: 2 })
   })
 
-  it('D.toEntries', () => {
+  it('D.entries', () => {
     const d = { a: 1, b: 2 }
-    const result = D.toEntries(d).sort((a, b) => a[0].localeCompare(b[0]))
+    const result = D.entries(d).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
     expect(result).toEqual([
       ['a', 1],
       ['b', 2],
@@ -363,10 +366,10 @@ describe('correctness: all libraries produce identical output', () => {
     expect(_.omit(obj, ['b'])).toEqual({ a: 1, c: 3 })
   })
 
-  it('Obj.path', () => {
+  it('Obj.getPath', () => {
     const obj = { user: { address: { city: 'London' } } }
-    expect(Obj.path(obj, 'user.address.city')).toBe('London')
-    expect(Obj.path(obj, 'user.nope.city')).toBeUndefined()
+    expect(Obj.getPathOrUndefined(obj, ['user', 'address', 'city'])).toBe('London')
+    expect(Obj.getPathOrUndefined(obj, ['user', 'nope', 'city'])).toBeUndefined()
   })
 
   // Pipe fusion

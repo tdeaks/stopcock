@@ -1,4 +1,4 @@
-import { prop, index, composeLens, type Lens } from '@stopcock/fp'
+import { lens, type Lens } from '@stopcock/fp/optic'
 import type { Path } from '@stopcock/diff'
 
 export type Compiled<S, A> = {
@@ -33,16 +33,8 @@ function tracePath<S>(accessor: (state: S) => unknown): Path {
   return path
 }
 
-function segmentLens(seg: string | number): Lens<any, any> {
-  return typeof seg === 'number' ? index(seg) : prop(seg as never)
-}
-
 export function buildLens<S, A>(segments: Path): Lens<S, A> {
-  let result: Lens<any, any> = segmentLens(segments[0])
-  for (let i = 1; i < segments.length; i++) {
-    result = composeLens(result, segmentLens(segments[i]))
-  }
-  return result as Lens<S, A>
+  return lens(makeGetter(segments), makeSetter(segments))
 }
 
 // --- direct get/set, bypassing lens function chain ---

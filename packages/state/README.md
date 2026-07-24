@@ -38,3 +38,21 @@ store.over(
 - **history** — undo/redo middleware backed by patch inversion
 - **devtools** — Redux DevTools integration with time travel
 - **asyncAction** — wire async tasks into the store lifecycle
+
+## Compiled path optics
+
+`compile` owns the traced state path and exposes its lens as an explicit
+`@stopcock/fp/optic` integration seam:
+
+```ts
+import { compile } from '@stopcock/state'
+import { set, view } from '@stopcock/fp/optic'
+
+type State = { user: { name: string } }
+
+const name = compile<State, string>((state) => state.user.name)
+const source: State = { user: { name: 'Tom' } }
+
+view(name.lens, source) // 'Tom'
+set(name.lens, source, 'Ada') // { user: { name: 'Ada' } }
+```

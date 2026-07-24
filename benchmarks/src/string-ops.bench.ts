@@ -1,5 +1,5 @@
 import { bench, describe } from 'vite-plus/test'
-import { S } from '@stopcock/fp'
+import * as S from '@stopcock/fp/string'
 import * as Ra from 'ramda'
 import * as Rb from 'rambda'
 import * as _ from 'lodash-es'

@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check:fp": "node scripts/check-fp-docs.mjs",
     "dev": "astro dev",
     "generate:llms": "node scripts/generate-llms.mjs",
     "preview": "astro preview"

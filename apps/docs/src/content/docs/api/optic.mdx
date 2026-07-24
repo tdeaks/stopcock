@@ -1,0 +1,96 @@
+---
+title: Optic
+description: Composable immutable focus with lenses, prisms, traversals, and more
+---
+
+```ts
+import * as Optic from '@stopcock/fp/optic'
+```
+
+The optic module represents immutable reads and updates without hiding
+partiality. Its optic kinds are:
+
+| Kind | Focus | Read | Write |
+| --- | --- | --- | --- |
+| `Lens` | exactly one | yes | yes |
+| `Optional` | zero or one | `Option` | yes when present |
+| `Prism` | one case of a sum | `Option` | yes when matched |
+| `Traversal` | zero or more | collect | modify all |
+| `Iso` | exactly one | yes | reversible |
+| `Getter` | exactly one | yes | no |
+| `Fold` | zero or more | collect | no |
+| `Setter` | zero or more | no | modify |
+| `At` | keyed optional value | `Option` | insert/delete |
+
+## Constructors
+
+```ts
+Optic.lens(get, replace)
+Optic.optional(preview, replace)
+Optic.prism(preview, replace)
+Optic.traversal(collect, modify)
+Optic.iso(to, from)
+Optic.getter(get)
+Optic.fold(collect)
+Optic.setter(modify)
+```
+
+Common focused constructors are provided:
+
+```ts
+const name = Optic.prop<User, 'name'>('name')
+const first = Optic.index<User>(0)
+const admin = Optic.find<User>((user) => user.role === 'admin')
+const everyUser = Optic.each<User>()
+const adults = Optic.filtered<User>((user) => user.age >= 18)
+const preference = Optic.atKey<'theme', Theme>('theme')
+const byId = Optic.at<string, User>('user-1')
+```
+
+## Read and update
+
+```ts
+Optic.view(name, user)
+Optic.preview(first, users)       // Option<User>
+Optic.collect(adults, users)      // readonly User[]
+Optic.set(name, user, 'Ada')
+Optic.modify(name, user, (value) => value.toUpperCase())
+```
+
+Each operation also has a pipe-friendly form with the optic first:
+
+```ts
+import { pipe } from '@stopcock/fp'
+
+const updated = pipe(
+  user,
+  Optic.modify(name, (value) => value.toUpperCase()),
+)
+```
+
+## Composition
+
+```ts
+const city = Optic.compose(
+  Optic.prop<User, 'address'>('address'),
+  Optic.prop<Address, 'city'>('city'),
+)
+
+Optic.view(city, user)
+```
+
+Composition preserves the strongest valid optic kind: lens with lens remains
+a lens, while partial or multi-focus paths become optional or traversal
+optics.
+
+For nested object paths, the fluent builder avoids manual intermediate types:
+
+```ts
+const city = Optic.optic<User>()
+  .prop('address')
+  .prop('city')
+  .value
+```
+
+`Optic.laws` exposes the standard lens get-set, set-get, and set-set checks for
+custom lenses.

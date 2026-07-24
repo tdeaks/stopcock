@@ -1,0 +1,63 @@
+{
+  "name": "@stopcock/fp-interop",
+  "version": "0.0.0",
+  "description": "Explicit, dependency-light boundaries between Stopcock FP values and foreign data shapes",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tdeaks/stopcock.git",
+    "directory": "packages/fp-interop"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./option-like": {
+      "types": "./dist/option-like.d.ts",
+      "import": "./dist/option-like.js"
+    },
+    "./either-like": {
+      "types": "./dist/either-like.d.ts",
+      "import": "./dist/either-like.js"
+    },
+    "./boundary": {
+      "types": "./dist/boundary.d.ts",
+      "import": "./dist/boundary.js"
+    },
+    "./standard-schema": {
+      "types": "./dist/standard-schema.d.ts",
+      "import": "./dist/standard-schema.js"
+    },
+    "./wire": {
+      "types": "./dist/wire.d.ts",
+      "import": "./dist/wire.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check:source": "tsc -p tsconfig.json --noEmit",
+    "check:types": "tsc -p tsconfig.type-tests.json"
+  },
+  "peerDependencies": {
+    "@stopcock/fp": "^2.0.0"
+  },
+  "devDependencies": {
+    "@stopcock/fp": "workspace:*",
+    "vite-plus": "catalog:"
+  }
+}

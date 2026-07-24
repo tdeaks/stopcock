@@ -1,6 +1,7 @@
-export { transformStopcockPipelines } from './transform'
+export { callbackArity, transformStopcockPipelines } from './transform'
 export { stopcockFp } from './plugin'
 export type {
+  CompilerSemantics,
   DiagnosticsLevel,
   DiagnosticSite,
   FilterPattern,

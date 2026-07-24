@@ -109,9 +109,7 @@ export default defineConfig({
       {
         files: [
           'packages/fp/src/array.ts',
-          'packages/fp/src/fuse.ts',
           'packages/fp/src/pipe.ts',
-          'packages/fp/src/stream.ts',
         ],
         rules: {
           'typescript/no-implied-eval': 'off',

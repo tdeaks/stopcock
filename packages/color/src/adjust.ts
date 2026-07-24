@@ -1,4 +1,4 @@
-import { dual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
 import type { Color } from './types'
 import { toOKLCh, convert } from './convert'
 

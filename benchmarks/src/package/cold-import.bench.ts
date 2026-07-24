@@ -45,8 +45,8 @@ describe('FP cold import, child-process startup plus module import', () => {
   )
 
   bench(
-    'source stream.ts child-process + import cold start',
-    () => runBunColdImport(importSourceFile('src/stream.ts')),
+    'source iter.ts child-process + import cold start',
+    () => runBunColdImport(importSourceFile('src/iter.ts')),
     coldImportBenchOptions,
   )
 

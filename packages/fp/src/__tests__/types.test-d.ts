@@ -1,498 +1,274 @@
 import { expectTypeOf, test } from 'vite-plus/test'
+import * as Root from '..'
 import * as A from '../array'
-import { flow } from '../flow'
+import type { Eq } from '../eq'
 import * as G from '../guard'
-import * as L from '../lens'
+import * as Indexed from '../indexed'
+import * as Iter from '../iter'
+import * as MapOps from '../map'
+import * as Match from '../match'
+import * as N from '../number'
 import * as Obj from '../object'
 import * as O from '../option'
-import { pipe } from '../pipe'
+import * as Optic from '../optic'
+import * as RecordOps from '../record'
 import * as R from '../result'
-import * as S from '../string'
-import type { Fn, LazyValue } from '../types'
-import {
-  and as rootAnd,
-  explainPipeline as rootExplainPipeline,
-  getOptimizerStats as rootGetOptimizerStats,
-  resetOptimizerStats as rootResetOptimizerStats,
-  type Brand as RootBrand,
-  type OptimizerStats as RootOptimizerStats,
-  type Predicate as RootPredicate,
-} from '..'
+import * as Schema from '../schema'
+import * as These from '../these'
+import * as TypedArray from '../typed-array'
+import * as V from '../validation'
 
-test('Fn maps A to B', () => {
-  expectTypeOf<Fn<string, number>>().toEqualTypeOf<(a: string) => number>()
+test('the root remains intentionally slim', () => {
+  expectTypeOf(Root.pipe).toBeFunction()
+  expectTypeOf(Root.flow).toBeFunction()
+  expectTypeOf(Root.compile).toBeFunction()
+  expectTypeOf(Root.some(1)).toEqualTypeOf<O.Some<number>>()
+  expectTypeOf(Root.ok(1)).toEqualTypeOf<R.Ok<number>>()
+
+  // @ts-expect-error specialist array APIs live at @stopcock/fp/array.
+  void Root.A
+  // @ts-expect-error specialist validation APIs live at @stopcock/fp/validation.
+  void Root.valid
 })
 
-test('LazyValue is a thunk returning A', () => {
-  expectTypeOf<LazyValue<number>>().toEqualTypeOf<() => number>()
-})
-
-test('String functions preserve concrete return types', () => {
-  expectTypeOf(S.trim(' hi ')).toEqualTypeOf<string>()
-  expectTypeOf(S.length('hello')).toEqualTypeOf<number>()
-  expectTypeOf(S.includes('ell')).toEqualTypeOf<(s: string) => boolean>()
-  expectTypeOf(pipe('hello', S.toUpperCase)).toEqualTypeOf<string>()
-})
-
-test('pipe infers values through multiple stages', () => {
-  const result = pipe(
-    ' 42 ',
-    S.trim,
+test('pipe and flow preserve multi-stage inference', () => {
+  const output = Root.pipe(
+    ' 41 ',
+    (value) => value.trim(),
     Number.parseInt,
-    (n) => n + 1,
-    (n) => ({ value: n, label: String(n) }),
-    (value) => value.label,
+    (value) => value + 1,
+    (value) => ({ value, label: String(value) }),
   )
+  expectTypeOf(output).toEqualTypeOf<{ value: number; label: string }>()
 
-  expectTypeOf(result).toEqualTypeOf<string>()
-})
-
-test('pipe rejects calls past the public overload limit', () => {
-  const step = (n: number) => n + 1
-
-  // @ts-expect-error pipe exposes overloads through 20 public stages.
-  pipe(
-    0,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-  )
-})
-
-test('flow infers values through multiple stages', () => {
-  const parseLabel = flow(
-    S.trim,
+  const parse = Root.flow(
+    (value: string) => value.trim(),
     Number.parseInt,
-    (n) => n + 1,
-    (n) => ({ value: n, label: String(n) }),
-    (value) => value.label,
+    (value) => value + 1,
   )
-
-  expectTypeOf(parseLabel).toEqualTypeOf<(a: string) => string>()
-  expectTypeOf(parseLabel(' 41 ')).toEqualTypeOf<string>()
+  expectTypeOf(parse).toEqualTypeOf<(a: string) => number>()
 })
 
-test('flow rejects calls past the public overload limit', () => {
-  const step = (n: number) => n + 1
-
-  // @ts-expect-error flow exposes overloads through 20 public stages.
-  flow(
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-    step,
-  )
-})
-
-test('Array data-last functions infer input and output values', () => {
-  const appended = 4 as number
-  const prepended = 0 as number
-  const extraNumbers = [3, 4] as number[]
-
-  expectTypeOf(A.map((n: number) => String(n))).toEqualTypeOf<
-    (arr: readonly number[]) => string[]
-  >()
-  expectTypeOf(A.mapWithIndex((n: number, i) => `${i}:${n}`)).toEqualTypeOf<
-    (arr: readonly number[]) => string[]
-  >()
-  expectTypeOf(A.filter((n: number) => n > 1)).toEqualTypeOf<(arr: readonly number[]) => number[]>()
-  expectTypeOf(A.filterWithIndex((n: number, i) => n > i)).toEqualTypeOf<
-    (arr: readonly number[]) => number[]
-  >()
-  expectTypeOf(A.flatMap((n: number) => [String(n)])).toEqualTypeOf<
-    (arr: readonly number[]) => string[]
-  >()
-  expectTypeOf(A.filterMap((n: number) => (n > 1 ? String(n) : undefined))).toEqualTypeOf<
-    (arr: readonly number[]) => string[]
-  >()
-  expectTypeOf(A.findMap((n: number) => (n > 1 ? String(n) : undefined))).toEqualTypeOf<
-    (arr: readonly number[]) => string | undefined
-  >()
-  expectTypeOf(A.mapWhile((n: number) => (n < 3 ? String(n) : undefined))).toEqualTypeOf<
-    (arr: readonly number[]) => string[]
-  >()
-  expectTypeOf(A.takeUntil((n: number) => n > 2)).toEqualTypeOf<
-    (arr: readonly number[]) => number[]
-  >()
-  expectTypeOf(A.find((n: number) => n > 1)).toEqualTypeOf<
-    (arr: readonly number[]) => number | undefined
-  >()
-  expectTypeOf(A.findIndex((n: number) => n > 1)).toEqualTypeOf<
-    (arr: readonly number[]) => number | undefined
-  >()
-  expectTypeOf(A.every((n: number) => n > 0)).toEqualTypeOf<(arr: readonly number[]) => boolean>()
-  expectTypeOf(A.some((n: number) => n > 0)).toEqualTypeOf<(arr: readonly number[]) => boolean>()
-  expectTypeOf(A.partition((n: number) => n > 0)).toEqualTypeOf<
-    (arr: readonly number[]) => [number[], number[]]
-  >()
-  expectTypeOf(A.reject((n: number) => n > 0)).toEqualTypeOf<(arr: readonly number[]) => number[]>()
-  expectTypeOf(A.reduce((total: number, n: number) => total + n, 0)).toEqualTypeOf<
-    (arr: readonly number[]) => number
-  >()
-  expectTypeOf(A.append(appended)).toEqualTypeOf<(arr: readonly number[]) => number[]>()
-  expectTypeOf(A.prepend(prepended)).toEqualTypeOf<(arr: readonly number[]) => number[]>()
-  expectTypeOf(A.concat(extraNumbers)).toEqualTypeOf<(arr: readonly number[]) => number[]>()
-  expectTypeOf(A.zip(['a'])).toEqualTypeOf<<A>(a: readonly A[]) => [A, string][]>()
-  expectTypeOf(A.zipWith(['a'], (n: number, s) => `${s}:${n}`)).toEqualTypeOf<
-    (a: readonly number[]) => string[]
-  >()
-  // Current gap: pluck does not infer B from the requested key.
-  expectTypeOf(A.pluck('id')).toEqualTypeOf<<A, B>(arr: readonly A[]) => B[]>()
-  expectTypeOf(A.sortBy((a: { id: number }, b) => a.id - b.id)).toEqualTypeOf<
-    (arr: readonly { id: number }[]) => { id: number }[]
-  >()
-  expectTypeOf(A.uniqBy((value: { id: number }) => value.id)).toEqualTypeOf<
-    (arr: readonly { id: number }[]) => { id: number }[]
-  >()
-  expectTypeOf(A.groupBy((value: { kind: string }) => value.kind)).toEqualTypeOf<
-    (arr: readonly { kind: string }[]) => Record<string, { kind: string }[]>
-  >()
-  expectTypeOf(A.take(2)).toEqualTypeOf<<A>(arr: readonly A[]) => A[]>()
-  expectTypeOf(A.drop(1)).toEqualTypeOf<<A>(arr: readonly A[]) => A[]>()
-  expectTypeOf(A.join(',')).toEqualTypeOf<(arr: readonly string[]) => string>()
-})
-
-test('String data-last functions preserve concrete return types', () => {
-  expectTypeOf(S.startsWith('a')).toEqualTypeOf<(s: string) => boolean>()
-  expectTypeOf(S.endsWith('z')).toEqualTypeOf<(s: string) => boolean>()
-  expectTypeOf(S.split(',')).toEqualTypeOf<(s: string) => string[]>()
-  expectTypeOf(S.repeat(2)).toEqualTypeOf<(s: string) => string>()
-  expectTypeOf(S.slice(1, 3)).toEqualTypeOf<(s: string) => string>()
-  expectTypeOf(S.replaceAll('a', 'b')).toEqualTypeOf<(s: string) => string>()
-})
-
-test('Object data-last functions infer object changes and path values', () => {
-  type User = {
-    id: string
-    name: string
-    meta: { active: boolean; score: number }
-  }
-  type OptionalUser = {
-    id: string
-    meta?: { active: boolean; score: number } | null
-  }
-  const optionalUser = {} as OptionalUser
-  const tupleActivePath = ['meta', 'active'] as const
-  const tupleActiveReader = Obj.path(tupleActivePath)
-  const tupleActiveDefaultReader = Obj.pathOr(tupleActivePath, false)
-  const dynamicPath = 'meta.active' as string
-
-  expectTypeOf(Obj.pick(['id', 'name'])).toEqualTypeOf<(obj: User) => Pick<User, 'id' | 'name'>>()
-  expectTypeOf(Obj.omit(['meta'])).toEqualTypeOf<(obj: User) => Omit<User, 'meta'>>()
-  expectTypeOf(Obj.dissoc('meta')).toEqualTypeOf<(obj: User) => Partial<User>>()
-  expectTypeOf(Obj.assoc('role', 'admin')).toEqualTypeOf<
-    (obj: User) => User & Record<string, string>
-  >()
-  expectTypeOf(Obj.mergeDeepLeft({ extra: true })).toEqualTypeOf<
-    (a: User) => User & { extra: boolean }
-  >()
-  expectTypeOf(Obj.mergeDeepRight({ extra: true })).toEqualTypeOf<
-    (a: User) => User & { extra: boolean }
-  >()
-  expectTypeOf(
-    Obj.mergeWith(
-      { id: 'fallback', name: 'Grace', meta: { active: false, score: 0 } },
-      (l: string, r) => l || r,
-    ),
-  ).toEqualTypeOf<(a: User) => User>()
-  expectTypeOf(Obj.path('meta.active')).toEqualTypeOf<(obj: User) => boolean | undefined>()
-  expectTypeOf(Obj.path('meta.missing')).toEqualTypeOf<(obj: User) => unknown>()
-  expectTypeOf(Obj.pathOr('meta.score', 0)).toEqualTypeOf<(obj: User) => number>()
-  expectTypeOf(Obj.pathOr('meta.missing', 'fallback')).toEqualTypeOf<(obj: User) => unknown>()
-  expectTypeOf(Obj.path(optionalUser, tupleActivePath)).toEqualTypeOf<boolean | undefined>()
-  expectTypeOf(Obj.path(tupleActivePath)).toEqualTypeOf<
-    (obj: OptionalUser) => boolean | undefined
-  >()
-  expectTypeOf(Obj.path(tupleActivePath)(optionalUser)).toEqualTypeOf<boolean | undefined>()
-  expectTypeOf(tupleActiveReader(optionalUser)).toEqualTypeOf<boolean | undefined>()
-  expectTypeOf(Obj.path(optionalUser, dynamicPath)).toEqualTypeOf<unknown>()
-  expectTypeOf(Obj.path(dynamicPath)).toEqualTypeOf<(obj: OptionalUser) => unknown>()
-  expectTypeOf(Obj.pathOr(optionalUser, tupleActivePath, false)).toEqualTypeOf<boolean>()
-  expectTypeOf(Obj.pathOr(tupleActivePath, false)).toEqualTypeOf<(obj: OptionalUser) => boolean>()
-  expectTypeOf(Obj.pathOr(tupleActivePath, false)(optionalUser)).toEqualTypeOf<boolean>()
-  expectTypeOf(tupleActiveDefaultReader(optionalUser)).toEqualTypeOf<boolean>()
-  expectTypeOf(Obj.pathOr(dynamicPath, 'fallback')).toEqualTypeOf<(obj: OptionalUser) => unknown>()
-  expectTypeOf(Obj.evolve<User>({ name: (name) => name.trim() })).toEqualTypeOf<
-    (obj: User) => User
-  >()
-})
-
-test('Option preserves value inference through constructors, transforms, and extraction', () => {
-  const value = O.some(1)
-  const nullable = O.fromNullable('hello' as string | null | undefined)
-  const mapped = pipe(
-    value,
-    O.map((n) => String(n)),
-  )
-  const flatMapped = pipe(
-    value,
-    O.flatMap((n) => O.some(String(n))),
-  )
-
-  expectTypeOf(value).toEqualTypeOf<O.Option<number>>()
-  expectTypeOf(nullable).toEqualTypeOf<O.Option<string>>()
-  expectTypeOf(mapped).toEqualTypeOf<O.Option<string>>()
-  expectTypeOf(flatMapped).toEqualTypeOf<O.Option<string>>()
-  expectTypeOf(
-    pipe(
-      value,
-      O.getOrElse(() => 'fallback'),
-    ),
-  ).toEqualTypeOf<number | string>()
-  expectTypeOf(O.toNullable(value)).toEqualTypeOf<number | null>()
-  expectTypeOf(O.toUndefined(value)).toEqualTypeOf<number | undefined>()
-})
-
-test('Option completeness combinators preserve data-last inference', () => {
-  const value = O.some(1)
-  const fallback = O.some('fallback')
-  const nested = O.some(O.some('nested'))
-  declare const unionValue: O.Option<'a' | 'b'>
-
-  expectTypeOf(pipe(value, O.orElse(fallback))).toEqualTypeOf<O.Option<number | string>>()
-  expectTypeOf(
-    pipe(
-      value,
-      O.orElseWith(() => fallback),
-    ),
-  ).toEqualTypeOf<O.Option<number | string>>()
-  expectTypeOf(pipe(value, O.and(fallback))).toEqualTypeOf<O.Option<string>>()
-  expectTypeOf(
-    pipe(
-      value,
-      O.andThen((n) => O.some(String(n))),
-    ),
-  ).toEqualTypeOf<O.Option<string>>()
-  expectTypeOf(O.flatten(nested)).toEqualTypeOf<O.Option<string>>()
-  expectTypeOf(pipe(value, O.zip(O.some('label')))).toEqualTypeOf<O.Option<[number, string]>>()
-  expectTypeOf(
-    pipe(
-      value,
-      O.zipWith(O.some('label'), (n, label) => `${label}:${n}`),
-    ),
-  ).toEqualTypeOf<O.Option<string>>()
-  expectTypeOf(pipe(value, O.contains(1))).toEqualTypeOf<boolean>()
-  expectTypeOf(pipe(O.some('a' as 'a' | 'b'), O.contains('a'))).toEqualTypeOf<boolean>()
-  expectTypeOf(O.contains('a')(unionValue)).toEqualTypeOf<boolean>()
-  expectTypeOf(O.contains<'a'>('a')(unionValue)).toEqualTypeOf<boolean>()
-  expectTypeOf(
-    pipe(
-      value,
-      O.exists((n) => n > 0),
-    ),
-  ).toEqualTypeOf<boolean>()
-  expectTypeOf(
-    pipe(
-      value,
-      O.mapNullable((n) => (n > 0 ? String(n) : null)),
-    ),
-  ).toEqualTypeOf<O.Option<string>>()
-})
-
-test('Result preserves value and error inference through transforms and extraction', () => {
-  const value = R.ok(1)
-  const error = R.err({ code: 'bad' as const })
-  const mapped = pipe(
-    value,
-    R.map((n) => String(n)),
-  )
-  const mappedErr = pipe(
-    error,
-    R.mapErr((e) => e.code),
-  )
-  const flatMapped = pipe(
-    value,
-    R.flatMap((n) => (n > 0 ? R.ok(String(n)) : R.err('negative' as const))),
-  )
-
-  expectTypeOf(value).toEqualTypeOf<R.Result<number, never>>()
-  expectTypeOf(error).toEqualTypeOf<R.Result<never, { code: 'bad' }>>()
-  expectTypeOf(mapped).toEqualTypeOf<R.Result<string, never>>()
-  expectTypeOf(mappedErr).toEqualTypeOf<R.Result<never, 'bad'>>()
-  expectTypeOf(flatMapped).toEqualTypeOf<R.Result<string, 'negative'>>()
-  expectTypeOf(
-    pipe(
-      error,
-      R.getOrElse(() => 0),
-    ),
-  ).toEqualTypeOf<number>()
-  expectTypeOf(R.toOption(value)).toEqualTypeOf<O.Option<number>>()
-})
-
-test('Result completeness combinators preserve data-last inference', () => {
-  const value = R.ok(1)
-  const fallback = R.ok('fallback')
-  const nested = R.ok(R.ok('nested'))
-  const error = R.err({ code: 'bad' as const })
-  declare const unionValue: R.Result<'a' | 'b', Error>
-
-  expectTypeOf(pipe(value, R.orElse(fallback))).toEqualTypeOf<R.Result<number | string, never>>()
-  expectTypeOf(
-    pipe(
-      error,
-      R.orElseWith((e) => R.err(e.code)),
-    ),
-  ).toEqualTypeOf<R.Result<never, 'bad'>>()
-  expectTypeOf(pipe(value, R.and(fallback))).toEqualTypeOf<R.Result<string, never>>()
-  expectTypeOf(
-    pipe(
-      value,
-      R.andThen((n) => R.ok(String(n))),
-    ),
-  ).toEqualTypeOf<R.Result<string, never>>()
-  expectTypeOf(R.flatten(nested)).toEqualTypeOf<R.Result<string, never>>()
-  expectTypeOf(pipe(value, R.zip(R.ok('label')))).toEqualTypeOf<R.Result<[number, string], never>>()
-  expectTypeOf(
-    pipe(
-      value,
-      R.zipWith(R.ok('label'), (n, label) => `${label}:${n}`),
-    ),
-  ).toEqualTypeOf<R.Result<string, never>>()
-  expectTypeOf(pipe(value, R.contains(1))).toEqualTypeOf<boolean>()
-  expectTypeOf(
-    pipe(R.ok('a' as 'a' | 'b') as R.Result<'a' | 'b', Error>, R.contains('a')),
-  ).toEqualTypeOf<boolean>()
-  expectTypeOf(R.contains('a')(unionValue)).toEqualTypeOf<boolean>()
-  expectTypeOf(R.contains<'a'>('a')(unionValue)).toEqualTypeOf<boolean>()
-  expectTypeOf(
-    pipe(
-      value,
-      R.exists((n) => n > 0),
-    ),
-  ).toEqualTypeOf<boolean>()
-  expectTypeOf(R.fromThrowable(() => 1)).toEqualTypeOf<R.Result<number, unknown>>()
-  expectTypeOf(R.tryCatchAsync(async () => 1)).toEqualTypeOf<Promise<R.Result<number, unknown>>>()
-})
-
-test('Guard predicates narrow through Array filter', () => {
-  const values: Array<string | number | boolean> = ['a', 1, true]
-
+test('array APIs support data-first, data-last, refinements, and tuples', () => {
+  const values: readonly (string | number)[] = ['one', 2]
   expectTypeOf(A.filter(values, G.isString)).toEqualTypeOf<string[]>()
-  expectTypeOf(A.filter(G.isNumber)(values)).toEqualTypeOf<number[]>()
+  expectTypeOf(A.map((value: number) => String(value))).toEqualTypeOf<
+    (arr: readonly number[]) => string[]
+  >()
+  expectTypeOf(A.head([1, 2])).toEqualTypeOf<O.Option<number>>()
+  expectTypeOf(A.headOrUndefined([1, 2])).toEqualTypeOf<number | undefined>()
+  expectTypeOf(A.headNonEmpty([1, 2])).toEqualTypeOf<number>()
+  expectTypeOf(A.find(values, G.isString)).toEqualTypeOf<O.Option<string>>()
+  expectTypeOf(A.findOrUndefined(values, G.isString)).toEqualTypeOf<string | undefined>()
+  expectTypeOf(
+    A.partitionMap(values, (value) => (typeof value === 'string' ? R.ok(value) : R.err(value))),
+  ).toEqualTypeOf<readonly [number[], string[]]>()
+  const sequenced: R.Result<[number, string], never> = A.sequence([R.ok(1), R.ok('two')] as const)
+  expectTypeOf(sequenced).toMatchTypeOf<R.Result<[number, string], never>>()
 })
 
-test('Object paths and lenses pin current public behavior', () => {
+test('Option composition preserves value inference', () => {
+  const input: O.Option<number> = O.some(1)
+  const output = Root.pipe(
+    input,
+    O.filter((value: number) => value > 0),
+    O.map((value) => String(value)),
+    O.zip(O.some(true)),
+  )
+  const checkedOutput: O.Option<readonly [string, boolean]> = output
+  expectTypeOf(checkedOutput).toMatchTypeOf<O.Option<readonly [string, boolean]>>()
+  expectTypeOf(O.all([O.some(1), O.some('two')] as const)).toEqualTypeOf<
+    O.Option<[number, string]>
+  >()
+  expectTypeOf(O.struct({ count: O.some(1), label: O.some('one') })).toEqualTypeOf<
+    O.Option<{ count: number; label: string }>
+  >()
+  expectTypeOf(O.fromNullable('value' as string | null)).toEqualTypeOf<O.Option<string>>()
+})
+
+test('Result composition preserves value and error unions', () => {
+  const decoded = null as unknown as R.Result<number, 'decode'>
+  const flatMapped = R.flatMap(decoded, (value: number) =>
+    value > 0 ? R.ok(String(value)) : R.err('negative' as const),
+  )
+  const output = R.map(flatMapped, (value: string) => value.length)
+  const checkedOutput: R.Result<number, 'decode' | 'negative'> = output
+  expectTypeOf(checkedOutput).toMatchTypeOf<R.Result<number, 'decode' | 'negative'>>()
+  const allResults: R.Result<[number, string], 'first' | 'second'> = R.all([
+    R.ok(1) as R.Result<number, 'first'>,
+    R.ok('two') as R.Result<string, 'second'>,
+  ] as const)
+  expectTypeOf(allResults).toMatchTypeOf<R.Result<[number, string], 'first' | 'second'>>()
+  const structured: R.Result<{ count: number; label: string }, 'count' | 'label'> = R.struct({
+    count: R.ok(1) as R.Result<number, 'count'>,
+    label: R.ok('one') as R.Result<string, 'label'>,
+  })
+  expectTypeOf(structured).toMatchTypeOf<
+    R.Result<{ count: number; label: string }, 'count' | 'label'>
+  >()
+  expectTypeOf(R.liftThrowable((value: string) => Number(value))).toEqualTypeOf<
+    (value: string) => R.Result<number, unknown>
+  >()
+  expectTypeOf(
+    R.liftThrowable(
+      (value: string) => Number(value),
+      () => 'parse' as const,
+    ),
+  ).toEqualTypeOf<(value: string) => R.Result<number, 'parse'>>()
+})
+
+test('Validation accumulates a typed non-empty error collection', () => {
+  const first: V.Validation<number, 'first'> = V.invalid('first')
+  const second: V.Validation<string, 'second'> = V.valid('two')
+  expectTypeOf(V.all([first, second] as const)).toEqualTypeOf<
+    V.Validation<[number, string], 'first' | 'second'>
+  >()
+  expectTypeOf(
+    V.traverse(
+      ['a'],
+      (value): V.Validation<number, 'empty'> =>
+        value.length > 0 ? V.valid(value.length) : V.invalid('empty'),
+    ),
+  ).toEqualTypeOf<V.Validation<number[], 'empty'>>()
+})
+
+test('guards compose refinements and brands without runtime wrappers', () => {
+  type Input = string | number | boolean
+  const isText: G.Refinement<Input, string> = (value): value is string => typeof value === 'string'
+  const isLong: G.Refinement<string, string & { readonly long: true }> = (
+    value,
+  ): value is string & { readonly long: true } => value.length > 3
+  const longText: G.Refinement<Input, string & { readonly long: true }> = G.and(isText, isLong)
+  expectTypeOf(longText).toBeFunction()
+  expectTypeOf(G.not(isText)).toEqualTypeOf<G.Refinement<Input, number | boolean>>()
+  expectTypeOf<G.Brand<string, 'UserId'>>().toMatchTypeOf<string>()
+})
+
+test('tuple paths preserve nested values and reject invalid paths', () => {
   type User = {
-    name: string
-    meta: { active: boolean; tags: string[] }
+    readonly profile?: {
+      readonly name: string
+      readonly flags?: readonly boolean[]
+    }
   }
+  const user = {} as User
+  const namePath = Obj.pathOf<User>()('profile', 'name')
+  expectTypeOf(Obj.getPath(user, namePath)).toEqualTypeOf<O.Option<string | undefined>>()
+  expectTypeOf(Obj.getPathOrUndefined(user, namePath)).toEqualTypeOf<string | undefined>()
+  expectTypeOf(Obj.setPath(user, ['profile', 'name'], 'Ada')).toEqualTypeOf<User>()
 
-  const user: User = { name: 'Ada', meta: { active: true, tags: ['fp'] } }
-  const activeLens = L.path<User, 'meta', 'active'>('meta', 'active')
-  const tupleActiveLens = L.path<User, readonly ['meta', 'active']>(['meta', 'active'] as const)
-  const tagLens = L.compose(L.path<User, 'meta', 'tags'>('meta', 'tags'), L.index<string>(0))
-
-  expectTypeOf(Obj.path(user, 'meta.active')).toEqualTypeOf<boolean | undefined>()
-  expectTypeOf(Obj.path(user, 'meta.missing')).toEqualTypeOf<unknown>()
-  expectTypeOf(L.view(user, L.prop('name'))).toEqualTypeOf<string>()
-  expectTypeOf(L.view(user, activeLens)).toEqualTypeOf<boolean>()
-  expectTypeOf(L.view(user, tupleActiveLens)).toEqualTypeOf<boolean>()
-  expectTypeOf(L.view(user, tagLens)).toEqualTypeOf<string>()
-  expectTypeOf(L.set(user, activeLens, false)).toEqualTypeOf<User>()
-  expectTypeOf(L.over(user, activeLens, (active) => !active)).toEqualTypeOf<User>()
-  expectTypeOf(L.view([1, 2], L.index<number>(0))).toEqualTypeOf<number>()
-
-  const readonlyValues = [1, 2] as const
-  // @ts-expect-error lens.index currently exposes mutable array lenses only.
-  L.view(readonlyValues, L.index<number>(0))
+  // @ts-expect-error path builders reject keys that do not exist.
+  Obj.pathOf<User>()('missing')
 })
 
-test('Guard exports predicate, refinement, and brand types', () => {
-  type UserId = G.Brand<string, 'UserId'>
+test('polymorphic optics preserve source and focus types', () => {
+  type User = { readonly profile: { readonly name: string } }
+  const profile = Optic.prop<User, 'profile'>('profile')
+  const name = Optic.prop<User['profile'], 'name'>('name')
+  const userName = Optic.compose(profile, name)
+  const user: User = { profile: { name: 'Ada' } }
+  expectTypeOf(Optic.view(userName, user)).toEqualTypeOf<string>()
+  expectTypeOf(Optic.set(userName, user, 'Grace')).toEqualTypeOf<User>()
+  expectTypeOf(Optic.preview(Optic.index<number>(0), [1, 2])).toEqualTypeOf<O.Option<number>>()
+})
 
-  expectTypeOf<G.Predicate<string>>().toEqualTypeOf<(a: string) => boolean>()
-  expectTypeOf<G.Refinement<string | number, string>>().toEqualTypeOf<
-    (a: string | number) => a is string
+test('Iter pipelines remain lazy in their types', () => {
+  const values = Root.pipe(
+    Iter.range(0, 10),
+    Iter.filter((value) => value % 2 === 0),
+    Iter.map((value) => String(value)),
+    Iter.take(2),
+  )
+  expectTypeOf(values).toEqualTypeOf<Iter.Iter<string>>()
+  const firstValue: O.Option<string> = Iter.first(values)
+  expectTypeOf(firstValue).toMatchTypeOf<O.Option<string>>()
+  expectTypeOf(Iter.toArray(values)).toEqualTypeOf<string[]>()
+  expectTypeOf(Iter.firstOrUndefined(values)).toEqualTypeOf<string | undefined>()
+})
+
+test('partial collection and statistical APIs expose Option by default', () => {
+  const map = new Map<string, number | undefined>()
+  const record = {} as RecordOps.ReadonlyRecord<number | undefined>
+  expectTypeOf(MapOps.get(map, 'key')).toEqualTypeOf<O.Option<number | undefined>>()
+  expectTypeOf(MapOps.getOrUndefined(map, 'key')).toEqualTypeOf<number | undefined>()
+  expectTypeOf(RecordOps.get(record, 'key')).toEqualTypeOf<O.Option<number | undefined>>()
+  expectTypeOf(Indexed.at([1, 2], 0)).toEqualTypeOf<O.Option<number>>()
+  expectTypeOf(Indexed.atOrUndefined([1, 2], 0)).toEqualTypeOf<number | undefined>()
+  expectTypeOf(TypedArray.at(new Uint8Array(), 0)).toEqualTypeOf<O.Option<number>>()
+  expectTypeOf(
+    TypedArray.filter(new Uint16Array(), (value) => value > 0),
+  ).toMatchTypeOf<Uint16Array>()
+  expectTypeOf(
+    TypedArray.filter(new BigInt64Array(), (value) => value > 0n),
+  ).toMatchTypeOf<BigInt64Array>()
+  expectTypeOf(
+    TypedArray.copyInto(new Uint8Array(), new Float64Array()),
+  ).toMatchTypeOf<Float64Array>()
+  expectTypeOf(
+    TypedArray.copyInto(new BigInt64Array(), new BigUint64Array()),
+  ).toMatchTypeOf<BigUint64Array>()
+  // @ts-expect-error number and bigint typed-array storage cannot be mixed.
+  TypedArray.copyInto(new Uint8Array(), new BigInt64Array())
+  // @ts-expect-error number and bigint typed-array storage cannot be mixed.
+  TypedArray.copyInto(new BigInt64Array(), new Float64Array())
+  expectTypeOf(N.mean([])).toEqualTypeOf<O.Option<number>>()
+  expectTypeOf(N.meanOrUndefined([])).toEqualTypeOf<number | undefined>()
+  expectTypeOf(N.meanNonEmpty([1])).toEqualTypeOf<number>()
+  expectTypeOf(N.varianceSampleAtLeastTwo([1, 2])).toEqualTypeOf<number>()
+
+  // @ts-expect-error v1 Option suffixes are intentionally removed.
+  void A.headOption
+  // @ts-expect-error the Option-returning path API owns the concise name.
+  void Obj.getPathOption
+})
+
+test('matching requires every discriminant case', () => {
+  type Event =
+    | { readonly kind: 'created'; readonly id: string }
+    | { readonly kind: 'deleted'; readonly id: string }
+  const render = Match.discriminant<'kind', Event, string>('kind', {
+    created: (event) => event.id,
+    deleted: (event) => event.id,
+  })
+  expectTypeOf(render).toEqualTypeOf<(value: Event) => string>()
+
+  // @ts-expect-error exhaustive handlers require the deleted case.
+  Match.discriminant<'kind', Event, string>('kind', {
+    created: (event) => event.id,
+  })
+})
+
+test('Standard Schema adapters infer transformed outputs', () => {
+  const positive = Schema.fromPredicate(
+    (value: unknown): value is number => typeof value === 'number' && value > 0,
+  )
+  const label = Schema.map(positive, (value) => `n:${value}`)
+  expectTypeOf<Schema.StandardSchemaV1.InferOutput<typeof label>>().toEqualTypeOf<string>()
+  expectTypeOf(Schema.validateSync(1, label)).toEqualTypeOf<
+    R.Result<string, readonly Schema.Issue[]>
   >()
-  expectTypeOf<UserId>().toEqualTypeOf<string & { readonly __brand: 'UserId' }>()
-})
-
-test('Guard refinement combinators preserve narrowing', () => {
-  type User = { kind: 'user'; active: boolean }
-  type Admin = User & { role: 'admin' }
-  type Guest = { kind: 'guest'; invitedBy: string }
-  type Account = User | Guest
-  type RawAccount = { kind: 'user' | 'guest'; active?: boolean; name?: string }
-  type ActiveAccount = RawAccount & { active: true }
-  type NamedAccount = RawAccount & { name: string }
-
-  const isUser: G.Refinement<Account, User> = (value): value is User => value.kind === 'user'
-  const isAdmin: G.Refinement<User, Admin> = (value): value is Admin => 'role' in value
-  const isGuest: G.Refinement<Account, Guest> = (value): value is Guest => value.kind === 'guest'
-  const isActive: G.Refinement<RawAccount, ActiveAccount> = (value): value is ActiveAccount =>
-    value.active === true
-  const hasName: G.Refinement<RawAccount, NamedAccount> = (value): value is NamedAccount =>
-    typeof value.name === 'string'
-  const isStringValue: G.Refinement<string | number | boolean, string> = (value): value is string =>
-    typeof value === 'string'
-
-  expectTypeOf(G.and(isUser, isAdmin)).toEqualTypeOf<G.Refinement<Account, Admin>>()
-  expectTypeOf(G.and(isActive, hasName)).toEqualTypeOf<
-    G.Refinement<RawAccount, ActiveAccount & NamedAccount>
-  >()
-  expectTypeOf(G.or(isUser, isGuest)).toEqualTypeOf<G.Refinement<Account, User | Guest>>()
-  expectTypeOf(G.not(isStringValue)).toEqualTypeOf<
-    G.Refinement<string | number | boolean, number | boolean>
+  expectTypeOf(Schema.validate(label)).toEqualTypeOf<
+    (value: unknown) => Promise<R.Result<string, readonly Schema.Issue[]>>
   >()
 })
 
-test('Guard combinators expose predicate fallbacks', () => {
-  const longerThanOne: G.Predicate<string> = (value) => value.length > 1
-  const startsWithA: G.Predicate<string> = (value) => value.startsWith('a')
-
-  expectTypeOf(G.and(longerThanOne, startsWithA)).toEqualTypeOf<G.Predicate<string>>()
-  expectTypeOf(G.or(longerThanOne, startsWithA)).toEqualTypeOf<G.Predicate<string>>()
-  expectTypeOf(G.not(longerThanOne)).toEqualTypeOf<G.Predicate<string>>()
+test('algebra and inclusive data types expose concrete instances', () => {
+  const numeric: Eq<number> = { equals: (left, right) => left === right }
+  expectTypeOf(numeric.equals).toEqualTypeOf<(left: number, right: number) => boolean>()
+  expectTypeOf(These.both('warning', 1)).toEqualTypeOf<These.Both<string, number>>()
 })
 
-test('Root exports guard combinators and types', () => {
-  type RootUserId = RootBrand<string, 'UserId'>
-
-  expectTypeOf(rootAnd).toMatchTypeOf<typeof G.and>()
-  expectTypeOf<RootPredicate<string>>().toEqualTypeOf<G.Predicate<string>>()
-  expectTypeOf<RootUserId>().toEqualTypeOf<G.Brand<string, 'UserId'>>()
-})
-
-test('Root exports optimizer diagnostics types', () => {
-  const explanation = rootExplainPipeline(A.map((n: number) => n + 1))
-
-  expectTypeOf(rootGetOptimizerStats()).toEqualTypeOf<Readonly<RootOptimizerStats>>()
-  expectTypeOf(rootResetOptimizerStats).toEqualTypeOf<() => void>()
-  expectTypeOf(explanation.segments).toEqualTypeOf<readonly import('../plan').SegmentShape[]>()
-  expectTypeOf(explanation.semantics).toEqualTypeOf<'exact' | 'pure'>()
+test('portable compiler runners retain endpoint types', () => {
+  const runner = Root.compile(
+    A.map((value: number) => value + 1),
+    A.filter((value: number) => value > 2),
+    A.sum,
+  )
+  expectTypeOf(runner).toEqualTypeOf<(input: readonly number[]) => number>()
+  expectTypeOf(
+    Root.explain(
+      A.map((value: number) => value + 1),
+      A.sum,
+    ).runtimeCodeGeneration,
+  ).toEqualTypeOf<false>()
 })

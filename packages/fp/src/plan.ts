@@ -46,10 +46,8 @@ export interface ConsumeMeta {
   consumed: number
 }
 
-/** One already-resolved (op, binding) pair — what Stream's persistent plan
- * node chain carries per node, and what buildPlanFromOps segments directly
- * without the tagged-function detection buildPlan does for pipe/compile. */
-export interface BoundStep {
+/** One already-resolved operation/binding pair used during plan construction. */
+interface BoundStep {
   readonly op: OpCode
   readonly binding: StepBinding
 }
@@ -77,9 +75,7 @@ export function extractBinding(step: TaggedFn): StepBinding {
 
 /**
  * Segments a list of already-resolved (op, binding) entries into a Plan.
- * Shared core for buildPlan (which first normalizes tagged/opaque steps
- * into entries) and buildPlanFromOps (whose caller — Stream's persistent
- * plan node chain — already has entries in this shape).
+ * `buildPlan` first normalizes tagged and opaque steps into these entries.
  *
  * Segments at every real domain transition and every materialization
  * boundary. Sinks (reduce, forEach, every, some, find, ...) end their
@@ -166,16 +162,6 @@ export function buildPlan(steps: readonly unknown[]): BoundPlan {
     const opMeta = requireOpMeta(step._op as number)
     return { op: opMeta.op, binding: extractBinding(step) }
   })
-  return segmentBoundSteps(entries)
-}
-
-/**
- * Builds a Plan directly from already-resolved (op, binding) entries,
- * bypassing the tagged-function detection buildPlan does — for callers
- * (Stream's persistent plan node chain, see stream.ts) that already have
- * entries in this shape and never carry opaque/untagged steps.
- */
-export function buildPlanFromOps(entries: readonly BoundStep[]): BoundPlan {
   return segmentBoundSteps(entries)
 }
 

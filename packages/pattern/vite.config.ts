@@ -1,0 +1,15 @@
+import { defineConfig } from 'vite-plus'
+import { libraryBuildTask, libraryPack } from '../../tooling/pack.config'
+
+export default defineConfig({
+  pack: libraryPack({
+    index: 'src/index.ts',
+    match: 'src/match.ts',
+    pattern: 'src/pattern.ts',
+  }),
+  run: {
+    tasks: {
+      build: libraryBuildTask(),
+    },
+  },
+})

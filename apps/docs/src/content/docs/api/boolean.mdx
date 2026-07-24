@@ -15,7 +15,8 @@ Trailing underscores avoid colliding with JS reserved words.
 ## Examples
 
 ```ts
-import { pipe, B } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as B from '@stopcock/fp/boolean'
 
 pipe(true, B.not_) // false
 pipe(true, B.and_(false)) // false

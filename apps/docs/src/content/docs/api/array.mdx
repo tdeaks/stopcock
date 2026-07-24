@@ -8,16 +8,22 @@ Every function works both ways: `A.fn(arr, ...)` (data-first) and `pipe(arr, A.f
 ## Accessors
 
 ```ts
-head<A>(arr: A[]): A | undefined
-last<A>(arr: A[]): A | undefined
-first<A>(arr: A[]): A | undefined // alias for head
-tail<A>(arr: A[]): A[]             // all except first
-init<A>(arr: A[]): A[]             // all except last
+head<A>(arr: readonly A[]): Option<A>
+last<A>(arr: readonly A[]): Option<A>
+first<A>(arr: readonly A[]): Option<A> // alias for head
+headOrUndefined<A>(arr: readonly A[]): A | undefined
+lastOrUndefined<A>(arr: readonly A[]): A | undefined
+headNonEmpty<A>(arr: readonly [A, ...A[]]): A
+lastNonEmpty<A>(arr: readonly [A, ...A[]]): A
+tail<A>(arr: readonly A[]): A[]           // all except first
+init<A>(arr: readonly A[]): A[]           // all except last
 length<A>(arr: A[]): number
 isEmpty<A>(arr: A[]): boolean
 ```
 
 `head`, `last`, `length`, and `isEmpty` are accessor terminals in fused chains.
+Option-returning names are the default; `*OrUndefined` is the explicit
+JavaScript interop escape hatch.
 
 ## Transforms
 
@@ -44,7 +50,10 @@ sortBy<A>(arr: A[], cmp: (a: A, b: A) => number): A[]
 reverse<A>(arr: A[]): A[]
 ```
 
-Materialization boundaries. They need the whole array, except the special `sortBy -> take(k)` and `sort -> take(k)` top-k optimization.
+Materialization boundaries. They need the whole array. When callback purity is
+explicitly promised, `compilePure` can apply its bounded stable top-k rewrite
+to an adjacent `sortBy -> take(k)` or `sort -> take(k)` pair; ordinary `pipe`
+and `compile` keep exact semantics.
 
 ## Slicing
 
@@ -63,8 +72,10 @@ aperture<A>(arr: A[], n: number): A[][]
 ## Search
 
 ```ts
-find<A>(arr: A[], pred: (a: A) => boolean): A | undefined
-findIndex<A>(arr: A[], pred: (a: A) => boolean): number | undefined
+find<A>(arr: readonly A[], pred: (a: A) => boolean): Option<A>
+findIndex<A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
+findOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
+findIndexOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
 every<A>(arr: A[], pred: (a: A) => boolean): boolean
 some<A>(arr: A[], pred: (a: A) => boolean): boolean
 includes<A>(arr: A[], value: A): boolean
@@ -96,7 +107,7 @@ symmetricDifference<A>(a: A[], b: A[]): A[]
 zip<A, B>(a: A[], b: B[]): [A, B][]
 zipWith<A, B, C>(a: A[], b: B[], f: (a: A, b: B) => C): C[]
 xprod<A, B>(a: A[], b: B[]): [A, B][]
-groupBy<A>(arr: A[], f: (a: A) => string): Dict<A[]>
+groupBy<A>(arr: readonly A[], f: (a: A) => string): Record<string, A[]>
 partition<A>(arr: A[], pred: (a: A) => boolean): [A[], A[]]
 intersperse<A>(arr: A[], sep: A): A[]
 flatten<A>(arr: A[][]): A[]
@@ -128,7 +139,8 @@ unfold<A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
 ## Examples
 
 ```ts
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
 type Product = {
   name: string

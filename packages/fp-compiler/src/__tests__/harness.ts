@@ -1,12 +1,18 @@
-import { A, M, N, compile, flow, pipe } from '@stopcock/fp'
+import { compile, compilePure, flow, none, pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 import { transformStopcockPipelines } from '../transform'
 import type { StopcockCompilerOptions } from '../types'
 
-const RUNTIME: Record<string, unknown> = { pipe, A, M, N, flow, compile }
+const ROOT_RUNTIME = { pipe, flow, compile, compilePure }
+const RUNTIME: Record<string, unknown> = {
+  ...ROOT_RUNTIME,
+  ...A,
+  A,
+}
 // A namespace-import fixture (`import * as FP from '@stopcock/fp'`) binds
-// its local to the whole module namespace; RUNTIME already has the shape
-// FP.pipe/FP.A/etc need, so it doubles as that namespace object.
-RUNTIME.FP = RUNTIME
+// its local to the root module namespace. Array operators live in a separate
+// namespace fixture so the harness mirrors the public package export map.
+RUNTIME.FP = ROOT_RUNTIME
 
 const IMPORT_LINE_RE = /^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm
 
@@ -16,7 +22,7 @@ function stripImports(code: string): string {
 
 export interface Fixture {
   readonly name: string
-  /** Import statement(s), e.g. "import { pipe, A } from '@stopcock/fp'" */
+  /** Import statement(s), e.g. root `pipe` plus operators from `/array`. */
   readonly imports: string
   /** local name -> canonical runtime export name */
   readonly locals: Record<string, string>
@@ -34,11 +40,18 @@ export interface RunResult {
 
 function runWrapped(wrappedCode: string, paramNames: readonly string[], paramValues: readonly unknown[]): RunResult {
   const strippedBody = stripImports(wrappedCode)
-  const call = `${strippedBody}\nreturn __fixture(${paramNames.join(', ')});`
+  const call = `${strippedBody}\nreturn __fixture();`
+  const noneAlias = wrappedCode.match(
+    /import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u,
+  )?.[1]
   try {
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const fn = new Function(...paramNames, call)
-    return { value: fn(...paramValues) }
+    const fn = new Function(
+      ...paramNames,
+      ...(noneAlias ? [noneAlias] : []),
+      call,
+    )
+    return { value: fn(...paramValues, ...(noneAlias ? [none] : [])) }
   } catch (error) {
     return { value: undefined, error }
   }
@@ -65,7 +78,10 @@ export function runFixture(
 
   function build(extra: Record<string, unknown>) {
     const paramNames = [...localNames, ...Object.keys(extra)]
-    const fullSource = `${fixture.imports}\nfunction __fixture(${paramNames.join(', ')}) {\n${fixture.body}\n}\n`
+    // Imported identifiers stay free in the fixture body, as they would in
+    // real module code. new Function supplies equivalent outer bindings only
+    // after the imports have been stripped for runtime comparison.
+    const fullSource = `${fixture.imports}\nfunction __fixture() {\n${fixture.body}\n}\n`
     return { fullSource, paramNames }
   }
 

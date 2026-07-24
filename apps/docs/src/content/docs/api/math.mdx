@@ -25,7 +25,9 @@ modulo(a: number, b: number): number
 ## Examples
 
 ```ts
-import { pipe, A, M } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as M from '@stopcock/fp/math'
 
 // apply discount
 pipe(prices, A.map(M.multiply(0.9))) // 10% off

@@ -7,15 +7,25 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { afterAll, describe, expect, it } from 'vitest'
-import { stopcockFp } from '../plugin'
+import { stopcockFp as stopcockEsbuild } from '../esbuild'
+import { stopcockFp as stopcockRollup } from '../rollup'
+import { stopcockFp as stopcockVite } from '../vite'
+import { stopcockFp as stopcockWebpack } from '../webpack'
 
-// Fixtures build in an isolated scratch dir with no node_modules of its
-// own, so `@stopcock/fp` must be pointed at the workspace's built dist
-// entry explicitly for each host's resolver.
+// Fixtures build in an isolated scratch dir with no node_modules of their
+// own, so both public FP entries must be pointed at the workspace build.
 const FP_DIST_ENTRY = fileURLToPath(new URL('../../../fp/dist/index.js', import.meta.url))
+const FP_ARRAY_DIST_ENTRY = fileURLToPath(new URL('../../../fp/dist/array.js', import.meta.url))
+
+function resolveFpEntry(id: string): string | null {
+  if (id === '@stopcock/fp') return FP_DIST_ENTRY
+  if (id === '@stopcock/fp/array') return FP_ARRAY_DIST_ENTRY
+  return null
+}
 
 const FIXTURE_SOURCE = `
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 export const result = pipe(
   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   A.filterMap((x) => (x % 2 === 0 ? x * 10 : undefined)),
@@ -52,8 +62,8 @@ describe('real-host smoke tests', () => {
     const bundle = await rollup({
       input: entry,
       plugins: [
-        { name: 'alias-stopcock-fp', resolveId: (id) => (id === '@stopcock/fp' ? FP_DIST_ENTRY : null) },
-        stopcockFp.rollup({ diagnostics: 'verbose' }),
+        { name: 'alias-stopcock-fp', resolveId: resolveFpEntry },
+        stopcockRollup({ diagnostics: 'verbose' }),
       ],
     })
     const { output } = await bundle.generate({ format: 'es' })
@@ -83,11 +93,14 @@ describe('real-host smoke tests', () => {
       format: 'esm',
       platform: 'node',
       plugins: [
-        stopcockFp.esbuild({ diagnostics: 'verbose' }),
+        stopcockEsbuild({ diagnostics: 'verbose' }),
         {
           name: 'alias-stopcock-fp',
           setup(build) {
-            build.onResolve({ filter: /^@stopcock\/fp$/ }, () => ({ path: FP_DIST_ENTRY }))
+            build.onResolve(
+              { filter: /^@stopcock\/fp(?:\/array)?$/ },
+              ({ path }) => ({ path: resolveFpEntry(path)! }),
+            )
           },
         },
       ],
@@ -119,9 +132,12 @@ describe('real-host smoke tests', () => {
           library: { type: 'commonjs2' },
         },
         resolve: {
-          alias: { '@stopcock/fp': FP_DIST_ENTRY },
+          alias: {
+            '@stopcock/fp$': FP_DIST_ENTRY,
+            '@stopcock/fp/array$': FP_ARRAY_DIST_ENTRY,
+          },
         },
-        plugins: [stopcockFp.webpack({ diagnostics: 'verbose' })],
+        plugins: [stopcockWebpack({ diagnostics: 'verbose' })],
       })
       compiler.run((err, stats) => {
         compiler.close(() => {
@@ -151,9 +167,12 @@ describe('real-host smoke tests', () => {
       root: dir,
       logLevel: 'silent',
       resolve: {
-        alias: { '@stopcock/fp': FP_DIST_ENTRY },
+        alias: [
+          { find: /^@stopcock\/fp$/, replacement: FP_DIST_ENTRY },
+          { find: /^@stopcock\/fp\/array$/, replacement: FP_ARRAY_DIST_ENTRY },
+        ],
       },
-      plugins: [stopcockFp.vite({ diagnostics: 'verbose' })],
+      plugins: [stopcockVite({ diagnostics: 'verbose' })],
       build: {
         outDir: join(dir, 'dist'),
         lib: {

@@ -1,4 +1,4 @@
-import { dual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
 import type { Timestamp, Duration, DateUnit } from './types'
 import { MS_DAY, MS_HOUR, MS_MINUTE, MS_SECOND, stamp } from './core'
 

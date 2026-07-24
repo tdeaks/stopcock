@@ -1,5 +1,5 @@
 import { bench, describe } from 'vite-plus/test'
-import { A } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 import * as _ from 'lodash-es'
 import * as Ra from 'ramda'
 import * as Rb from 'rambda'
@@ -9,7 +9,7 @@ describe.each([100, 1_000, 10_000])('indexOf — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
   const target = data[Math.floor(n / 2)]
 
-  bench('stopcock', () => A.indexOf(data, target))
+  bench('stopcock', () => A.indexOfOrUndefined(data, target))
   bench('rambda', () => Rb.indexOf(target)(data))
   bench('ramda', () => Ra.indexOf(target, data))
 })

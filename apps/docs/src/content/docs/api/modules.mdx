@@ -1,0 +1,83 @@
+---
+title: Module catalogue
+description: Every public @stopcock/fp 2.0 entrypoint
+---
+
+`@stopcock/fp` keeps its root small. Import specialist APIs from these stable,
+tree-shakeable subpaths.
+
+## Collections and sequences
+
+| Subpath              | Purpose                                                              |
+| -------------------- | -------------------------------------------------------------------- |
+| `/array`             | Eager array operators, fused pipeline steps, explicit `*Into` writes |
+| `/readonly-array`    | Read-only alias of the array vocabulary                              |
+| `/non-empty-array`   | Constructors and total operations for non-empty arrays               |
+| `/tuple`             | Typed tuple construction, mapping, zipping, and projection           |
+| `/record`            | Homogeneous property-keyed dictionaries with one value type          |
+| `/map`               | Immutable `Map` operations                                           |
+| `/set`               | Immutable `Set` operations                                           |
+| `/typed-array`       | Numeric typed-array transforms and explicit destination buffers      |
+| `/indexed`           | Shared indexed-collection operations                                 |
+| [`/iter`](/api/iter) | Lazy synchronous sequences                                           |
+| `/transducer`        | Composable allocation-free reducing transformations                  |
+| `/collector`         | Reusable terminal collectors                                         |
+
+Writable `*Into` operations preserve the concrete destination type. They
+reject fixed tuples, heterogeneous or refined record destinations, and
+ambiguous mutable target unions whenever mutation cannot be proven sound.
+
+## Data and errors
+
+| Subpath                          | Purpose                                       |
+| -------------------------------- | --------------------------------------------- |
+| [`/option`](/api/option)         | Explicit absence                              |
+| [`/result`](/api/result)         | Fail-fast recoverable errors                  |
+| [`/validation`](/api/validation) | Accumulating independent errors               |
+| [`/schema`](/api/schema)         | Standard Schema V1 production and consumption |
+| `/these`                         | Left, right, or both values                   |
+| `/nullable`                      | Focused nullable boundary helpers             |
+
+Asynchronous failures and asynchronous iteration are provided by
+`@stopcock/async`, not duplicated in the core package.
+
+## Algebra and comparison
+
+| Subpath                      | Purpose                                   |
+| ---------------------------- | ----------------------------------------- |
+| [`/eq`](/api/algebra)        | Lawful equality relations                 |
+| [`/hash`](/api/algebra)      | Composable deterministic hashing          |
+| [`/ord`](/api/algebra)       | Total ordering instances                  |
+| `/ordering`                  | Primitive ordering values and combinators |
+| [`/semigroup`](/api/algebra) | Associative combination                   |
+| [`/monoid`](/api/algebra)    | Combination with an identity              |
+| [`/group`](/api/algebra)     | Combination with inversion                |
+
+## Functions and data transformation
+
+| Subpath                | Purpose                                                                |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `/function`            | Composition, currying, memoization, predicates, and function utilities |
+| `/guard`               | Structural guards and refinements                                      |
+| `/object`              | Immutable object/path operations                                       |
+| `/string`              | String transforms and predicates                                       |
+| `/number`              | Numeric predicates, statistics, and safe partials                      |
+| `/math`                | Arithmetic pipeline operators                                          |
+| `/boolean`             | Boolean combinators                                                    |
+| `/dual`                | Build data-first and data-last APIs                                    |
+| `/compile`             | Portable pipeline planning and explanations                            |
+| [`/optic`](/api/optic) | Lenses, optionals, prisms, traversals, and more                        |
+| `/match`               | Exhaustive tagged-value matching                                       |
+
+## Functional models
+
+| Subpath      | Purpose                               |
+| ------------ | ------------------------------------- |
+| `/reader`    | Environment-dependent computations    |
+| `/state-fn`  | Pure state transitions                |
+| `/writer`    | Values paired with accumulated output |
+| `/recursion` | Stack-safe recursion schemes          |
+
+The package export map is generated from one checked-in manifest. CI builds and
+imports every runtime and declaration entry from a real packed tarball, so this
+catalogue cannot silently advertise a missing module.

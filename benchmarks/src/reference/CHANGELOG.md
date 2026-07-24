@@ -3,6 +3,32 @@
 Per the plan's oracle-independence rule, `emitter.ts` changes only with an
 entry here, reviewed, never silently.
 
+## 2026-07-23: additive compiler operation-completeness oracle
+
+The compiler performance gate previously pinned all 44 stratified portable
+cases but those cases exercised only a subset of the compiler's 39 claimed
+operations. `compiler-operation-emitter.ts` is a separate frozen,
+source-emitting oracle with one pinned benchmark row per supported operation.
+It includes explicit element, stateful, terminal, and materializer
+populations, empty/singleton semantic checks, and an exact one-transformed-site
+assertion for every row.
+
+This is deliberately additive: `emitter.ts`, its identity, its hash, and the
+historical 44-case throughput population remain unchanged. The operation lane
+has its own pinned identity and hash and reuses the existing compiler geomean
+and worst-case floors without relaxing them. Each case is measured twice in
+fresh workers, once with compiler/reference at sampler sites A/B and once with
+the roles reversed. The report retains all four raw timing arrays; the gate
+recomputes the role-balanced geometric samples and every derived statistic.
+This prevents an arbitrary JavaScriptCore lexical call-site tier from deciding
+the result while keeping the correction auditable.
+
+JavaScriptCore can reduce fixed-input `length` and `isEmpty` repetitions to
+the sampler's counted loop, so schema v3 pins those two rows as optimizer
+canaries. Their semantics, transformation, provenance, and raw samples still
+fail closed, but the 37 measurable operations alone determine throughput
+floors and aggregate statistics.
+
 ## 2026-07-21: grammar extension for scan and without (APPLIED)
 
 `array.ts`'s `scan` and `without` are now tagged with real opcodes

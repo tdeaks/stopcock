@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vite-plus/test'
-import { pipe, ok, err, some, none } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import { none, some } from '@stopcock/fp/option'
+import { err, ok } from '@stopcock/fp/result'
 import {
   of,
   resolve,
   reject,
   fromPromise,
+  tryPromise,
+  fromAsyncThrowable,
   fromResult,
   fromOption,
   delay,
@@ -45,6 +49,56 @@ describe('constructors', () => {
   it('fromPromise: wraps lazy promise', async () => {
     const task = fromPromise(() => Promise.resolve('hello'))
     expect(await run(task)).toBe('hello')
+  })
+
+  it('fromPromise: passes the run signal to cancellation-aware thunks', async () => {
+    const controller = new AbortController()
+    let received: AbortSignal | undefined
+    const task = fromPromise((signal) => {
+      received = signal
+      return Promise.resolve('hello')
+    })
+    expect(await task.run(controller.signal)).toBe('hello')
+    expect(received).toBe(controller.signal)
+  })
+
+  it('tryPromise: maps synchronous throws and async rejections', async () => {
+    const sync = tryPromise(
+      () => {
+        throw new Error('sync')
+      },
+      (error) => `mapped: ${(error as Error).message}`,
+    )
+    const asyncFailure = tryPromise(
+      async () => {
+        throw new Error('async')
+      },
+      (error) => `mapped: ${(error as Error).message}`,
+    )
+
+    await expect(run(sync)).rejects.toBe('mapped: sync')
+    await expect(run(asyncFailure)).rejects.toBe('mapped: async')
+  })
+
+  it('fromAsyncThrowable: lazily lifts an existing throwing async function', async () => {
+    let calls = 0
+    const lifted = fromAsyncThrowable(
+      async (value: number) => {
+        calls++
+        if (value < 0) throw new Error('negative')
+        return value * 2
+      },
+      (error) => ({ _tag: 'LegacyFailure' as const, cause: error }),
+    )
+
+    const task = lifted(4)
+    expect(calls).toBe(0)
+    expect(await run(task)).toBe(8)
+    expect(calls).toBe(1)
+
+    await expect(run(lifted(-1))).rejects.toMatchObject({
+      _tag: 'LegacyFailure',
+    })
   })
 
   it('fromResult: Ok → success', async () => {

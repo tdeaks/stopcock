@@ -12,6 +12,7 @@
   "scripts": {
     "test": "vp test run",
     "test:packages": "vp test run --exclude='packages/synth/**'",
+    "test:types": "node tooling/check-package-type-tests.mjs",
     "lint": "vp lint . --report-unused-disable-directives",
     "lint:fix": "vp lint . --fix",
     "lint:ci": "vp lint . --deny-warnings --report-unused-disable-directives",

@@ -1,5 +1,5 @@
 import { bench, describe } from 'vite-plus/test'
-import { M } from '@stopcock/fp'
+import * as M from '@stopcock/fp/math'
 import * as Ra from 'ramda'
 import * as Rb from 'rambda'
 

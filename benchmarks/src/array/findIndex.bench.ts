@@ -1,5 +1,5 @@
 import { bench, describe } from 'vite-plus/test'
-import { A } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
 import * as Ra from 'ramda'
@@ -12,7 +12,7 @@ const pred = (x: number) => x > 0.95
 describe.each([100, 1_000, 10_000, 100_000])('findIndex — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
 
-  bench('stopcock', () => A.findIndex(data, pred))
+  bench('stopcock', () => A.findIndexOrUndefined(data, pred))
   bench('ts-belt', () => TB.getIndexBy(data, pred))
   bench('remeda', () => R.findIndex(data, pred))
   bench('rambda', () => Rb.findIndex(pred)(data))

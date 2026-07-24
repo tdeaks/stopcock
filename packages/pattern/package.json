@@ -1,0 +1,41 @@
+{
+  "name": "@stopcock/pattern",
+  "version": "0.0.0",
+  "description": "Exhaustive, structural pattern matching for TypeScript",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tdeaks/stopcock.git",
+    "directory": "packages/pattern"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./match": {
+      "types": "./dist/match.d.ts",
+      "import": "./dist/match.js"
+    },
+    "./pattern": {
+      "types": "./dist/pattern.d.ts",
+      "import": "./dist/pattern.js"
+    }
+  },
+  "scripts": {
+    "check:types": "tsc -p tsconfig.type-tests.json"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

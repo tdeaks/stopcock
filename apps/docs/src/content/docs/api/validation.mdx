@@ -1,0 +1,99 @@
+---
+title: V (Validation)
+description: Accumulate independent validation errors while staying compatible with Result
+---
+
+Validation is for independent checks where callers need every error in one pass. It uses the same
+runtime representation as `Result`, but its error side is guaranteed to be non-empty.
+
+```ts
+type NonEmptyArray<E> = readonly [E, ...E[]]
+type Validation<A, E> = Result<A, NonEmptyArray<E>>
+```
+
+## Constructors
+
+```ts
+valid<A>(value: A): Validation<A, never>
+invalid<E>(error: E): Validation<never, E>
+fromResult<A, E>(result: Result<A, E>): Validation<A, E>
+
+fromPredicate<A, E>(
+  value: A,
+  predicate: (value: A) => boolean,
+  onFalse: (value: A) => E,
+): Validation<A, E>
+
+fromPredicate<A, E>(
+  predicate: (value: A) => boolean,
+  onFalse: (value: A) => E,
+): (value: A) => Validation<A, E>
+```
+
+`invalid(error)` stores one error in a `NonEmptyArray`. `fromResult` preserves a success and wraps
+one Result error. Type-guard predicates narrow the successful value, and `onFalse` is lazy.
+
+## Accumulation
+
+```ts
+all<T extends readonly Validation<unknown, unknown>[]>(
+  validations: T,
+): Validation<ValuesOf<T>, ErrorsOf<T>>
+
+traverse<A, B, E>(
+  values: readonly A[],
+  validate: (value: A) => Validation<B, E>,
+): Validation<B[], E>
+
+traverse<A, B, E>(
+  validate: (value: A) => Validation<B, E>,
+): (values: readonly A[]) => Validation<B[], E>
+```
+
+`all` preserves heterogeneous tuple types and flattens every validation error in stable input order.
+`traverse` calls the validator for every input, even after failures. Empty inputs return `valid([])`.
+
+```ts
+import * as R from '@stopcock/fp/result'
+import * as V from '@stopcock/fp/validation'
+
+type FieldError = { field: string; message: string }
+
+const signup = V.all([
+  V.fromPredicate(
+    email,
+    (value) => value.includes('@'),
+    () => ({
+      field: 'email',
+      message: 'invalid email',
+    }),
+  ),
+  V.fromPredicate(
+    password,
+    (value) => value.length >= 8,
+    () => ({
+      field: 'password',
+      message: 'too short',
+    }),
+  ),
+] as const)
+
+R.match({
+  err: (errors) => showErrors(errors),
+  ok: ([validEmail, validPassword]) => submit(validEmail, validPassword),
+})(signup)
+```
+
+## Result compatibility
+
+Validation is structurally a Result, so use existing Result transforms and extraction:
+
+```ts
+R.map(normalize)(validation)
+R.match({ err: showErrors, ok: submit })(validation)
+R.getOrElse(() => fallback)(validation)
+```
+
+There is deliberately no `flatMap` in the validation module. Dependent
+sequential checks are fail-fast and belong in `R.flatMap`; use Validation only
+to accumulate checks that can all run independently.

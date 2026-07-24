@@ -1,0 +1,47 @@
+---
+title: fp-compiler
+description: Optional build-time lowering for portable FP pipelines
+---
+
+```bash
+bun add @stopcock/fp
+bun add -d @stopcock/fp-compiler
+```
+
+The compiler recognizes imported `pipe`, `flow`, and `compile` calls plus
+operators from `@stopcock/fp/array`, then replaces compatible chains with
+checked-in loop templates. Compilation happens in the build tool and does not
+use runtime evaluation.
+
+```ts
+import { defineConfig } from 'vite'
+import { stopcockFp } from '@stopcock/fp-compiler'
+
+export default defineConfig({
+  plugins: [
+    stopcockFp.vite({
+      diagnostics: 'summary',
+    }),
+  ],
+})
+```
+
+The Unplugin instance also provides Rollup, esbuild, and webpack adapters. It
+understands namespace, named, aliased, and wrapper-package imports, while
+lexically shadowed bindings and unsupported sites remain ordinary FP calls.
+
+Exact semantics are the default. `assumePure: true` records an explicit pure
+contract without silently enabling a different result today. Use `include`
+and `exclude` to filter files, `importSources` and `arrayImportSources` for
+wrapper packages, and `diagnostics: 'error'` for a fail-closed build.
+
+```ts
+import { transformStopcockPipelines } from '@stopcock/fp-compiler'
+
+const result = transformStopcockPipelines(source, 'example.ts', {
+  diagnostics: 'verbose',
+})
+```
+
+The programmatic result contains transformed code, a source map, the selected
+semantics, and a diagnostic for every transformed or skipped site.

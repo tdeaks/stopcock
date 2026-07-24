@@ -1,5 +1,6 @@
 import { bench, describe } from 'vite-plus/test'
-import { pipe, Stream } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as Iter from '@stopcock/fp/iter'
 import { getData } from './setup'
 
 const sizes = [1_000, 10_000, 100_000] as const
@@ -34,17 +35,17 @@ function nativeLoopMapFilterTake(data: readonly number[], limit: number) {
 }
 
 describe.each(sizes)(
-  'Stream.from -> map -> filter -> take(100) -> toArray, iterator bridge n=%i',
+  'Iter.from -> map -> filter -> take(100) -> toArray, iterator bridge n=%i',
   (n) => {
     const data = getData<number>('numbers', n)
 
-    bench('stopcock Stream.from map/filter/take/toArray', () =>
+    bench('stopcock Iter.from map/filter/take/toArray', () =>
       pipe(
-        Stream.from(data),
-        Stream.map(double),
-        Stream.filter(keepMappedValue),
-        Stream.take(takeCount),
-        Stream.toArray,
+        Iter.from(data),
+        Iter.map(double),
+        Iter.filter(keepMappedValue),
+        Iter.take(takeCount),
+        Iter.toArray,
       ))
 
     bench('native generator iterator map/filter/take -> Array.from', () =>

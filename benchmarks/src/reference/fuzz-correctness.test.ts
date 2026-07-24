@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import { buildPlan } from '../../../packages/fp/src/plan'
 import { interpret } from '../../../packages/fp/src/interpret'
 import { pipe } from '../../../packages/fp/src/pipe'
-import { compileJit } from '../../../packages/fp/src/compile'
+import { compile } from '../../../packages/fp/src/compile'
 import { compileEmittedPipeline } from './emitter'
 import {
   generateSerializedPipeline,
@@ -48,6 +48,27 @@ function semanticEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false
     for (let i = 0; i < a.length; i++) if (!semanticEqual(a[i], b[i])) return false
+    return true
+  }
+  if (
+    a !== null &&
+    b !== null &&
+    typeof a === 'object' &&
+    typeof b === 'object'
+  ) {
+    const left = a as Record<PropertyKey, unknown>
+    const right = b as Record<PropertyKey, unknown>
+    const leftKeys = Reflect.ownKeys(left)
+    const rightKeys = Reflect.ownKeys(right)
+    if (leftKeys.length !== rightKeys.length) return false
+    for (const key of leftKeys) {
+      if (
+        !Object.prototype.hasOwnProperty.call(right, key) ||
+        !semanticEqual(left[key], right[key])
+      ) {
+        return false
+      }
+    }
     return true
   }
   return Object.is(a, b) || a === b
@@ -102,19 +123,12 @@ function runEmitted(sp: SerializedPipeline): RunOutcome {
   }
 }
 
-/**
- * Runs the pipeline through compileJit (tier 1/2, awaited so generation is
- * deterministic rather than threshold-gated). Single-step and empty
- * pipelines are skipped: compileJit's single-op collapse dispatches to the
- * same eager kernel pipe() and interpret() already use, so it can never
- * diverge and adds no tier coverage.
- */
-async function runJit(sp: SerializedPipeline): Promise<RunOutcome | undefined> {
+/** Runs the same shape through the public portable compiler. */
+function runCompiled(sp: SerializedPipeline): RunOutcome {
   const log: CallLogEntry[] = []
   const g = resolvePipeline(sp, loggingWrapper(log))
-  if (g.realSteps.length < 2) return undefined
   try {
-    const runner = await compileJit(...(g.realSteps as unknown[]))
+    const runner = compile(...(g.realSteps as unknown[]))
     const value = runner(g.input)
     return { value, log }
   } catch (e) {
@@ -151,16 +165,13 @@ async function checkPipeline(sp: SerializedPipeline): Promise<CompareFailure | u
   const fromInterpret = runInterpret(sp)
   const fromPipe = runPipe(sp)
   const fromEmitted = runEmitted(sp)
-  const fromJit = await runJit(sp)
-  const base =
+  const fromCompiled = runCompiled(sp)
+  return (
     compareOutcomes(fromInterpret, fromPipe, 'interpret', 'pipe') ??
     compareOutcomes(fromInterpret, fromEmitted, 'interpret', 'emitted') ??
-    compareOutcomes(fromPipe, fromEmitted, 'pipe', 'emitted')
-  if (base) return base
-  if (!fromJit) return undefined
-  return (
-    compareOutcomes(fromInterpret, fromJit, 'interpret', 'jit') ??
-    compareOutcomes(fromPipe, fromJit, 'pipe', 'jit')
+    compareOutcomes(fromPipe, fromEmitted, 'pipe', 'emitted') ??
+    compareOutcomes(fromInterpret, fromCompiled, 'interpret', 'compiled') ??
+    compareOutcomes(fromPipe, fromCompiled, 'pipe', 'compiled')
   )
 }
 

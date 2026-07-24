@@ -1,5 +1,5 @@
 import { bench, describe } from 'vite-plus/test'
-import { G } from '@stopcock/fp'
+import * as G from '@stopcock/fp/guard'
 import * as _ from 'lodash-es'
 import * as Ra from 'ramda'
 
@@ -40,21 +40,31 @@ for (let i = 0; i < 50; i++) {
   large50B[`k${i}`] = i
 }
 
-const hasOwn = Object.prototype.hasOwnProperty
+const enumerableOwnKeys = (value: object): PropertyKey[] =>
+  Reflect.ownKeys(value).filter((key) =>
+    Object.prototype.propertyIsEnumerable.call(value, key),
+  )
 
-const shallowManual = (a: Record<string, unknown>, b: Record<string, unknown>): boolean => {
-  const ka = Object.keys(a)
-  if (ka.length !== Object.keys(b).length) return false
-  for (const k of ka) if (!hasOwn.call(b, k) || a[k] !== b[k]) return false
+const shallowManual = (a: object, b: object): boolean => {
+  const ka = enumerableOwnKeys(a)
+  if (ka.length !== enumerableOwnKeys(b).length) return false
+  for (const key of ka) {
+    if (
+      !Object.prototype.propertyIsEnumerable.call(b, key) ||
+      !Object.is(Reflect.get(a, key), Reflect.get(b, key))
+    ) {
+      return false
+    }
+  }
   return true
 }
 
 describe('isShallowEqual — small objects (5 keys)', () => {
   bench('stopcock', () => G.isShallowEqual(small5A, small5B))
-  bench('manual Object.keys + ===', () => shallowManual(small5A, small5B))
+  bench('manual equivalent Reflect.ownKeys + Object.is', () => shallowManual(small5A, small5B))
 })
 
 describe('isShallowEqual — large objects (50 keys)', () => {
   bench('stopcock', () => G.isShallowEqual(large50A, large50B))
-  bench('manual Object.keys + ===', () => shallowManual(large50A, large50B))
+  bench('manual equivalent Reflect.ownKeys + Object.is', () => shallowManual(large50A, large50B))
 })

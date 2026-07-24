@@ -2,9 +2,25 @@ import { describe, it, expect } from 'vite-plus/test'
 import * as A from '../array'
 import { buildPlan } from '../plan'
 import { interpret } from '../interpret'
-import { compile, explainPipeline } from '../compile'
+import { compile, explain, planAndLowerFast } from '../compile'
 import { ARRAY_TEMPLATES, SINK_TEMPLATES } from '../portable-templates'
-import { OP_MAP, OP_FILTER, OP_REJECT, OP_FILTER_MAP, OP_TAKE, OP_REDUCE, OP_COUNT, OP_SUM } from '../opcodes'
+import {
+  OP_MAP,
+  OP_FILTER,
+  OP_REJECT,
+  OP_FILTER_MAP,
+  OP_FLAT_MAP,
+  OP_TAKE,
+  OP_REDUCE,
+  OP_EVERY,
+  OP_SOME,
+  OP_FIND,
+  OP_FIND_INDEX,
+  OP_NONE,
+  OP_COUNT,
+  OP_FIND_MAP,
+  OP_SUM,
+} from '../opcodes'
 
 function tracked<F extends (...args: any[]) => any>(fn: F): F & { calls: unknown[][] } {
   const calls: unknown[][] = []
@@ -49,6 +65,13 @@ function stageStep(op: number, track: <F extends (...a: any[]) => any>(fn: F) =>
           return x % 2 === 0 ? x * 10 : null
         }),
       )
+    case OP_FLAT_MAP:
+      return A.flatMap(
+        track((x: number) => {
+          if (x === throwAt) throw new Boom('flatMap')
+          return [x, x + 1]
+        }),
+      )
     default:
       throw new Error(`stageStep: unsupported op ${op}`)
   }
@@ -70,13 +93,75 @@ function buildStepsForOpcodes(
     if (op === OP_TAKE) {
       steps.push(A.take(3))
     } else if (op === OP_REDUCE) {
-      steps.push(A.reduce(track((acc: number, x: number) => acc + x), 0))
+      steps.push(
+        A.reduce(
+          track((acc: number, x: number) => {
+            if (x === throwAt) throw new Boom('reduce')
+            return acc + x
+          }),
+          0,
+        ),
+      )
     } else if (op === OP_COUNT) {
       steps.push(
         A.count(
           track((x: number) => {
             if (x === throwAt) throw new Boom('count')
             return x % 2 === 0
+          }),
+        ),
+      )
+    } else if (op === OP_EVERY) {
+      steps.push(
+        A.every(
+          track((x: number) => {
+            if (x === throwAt) throw new Boom('every')
+            return true
+          }),
+        ),
+      )
+    } else if (op === OP_SOME) {
+      steps.push(
+        A.some(
+          track((x: number) => {
+            if (x === throwAt) throw new Boom('some')
+            return false
+          }),
+        ),
+      )
+    } else if (op === OP_FIND) {
+      steps.push(
+        A.find(
+          track((x: number) => {
+            if (x === throwAt) throw new Boom('find')
+            return false
+          }),
+        ),
+      )
+    } else if (op === OP_FIND_INDEX) {
+      steps.push(
+        A.findIndex(
+          track((x: number) => {
+            if (x === throwAt) throw new Boom('findIndex')
+            return false
+          }),
+        ),
+      )
+    } else if (op === OP_NONE) {
+      steps.push(
+        A.none(
+          track((x: number) => {
+            if (x === throwAt) throw new Boom('none')
+            return false
+          }),
+        ),
+      )
+    } else if (op === OP_FIND_MAP) {
+      steps.push(
+        A.findMap(
+          track((x: number) => {
+            if (x === throwAt) throw new Boom('findMap')
+            return null
           }),
         ),
       )
@@ -230,7 +315,7 @@ describe('portable templates: sum fusion (stream chain -> SUM boundary)', () => 
 
       it('reports the fused pair as executor kind "template"', () => {
         const steps = buildStepsForOpcodes([baseOp, OP_SUM], tracked)
-        const explanation = explainPipeline(...steps)
+        const explanation = explain(...steps)
         expect(explanation.segmentExecutors).toEqual(['template', 'template'])
       })
     })
@@ -251,7 +336,7 @@ describe('portable templates: fallback correctness for a shape with no template'
     const actual = compile(...steps)(input)
     expect(actual).toEqual(expected)
 
-    const explanation = explainPipeline(...steps)
+    const explanation = explain(...steps)
     expect(explanation.segmentExecutors).toEqual(['generic'])
   })
 
@@ -263,12 +348,102 @@ describe('portable templates: fallback correctness for a shape with no template'
     const actual = compile(...steps)(input)
     expect(actual).toEqual(expected)
 
-    const explanation = explainPipeline(...steps)
+    const explanation = explain(...steps)
     expect(explanation.segmentExecutors).toEqual(['generic'])
   })
 })
 
+describe('portable templates: targeted reducing, short-circuit, and flatMap coverage', () => {
+  it('selects templates for the measured map/filter sinks and long flatMap shapes', () => {
+    expect(
+      explain(
+        A.map((x: number) => x + 1),
+        A.filter((x: number) => x % 2 === 0),
+        A.reduce((acc: number, x: number) => acc + x, 0),
+      ).segmentExecutors,
+    ).toEqual(['template'])
+
+    expect(
+      explain(
+        A.map((x: number) => x + 1),
+        A.filter((x: number) => x % 2 === 0),
+        A.find((x: number) => x > 10),
+      ).segmentExecutors,
+    ).toEqual(['template'])
+
+    expect(
+      explain(
+        A.map((x: number) => x + 1),
+        A.flatMap((x: number) => [x, x + 1]),
+        A.filter((x: number) => x % 2 === 0),
+        A.filterMap((x: number) => (x > 0 ? x * 2 : null)),
+        A.reduce((acc: number, x: number) => acc + x, 0),
+      ).segmentExecutors,
+    ).toEqual(['template'])
+  })
+
+  it('reports the exact source consumption for an early short-circuit template', () => {
+    const { entry, bindings } = planAndLowerFast([
+      A.map((x: number) => x + 1),
+      A.filter((x: number) => x % 2 === 0),
+      A.find((x: number) => x === 4),
+    ])
+    const meta = { consumed: 0 }
+
+    expect(entry.run([1, 2, 3, 4, 5], bindings, meta)).toEqual({ _tag: 1, value: 4 })
+    expect(meta.consumed).toBe(3)
+  })
+
+  it('closes a flatMap iterable when a long find template exits early', () => {
+    let closed = false
+    function* expand(x: number): Generator<number> {
+      try {
+        yield x
+        yield x + 1
+      } finally {
+        closed = true
+      }
+    }
+    const runner = compile(
+      A.map((x: number) => x),
+      A.flatMap(expand),
+      A.filter((x: number) => x >= 0),
+      A.filterMap((x: number) => x),
+      A.find((x: number) => x === 1),
+    )
+
+    expect(runner([0, 10])).toEqual({ _tag: 1, value: 1 })
+    expect(closed).toBe(true)
+  })
+})
+
 describe('portable templates: reentrancy on a template execution path', () => {
+  it('isolates more callback binding sets than the bounded lane count', () => {
+    const input = Array.from({ length: 200 }, (_, index) => index - 100)
+    const pipelines = Array.from({ length: 12 }, (_, index) => {
+      const multiplier = index + 1
+      const offset = index - 5
+      const modulus = (index % 5) + 2
+      const remainder = index % modulus
+      const runner = compile(
+        A.map((value: number) => value * multiplier + offset),
+        A.filter((value: number) => value % modulus === remainder),
+        A.reduce((acc: number, value: number) => acc + value, index),
+      )
+      const expected = input
+        .map((value) => value * multiplier + offset)
+        .filter((value) => value % modulus === remainder)
+        .reduce((acc, value) => acc + value, index)
+      return { runner, expected }
+    })
+
+    for (let round = 0; round < 5; round++) {
+      for (const pipeline of pipelines) {
+        expect(pipeline.runner(input)).toBe(pipeline.expected)
+      }
+    }
+  })
+
   it('a template-executed pipe nested inside another template-executed pipe does not corrupt state', () => {
     const inner = compile(
       A.map((x: number) => x * 2),
@@ -279,7 +454,7 @@ describe('portable templates: reentrancy on a template execution path', () => {
       A.filterMap((rows: number[]) => (rows.length > 0 ? rows : null)),
     )
 
-    const explanationInner = explainPipeline(
+    const explanationInner = explain(
       A.map((x: number) => x * 2),
       A.filter((x: number) => x % 3 !== 0),
     )

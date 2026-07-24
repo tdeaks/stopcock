@@ -1,0 +1,30 @@
+---
+title: parser
+description: Typed parser combinators with precise source errors
+---
+
+```bash
+bun add @stopcock/parser @stopcock/fp
+```
+
+Parsers operate on one source string plus an absolute offset. Complete parses
+return `Result`, optional grammar branches return `Option`, and public errors
+add line, column, span, context, and the farthest expected input only at the
+parse boundary.
+
+```ts
+import { between, comma, integer, parse, sepEndBy, symbol } from '@stopcock/parser'
+
+const integers = between(symbol('['), sepEndBy(integer, comma), symbol(']'))
+
+const result = parse(integers, '[1, 2, 3,]')
+```
+
+The package covers mapping and sequencing, choice and backtracking, lookahead,
+commit points, repetition, separated lists, recursive grammars, source spans,
+tokens, quoted strings, numbers, identifiers, and stack-safe left- and
+right-associative chains. Repetition detects successful zero-width parsers and
+returns an error instead of looping forever.
+
+Use `@stopcock/parser/core`, `@stopcock/parser/combinators`, and
+`@stopcock/parser/primitives` for focused imports.

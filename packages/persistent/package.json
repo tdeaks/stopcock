@@ -1,0 +1,72 @@
+{
+  "name": "@stopcock/persistent",
+  "version": "0.0.0",
+  "description": "Fast, immutable persistent collections with explicit transient builders",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tdeaks/stopcock.git",
+    "directory": "packages/persistent"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./hash": {
+      "types": "./dist/hash.d.ts",
+      "import": "./dist/hash.js"
+    },
+    "./vector": {
+      "types": "./dist/vector.d.ts",
+      "import": "./dist/vector.js"
+    },
+    "./hash-map": {
+      "types": "./dist/hash-map.d.ts",
+      "import": "./dist/hash-map.js"
+    },
+    "./hash-set": {
+      "types": "./dist/hash-set.d.ts",
+      "import": "./dist/hash-set.js"
+    },
+    "./ordered-map": {
+      "types": "./dist/ordered-map.d.ts",
+      "import": "./dist/ordered-map.js"
+    },
+    "./ordered-set": {
+      "types": "./dist/ordered-set.d.ts",
+      "import": "./dist/ordered-set.js"
+    },
+    "./queue": {
+      "types": "./dist/queue.d.ts",
+      "import": "./dist/queue.js"
+    },
+    "./deque": {
+      "types": "./dist/deque.d.ts",
+      "import": "./dist/deque.js"
+    },
+    "./stack": {
+      "types": "./dist/stack.d.ts",
+      "import": "./dist/stack.js"
+    }
+  },
+  "scripts": {
+    "test": "vp test run",
+    "typecheck": "vp exec tsc --noEmit",
+    "check:types": "vp exec tsc -p tsconfig.type-tests.json"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,4 +1,4 @@
-import { dual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
 import { asVar, record } from './tape'
 import type { Var } from './types'
 import type { ScalarInput } from './scalar'

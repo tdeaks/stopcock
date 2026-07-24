@@ -1,5 +1,5 @@
 import { bench, describe } from 'vite-plus/test'
-import { A } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
 import * as Ra from 'ramda'
@@ -10,7 +10,7 @@ import { getData } from '../setup'
 describe.each([100, 1_000, 10_000, 100_000])('head — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
 
-  bench('stopcock', () => A.head(data))
+  bench('stopcock', () => A.headOrUndefined(data))
   bench('ts-belt', () => TB.head(data))
   bench('remeda', () => R.first(data))
   bench('rambda', () => Rb.head(data))
@@ -21,7 +21,7 @@ describe.each([100, 1_000, 10_000, 100_000])('head — n=%i', (n) => {
 describe.each([100, 1_000, 10_000, 100_000])('last — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
 
-  bench('stopcock', () => A.last(data))
+  bench('stopcock', () => A.lastOrUndefined(data))
   bench('ts-belt', () => TB.last(data))
   bench('remeda', () => R.last(data))
   bench('rambda', () => Rb.last(data))

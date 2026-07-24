@@ -1,6 +1,6 @@
 ---
 title: fp
-description: Pipe-based functional programming with pipeline fusion
+description: Portable, typed functional programming for TypeScript
 ---
 
 import { Aside } from '@astrojs/starlight/components'
@@ -9,88 +9,148 @@ import { Aside } from '@astrojs/starlight/components'
 bun add @stopcock/fp
 ```
 
-Everything you need for pipe-based FP. Arrays, strings, objects, numbers, and typed error handling. Chain streaming array operations in `pipe` and they get fused into single loops at runtime.
+`@stopcock/fp` is a focused functional-programming toolkit for TypeScript. It
+provides typed data types, eager and lazy collections, algebra, optics,
+validation, pattern matching, recursion schemes, and a portable pipeline
+compiler without taking ownership of your application runtime.
+
+The root is intentionally small:
 
 ```ts
-import { pipe, A, O, R } from '@stopcock/fp'
+import {
+  compile,
+  compilePure,
+  dual,
+  err,
+  flow,
+  none,
+  ok,
+  pipe,
+  some,
+} from '@stopcock/fp'
+```
+
+Specialist APIs live in tree-shakeable subpaths:
+
+```ts
+import * as A from '@stopcock/fp/array'
+import * as Iter from '@stopcock/fp/iter'
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
+import * as V from '@stopcock/fp/validation'
+import * as Optic from '@stopcock/fp/optic'
+```
+
+## Everyday pipelines
+
+```ts
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
 const activeNames = pipe(
   players,
-  A.filter((p) => p.active),
-  A.map((p) => p.name),
+  A.filter((player) => player.active),
+  A.map((player) => player.name),
   A.take(10),
 )
 ```
 
-- `pipe(value, ...fns)` passes a value through functions left to right. Streaming `A.*` operations can fuse into a single loop.
-- Every function works **both ways**: `A.map(arr, fn)` (data-first) and `pipe(arr, A.map(fn))` (data-last).
-- `Option<A>` / `Result<A, E>` cover nullable values and recoverable errors. Numeric `_tag` values support fast branching.
-
-## Modules
-
-| Namespace | Module                  | What it does                                                                             |
-| --------- | ----------------------- | ---------------------------------------------------------------------------------------- |
-| `A`       | [Array](/api/array)     | `map`, `filter`, `reduce`, `sort`, `groupBy`, `zip`, `take`, `flatMap` + 30 more         |
-| `S`       | [String](/api/string)   | `split`, `trim`, `replaceAll`, `startsWith`, `slice`, `repeat`                           |
-| `D`       | [Dict](/api/dict)       | `map`, `filter`, `get`, `merge`, `keys`, `values`, `toEntries`                           |
-| `N`       | [Number](/api/number)   | `clamp`, `sum`, `mean`, `median`, `isEven`, `isOdd`                                      |
-| `G`       | [Guards](/api/guards)   | `isString`, `isNumber`, `isArray`, `isNil`, `isPlainObject`                              |
-| `Obj`     | [Object](/api/object)   | `pick`, `omit`, `assoc`, `dissoc`, `mergeDeepLeft`, `mergeDeepRight`, `path`, `evolve`   |
-| `M`       | [Math](/api/math)       | `add`, `subtract`, `multiply`, `divide`, `modulo`, `inc`, `dec`, `product`               |
-| `B`       | [Boolean](/api/boolean) | `and_`, `or_`, `not_`, `ifElse`                                                          |
-| `Logic`   | [Logic](/api/logic)     | `both`, `either`, `equals`, `defaultTo`, `cond`, `when_`, `unless`, `allPass`, `anyPass` |
-| `Lens`    | [Lenses](/api/lenses)   | `view`, `set`, `over` for immutable nested updates                                       |
-| `O`       | [Option](/api/option)   | `some`, `none`, `fromNullable`, `map`, `flatMap`, `match`                                |
-| `R`       | [Result](/api/result)   | `ok`, `err`, `tryCatch`, `map`, `mapErr`, `flatMap`, `match`                             |
+Public operators support direct and pipe-friendly forms where both are useful:
 
 ```ts
-// Looks like 3 passes over the array:
-const result = pipe(
-  users, // 100,000 users
-  A.filter((u) => u.active), // pass 1: filter
-  A.map((u) => u.name), // pass 2: map
-  A.take(10), // pass 3: slice
-)
-
-// But streaming fusion compiles it into roughly:
-const result = []
-for (const u of users) {
-  if (!u.active) continue
-  result.push(u.name)
-  if (result.length >= 10) break
-}
+const doubled = A.map([1, 2, 3], (value) => value * 2)
+const alsoDoubled = pipe([1, 2, 3], A.map((value) => value * 2))
 ```
 
-<Aside type="tip">
-  Streaming-fused operations include `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, and `dropWhile`.
-  Terminal folds and predicates such as `reduce`, `find`, `every`, `some`, and `count` finish a fused pass.
-  Accessor terminals such as `head`, `last`, `length`, `join`, `sum`, `min`, and `max` also end the chain.
-  `sort`, `sortBy`, `reverse`, `groupBy`, and `uniq` are materialization boundaries.
-  `sortBy -> take(k)` and `sort -> take(k)` use a special top-k optimization.
-</Aside>
+Array operations are immutable by default. Explicit `*Into` operations write
+into caller-owned storage, while view-named operations are the only APIs
+allowed to alias an input.
 
-## Option & Result
+## Portable compilation
+
+Repeated hot pipelines can be planned once:
 
 ```ts
-// Option: values might not exist
-const port = pipe(
-  O.fromNullable(process.env.PORT),
-  O.map((s) => parseInt(s, 10)),
-  O.filter((n) => n > 0 && n < 65536),
-  O.getOrElse(() => 3000),
+const activeNames = compile(
+  A.filter((player: Player) => player.active),
+  A.map((player) => player.name),
+  A.take(10),
 )
 
-// Result: operations might fail
-const config = pipe(
-  R.tryCatch(() => JSON.parse(rawConfig)),
-  R.map((obj) => obj.settings),
-  R.getOrElse(() => defaults),
+activeNames(players)
+```
+
+`compile` preserves ordinary callback semantics. `compilePure` additionally
+permits rewrites that are valid only when callbacks are pure. Both use
+checked-in portable loop templates: the runtime package does not call
+`eval`, construct functions from strings, or load a JIT chunk.
+
+```ts
+import { explain } from '@stopcock/fp'
+
+console.log(
+  explain(
+    A.map((value: number) => value * 2),
+    A.filter((value) => value > 0),
+  ),
 )
 ```
 
 <Aside type="note">
-  `Option` and `Result` use numeric `_tag` values (0/1) instead of string tags. V8 handles numeric
-  comparisons in a single CPU instruction.
+  The optional `@stopcock/fp-compiler` build plugin can lower ordinary
+  `pipe`/`flow` call sites at build time. Applications still import only
+  `@stopcock/fp`; generated code does not require the compiler at runtime.
 </Aside>
 
-Full docs on the [Option & Result page](/concepts/option-result), or look at individual module pages in the sidebar.
+## Missing values, failures, and validation
+
+Use `Option` for absence, `Result` for fail-fast recoverable errors, and
+`Validation` when independent checks should accumulate all errors.
+
+```ts
+import { pipe } from '@stopcock/fp'
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
+import * as V from '@stopcock/fp/validation'
+
+const port = pipe(
+  O.fromNullable(process.env.PORT),
+  O.map(Number),
+  O.filter((value) => Number.isInteger(value) && value > 0),
+  O.getOrElse(() => 3000),
+)
+
+const parsed = R.tryCatch(
+  () => JSON.parse(rawConfig) as Config,
+  (cause) => ({ type: 'InvalidJson' as const, cause }),
+)
+
+const fields = V.all([
+  V.fromPredicate(name, (value) => value.length > 0, () => 'name is required'),
+  V.fromPredicate(age, Number.isFinite, () => 'age must be finite'),
+] as const)
+```
+
+Asynchronous failure belongs in `@stopcock/async/task`; there is deliberately
+no competing `AsyncResult` type.
+
+## Lazy sequences
+
+`Iter` is the single lazy synchronous sequence abstraction:
+
+```ts
+import { pipe } from '@stopcock/fp'
+import * as Iter from '@stopcock/fp/iter'
+
+const squares = pipe(
+  Iter.range(1, Infinity),
+  Iter.map((value) => value * value),
+  Iter.filter((value) => value % 2 === 0),
+  Iter.take(5),
+  Iter.toArray,
+)
+```
+
+See [Iter](/api/iter), [Option and Result](/concepts/option-result),
+[Validation](/api/validation), [Optics](/api/optic), and the complete
+[module catalogue](/api/modules).

@@ -7,7 +7,14 @@
 // since a shrunk/pinned repro is re-resolved from scratch each run).
 import * as A from '../../../packages/fp/src/array'
 import { buildCallback, type CallbackSpec } from './binding-specs'
-import type { BoundaryStepKind, EmitterBinding, PipelineDesc, SinkStepKind, StreamStepKind } from './emitter'
+import type {
+  BoundaryStepKind,
+  EmitterBinding,
+  PipelineDesc,
+  SinkStepKind,
+  StepDesc,
+  StreamStepKind,
+} from './emitter'
 
 export function mulberry32(seed: number): () => number {
   let state = seed >>> 0
@@ -155,7 +162,7 @@ export function generateSerializedPipeline(seed: number, opts: GenerateOptions =
   const opCount = int(rng, opts.minOps ?? 0, opts.maxOps ?? 4)
   const boundaryAt = rng() < (opts.boundaryProbability ?? 0.35) && opCount > 0 ? int(rng, 0, opCount) : -1
 
-  const kinds: Array<StreamStepKind | BoundaryStepKind> = []
+  const kinds: Array<StreamStepKind | BoundaryStepKind | SinkStepKind> = []
   let expansionBudget = Math.max(1, Math.floor(maxExpansion / Math.max(1, size)))
   for (let i = 0; i < opCount; i++) {
     if (i === boundaryAt) kinds.push(pick(rng, MID_BOUNDARY_KINDS))
@@ -258,7 +265,7 @@ export function resolvePipeline(serialized: SerializedPipeline, wrap?: CallbackW
     for (const i of serialized.holeIndices) delete input[i]
   }
 
-  const steps: PipelineDesc['steps'] = []
+  const steps: StepDesc[] = []
   const bindings: EmitterBinding[] = []
   const realSteps: unknown[] = []
 

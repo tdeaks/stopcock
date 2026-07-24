@@ -30,3 +30,25 @@ apply(after, undo) // back to before
 - **toLens / fromLens / fromTraversal** — bridge between patches and `@stopcock/fp` optics
 
 All functions are dual (data-first and data-last).
+
+## Optics bridge
+
+The bridge uses the functional optics API from `@stopcock/fp/optic`:
+
+```ts
+import { toLens } from '@stopcock/diff'
+import { set, view } from '@stopcock/fp/optic'
+
+const source = { user: { name: 'Tom' } }
+const name = toLens({
+  op: 'replace',
+  path: ['user', 'name'],
+  oldValue: 'Tom',
+  newValue: 'Ada',
+})
+
+if (name) {
+  view(name, source) // 'Tom'
+  set(name, source, 'Ada') // { user: { name: 'Ada' } }
+}
+```

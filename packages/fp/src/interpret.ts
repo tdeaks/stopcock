@@ -1,7 +1,7 @@
 // Reference interpreter: the semantic oracle for the Plan IR. Deliberately
-// simple and clear, not fast — every other lowering (portable AOT, JIT,
-// build compiler, Stream) must agree with this implementation's exact
-// semantics. No caching, no codegen.
+// simple and clear, not fast — every other lowering (portable closures and
+// the build compiler) must agree with this implementation's exact semantics.
+// No caching, no code generation.
 import {
   OP_COUNT,
   OP_DICT_IS_EMPTY,
@@ -61,11 +61,9 @@ import {
   OP_STR_TRIM_START,
   OP_STR_UPPER,
   OP_SCAN,
-  OP_SCAN_STREAM,
   OP_SUM,
   OP_TAIL,
   OP_TAKE,
-  OP_TAKE_STREAM,
   OP_TAKE_UNTIL,
   OP_TAKE_WHILE,
   OP_UNIQ_INLINE,
@@ -74,11 +72,12 @@ import {
 import { type OpCode, requireOpMeta } from './registry'
 import { mergeSortAsc, mergeSortBy, mergeSortDesc } from './sort-kernel'
 import { type BoundPlan, type SegmentShape, type StepBinding } from './plan'
+import { none as optionNone, some as optionSome } from './option'
 
 const HALT = Symbol('interpret.halt')
 
-function unimplemented(op: OpCode): never {
-  throw new Error(`interpret: unimplemented op ${op} (${requireOpMeta(op).name})`)
+function unsupportedOp(op: OpCode): never {
+  throw new Error(`interpret: unsupported op ${op} (${requireOpMeta(op).name})`)
 }
 
 function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[]): unknown {
@@ -93,9 +92,9 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
     case OP_SORT_DESC:
       return mergeSortDesc(data as readonly number[])
     case OP_HEAD:
-      return data[0]
+      return data.length === 0 ? optionNone : optionSome(data[0])
     case OP_LAST:
-      return data[data.length - 1]
+      return data.length === 0 ? optionNone : optionSome(data[data.length - 1])
     case OP_LENGTH:
       return data.length
     case OP_IS_EMPTY:
@@ -118,14 +117,16 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
       return sum
     }
     case OP_MIN: {
+      if (data.length === 0) return optionNone
       let min = data[0] as number
       for (let i = 1; i < data.length; i++) if ((data[i] as number) < min) min = data[i] as number
-      return min
+      return optionSome(min)
     }
     case OP_MAX: {
+      if (data.length === 0) return optionNone
       let max = data[0] as number
       for (let i = 1; i < data.length; i++) if ((data[i] as number) > max) max = data[i] as number
-      return max
+      return optionSome(max)
     }
     case OP_WITHOUT: {
       // Set has SameValueZero semantics, matching array.ts's without exactly.
@@ -133,7 +134,7 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
       return data.filter((x) => !exclude.has(x))
     }
     default:
-      return unimplemented(op)
+      return unsupportedOp(op)
   }
 }
 
@@ -224,7 +225,7 @@ function runScalarSegment(
           v = typeof v === 'function'
           break
         default:
-          unimplemented(op)
+          unsupportedOp(op)
       }
     }
     return v
@@ -273,7 +274,7 @@ function runStreamSegment(
   const dropWhileActive = new Array<boolean>(streamLen).fill(true)
   const scanAcc = new Array<unknown>(streamLen)
   for (let s = 0; s < streamLen; s++) {
-    if (codes[start + s] === OP_SCAN_STREAM || codes[start + s] === OP_SCAN) scanAcc[s] = bindings[start + s].a1
+    if (codes[start + s] === OP_SCAN) scanAcc[s] = bindings[start + s].a1
   }
 
   function emitFinal(value: unknown): void {
@@ -304,6 +305,7 @@ function runStreamSegment(
       case OP_FIND:
         if (fn(value)) {
           state.found = value
+          state.foundIndex = 0
           throw HALT
         }
         return
@@ -311,6 +313,7 @@ function runStreamSegment(
         const mapped = fn(value)
         if (mapped != null) {
           state.found = mapped
+          state.foundIndex = 0
           throw HALT
         }
         return
@@ -332,7 +335,7 @@ function runStreamSegment(
         if (fn(value)) state.count++
         return
       default:
-        unimplemented(lastOp)
+        unsupportedOp(lastOp)
     }
   }
 
@@ -373,20 +376,6 @@ function runStreamSegment(
         takeCount[s]++
         processFrom(s + 1, value)
         return
-      case OP_TAKE_STREAM: {
-        const n = b.fn as number
-        if (n <= 0) throw HALT
-        takeCount[s]++
-        processFrom(s + 1, value)
-        if (takeCount[s] >= n) throw HALT
-        return
-      }
-      case OP_SCAN_STREAM: {
-        const acc = (b.fn as (a: unknown, v: unknown) => unknown)(scanAcc[s], value)
-        scanAcc[s] = acc
-        processFrom(s + 1, acc)
-        return
-      }
       case OP_SCAN: {
         // Per-element update only; the initial accumulator (out[0]) is
         // emitted once, before any element, by the pre-pass below.
@@ -414,17 +403,16 @@ function runStreamSegment(
         processFrom(s + 1, value)
         return
       case OP_FLAT_MAP: {
-        // Iterable, not array-indexed: array.ts's flatMap returns arrays
-        // (also iterable), but Stream's flatMap returns arbitrary — even
-        // infinite — Iterables (see stream.ts). A thrown HALT unwinding
-        // through this for-of triggers the engine's own IteratorClose,
-        // closing the inner iterator without extra bookkeeping here.
+        // The executor accepts arbitrary Iterables so the same control-flow
+        // machinery can serve arrays and lazy Iter pipelines. A thrown HALT
+        // unwinding through this for-of triggers IteratorClose on the inner
+        // iterator without extra bookkeeping here.
         const items = (b.fn as (v: unknown) => Iterable<unknown>)(value)
         for (const inner of items) processFrom(s + 1, inner)
         return
       }
       default:
-        unimplemented(op)
+        unsupportedOp(op)
     }
   }
 
@@ -469,17 +457,17 @@ function runStreamSegment(
     case OP_SOME:
       return state.some
     case OP_FIND:
-      return state.found
+      return state.foundIndex === -1 ? optionNone : optionSome(state.found)
     case OP_FIND_MAP:
-      return state.found
+      return state.foundIndex === -1 ? optionNone : optionSome(state.found)
     case OP_FIND_INDEX:
-      return state.foundIndex === -1 ? undefined : state.foundIndex
+      return state.foundIndex === -1 ? optionNone : optionSome(state.foundIndex)
     case OP_NONE:
       return state.none
     case OP_COUNT:
       return state.count
     default:
-      return unimplemented(lastOp)
+      return unsupportedOp(lastOp)
   }
 }
 

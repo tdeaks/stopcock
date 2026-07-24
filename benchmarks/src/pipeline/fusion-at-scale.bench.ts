@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as O from '@stopcock/fp/option'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
 import * as Ra from 'ramda'
@@ -162,7 +164,8 @@ describe('filter→map→reduce (sum) — n=10M', () => {
 
 // floor maps 0-1 → 0-999; matching 999 requires scanning ~1000 input elements
 describe('filter→map→find (rare match) — n=10M', () => {
-  bench('stopcock', () => pipe(data, A.filter(gt50), A.map(floor), A.find(is999)))
+  bench('stopcock', () =>
+    pipe(data, A.filter(gt50), A.map(floor), A.find(is999), O.toUndefined))
   bench('ts-belt', () => tbPipe(data, TB.filter(gt50), TB.map(floor), TB.find(is999)))
   bench('remeda', () => R.pipe(data, R.filter(gt50), R.map(floor), R.find(is999)))
   bench('rambda', () => Rb.pipe(data, Rb.filter(gt50), Rb.map(floor), Rb.find(is999)))

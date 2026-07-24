@@ -1,6 +1,7 @@
 {
   "name": "@stopcock/img",
   "version": "1.0.0",
+  "description": "Pixel-level image processing, filtering, convolution, resizing, and feature extraction.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -8,7 +9,10 @@
     "directory": "packages/img"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -21,5 +25,8 @@
   "dependencies": {
     "@stopcock/color": "workspace:*",
     "@stopcock/la": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

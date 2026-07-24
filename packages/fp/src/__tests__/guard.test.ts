@@ -106,7 +106,8 @@ describe('guard', () => {
 
   describe('isPromise', () => {
     it('true for Promise', () => expect(isPromise(Promise.resolve(1))).toBe(true))
-    it('false for thenable-like object', () => expect(isPromise({ then: () => {} })).toBe(false))
+    it('true for structurally valid thenables', () =>
+      expect(isPromise({ then: () => {} })).toBe(true))
     it('false for number', () => expect(isPromise(42)).toBe(false))
   })
 
@@ -192,7 +193,7 @@ describe('guard', () => {
   })
 
   describe('isDeepEqual', () => {
-    it('equal Maps', () => {
+    it('treats distinct Maps as atomic values', () => {
       const a = new Map([
         ['x', 1],
         ['y', 2],
@@ -201,7 +202,7 @@ describe('guard', () => {
         ['x', 1],
         ['y', 2],
       ])
-      expect(isDeepEqual(a, b)).toBe(true)
+      expect(isDeepEqual(a, b)).toBe(false)
     })
 
     it('unequal Maps (different size)', () => {
@@ -225,8 +226,8 @@ describe('guard', () => {
       expect(isDeepEqual(a, b)).toBe(false)
     })
 
-    it('equal Sets', () => {
-      expect(isDeepEqual(new Set([1, 2, 3]), new Set([1, 2, 3]))).toBe(true)
+    it('treats distinct Sets as atomic values', () => {
+      expect(isDeepEqual(new Set([1, 2, 3]), new Set([1, 2, 3]))).toBe(false)
     })
 
     it('unequal Sets (different size)', () => {
@@ -237,8 +238,8 @@ describe('guard', () => {
       expect(isDeepEqual(new Set([1, 2]), new Set([1, 3]))).toBe(false)
     })
 
-    it('equal RegExps', () => {
-      expect(isDeepEqual(/foo/gi, /foo/gi)).toBe(true)
+    it('treats distinct RegExps as atomic values', () => {
+      expect(isDeepEqual(/foo/gi, /foo/gi)).toBe(false)
     })
 
     it('unequal RegExps (different source)', () => {
@@ -249,9 +250,9 @@ describe('guard', () => {
       expect(isDeepEqual(/foo/g, /foo/i)).toBe(false)
     })
 
-    it('equal Dates', () => {
+    it('treats distinct Dates as atomic values', () => {
       const t = Date.now()
-      expect(isDeepEqual(new Date(t), new Date(t))).toBe(true)
+      expect(isDeepEqual(new Date(t), new Date(t))).toBe(false)
     })
 
     it('unequal Dates', () => {
@@ -266,16 +267,16 @@ describe('guard', () => {
       expect(isDeepEqual([1], { 0: 1 })).toBe(false)
     })
 
-    it('nested objects with Maps', () => {
+    it('does not recurse into Maps nested in records', () => {
       const a = { data: new Map([['k', [1, 2]]]) }
       const b = { data: new Map([['k', [1, 2]]]) }
-      expect(isDeepEqual(a, b)).toBe(true)
+      expect(isDeepEqual(a, b)).toBe(false)
     })
 
-    it('nested objects with Sets', () => {
+    it('does not recurse into Sets nested in records', () => {
       const a = { items: new Set([1, 2]) }
       const b = { items: new Set([1, 2]) }
-      expect(isDeepEqual(a, b)).toBe(true)
+      expect(isDeepEqual(a, b)).toBe(false)
     })
 
     it('Map where a is Map but b is not', () => {

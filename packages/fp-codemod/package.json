@@ -1,0 +1,44 @@
+{
+  "name": "@stopcock/fp-codemod",
+  "version": "0.0.0",
+  "description": "Conservative TypeScript-aware migrations from Stopcock FP 1 to FP 2",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tdeaks/stopcock.git",
+    "directory": "packages/fp-codemod"
+  },
+  "bin": {
+    "stopcock-fp-codemod": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./dist/cli.js"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": ">=7.0.0 <8.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

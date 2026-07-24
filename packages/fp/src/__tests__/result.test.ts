@@ -13,7 +13,6 @@ import {
   getOrElse,
   match,
   orElse,
-  orElseWith,
   and,
   zip,
   zipWith,
@@ -22,7 +21,6 @@ import {
   toOption,
   tryCatch,
   fromThrowable,
-  tryCatchAsync,
   fromNullable,
   tap,
   tapErr,
@@ -94,16 +92,11 @@ describe('Result', () => {
       expect(pipe(err('x'), andThen(half))).toEqual(err('x'))
     })
 
-    it('orElse returns fallback only for Err', () => {
-      expect(pipe(ok(1), orElse(ok(2)))).toEqual(ok(1))
-      expect(pipe(err('x'), orElse(ok(2)))).toEqual(ok(2))
-      expect(pipe(err('x'), orElse(err('y')))).toEqual(err('y'))
-    })
-
-    it('orElseWith recovers from Err with access to the error', () => {
+    it('orElse recovers only from Err and receives the error', () => {
       const recover = (error: string) => ok(error.length)
-      expect(pipe(ok(1), orElseWith(recover))).toEqual(ok(1))
-      expect(pipe(err('fail'), orElseWith(recover))).toEqual(ok(4))
+      expect(pipe(ok(1), orElse(recover))).toEqual(ok(1))
+      expect(pipe(err('fail'), orElse(recover))).toEqual(ok(4))
+      expect(pipe(err('x'), orElse(() => err('y')))).toEqual(err('y'))
     })
 
     it('and returns the second result only when the first is Ok', () => {
@@ -189,10 +182,10 @@ describe('Result', () => {
     })
 
     it('match folds over both cases', () => {
-      const fold = match(
-        (e: string) => `err: ${e}`,
-        (n: number) => `ok: ${n}`,
-      )
+      const fold = match({
+        err: (error: string) => `err: ${error}`,
+        ok: (value: number) => `ok: ${value}`,
+      })
       expect(pipe(ok(42), fold)).toBe('ok: 42')
       expect(pipe(err('fail'), fold)).toBe('err: fail')
     })
@@ -217,20 +210,8 @@ describe('Result', () => {
       ).toEqual(err('boom'))
     })
 
-    it('tryCatchAsync captures resolved and rejected promises', async () => {
-      await expect(tryCatchAsync(async () => 42)).resolves.toEqual(ok(42))
-      await expect(
-        tryCatchAsync(
-          async () => {
-            throw new Error('boom')
-          },
-          (e) => (e instanceof Error ? e.message : 'unknown'),
-        ),
-      ).resolves.toEqual(err('boom'))
-    })
-
     it('fromNullable lifts values', () => {
-      const lift = fromNullable('was null')
+      const lift = fromNullable(() => 'was null')
       expect(lift(1)).toEqual(ok(1))
       expect(lift(null)).toEqual(err('was null'))
       expect(lift(undefined)).toEqual(err('was null'))

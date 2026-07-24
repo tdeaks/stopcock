@@ -1,4 +1,4 @@
-import { isDeepEqual } from '@stopcock/fp'
+import { deep } from '@stopcock/fp/eq'
 import type { Operation, Path, DiffOptions } from './types'
 import { objectDiff } from './object-diff'
 
@@ -85,7 +85,7 @@ function myersDiff<T>(a: T[], b: T[], eq: (x: T, y: T) => boolean): EditOp[] {
 }
 
 function arrayDiff(a: unknown[], b: unknown[], path: Path, options: DiffOptions): Operation[] {
-  const eq = options.eq ?? isDeepEqual
+  const eq = options.eq ?? deep.equals
   const edits = myersDiff(a, b, eq)
   const ops: Operation[] = []
 
@@ -154,7 +154,7 @@ function arrayDiff(a: unknown[], b: unknown[], path: Path, options: DiffOptions)
 }
 
 function treeDiffRecursive(a: unknown, b: unknown, path: Path, options: DiffOptions): Operation[] {
-  if ((options.eq ?? isDeepEqual)(a, b)) return []
+  if ((options.eq ?? deep.equals)(a, b)) return []
 
   const aIsArr = Array.isArray(a)
   const bIsArr = Array.isArray(b)

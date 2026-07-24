@@ -1,4 +1,5 @@
-import { dual, isDeepEqual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
+import { deep } from '@stopcock/fp/eq'
 import type { Operation, Patch, Path } from './types'
 import { patch, empty } from './patch'
 
@@ -54,7 +55,7 @@ function tryMerge(prev: Operation, next: Operation): Operation[] | null {
   }
 
   if (prev.op === 'remove' && next.op === 'add' && pathEq(prev.path, next.path)) {
-    if (isDeepEqual(prev.oldValue, next.value)) return []
+    if (deep.equals(prev.oldValue, next.value)) return []
     return [{ op: 'replace', path: prev.path, oldValue: prev.oldValue, newValue: next.value }]
   }
 
@@ -63,7 +64,7 @@ function tryMerge(prev: Operation, next: Operation): Operation[] | null {
   }
 
   if (prev.op === 'replace' && next.op === 'replace' && pathEq(prev.path, next.path)) {
-    if (isDeepEqual(prev.oldValue, next.newValue)) return []
+    if (deep.equals(prev.oldValue, next.newValue)) return []
     return [{ op: 'replace', path: prev.path, oldValue: prev.oldValue, newValue: next.newValue }]
   }
 

@@ -1,9 +1,12 @@
 # stopcock
 
-Type-safe functional utilities for TypeScript. Pipe, array fusion, Option, Result, and a handful of focused packages built on the same primitives.
+Type-safe functional utilities for TypeScript. Portable pipelines, explicit
+data types, lazy and persistent collections, parsing, pattern matching, and a
+focused package family built on the same primitives.
 
 ```typescript
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
 const top10 = pipe(
   users,
@@ -13,7 +16,10 @@ const top10 = pipe(
 )
 ```
 
-`pipe` fuses streaming operations like `filter`, `map`, and `take` into a single loop. `take(10)` bails out after 10 matching results, while materializing operations such as `sort`, `sortBy`, `reverse`, `groupBy`, and `uniq` run on a completed array boundary.
+`pipe` recognizes compatible tagged operations and dispatches to portable
+checked-in loop templates. `take(10)` can stop after ten matching results,
+while whole-input operations such as sorting and grouping form explicit
+materialization boundaries.
 
 ## Install
 
@@ -25,18 +31,32 @@ Each package is installable independently. Grab only what you need.
 
 ## Packages
 
-| Package           | What                                                                                                          |
-| ----------------- | ------------------------------------------------------------------------------------------------------------- |
-| `@stopcock/fp`    | pipe, flow, Array, String, Dict, Number, Guards, Object, Math, Boolean, Logic, Option, Result, Lenses, Optics |
-| `@stopcock/async` | Lazy Task type for concurrency, retry, timeout, cancellation                                                  |
-| `@stopcock/date`  | Zero-allocation date utilities for branded timestamps, timezones, business days                               |
-| `@stopcock/diff`  | Myers diff plus patch apply, invert, compose, rebase                                                          |
-| `@stopcock/http`  | Typed HTTP client with retry, caching, request composition                                                    |
-| `@stopcock/img`   | Image filters, convolution, Hough lines, connected components                                                 |
-| `@stopcock/la`    | Linear algebra. Vectors and matrices                                                                          |
-| `@stopcock/state` | Proxy-compiled accessors, patch middleware, batching, computed, history                                       |
+| Package                      | What                                                                                            |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `@stopcock/fp`               | Slim composition root plus collection, data, algebra, optic, validation, and recursion subpaths |
+| `@stopcock/async`            | Lazy Task and AsyncIter with concurrency, retry, timeout, and cancellation                      |
+| `@stopcock/fp-compiler`      | Optional build-time lowering for portable FP pipelines                                          |
+| `@stopcock/fp-interop`       | Explicit dependency-light boundaries for foreign tagged values and native protocols             |
+| `@stopcock/parser`           | Typed parser combinators and diagnostics                                                        |
+| `@stopcock/pattern`          | Exhaustive structural and tagged-data pattern matching                                          |
+| `@stopcock/persistent`       | Structurally shared vectors, maps, sets, queues, deques, and stacks                             |
+| `@stopcock/fp-testing`       | Deterministic algebraic-law checks, edge cases, and iterable probes                             |
+| `@stopcock/eslint-plugin-fp` | Flat-config migration, import-hygiene, and performance rules                                    |
+| `@stopcock/fp-codemod`       | Conservative TypeScript-aware FP 1 to FP 2 migrations                                           |
+| `@stopcock/autodiff`         | Reverse-mode automatic differentiation for scalar, vector, and matrix values                    |
+| `@stopcock/color`            | Colour conversion, perceptual operations, gamut mapping, and accessibility analysis             |
+| `@stopcock/date`             | Branded timestamps, timezones, business days, and date utilities                                |
+| `@stopcock/diff`             | Myers diff plus patch apply, invert, compose, and rebase                                        |
+| `@stopcock/http`             | Typed HTTP client with retry, caching, and request composition                                  |
+| `@stopcock/img`              | Image filters, convolution, Hough lines, and connected components                               |
+| `@stopcock/la`               | Linear algebra with vectors and matrices                                                        |
+| `@stopcock/signal`           | Typed-array DSP, FFT, filter, convolution, resampling, and analysis kernels                     |
+| `@stopcock/state`            | Compiled accessors, patch middleware, batching, computed state, and history                     |
+| `@stopcock/svg`              | Typed procedural SVG nodes, paths, transforms, paint, filters, and rendering                    |
 
-Every function works data-first and data-last. Import only what you use; each package treeshakes independently.
+Pipe-oriented operators generally support data-first and data-last calls.
+Specialist APIs use explicit subpath imports so applications pay only for what
+they use.
 
 ## Docs
 
@@ -62,7 +82,7 @@ vp run test:packages
 vp run docs:dev
 ```
 
-On a clean checkout, build the packages once before the first type-aware check so their declaration files exist. `vp run build:packages` builds the 12 publishable packages with a concurrency limit of two and intentionally excludes `@stopcock/synth`. `vp run build` builds the entire workspace, including synth and its Rust/Wasm build. Use `vp build` inside an individual app; root monorepo tasks go through `vp run`.
+On a clean checkout, build the packages once before the first type-aware check so their declaration files exist. `vp run build:packages` builds every package workspace except private `@stopcock/synth`, with a concurrency limit of two. `vp run build` builds the entire workspace, including synth and its Rust/Wasm build. Use `vp build` inside an individual app; root monorepo tasks go through `vp run`.
 
 ## License
 

@@ -1,4 +1,4 @@
-import { dual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
 import { Mat as LaMat } from '@stopcock/la'
 import { asVar, record } from './tape'
 import { ShapeError, type Mat, type Var } from './types'

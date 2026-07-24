@@ -8,9 +8,74 @@ import TabbedScalingChart from '../../../components/charts/TabbedScalingChart.as
 import FusionSpotlight from '../../../components/charts/FusionSpotlight.astro'
 import RuntimeSelector from '../../../components/charts/RuntimeSelector.astro'
 
-[vitest bench](https://vitest.dev/guide/features.html#benchmarking), Apple Silicon, seeded PRNG. Array sizes: 100, 1K, 10K, 100K.
+The interactive charts below are exploratory
+[Vitest benchmarks](https://vitest.dev/guide/features.html#benchmarking) with
+seeded inputs. Their absolute operations-per-second values vary by machine,
+runtime, thermal state, and benchmark version; they are not release promises.
 
 <RuntimeSelector />
+
+## FP 2.0 release gates
+
+FP 2.0 keeps each contract separate because its comparator answers a different
+question. Each number below is reference time divided by Stopcock time;
+greater than 1 means Stopcock was faster for that row.
+
+| Contract                           | Paired reference and cases                                | Bun/JSC geo / min | Node/V8 geo / min |
+| ---------------------------------- | --------------------------------------------------------- | ----------------: | ----------------: |
+| Portable `compile`                 | Frozen loop emitter, 44                                   |   1.677× / 0.943× |   1.379× / 0.973× |
+| Build compiler, stratified         | Frozen loop emitter, 44                                   |   2.044× / 0.906× |   1.572× / 0.997× |
+| Build compiler, operation-complete | Frozen operation emitter, 37 timed + 2 optimizer canaries |   1.105× / 0.866× |   1.181× / 0.924× |
+| Direct `Iter` terminal             | Hand-written early-exit loop, 3                           |   0.991× / 0.963× |   0.731× / 0.661× |
+| Broad `Iter` surface               | Frozen executor, 14                                       |   1.941× / 1.047× |   2.159× / 0.999× |
+| Transducers, collectors, `without` | Frozen implementations, 45                                |   1.762× / 0.993× |   1.597× / 0.993× |
+| Typed arrays                       | Frozen implementations, 48                                |   8.879× / 0.973× |   2.272× / 0.814× |
+| Typed arrays                       | Native typed-array equivalents, 48                        |   1.149× / 0.716× |   1.211× / 0.869× |
+| Callback-identity churn            | Frozen compile contract, 4                                |   2.254× / 1.013× |   1.615× / 0.985× |
+| `pipe` dispatch                    | Frozen dispatcher, 4                                      |   1.097× / 1.025× |   1.072× / 1.033× |
+| Core utilities                     | Frozen implementations, 18                                |   3.452× / 0.669× |   2.272× / 0.728× |
+| Data and functional modules        | Frozen implementations, 11                                |   2.353× / 0.790× |   1.454× / 0.861× |
+| Structural modules                 | Frozen implementations, 15                                |   1.813× / 0.967× |   2.113× / 0.847× |
+| Scalar, text, and hash             | Frozen implementations, 11                                |   2.031× / 0.985× |   1.344× / 0.928× |
+| Recursion, match, schema, writer   | Frozen implementations, 11                                |   3.229× / 0.988× |   4.345× / 0.946× |
+
+The table records the final 23 July 2026 local run on Darwin arm64 with Bun
+1.3.14/JavaScriptCore and Node 24.18.0/V8 13.6. It reports raw minima even
+where a pinned case documents semantic work or native-call overhead that
+cannot be removed. Ratios from different contracts are not interchangeable
+and should not be combined or compared with absolute throughput from another
+machine.
+
+Every gate writes raw and evaluated JSON and rejects provenance drift,
+missing populations, skipped or incorrect semantics, undersampling, malformed
+statistics, invalid confidence bounds, or missed floors. Above-ceiling
+measurement error is accepted only when the gate recomputes the full paired
+95% confidence interval and its lower bound still clears that case's floor.
+The operation compiler lane balances both lexical sampler roles in fresh
+workers and retains all four raw timing arrays. JavaScriptCore reduces
+fixed-input `length` and `isEmpty` repetitions to counter-loop work, so those
+two rows remain correctness and code-generation canaries rather than claimed
+latency measurements.
+
+CI runs the contracts with pinned Bun 1.3.14 and Node 22 on Linux x64 and
+macOS arm64, retains all artifacts, and separately gates the shared runtime
+chunk and published tarball size.
+
+```bash
+cd benchmarks
+bun run perf:portable:bun
+bun run perf:compiler:bun
+bun run perf:iter:bun
+bun run perf:hot-paths:bun
+bun run perf:typed-array:bun
+bun run perf:package-size
+```
+
+The normal `@stopcock/fp` runtime is strict-CSP compatible: it does not use
+`eval`, `new Function`, function-source parsing, or a dynamically loaded JIT
+chunk, and it does not require `unsafe-eval`. `@stopcock/fp-compiler` performs
+optional specialization during the build; the compiler is not imported into
+the emitted application's runtime graph.
 
 ---
 
@@ -33,7 +98,11 @@ All three operations fuse into a single loop. `take(10)` halts after 10 results.
 
 <TabbedScalingChart category="filter→map→take(10)" />
 
-stopcock holds ~4M ops/s from n=100 to n=100K (the flat line). Every other library degrades linearly because they make three separate passes and allocate intermediate arrays. At 100K elements, native JS does 703 ops/s. Fusion does 4.2M.
+This shape can remain nearly flat as input grows because `take(10)` stops the
+fused loop once ten matches are produced. Treat the chart as an exploratory
+comparison, not a universal throughput claim: absolute rates depend on the
+selected runtime and host, while the release gate above uses paired,
+same-process ratios and correctness checks.
 
 ### Partial fusion: filter → map → sort → take
 

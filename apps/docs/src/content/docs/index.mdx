@@ -19,10 +19,14 @@ hero:
 import FusionSpotlight from '../../components/charts/FusionSpotlight.astro'
 import LibraryGrid from '../../components/LibraryGrid.astro'
 
-A focused set of TypeScript packages that play nicely together. Pipeable utilities cover functional programming, dates, async tasks, HTTP, state, diffing, linear algebra, automatic differentiation, signal processing, color, SVG, and image processing.
+A focused set of TypeScript packages that play nicely together. Pipeable
+utilities sit alongside persistent collections, parsing, pattern matching,
+async tasks, HTTP, state, diffing, numerical tools, graphics, and dedicated
+testing and migration tooling.
 
 ```ts
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
 const top10 = pipe(
   users,

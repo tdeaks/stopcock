@@ -1,0 +1,38 @@
+import { describe, expectTypeOf, it } from 'vitest'
+import {
+  AsyncIter,
+  Task,
+  type AsyncSource,
+  type Task as TaskType,
+} from '../index'
+
+describe('public async types', () => {
+  it('infers ordered concurrent mapping through the root namespace', () => {
+    const iter = AsyncIter.mapConcurrent(
+      [1, 2, 3],
+      async (value, index, signal) => {
+        expectTypeOf(value).toEqualTypeOf<number>()
+        expectTypeOf(index).toEqualTypeOf<number>()
+        expectTypeOf(signal).toEqualTypeOf<AbortSignal>()
+        return String(value)
+      },
+      { concurrency: 2 },
+    )
+
+    expectTypeOf(iter).toMatchTypeOf<AsyncSource<string>>()
+    expectTypeOf(AsyncIter.collect(iter)).toEqualTypeOf<
+      TaskType<string[], unknown>
+    >()
+  })
+
+  it('exposes Task as a functional namespace and subpath-compatible type', () => {
+    const task = Task.tryPromise(
+      async () => 1,
+      (error) => ({ _tag: 'Failure' as const, error }),
+    )
+    expectTypeOf(task).toEqualTypeOf<
+      TaskType<number, { _tag: 'Failure'; error: unknown }>
+    >()
+    expectTypeOf(Task.run(task)).toEqualTypeOf<Promise<number>>()
+  })
+})

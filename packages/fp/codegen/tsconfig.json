@@ -4,5 +4,9 @@
     "noEmit": true,
     "types": ["bun"]
   },
-  "include": ["./**/*.ts"]
+  "include": [
+    "./dual-inline.ts",
+    "./parse.ts",
+    "./portable-templates.ts"
+  ]
 }

@@ -1,49 +1,30 @@
 ---
-title: Logic
-description: both, either, allPass, cond. Compose predicates and branch logic in pipe
+title: Logic migration
+description: Logic was split into focused function and guard modules
 ---
 
-## Predicate combinators
+The broad 1.x `Logic` namespace was removed from the 2.0 public surface.
+
+Use `@stopcock/fp/function` for function-level composition:
 
 ```ts
-both<A>(p1: (a: A) => boolean, p2: (a: A) => boolean): (a: A) => boolean
-either<A>(p1: (a: A) => boolean, p2: (a: A) => boolean): (a: A) => boolean
-allPass<A>(preds: ((a: A) => boolean)[]): (a: A) => boolean
-anyPass<A>(preds: ((a: A) => boolean)[]): (a: A) => boolean
+import * as Fn from '@stopcock/fp/function'
+
+Fn.complement(predicate)
+Fn.ifElse(predicate, onTrue, onFalse)
+Fn.always(value)
 ```
+
+Use `@stopcock/fp/guard` for predicate and refinement composition:
 
 ```ts
-import { pipe, A, Logic } from '@stopcock/fp'
+import * as G from '@stopcock/fp/guard'
 
-const isAdult = (u: User) => u.age >= 18
-const isActive = (u: User) => u.active
-
-pipe(users, A.filter(Logic.both(isAdult, isActive)))
+const nonBlank = G.and(G.isString, G.isNonBlankString)
+const stringOrNumber = G.or(G.isString, G.isNumber)
+const notNullish = G.not(G.isNullish)
 ```
 
-## Control flow (dual)
-
-```ts
-equals<A>(a: A, b: A): boolean
-defaultTo<A>(opt: A | undefined, fallback: A): A
-when_<A>(value: A, pred: (a: A) => boolean, f: (a: A) => A): A
-unless<A>(value: A, pred: (a: A) => boolean, f: (a: A) => A): A
-cond<A, B>(value: A, conditions: [(a: A) => boolean, (a: A) => B][]): B | undefined
-```
-
-```ts
-import { pipe, Logic } from '@stopcock/fp'
-
-pipe(undefined, Logic.defaultTo(0)) // 0
-pipe(5, Logic.defaultTo(0)) // 5
-
-pipe(
-  score,
-  Logic.cond([
-    [(s) => s >= 90, () => 'A'],
-    [(s) => s >= 80, () => 'B'],
-    [(s) => s >= 70, () => 'C'],
-    [() => true, () => 'F'],
-  ]),
-)
-```
+Use `@stopcock/fp/eq` for domain equality, `@stopcock/fp/match` for lightweight
+tagged-data dispatch, or the full `@stopcock/pattern` companion for structural
+and exhaustive pattern matching.

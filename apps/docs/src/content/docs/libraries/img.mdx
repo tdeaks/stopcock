@@ -37,7 +37,8 @@ const thumbnail = (data: Uint8ClampedArray, w: number, h: number) =>
 ### Batch image filter
 
 ```ts
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 import { fromRGBA, grayscale, sepia, brightness } from '@stopcock/img'
 
 const vintage = (img: Image) => pipe(img, grayscale, sepia, brightness(1.1))

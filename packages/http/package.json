@@ -1,6 +1,7 @@
 {
   "name": "@stopcock/http",
   "version": "1.0.0",
+  "description": "Typed HTTP client with retries, timeouts, caching, deduplication, and Task integration.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -8,7 +9,10 @@
     "directory": "packages/http"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -21,5 +25,8 @@
   "dependencies": {
     "@stopcock/async": "workspace:*",
     "@stopcock/fp": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

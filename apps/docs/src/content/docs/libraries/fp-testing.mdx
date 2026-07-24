@@ -1,0 +1,25 @@
+---
+title: fp-testing
+description: Deterministic law checks, edge cases, and iterator probes
+---
+
+```bash
+bun add -d @stopcock/fp-testing
+```
+
+The package has no runtime dependencies. Its structural interfaces accept
+Stopcock instances and compatible user-defined values without adapters.
+
+```ts
+import { assertLaws, checkMonoidLaws } from '@stopcock/fp-testing/laws'
+import * as Monoid from '@stopcock/fp/monoid'
+
+assertLaws(checkMonoidLaws(Monoid.numberSum, { equals: Object.is }, [-1, 0, 1, Number.NaN]))
+```
+
+`@stopcock/fp-testing/laws` checks Eq, Hash, Ord, Semigroup, Monoid, Group,
+Lens, and Iso laws with bounded deterministic reports.
+`@stopcock/fp-testing/data` provides stable Option, Result, tuple, array,
+number, and string cases. `@stopcock/fp-testing/iterable` provides tracked and
+throwing iterables so laziness, pull counts, and iterator cleanup are explicit
+test assertions.

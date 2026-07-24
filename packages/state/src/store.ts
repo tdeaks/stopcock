@@ -1,13 +1,11 @@
-import { type Lens } from '@stopcock/fp'
 import { diff, applyUnsafe, compose, patch as mkPatch, type Patch } from '@stopcock/diff'
-import { compile, buildLens } from './compile.js'
+import { compile } from './compile.js'
 import { recordMutations } from './draft.js'
 import type { Accessor, Handle, Listener, Store, StoreOptions, Unsubscribe } from './types.js'
 import type { Path } from '@stopcock/diff'
 
 type Sub = {
   path: Path | null
-  lens: Lens<any, any> | null
   get: ((state: any) => any) | null
   listener: Listener<any>
   idx: number
@@ -481,7 +479,6 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
 
     at<A = unknown>(path: readonly (string | number)[]): Handle<A> {
       if (path.length === 0) throw new Error('Path must have at least one segment')
-      const lens = buildLens<S, A>(path)
       const compiled = compile<S, A>((s: S) => {
         let r: any = s
         for (let i = 0; i < path.length; i++) r = r[path[i]]
@@ -547,7 +544,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
           }
         },
         subscribe: (listener: Listener<A>) => {
-          const sub: Sub = { path, lens, get: compiled.get, listener, idx: 0 }
+          const sub: Sub = { path, get: compiled.get, listener, idx: 0 }
           return addSub(sub)
         },
       }
@@ -556,10 +553,10 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
     subscribe(accessorOrListener: any, maybeListener?: any): Unsubscribe {
       if (typeof maybeListener === 'function') {
         const c = compile(accessorOrListener)
-        const sub: Sub = { path: c.path, lens: c.lens, get: c.get, listener: maybeListener, idx: 0 }
+        const sub: Sub = { path: c.path, get: c.get, listener: maybeListener, idx: 0 }
         return addSub(sub)
       }
-      return addSub({ path: null, lens: null, get: null, listener: accessorOrListener, idx: 0 })
+      return addSub({ path: null, get: null, listener: accessorOrListener, idx: 0 })
     },
 
     destroy() {

@@ -11,8 +11,8 @@
 // loop), which used to miss the identity cache every time and pay full
 // compile() per call. See docs/superpowers/plans/
 // 2026-07-21-stopcock-fp-absolute-performance-implementation.md, "Runtime
-// caches and tiering".
-import { compile, dispatchAndTrack, planAndLowerFast, toArrayInput, type Runner } from './compile'
+// caches".
+import { compile, dispatchAndTrack, planAndLowerFast, type Runner } from './compile'
 import { extractBinding, type StepBinding } from './plan'
 import type { ShapeEntry } from './shape-entry'
 
@@ -33,14 +33,15 @@ interface CacheEntry {
 
 const CACHE_SIZE = 4
 const cache: Array<CacheEntry | undefined> = [undefined, undefined, undefined, undefined]
+// Direct reference to the most recently used identity. `cacheSlot()` never
+// evicts this entry while it is hot, so this does not retain a fifth callback
+// set beyond the four-entry cache bound.
+let hotEntry: CacheEntry | undefined
 let clock = 0
 
-// Front cache: opcode-sequence key -> ShapeEntry, the canonical mutable cell
-// for that shape's execution identity (never a bare runner function: a tier
-// swap or eviction on the entry must be visible through this cache too, see
-// shape-entry.ts). Bounded like the shape-entry registry it sits in front
-// of; never holds callbacks (PortableRunner takes bindings per call, see
-// lower.ts).
+// Front cache: opcode-sequence key -> ShapeEntry, the canonical portable
+// runner cell for that shape. It never holds callbacks: PortableRunner takes
+// bindings per call (see lower.ts).
 //
 // Two keying schemes share the cache: sequences of up to NUM_KEY_MAX_LEN
 // steps (pipe's direct run2-run5 arities, i.e. every argc<=6 call) pack the
@@ -73,12 +74,22 @@ function matchesArgs(fns: readonly unknown[], args: ArrayLike<unknown>, argc: nu
   return true
 }
 
-function lookupCache(args: ArrayLike<unknown>, argc: number): CacheEntry | undefined {
+function touch(entry: CacheEntry): CacheEntry {
+  entry.used = ++clock
+  return entry
+}
+
+function lookupCache(
+  args: ArrayLike<unknown>,
+  argc: number,
+  hotAlreadyChecked = false,
+): CacheEntry | undefined {
   for (let i = 0; i < CACHE_SIZE; i++) {
     const entry = cache[i]
+    if (hotAlreadyChecked && entry === hotEntry) continue
     if (entry && matchesArgs(entry.fns, args, argc)) {
-      entry.used = ++clock
-      return entry
+      hotEntry = entry
+      return touch(entry)
     }
   }
   return undefined
@@ -90,6 +101,7 @@ function cacheSlot(): number {
   for (let i = 0; i < CACHE_SIZE; i++) {
     const entry = cache[i]
     if (!entry) return i
+    if (entry === hotEntry) continue
     if (entry.used < oldest) {
       oldest = entry.used
       slot = i
@@ -99,11 +111,195 @@ function cacheSlot(): number {
 }
 
 function storeCacheRunner(fns: readonly unknown[], runner: Runner): void {
-  cache[cacheSlot()] = { fns, runner, used: ++clock }
+  const slot = cacheSlot()
+  const stored = { fns, runner, used: ++clock }
+  cache[slot] = stored
+  hotEntry = stored
 }
 
 function storeCacheTagged(fns: readonly unknown[], entry: ShapeEntry, bindings: readonly StepBinding[]): void {
-  cache[cacheSlot()] = { fns, entry, bindings, used: ++clock }
+  const slot = cacheSlot()
+  const stored = { fns, entry, bindings, used: ++clock }
+  cache[slot] = stored
+  hotEntry = stored
+}
+
+function runCached(cached: CacheEntry, input: unknown): unknown {
+  if (cached.entry) return dispatchAndTrack(cached.entry, input, cached.bindings!)
+  return cached.runner!(input)
+}
+
+/** Fixed two-step miss path: avoids the generic argument/opcode loops for the
+ * most common inline pipeline arity while preserving the same bounded caches. */
+function runTagged2(a: unknown, f1: any, f2: any): unknown {
+  const fns = [f1, f2]
+  const op1 = f1._op
+  const op2 = f2._op
+  if (
+    !Number.isSafeInteger(op1) ||
+    op1 <= 0 ||
+    op1 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op2) ||
+    op2 <= 0 ||
+    op2 >= NUM_KEY_BASE
+  ) {
+    const runner = compile(f1, f2)
+    storeCacheRunner(fns, runner)
+    return runner(a)
+  }
+
+  const numKey = op1 * NUM_KEY_BASE + op2
+  let entry = frontCacheNum.get(numKey)
+  let bindings: readonly StepBinding[]
+  if (entry) {
+    bindings = [extractBinding(f1), extractBinding(f2)]
+  } else {
+    const built = planAndLowerFast(fns)
+    entry = built.entry
+    bindings = built.bindings
+    frontCacheSet(frontCacheNum, numKey, entry)
+  }
+
+  storeCacheTagged(fns, entry, bindings)
+  return dispatchAndTrack(entry, a, bindings)
+}
+
+function runTagged3(a: unknown, f1: any, f2: any, f3: any): unknown {
+  const fns = [f1, f2, f3]
+  const op1 = f1._op
+  const op2 = f2._op
+  const op3 = f3._op
+  if (
+    !Number.isSafeInteger(op1) ||
+    op1 <= 0 ||
+    op1 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op2) ||
+    op2 <= 0 ||
+    op2 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op3) ||
+    op3 <= 0 ||
+    op3 >= NUM_KEY_BASE
+  ) {
+    const runner = compile(f1, f2, f3)
+    storeCacheRunner(fns, runner)
+    return runner(a)
+  }
+
+  const numKey = (op1 * NUM_KEY_BASE + op2) * NUM_KEY_BASE + op3
+  let entry = frontCacheNum.get(numKey)
+  let bindings: readonly StepBinding[]
+  if (entry) {
+    bindings = [extractBinding(f1), extractBinding(f2), extractBinding(f3)]
+  } else {
+    const built = planAndLowerFast(fns)
+    entry = built.entry
+    bindings = built.bindings
+    frontCacheSet(frontCacheNum, numKey, entry)
+  }
+
+  storeCacheTagged(fns, entry, bindings)
+  return dispatchAndTrack(entry, a, bindings)
+}
+
+function runTagged4(a: unknown, f1: any, f2: any, f3: any, f4: any): unknown {
+  const fns = [f1, f2, f3, f4]
+  const op1 = f1._op
+  const op2 = f2._op
+  const op3 = f3._op
+  const op4 = f4._op
+  if (
+    !Number.isSafeInteger(op1) ||
+    op1 <= 0 ||
+    op1 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op2) ||
+    op2 <= 0 ||
+    op2 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op3) ||
+    op3 <= 0 ||
+    op3 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op4) ||
+    op4 <= 0 ||
+    op4 >= NUM_KEY_BASE
+  ) {
+    const runner = compile(f1, f2, f3, f4)
+    storeCacheRunner(fns, runner)
+    return runner(a)
+  }
+
+  const numKey =
+    ((op1 * NUM_KEY_BASE + op2) * NUM_KEY_BASE + op3) * NUM_KEY_BASE + op4
+  let entry = frontCacheNum.get(numKey)
+  let bindings: readonly StepBinding[]
+  if (entry) {
+    bindings = [
+      extractBinding(f1),
+      extractBinding(f2),
+      extractBinding(f3),
+      extractBinding(f4),
+    ]
+  } else {
+    const built = planAndLowerFast(fns)
+    entry = built.entry
+    bindings = built.bindings
+    frontCacheSet(frontCacheNum, numKey, entry)
+  }
+
+  storeCacheTagged(fns, entry, bindings)
+  return dispatchAndTrack(entry, a, bindings)
+}
+
+function runTagged5(a: unknown, f1: any, f2: any, f3: any, f4: any, f5: any): unknown {
+  const fns = [f1, f2, f3, f4, f5]
+  const op1 = f1._op
+  const op2 = f2._op
+  const op3 = f3._op
+  const op4 = f4._op
+  const op5 = f5._op
+  if (
+    !Number.isSafeInteger(op1) ||
+    op1 <= 0 ||
+    op1 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op2) ||
+    op2 <= 0 ||
+    op2 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op3) ||
+    op3 <= 0 ||
+    op3 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op4) ||
+    op4 <= 0 ||
+    op4 >= NUM_KEY_BASE ||
+    !Number.isSafeInteger(op5) ||
+    op5 <= 0 ||
+    op5 >= NUM_KEY_BASE
+  ) {
+    const runner = compile(f1, f2, f3, f4, f5)
+    storeCacheRunner(fns, runner)
+    return runner(a)
+  }
+
+  const numKey =
+    (((op1 * NUM_KEY_BASE + op2) * NUM_KEY_BASE + op3) * NUM_KEY_BASE + op4) *
+      NUM_KEY_BASE +
+    op5
+  let entry = frontCacheNum.get(numKey)
+  let bindings: readonly StepBinding[]
+  if (entry) {
+    bindings = [
+      extractBinding(f1),
+      extractBinding(f2),
+      extractBinding(f3),
+      extractBinding(f4),
+      extractBinding(f5),
+    ]
+  } else {
+    const built = planAndLowerFast(fns)
+    entry = built.entry
+    bindings = built.bindings
+    frontCacheSet(frontCacheNum, numKey, entry)
+  }
+
+  storeCacheTagged(fns, entry, bindings)
+  return dispatchAndTrack(entry, a, bindings)
 }
 
 // Runs a tagged multi-step pipeline. Identity cache first (zero-alloc hit).
@@ -112,12 +308,14 @@ function storeCacheTagged(fns: readonly unknown[], entry: ShapeEntry, bindings: 
 // extracted directly (no buildPlan, no shapeCache lookup). Untagged/opaque
 // steps bail to the original compile() path, which still populates the
 // identity cache for that call site.
-function runTagged(a: unknown, args: ArrayLike<unknown>, argc: number): unknown {
-  const cached = lookupCache(args, argc)
-  if (cached) {
-    if (cached.entry) return dispatchAndTrack(cached.entry, toArrayInput(a), cached.bindings!)
-    return cached.runner!(a)
-  }
+function runTagged(
+  a: unknown,
+  args: ArrayLike<unknown>,
+  argc: number,
+  hotAlreadyChecked = false,
+): unknown {
+  const cached = lookupCache(args, argc, hotAlreadyChecked)
+  if (cached) return runCached(cached, a)
 
   const len = argc - 1
   const fns = new Array(len)
@@ -130,7 +328,8 @@ function runTagged(a: unknown, args: ArrayLike<unknown>, argc: number): unknown 
     fns[i] = step
     if (!allTagged) continue
     const op = (step as any)._op
-    if (typeof op !== 'number' || op <= 0) allTagged = false
+    if (!Number.isSafeInteger(op) || op <= 0) allTagged = false
+    else if (useNumKey && op >= NUM_KEY_BASE) allTagged = false
     else if (useNumKey) {
       numKey = numKey * NUM_KEY_BASE + op
     } else {
@@ -161,17 +360,11 @@ function runTagged(a: unknown, args: ArrayLike<unknown>, argc: number): unknown 
     else frontCacheSet(frontCacheStr, strKey, entry)
   }
 
-  // Reads entry.run at call time on every invocation, never a captured
-  // runner: a tier swap or eviction on entry is visible through the identity
-  // cache the same way it is through the front caches above (the identity
-  // slot stores entry + bindings directly, not a closure over them -- see
-  // CacheEntry). Bare pipe is the adaptive promotion path: dispatchAndTrack
-  // counts executions and consumed elements against the shared entry and
-  // requests generation once a threshold crosses, but only while the entry
-  // is still tier 0 -- once promoted, dispatch is a direct call with no
-  // bookkeeping overhead.
+  // Read entry.run at call time. The identity slot stores entry + bindings
+  // directly, avoiding a wrapper allocation while keeping callback bindings
+  // out of the shared shape cache.
   storeCacheTagged(fns, entry, bindings)
-  return dispatchAndTrack(entry, toArrayInput(a), bindings)
+  return dispatchAndTrack(entry, a, bindings)
 }
 
 export function pipe<A, B>(a: A, f1: (a: A) => B): B
@@ -446,24 +639,89 @@ export function pipe(
   if (argc === 2) return f1(a)
 
   if (argc === 3) {
+    const cached = hotEntry
+    const cachedFns = cached?.fns
+    if (cached && cachedFns?.length === 2 && cachedFns[0] === f1 && cachedFns[1] === f2) {
+      if (cached.entry) {
+        cached.entry.execCount++
+        return cached.entry.run(a, cached.bindings!)
+      }
+      return cached.runner!(a)
+    }
     if (!_hasOp(f1) && !_hasOp(f2)) return f2(f1(a))
-    return runTagged(a, arguments, 3)
+    return runTagged2(a, f1, f2)
   }
   if (argc === 4) {
+    const cached = hotEntry
+    const cachedFns = cached?.fns
+    if (
+      cached &&
+      cachedFns?.length === 3 &&
+      cachedFns[0] === f1 &&
+      cachedFns[1] === f2 &&
+      cachedFns[2] === f3
+    ) {
+      if (cached.entry) {
+        cached.entry.execCount++
+        return cached.entry.run(a, cached.bindings!)
+      }
+      return cached.runner!(a)
+    }
     if (!_hasOp(f1) && !_hasOp(f2) && !_hasOp(f3)) return f3(f2(f1(a)))
-    return runTagged(a, arguments, 4)
+    return runTagged3(a, f1, f2, f3)
   }
   if (argc === 5) {
+    const cached = hotEntry
+    const cachedFns = cached?.fns
+    if (
+      cached &&
+      cachedFns?.length === 4 &&
+      cachedFns[0] === f1 &&
+      cachedFns[1] === f2 &&
+      cachedFns[2] === f3 &&
+      cachedFns[3] === f4
+    ) {
+      if (cached.entry) {
+        cached.entry.execCount++
+        return cached.entry.run(a, cached.bindings!)
+      }
+      return cached.runner!(a)
+    }
     if (!_hasOp(f1) && !_hasOp(f2) && !_hasOp(f3) && !_hasOp(f4)) return f4(f3(f2(f1(a))))
-    return runTagged(a, arguments, 5)
+    return runTagged4(a, f1, f2, f3, f4)
   }
   if (argc === 6) {
+    const cached = hotEntry
+    const cachedFns = cached?.fns
+    if (
+      cached &&
+      cachedFns?.length === 5 &&
+      cachedFns[0] === f1 &&
+      cachedFns[1] === f2 &&
+      cachedFns[2] === f3 &&
+      cachedFns[3] === f4 &&
+      cachedFns[4] === f5
+    ) {
+      if (cached.entry) {
+        cached.entry.execCount++
+        return cached.entry.run(a, cached.bindings!)
+      }
+      return cached.runner!(a)
+    }
     if (!_hasOp(f1) && !_hasOp(f2) && !_hasOp(f3) && !_hasOp(f4) && !_hasOp(f5))
       return f5(f4(f3(f2(f1(a)))))
-    return runTagged(a, arguments, 6)
+    return runTagged5(a, f1, f2, f3, f4, f5)
   }
 
   // argc > 6: general path, no fixed formals
+  const cached = hotEntry
+  if (cached && matchesArgs(cached.fns, arguments, argc)) {
+    if (cached.entry) {
+      cached.entry.execCount++
+      return cached.entry.run(a, cached.bindings!)
+    }
+    return cached.runner!(a)
+  }
   let anyTagged = false
   for (let i = 1; i < argc; i++) {
     if (_hasOp(arguments[i])) {
@@ -476,5 +734,5 @@ export function pipe(
     for (let i = 1; i < argc; i++) r = arguments[i](r)
     return r
   }
-  return runTagged(a, arguments, argc)
+  return runTagged(a, arguments, argc, true)
 }

@@ -1,6 +1,7 @@
 {
   "name": "@stopcock/async",
   "version": "1.0.0",
+  "description": "Lazy cancellable Task and AsyncIter utilities for TypeScript",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -8,7 +9,9 @@
     "directory": "packages/async"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -16,9 +19,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./async-iter": {
+      "types": "./dist/async-iter.d.ts",
+      "import": "./dist/async-iter.js"
+    },
+    "./task": {
+      "types": "./dist/task-namespace.d.ts",
+      "import": "./dist/task.js"
     }
   },
   "dependencies": {
     "@stopcock/fp": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

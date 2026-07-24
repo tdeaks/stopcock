@@ -1,4 +1,4 @@
-import { dual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
 import { Vec as LaVec } from '@stopcock/la'
 import { asVar, record } from './tape'
 import { ShapeError, type Vec, type Var } from './types'

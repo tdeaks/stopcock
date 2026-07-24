@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
-import { O, R, ok, pipe, some, tryCatch } from '@stopcock/fp'
+import { ok, pipe, some } from '@stopcock/fp'
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
 import { O as BeltO, R as BeltR, pipe as beltPipe } from '@mobily/ts-belt'
 
 const jsonInput = '{"a":1}'
@@ -50,6 +52,6 @@ describe('Result.map chain', () => {
 })
 
 describe('Result.tryCatch', () => {
-  bench('stopcock', () => tryCatch(() => JSON.parse(jsonInput)))
+  bench('stopcock', () => R.tryCatch(() => JSON.parse(jsonInput)))
   bench('ts-belt', () => BeltR.fromExecution(() => JSON.parse(jsonInput)))
 })

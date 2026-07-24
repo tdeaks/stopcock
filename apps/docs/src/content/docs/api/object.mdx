@@ -1,59 +1,97 @@
 ---
-title: Obj (Object)
-description: pick, omit, path, evolve, mergeDeepLeft, mergeDeepRight. Immutable object transforms
+title: Object
+description: Safe immutable object, merge, and typed path operations
 ---
 
-## Property access (dual)
-
 ```ts
-pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>
-omit<T, K extends keyof T>(obj: T, keys: K[]): Omit<T, K>
-path<T, P extends string>(obj: T, path: P): PathValue<T, P> | undefined
-pathOr<T, P extends string, D>(obj: T, path: P, defaultValue: D): PathValue<T, P> | D
+import * as Obj from '@stopcock/fp/object'
 ```
 
-## Property mutation (dual, immutable)
+Object operators preserve symbol keys, use own enumerable properties, and
+defend write paths against prototype-pollution keys.
+
+## Keys and projections
 
 ```ts
-assoc<T, V>(obj: T, key: string, value: V): T & Record<string, V>
-dissoc<T>(obj: T, key: string): Partial<T>
-evolve<T>(obj: T, transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>): T
+Obj.keys(value)
+Obj.values(value)
+Obj.entries(value)
+Obj.pick(value, ['id', 'name'])
+Obj.omit(value, ['password'])
+Obj.pickBy(value, (_value, key) => key !== 'internal')
+Obj.omitBy(value, predicate)
 ```
 
-## Merging (dual)
+`pick`, `omit`, and predicate projections are available in data-first and
+pipe-friendly forms.
+
+## Immutable updates
 
 ```ts
-mergeDeepLeft<T>(a: T, b: T): T
-mergeDeepRight<T>(a: T, b: T): T
-mergeWith<T, V>(a: T, b: T, resolver: (l: V, r: V) => V): T
-```
+import { pipe } from '@stopcock/fp'
 
-## Examples
-
-```ts
-import { pipe, Obj } from '@stopcock/fp'
-
-// strip sensitive fields before sending to client
-const safe = pipe(user, Obj.omit(['password', 'ssn']))
-
-// extract fields for a form
-const formData = pipe(user, Obj.pick(['name', 'email', 'phone']))
-
-// safe nested access
-pipe(order, Obj.pathOr('shipping.address.zip', 'N/A'))
-
-// immutable update
-pipe(user, Obj.assoc('role', 'admin'))
-
-// transform multiple fields at once
-pipe(
-  config,
+const updated = pipe(
+  user,
+  Obj.assoc('role', 'admin'),
+  Obj.dissoc('temporaryToken'),
   Obj.evolve({
-    port: (p: number) => p + 1,
-    host: (h: string) => h.toLowerCase(),
+    name: (name) => name.trim(),
   }),
 )
-
-// deep merge with priority
-const merged = Obj.mergeDeepRight(defaults, userPrefs)
 ```
+
+`mapValues`, `mapKeys`, and `invert` cover whole-object transformations.
+
+## Merge
+
+```ts
+Obj.mergeWith(defaults, overrides, (left, right) => right ?? left)
+
+Obj.mergeDeep(defaults, overrides, {
+  bias: 'right',
+  arrays: 'replace',
+})
+```
+
+Deep merge options make conflict and array semantics explicit:
+
+- `bias`: choose the left or right value by default.
+- `arrays`: `replace`, `concat`, or `merge-index`.
+- `onConflict`: resolve non-record values with access to their property path.
+
+Deep merge is cycle-safe for repeated object pairs.
+
+## Typed paths
+
+Paths are readonly key tuples, not dotted strings:
+
+```ts
+const cityPath = Obj.pathOf<User>()('profile', 'address', 'city')
+
+Obj.getPath(user, cityPath) // Option<string>
+Obj.getPathOrUndefined(user, cityPath) // string | undefined
+Obj.hasPath(user, cityPath)
+
+const moved = Obj.setPath(user, cityPath, 'Manchester')
+const upper = Obj.modifyPath(user, cityPath, String.toUpperCase)
+const nicknamePath = Obj.pathOf<User>()('profile', 'nickname')
+const withoutNickname = Obj.removePath(user, nicknamePath)
+```
+
+Tuple paths distinguish numeric indices from string keys, reject unsafe write
+segments, and infer nested values to a bounded depth. `removePath` accepts only
+optional leaves (or the empty no-op path), so its declared result can remain the
+original source type.
+
+Path writes traverse only ordinary arrays and plain objects. Missing object
+containers are created with normal `{}` semantics (and missing numeric
+containers as arrays). Unrelated own properties—including symbols,
+non-enumerables, accessors, and property flags—are preserved along each cloned
+branch. Class instances, callable objects, and array subclasses are not traversed:
+nominal and callable types are rejected statically when TypeScript can prove
+them, and structurally indistinguishable runtime values fail with `TypeError`.
+
+The literal keys `__proto__`, `constructor`, and `prototype` are rejected by the
+write APIs. A broad `string` key for an index signature cannot be ruled out
+statically, so it is checked at runtime and throws `TypeError` if its actual
+value is unsafe.

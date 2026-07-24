@@ -1,0 +1,107 @@
+---
+title: Iter
+description: Lazy synchronous sequences with correct iterator closing
+---
+
+```ts
+import * as Iter from '@stopcock/fp/iter'
+```
+
+`Iter<A>` is a lazy `Iterable<A>`. Operators do no work until a terminal pulls
+the sequence. Constructors in this module are repeatable; `Iter.from` reflects
+the repeatability of the iterable you provide.
+
+## Constructors
+
+```ts
+Iter.from(iterable)
+Iter.fromIterator(() => iterator)
+Iter.defer(() => iterable)
+Iter.empty()
+Iter.of(1, 2, 3)
+Iter.range(0, 10, 2)
+Iter.repeat(value)
+Iter.iterate(seed, next)
+Iter.unfold(seed, step)
+```
+
+`range` excludes its end. `repeat` and `iterate` are infinite; pair them with a
+bounded terminal such as `take`.
+
+## Transformations
+
+The core lazy vocabulary includes:
+
+```ts
+Iter.map(f)
+Iter.filter(predicate)
+Iter.filterMap(f)
+Iter.flatMap(f)
+Iter.flatten
+Iter.tap(effect)
+Iter.take(count)
+Iter.drop(count)
+Iter.takeWhile(predicate)
+Iter.dropWhile(predicate)
+Iter.scan(reducer, initial)
+Iter.chunk(size)
+Iter.intersperse(separator)
+Iter.distinct
+Iter.distinctBy(key)
+Iter.concat(other)
+Iter.zip(other)
+Iter.zipWith(other, combine)
+```
+
+Transformations are usable directly or in `pipe`:
+
+```ts
+import { pipe } from '@stopcock/fp'
+
+const result = pipe(
+  Iter.range(1, Infinity),
+  Iter.filter((value) => value % 2 === 0),
+  Iter.map((value) => value * value),
+  Iter.take(3),
+  Iter.toArray,
+)
+// [4, 16, 36]
+```
+
+## Terminals
+
+```ts
+Iter.toArray(source)
+Iter.toArrayInto(source, target)
+Iter.reduce(source, reducer, initial)
+Iter.forEach(source, effect)
+Iter.first(source) // Option<A>
+Iter.last(source)  // Option<A>
+Iter.find(source, predicate) // Option<A>
+Iter.some(source, predicate)
+Iter.every(source, predicate)
+Iter.count(source)
+```
+
+Partial terminals return `Option`; absence is never encoded as an ambiguous
+`undefined`.
+
+## Resource safety
+
+Short-circuiting operations call `return()` on an upstream iterator when it is
+still open. This matters for generators that own file handles, cursors, or
+other resources:
+
+```ts
+function* rows() {
+  try {
+    yield* databaseCursor
+  } finally {
+    databaseCursor.close()
+  }
+}
+
+Iter.toArray(Iter.take(rows(), 10))
+```
+
+The `finally` block runs after the tenth value.

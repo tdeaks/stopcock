@@ -1,0 +1,37 @@
+{
+  "name": "@stopcock/eslint-plugin-fp",
+  "version": "0.0.0",
+  "description": "ESLint flat-config rules for Stopcock FP 2 applications",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tdeaks/stopcock.git",
+    "directory": "packages/eslint-plugin-fp"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./rules": {
+      "types": "./dist/rules.d.ts",
+      "import": "./dist/rules.js"
+    }
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "eslint": ">=9.0.0 <11.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

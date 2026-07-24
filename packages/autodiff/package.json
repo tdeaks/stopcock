@@ -1,6 +1,7 @@
 {
   "name": "@stopcock/autodiff",
   "version": "1.0.0",
+  "description": "Reverse-mode automatic differentiation for scalar, vector, and matrix values.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -9,7 +10,9 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -45,5 +48,8 @@
   "dependencies": {
     "@stopcock/fp": "workspace:*",
     "@stopcock/la": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

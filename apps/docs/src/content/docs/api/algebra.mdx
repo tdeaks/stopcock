@@ -1,0 +1,72 @@
+---
+title: Algebra and ordering
+description: Eq, Hash, Ord, Semigroup, Monoid, Group, and Ordering
+---
+
+The algebra modules are small plain objects and functions. They do not require
+classes, higher-kinded-type emulation, or a runtime typeclass registry.
+
+```ts
+import * as Eq from '@stopcock/fp/eq'
+import * as Hash from '@stopcock/fp/hash'
+import * as Ord from '@stopcock/fp/ord'
+import * as Semigroup from '@stopcock/fp/semigroup'
+import * as Monoid from '@stopcock/fp/monoid'
+import * as Group from '@stopcock/fp/group'
+```
+
+## Equality
+
+```ts
+const pointEq = Eq.struct<Point>({
+  x: Eq.number,
+  y: Eq.number,
+})
+
+pointEq.equals({ x: 1, y: 2 }, { x: 1, y: 2 }) // true
+```
+
+`Eq.deep` is cycle-safe for dense arrays and plain records. Dates, maps, sets,
+regular expressions, promises, and class instances are atomic unless you
+provide a domain-specific instance.
+
+## Hashing
+
+Hash instances provide deterministic integer hashes and compose over common
+containers:
+
+```ts
+const pointHash = Hash.struct<Point>({
+  x: Hash.number,
+  y: Hash.number,
+})
+```
+
+Use compatible `Eq` and `Hash` instances whenever a hashed collection relies on
+both.
+
+## Ordering
+
+```ts
+const byAge = Ord.contramap((user: User) => user.age)(Ord.number)
+const byAgeThenName = Ord.combine(byAge, Ord.contramap((user: User) => user.name)(Ord.string))
+
+users.toSorted(byAgeThenName.compare)
+```
+
+The `ordering` module contains the `-1 | 0 | 1` primitives used by `Ord`.
+
+## Combining values
+
+```ts
+const total = Semigroup.numberSum.combine(2, 3)
+const all = Monoid.booleanAll.combineAll([true, true, false])
+const delta = Group.numberSum.subtract(10, 3)
+```
+
+- A `Semigroup<A>` combines two `A` values.
+- A `Monoid<A>` adds an identity value and folds empty collections.
+- A `Group<A>` adds inversion/removal.
+
+Instances are ordinary values, so application-specific instances are easy to
+create and test.

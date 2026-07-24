@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '../pipe'
 import { compile, compilePure } from '../compile'
+import { none, some } from '../option'
 import * as A from '../array'
 
 describe('callback order and argument shapes', () => {
@@ -139,6 +140,68 @@ describe('input mutation during iteration', () => {
     )
     expect(seen).toEqual([1, 2])
   })
+
+  it('reject and none use the same up-front length snapshot contract', () => {
+    const rejectedSource = [1, 2]
+    const rejectedSeen: number[] = []
+    expect(
+      pipe(
+        rejectedSource,
+        A.reject((value: number) => {
+          rejectedSeen.push(value)
+          if (rejectedSeen.length === 1) rejectedSource.push(3)
+          return false
+        }),
+      ),
+    ).toEqual([1, 2])
+    expect(rejectedSeen).toEqual([1, 2])
+
+    const noneSource = [1, 2]
+    const noneSeen: number[] = []
+    expect(
+      pipe(
+        noneSource,
+        A.none((value: number) => {
+          noneSeen.push(value)
+          if (noneSeen.length === 1) noneSource.push(3)
+          return false
+        }),
+      ),
+    ).toBe(true)
+    expect(noneSeen).toEqual([1, 2])
+  })
+
+  it('generated fused templates snapshot source length before the first callback', () => {
+    const source = [1, 2]
+    const seen: unknown[] = []
+    const runner = compile(
+      A.map((value: number) => {
+        seen.push(value)
+        if (seen.length === 1) source.push(3)
+        return value
+      }),
+      A.filter(() => true),
+    )
+
+    expect(runner(source)).toEqual([1, 2])
+    expect(seen).toEqual([1, 2])
+  })
+
+  it('generic fused loops retain the original length after source truncation', () => {
+    const source: Array<number | undefined> = [1, 2, 3]
+    const seen: unknown[] = []
+    const runner = compile(
+      A.map((value: number | undefined) => {
+        seen.push(value)
+        if (seen.length === 1) source.length = 1
+        return value
+      }),
+      A.drop(0),
+    )
+
+    expect(runner(source)).toEqual([1, undefined, undefined])
+    expect(seen).toEqual([1, undefined, undefined])
+  })
 })
 
 describe('dense-hole semantics', () => {
@@ -194,13 +257,19 @@ describe('reentrancy', () => {
 
 describe('NaN and negative-zero preservation', () => {
   it('map preserves NaN as a distinct, self-unequal value', () => {
-    const result = pipe([1, NaN, 3], A.map((x: number) => x)) as number[]
+    const result = pipe(
+      [1, NaN, 3],
+      A.map((x: number) => x),
+    ) as number[]
     expect(Number.isNaN(result[1])).toBe(true)
     expect(result[1] === result[1]).toBe(false)
   })
 
   it('map preserves negative zero, distinguishable from positive zero via Object.is', () => {
-    const result = pipe([0, -0], A.map((x: number) => x)) as number[]
+    const result = pipe(
+      [0, -0],
+      A.map((x: number) => x),
+    ) as number[]
     expect(Object.is(result[0], 0)).toBe(true)
     expect(Object.is(result[1], -0)).toBe(true)
     expect(result[0] === result[1]).toBe(true) // === does not distinguish 0 from -0
@@ -314,7 +383,7 @@ describe('every/some/find early exit callback counts', () => {
     expect(calls).toEqual([1, 2, 3])
   })
 
-  it('find stops at the first match and returns that element (not a boolean or index)', () => {
+  it('find stops at the first match and returns Some(element)', () => {
     const calls: number[] = []
     const result = pipe(
       [1, 2, 3, 4, 5],
@@ -323,11 +392,11 @@ describe('every/some/find early exit callback counts', () => {
         return x > 2
       }),
     )
-    expect(result).toBe(3)
+    expect(result).toEqual(some(3))
     expect(calls).toEqual([1, 2, 3])
   })
 
-  it('find returns undefined, and calls the predicate for every item, when nothing matches', () => {
+  it('find returns None and calls the predicate for every item when nothing matches', () => {
     const calls: number[] = []
     const result = pipe(
       [1, 2, 3],
@@ -336,22 +405,18 @@ describe('every/some/find early exit callback counts', () => {
         return x > 100
       }),
     )
-    expect(result).toBeUndefined()
+    expect(result).toEqual(none)
     expect(calls).toEqual([1, 2, 3])
   })
 })
 
 describe('findIndex', () => {
-  it('returns undefined (not -1) when nothing matches, unlike Array.prototype.findIndex', () => {
-    // Asserted contract: stopcock's findIndex intentionally diverges from
-    // Array.prototype.findIndex here. -1 is a valid index-shaped sentinel
-    // that silently succeeds in arithmetic/indexing contexts; undefined
-    // forces callers to handle "not found" explicitly.
+  it('returns None when nothing matches', () => {
     const result = pipe(
       [1, 2, 3],
       A.findIndex((x: number) => x > 100),
     )
-    expect(result).toBeUndefined()
+    expect(result).toEqual(none)
   })
 
   it('returns the index of the first match when one exists', () => {
@@ -359,7 +424,7 @@ describe('findIndex', () => {
       [10, 20, 30],
       A.findIndex((x: number) => x === 20),
     )
-    expect(result).toBe(1)
+    expect(result).toEqual(some(1))
   })
 })
 

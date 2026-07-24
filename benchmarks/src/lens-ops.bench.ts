@@ -1,5 +1,5 @@
 import { bench, describe } from 'vite-plus/test'
-import { lens, lensProp, lensIndex, lensPath, view, set, over } from '@stopcock/fp'
+import * as Optic from '@stopcock/fp/optic'
 import * as Ra from 'ramda'
 
 const obj = { name: 'Alice', age: 30, address: { city: 'Portland', zip: '97201' } }
@@ -14,49 +14,55 @@ function batch<T>(operation: () => T): T {
 }
 
 describe('lensProp + view', () => {
-  const l = lensProp<typeof obj, 'name'>('name')
+  const l = Optic.prop<typeof obj, 'name'>('name')
   const raL = Ra.lensProp<typeof obj, 'name'>('name')
 
-  bench('stopcock', () => batch(() => view(obj, l)))
+  bench('stopcock', () => batch(() => Optic.view(l, obj)))
   bench('ramda', () => batch(() => Ra.view(raL, obj)))
 })
 
 describe('lensProp + set', () => {
-  const l = lensProp<typeof obj, 'name'>('name')
+  const l = Optic.prop<typeof obj, 'name'>('name')
   const raL = Ra.lensProp<typeof obj, 'name'>('name')
 
-  bench('stopcock', () => batch(() => set(obj, l, 'Bob')))
+  bench('stopcock', () => batch(() => Optic.set(l, obj, 'Bob')))
   bench('ramda', () => batch(() => Ra.set(raL, 'Bob', obj)))
 })
 
 describe('lensProp + over', () => {
-  const l = lensProp<typeof obj, 'age'>('age')
+  const l = Optic.prop<typeof obj, 'age'>('age')
   const raL = Ra.lensProp<typeof obj, 'age'>('age')
 
-  bench('stopcock', () => batch(() => over(obj, l, (x: number) => x + 1)))
+  bench('stopcock', () => batch(() => Optic.modify(l, obj, (x: number) => x + 1)))
   bench('ramda', () => batch(() => Ra.over(raL, (x: number) => x + 1, obj)))
 })
 
 describe('lensIndex + view', () => {
-  const l = lensIndex<number>(2)
+  const l = Optic.index<number>(2)
   const raL = Ra.lensIndex<number>(2)
 
-  bench('stopcock', () => batch(() => view(arr, l)))
+  bench('stopcock Option preview', () => batch(() => Optic.preview(l, arr)))
   bench('ramda', () => batch(() => Ra.view(raL, arr)))
 })
 
 describe('lensPath + view', () => {
-  const l = lensPath<typeof obj, 'address', 'city'>('address', 'city')
+  const l = Optic.compose(
+    Optic.prop<typeof obj, 'address'>('address'),
+    Optic.prop<typeof obj.address, 'city'>('city'),
+  )
   const raL = Ra.lensPath(['address', 'city'])
 
-  bench('stopcock', () => batch(() => view(obj, l)))
+  bench('stopcock', () => batch(() => Optic.view(l, obj)))
   bench('ramda', () => batch(() => Ra.view(raL, obj)))
 })
 
 describe('lensPath + set (deep)', () => {
-  const l = lensPath<typeof obj, 'address', 'city'>('address', 'city')
+  const l = Optic.compose(
+    Optic.prop<typeof obj, 'address'>('address'),
+    Optic.prop<typeof obj.address, 'city'>('city'),
+  )
   const raL = Ra.lensPath(['address', 'city'])
 
-  bench('stopcock', () => batch(() => set(obj, l, 'Seattle')))
+  bench('stopcock', () => batch(() => Optic.set(l, obj, 'Seattle')))
   bench('ramda', () => batch(() => Ra.set(raL, 'Seattle', obj)))
 })

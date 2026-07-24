@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '../pipe'
+import { none, some } from '../option'
 import * as A from '../array'
 import * as S from '../string'
 import * as M from '../math'
-import { explainPipeline, getOptimizerStats, resetOptimizerStats } from '../compile'
+import { explain, getOptimizerStats, resetOptimizerStats } from '../compile'
 
 describe('pipe fusion', () => {
   describe('optimizer diagnostics', () => {
@@ -28,12 +29,12 @@ describe('pipe fusion', () => {
     })
 
     it('explains tagged fusion inputs without executing them', () => {
-      const explanation = explainPipeline(
+      const explanation = explain(
         A.filterMap((x: number) => (x > 1 ? String(x) : undefined)),
         A.takeUntil((x: string) => x === '4'),
       )
       expect(explanation.executor).toBe('portable')
-      expect(explanation.semantics).toBe('exact')
+      expect(explanation.semanticMode).toBe('exact')
       // filterMap and takeUntil are both array-domain stream ops: one
       // contiguous segment, not one per op.
       expect(explanation.domains).toEqual(['array'])
@@ -42,7 +43,7 @@ describe('pipe fusion', () => {
 
   describe('filterMap -> take fusion', () => {
     it('fuses into a single array-domain segment', () => {
-      const explanation = explainPipeline(
+      const explanation = explain(
         A.filterMap((x: number) => (x % 2 === 0 ? x : undefined)),
         A.take(2),
       )
@@ -119,7 +120,7 @@ describe('pipe fusion', () => {
         }),
       )
 
-      expect(result).toBe('hit:4')
+      expect(result).toEqual(some('hit:4'))
       expect(visited).toBe(3)
     })
 
@@ -487,16 +488,16 @@ describe('pipe fusion', () => {
           A.map((x: number) => x * 2),
           A.find((x: number) => x > 10),
         ),
-      ).toBe(12)
+      ).toEqual(some(12))
     })
 
-    it('find returns undefined when no match', () => {
+    it('find returns None when no match', () => {
       expect(
         pipe(
           data,
           A.find((x: number) => x > 100),
         ),
-      ).toBeUndefined()
+      ).toEqual(none)
     })
 
     it('filter + findIndex', () => {
@@ -506,16 +507,16 @@ describe('pipe fusion', () => {
           A.filter((x: number) => x % 2 === 0),
           A.findIndex((x: number) => x > 5),
         ),
-      ).toBe(2)
+      ).toEqual(some(2))
     })
 
-    it('findIndex returns undefined when no match', () => {
+    it('findIndex returns None when no match', () => {
       expect(
         pipe(
           data,
           A.findIndex((x: number) => x > 100),
         ),
-      ).toBeUndefined()
+      ).toEqual(none)
     })
   })
 
@@ -713,7 +714,7 @@ describe('pipe fusion', () => {
           [1, 2, 3, 4],
           A.find((x: number) => x > 2),
         ),
-      ).toBe(3)
+      ).toEqual(some(3))
     })
 
     it('closures over free variables', () => {
@@ -821,7 +822,13 @@ describe('pipe fusion', () => {
     it('map callback closing over an outer variable of a different name', () => {
       const factor = 10
       const bump = (n: number) => n * factor + 1
-      expect(pipe([1, 2, 3], A.map(bump), A.filter((x: number) => x > 10))).toEqual([11, 21, 31])
+      expect(
+        pipe(
+          [1, 2, 3],
+          A.map(bump),
+          A.filter((x: number) => x > 10),
+        ),
+      ).toEqual([11, 21, 31])
     })
 
     it('filter callback referencing an outer object property', () => {
@@ -997,7 +1004,7 @@ describe('pipe fusion', () => {
           A.filter((x: number) => x > 2),
           A.min,
         ),
-      ).toBe(3)
+      ).toEqual(some(3))
     })
 
     it('filter then max', () => {
@@ -1007,7 +1014,7 @@ describe('pipe fusion', () => {
           A.filter((x: number) => x < 8),
           A.max,
         ),
-      ).toBe(5)
+      ).toEqual(some(5))
     })
 
     it('map then length', () => {
@@ -1057,7 +1064,7 @@ describe('pipe fusion', () => {
           A.map((x: number) => x * 5),
           A.min,
         ),
-      ).toBe(5)
+      ).toEqual(some(5))
     })
 
     it('map then max', () => {
@@ -1067,7 +1074,7 @@ describe('pipe fusion', () => {
           A.map((x: number) => x * 5),
           A.max,
         ),
-      ).toBe(15)
+      ).toEqual(some(15))
     })
   })
 
@@ -1101,7 +1108,7 @@ describe('pipe fusion', () => {
           A.map((x: number) => x * 3),
           A.find((x: number) => x > 8),
         ),
-      ).toBe(9)
+      ).toEqual(some(9))
     })
 
     it('filter then find', () => {
@@ -1111,7 +1118,7 @@ describe('pipe fusion', () => {
           A.filter((x: number) => x % 2 === 0),
           A.find((x: number) => x > 3),
         ),
-      ).toBe(4)
+      ).toEqual(some(4))
     })
   })
 
@@ -1123,7 +1130,7 @@ describe('pipe fusion', () => {
           A.map((x: number) => x / 10),
           A.findIndex((x: number) => x === 3),
         ),
-      ).toBe(2)
+      ).toEqual(some(2))
     })
 
     it('map then findIndex no match', () => {
@@ -1133,7 +1140,7 @@ describe('pipe fusion', () => {
           A.map((x: number) => x * 2),
           A.findIndex((x: number) => x > 100),
         ),
-      ).toBeUndefined()
+      ).toEqual(none)
     })
   })
 
@@ -1203,16 +1210,16 @@ describe('pipe fusion', () => {
 
   describe('sort + accessor', () => {
     it('sort then head', () => {
-      expect(pipe([5, 3, 8, 1, 9], A.sort, A.head)).toBe(1)
+      expect(pipe([5, 3, 8, 1, 9], A.sort, A.head)).toEqual(some(1))
     })
 
     it('sort then last', () => {
-      expect(pipe([5, 3, 8, 1, 9], A.sort, A.last)).toBe(9)
+      expect(pipe([5, 3, 8, 1, 9], A.sort, A.last)).toEqual(some(9))
     })
 
     it('sort then head then sort then last (cache collision)', () => {
-      expect(pipe([5, 3, 8, 1, 9], A.sort, A.head)).toBe(1)
-      expect(pipe([5, 3, 8, 1, 9], A.sort, A.last)).toBe(9)
+      expect(pipe([5, 3, 8, 1, 9], A.sort, A.head)).toEqual(some(1))
+      expect(pipe([5, 3, 8, 1, 9], A.sort, A.last)).toEqual(some(9))
     })
 
     it('filter, sort, head', () => {
@@ -1223,7 +1230,7 @@ describe('pipe fusion', () => {
           A.sort,
           A.head,
         ),
-      ).toBe(5)
+      ).toEqual(some(5))
     })
   })
 

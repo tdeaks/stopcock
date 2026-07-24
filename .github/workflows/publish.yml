@@ -8,6 +8,7 @@ on:
       - 'packages/**'
       - '.changeset/**'
       - '.github/workflows/publish.yml'
+      - 'benchmarks/**'
       - 'bun.lock'
       - 'package.json'
       - 'tooling/**'
@@ -29,16 +30,216 @@ jobs:
       - uses: actions/checkout@v6
       - uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: '24'
+          node-version: '22'
           cache: true
           run-install: |
             - cwd: .
               args: ['--frozen-lockfile']
+      - name: Verify minimum Node runtime
+        run: |
+          node -e "if (process.versions.node.split('.')[0] !== '22') throw new Error(\`expected Node 22, got \${process.versions.node}\`)"
       - run: vp run build:packages
+      - run: bun run test:types
       - run: vp run test:packages
+      - run: bun run codegen:check
+        working-directory: packages/fp
+      - run: bun run manifest:check
+        working-directory: packages/fp
+      - run: bun run check:portable
+        working-directory: packages/fp
+      - run: bun run check:codegen-types
+        working-directory: packages/fp
+      - run: bun run check:script-types
+        working-directory: packages/fp
+      - run: bunx tsc -p tsconfig.json --noEmit
+        working-directory: packages/fp
+      - run: bun run check:types
+        working-directory: packages/fp
+      - run: bun run scripts/check-package-contract.ts
+        working-directory: packages/fp
+
+  fp-performance:
+    name: fp performance (Bun/JSC + Node/V8, ${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+          - os: macos-14
+            platform: macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: '22'
+          cache: true
+          run-install: |
+            - cwd: .
+              args: ['--frozen-lockfile']
+      - name: Verify minimum Node runtime
+        run: |
+          node -e "if (process.versions.node.split('.')[0] !== '22') throw new Error(\`expected Node 22, got \${process.versions.node}\`)"
+      - name: Report benchmark engines
+        run: |
+          bun --version
+          node --version
+          uname -sm
+      - name: Build @stopcock/fp distribution for size gate
+        run: node ../../tooling/build-package.mjs
+        working-directory: packages/fp
+      - name: Package size and cold-start proxy gate
+        run: bun run perf:package-size
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Portable runtime performance gate (Bun/JSC)
+        run: bun run perf:portable:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Portable runtime performance gate (Node/V8)
+        run: bun run perf:portable:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Callback-identity churn performance gate (Bun/JSC)
+        run: bun run perf:callback-churn:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Callback-identity churn performance gate (Node/V8)
+        run: bun run perf:callback-churn:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Iter runtime performance gate (Bun/JSC)
+        run: bun run perf:iter:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Iter runtime performance gate (Node/V8)
+        run: bun run perf:iter:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Broad Iter performance gate (Bun/JSC)
+        run: bun run perf:iter-broad:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Broad Iter performance gate (Node/V8)
+        run: bun run perf:iter-broad:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Transducer, collector, and without hot-path gate (Bun/JSC)
+        run: bun run perf:hot-paths:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Transducer, collector, and without hot-path gate (Node/V8)
+        run: bun run perf:hot-paths:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Typed-array performance gate (Bun/JSC)
+        run: bun run perf:typed-array:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Typed-array performance gate (Node/V8)
+        run: bun run perf:typed-array:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Pipe dispatch performance gate (Bun/JSC)
+        run: bun run perf:pipe-dispatch:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Pipe dispatch performance gate (Node/V8)
+        run: bun run perf:pipe-dispatch:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Build compiler performance gate (Bun/JSC)
+        shell: bash
+        run: |
+          set -o pipefail
+          bun run perf:compiler:bun | tee "$PERF_ARTIFACT_DIR/compiler-performance-bun-jsc.txt"
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Build compiler performance gate (Node/V8)
+        shell: bash
+        run: |
+          set -o pipefail
+          bun run perf:compiler:node | tee "$PERF_ARTIFACT_DIR/compiler-performance-node-v8.txt"
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Data and functional hot-path gate (Bun/JSC)
+        run: bun run perf:data-functional:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Data and functional hot-path gate (Node/V8)
+        run: bun run perf:data-functional:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Core utilities hot-path gate (Bun/JSC)
+        run: bun run perf:core-utilities:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Core utilities hot-path gate (Node/V8)
+        run: bun run perf:core-utilities:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Structural hot-path gate (Bun/JSC)
+        run: bun run perf:structural:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Structural hot-path gate (Node/V8)
+        run: bun run perf:structural:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Scalar, text, and hash hot-path gate (Bun/JSC)
+        run: bun run perf:scalar-text-hash:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Scalar, text, and hash hot-path gate (Node/V8)
+        run: bun run perf:scalar-text-hash:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Third-wave hot-path gate (Bun/JSC)
+        run: bun run perf:third-wave:bun
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Third-wave hot-path gate (Node/V8)
+        run: bun run perf:third-wave:node
+        working-directory: benchmarks
+        env:
+          PERF_ARTIFACT_DIR: ${{ runner.temp }}/stopcock-fp-performance
+      - name: Upload FP performance reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fp-performance-${{ matrix.platform }}
+          path: ${{ runner.temp }}/stopcock-fp-performance
+          if-no-files-found: warn
 
   publish:
-    needs: test
+    needs: [test, fp-performance]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -50,6 +251,9 @@ jobs:
           run-install: |
             - cwd: .
               args: ['--frozen-lockfile']
+      - name: Verify publish Node runtime
+        run: |
+          node -e "if (process.versions.node.split('.')[0] !== '24') throw new Error(\`expected Node 24, got \${process.versions.node}\`)"
       - run: vp run build:packages
       - run: npm install -g npm@latest
       - run: npm --version

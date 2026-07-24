@@ -1,0 +1,30 @@
+---
+title: fp-codemod
+description: Conservative TypeScript-aware FP 1 to FP 2 migrations
+---
+
+```bash
+bun add -d typescript @stopcock/fp-codemod
+bunx stopcock-fp-codemod --check src
+bunx stopcock-fp-codemod --write src
+```
+
+Dry-run is the default. `--check` is suitable for CI, `--write` applies safe
+mechanical edits, and `--json` returns a machine-readable summary.
+
+The codemod rewrites replaced subpaths, splits legacy root namespaces into
+focused imports, moves named Option, Result, Guard, and Function exports,
+preserves aliases and formatting style, and updates compatible match handlers.
+It emits explicit diagnostics instead of guessing when a migration changes
+semantics.
+
+```ts
+import { transformSource } from '@stopcock/fp-codemod'
+import { runCodemod } from '@stopcock/fp-codemod/node'
+
+const result = transformSource(sourceText, 'example.ts')
+const summary = await runCodemod(['src'], { write: true })
+```
+
+TypeScript 7 is a peer dependency so the transform uses the same compiler API
+as the project being migrated.

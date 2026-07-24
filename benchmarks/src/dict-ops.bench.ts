@@ -1,5 +1,5 @@
 import { bench, describe } from 'vite-plus/test'
-import { D } from '@stopcock/fp'
+import * as D from '@stopcock/fp/record'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
 import * as Ra from 'ramda'
@@ -55,10 +55,10 @@ describe.each([10, 100, 1000])('fromEntries — n=%i', (n) => {
   bench('lodash', () => _.fromPairs(entries))
 })
 
-describe.each([10, 100, 1000])('toEntries — n=%i', (n) => {
+describe.each([10, 100, 1000])('entries — n=%i', (n) => {
   const dict = dicts[n]
 
-  bench('stopcock', () => D.toEntries(dict))
+  bench('stopcock', () => D.entries(dict))
   bench('ramda', () => Ra.toPairs(dict))
   bench('lodash', () => _.toPairs(dict))
 })

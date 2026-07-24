@@ -1,17 +1,17 @@
 import { bench, describe } from 'vite-plus/test'
-import { N } from '@stopcock/fp'
+import * as N from '@stopcock/fp/number'
 import { getData } from './setup'
 
 describe.each([100, 1_000, 10_000])('min — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
 
-  bench('stopcock', () => N.min(data))
+  bench('stopcock', () => N.minOrUndefined(data))
 })
 
 describe.each([100, 1_000, 10_000])('max — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
 
-  bench('stopcock', () => N.max(data))
+  bench('stopcock', () => N.maxOrUndefined(data))
 })
 
 describe('clamp', () => {

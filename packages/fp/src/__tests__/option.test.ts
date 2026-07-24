@@ -233,10 +233,10 @@ describe('Option', () => {
     })
 
     it('match folds over both cases', () => {
-      const fold = match(
-        () => 'empty',
-        (n: number) => `got ${n}`,
-      )
+      const fold = match({
+        none: () => 'empty',
+        some: (n: number) => `got ${n}`,
+      })
       expect(pipe(some(42), fold)).toBe('got 42')
       expect(pipe(none, fold)).toBe('empty')
     })
@@ -271,11 +271,11 @@ describe('Option', () => {
 
   describe('toResult', () => {
     it('Some(a) → Ok(a)', () => {
-      expect(pipe(some(42), toResult('missing'))).toEqual(ok(42))
+      expect(pipe(some(42), toResult(() => 'missing'))).toEqual(ok(42))
     })
 
     it('None → Err(defaultError)', () => {
-      expect(pipe(none, toResult('missing'))).toEqual(err('missing'))
+      expect(pipe(none, toResult(() => 'missing'))).toEqual(err('missing'))
     })
   })
 

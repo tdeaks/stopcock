@@ -1,32 +1,35 @@
-// Snapshots the subset of @stopcock/fp's registry this compiler needs
-// (name, callbackArity, bindings length) into a checked-in TS module.
-// The registry itself is not part of @stopcock/fp's public entry, so a
-// packed consumer of @stopcock/fp-compiler can't import it at runtime --
-// this file is the published surface instead. ops-table.test.ts asserts
-// it stays in sync with the live workspace registry; drift fails CI.
+// Snapshots the registry metadata for operators that are actually exported
+// from @stopcock/fp/array into a checked-in TS module. The registry itself
+// is internal, so a packed compiler consumer cannot import it at runtime.
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import * as ArrayOps from '../../fp/src/array'
 import { REGISTERED_OP_CODES, requireOpMeta } from '../../fp/src/registry'
 
 interface OpsTableEntry {
   readonly name: string
   readonly callbackArity: 0 | 1 | 2
-  readonly bindingCount: number
+  readonly bindings: readonly ('fn' | 'a1' | 'a2')[]
 }
 
-const entries: OpsTableEntry[] = REGISTERED_OP_CODES.map((op) => {
-  const meta = requireOpMeta(op)
-  return { name: meta.name, callbackArity: meta.callbackArity, bindingCount: meta.bindings.length }
-})
+const publicArrayExports = new Set(Object.keys(ArrayOps))
+const entries: OpsTableEntry[] = REGISTERED_OP_CODES
+  .map(requireOpMeta)
+  .filter((meta) => publicArrayExports.has(meta.name))
+  .map((meta) => ({
+    name: meta.name,
+    callbackArity: meta.callbackArity,
+    bindings: meta.bindings,
+  }))
 
 const out = `// GENERATED FILE -- do not edit by hand.
 // Run \`bun run scripts/gen-ops-table.ts\` from packages/fp-compiler to regenerate.
-// Source of truth: packages/fp/src/registry.ts (REGISTERED_OP_CODES).
+// Sources of truth: packages/fp/src/array.ts public exports and registry metadata.
 
 export interface OpsTableEntry {
   readonly name: string
   readonly callbackArity: 0 | 1 | 2
-  readonly bindingCount: number
+  readonly bindings: readonly ('fn' | 'a1' | 'a2')[]
 }
 
 export const OPS_TABLE: readonly OpsTableEntry[] = ${JSON.stringify(entries, null, 2)}

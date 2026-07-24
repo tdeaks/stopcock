@@ -1,4 +1,4 @@
-import { dual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
 import type { Timestamp } from './types'
 import { compose, stamp } from './core'
 

@@ -5,11 +5,17 @@ description: isString, isNumber, isNil, isDeepEqual and more. Runtime type guard
 
 Runtime type checks that narrow the TypeScript type.
 
+```ts
+type Guard<A> = Refinement<unknown, A>
+```
+
 ## Type checks
 
 ```ts
 isString(x: unknown): x is string
 isNumber(x: unknown): x is number
+isFiniteNumber(x: unknown): x is number
+isNonBlankString(x: unknown): x is string
 isBoolean(x: unknown): x is boolean
 isBigInt(x: unknown): x is bigint
 isSymbol(x: unknown): x is symbol
@@ -20,9 +26,13 @@ isPromise(x: unknown): x is Promise<unknown>
 isArray(x: unknown): x is unknown[]
 isObjectType(x: unknown): x is object
 isPlainObject(x: unknown): x is Record<string, unknown>
+isArrayOf<A>(guard: Guard<A>): Guard<A[]>
+isRecordOf<A>(guard: Guard<A>): Guard<Record<string, A>>
 ```
 
 `isPlainObject` rejects arrays and class instances. `isObjectType` is just a `typeof` check.
+`isRecordOf` accepts only plain objects and checks every own enumerable string-keyed value. Empty
+arrays and records are valid because every contained value satisfies the supplied guard.
 
 ## Nullability
 
@@ -58,7 +68,9 @@ propIs<T>(ctor: new (...args: any[]) => T, prop: string, obj: Record<string, unk
 ## Examples
 
 ```ts
-import { pipe, A, G } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as G from '@stopcock/fp/guard'
 
 // narrow unknown API data
 const data: unknown[] = [1, 'hello', null, { a: 1 }]
@@ -83,4 +95,11 @@ G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] }) // true
 // check class instance
 G.is(Date, new Date()) // true
 G.is(Date, '2024-01-01') // false
+
+const numbers = G.isArrayOf(G.isFiniteNumber)
+numbers([1, 2, 3]) // true
+numbers([1, Number.NaN]) // false
+
+const labels = G.isRecordOf(G.isNonBlankString)
+labels({ primary: 'Save', secondary: 'Cancel' }) // true
 ```

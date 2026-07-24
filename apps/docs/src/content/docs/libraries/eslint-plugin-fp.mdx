@@ -1,0 +1,29 @@
+---
+title: eslint-plugin-fp
+description: ESLint flat-config rules for Stopcock FP 2
+---
+
+```bash
+bun add -d eslint @stopcock/eslint-plugin-fp
+```
+
+```js
+import stopcockFp from '@stopcock/eslint-plugin-fp'
+
+export default [stopcockFp.configs.recommended]
+```
+
+The `recommended` preset rejects removed APIs and warns on imports that bypass
+the slim FP root or focused subpaths. The stricter `performance` preset also
+warns about eager array callback chains.
+
+Available rules are:
+
+- `@stopcock/fp/no-legacy-api`
+- `@stopcock/fp/no-root-module-imports`
+- `@stopcock/fp/prefer-option-partials`
+- `@stopcock/fp/no-eager-array-chains`
+
+Only semantics-preserving migrations are autofixed. Ambiguous optic, async,
+and runtime-compilation migrations remain explicit manual work. The plugin
+uses structural rule types and does not import ESLint at runtime.

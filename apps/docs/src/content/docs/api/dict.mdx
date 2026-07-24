@@ -1,50 +1,23 @@
 ---
-title: D (Dict)
-description: Map, filter, merge, and traverse Record<string, T> dictionaries
+title: Dict migration
+description: Dict was replaced by Record in @stopcock/fp 2.0
 ---
 
-`Dict<A>` is `Record<string, A>`.
+The 1.x `D` namespace and `/dict` subpath were removed. Use the property-key
+aware record module:
 
-## Non-dual
+```diff
+- import { D } from '@stopcock/fp'
++ import * as Record from '@stopcock/fp/record'
 
-```ts
-keys<A>(d: Dict<A>): string[]
-values<A>(d: Dict<A>): A[]
-toEntries<A>(d: Dict<A>): [string, A][]
-fromEntries<A>(entries: [string, A][]): Dict<A>
-isEmpty<A>(d: Dict<A>): boolean
+- D.toEntries(values)
++ Record.entries(values)
 ```
 
-## Dual
+The new module includes immutable `get`, `set`, `remove`, `modify`, `update`,
+`map`, `filter`, `filterMap`, `mapKeys`, `merge`, `pick`, `omit`, `partition`,
+`reduce`, and equality operations. Bulk construction and transforms have
+explicit `fromEntriesInto`, `mapInto`, and `filterInto` forms.
 
-```ts
-get<A>(d: Dict<A>, key: string): A | undefined
-map<A, B>(d: Dict<A>, f: (a: A, key: string) => B): Dict<B>
-filter<A>(d: Dict<A>, pred: (a: A, key: string) => boolean): Dict<A>
-merge<A>(a: Dict<A>, b: Dict<A>): Dict<A>
-```
-
-## Examples
-
-```ts
-import { pipe, A, D } from '@stopcock/fp'
-
-// count items per category
-const counts = pipe(
-  A.groupBy(products, (p) => p.category),
-  D.map((items) => items.length),
-)
-// { electronics: 12, clothing: 8 }
-
-// merge config layers
-const config = pipe(defaults, D.merge(envOverrides), D.merge(cliFlags))
-
-// filter out empty groups
-pipe(
-  grouped,
-  D.filter((items) => items.length > 0),
-)
-
-// build lookup table
-const byId = D.fromEntries(users.map((u) => [u.id, u]))
-```
+Unlike the old string-only `Dict` vocabulary, records preserve enumerable
+`PropertyKey` values, including symbols.

@@ -83,19 +83,9 @@ export const OP_GUARD_IS_FUNCTION = 86
 export const OP_SORT_ASC = 90
 export const OP_SORT_DESC = 91
 
-// Stream-dialect ops: Stream's take/scan disagree with the array Plan IR's
-// take/scan on exact semantics (see registry.ts's registration comment and
-// docs/superpowers/plans/2026-07-21-stopcock-fp-tiered-execution-implementation.md,
-// W5). Both dialects are preserved as distinct opcodes rather than one
-// silently overriding the other; this is a pending sign-off item.
-export const OP_TAKE_STREAM = 100
-export const OP_SCAN_STREAM = 101
-
 // Array-domain scan (array.ts's codegen'd scan, tagged { op: 'scan' }).
 // Emits the initial accumulator before any element is processed: output
-// length is n+1 for n inputs, out[0] is the seed. See registry.ts's
-// OP_SCAN_STREAM comment for why this needed its own opcode rather than
-// reusing the stream dialect.
+// length is n+1 for n inputs and out[0] is the seed.
 export const OP_SCAN = 102
 
 // without(arr, values): a whole-array materializer, values is a single
@@ -189,8 +179,6 @@ export const isFuseableOp = (op: number): boolean =>
   op === OP_MAP_WHILE ||
   op === OP_REJECT ||
   op === OP_TAKE_UNTIL ||
-  op === OP_TAKE_STREAM ||
-  op === OP_SCAN_STREAM ||
   op === OP_SCAN
 
 export const isTerminalOp = (op: number): boolean =>

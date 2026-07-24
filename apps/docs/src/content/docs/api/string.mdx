@@ -30,7 +30,8 @@ replaceAll(s: string, search: string, replacement: string): string
 ## Examples
 
 ```ts
-import { pipe, S } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as S from '@stopcock/fp/string'
 
 // slug from title
 pipe('  Hello World!  ', S.trim, S.toLowerCase, S.replaceAll(' ', '-'), S.replaceAll('!', ''))

@@ -1,6 +1,112 @@
 import { OP_CODES, OP_NON_FUSEABLE } from './opcodes'
 
-export function dual(arity: number, body: Function, tag?: { op: string }): any {
+export interface DualTag {
+  readonly op: string
+}
+
+export interface TaggedOperation {
+  readonly _op: number
+}
+
+type TaggedArguments<Args extends readonly unknown[]> = Args extends readonly [
+  infer Fn,
+  infer A1,
+  infer A2,
+  ...(readonly unknown[]),
+]
+  ? {
+      readonly _fn: Fn
+      readonly _a1: A1
+      readonly _a2: A2
+    }
+  : Args extends readonly [infer Fn, infer A1, ...(readonly unknown[])]
+    ? {
+        readonly _fn: Fn
+        readonly _a1: A1
+      }
+    : Args extends readonly [infer Fn, ...(readonly unknown[])]
+      ? {
+          readonly _fn: Fn
+        }
+      : object
+
+export type TaggedDataLast<Data, Args extends readonly unknown[], Result> = ((
+  data: Data,
+) => Result) &
+  TaggedOperation &
+  TaggedArguments<Args>
+
+export type DualOperation<Data, Args extends readonly unknown[], Result> = {
+  (data: Data, ...args: Args): Result
+  (...args: Args): (data: Data) => Result
+}
+
+export type TaggedDualOperation<Data, Args extends readonly unknown[], Result> = {
+  (data: Data, ...args: Args): Result
+  (...args: Args): TaggedDataLast<Data, Args, Result>
+}
+
+export type TaggedUnaryOperation<Data, Result> = ((data: Data) => Result) & TaggedOperation
+
+type AnyFunction = (...args: never[]) => unknown
+type ArityMatch<
+  Body extends AnyFunction,
+  Arity extends number,
+> = Parameters<Body>['length'] extends Arity ? unknown : never
+type DataParameter<Body extends AnyFunction> = Parameters<Body>[0]
+type RemainingParameters<Body extends AnyFunction> =
+  Parameters<Body> extends readonly [unknown, ...infer Rest] ? Readonly<Rest> : never
+type AtLeastFiveParameters<Body extends AnyFunction> =
+  Parameters<Body> extends readonly [unknown, unknown, unknown, unknown, unknown, ...unknown[]]
+    ? unknown
+    : never
+
+export function dual<Body extends AnyFunction>(
+  arity: 1 & ArityMatch<Body, 1>,
+  body: Body,
+  tag: DualTag,
+): TaggedUnaryOperation<DataParameter<Body>, ReturnType<Body>>
+export function dual<Body extends AnyFunction>(
+  arity: 1 & ArityMatch<Body, 1>,
+  body: Body,
+): (data: DataParameter<Body>) => ReturnType<Body>
+export function dual<Body extends AnyFunction>(
+  arity: 2 & ArityMatch<Body, 2>,
+  body: Body,
+  tag: DualTag,
+): TaggedDualOperation<DataParameter<Body>, RemainingParameters<Body>, ReturnType<Body>>
+export function dual<Body extends AnyFunction>(
+  arity: 2 & ArityMatch<Body, 2>,
+  body: Body,
+): DualOperation<DataParameter<Body>, RemainingParameters<Body>, ReturnType<Body>>
+export function dual<Body extends AnyFunction>(
+  arity: 3 & ArityMatch<Body, 3>,
+  body: Body,
+  tag: DualTag,
+): TaggedDualOperation<DataParameter<Body>, RemainingParameters<Body>, ReturnType<Body>>
+export function dual<Body extends AnyFunction>(
+  arity: 3 & ArityMatch<Body, 3>,
+  body: Body,
+): DualOperation<DataParameter<Body>, RemainingParameters<Body>, ReturnType<Body>>
+export function dual<Body extends AnyFunction>(
+  arity: 4 & ArityMatch<Body, 4>,
+  body: Body,
+  tag: DualTag,
+): TaggedDualOperation<DataParameter<Body>, RemainingParameters<Body>, ReturnType<Body>>
+export function dual<Body extends AnyFunction>(
+  arity: 4 & ArityMatch<Body, 4>,
+  body: Body,
+): DualOperation<DataParameter<Body>, RemainingParameters<Body>, ReturnType<Body>>
+export function dual<Body extends AnyFunction>(
+  arity: Parameters<Body>['length'] & AtLeastFiveParameters<Body>,
+  body: Body,
+  tag: DualTag,
+): TaggedDualOperation<DataParameter<Body>, RemainingParameters<Body>, ReturnType<Body>>
+export function dual<Body extends AnyFunction>(
+  arity: Parameters<Body>['length'] & AtLeastFiveParameters<Body>,
+  body: Body,
+): DualOperation<DataParameter<Body>, RemainingParameters<Body>, ReturnType<Body>>
+export function dual(arity: number, body: Function, tag?: DualTag): unknown {
   const opcode = tag ? (OP_CODES[tag.op] ?? OP_NON_FUSEABLE) : 0
 
   if (tag) {

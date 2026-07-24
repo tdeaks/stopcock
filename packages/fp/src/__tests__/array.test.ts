@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vite-plus/test'
 import { pipe } from '../pipe'
+import { none, some } from '../option'
 import * as A from '../array'
 
 describe('array', () => {
@@ -15,9 +16,39 @@ describe('array', () => {
     })
   })
 
+  describe('partial API contract', () => {
+    it('uses Option by default and preserves present undefined values', () => {
+      expect(A.head([])).toEqual(none)
+      expect(A.head([undefined])).toEqual(some(undefined))
+      expect(A.find([undefined], () => true)).toEqual(some(undefined))
+      expect(A.findIndex([1], () => false)).toEqual(none)
+      expect(A.nth([], 0)).toEqual(none)
+      expect(A.min([])).toEqual(none)
+      expect(A.max([3, 1, 2])).toEqual(some(3))
+    })
+
+    it('reserves undefined for explicit raw variants', () => {
+      expect(A.headOrUndefined([])).toBeUndefined()
+      expect(A.findOrUndefined([1, 2], (value) => value > 1)).toBe(2)
+      expect(A.findIndexOrUndefined([1], () => false)).toBeUndefined()
+      expect(A.nthOrUndefined([1], 2)).toBeUndefined()
+      expect(A.minOrUndefined([])).toBeUndefined()
+      expect(A.onlyOrUndefined([1, 2])).toBeUndefined()
+      expect(A.meanByOrUndefined([], Number)).toBeUndefined()
+    })
+
+    it('provides total non-empty variants', () => {
+      expect(A.headNonEmpty([1])).toBe(1)
+      expect(A.lastNonEmpty([1, 2])).toBe(2)
+      expect(A.minNonEmpty([2, 1])).toBe(1)
+      expect(A.maxNonEmpty([2, 1])).toBe(2)
+      expect(A.meanByNonEmpty([{ value: 2 }], (entry) => entry.value)).toBe(2)
+    })
+  })
+
   describe('arity 1 re-exports', () => {
-    it('head', () => expect(A.head([1, 2, 3])).toBe(1))
-    it('last', () => expect(A.last([1, 2, 3])).toBe(3))
+    it('head', () => expect(A.head([1, 2, 3])).toEqual(some(1)))
+    it('last', () => expect(A.last([1, 2, 3])).toEqual(some(3)))
     it('tail', () => expect(A.tail([1, 2, 3])).toEqual([2, 3]))
     it('init', () => expect(A.init([1, 2, 3])).toEqual([1, 2]))
     it('isEmpty', () => expect(A.isEmpty([])).toBe(true))
@@ -31,7 +62,7 @@ describe('array', () => {
       expect(out).not.toBe(arr)
     })
     it('flatten', () => expect(A.flatten([[1], [2, 3]])).toEqual([1, 2, 3]))
-    it('first (alias for head)', () => expect(A.first([1, 2])).toBe(1))
+    it('first (alias for head)', () => expect(A.first([1, 2])).toEqual(some(1)))
     it('uniq', () => expect(A.uniq([1, 2, 2, 3])).toEqual([1, 2, 3]))
   })
 
@@ -110,23 +141,23 @@ describe('array', () => {
         ),
       ).toEqual([1, 1, 2, 2]))
 
-    it('find data-first', () => expect(A.find([1, 2, 3], (x) => x > 1)).toBe(2))
+    it('find data-first', () => expect(A.find([1, 2, 3], (x) => x > 1)).toEqual(some(2)))
     it('find data-last', () =>
       expect(
         pipe(
           [1, 2, 3],
           A.find((x) => x > 1),
         ),
-      ).toBe(2))
+      ).toEqual(some(2)))
 
-    it('findIndex data-first', () => expect(A.findIndex([1, 2, 3], (x) => x > 1)).toBe(1))
+    it('findIndex data-first', () => expect(A.findIndex([1, 2, 3], (x) => x > 1)).toEqual(some(1)))
     it('findIndex data-last', () =>
       expect(
         pipe(
           [1, 2, 3],
           A.findIndex((x) => x > 1),
         ),
-      ).toBe(1))
+      ).toEqual(some(1)))
 
     it('every data-first', () => expect(A.every([2, 4, 6], (x) => x % 2 === 0)).toBe(true))
     it('every data-last', () =>
@@ -409,8 +440,8 @@ describe('array', () => {
 
   describe('arity 1 newly exposed', () => {
     it('dropRepeats', () => expect(A.dropRepeats([1, 1, 2, 2, 3, 1])).toEqual([1, 2, 3, 1]))
-    it('only single', () => expect(A.only([42])).toBe(42))
-    it('only multi', () => expect(A.only([1, 2])).toBeUndefined())
+    it('only single', () => expect(A.only([42])).toEqual(some(42)))
+    it('only multi', () => expect(A.only([1, 2])).toEqual(none))
     it('mergeAll', () => expect(A.mergeAll([{ a: 1 }, { b: 2 }])).toEqual({ a: 1, b: 2 }))
     it('unnest', () => expect(A.unnest([[1, 2], [3]])).toEqual([1, 2, 3]))
   })
@@ -464,7 +495,7 @@ describe('array', () => {
         return x > 2 ? String(x) : undefined
       })
 
-      expect(result).toBe('3')
+      expect(result).toEqual(some('3'))
       expect(visited).toBe(3)
     })
     it('findMap curried', () =>
@@ -473,7 +504,7 @@ describe('array', () => {
           [1, 2, 3],
           A.findMap((x) => (x > 1 ? String(x) : undefined)),
         ),
-      ).toBe('2'))
+      ).toEqual(some('2')))
     it('mapWhile data-first stops at first nullish result', () => {
       let visited = 0
       const result = A.mapWhile([1, 2, 3, 4], (x) => {
@@ -518,36 +549,37 @@ describe('array', () => {
     it('concat data-first', () => expect(A.concat([1, 2], [3, 4])).toEqual([1, 2, 3, 4]))
     it('concat curried', () => expect(pipe([1, 2], A.concat([3, 4]))).toEqual([1, 2, 3, 4]))
 
-    it('nth data-first', () => expect(A.nth([10, 20, 30], 1)).toBe(20))
-    it('nth curried', () => expect(pipe([10, 20, 30], A.nth(1))).toBe(20))
-    it('nth negative', () => expect(A.nth([10, 20, 30], -1)).toBe(30))
+    it('nth data-first', () => expect(A.nth([10, 20, 30], 1)).toEqual(some(20)))
+    it('nth curried', () => expect(pipe([10, 20, 30], A.nth(1))).toEqual(some(20)))
+    it('nth negative', () => expect(A.nth([10, 20, 30], -1)).toEqual(some(30)))
 
-    it('indexOf data-first', () => expect(A.indexOf([10, 20, 30], 20)).toBe(1))
-    it('indexOf curried', () => expect(pipe([10, 20, 30], A.indexOf(20))).toBe(1))
-    it('indexOf missing', () => expect(A.indexOf([1, 2], 99)).toBeUndefined())
+    it('indexOf data-first', () => expect(A.indexOf([10, 20, 30], 20)).toEqual(some(1)))
+    it('indexOf curried', () => expect(pipe([10, 20, 30], A.indexOf(20))).toEqual(some(1)))
+    it('indexOf missing', () => expect(A.indexOf([1, 2], 99)).toEqual(none))
 
-    it('lastIndexOf data-first', () => expect(A.lastIndexOf([1, 2, 1], 1)).toBe(2))
-    it('lastIndexOf curried', () => expect(pipe([1, 2, 1], A.lastIndexOf(1))).toBe(2))
-    it('lastIndexOf missing', () => expect(A.lastIndexOf([1, 2], 99)).toBeUndefined())
+    it('lastIndexOf data-first', () => expect(A.lastIndexOf([1, 2, 1], 1)).toEqual(some(2)))
+    it('lastIndexOf curried', () => expect(pipe([1, 2, 1], A.lastIndexOf(1))).toEqual(some(2)))
+    it('lastIndexOf missing', () => expect(A.lastIndexOf([1, 2], 99)).toEqual(none))
 
-    it('findLast data-first', () => expect(A.findLast([1, 2, 3, 4], (x) => x % 2 === 0)).toBe(4))
+    it('findLast data-first', () =>
+      expect(A.findLast([1, 2, 3, 4], (x) => x % 2 === 0)).toEqual(some(4)))
     it('findLast curried', () =>
       expect(
         pipe(
           [1, 2, 3, 4],
           A.findLast((x) => x % 2 === 0),
         ),
-      ).toBe(4))
+      ).toEqual(some(4)))
 
     it('findLastIndex data-first', () =>
-      expect(A.findLastIndex([1, 2, 3, 2], (x) => x === 2)).toBe(3))
+      expect(A.findLastIndex([1, 2, 3, 2], (x) => x === 2)).toEqual(some(3)))
     it('findLastIndex curried', () =>
       expect(
         pipe(
           [1, 2, 3, 2],
           A.findLastIndex((x) => x === 2),
         ),
-      ).toBe(3))
+      ).toEqual(some(3)))
 
     it('without data-first', () => expect(A.without([1, 2, 3, 4], [2, 4])).toEqual([1, 3]))
     it('without curried', () => expect(pipe([1, 2, 3, 4], A.without([2, 4]))).toEqual([1, 3]))
@@ -568,12 +600,7 @@ describe('array', () => {
     it('without with 8 exclusions (unrolled tier boundary)', () =>
       expect(A.without([1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8])).toEqual([9]))
     it('without with 9 exclusions (linear-scan tier)', () =>
-      expect(
-        A.without(
-          [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-          [1, 2, 3, 4, 5, 6, 7, 8, 9],
-        ),
-      ).toEqual([10]))
+      expect(A.without([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [1, 2, 3, 4, 5, 6, 7, 8, 9])).toEqual([10]))
     it('without with 40 exclusions (Set tier)', () => {
       const excl = Array.from({ length: 40 }, (_, i) => i)
       expect(A.without([...excl, 40, 41], excl)).toEqual([40, 41])
@@ -583,6 +610,24 @@ describe('array', () => {
       expect(A.without([1, 2, 3], excl)).toEqual([1, 3])
       excl.push(3)
       expect(A.without([1, 2, 3], excl)).toEqual([1])
+    })
+    it('without preserves SameValueZero semantics across every crossover boundary', () => {
+      const sameValueZero = (left: number, right: number): boolean =>
+        left === right || (left !== left && right !== right)
+      for (const sourceSize of [0, 1, 8, 33, 256]) {
+        const source = Array.from({ length: sourceSize }, (_, index) =>
+          index % 17 === 0 ? NaN : index % 19 === 0 ? -0 : index % 41,
+        )
+        for (const exclusionSize of [0, 1, 4, 8, 9, 16, 32, 33, 128]) {
+          const exclusions = Array.from({ length: exclusionSize }, (_, index) =>
+            index % 17 === 0 ? NaN : index % 19 === 0 ? 0 : index,
+          )
+          const expected = source.filter(
+            (value) => !exclusions.some((excluded) => sameValueZero(value, excluded)),
+          )
+          expect(A.without(source, exclusions), `${sourceSize}/${exclusionSize}`).toEqual(expected)
+        }
+      }
     })
 
     it('pluck data-first', () => expect(A.pluck([{ x: 1 }, { x: 2 }], 'x')).toEqual([1, 2]))
@@ -726,14 +771,15 @@ describe('array', () => {
     it('hasAtLeast data-first', () => expect(A.hasAtLeast([1, 2, 3], 2)).toBe(true))
     it('hasAtLeast curried', () => expect(pipe([1, 2, 3], A.hasAtLeast(5))).toBe(false))
 
-    it('meanBy data-first', () => expect(A.meanBy([{ v: 2 }, { v: 4 }], (x) => x.v)).toBe(3))
+    it('meanBy data-first', () =>
+      expect(A.meanBy([{ v: 2 }, { v: 4 }], (x) => x.v)).toEqual(some(3)))
     it('meanBy curried', () =>
       expect(
         pipe(
           [{ v: 10 }, { v: 20 }],
           A.meanBy((x) => x.v),
         ),
-      ).toBe(15))
+      ).toEqual(some(15)))
 
     it('sumBy data-first', () =>
       expect(A.sumBy([{ v: 1 }, { v: 2 }, { v: 3 }], (x) => x.v)).toBe(6))

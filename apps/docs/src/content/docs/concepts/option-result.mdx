@@ -1,13 +1,17 @@
 ---
-title: Option & Result
-description: Types for missing values and errors
+title: Option and Result
+description: Explicit absence and recoverable failure
 ---
 
-If you've written a function that can fail and thought "should I throw? return null? return an object with a success flag?", these two types sort that out.
+Use `Option<A>` when a value may be absent. Use `Result<A, E>` when a
+recoverable operation can explain why it failed. Both make the unhappy path
+part of the type instead of encoding it as `null`, an exception, or a
+success-flag convention.
 
-`Option` is for values that might not exist. `Result` is for operations that can fail with an error you care about. Both force you to handle the unhappy path before you can use the value. The compiler won't let you forget.
-
-They use numeric `_tag` (0 for None/Err, 1 for Some/Ok) instead of strings. V8 can branch on numbers in a single CPU instruction.
+```ts
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
+```
 
 ## Option
 
@@ -17,65 +21,38 @@ type Some<A> = { readonly _tag: 1; readonly value: A }
 type Option<A> = None | Some<A>
 ```
 
-Wraps a value that might not be there. `none` is a singleton.
-
-### Constructors
+Create options at nullable and predicate boundaries:
 
 ```ts
-some<A>(value: A): Option<A>
-none: None
-fromNullable<A>(value: A | null | undefined): Option<NonNullable<A>>
-fromPredicate<A>(pred: (a: A) => boolean): (a: A) => Option<A>
+const portText = O.fromNullable(process.env.PORT)
+const positive = O.fromPredicate(3, (value) => value > 0)
 ```
 
-### Transforms
+Then transform without repeatedly branching:
 
 ```ts
-map<A, B>(f: (a: A) => B): (o: Option<A>) => Option<B>
-flatMap<A, B>(f: (a: A) => Option<B>): (o: Option<A>) => Option<B>
-filter<A>(pred: (a: A) => boolean): (o: Option<A>) => Option<A>
-tap<A>(f: (a: A) => void): (o: Option<A>) => Option<A>
-```
+import { pipe } from '@stopcock/fp'
 
-### Extraction
-
-```ts
-getOrElse<B>(onNone: () => B): <A>(o: Option<A>) => A | B
-getWithDefault<B>(value: B): <A>(o: Option<A>) => A | B
-match<B, A, C = B>(onNone: () => B, onSome: (a: A) => C): (o: Option<A>) => B | C
-toNullable<A>(o: Option<A>): A | null
-toUndefined<A>(o: Option<A>): A | undefined
-toResult<E>(defaultError: E): <A>(o: Option<A>) => Result<A, E>
-```
-
-### Guards
-
-```ts
-isSome<A>(o: Option<A>): o is Some<A>
-isNone<A>(o: Option<A>): o is None
-```
-
-```ts
-import { pipe, O } from '@stopcock/fp'
-
-pipe(
-  O.fromNullable(config.port),
-  O.map((p) => parseInt(p, 10)),
-  O.filter((p) => p > 0 && p < 65536),
+const port = pipe(
+  portText,
+  O.map(Number),
+  O.filter((value) => Number.isInteger(value) && value > 0),
   O.getOrElse(() => 3000),
 )
-
-pipe(
-  O.fromNullable(address),
-  O.flatMap((a) => O.fromNullable(a.zip)),
-  O.match(
-    () => 'no zip',
-    (zip) => zip,
-  ),
-)
 ```
 
----
+`mapNullable`, `flatMap`, `filter`, `zip`, `all`, `struct`, and `traverse`
+cover the common composition shapes. Partial extraction is explicit:
+
+```ts
+const label = O.match({
+  none: () => 'not configured',
+  some: (value) => `port ${value}`,
+})(portText)
+```
+
+`none` is a frozen singleton. The representation uses numeric tags: `0` is
+`None`, `1` is `Some`.
 
 ## Result
 
@@ -85,67 +62,51 @@ type Ok<A> = { readonly _tag: 1; readonly value: A }
 type Result<A, E> = Ok<A> | Err<E>
 ```
 
-### Constructors
+Translate throwing and nullable APIs at the boundary:
 
 ```ts
-ok<A>(value: A): Result<A, never>
-err<E>(error: E): Result<never, E>
-tryCatch<A>(thunk: () => A): Result<A, unknown>
-fromNullable<E>(defaultError: E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
-```
+type ParseError = {
+  readonly type: 'InvalidJson'
+  readonly cause: unknown
+}
 
-`tryCatch` wraps a function that might throw. The error type comes back as `unknown` because JS can throw anything, so you'll need to narrow it yourself.
+const parsed = R.tryCatch(
+  () => JSON.parse(input) as unknown,
+  (cause): ParseError => ({ type: 'InvalidJson', cause }),
+)
 
-### Transforms
-
-```ts
-map<A, B>(f: (a: A) => B): <E>(r: Result<A, E>) => Result<B, E>
-mapErr<E, F>(f: (e: E) => F): <A>(r: Result<A, E>) => Result<A, F>
-flatMap<A, B, E2>(f: (a: A) => Result<B, E2>): <E>(r: Result<A, E>) => Result<B, E | E2>
-tap<A>(f: (a: A) => void): <E>(r: Result<A, E>) => Result<A, E>
-tapErr<E>(f: (e: E) => void): <A>(r: Result<A, E>) => Result<A, E>
-```
-
-### Extraction
-
-```ts
-getOrElse<B>(onErr: () => B): <A, E>(r: Result<A, E>) => A | B
-match<E, B, A, C = B>(onErr: (e: E) => B, onOk: (a: A) => C): (r: Result<A, E>) => B | C
-toOption<A, E>(r: Result<A, E>): Option<A>
-```
-
-### Guards
-
-```ts
-isOk<A, E>(r: Result<A, E>): r is Ok<A>
-isErr<A, E>(r: Result<A, E>): r is Err<E>
-```
-
-```ts
-import { pipe, R } from '@stopcock/fp'
-
-const parsed = R.tryCatch(() => JSON.parse(input))
-
-pipe(
-  parsed,
-  R.map((obj: { value: number }) => obj.value),
-  R.flatMap((v) => (v > 0 ? R.ok(v) : R.err('must be positive'))),
-  R.match(
-    (err) => console.error(err),
-    (val) => console.log(val),
-  ),
+const token = R.fromNullable(() => 'Missing token')(
+  headers.authorization,
 )
 ```
 
----
-
-## Converting
+`map` transforms success. `mapErr` transforms failure. `flatMap` sequences
+dependent work and keeps the union of possible error types.
 
 ```ts
-// Option → Result
-pipe(O.fromNullable(x), O.toResult('was null'))
-
-// Result → Option (discards error)
-pipe(R.ok('hello'), R.toOption) // Some('hello')
-pipe(R.err('boom'), R.toOption) // None
+const response = pipe(
+  parsed,
+  R.flatMap(decodeRequest),
+  R.flatMap(authorizeRequest),
+  R.match({
+    err: (error) => ({ status: 400, error }),
+    ok: (value) => ({ status: 200, value }),
+  }),
+)
 ```
+
+`all`, `struct`, and `traverse` are fail-fast and preserve tuple/object types.
+Use [`Validation`](/api/validation) when independent checks must all run and
+accumulate errors.
+
+## Conversion
+
+```ts
+O.toResult(() => 'missing')(option)
+R.toOption(result) // intentionally discards the error
+O.transpose(optionOfResult)
+```
+
+Asynchronous failure belongs in `Task` from `@stopcock/async`. Keeping
+`Option`, `Result`, and `Task` separate makes evaluation and cancellation
+semantics visible.

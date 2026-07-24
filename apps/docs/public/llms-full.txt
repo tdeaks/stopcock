@@ -11,6 +11,81 @@ bun add @stopcock/fp
 ```
 
 ---
+# Algebra and ordering
+
+Source: https://stopcock.dev/api/algebra/
+
+Eq, Hash, Ord, Semigroup, Monoid, Group, and Ordering
+
+The algebra modules are small plain objects and functions. They do not require
+classes, higher-kinded-type emulation, or a runtime typeclass registry.
+
+```ts
+import * as Eq from '@stopcock/fp/eq'
+import * as Hash from '@stopcock/fp/hash'
+import * as Ord from '@stopcock/fp/ord'
+import * as Semigroup from '@stopcock/fp/semigroup'
+import * as Monoid from '@stopcock/fp/monoid'
+import * as Group from '@stopcock/fp/group'
+```
+
+## Equality
+
+```ts
+const pointEq = Eq.struct<Point>({
+  x: Eq.number,
+  y: Eq.number,
+})
+
+pointEq.equals({ x: 1, y: 2 }, { x: 1, y: 2 }) // true
+```
+
+`Eq.deep` is cycle-safe for dense arrays and plain records. Dates, maps, sets,
+regular expressions, promises, and class instances are atomic unless you
+provide a domain-specific instance.
+
+## Hashing
+
+Hash instances provide deterministic integer hashes and compose over common
+containers:
+
+```ts
+const pointHash = Hash.struct<Point>({
+  x: Hash.number,
+  y: Hash.number,
+})
+```
+
+Use compatible `Eq` and `Hash` instances whenever a hashed collection relies on
+both.
+
+## Ordering
+
+```ts
+const byAge = Ord.contramap((user: User) => user.age)(Ord.number)
+const byAgeThenName = Ord.combine(byAge, Ord.contramap((user: User) => user.name)(Ord.string))
+
+users.toSorted(byAgeThenName.compare)
+```
+
+The `ordering` module contains the `-1 | 0 | 1` primitives used by `Ord`.
+
+## Combining values
+
+```ts
+const total = Semigroup.numberSum.combine(2, 3)
+const all = Monoid.booleanAll.combineAll([true, true, false])
+const delta = Group.numberSum.subtract(10, 3)
+```
+
+- A `Semigroup<A>` combines two `A` values.
+- A `Monoid<A>` adds an identity value and folds empty collections.
+- A `Group<A>` adds inversion/removal.
+
+Instances are ordinary values, so application-specific instances are easy to
+create and test.
+
+---
 # A (Array)
 
 Source: https://stopcock.dev/api/array/
@@ -22,16 +97,22 @@ Every function works both ways: `A.fn(arr, ...)` (data-first) and `pipe(arr, A.f
 ## Accessors
 
 ```ts
-head<A>(arr: A[]): A | undefined
-last<A>(arr: A[]): A | undefined
-first<A>(arr: A[]): A | undefined // alias for head
-tail<A>(arr: A[]): A[]             // all except first
-init<A>(arr: A[]): A[]             // all except last
+head<A>(arr: readonly A[]): Option<A>
+last<A>(arr: readonly A[]): Option<A>
+first<A>(arr: readonly A[]): Option<A> // alias for head
+headOrUndefined<A>(arr: readonly A[]): A | undefined
+lastOrUndefined<A>(arr: readonly A[]): A | undefined
+headNonEmpty<A>(arr: readonly [A, ...A[]]): A
+lastNonEmpty<A>(arr: readonly [A, ...A[]]): A
+tail<A>(arr: readonly A[]): A[]           // all except first
+init<A>(arr: readonly A[]): A[]           // all except last
 length<A>(arr: A[]): number
 isEmpty<A>(arr: A[]): boolean
 ```
 
 `head`, `last`, `length`, and `isEmpty` are accessor terminals in fused chains.
+Option-returning names are the default; `*OrUndefined` is the explicit
+JavaScript interop escape hatch.
 
 ## Transforms
 
@@ -58,7 +139,10 @@ sortBy<A>(arr: A[], cmp: (a: A, b: A) => number): A[]
 reverse<A>(arr: A[]): A[]
 ```
 
-Materialization boundaries. They need the whole array, except the special `sortBy -> take(k)` and `sort -> take(k)` top-k optimization.
+Materialization boundaries. They need the whole array. When callback purity is
+explicitly promised, `compilePure` can apply its bounded stable top-k rewrite
+to an adjacent `sortBy -> take(k)` or `sort -> take(k)` pair; ordinary `pipe`
+and `compile` keep exact semantics.
 
 ## Slicing
 
@@ -77,8 +161,10 @@ aperture<A>(arr: A[], n: number): A[][]
 ## Search
 
 ```ts
-find<A>(arr: A[], pred: (a: A) => boolean): A | undefined
-findIndex<A>(arr: A[], pred: (a: A) => boolean): number | undefined
+find<A>(arr: readonly A[], pred: (a: A) => boolean): Option<A>
+findIndex<A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
+findOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
+findIndexOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
 every<A>(arr: A[], pred: (a: A) => boolean): boolean
 some<A>(arr: A[], pred: (a: A) => boolean): boolean
 includes<A>(arr: A[], value: A): boolean
@@ -110,7 +196,7 @@ symmetricDifference<A>(a: A[], b: A[]): A[]
 zip<A, B>(a: A[], b: B[]): [A, B][]
 zipWith<A, B, C>(a: A[], b: B[], f: (a: A, b: B) => C): C[]
 xprod<A, B>(a: A[], b: B[]): [A, B][]
-groupBy<A>(arr: A[], f: (a: A) => string): Dict<A[]>
+groupBy<A>(arr: readonly A[], f: (a: A) => string): Record<string, A[]>
 partition<A>(arr: A[], pred: (a: A) => boolean): [A[], A[]]
 intersperse<A>(arr: A[], sep: A): A[]
 flatten<A>(arr: A[][]): A[]
@@ -142,7 +228,8 @@ unfold<A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
 ## Examples
 
 ```ts
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
 type Product = {
   name: string
@@ -200,7 +287,8 @@ Trailing underscores avoid colliding with JS reserved words.
 ## Examples
 
 ```ts
-import { pipe, B } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as B from '@stopcock/fp/boolean'
 
 pipe(true, B.not_) // false
 pipe(true, B.and_(false)) // false
@@ -220,57 +308,30 @@ const canAccess = pipe(isAdmin, B.and_(isActive))
 ```
 
 ---
-# D (Dict)
+# Dict migration
 
 Source: https://stopcock.dev/api/dict/
 
-Map, filter, merge, and traverse Record<string, T> dictionaries
+Dict was replaced by Record in @stopcock/fp 2.0
 
-`Dict<A>` is `Record<string, A>`.
+The 1.x `D` namespace and `/dict` subpath were removed. Use the property-key
+aware record module:
 
-## Non-dual
+```diff
+- import { D } from '@stopcock/fp'
++ import * as Record from '@stopcock/fp/record'
 
-```ts
-keys<A>(d: Dict<A>): string[]
-values<A>(d: Dict<A>): A[]
-toEntries<A>(d: Dict<A>): [string, A][]
-fromEntries<A>(entries: [string, A][]): Dict<A>
-isEmpty<A>(d: Dict<A>): boolean
+- D.toEntries(values)
++ Record.entries(values)
 ```
 
-## Dual
+The new module includes immutable `get`, `set`, `remove`, `modify`, `update`,
+`map`, `filter`, `filterMap`, `mapKeys`, `merge`, `pick`, `omit`, `partition`,
+`reduce`, and equality operations. Bulk construction and transforms have
+explicit `fromEntriesInto`, `mapInto`, and `filterInto` forms.
 
-```ts
-get<A>(d: Dict<A>, key: string): A | undefined
-map<A, B>(d: Dict<A>, f: (a: A, key: string) => B): Dict<B>
-filter<A>(d: Dict<A>, pred: (a: A, key: string) => boolean): Dict<A>
-merge<A>(a: Dict<A>, b: Dict<A>): Dict<A>
-```
-
-## Examples
-
-```ts
-import { pipe, A, D } from '@stopcock/fp'
-
-// count items per category
-const counts = pipe(
-  A.groupBy(products, (p) => p.category),
-  D.map((items) => items.length),
-)
-// { electronics: 12, clothing: 8 }
-
-// merge config layers
-const config = pipe(defaults, D.merge(envOverrides), D.merge(cliFlags))
-
-// filter out empty groups
-pipe(
-  grouped,
-  D.filter((items) => items.length > 0),
-)
-
-// build lookup table
-const byId = D.fromEntries(users.map((u) => [u.id, u]))
-```
+Unlike the old string-only `Dict` vocabulary, records preserve enumerable
+`PropertyKey` values, including symbols.
 
 ---
 # G (Guards)
@@ -281,11 +342,17 @@ isString, isNumber, isNil, isDeepEqual and more. Runtime type guards with TypeSc
 
 Runtime type checks that narrow the TypeScript type.
 
+```ts
+type Guard<A> = Refinement<unknown, A>
+```
+
 ## Type checks
 
 ```ts
 isString(x: unknown): x is string
 isNumber(x: unknown): x is number
+isFiniteNumber(x: unknown): x is number
+isNonBlankString(x: unknown): x is string
 isBoolean(x: unknown): x is boolean
 isBigInt(x: unknown): x is bigint
 isSymbol(x: unknown): x is symbol
@@ -296,9 +363,13 @@ isPromise(x: unknown): x is Promise<unknown>
 isArray(x: unknown): x is unknown[]
 isObjectType(x: unknown): x is object
 isPlainObject(x: unknown): x is Record<string, unknown>
+isArrayOf<A>(guard: Guard<A>): Guard<A[]>
+isRecordOf<A>(guard: Guard<A>): Guard<Record<string, A>>
 ```
 
 `isPlainObject` rejects arrays and class instances. `isObjectType` is just a `typeof` check.
+`isRecordOf` accepts only plain objects and checks every own enumerable string-keyed value. Empty
+arrays and records are valid because every contained value satisfies the supplied guard.
 
 ## Nullability
 
@@ -334,7 +405,9 @@ propIs<T>(ctor: new (...args: any[]) => T, prop: string, obj: Record<string, unk
 ## Examples
 
 ```ts
-import { pipe, A, G } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as G from '@stopcock/fp/guard'
 
 // narrow unknown API data
 const data: unknown[] = [1, 'hello', null, { a: 1 }]
@@ -359,211 +432,186 @@ G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] }) // true
 // check class instance
 G.is(Date, new Date()) // true
 G.is(Date, '2024-01-01') // false
+
+const numbers = G.isArrayOf(G.isFiniteNumber)
+numbers([1, 2, 3]) // true
+numbers([1, Number.NaN]) // false
+
+const labels = G.isRecordOf(G.isNonBlankString)
+labels({ primary: 'Save', secondary: 'Cancel' }) // true
 ```
 
 ---
-# Lenses & Optics
+# Iter
+
+Source: https://stopcock.dev/api/iter/
+
+Lazy synchronous sequences with correct iterator closing
+
+```ts
+import * as Iter from '@stopcock/fp/iter'
+```
+
+`Iter<A>` is a lazy `Iterable<A>`. Operators do no work until a terminal pulls
+the sequence. Constructors in this module are repeatable; `Iter.from` reflects
+the repeatability of the iterable you provide.
+
+## Constructors
+
+```ts
+Iter.from(iterable)
+Iter.fromIterator(() => iterator)
+Iter.defer(() => iterable)
+Iter.empty()
+Iter.of(1, 2, 3)
+Iter.range(0, 10, 2)
+Iter.repeat(value)
+Iter.iterate(seed, next)
+Iter.unfold(seed, step)
+```
+
+`range` excludes its end. `repeat` and `iterate` are infinite; pair them with a
+bounded terminal such as `take`.
+
+## Transformations
+
+The core lazy vocabulary includes:
+
+```ts
+Iter.map(f)
+Iter.filter(predicate)
+Iter.filterMap(f)
+Iter.flatMap(f)
+Iter.flatten
+Iter.tap(effect)
+Iter.take(count)
+Iter.drop(count)
+Iter.takeWhile(predicate)
+Iter.dropWhile(predicate)
+Iter.scan(reducer, initial)
+Iter.chunk(size)
+Iter.intersperse(separator)
+Iter.distinct
+Iter.distinctBy(key)
+Iter.concat(other)
+Iter.zip(other)
+Iter.zipWith(other, combine)
+```
+
+Transformations are usable directly or in `pipe`:
+
+```ts
+import { pipe } from '@stopcock/fp'
+
+const result = pipe(
+  Iter.range(1, Infinity),
+  Iter.filter((value) => value % 2 === 0),
+  Iter.map((value) => value * value),
+  Iter.take(3),
+  Iter.toArray,
+)
+// [4, 16, 36]
+```
+
+## Terminals
+
+```ts
+Iter.toArray(source)
+Iter.toArrayInto(source, target)
+Iter.reduce(source, reducer, initial)
+Iter.forEach(source, effect)
+Iter.first(source) // Option<A>
+Iter.last(source)  // Option<A>
+Iter.find(source, predicate) // Option<A>
+Iter.some(source, predicate)
+Iter.every(source, predicate)
+Iter.count(source)
+```
+
+Partial terminals return `Option`; absence is never encoded as an ambiguous
+`undefined`.
+
+## Resource safety
+
+Short-circuiting operations call `return()` on an upstream iterator when it is
+still open. This matters for generators that own file handles, cursors, or
+other resources:
+
+```ts
+function* rows() {
+  try {
+    yield* databaseCursor
+  } finally {
+    databaseCursor.close()
+  }
+}
+
+Iter.toArray(Iter.take(rows(), 10))
+```
+
+The `finally` block runs after the tenth value.
+
+---
+# Lens migration
 
 Source: https://stopcock.dev/api/lenses/
 
-Lens, Prism, Traversal, Iso. Immutable nested reads and updates
+The 2.0 optic module replaces the old root lens helpers
 
-## Lens
+The 1.x root lens helpers were replaced by the unified
+`@stopcock/fp/optic` module. Import the module explicitly:
 
-Focus on a single value in an object. Read it, replace it, or transform it. All immutably.
+```diff
+- import { prop, view, set, over } from '@stopcock/fp'
++ import * as Optic from '@stopcock/fp/optic'
 
-```ts
-type Lens<S, A> = {
-  _tag: 'Lens'
-  get: (s: S) => A
-  set: (s: S, a: A) => S
-}
+- const name = view(user, prop<User, 'name'>('name'))
++ const name = Optic.view(Optic.prop<User, 'name'>('name'), user)
+
+- const updated = over(user, prop<User, 'name'>('name'), String.toUpperCase)
++ const updated = Optic.modify(
++   Optic.prop<User, 'name'>('name'),
++   user,
++   String.toUpperCase,
++ )
 ```
 
-### Constructors
-
-```ts
-lens<S, A>(get: (s: S) => A, set: (s: S, a: A) => S): Lens<S, A>
-prop<S, K extends keyof S>(key: K): Lens<S, S[K]>
-index<A>(i: number): Lens<A[], A>
-path<S, K1 extends keyof S>(k1: K1): Lens<S, S[K1]>
-path<S, K1, K2>(k1: K1, k2: K2): Lens<S, S[K1][K2]>
-path<S, K1, K2, K3>(k1: K1, k2: K2, k3: K3): Lens<S, S[K1][K2][K3]>
-```
-
-### Operations
-
-All operations are dual (data-first and data-last).
-
-```ts
-view<S, A>(s: S, lens: Lens<S, A>): A
-view<S, A>(lens: Lens<S, A>): (s: S) => A
-
-set<S, A>(s: S, lens: Lens<S, A>, a: A): S
-set<S, A>(lens: Lens<S, A>, a: A): (s: S) => S
-
-over<S, A>(s: S, lens: Lens<S, A>, f: (a: A) => A): S
-over<S, A>(lens: Lens<S, A>, f: (a: A) => A): (s: S) => S
-```
-
-```ts
-import { pipe, prop, path, view, set, over } from '@stopcock/fp'
-
-const nameLens = prop<User, 'name'>('name')
-
-// Data-first
-view(user, nameLens) // 'Alice'
-set(user, nameLens, 'Bob') // { ...user, name: 'Bob' }
-over(user, nameLens, (s) => s.toUpperCase()) // { ...user, name: 'ALICE' }
-
-// Data-last (works in pipe)
-pipe(user, view(nameLens)) // 'Alice'
-pipe(user, set(nameLens, 'Bob')) // { ...user, name: 'Bob' }
-pipe(
-  user,
-  over(nameLens, (s) => s.toUpperCase()),
-)
-
-// Nested paths
-const cityLens = path<User, 'address', 'city'>('address', 'city')
-view(user, cityLens) // 'Portland'
-set(user, cityLens, 'London')
-```
-
-## Prism
-
-Focus on a value that may not exist (optionals, sum types).
-
-```ts
-type Prism<S, A> = {
-  _tag: 'Prism'
-  getOption: (s: S) => Option<A>
-  set: (s: S, a: A) => S
-}
-```
-
-```ts
-import { somePrism, okPrism, preview, setPrism, overPrism } from '@stopcock/fp'
-
-const p = somePrism<number>()
-preview(optSome(42), p) // Some(42)
-preview(none, p) // None
-setPrism(optSome(42), p, 99) // Some(99)
-setPrism(none, p, 99) // None (unchanged)
-```
-
-## Traversal
-
-Focus on multiple values at once.
-
-```ts
-type Traversal<S, A> = {
-  _tag: 'Traversal'
-  getAll: (s: S) => A[]
-  modify: (s: S, f: (a: A) => A) => S
-}
-```
-
-```ts
-import { each, filtered, toArray, modify } from '@stopcock/fp'
-
-const evens = filtered<number>((n) => n % 2 === 0)
-toArray([1, 2, 3, 4], evens) // [2, 4]
-modify([1, 2, 3, 4], evens, (x) => x * 10) // [1, 20, 3, 40]
-
-const all = each<number>()
-modify([1, 2, 3], all, (x) => x + 1) // [2, 3, 4]
-```
-
-## Iso
-
-Lossless bidirectional transformation.
-
-```ts
-type Iso<S, A> = {
-  _tag: 'Iso'
-  get: (s: S) => A
-  reverseGet: (a: A) => S
-}
-```
-
-```ts
-import { iso, reverse } from '@stopcock/fp'
-
-const celsiusToF = iso<number, number>(
-  (c) => (c * 9) / 5 + 32,
-  (f) => ((f - 32) * 5) / 9,
-)
-celsiusToF.get(100) // 212
-celsiusToF.reverseGet(212) // 100
-reverse(celsiusToF).get(212) // 100
-```
-
-## Composition
-
-```ts
-import {
-  composeLens,
-  composePrism,
-  composeTraversal,
-  composeIso,
-  composeOptics,
-} from '@stopcock/fp'
-```
-
-Each `compose*` function combines two optics of the same kind. `composeOptics` composes any combination. The result type is the weakest optic in the chain: Lens + Prism = Prism, anything + Traversal = Traversal.
+The new module covers lenses, optionals, prisms, traversals, isomorphisms,
+getters, folds, setters, keyed `At` optics, composition, a fluent builder, and
+law helpers. Read the [Optic API](/api/optic).
 
 ---
-# Logic
+# Logic migration
 
 Source: https://stopcock.dev/api/logic/
 
-both, either, allPass, cond. Compose predicates and branch logic in pipe
+Logic was split into focused function and guard modules
 
-## Predicate combinators
+The broad 1.x `Logic` namespace was removed from the 2.0 public surface.
 
-```ts
-both<A>(p1: (a: A) => boolean, p2: (a: A) => boolean): (a: A) => boolean
-either<A>(p1: (a: A) => boolean, p2: (a: A) => boolean): (a: A) => boolean
-allPass<A>(preds: ((a: A) => boolean)[]): (a: A) => boolean
-anyPass<A>(preds: ((a: A) => boolean)[]): (a: A) => boolean
-```
+Use `@stopcock/fp/function` for function-level composition:
 
 ```ts
-import { pipe, A, Logic } from '@stopcock/fp'
+import * as Fn from '@stopcock/fp/function'
 
-const isAdult = (u: User) => u.age >= 18
-const isActive = (u: User) => u.active
-
-pipe(users, A.filter(Logic.both(isAdult, isActive)))
+Fn.complement(predicate)
+Fn.ifElse(predicate, onTrue, onFalse)
+Fn.always(value)
 ```
 
-## Control flow (dual)
+Use `@stopcock/fp/guard` for predicate and refinement composition:
 
 ```ts
-equals<A>(a: A, b: A): boolean
-defaultTo<A>(opt: A | undefined, fallback: A): A
-when_<A>(value: A, pred: (a: A) => boolean, f: (a: A) => A): A
-unless<A>(value: A, pred: (a: A) => boolean, f: (a: A) => A): A
-cond<A, B>(value: A, conditions: [(a: A) => boolean, (a: A) => B][]): B | undefined
+import * as G from '@stopcock/fp/guard'
+
+const nonBlank = G.and(G.isString, G.isNonBlankString)
+const stringOrNumber = G.or(G.isString, G.isNumber)
+const notNullish = G.not(G.isNullish)
 ```
 
-```ts
-import { pipe, Logic } from '@stopcock/fp'
-
-pipe(undefined, Logic.defaultTo(0)) // 0
-pipe(5, Logic.defaultTo(0)) // 5
-
-pipe(
-  score,
-  Logic.cond([
-    [(s) => s >= 90, () => 'A'],
-    [(s) => s >= 80, () => 'B'],
-    [(s) => s >= 70, () => 'C'],
-    [() => true, () => 'F'],
-  ]),
-)
-```
+Use `@stopcock/fp/eq` for domain equality, `@stopcock/fp/match` for lightweight
+tagged-data dispatch, or the full `@stopcock/pattern` companion for structural
+and exhaustive pattern matching.
 
 ---
 # M (Math)
@@ -594,7 +642,9 @@ modulo(a: number, b: number): number
 ## Examples
 
 ```ts
-import { pipe, A, M } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as M from '@stopcock/fp/math'
 
 // apply discount
 pipe(prices, A.map(M.multiply(0.9))) // 10% off
@@ -615,6 +665,88 @@ M.modulo(17, 5) // 2
 ```
 
 ---
+# Module catalogue
+
+Source: https://stopcock.dev/api/modules/
+
+Every public @stopcock/fp 2.0 entrypoint
+
+`@stopcock/fp` keeps its root small. Import specialist APIs from these stable,
+tree-shakeable subpaths.
+
+## Collections and sequences
+
+| Subpath | Purpose |
+| --- | --- |
+| `/array` | Eager array operators, fused pipeline steps, explicit `*Into` writes |
+| `/readonly-array` | Read-only alias of the array vocabulary |
+| `/non-empty-array` | Constructors and total operations for non-empty arrays |
+| `/tuple` | Typed tuple construction, mapping, zipping, and projection |
+| `/record` | Immutable property-keyed record operations |
+| `/map` | Immutable `Map` operations |
+| `/set` | Immutable `Set` operations |
+| `/typed-array` | Numeric typed-array transforms and explicit destination buffers |
+| `/indexed` | Shared indexed-collection operations |
+| [`/iter`](/api/iter) | Lazy synchronous sequences |
+| `/transducer` | Composable allocation-free reducing transformations |
+| `/collector` | Reusable terminal collectors |
+
+## Data and errors
+
+| Subpath | Purpose |
+| --- | --- |
+| [`/option`](/api/option) | Explicit absence |
+| [`/result`](/api/result) | Fail-fast recoverable errors |
+| [`/validation`](/api/validation) | Accumulating independent errors |
+| [`/schema`](/api/schema) | Standard Schema V1 production and consumption |
+| `/these` | Left, right, or both values |
+| `/nullable` | Focused nullable boundary helpers |
+
+Asynchronous failures and asynchronous iteration are provided by
+`@stopcock/async`, not duplicated in the core package.
+
+## Algebra and comparison
+
+| Subpath | Purpose |
+| --- | --- |
+| [`/eq`](/api/algebra) | Lawful equality relations |
+| [`/hash`](/api/algebra) | Composable deterministic hashing |
+| [`/ord`](/api/algebra) | Total ordering instances |
+| `/ordering` | Primitive ordering values and combinators |
+| [`/semigroup`](/api/algebra) | Associative combination |
+| [`/monoid`](/api/algebra) | Combination with an identity |
+| [`/group`](/api/algebra) | Combination with inversion |
+
+## Functions and data transformation
+
+| Subpath | Purpose |
+| --- | --- |
+| `/function` | Composition, currying, memoization, predicates, and function utilities |
+| `/guard` | Structural guards and refinements |
+| `/object` | Immutable object/path operations |
+| `/string` | String transforms and predicates |
+| `/number` | Numeric predicates, statistics, and safe partials |
+| `/math` | Arithmetic pipeline operators |
+| `/boolean` | Boolean combinators |
+| `/dual` | Build data-first and data-last APIs |
+| `/compile` | Portable pipeline planning and explanations |
+| [`/optic`](/api/optic) | Lenses, optionals, prisms, traversals, and more |
+| `/match` | Exhaustive tagged-value matching |
+
+## Functional models
+
+| Subpath | Purpose |
+| --- | --- |
+| `/reader` | Environment-dependent computations |
+| `/state-fn` | Pure state transitions |
+| `/writer` | Values paired with accumulated output |
+| `/recursion` | Stack-safe recursion schemes |
+
+The package export map is generated from one checked-in manifest. CI builds and
+imports every runtime and declaration entry from a real packed tarball, so this
+catalogue cannot silently advertise a missing module.
+
+---
 # N (Number)
 
 Source: https://stopcock.dev/api/number/
@@ -625,19 +757,25 @@ clamp, sum, mean, percentile. Numeric transforms for pipe
 
 ```ts
 sum(nums: number[]): number
-mean(nums: number[]): number
-median(nums: number[]): number
-variance(nums: number[]): number
-standardDeviation(nums: number[]): number
-min(nums: number[]): number
-max(nums: number[]): number
-minMax(nums: number[]): [number, number]
+mean(nums: number[]): Option<number>
+median(nums: number[]): Option<number>
+variance(nums: number[]): Option<number>
+standardDeviation(nums: number[]): Option<number>
+min(nums: number[]): Option<number>
+max(nums: number[]): Option<number>
+minMax(nums: number[]): Option<readonly [number, number]>
 ```
+
+Every partial aggregate also has an explicit `*OrUndefined` variant. Use the
+`*NonEmpty` variants when a readonly non-empty tuple proves a result exists,
+and the sample-statistic `*AtLeastTwo` variants when two inputs are required.
 
 ## Dual
 
 ```ts
-percentile(nums: number[], p: number): number
+percentile(nums: number[], p: number): Option<number>
+percentileOrUndefined(nums: number[], p: number): number | undefined
+percentileNonEmpty(nums: readonly [number, ...number[]], p: number): number
 clamp(value: number, min: number, max: number): number
 dotProduct(a: number[], b: number[]): number
 ```
@@ -652,14 +790,17 @@ isOdd(n: number): boolean
 ## Examples
 
 ```ts
-import { pipe, A, N } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as N from '@stopcock/fp/number'
+import * as O from '@stopcock/fp/option'
 
 // stats on response times
-const times = [120, 95, 200, 88, 150, 300, 110]
-N.mean(times) // ~151.9
-N.median(times) // 120
-N.standardDeviation(times) // ~68.6
-N.percentile(times, 95) // 300
+const times = [120, 95, 200, 88, 150, 300, 110] as const
+pipe(N.mean(times), O.getOrElse(() => 0)) // ~151.9
+N.medianNonEmpty(times) // 120
+N.standardDeviationNonEmpty(times) // ~68.6
+N.percentileNonEmpty(times, 95) // 300
 
 // clamp user input
 pipe(userAge, N.clamp(0, 150))
@@ -676,66 +817,187 @@ N.dotProduct([1, 0, 1], [0, 1, 1]) // 1
 ```
 
 ---
-# Obj (Object)
+# Object
 
 Source: https://stopcock.dev/api/object/
 
-pick, omit, path, evolve, mergeDeepLeft, mergeDeepRight. Immutable object transforms
-
-## Property access (dual)
+Safe immutable object, merge, and typed path operations
 
 ```ts
-pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>
-omit<T, K extends keyof T>(obj: T, keys: K[]): Omit<T, K>
-path<T, P extends string>(obj: T, path: P): PathValue<T, P> | undefined
-pathOr<T, P extends string, D>(obj: T, path: P, defaultValue: D): PathValue<T, P> | D
+import * as Obj from '@stopcock/fp/object'
 ```
 
-## Property mutation (dual, immutable)
+Object operators preserve symbol keys, use own enumerable properties, and
+defend write paths against prototype-pollution keys.
+
+## Keys and projections
 
 ```ts
-assoc<T, V>(obj: T, key: string, value: V): T & Record<string, V>
-dissoc<T>(obj: T, key: string): Partial<T>
-evolve<T>(obj: T, transformations: Partial<{ [K in keyof T]: (v: T[K]) => T[K] }>): T
+Obj.keys(value)
+Obj.values(value)
+Obj.entries(value)
+Obj.pick(value, ['id', 'name'])
+Obj.omit(value, ['password'])
+Obj.pickBy(value, (_value, key) => key !== 'internal')
+Obj.omitBy(value, predicate)
 ```
 
-## Merging (dual)
+`pick`, `omit`, and predicate projections are available in data-first and
+pipe-friendly forms.
+
+## Immutable updates
 
 ```ts
-mergeDeepLeft<T>(a: T, b: T): T
-mergeDeepRight<T>(a: T, b: T): T
-mergeWith<T, V>(a: T, b: T, resolver: (l: V, r: V) => V): T
-```
+import { pipe } from '@stopcock/fp'
 
-## Examples
-
-```ts
-import { pipe, Obj } from '@stopcock/fp'
-
-// strip sensitive fields before sending to client
-const safe = pipe(user, Obj.omit(['password', 'ssn']))
-
-// extract fields for a form
-const formData = pipe(user, Obj.pick(['name', 'email', 'phone']))
-
-// safe nested access
-pipe(order, Obj.pathOr('shipping.address.zip', 'N/A'))
-
-// immutable update
-pipe(user, Obj.assoc('role', 'admin'))
-
-// transform multiple fields at once
-pipe(
-  config,
+const updated = pipe(
+  user,
+  Obj.assoc('role', 'admin'),
+  Obj.dissoc('temporaryToken'),
   Obj.evolve({
-    port: (p: number) => p + 1,
-    host: (h: string) => h.toLowerCase(),
+    name: (name) => name.trim(),
   }),
 )
-
-// deep merge with priority
-const merged = Obj.mergeDeepRight(defaults, userPrefs)
 ```
+
+`mapValues`, `mapKeys`, and `invert` cover whole-object transformations.
+
+## Merge
+
+```ts
+Obj.mergeWith(defaults, overrides, (left, right) => right ?? left)
+
+Obj.mergeDeep(defaults, overrides, {
+  bias: 'right',
+  arrays: 'replace',
+})
+```
+
+Deep merge options make conflict and array semantics explicit:
+
+- `bias`: choose the left or right value by default.
+- `arrays`: `replace`, `concat`, or `merge-index`.
+- `onConflict`: resolve non-record values with access to their property path.
+
+Deep merge is cycle-safe for repeated object pairs.
+
+## Typed paths
+
+Paths are readonly key tuples, not dotted strings:
+
+```ts
+const cityPath = Obj.pathOf<User>()('profile', 'address', 'city')
+
+Obj.getPath(user, cityPath)            // Option<string>
+Obj.getPathOrUndefined(user, cityPath) // string | undefined
+Obj.hasPath(user, cityPath)
+
+const moved = Obj.setPath(user, cityPath, 'Manchester')
+const upper = Obj.modifyPath(user, cityPath, String.toUpperCase)
+const withoutCity = Obj.removePath(user, cityPath)
+```
+
+Tuple paths distinguish numeric indices from string keys, reject unsafe write
+segments, and infer nested values to a bounded depth.
+
+---
+# Optic
+
+Source: https://stopcock.dev/api/optic/
+
+Composable immutable focus with lenses, prisms, traversals, and more
+
+```ts
+import * as Optic from '@stopcock/fp/optic'
+```
+
+The optic module represents immutable reads and updates without hiding
+partiality. Its optic kinds are:
+
+| Kind | Focus | Read | Write |
+| --- | --- | --- | --- |
+| `Lens` | exactly one | yes | yes |
+| `Optional` | zero or one | `Option` | yes when present |
+| `Prism` | one case of a sum | `Option` | yes when matched |
+| `Traversal` | zero or more | collect | modify all |
+| `Iso` | exactly one | yes | reversible |
+| `Getter` | exactly one | yes | no |
+| `Fold` | zero or more | collect | no |
+| `Setter` | zero or more | no | modify |
+| `At` | keyed optional value | `Option` | insert/delete |
+
+## Constructors
+
+```ts
+Optic.lens(get, replace)
+Optic.optional(preview, replace)
+Optic.prism(preview, replace)
+Optic.traversal(collect, modify)
+Optic.iso(to, from)
+Optic.getter(get)
+Optic.fold(collect)
+Optic.setter(modify)
+```
+
+Common focused constructors are provided:
+
+```ts
+const name = Optic.prop<User, 'name'>('name')
+const first = Optic.index<User>(0)
+const admin = Optic.find<User>((user) => user.role === 'admin')
+const everyUser = Optic.each<User>()
+const adults = Optic.filtered<User>((user) => user.age >= 18)
+const preference = Optic.atKey<'theme', Theme>('theme')
+const byId = Optic.at<string, User>('user-1')
+```
+
+## Read and update
+
+```ts
+Optic.view(name, user)
+Optic.preview(first, users)       // Option<User>
+Optic.collect(adults, users)      // readonly User[]
+Optic.set(name, user, 'Ada')
+Optic.modify(name, user, (value) => value.toUpperCase())
+```
+
+Each operation also has a pipe-friendly form with the optic first:
+
+```ts
+import { pipe } from '@stopcock/fp'
+
+const updated = pipe(
+  user,
+  Optic.modify(name, (value) => value.toUpperCase()),
+)
+```
+
+## Composition
+
+```ts
+const city = Optic.compose(
+  Optic.prop<User, 'address'>('address'),
+  Optic.prop<Address, 'city'>('city'),
+)
+
+Optic.view(city, user)
+```
+
+Composition preserves the strongest valid optic kind: lens with lens remains
+a lens, while partial or multi-focus paths become optional or traversal
+optics.
+
+For nested object paths, the fluent builder avoids manual intermediate types:
+
+```ts
+const city = Optic.optic<User>()
+  .prop('address')
+  .prop('city')
+  .value
+```
+
+`Optic.laws` exposes the standard lens get-set, set-get, and set-set checks for
+custom lenses.
 
 ---
 # O (Option)
@@ -758,27 +1020,34 @@ Numeric `_tag` for fast branching. `none` is a singleton.
 some<A>(value: A): Option<A>
 none: None
 fromNullable<A>(value: A | null | undefined): Option<NonNullable<A>>
-fromPredicate<A>(pred: (a: A) => boolean): (a: A) => Option<A>
+fromPredicate<A>(value: A, pred: (value: A) => boolean): Option<A>
+fromPredicate<A>(pred: (value: A) => boolean): (value: A) => Option<A>
 ```
+
+Type-guard predicates narrow the `Some` value in both forms.
 
 ## Transforms
 
 ```ts
 map<A, B>(f: (a: A) => B): (o: Option<A>) => Option<B>
 flatMap<A, B>(f: (a: A) => Option<B>): (o: Option<A>) => Option<B>
-filter<A>(pred: (a: A) => boolean): (o: Option<A>) => Option<A>
+filter<A>(option: Option<A>, pred: (value: A) => boolean): Option<A>
+filter<A>(pred: (value: A) => boolean): (option: Option<A>) => Option<A>
 tap<A>(f: (a: A) => void): (o: Option<A>) => Option<A>
 ```
+
+`filter` also preserves type-guard narrowing. Its runtime behavior is unchanged: a matching `Some`
+passes through and a failed predicate produces the `none` singleton.
 
 ## Extraction
 
 ```ts
 getOrElse<B>(onNone: () => B): <A>(o: Option<A>) => A | B
-getWithDefault<B>(value: B): <A>(o: Option<A>) => A | B
-match<B, A, C = B>(onNone: () => B, onSome: (a: A) => C): (o: Option<A>) => B | C
+getOrThrow<A>(option: Option<A>, onNone?: () => unknown): A
+match<A, B, C>({ none: () => B, some: (a: A) => C }): (o: Option<A>) => B | C
 toNullable<A>(o: Option<A>): A | null
 toUndefined<A>(o: Option<A>): A | undefined
-toResult<E>(defaultError: E): <A>(o: Option<A>) => Result<A, E>
+toResult<E>(onNone: () => E): <A>(o: Option<A>) => Result<A, E>
 ```
 
 ## Guards
@@ -791,7 +1060,8 @@ isNone<A>(o: Option<A>): o is None
 ## Examples
 
 ```ts
-import { pipe, O } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as O from '@stopcock/fp/option'
 
 // safe env variable with validation
 const port = pipe(
@@ -801,18 +1071,23 @@ const port = pipe(
   O.getOrElse(() => 3000),
 )
 
+const directPort = O.fromPredicate(3000, (port) => port > 0 && port < 65536)
+
 // chain nullable lookups
 pipe(
   O.fromNullable(user.address),
   O.flatMap((a) => O.fromNullable(a.zip)),
-  O.match(
-    () => 'no zip',
-    (zip) => zip,
-  ),
+  O.match({
+    none: () => 'no zip',
+    some: (zip) => zip,
+  }),
 )
 
 // convert to Result for error context
-pipe(O.fromNullable(headers.authorization), O.toResult('missing auth header'))
+pipe(
+  O.fromNullable(headers.authorization),
+  O.toResult(() => 'missing auth header'),
+)
 ```
 
 ---
@@ -820,7 +1095,7 @@ pipe(O.fromNullable(headers.authorization), O.toResult('missing auth header'))
 
 Source: https://stopcock.dev/api/result/
 
-Ok and Err for recoverable errors. map, flatMap, tryCatch, getOrElse, toOption
+Fail-fast recoverable errors, refinement, traversal, and optional decoding
 
 ```ts
 type Err<E> = { readonly _tag: 0; readonly error: E }
@@ -834,10 +1109,14 @@ type Result<A, E> = Ok<A> | Err<E>
 ok<A>(value: A): Result<A, never>
 err<E>(error: E): Result<never, E>
 tryCatch<A>(thunk: () => A): Result<A, unknown>
-fromNullable<E>(defaultError: E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
+fromNullable<E>(onNullish: () => E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
+fromPredicate<A, E>(value: A, predicate: (value: A) => boolean, onFalse: (value: A) => E): Result<A, E>
+fromPredicate<A, E>(predicate: (value: A) => boolean, onFalse: (value: A) => E): (value: A) => Result<A, E>
 ```
 
 `tryCatch` wraps a function that might throw. Error comes back as `unknown`, narrow it yourself.
+When `predicate` is a type guard, `fromPredicate` narrows the successful value. `onFalse` receives
+the rejected value and runs only when the predicate fails.
 
 ## Transforms
 
@@ -845,15 +1124,40 @@ fromNullable<E>(defaultError: E): <A>(value: A | null | undefined) => Result<Non
 map<A, B>(f: (a: A) => B): <E>(r: Result<A, E>) => Result<B, E>
 mapErr<E, F>(f: (e: E) => F): <A>(r: Result<A, E>) => Result<A, F>
 flatMap<A, B, E2>(f: (a: A) => Result<B, E2>): <E>(r: Result<A, E>) => Result<B, E | E2>
+filterOrElse<A, E, E2>(result: Result<A, E>, predicate: (value: A) => boolean, onFalse: (value: A) => E2): Result<A, E | E2>
+filterOrElse<A, E2>(predicate: (value: A) => boolean, onFalse: (value: A) => E2): <E>(result: Result<A, E>) => Result<A, E | E2>
 tap<A>(f: (a: A) => void): <E>(r: Result<A, E>) => Result<A, E>
 tapErr<E>(f: (e: E) => void): <A>(r: Result<A, E>) => Result<A, E>
 ```
+
+`filterOrElse` also narrows with type guards. Existing errors pass through unchanged; neither the
+predicate nor `onFalse` runs for them.
+
+## Composition
+
+```ts
+all<T extends readonly Result<unknown, unknown>[]>(results: T): Result<ValuesOf<T>, ErrorsOf<T>>
+sequence: typeof all
+
+traverse<A, B, E>(values: readonly A[], decode: (value: A) => Result<B, E>): Result<B[], E>
+traverse<A, B, E>(decode: (value: A) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
+
+optional<A, B, E>(value: A | undefined, decode: (value: A) => Result<B, E>): Result<B | undefined, E>
+nullable<A, B, E>(value: A | null, decode: (value: A) => Result<B, E>): Result<B | null, E>
+```
+
+`all` and its exact alias `sequence` keep tuple types and return the first error from left to right.
+`traverse` stops calling the decoder after its first error. Empty inputs return `ok([])`.
+
+`optional` skips decoding only for `undefined`; `nullable` skips only for `null`. The other sentinel
+is passed to the decoder like any other value. Both also support data-last calls:
+`R.optional(decode)(value)` and `R.nullable(decode)(value)`.
 
 ## Extraction
 
 ```ts
 getOrElse<B>(onErr: () => B): <A, E>(r: Result<A, E>) => A | B
-match<E, B, A, C = B>(onErr: (e: E) => B, onOk: (a: A) => C): (r: Result<A, E>) => B | C
+match<A, E, B, C>({ err: (e: E) => B, ok: (a: A) => C }): (r: Result<A, E>) => B | C
 toOption<A, E>(r: Result<A, E>): Option<A>
 ```
 
@@ -867,7 +1171,9 @@ isErr<A, E>(r: Result<A, E>): r is Err<E>
 ## Examples
 
 ```ts
-import { pipe, R } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as G from '@stopcock/fp/guard'
+import * as R from '@stopcock/fp/result'
 
 // parse JSON safely
 const data = pipe(
@@ -876,15 +1182,22 @@ const data = pipe(
   R.getOrElse((): string[] => []),
 )
 
+// narrow an unknown request body
+const body = R.fromPredicate(rawBody, G.isPlainObject, () => 'expected an object')
+
+// decode optional and nullable request fields without conflating their sentinels
+const limit = R.optional(request.limit, decodePositiveInteger)
+const displayName = R.nullable(request.displayName, decodeNonBlankString)
+
 // chain validations
 pipe(
   R.ok(formData),
   R.flatMap((d) => (d.name ? R.ok(d) : R.err('name required'))),
   R.flatMap((d) => (d.email ? R.ok(d) : R.err('email required'))),
-  R.match(
-    (err) => ({ success: false as const, error: err }),
-    (val) => ({ success: true as const, data: val }),
-  ),
+  R.match({
+    err: (error) => ({ success: false as const, error }),
+    ok: (data) => ({ success: true as const, data }),
+  }),
 )
 
 // log errors without changing the pipeline
@@ -894,6 +1207,80 @@ pipe(
   R.getOrElse(() => fallbackDb),
 )
 ```
+
+---
+# Schema interop
+
+Source: https://stopcock.dev/api/schema/
+
+Standard Schema V1 adapters without a second validation framework
+
+```ts
+import * as Schema from '@stopcock/fp/schema'
+```
+
+The schema module implements the
+[Standard Schema V1](https://standardschema.dev/) interface. It lets
+`@stopcock/fp` produce and consume validators shared with schema libraries,
+forms, RPC frameworks, and other Standard Schema-aware tools without growing a
+competing schema language.
+
+## Create a schema
+
+```ts
+const positive = Schema.fromPredicate(
+  (value: unknown): value is number =>
+    typeof value === 'number' && value > 0,
+  () => Schema.issue('Expected a positive number'),
+)
+```
+
+For decoders and transformations, use `make`:
+
+```ts
+import { err, ok } from '@stopcock/fp'
+
+const integerFromString = Schema.make((value) => {
+  if (typeof value !== 'string') return err('Expected a string')
+  const parsed = Number(value)
+  return Number.isInteger(parsed)
+    ? ok(parsed)
+    : err(Schema.issue('Expected an integer'))
+})
+```
+
+A decoder may return a `Result` or a promise of a `Result`. String errors,
+individual issues, and issue arrays are normalized to Standard Schema issues.
+
+## Consume any Standard Schema
+
+```ts
+const result = Schema.validateSync(input, schema)
+// Result<Output, readonly Issue[]>
+
+const asyncResult = await Schema.validate(input, schema)
+// Promise<Result<Output, readonly Issue[]>>
+```
+
+`validateSync` throws a `TypeError` if the validator is asynchronous.
+`validate` accepts either kind.
+
+```ts
+Schema.isStandardSchema(value)
+Schema.issues(error)
+Schema.issue(message, path)
+```
+
+## Combinators
+
+```ts
+const labelled = Schema.map(positive, (value) => `positive:${value}`)
+const maybePositive = Schema.optional(positive)
+const nullablePositive = Schema.nullable(positive)
+```
+
+These combinators preserve a synchronous underlying validator. Wrapping a sync
+schema never introduces a promise.
 
 ---
 # S (String)
@@ -929,7 +1316,8 @@ replaceAll(s: string, search: string, replacement: string): string
 ## Examples
 
 ```ts
-import { pipe, S } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as S from '@stopcock/fp/string'
 
 // slug from title
 pipe('  Hello World!  ', S.trim, S.toLowerCase, S.replaceAll(' ', '-'), S.replaceAll('!', ''))
@@ -950,119 +1338,216 @@ const preview = pipe(description, S.slice(0, 100))
 ```
 
 ---
-# How pipe() fuses your loops
+# V (Validation)
+
+Source: https://stopcock.dev/api/validation/
+
+Accumulate independent validation errors while staying compatible with Result
+
+Validation is for independent checks where callers need every error in one pass. It uses the same
+runtime representation as `Result`, but its error side is guaranteed to be non-empty.
+
+```ts
+type NonEmptyArray<E> = readonly [E, ...E[]]
+type Validation<A, E> = Result<A, NonEmptyArray<E>>
+```
+
+## Constructors
+
+```ts
+valid<A>(value: A): Validation<A, never>
+invalid<E>(error: E): Validation<never, E>
+fromResult<A, E>(result: Result<A, E>): Validation<A, E>
+
+fromPredicate<A, E>(
+  value: A,
+  predicate: (value: A) => boolean,
+  onFalse: (value: A) => E,
+): Validation<A, E>
+
+fromPredicate<A, E>(
+  predicate: (value: A) => boolean,
+  onFalse: (value: A) => E,
+): (value: A) => Validation<A, E>
+```
+
+`invalid(error)` stores one error in a `NonEmptyArray`. `fromResult` preserves a success and wraps
+one Result error. Type-guard predicates narrow the successful value, and `onFalse` is lazy.
+
+## Accumulation
+
+```ts
+all<T extends readonly Validation<unknown, unknown>[]>(
+  validations: T,
+): Validation<ValuesOf<T>, ErrorsOf<T>>
+
+traverse<A, B, E>(
+  values: readonly A[],
+  validate: (value: A) => Validation<B, E>,
+): Validation<B[], E>
+
+traverse<A, B, E>(
+  validate: (value: A) => Validation<B, E>,
+): (values: readonly A[]) => Validation<B[], E>
+```
+
+`all` preserves heterogeneous tuple types and flattens every validation error in stable input order.
+`traverse` calls the validator for every input, even after failures. Empty inputs return `valid([])`.
+
+```ts
+import * as R from '@stopcock/fp/result'
+import * as V from '@stopcock/fp/validation'
+
+type FieldError = { field: string; message: string }
+
+const signup = V.all([
+  V.fromPredicate(
+    email,
+    (value) => value.includes('@'),
+    () => ({
+      field: 'email',
+      message: 'invalid email',
+    }),
+  ),
+  V.fromPredicate(
+    password,
+    (value) => value.length >= 8,
+    () => ({
+      field: 'password',
+      message: 'too short',
+    }),
+  ),
+] as const)
+
+R.match({
+  err: (errors) => showErrors(errors),
+  ok: ([validEmail, validPassword]) => submit(validEmail, validPassword),
+})(signup)
+```
+
+## Result compatibility
+
+Validation is structurally a Result, so use existing Result transforms and extraction:
+
+```ts
+R.map(normalize)(validation)
+R.match({ err: showErrors, ok: submit })(validation)
+R.getOrElse(() => fallback)(validation)
+```
+
+There is deliberately no `flatMap` in the validation module. Dependent
+sequential checks are fail-fast and belong in `R.flatMap`; use Validation only
+to accumulate checks that can all run independently.
+
+---
+# How portable pipeline fusion works
 
 Source: https://stopcock.dev/blog/how-pipe-fuses-your-loops/
 
 
-You've probably written something like this:
+> Updated for `@stopcock/fp` 2.0. The old runtime-JIT design was removed.
+
+Ordinary array chains allocate intermediate arrays:
 
 ```ts
 const result = users
-  .filter((u) => u.active)
-  .map((u) => u.name)
+  .filter((user) => user.active)
+  .map((user) => user.name)
   .slice(0, 10)
 ```
 
-Three passes over the array. Two intermediate arrays that get thrown away immediately. If `users` has 100K entries, you're doing 100K + 50K + 50K iterations to get 10 names.
-
-stopcock's `pipe` does this instead:
+Stopcock operators carry small internal operation tags:
 
 ```ts
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
 const result = pipe(
   users,
-  A.filter((u) => u.active),
-  A.map((u) => u.name),
+  A.filter((user) => user.active),
+  A.map((user) => user.name),
   A.take(10),
 )
 ```
 
-One loop. No intermediate arrays. It stops after finding 10 matches.
-
-## What actually happens
-
-Every array function in stopcock carries a hidden `_op` tag. When you call `A.filter(fn)`, the returned function has `_op: 2` (the opcode for filter). `A.map(fn)` has `_op: 1`. `A.take(10)` has `_op: 3`.
-
-When `pipe` receives its arguments, it checks each function for this tag:
+The planner recognizes compatible tagged segments and dispatches to checked-in,
+hand-shaped loop templates. A filter/map/take segment behaves roughly like:
 
 ```ts
-const _hasOp = (fn: any): boolean => typeof fn._op === 'number' && fn._op > 0
-```
-
-If consecutive functions are tagged, `pipe` doesn't call them one by one. It hands the whole sequence to the fusion engine, which compiles them into a single loop.
-
-## The JIT compiler
-
-The fusion engine generates a specialized `for` loop at runtime using `new Function()`. For the filter/map/take example above, it produces something like:
-
-```ts
-// Simplified version of what the JIT emits
-function fused(src, fns) {
-  var f0 = fns[0] // filter predicate
-  var f1 = fns[1] // map transform
-  var c2 = 0 // take counter
-  var r = []
-  for (var i = 0; i < src.length; i++) {
-    var v = src[i]
-    if (!f0(v)) continue // filter
-    v = f1(v) // map
-    r.push(v)
-    if (++c2 >= 10) break // take(10)
-  }
-  return r
+const output = []
+for (let index = 0; index < users.length; index++) {
+  const user = users[index]
+  if (!user.active) continue
+  output.push(user.name)
+  if (output.length === 10) break
 }
 ```
 
-One loop. Filter skips with `continue`. Take breaks with `break`. The generated code is cached by opcode pattern, so the same chain shape only compiles once.
+There is no `eval`, `new Function`, function-source parsing, or dynamically
+loaded JIT chunk in the public runtime graph. This keeps the same code valid
+under strict CSP and across Node, Bun, Deno, browsers, workers, and edge
+runtimes.
 
-## Callback inlining
+## Plan once for repeated work
 
-It goes further. If your callback is a simple arrow function like `x => x * 2`, the engine parses the function's `toString()` output, validates it's safe (no side effects, no closed-over variables), and inlines the expression directly into the generated loop body.
-
-Instead of `v = f1(v)`, the generated code becomes `v = v * 2`. No function call overhead at all.
-
-The safety checks are strict. The engine rejects anything with `new`, `delete`, `throw`, `await`, `import`, or `eval`. It rejects any identifier that isn't the parameter name or a known global like `Math` or `Array`. If the callback can't be inlined, it falls back to a normal function call. Nothing breaks, you just don't get the extra speed.
-
-## What fuses and what doesn't
-
-Operations that can run item-by-item fuse together: `filter`, `map`, `flatMap`, `take`, `drop`, `takeWhile`, `dropWhile`.
-
-Terminal operations like `reduce`, `find`, `every`, `some`, and `count` also fuse. They become the final step of the loop instead of a separate pass.
-
-Operations that need the full array don't fuse: `sort`, `reverse`, `groupBy`, `uniq`. These force the preceding fused segment to materialize its result first. Then a new segment can start after them.
+For a hot pipeline used with many inputs, compile its shape once:
 
 ```ts
-pipe(
-  data,
-  A.filter((x) => x > 3), // ─┐ fused segment 1
-  A.map((x) => x * 2), // ─┘ materializes here
-  A.sortBy((a, b) => a - b), // runs on materialized array
-  A.take(3), // segment 2 (take on sorted result)
+import { compile, explain } from '@stopcock/fp'
+
+const activeNames = compile(
+  A.filter((user: User) => user.active),
+  A.map((user) => user.name),
+  A.take(10),
+)
+
+activeNames(firstPage)
+activeNames(secondPage)
+
+console.log(
+  explain(
+    A.filter((user: User) => user.active),
+    A.map((user) => user.name),
+    A.take(10),
+  ),
 )
 ```
 
-There's one exception. `sort` followed immediately by `take(k)` gets a special optimization: quickselect. Instead of sorting the whole array and slicing, it partitions to find just the top k elements and only sorts those. O(n + k log k) instead of O(n log n).
+`compile` keeps normal callback semantics. `compilePure` is an explicit promise
+that callbacks are pure and may enable additional rewrites. Purity is never
+silently guessed from `Function#toString`.
 
-## When it doesn't matter
+## Boundaries
 
-For small arrays (under ~100 items), fusion doesn't buy you much. The overhead of native method calls is negligible at that scale, and V8 is very good at optimizing simple chains.
+Item-by-item transforms such as map, filter, reject, filter-map, take, and drop
+can share a streaming segment. Whole-input operations such as sorting,
+reversing, grouping, and global deduplication form materialization boundaries.
+Terminals such as reduce, count, sum, and short-circuit searches can finish a
+segment without another intermediate collection.
 
-Fusion pays off when:
+Specialized optimizations are semantic, not magical. For example, a sorted
+top-k request can select and sort only the required prefix when its ordering
+contract allows that rewrite.
 
-- Your arrays are large (1K+ items)
-- You have early-exit operations like `take` or `find`
-- You're chaining 3+ operations
-- You're in a hot path that runs frequently
+## Build-time lowering
 
-The filter/map/take pattern on 100K items runs at ~4M ops/s with fusion vs ~700 ops/s with native chaining. That's not a typo. Most of the gain comes from `take(10)` breaking out of the loop after 10 results instead of processing all 100K items first.
+`@stopcock/fp-compiler` is an optional build plugin for Vite/Rollup-compatible
+hosts. It recognizes ordinary imports from `@stopcock/fp` and
+`@stopcock/fp/array`, lowers supported call sites to direct loops, and emits
+diagnostics for transformed or rejected shapes. It is a development dependency;
+applications do not import it at runtime.
 
-## The fallback
+## When fusion helps
 
-If `new Function()` isn't available (CSP restrictions, some edge runtimes), the engine falls back to an interpreted loop that does the same thing without code generation. Same fusion, same early exits, just without the inlining optimizations.
+Measure your workload. Fusion is most useful for large inputs, early exit,
+multiple compatible stages, and repeated hot paths. For a short collection or
+a single native operation, clarity usually matters more than forcing a
+compiled plan.
 
-And if none of your functions have opcodes (plain functions, not stopcock's array ops), `pipe` just calls them left to right like you'd expect. Zero overhead in that path.
+The benchmark suite measures source and packed-dist lanes on the real runtime
+engine. Release gates compare the build compiler with a frozen loop emitter on
+Linux x64 and macOS arm64 and reject correctness mismatches as well as
+performance regressions.
 
 ---
 # Zustand without the spread
@@ -1070,32 +1555,7 @@ And if none of your functions have opcodes (plain functions, not stopcock's arra
 Source: https://stopcock.dev/blog/zustand-without-the-spread/
 
 
-Zustand is probably the best state management library for React. Tiny API, no boilerplate, works how you'd expect. But it has the same problem as every immutable state solution: nested updates are ugly.
-
-Here's a store for a basic e-commerce app:
-
-```ts
-type State = {
-  user: {
-    name: string
-    address: {
-      street: string
-      city: string
-      postcode: string
-    }
-  }
-  cart: {
-    items: CartItem[]
-    discount: number | null
-  }
-  ui: {
-    sidebarOpen: boolean
-    theme: 'light' | 'dark'
-  }
-}
-```
-
-Now update the user's city:
+Nested immutable updates quickly become a wall of spread operators:
 
 ```ts
 setCity: (city) =>
@@ -1111,202 +1571,108 @@ setCity: (city) =>
   }))
 ```
 
-Three levels of spread for one field. And it gets worse. Every new action that touches nested state repeats the same pattern. You end up with a store file that's 80% spread operators.
-
-## Lenses fix this
-
-A lens is a pair of functions: one to read a value from a structure, one to write it back immutably. You define it once and reuse it everywhere.
+An optic packages the read and immutable-update path as a reusable value.
 
 ```ts
-import { path, set, over, view } from '@stopcock/fp'
+import * as Optic from '@stopcock/fp/optic'
 
-const city = path<State, 'user', 'address', 'city'>('user', 'address', 'city')
+const city = Optic.optic<State>()
+  .prop('user')
+  .prop('address')
+  .prop('city')
+  .value
 ```
 
-That `city` lens knows how to reach into `state.user.address.city` and how to produce a new state with that value changed. All the spreading happens inside the lens. You never write it again.
+The Zustand action becomes:
 
 ```ts
-setCity: (c) => set(state => lensSet(city, c, state)),
+setCity: (value) =>
+  set((state) => Optic.set(city, state, value))
 ```
 
-One line. Any depth.
-
-## Setting up the store
-
-Here's a full Zustand store using optics. The pattern is simple: define your lenses outside the store, use them inside your actions.
+## A complete store
 
 ```ts
 import { create } from 'zustand'
-import {
-  prop,
-  path,
-  composeLens,
-  view as lensView,
-  set as lensSet,
-  over as lensOver,
-  each,
-  filtered,
-  modify,
-} from '@stopcock/fp'
+import * as Optic from '@stopcock/fp/optic'
 
-// Lenses. define once, use everywhere
-const user = prop<State, 'user'>('user')
-const city = path<State, 'user', 'address', 'city'>('user', 'address', 'city')
-const cartItems = path<State, 'cart', 'items'>('cart', 'items')
-const discount = path<State, 'cart', 'discount'>('cart', 'discount')
-const theme = path<State, 'ui', 'theme'>('ui', 'theme')
-const sidebar = path<State, 'ui', 'sidebarOpen'>('ui', 'sidebarOpen')
+const city = Optic.optic<State>().prop('user').prop('address').prop('city').value
+const theme = Optic.optic<State>().prop('ui').prop('theme').value
+const sidebar = Optic.optic<State>().prop('ui').prop('sidebarOpen').value
+const discount = Optic.optic<State>().prop('cart').prop('discount').value
 
-const useStore = create<State & Actions>((set, get) => ({
+const useStore = create<State & Actions>((set) => ({
   user: {
     name: 'Alice',
-    address: { street: '123 Main St', city: 'Portland', postcode: '97201' },
+    address: {
+      street: '123 Main St',
+      city: 'Portland',
+      postcode: '97201',
+    },
   },
   cart: { items: [], discount: null },
   ui: { sidebarOpen: false, theme: 'light' },
 
-  // Simple field updates. one line each
-  setCity: (c) => set((s) => lensSet(s, city, c)),
-  toggleSidebar: () => set((s) => lensOver(s, sidebar, (open) => !open)),
-  setTheme: (t) => set((s) => lensSet(s, theme, t)),
-  applyDiscount: (d) => set((s) => lensSet(s, discount, d)),
+  setCity: (value) => set((state) => Optic.set(city, state, value)),
+  setTheme: (value) => set((state) => Optic.set(theme, state, value)),
+  applyDiscount: (value) => set((state) => Optic.set(discount, state, value)),
+  toggleSidebar: () =>
+    set((state) => Optic.modify(sidebar, state, (open) => !open)),
 }))
 ```
 
-Compare that to the spread version. Each action is one line instead of a nested object literal. And when your state shape changes, you update the lens definition, not every action that touches that path.
+The optic is defined once, inferred from `State`, and independently testable.
 
-## Real use cases
+## Conditional array updates
 
-### Cart operations
-
-Cart state is where spread hell really kicks in. You're updating items inside an array inside an object. With traversals, you can target items by condition.
+Traversals focus on zero or more values:
 
 ```ts
-import { each, filtered, modify } from '@stopcock/fp'
+const outOfStock = Optic.filtered<CartItem>((item) => item.stock === 0)
 
-// Bump quantity for a specific item
-const increaseQuantity = (id: string) =>
-  set((s) => {
-    const items = lensView(s, cartItems)
-    return lensSet(
-      s,
-      cartItems,
-      items.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item)),
-    )
-  })
+const updatedItems = Optic.modify(
+  outOfStock,
+  items,
+  (item) => ({ ...item, disabled: true }),
+)
+```
 
-// Mark all out-of-stock items
-const outOfStock = filtered<CartItem>((item) => item.stock === 0)
+Compose the traversal with a lens to update items directly inside state:
+
+```ts
+const cartItems = Optic.optic<State>().prop('cart').prop('items').value
+const unavailableItems = Optic.compose(cartItems, outOfStock)
 
 const markOutOfStock = () =>
-  set((s) => {
-    const items = lensView(s, cartItems)
-    return lensSet(
-      s,
-      cartItems,
-      modify(items, outOfStock, (item) => ({ ...item, disabled: true })),
-    )
-  })
-```
-
-The `filtered` traversal finds all matching items and applies the update. You're not writing `.map` with a ternary every time.
-
-### Form state
-
-Multi-step forms tend to have deeply nested state. Each section has its own fields and validation. Without lenses, updating a single field means spreading through every layer.
-
-```ts
-type FormState = {
-  steps: {
-    personal: { name: string; email: string }
-    shipping: { address: Address; sameAsBilling: boolean }
-    payment: { method: 'card' | 'paypal'; cardNumber: string | null }
-  }
-  currentStep: number
-  errors: Record<string, string[]>
-}
-
-const shippingAddress = path<FormState, 'steps', 'shipping', 'address'>(
-  'steps',
-  'shipping',
-  'address',
-)
-const paymentMethod = path<FormState, 'steps', 'payment', 'method'>('steps', 'payment', 'method')
-const currentStep = prop<FormState, 'currentStep'>('currentStep')
-
-// Each action reads clearly
-const setShippingAddress = (addr: Address) => set((s) => lensSet(s, shippingAddress, addr))
-
-const nextStep = () => set((s) => lensOver(s, currentStep, (step) => step + 1))
-
-const selectPaypal = () => set((s) => lensSet(s, paymentMethod, 'paypal'))
-```
-
-### Dashboard filters
-
-Dashboards accumulate state. Filters, selected rows, sort order, pagination, collapsed panels. Each one is a nested path that you're constantly reading and writing.
-
-```ts
-type DashboardState = {
-  filters: {
-    dateRange: { start: Date; end: Date }
-    status: ('active' | 'archived' | 'draft')[]
-    search: string
-  }
-  table: {
-    sortBy: string
-    sortOrder: 'asc' | 'desc'
-    page: number
-    selected: Set<string>
-  }
-}
-
-const dateRange = path<DashboardState, 'filters', 'dateRange'>('filters', 'dateRange')
-const statusFilter = path<DashboardState, 'filters', 'status'>('filters', 'status')
-const search = path<DashboardState, 'filters', 'search'>('filters', 'search')
-const sortBy = path<DashboardState, 'table', 'sortBy'>('table', 'sortBy')
-const sortOrder = path<DashboardState, 'table', 'sortOrder'>('table', 'sortOrder')
-const page = path<DashboardState, 'table', 'page'>('table', 'page')
-const selected = path<DashboardState, 'table', 'selected'>('table', 'selected')
-
-// Toggle sort direction
-const toggleSort = (column: string) =>
-  set((s) => {
-    const current = lensView(s, sortBy)
-    if (current === column) {
-      return lensOver(s, sortOrder, (o) => (o === 'asc' ? 'desc' : 'asc'))
-    }
-    return lensSet(lensSet(s, sortBy, column), sortOrder, 'asc')
-  })
-
-// Clear all filters at once
-const clearFilters = () =>
-  set((s) =>
-    lensSet(lensSet(lensSet(s, search, ''), statusFilter, []), dateRange, {
-      start: defaultStart,
-      end: defaultEnd,
-    }),
+  set((state) =>
+    Optic.modify(
+      unavailableItems,
+      state,
+      (item) => ({ ...item, disabled: true }),
+    ),
   )
 ```
 
-Chaining `lensSet` calls reads top to bottom. Each one returns a new state that feeds into the next. No intermediate variables, no spreading.
+## Partial focus
 
-## When you don't need this
+`index` and `find` produce `Optional` optics. Reads return `Option`; writes
+leave the source unchanged when no focus exists.
 
-If your state is flat, you don't need lenses. Zustand already handles `{ count: 0, increment: () => set(s => ({ count: s.count + 1 })) }` perfectly. Don't add abstraction where there's no problem.
+```ts
+const selected = Optic.find<CartItem>((item) => item.id === selectedId)
+const current = Optic.preview(selected, items)
+const renamed = Optic.modify(selected, items, (item) => ({
+  ...item,
+  name: item.name.trim(),
+}))
+```
 
-Lenses pay off when:
+## When to use optics
 
-- State is 3+ levels deep
-- Multiple actions touch the same nested paths
-- You're tired of reading and reviewing spread sandwiches
-- You want to test state updates independently of the store
-
-That last point matters more than it seems. A lens is just a value. You can unit test it without Zustand, pass it around, compose it with other lenses. Try doing that with a spread expression.
-
-## Beyond lenses
-
-Everything in this post comes from `@stopcock/fp`. Lenses cover the common case of reaching into nested objects, but the same package also has prisms (for values that might not exist, like `Option` or `Result`), traversals (for updating multiple values at once), and cross-optic composition. If you're just doing simple nested updates in Zustand, lenses and `path` are enough. Reach for traversals when you need filtered batch updates, or prisms when you're chaining through optional state.
+Flat state rarely needs them. Optics pay off when paths are nested, shared by
+several actions, partial, or multi-focus. The 2.0 module also includes prisms,
+isomorphisms, getters, folds, setters, keyed `At` optics, composition, and lens
+law checks.
 
 ---
 # Fusion
@@ -1341,7 +1707,7 @@ One pass. `take(10)` breaks the loop after 10 results.
 | `reduce`, `find`, `every`, `some`, `count`                           | terminal folds/predicates | finish the fused pass and return a scalar or found value                                      |
 | `head`, `last`, `length`, `join`, `sum`, `min`, `max`                | accessor terminals        | end the chain with a scalar or aggregate result                                               |
 | `sort`, `sortBy`, `reverse`, `groupBy`, `uniq`                       | materialization boundary  | need a completed array before the next step                                                   |
-| `sortBy -> take(k)`, `sort -> take(k)`                               | top-k optimization        | uses a bounded top-k path instead of fully sorting when the take immediately follows the sort |
+| `sortBy -> take(k)`, `sort -> take(k)` under `compilePure`           | opt-in top-k rewrite      | uses a bounded, stable top-k path when the caller explicitly promises callback purity          |
 
 Operations that need the whole array break the streaming chain. Everything before them gets fused and runs first, then the materializing op runs on that result:
 
@@ -1349,34 +1715,48 @@ Operations that need the whole array break the streaming chain. Everything befor
 pipe(
   data,
   A.filter((x) => x > 3), // segment 1
-  A.map((x) => x * 2), // materializes here
+  A.map((x) => x * 2),
   A.sortBy((a, b) => a - b), // runs on the materialized array
-  A.take(3), // uses top-k because it immediately follows sortBy
+  A.take(3), // exact pipe semantics: take runs after the complete sort
 )
 ```
 
-When `take(k)` immediately follows `sortBy` or `sort`, pipe uses the top-k optimization for that pair. If you insert another operation between them, the sort boundary behaves like a normal materialization point.
+`compilePure(A.sortBy(compare), A.take(k))` may replace that exact pair with
+the bounded top-k rewrite. Ordinary `pipe` and `compile` keep exact callback
+semantics and complete the sort. Import `explainPure` from
+`@stopcock/fp/compile` to inspect the applied rewrite. Inserting another
+operation between sort and take prevents the rewrite.
 
 ## Mechanics
 
-Every function created by `dual()` carries metadata: `_op`, `_fn`, `_args`. `pipe` reads the tags and compiles consecutive fuseable ops into a single `for` loop with inlined predicates. `take(n)` emits `HALT` to break out early. Your own lambdas pass through unchanged.
+Functions created by `dual()` carry compact internal operation and binding
+metadata. `pipe` reads those tags and dispatches consecutive compatible
+operations to checked-in portable loop templates or a closure-based generic
+lowering. Early-exit operations stop the shared loop as soon as their contract
+allows. Untagged user functions pass through as ordinary opaque pipeline
+steps.
 
-If nothing is fuseable, `pipe` just applies functions one after another like you would expect.
+There is no runtime source generation. If nothing is fuseable, `pipe` applies
+functions one after another as expected.
 
 See [Benchmarks](/performance/benchmarks) for how fusion compares to lodash, ramda, and native JS.
 
 ---
-# Option & Result
+# Option and Result
 
 Source: https://stopcock.dev/concepts/option-result/
 
-Types for missing values and errors
+Explicit absence and recoverable failure
 
-If you've written a function that can fail and thought "should I throw? return null? return an object with a success flag?", these two types sort that out.
+Use `Option<A>` when a value may be absent. Use `Result<A, E>` when a
+recoverable operation can explain why it failed. Both make the unhappy path
+part of the type instead of encoding it as `null`, an exception, or a
+success-flag convention.
 
-`Option` is for values that might not exist. `Result` is for operations that can fail with an error you care about. Both force you to handle the unhappy path before you can use the value. The compiler won't let you forget.
-
-They use numeric `_tag` (0 for None/Err, 1 for Some/Ok) instead of strings. V8 can branch on numbers in a single CPU instruction.
+```ts
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
+```
 
 ## Option
 
@@ -1386,65 +1766,38 @@ type Some<A> = { readonly _tag: 1; readonly value: A }
 type Option<A> = None | Some<A>
 ```
 
-Wraps a value that might not be there. `none` is a singleton.
-
-### Constructors
+Create options at nullable and predicate boundaries:
 
 ```ts
-some<A>(value: A): Option<A>
-none: None
-fromNullable<A>(value: A | null | undefined): Option<NonNullable<A>>
-fromPredicate<A>(pred: (a: A) => boolean): (a: A) => Option<A>
+const portText = O.fromNullable(process.env.PORT)
+const positive = O.fromPredicate(3, (value) => value > 0)
 ```
 
-### Transforms
+Then transform without repeatedly branching:
 
 ```ts
-map<A, B>(f: (a: A) => B): (o: Option<A>) => Option<B>
-flatMap<A, B>(f: (a: A) => Option<B>): (o: Option<A>) => Option<B>
-filter<A>(pred: (a: A) => boolean): (o: Option<A>) => Option<A>
-tap<A>(f: (a: A) => void): (o: Option<A>) => Option<A>
-```
+import { pipe } from '@stopcock/fp'
 
-### Extraction
-
-```ts
-getOrElse<B>(onNone: () => B): <A>(o: Option<A>) => A | B
-getWithDefault<B>(value: B): <A>(o: Option<A>) => A | B
-match<B, A, C = B>(onNone: () => B, onSome: (a: A) => C): (o: Option<A>) => B | C
-toNullable<A>(o: Option<A>): A | null
-toUndefined<A>(o: Option<A>): A | undefined
-toResult<E>(defaultError: E): <A>(o: Option<A>) => Result<A, E>
-```
-
-### Guards
-
-```ts
-isSome<A>(o: Option<A>): o is Some<A>
-isNone<A>(o: Option<A>): o is None
-```
-
-```ts
-import { pipe, O } from '@stopcock/fp'
-
-pipe(
-  O.fromNullable(config.port),
-  O.map((p) => parseInt(p, 10)),
-  O.filter((p) => p > 0 && p < 65536),
+const port = pipe(
+  portText,
+  O.map(Number),
+  O.filter((value) => Number.isInteger(value) && value > 0),
   O.getOrElse(() => 3000),
 )
-
-pipe(
-  O.fromNullable(address),
-  O.flatMap((a) => O.fromNullable(a.zip)),
-  O.match(
-    () => 'no zip',
-    (zip) => zip,
-  ),
-)
 ```
 
----
+`mapNullable`, `flatMap`, `filter`, `zip`, `all`, `struct`, and `traverse`
+cover the common composition shapes. Partial extraction is explicit:
+
+```ts
+const label = O.match({
+  none: () => 'not configured',
+  some: (value) => `port ${value}`,
+})(portText)
+```
+
+`none` is a frozen singleton. The representation uses numeric tags: `0` is
+`None`, `1` is `Some`.
 
 ## Result
 
@@ -1454,961 +1807,258 @@ type Ok<A> = { readonly _tag: 1; readonly value: A }
 type Result<A, E> = Ok<A> | Err<E>
 ```
 
-### Constructors
+Translate throwing and nullable APIs at the boundary:
 
 ```ts
-ok<A>(value: A): Result<A, never>
-err<E>(error: E): Result<never, E>
-tryCatch<A>(thunk: () => A): Result<A, unknown>
-fromNullable<E>(defaultError: E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
-```
+type ParseError = {
+  readonly type: 'InvalidJson'
+  readonly cause: unknown
+}
 
-`tryCatch` wraps a function that might throw. The error type comes back as `unknown` because JS can throw anything, so you'll need to narrow it yourself.
+const parsed = R.tryCatch(
+  () => JSON.parse(input) as unknown,
+  (cause): ParseError => ({ type: 'InvalidJson', cause }),
+)
 
-### Transforms
-
-```ts
-map<A, B>(f: (a: A) => B): <E>(r: Result<A, E>) => Result<B, E>
-mapErr<E, F>(f: (e: E) => F): <A>(r: Result<A, E>) => Result<A, F>
-flatMap<A, B, E2>(f: (a: A) => Result<B, E2>): <E>(r: Result<A, E>) => Result<B, E | E2>
-tap<A>(f: (a: A) => void): <E>(r: Result<A, E>) => Result<A, E>
-tapErr<E>(f: (e: E) => void): <A>(r: Result<A, E>) => Result<A, E>
-```
-
-### Extraction
-
-```ts
-getOrElse<B>(onErr: () => B): <A, E>(r: Result<A, E>) => A | B
-match<E, B, A, C = B>(onErr: (e: E) => B, onOk: (a: A) => C): (r: Result<A, E>) => B | C
-toOption<A, E>(r: Result<A, E>): Option<A>
-```
-
-### Guards
-
-```ts
-isOk<A, E>(r: Result<A, E>): r is Ok<A>
-isErr<A, E>(r: Result<A, E>): r is Err<E>
-```
-
-```ts
-import { pipe, R } from '@stopcock/fp'
-
-const parsed = R.tryCatch(() => JSON.parse(input))
-
-pipe(
-  parsed,
-  R.map((obj: { value: number }) => obj.value),
-  R.flatMap((v) => (v > 0 ? R.ok(v) : R.err('must be positive'))),
-  R.match(
-    (err) => console.error(err),
-    (val) => console.log(val),
-  ),
+const token = R.fromNullable(() => 'Missing token')(
+  headers.authorization,
 )
 ```
 
----
-
-## Converting
+`map` transforms success. `mapErr` transforms failure. `flatMap` sequences
+dependent work and keeps the union of possible error types.
 
 ```ts
-// Option → Result
-pipe(O.fromNullable(x), O.toResult('was null'))
-
-// Result → Option (discards error)
-pipe(R.ok('hello'), R.toOption) // Some('hello')
-pipe(R.err('boom'), R.toOption) // None
+const response = pipe(
+  parsed,
+  R.flatMap(decodeRequest),
+  R.flatMap(authorizeRequest),
+  R.match({
+    err: (error) => ({ status: 400, error }),
+    ok: (value) => ({ status: 200, value }),
+  }),
+)
 ```
+
+`all`, `struct`, and `traverse` are fail-fast and preserve tuple/object types.
+Use [`Validation`](/api/validation) when independent checks must all run and
+accumulate errors.
+
+## Conversion
+
+```ts
+O.toResult(() => 'missing')(option)
+R.toOption(result) // intentionally discards the error
+O.transpose(optionOfResult)
+```
+
+Asynchronous failure belongs in `Task` from `@stopcock/async`. Keeping
+`Option`, `Result`, and `Task` separate makes evaluation and cancellation
+semantics visible.
 
 ---
 # Cookbook
 
 Source: https://stopcock.dev/cookbook/
 
-Real-world patterns with stopcock
+Practical @stopcock/fp 2.0 recipes
 
-Copy-paste examples. Each one is self-contained. Most use [A (Array)](/api/array), [O (Option)](/api/option), [R (Result)](/api/result), and [Lenses](/api/lenses) from [fp](/libraries/fp). Array operations [fuse in pipe](/concepts/fusion) automatically.
-
----
-
-## Pipes & composition
-
-### Parse an API response
+## Transform a collection
 
 ```ts
-import { pipe, R, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
-type User = { id: number; name: string; role: string }
-
-const users = pipe(
-  R.tryCatch(() => JSON.parse(rawBody)),
-  R.map((body: { data: User[] }) => body.data),
-  R.map(A.filter((u: User) => u.role !== 'bot')),
-  R.getOrElse((): User[] => []),
+const cards = pipe(
+  products,
+  A.filter((product) => product.inStock),
+  A.map((product) => ({
+    id: product.id,
+    label: product.name,
+    price: product.price,
+  })),
+  A.take(20),
 )
 ```
 
-### Config with defaults
+Use direct form when it reads more naturally:
 
 ```ts
-import { pipe, O } from '@stopcock/fp'
+const cards = A.map(products, toCard)
+```
+
+## Compile a repeated hot path
+
+```ts
+import { compile, explain } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+
+const activeIds = compile(
+  A.filter((user: User) => user.active),
+  A.map((user) => user.id),
+  A.take(100),
+)
+
+activeIds(firstBatch)
+activeIds(secondBatch)
+console.log(explain(A.filter((user: User) => user.active), A.map((user) => user.id)))
+```
+
+Use `compilePure` only when every callback is pure and the extra rewrite
+freedom is valid for your code.
+
+## Read optional configuration
+
+```ts
+import { pipe } from '@stopcock/fp'
+import * as O from '@stopcock/fp/option'
 
 const port = pipe(
   O.fromNullable(process.env.PORT),
-  O.map((s) => parseInt(s, 10)),
-  O.filter((n) => n > 0 && n < 65536),
+  O.map(Number),
+  O.filter((value) => Number.isSafeInteger(value) && value > 0 && value < 65_536),
   O.getOrElse(() => 3000),
 )
-
-const dbUrl = pipe(
-  O.fromNullable(process.env.DATABASE_URL),
-  O.getOrElse(() => 'postgres://localhost:5432/dev'),
-)
 ```
 
-### Reusable pipelines with flow
-
-`flow` returns a reusable function instead of applying immediately.
+## Decode fail-fast input
 
 ```ts
-import { flow, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as G from '@stopcock/fp/guard'
+import * as R from '@stopcock/fp/result'
 
-type Product = { name: string; price: number; inStock: boolean }
+type DecodeError =
+  | { readonly type: 'InvalidJson'; readonly cause: unknown }
+  | { readonly type: 'ExpectedObject' }
 
-const cheapestInStock = flow(
-  A.filter((p: Product) => p.inStock),
-  A.sortBy((a: Product, b: Product) => a.price - b.price),
-  A.take(5),
-)
-
-cheapestInStock(productsFromApiA)
-cheapestInStock(productsFromApiB)
-```
-
-### Conditional logic
-
-```ts
-import { pipe, Logic } from '@stopcock/fp'
-
-const classify = Logic.cond([
-  [(n) => n >= 90, () => 'A'],
-  [(n) => n >= 80, () => 'B'],
-  [(n) => n >= 70, () => 'C'],
-  [() => true, () => 'F'],
-])
-
-const grade = classify(score)
-```
-
----
-
-## Data transformation
-
-### Normalize and deduplicate
-
-```ts
-import { pipe, A, S } from '@stopcock/fp'
-
-const clean = pipe(
-  rawTags,
-  A.map(S.trim),
-  A.map(S.toLowerCase),
-  A.filter((t) => t.length > 0),
-  A.uniq,
-)
-```
-
-### Data pipeline
-
-Group orders by customer, compute totals, rank by spend.
-
-```ts
-import { pipe, A } from '@stopcock/fp'
-
-type Order = { customerId: string; total: number; status: string }
-
-const revenueByCustomer = pipe(
-  orders,
-  A.filter((o: Order) => o.status === 'completed'),
-  A.groupBy((o) => o.customerId),
-)
-
-const topCustomers = pipe(
-  Object.entries(revenueByCustomer),
-  A.map(([id, orders]) => ({
-    id,
-    total: orders.reduce((sum, o) => sum + o.total, 0),
-  })),
-  A.sortBy((a, b) => b.total - a.total),
-  A.take(5),
-)
-```
-
-### Shape data for the client
-
-Strip sensitive fields before sending to the browser.
-
-```ts
-import { pipe, A, Obj } from '@stopcock/fp'
-
-type DbUser = { id: number; name: string; email: string; passwordHash: string; ssn: string }
-
-const toClientUsers = flow(
-  A.map((u: DbUser) => Obj.omit(u, ['passwordHash', 'ssn'])),
-  A.sortBy((a, b) => a.name.localeCompare(b.name)),
-)
-```
-
-### Transform object fields
-
-```ts
-import { pipe, Obj } from '@stopcock/fp'
-
-type RawEvent = { timestamp_ms: number; event_name: string; user_id: string }
-
-const normalize = (raw: RawEvent) =>
+const decodeBody = (text: string) =>
   pipe(
-    raw,
-    Obj.evolve({
-      timestamp_ms: (ms: number) => new Date(ms),
-      event_name: (s: string) => s.toLowerCase(),
-    }),
+    R.tryCatch(
+      () => JSON.parse(text) as unknown,
+      (cause): DecodeError => ({ type: 'InvalidJson', cause }),
+    ),
+    R.filterOrElse(
+      G.isPlainObject,
+      (): DecodeError => ({ type: 'ExpectedObject' }),
+    ),
   )
 ```
 
-### CSV row processing
+## Accumulate independent field errors
 
 ```ts
-import { pipe, A, S } from '@stopcock/fp'
+import * as V from '@stopcock/fp/validation'
 
-const parseCSV = (raw: string) => pipe(raw, S.trim, S.split('\n'), A.map(S.split(',')))
-
-const [header, ...rows] = parseCSV(csvText)
-
-const records = pipe(
-  rows,
-  A.map((row) => Object.fromEntries(header.map((col, i) => [col, row[i]]))),
-)
-```
-
-### ETL: reshape records
-
-Migrate rows from an old schema to a new one.
-
-```ts
-import { pipe, A, O, Obj } from '@stopcock/fp'
-
-type OldUser = { first_name: string; last_name: string; email: string | null; is_active: number }
-type NewUser = { fullName: string; email: string; active: boolean }
-
-const migrate = (rows: OldUser[]): NewUser[] =>
-  pipe(
-    rows,
-    A.filter((r) => r.is_active === 1),
-    A.map((r) => ({
-      fullName: `${r.first_name} ${r.last_name}`.trim(),
-      email: pipe(O.fromNullable(r.email), O.getWithDefault('')),
-      active: true,
-    })),
-    A.filter((r) => r.email.length > 0),
-  )
-```
-
----
-
-## Collections & sorting
-
-### Slug generation
-
-```ts
-import { pipe, S } from '@stopcock/fp'
-
-const slug = pipe(title, S.trim, S.toLowerCase, S.replaceAll(' ', '-'), S.replaceAll('/', '-'))
-```
-
-### Build a lookup table
-
-```ts
-import { pipe, A, D } from '@stopcock/fp'
-
-type Product = { sku: string; name: string; price: number }
-
-const bySku = D.fromEntries(products.map((p) => [p.sku, p]))
-
-const item = D.get(bySku, 'ABC-123')
-```
-
-### Paginate results
-
-```ts
-import { pipe, A } from '@stopcock/fp'
-
-function paginate<T>(items: T[], page: number, perPage: number) {
-  return pipe(items, A.drop((page - 1) * perPage), A.take(perPage))
+type FieldError = {
+  readonly field: string
+  readonly message: string
 }
 
-const page3 = paginate(allResults, 3, 20)
-```
-
-### Build select options
-
-```ts
-import { pipe, A, D } from '@stopcock/fp'
-
-type Country = { code: string; name: string; region: string }
-
-const optionsByRegion = pipe(
-  countries,
-  A.groupBy((c: Country) => c.region),
-  D.map((cs) => A.map(cs, (c) => ({ value: c.code, label: c.name }))),
-)
-// { Europe: [{ value: 'DE', label: 'Germany' }, ...], Asia: [...] }
-```
-
-### Diff two lists
-
-```ts
-import { pipe, A } from '@stopcock/fp'
-
-const added = A.difference(currentIds, previousIds)
-const removed = A.difference(previousIds, currentIds)
-const unchanged = A.intersection(currentIds, previousIds)
-```
-
-### Multi-field sort
-
-Sort by department first, then salary descending.
-
-```ts
-import { pipe, A } from '@stopcock/fp'
-
-type Employee = { name: string; department: string; salary: number }
-
-const sorted = pipe(
-  employees,
-  A.sortBy((a, b) => a.department.localeCompare(b.department) || b.salary - a.salary),
-)
-```
-
-### Leaderboard with ties
-
-```ts
-import { pipe, A } from '@stopcock/fp'
-
-type Player = { name: string; score: number }
-
-function leaderboard(players: Player[]) {
-  const sorted = pipe(
-    players,
-    A.sortBy((a, b) => b.score - a.score),
-  )
-  let rank = 0,
-    prev = -1
-  return sorted.map((p, i) => {
-    if (p.score !== prev) {
-      rank = i + 1
-      prev = p.score
-    }
-    return { rank, name: p.name, score: p.score }
-  })
-}
-```
-
-### Extract unique values from nested arrays
-
-```ts
-import { pipe, A } from '@stopcock/fp'
-
-type Post = { title: string; tags: string[] }
-
-const allTags = pipe(
-  posts,
-  A.flatMap((p: Post) => p.tags),
-  A.map((t) => t.toLowerCase()),
-  A.uniq,
-  A.sortBy((a, b) => a.localeCompare(b)),
-)
-```
-
-### Sliding window average
-
-Smooth noisy time-series data.
-
-```ts
-import { pipe, A, N } from '@stopcock/fp'
-
-function movingAverage(values: number[], windowSize: number) {
-  return pipe(A.slidingWindow(values, windowSize), A.map(N.mean))
-}
-
-movingAverage([10, 20, 30, 40, 50], 3)
-// [20, 30, 40]
-```
-
----
-
-## Error handling & validation
-
-### Validate with Result
-
-Collect all errors instead of failing on the first.
-
-```ts
-import { pipe, R, G } from '@stopcock/fp'
-
-function validateEmail(input: unknown): R.Result<string, string> {
-  if (!G.isString(input)) return R.err('expected string')
-  const trimmed = input.trim()
-  if (trimmed.length === 0) return R.err('empty')
-  if (!trimmed.includes('@')) return R.err('missing @')
-  return R.ok(trimmed)
-}
-
-const email = pipe(
-  validateEmail(formData.email),
-  R.map((e) => e.toLowerCase()),
-  R.match(
-    (err) => ({ valid: false as const, error: err }),
-    (val) => ({ valid: true as const, value: val }),
+const signup = V.all([
+  V.fromPredicate(
+    email,
+    (value) => value.includes('@'),
+    (): FieldError => ({ field: 'email', message: 'invalid email' }),
   ),
+  V.fromPredicate(
+    password,
+    (value) => value.length >= 12,
+    (): FieldError => ({ field: 'password', message: 'too short' }),
+  ),
+] as const)
+```
+
+Use `Result.flatMap` for checks that depend on earlier values. Use Validation
+only when every check can run independently.
+
+## Validate through Standard Schema
+
+```ts
+import * as Schema from '@stopcock/fp/schema'
+
+const userId = Schema.fromPredicate(
+  (value: unknown): value is string =>
+    typeof value === 'string' && value.length > 0,
+  () => Schema.issue('Expected a user id', ['id']),
+)
+
+const decoded = Schema.validateSync(input, userId)
+```
+
+The same consumer accepts a Standard Schema produced by another library.
+
+## Stream a large or infinite sequence
+
+```ts
+import { pipe } from '@stopcock/fp'
+import * as Iter from '@stopcock/fp/iter'
+
+const firstTenEvenSquares = pipe(
+  Iter.range(1, Infinity),
+  Iter.filter((value) => value % 2 === 0),
+  Iter.map((value) => value * value),
+  Iter.take(10),
+  Iter.toArray,
 )
 ```
 
-### Error recovery chain
+For asynchronous sources, use `AsyncIter` from `@stopcock/async`.
+
+## Update nested data immutably
 
 ```ts
-import { pipe, R } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as Optic from '@stopcock/fp/optic'
 
-const fetchConfig = pipe(
-  R.tryCatch(() => readFileSync('/etc/app/config.json', 'utf-8')),
-  R.flatMap((raw) => R.tryCatch(() => JSON.parse(raw))),
-  R.tapErr((e) => logger.warn('config load failed, using defaults:', e)),
-  R.getOrElse(() => defaultConfig),
+const city = Optic.optic<User>()
+  .prop('profile')
+  .prop('address')
+  .prop('city')
+  .value
+
+const moved = pipe(
+  user,
+  Optic.set(city, 'Manchester'),
 )
 ```
 
-### Safe property chain
+## Group and aggregate records
 
 ```ts
-import { pipe, O } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
-type Order = { shipping?: { address?: { zip?: string } } }
-
-const zip = pipe(
-  O.fromNullable(order.shipping),
-  O.flatMap((s) => O.fromNullable(s.address)),
-  O.flatMap((a) => O.fromNullable(a.zip)),
-  O.getWithDefault('N/A'),
+const revenueByRegion = A.groupMapReduce(
+  orders,
+  (order) => order.region,
+  (order) => order.total,
+  (left, right) => left + right,
 )
 ```
 
-### Validate a signup form
+`groupMapReduce`, `countBy`, `partitionMap`, binary search, combinations, and
+explicit `mapInto`/`filterInto` operations live in the array subpath.
+
+## Match tagged domain values
 
 ```ts
-import { pipe, R, A, G } from '@stopcock/fp'
+import * as Match from '@stopcock/fp/match'
 
-type SignupForm = { email: string; password: string; age: string }
+type Payment =
+  | { readonly type: 'Pending'; readonly id: string }
+  | { readonly type: 'Paid'; readonly id: string; readonly receipt: string }
+  | { readonly type: 'Failed'; readonly id: string; readonly reason: string }
 
-function validateSignup(form: SignupForm) {
-  const checks: [string, R.Result<unknown, string>][] = [
-    ['email', form.email.includes('@') ? R.ok(form.email) : R.err('invalid email')],
-    ['password', form.password.length >= 8 ? R.ok(form.password) : R.err('too short')],
-    ['age', Number(form.age) >= 18 ? R.ok(Number(form.age)) : R.err('must be 18+')],
-  ]
-
-  const errors = pipe(
-    checks,
-    A.filter(([, result]) => R.isErr(result)),
-    A.map(([field, result]) =>
-      R.match(
-        (e: string) => ({ field, message: e }),
-        () => null,
-      )(result),
-    ),
-    A.filter(G.isNotNil),
-  )
-
-  return errors.length === 0
-    ? R.ok({ email: form.email, password: form.password, age: Number(form.age) })
-    : R.err(errors)
-}
+const label = (payment: Payment) =>
+  Match.discriminant('type', payment, {
+    Pending: (value) => `Pending ${value.id}`,
+    Paid: (value) => `Receipt ${value.receipt}`,
+    Failed: (value) => `Failed: ${value.reason}`,
+  })
 ```
 
-### Process a webhook payload
-
-Stripe sends nested objects with nullable fields everywhere.
-
-```ts
-import { pipe, R, O, A } from '@stopcock/fp'
-
-type StripeEvent = {
-  type: string
-  data: {
-    object: {
-      id: string
-      amount: number
-      customer: string | null
-      metadata?: Record<string, string>
-    }
-  }
-}
-
-function handleChargeSucceeded(raw: string) {
-  return pipe(
-    R.tryCatch((): StripeEvent => JSON.parse(raw)),
-    R.flatMap((evt) =>
-      evt.type === 'charge.succeeded'
-        ? R.ok(evt.data.object)
-        : R.err(`unexpected event: ${evt.type}`),
-    ),
-    R.map((charge) => ({
-      chargeId: charge.id,
-      amountCents: charge.amount,
-      customer: pipe(O.fromNullable(charge.customer), O.getWithDefault('guest')),
-      ref: pipe(
-        O.fromNullable(charge.metadata),
-        O.flatMap((m) => O.fromNullable(m['order_ref'])),
-        O.getWithDefault('none'),
-      ),
-    })),
-  )
-}
-```
-
----
-
-## Aggregation & analytics
-
-### Compute stats on a dataset
-
-```ts
-import { pipe, A, N } from '@stopcock/fp'
-
-type Measurement = { sensorId: string; value: number; timestamp: number }
-
-const summary = (readings: Measurement[]) => {
-  const values = A.map(readings, (r) => r.value)
-  return {
-    count: A.length(values),
-    mean: N.mean(values),
-    median: N.median(values),
-    stdDev: N.standardDeviation(values),
-    range: N.minMax(values),
-  }
-}
-```
-
-### Shopping cart total
-
-```ts
-import { pipe, A, N, M } from '@stopcock/fp'
-
-type CartItem = { name: string; price: number; qty: number; taxRate: number }
-
-function cartTotal(items: CartItem[]) {
-  const subtotal = pipe(
-    items,
-    A.map((i) => i.price * i.qty),
-    N.sum,
-  )
-  const tax = pipe(
-    items,
-    A.map((i) => i.price * i.qty * i.taxRate),
-    N.sum,
-  )
-  return { subtotal, tax, total: subtotal + tax }
-}
-```
-
-### Dashboard: percentage change
-
-```ts
-import { pipe, A, N, M } from '@stopcock/fp'
-
-type DailyRevenue = { date: string; amount: number }
-
-function weekOverWeek(days: DailyRevenue[]) {
-  const thisWeek = pipe(
-    days,
-    A.take(7),
-    A.map((d) => d.amount),
-    N.sum,
-  )
-  const lastWeek = pipe(
-    days,
-    A.drop(7),
-    A.take(7),
-    A.map((d) => d.amount),
-    N.sum,
-  )
-  return lastWeek === 0 ? null : ((thisWeek - lastWeek) / lastWeek) * 100
-}
-```
-
-### Aggregate logs by level
-
-```ts
-import { pipe, A, D } from '@stopcock/fp'
-
-type LogEntry = { level: 'info' | 'warn' | 'error'; message: string; ts: number }
-
-function logSummary(logs: LogEntry[]) {
-  return pipe(
-    logs,
-    A.groupBy((l) => l.level),
-    D.map((entries) => ({
-      count: entries.length,
-      latest: pipe(
-        entries,
-        A.sortBy((a, b) => b.ts - a.ts),
-        A.head,
-      ),
-    })),
-  )
-}
-// { info: { count: 412, latest: {...} }, error: { count: 3, latest: {...} } }
-```
-
-### Deduplicate event stream
-
-Multiple sources emit events for the same entity. Keep the latest per entity.
-
-```ts
-import { pipe, A, D } from '@stopcock/fp'
-
-type Event = { entityId: string; ts: number; payload: unknown }
-
-function dedup(events: Event[]) {
-  const sorted = pipe(
-    events,
-    A.sortBy((a, b) => b.ts - a.ts),
-  )
-  return pipe(
-    sorted,
-    A.uniqBy((e) => e.entityId),
-  )
-}
-```
-
-### Build a notification digest
-
-Group by user, send one email per user.
-
-```ts
-import { pipe, A, D } from '@stopcock/fp'
-
-type Notification = { userId: string; message: string; ts: number }
-
-function buildDigests(notifications: Notification[]) {
-  return pipe(
-    notifications,
-    A.sortBy((a, b) => a.ts - b.ts),
-    A.groupBy((n) => n.userId),
-    D.map((notes) => ({
-      count: notes.length,
-      messages: A.map(notes, (n) => n.message),
-      earliest: A.head(notes)!.ts,
-    })),
-  )
-}
-```
-
----
-
-## Domain patterns
-
-### Permission check
-
-```ts
-import { pipe, A, Logic } from '@stopcock/fp'
-
-type User = { roles: string[]; orgId: string; suspended: boolean }
-type Resource = { orgId: string; requiredRole: string }
-
-function canAccess(user: User, resource: Resource): boolean {
-  return Logic.allPass<[User, Resource]>([
-    ([u]) => !u.suspended,
-    ([u, r]) => u.orgId === r.orgId,
-    ([u, r]) => A.includes(u.roles, r.requiredRole),
-  ])([user, resource])
-}
-```
-
-### Filter with combined predicates
-
-```ts
-import { pipe, A, Logic } from '@stopcock/fp'
-
-type User = { age: number; active: boolean; verified: boolean }
-
-const eligible = Logic.allPass<User>([(u) => u.age >= 18, (u) => u.active, (u) => u.verified])
-
-pipe(users, A.filter(eligible))
-```
-
-### Merge config layers
-
-```ts
-import { Obj } from '@stopcock/fp'
-
-const config = Obj.mergeDeepRight(Obj.mergeDeepRight(defaults, fileConfig), envOverrides)
-```
-
-### Search with ranking
-
-```ts
-import { pipe, A, S } from '@stopcock/fp'
-
-type Contact = { name: string; email: string; company: string }
-
-function search(contacts: Contact[], query: string) {
-  const q = query.toLowerCase()
-  return pipe(
-    contacts,
-    A.map((c) => {
-      const name = c.name.toLowerCase()
-      const score =
-        name === q
-          ? 3
-          : name.startsWith(q)
-            ? 2
-            : name.includes(q) || c.email.toLowerCase().includes(q)
-              ? 1
-              : 0
-      return { contact: c, score }
-    }),
-    A.filter((r) => r.score > 0),
-    A.sortBy((a, b) => b.score - a.score),
-    A.take(20),
-    A.map((r) => r.contact),
-  )
-}
-```
-
-### Batch API requests
-
-```ts
-import { pipe, A } from '@stopcock/fp'
-
-async function batchDelete(ids: string[], batchSize = 100) {
-  const batches = A.chunk(ids, batchSize)
-  for (const batch of batches) {
-    await db.deleteMany({ id: { $in: batch } })
-  }
-}
-```
-
----
-
-## Lenses & immutable state
-
-Lenses replace spread-hell for nested immutable updates. Define the path once, then `view`, `set`, or `over` anywhere.
-
-### The problem: spread nesting
-
-```ts
-const next = {
-  ...state,
-  user: {
-    ...state.user,
-    preferences: {
-      ...state.user.preferences,
-      notifications: {
-        ...state.user.preferences.notifications,
-        email: false,
-      },
-    },
-  },
-}
-```
-
-### The fix: path
-
-```ts
-import { pipe, path, composeLens, set, over, view } from '@stopcock/fp'
-
-type AppState = {
-  user: {
-    name: string
-    preferences: {
-      notifications: { email: boolean; push: boolean }
-      theme: 'light' | 'dark'
-    }
-  }
-}
-
-const emailNotifLens = composeLens(
-  path<AppState, 'user', 'preferences'>('user', 'preferences'),
-  path<AppState['user']['preferences'], 'notifications', 'email'>('notifications', 'email'),
-)
-const themeLens = path<AppState, 'user', 'preferences'>('user', 'preferences')
-
-pipe(state, view(emailNotifLens)) // read
-pipe(state, set(emailNotifLens, false)) // replace
-pipe(
-  state,
-  over(themeLens, (p) => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' })),
-)
-```
-
-### useReducer with lenses
-
-```ts
-import { prop, set, over, type Lens } from '@stopcock/fp'
-
-type State = {
-  count: number
-  todos: { id: string; text: string; done: boolean }[]
-  filter: 'all' | 'active' | 'done'
-}
-
-const countLens = prop<State, 'count'>('count')
-const todosLens = prop<State, 'todos'>('todos')
-const filterLens = prop<State, 'filter'>('filter')
-
-type Action =
-  | { type: 'increment' }
-  | { type: 'decrement' }
-  | { type: 'setFilter'; filter: State['filter'] }
-  | { type: 'addTodo'; todo: State['todos'][0] }
-  | { type: 'toggleTodo'; id: string }
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'increment':
-      return over(countLens, (n) => n + 1)(state)
-    case 'decrement':
-      return over(countLens, (n) => n - 1)(state)
-    case 'setFilter':
-      return set(filterLens, action.filter)(state)
-    case 'addTodo':
-      return over(todosLens, (todos) => [...todos, action.todo])(state)
-    case 'toggleTodo':
-      return over(todosLens, (todos) =>
-        todos.map((t) => (t.id === action.id ? { ...t, done: !t.done } : t)),
-      )(state)
-  }
-}
-```
-
-### Form state management
-
-Each form field gets a lens. Input handlers become one-liners.
-
-```ts
-import { prop, set, view, type Lens } from '@stopcock/fp'
-
-type ProfileForm = {
-  displayName: string
-  bio: string
-  website: string
-}
-
-const displayNameLens = prop<ProfileForm, 'displayName'>('displayName')
-const bioLens = prop<ProfileForm, 'bio'>('bio')
-const websiteLens = prop<ProfileForm, 'website'>('website')
-
-function handleChange<K extends keyof ProfileForm>(lens: Lens<ProfileForm, string>) {
-  return (e: { target: { value: string } }) => setForm((prev) => set(lens, e.target.value)(prev))
-}
-
-// <input onChange={handleChange(displayNameLens)} value={view(displayNameLens)(form)} />
-```
-
-### Settings panel with nested toggles
-
-```ts
-import { pipe, path, over } from '@stopcock/fp'
-
-type Settings = {
-  privacy: { shareUsage: boolean; shareLocation: boolean }
-  display: { compactMode: boolean; fontSize: number }
-}
-
-const shareUsageLens = path<Settings, 'privacy', 'shareUsage'>('privacy', 'shareUsage')
-const compactLens = path<Settings, 'display', 'compactMode'>('display', 'compactMode')
-const fontSizeLens = path<Settings, 'display', 'fontSize'>('display', 'fontSize')
-
-const toggleShareUsage = over(shareUsageLens, (v) => !v)
-const toggleCompact = over(compactLens, (v) => !v)
-const bumpFontSize = over(fontSizeLens, (n) => Math.min(n + 2, 32))
-
-const updated = pipe(settings, toggleShareUsage, bumpFontSize)
-```
-
-### Undo/redo with lens snapshots
-
-Capture the value at a lens before mutating. Push to a history stack.
-
-```ts
-import { view, set, over, path, type Lens } from '@stopcock/fp'
-
-type History<S> = { past: S[]; present: S; future: S[] }
-
-function edit<S, A>(history: History<S>, lens: Lens<S, A>, fn: (a: A) => A): History<S> {
-  return {
-    past: [...history.past, history.present],
-    present: over(lens, fn)(history.present),
-    future: [],
-  }
-}
-
-function undo<S>(history: History<S>): History<S> {
-  const prev = history.past.at(-1)
-  if (!prev) return history
-  return {
-    past: history.past.slice(0, -1),
-    present: prev,
-    future: [history.present, ...history.future],
-  }
-}
-```
-
-### Normalized state: update an entity by ID
-
-```ts
-import { pipe, lens, over } from '@stopcock/fp'
-
-type Entity = { id: string; name: string; status: 'active' | 'archived' }
-type NormalizedState = {
-  ids: string[]
-  entities: Record<string, Entity>
-}
-
-const entityLens = (id: string) =>
-  lens<NormalizedState, Entity>(
-    (s) => s.entities[id],
-    (s, entity) => ({
-      ...s,
-      entities: { ...s.entities, [id]: entity },
-    }),
-  )
-
-const archiveEntity = (state: NormalizedState, id: string) =>
-  pipe(
-    state,
-    over(entityLens(id), (e) => ({ ...e, status: 'archived' as const })),
-  )
-```
-
-### Shopping cart: update quantity by SKU
-
-```ts
-import { pipe, A, index, over } from '@stopcock/fp'
-
-type CartItem = { sku: string; name: string; qty: number; price: number }
-
-function updateQty(cart: CartItem[], sku: string, delta: number): CartItem[] {
-  const idx = A.findIndex(cart, (item) => item.sku === sku)
-  if (idx === undefined) return cart
-  return pipe(
-    cart,
-    over(index<CartItem>(idx), (item) => ({
-      ...item,
-      qty: Math.max(0, item.qty + delta),
-    })),
-  )
-}
-```
+The handler object must cover every tag. Use the pattern module for structural
+patterns once simple tagged dispatch is no longer enough.
 
 ---
 # Getting Started
@@ -2422,7 +2072,10 @@ bun add @stopcock/fp
 ```
 
 ```ts
-import { pipe, flow, A, S, N, O, R } from '@stopcock/fp'
+import { flow, pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
 ```
 
 ## pipe
@@ -2441,7 +2094,8 @@ const leaderboard = pipe(
 )
 ```
 
-`filter → map` fuses into a single loop. `take(10)` terminates early, so the loop stops after 10 results.
+Portable tagged operators can be planned into a single loop. `take(10)`
+terminates early, so work stops after ten matching results.
 
 ## flow
 
@@ -2459,7 +2113,9 @@ activeNames(usersB)
 
 ## Fusion
 
-`pipe` detects tagged array operations and fuses them into a single loop. `take` and `find` bail out early, so you're not iterating the whole thing.
+`pipe` recognizes tagged array operations and uses checked-in portable loop
+templates. `take` and short-circuiting terminals can stop before the input is
+exhausted.
 
 ```ts
 const big = Array.from({ length: 1_000_000 }, (_, i) => i)
@@ -2490,7 +2146,7 @@ pipe(users, A.take(5)) // data-last
 pipe(
   O.fromNullable(user.email),
   O.map((e) => e.split('@')[1]),
-  O.getWithDefault('unknown'),
+  O.getOrElse(() => 'unknown'),
 )
 
 pipe(
@@ -2509,10 +2165,14 @@ Source: https://stopcock.dev/
 
 Fast, composable TypeScript. FP primitives, dates, async tasks, image processing.
 
-A focused set of TypeScript packages that play nicely together. Pipeable utilities cover functional programming, dates, async tasks, HTTP, state, diffing, linear algebra, automatic differentiation, signal processing, color, SVG, and image processing.
+A focused set of TypeScript packages that play nicely together. Pipeable
+utilities sit alongside persistent collections, parsing, pattern matching,
+async tasks, HTTP, state, diffing, numerical tools, graphics, and dedicated
+testing and migration tooling.
 
 ```ts
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
 const top10 = pipe(
   users,
@@ -3426,7 +3086,8 @@ format(due, 'DD MMM YYYY') // "14 Apr 2026"
 ### Calendar grid
 
 ```ts
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 import {
   fromParts,
   startOf,
@@ -3875,101 +3536,347 @@ fromTraversal(source, traversal, fn): Patch
 ```
 
 ---
+# eslint-plugin-fp
+
+Source: https://stopcock.dev/libraries/eslint-plugin-fp/
+
+ESLint flat-config rules for Stopcock FP 2
+
+```bash
+bun add -d eslint @stopcock/eslint-plugin-fp
+```
+
+```js
+import stopcockFp from '@stopcock/eslint-plugin-fp'
+
+export default [stopcockFp.configs.recommended]
+```
+
+The `recommended` preset rejects removed APIs and warns on imports that bypass
+the slim FP root or focused subpaths. The stricter `performance` preset also
+warns about eager array callback chains.
+
+Available rules are:
+
+- `@stopcock/fp/no-legacy-api`
+- `@stopcock/fp/no-root-module-imports`
+- `@stopcock/fp/prefer-option-partials`
+- `@stopcock/fp/no-eager-array-chains`
+
+Only semantics-preserving migrations are autofixed. Ambiguous optic, async,
+and runtime-compilation migrations remain explicit manual work. The plugin
+uses structural rule types and does not import ESLint at runtime.
+
+---
+# fp-codemod
+
+Source: https://stopcock.dev/libraries/fp-codemod/
+
+Conservative TypeScript-aware FP 1 to FP 2 migrations
+
+```bash
+bun add -d typescript @stopcock/fp-codemod
+bunx stopcock-fp-codemod --check src
+bunx stopcock-fp-codemod --write src
+```
+
+Dry-run is the default. `--check` is suitable for CI, `--write` applies safe
+mechanical edits, and `--json` returns a machine-readable summary.
+
+The codemod rewrites replaced subpaths, splits legacy root namespaces into
+focused imports, moves named Option, Result, Guard, and Function exports,
+preserves aliases and formatting style, and updates compatible match handlers.
+It emits explicit diagnostics instead of guessing when a migration changes
+semantics.
+
+```ts
+import { transformSource } from '@stopcock/fp-codemod'
+import { runCodemod } from '@stopcock/fp-codemod/node'
+
+const result = transformSource(sourceText, 'example.ts')
+const summary = await runCodemod(['src'], { write: true })
+```
+
+TypeScript 7 is a peer dependency so the transform uses the same compiler API
+as the project being migrated.
+
+---
+# fp-compiler
+
+Source: https://stopcock.dev/libraries/fp-compiler/
+
+Optional build-time lowering for portable FP pipelines
+
+```bash
+bun add @stopcock/fp
+bun add -d @stopcock/fp-compiler
+```
+
+The compiler recognizes imported `pipe`, `flow`, and `compile` calls plus
+operators from `@stopcock/fp/array`, then replaces compatible chains with
+checked-in loop templates. Compilation happens in the build tool and does not
+use runtime evaluation.
+
+```ts
+import { defineConfig } from 'vite'
+import { stopcockFp } from '@stopcock/fp-compiler'
+
+export default defineConfig({
+  plugins: [
+    stopcockFp.vite({
+      diagnostics: 'summary',
+    }),
+  ],
+})
+```
+
+The Unplugin instance also provides Rollup, esbuild, and webpack adapters. It
+understands namespace, named, aliased, and wrapper-package imports, while
+lexically shadowed bindings and unsupported sites remain ordinary FP calls.
+
+Exact semantics are the default. `assumePure: true` records an explicit pure
+contract without silently enabling a different result today. Use `include`
+and `exclude` to filter files, `importSources` and `arrayImportSources` for
+wrapper packages, and `diagnostics: 'error'` for a fail-closed build.
+
+```ts
+import { transformStopcockPipelines } from '@stopcock/fp-compiler'
+
+const result = transformStopcockPipelines(source, 'example.ts', {
+  diagnostics: 'verbose',
+})
+```
+
+The programmatic result contains transformed code, a source map, the selected
+semantics, and a diagnostic for every transformed or skipped site.
+
+---
+# fp-interop
+
+Source: https://stopcock.dev/libraries/fp-interop/
+
+Explicit boundaries between Stopcock FP and foreign values
+
+```bash
+bun add @stopcock/fp @stopcock/fp-interop
+```
+
+`fp-interop` converts foreign tagged values and native JavaScript protocols at
+explicit boundaries. It has no runtime dependency on fp-ts, Effect, or another
+FP runtime; `@stopcock/fp` is its only peer.
+
+```ts
+import * as O from '@stopcock/fp/option'
+import { fromOptionLike, toOptionLike } from '@stopcock/fp-interop/option-like'
+
+const local = fromOptionLike(foreignOption, {
+  read: (value) =>
+    foreignIsSome(value) ? { _tag: 'Some', value: foreignValue(value) } : { _tag: 'None' },
+})
+
+const foreign = toOptionLike(O.some(42), {
+  none: foreignNone,
+  some: foreignSome,
+})
+```
+
+Readers accept caller-supplied structural contracts. Converting back requires
+the foreign library's real constructors, so the package never fabricates
+branded values. Tagged Option, Either, and non-empty Validation helpers cover
+the common fp-ts and Effect data shapes.
+
+Other focused entries provide nullable and throwable boundaries, Promise,
+iterable and async-iterable conversion, direct Standard Schema delegation,
+validated JSON wire codecs, and Node callback adapters. Node-only helpers stay
+isolated in `@stopcock/fp-interop/node`; the root has no Node runtime import.
+
+Public subpaths are `option-like`, `either-like`, `boundary`,
+`standard-schema`, `wire`, and `node`.
+
+---
+# fp-testing
+
+Source: https://stopcock.dev/libraries/fp-testing/
+
+Deterministic law checks, edge cases, and iterator probes
+
+```bash
+bun add -d @stopcock/fp-testing
+```
+
+The package has no runtime dependencies. Its structural interfaces accept
+Stopcock instances and compatible user-defined values without adapters.
+
+```ts
+import { assertLaws, checkMonoidLaws } from '@stopcock/fp-testing/laws'
+import * as Monoid from '@stopcock/fp/monoid'
+
+assertLaws(checkMonoidLaws(Monoid.numberSum, { equals: Object.is }, [-1, 0, 1, Number.NaN]))
+```
+
+`@stopcock/fp-testing/laws` checks Eq, Hash, Ord, Semigroup, Monoid, Group,
+Lens, and Iso laws with bounded deterministic reports.
+`@stopcock/fp-testing/data` provides stable Option, Result, tuple, array,
+number, and string cases. `@stopcock/fp-testing/iterable` provides tracked and
+throwing iterables so laziness, pull counts, and iterator cleanup are explicit
+test assertions.
+
+---
 # fp
 
 Source: https://stopcock.dev/libraries/fp/
 
-Pipe-based functional programming with pipeline fusion
+Portable, typed functional programming for TypeScript
 
 ```bash
 bun add @stopcock/fp
 ```
 
-Everything you need for pipe-based FP. Arrays, strings, objects, numbers, and typed error handling. Chain streaming array operations in `pipe` and they get fused into single loops at runtime.
+`@stopcock/fp` is a focused functional-programming toolkit for TypeScript. It
+provides typed data types, eager and lazy collections, algebra, optics,
+validation, pattern matching, recursion schemes, and a portable pipeline
+compiler without taking ownership of your application runtime.
+
+The root is intentionally small:
 
 ```ts
-import { pipe, A, O, R } from '@stopcock/fp'
+import {
+  compile,
+  compilePure,
+  dual,
+  err,
+  flow,
+  none,
+  ok,
+  pipe,
+  some,
+} from '@stopcock/fp'
+```
+
+Specialist APIs live in tree-shakeable subpaths:
+
+```ts
+import * as A from '@stopcock/fp/array'
+import * as Iter from '@stopcock/fp/iter'
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
+import * as V from '@stopcock/fp/validation'
+import * as Optic from '@stopcock/fp/optic'
+```
+
+## Everyday pipelines
+
+```ts
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 
 const activeNames = pipe(
   players,
-  A.filter((p) => p.active),
-  A.map((p) => p.name),
+  A.filter((player) => player.active),
+  A.map((player) => player.name),
   A.take(10),
 )
 ```
 
-- `pipe(value, ...fns)` passes a value through functions left to right. Streaming `A.*` operations can fuse into a single loop.
-- Every function works **both ways**: `A.map(arr, fn)` (data-first) and `pipe(arr, A.map(fn))` (data-last).
-- `Option<A>` / `Result<A, E>` cover nullable values and recoverable errors. Numeric `_tag` values support fast branching.
-
-## Modules
-
-| Namespace | Module                  | What it does                                                                             |
-| --------- | ----------------------- | ---------------------------------------------------------------------------------------- |
-| `A`       | [Array](/api/array)     | `map`, `filter`, `reduce`, `sort`, `groupBy`, `zip`, `take`, `flatMap` + 30 more         |
-| `S`       | [String](/api/string)   | `split`, `trim`, `replaceAll`, `startsWith`, `slice`, `repeat`                           |
-| `D`       | [Dict](/api/dict)       | `map`, `filter`, `get`, `merge`, `keys`, `values`, `toEntries`                           |
-| `N`       | [Number](/api/number)   | `clamp`, `sum`, `mean`, `median`, `isEven`, `isOdd`                                      |
-| `G`       | [Guards](/api/guards)   | `isString`, `isNumber`, `isArray`, `isNil`, `isPlainObject`                              |
-| `Obj`     | [Object](/api/object)   | `pick`, `omit`, `assoc`, `dissoc`, `mergeDeepLeft`, `mergeDeepRight`, `path`, `evolve`   |
-| `M`       | [Math](/api/math)       | `add`, `subtract`, `multiply`, `divide`, `modulo`, `inc`, `dec`, `product`               |
-| `B`       | [Boolean](/api/boolean) | `and_`, `or_`, `not_`, `ifElse`                                                          |
-| `Logic`   | [Logic](/api/logic)     | `both`, `either`, `equals`, `defaultTo`, `cond`, `when_`, `unless`, `allPass`, `anyPass` |
-| `Lens`    | [Lenses](/api/lenses)   | `view`, `set`, `over` for immutable nested updates                                       |
-| `O`       | [Option](/api/option)   | `some`, `none`, `fromNullable`, `map`, `flatMap`, `match`                                |
-| `R`       | [Result](/api/result)   | `ok`, `err`, `tryCatch`, `map`, `mapErr`, `flatMap`, `match`                             |
+Public operators support direct and pipe-friendly forms where both are useful:
 
 ```ts
-// Looks like 3 passes over the array:
-const result = pipe(
-  users, // 100,000 users
-  A.filter((u) => u.active), // pass 1: filter
-  A.map((u) => u.name), // pass 2: map
-  A.take(10), // pass 3: slice
-)
-
-// But streaming fusion compiles it into roughly:
-const result = []
-for (const u of users) {
-  if (!u.active) continue
-  result.push(u.name)
-  if (result.length >= 10) break
-}
+const doubled = A.map([1, 2, 3], (value) => value * 2)
+const alsoDoubled = pipe([1, 2, 3], A.map((value) => value * 2))
 ```
 
-<Aside type="tip">
-  Streaming-fused operations include `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, and `dropWhile`.
-  Terminal folds and predicates such as `reduce`, `find`, `every`, `some`, and `count` finish a fused pass.
-  Accessor terminals such as `head`, `last`, `length`, `join`, `sum`, `min`, and `max` also end the chain.
-  `sort`, `sortBy`, `reverse`, `groupBy`, and `uniq` are materialization boundaries.
-  `sortBy -> take(k)` and `sort -> take(k)` use a special top-k optimization.
-</Aside>
+Array operations are immutable by default. Explicit `*Into` operations write
+into caller-owned storage, while view-named operations are the only APIs
+allowed to alias an input.
 
-## Option & Result
+## Portable compilation
+
+Repeated hot pipelines can be planned once:
 
 ```ts
-// Option: values might not exist
-const port = pipe(
-  O.fromNullable(process.env.PORT),
-  O.map((s) => parseInt(s, 10)),
-  O.filter((n) => n > 0 && n < 65536),
-  O.getOrElse(() => 3000),
+const activeNames = compile(
+  A.filter((player: Player) => player.active),
+  A.map((player) => player.name),
+  A.take(10),
 )
 
-// Result: operations might fail
-const config = pipe(
-  R.tryCatch(() => JSON.parse(rawConfig)),
-  R.map((obj) => obj.settings),
-  R.getOrElse(() => defaults),
+activeNames(players)
+```
+
+`compile` preserves ordinary callback semantics. `compilePure` additionally
+permits rewrites that are valid only when callbacks are pure. Both use
+checked-in portable loop templates: the runtime package does not call
+`eval`, construct functions from strings, or load a JIT chunk.
+
+```ts
+import { explain } from '@stopcock/fp'
+
+console.log(
+  explain(
+    A.map((value: number) => value * 2),
+    A.filter((value) => value > 0),
+  ),
 )
 ```
 
 <Aside type="note">
-  `Option` and `Result` use numeric `_tag` values (0/1) instead of string tags. V8 handles numeric
-  comparisons in a single CPU instruction.
+  The optional `@stopcock/fp-compiler` build plugin can lower ordinary
+  `pipe`/`flow` call sites at build time. Applications still import only
+  `@stopcock/fp`; generated code does not require the compiler at runtime.
 </Aside>
 
-Full docs on the [Option & Result page](/concepts/option-result), or look at individual module pages in the sidebar.
+## Missing values, failures, and validation
+
+Use `Option` for absence, `Result` for fail-fast recoverable errors, and
+`Validation` when independent checks should accumulate all errors.
+
+```ts
+import { pipe } from '@stopcock/fp'
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
+import * as V from '@stopcock/fp/validation'
+
+const port = pipe(
+  O.fromNullable(process.env.PORT),
+  O.map(Number),
+  O.filter((value) => Number.isInteger(value) && value > 0),
+  O.getOrElse(() => 3000),
+)
+
+const parsed = R.tryCatch(
+  () => JSON.parse(rawConfig) as Config,
+  (cause) => ({ type: 'InvalidJson' as const, cause }),
+)
+
+const fields = V.all([
+  V.fromPredicate(name, (value) => value.length > 0, () => 'name is required'),
+  V.fromPredicate(age, Number.isFinite, () => 'age must be finite'),
+] as const)
+```
+
+Asynchronous failure belongs in `@stopcock/async/task`; there is deliberately
+no competing `AsyncResult` type.
+
+## Lazy sequences
+
+`Iter` is the single lazy synchronous sequence abstraction:
+
+```ts
+import { pipe } from '@stopcock/fp'
+import * as Iter from '@stopcock/fp/iter'
+
+const squares = pipe(
+  Iter.range(1, Infinity),
+  Iter.map((value) => value * value),
+  Iter.filter((value) => value % 2 === 0),
+  Iter.take(5),
+  Iter.toArray,
+)
+```
+
+See [Iter](/api/iter), [Option and Result](/concepts/option-result),
+[Validation](/api/validation), [Optics](/api/optic), and the complete
+[module catalogue](/api/modules).
 
 ---
 # http
@@ -4249,7 +4156,8 @@ const thumbnail = (data: Uint8ClampedArray, w: number, h: number) =>
 ### Batch image filter
 
 ```ts
-import { pipe, A } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
 import { fromRGBA, grayscale, sepia, brightness } from '@stopcock/img'
 
 const vintage = (img: Image) => pipe(img, grayscale, sepia, brightness(1.1))
@@ -4549,6 +4457,119 @@ accelerate(accelerator)
 isAccelerated() // true
 decelerate()
 ```
+
+---
+# parser
+
+Source: https://stopcock.dev/libraries/parser/
+
+Typed parser combinators with precise source errors
+
+```bash
+bun add @stopcock/parser @stopcock/fp
+```
+
+Parsers operate on one source string plus an absolute offset. Complete parses
+return `Result`, optional grammar branches return `Option`, and public errors
+add line, column, span, context, and the farthest expected input only at the
+parse boundary.
+
+```ts
+import { between, comma, integer, parse, sepEndBy, symbol } from '@stopcock/parser'
+
+const integers = between(symbol('['), sepEndBy(integer, comma), symbol(']'))
+
+const result = parse(integers, '[1, 2, 3,]')
+```
+
+The package covers mapping and sequencing, choice and backtracking, lookahead,
+commit points, repetition, separated lists, recursive grammars, source spans,
+tokens, quoted strings, numbers, identifiers, and stack-safe left- and
+right-associative chains. Repetition detects successful zero-width parsers and
+returns an error instead of looping forever.
+
+Use `@stopcock/parser/core`, `@stopcock/parser/combinators`, and
+`@stopcock/parser/primitives` for focused imports.
+
+---
+# pattern
+
+Source: https://stopcock.dev/libraries/pattern/
+
+Exhaustive structural pattern matching for TypeScript
+
+```bash
+bun add @stopcock/pattern
+```
+
+Patterns are plain values plus small predicate objects. Matching has no
+runtime service, code-generation step, or global registry.
+
+```ts
+import { match, select, string } from '@stopcock/pattern'
+
+type Event =
+  | { type: 'created'; id: number }
+  | { type: 'renamed'; id: number; name: string }
+  | { type: 'deleted'; id: number }
+
+const label = (event: Event) =>
+  match(event)
+    .with({ type: 'created' }, ({ id }) => `created ${id}`)
+    .with(
+      { type: 'renamed', name: select('name', string) },
+      ({ id }, { name }) => `renamed ${id} to ${name}`,
+    )
+    .with({ type: 'deleted' }, ({ id }) => `deleted ${id}`)
+    .exhaustive()
+```
+
+`exhaustive()` becomes available only after every member of a discriminated
+union is covered. `otherwise(handler)` adds an explicit fallback, while
+`run()` returns `undefined` when no branch matches.
+
+Patterns include literals, nested objects and tuples, primitive predicates,
+unions and intersections, negation, guards, arrays, records, maps, sets,
+nullable and optional values, strict object keys, and typed named captures.
+Focused imports are available from `@stopcock/pattern/match` and
+`@stopcock/pattern/pattern`.
+
+---
+# persistent
+
+Source: https://stopcock.dev/libraries/persistent/
+
+Immutable collections with structural sharing and explicit builders
+
+```bash
+bun add @stopcock/persistent
+```
+
+```ts
+import { HashMap, Vector } from '@stopcock/persistent'
+
+const original = Vector.of(1, 2, 3)
+const updated = original.set(1, 20).push(4)
+
+const users = HashMap.empty<string, { name: string }>()
+  .set('ada', { name: 'Ada' })
+  .set('grace', { name: 'Grace' })
+```
+
+Ordinary updates never mutate an existing value. `Vector` uses a 32-way
+bitmapped trie, hash collections use a HAMT, ordered collections retain
+insertion order, and queue, deque, and stack use persistent linked spines.
+Every collection implements `Iterable`.
+
+For bulk construction, each collection exposes `builder()` and `transient()`.
+Builders mutate private working storage; `build()` returns an immutable value
+and permanently seals the builder.
+
+Hash collections use JavaScript `Map` key semantics by default. Domain
+equality is opt-in through a coherent `HashEq`, where equal keys must have
+equal hashes. Focused subpaths include `@stopcock/persistent/vector`,
+`@stopcock/persistent/hash-map`, `@stopcock/persistent/ordered-map`,
+`@stopcock/persistent/queue`, and their sibling collection modules.
 
 ---
 # signal
@@ -5288,159 +5309,42 @@ interface Handle<A> {
 ```
 
 ---
-# Stream
+# Stream migration
 
 Source: https://stopcock.dev/libraries/stream/
 
-Lazy pull-based streams with dual-form operators
+Stream was replaced by the Iter module in @stopcock/fp 2.0
 
-Part of `@stopcock/fp`. Streams are lazy. Nothing runs until you pull values out with a terminal operation like `toArray` or `reduce`. Infinite sequences just work as long as you `take` from them.
+`Stream` was removed in `@stopcock/fp` 2.0. `Iter` is the only lazy
+synchronous-sequence abstraction; it is a real replacement, not a compatibility
+alias.
 
-```ts
-import { pipe, Stream } from '@stopcock/fp'
-const { range, map, filter, take, toArray } = Stream
+```diff
+- import { pipe, Stream } from '@stopcock/fp'
++ import { pipe } from '@stopcock/fp'
++ import * as Iter from '@stopcock/fp/iter'
 
-const squares = pipe(
-  range(1, Infinity),
-  map((n) => n * n),
-  filter((n) => n % 2 === 0),
-  take(5),
-  toArray,
-)
-// [4, 16, 36, 64, 100]
+  const values = pipe(
+-   Stream.range(0, 100),
+-   Stream.map((value) => value * 2),
+-   Stream.take(5),
+-   Stream.toArray,
++   Iter.range(0, 100),
++   Iter.map((value) => value * 2),
++   Iter.take(5),
++   Iter.toArray,
+  )
 ```
 
-## vs. Array chains
+The migration codemod can split old root imports and rewrite the common
+`Stream.*` vocabulary:
 
-```ts
-// Array: 3 full passes, 3 intermediate arrays allocated
-const result = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  .filter((n) => n % 2 === 0)
-  .map((n) => n * n)
-  .slice(0, 3)
-
-// Stream: single lazy pass, stops after 3 results
-const result = pipe(
-  from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
-  filter((n) => n % 2 === 0),
-  map((n) => n * n),
-  take(3),
-  toArray,
-)
+```bash
+bunx @stopcock/fp-codemod stream-to-iter src
 ```
 
-<Aside type="tip">
-  With a million elements this actually matters. The Array version allocates three intermediate
-  arrays. The Stream version touches exactly 6 elements and allocates nothing.
-</Aside>
-
-## Real-world patterns
-
-### Processing a large CSV line-by-line
-
-```ts
-const lines = pipe(
-  from(file.split('\n')),
-  drop(1), // skip header
-  map((line) => line.split(',')),
-  filter((cols) => cols[2] !== ''), // skip empty emails
-  map(([name, age, email]) => ({ name, age: +age, email })),
-  take(1000), // first 1000 valid rows
-  toArray,
-)
-```
-
-### Fibonacci sequence
-
-```ts
-const fibs = pipe(
-  iterate(([a, b]) => [b, a + b] as [number, number], [0, 1] as [number, number]),
-  map(([a]) => a),
-)
-
-pipe(fibs, take(10), toArray) // [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
-pipe(
-  fibs,
-  find((n) => n > 1000),
-) // 1597
-```
-
-### Chunked batch processing
-
-```ts
-const ids = range(1, 10001) // 10,000 IDs
-
-pipe(
-  ids,
-  chunk(100), // groups of 100
-  forEach((batch) => sendBatchRequest(toArray(batch))),
-)
-```
-
-## Stream type
-
-```ts
-interface Stream<A> {
-  [Symbol.iterator](): Iterator<A>
-}
-```
-
-Streams implement `Iterable`, so they work with `for...of` and spread.
-
-## Creators
-
-```ts
-from<A>(iterable: Iterable<A>): Stream<A>
-range(start: number, end: number): Stream<number>
-iterate<A>(f: (a: A) => A, seed: A): Stream<A>
-repeat<A>(value: A): Stream<A>
-empty<A = never>(): Stream<A>
-```
-
-`iterate` produces an infinite stream: `iterate(n => n * 2, 1)` yields `1, 2, 4, 8, ...`
-
-## Transformers
-
-All dual-form.
-
-```ts
-map<A, B>(stream: Stream<A>, f: (a: A) => B): Stream<B>
-filter<A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A>
-flatMap<A, B>(stream: Stream<A>, f: (a: A) => Stream<B>): Stream<B>
-take<A>(stream: Stream<A>, n: number): Stream<A>
-drop<A>(stream: Stream<A>, n: number): Stream<A>
-takeWhile<A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A>
-dropWhile<A>(stream: Stream<A>, pred: (a: A) => boolean): Stream<A>
-chunk<A>(stream: Stream<A>, n: number): Stream<A[]>
-scan<A, B>(stream: Stream<A>, f: (acc: B, a: A) => B, init: B): Stream<B>
-zip<A, B>(stream: Stream<A>, other: Stream<B>): Stream<[A, B]>
-concat<A>(stream: Stream<A>, other: Stream<A>): Stream<A>
-distinct<A>(stream: Stream<A>): Stream<A>
-distinctN<A>(stream: Stream<A>, maxSize: number): Stream<A>
-intersperse<A>(stream: Stream<A>, sep: A): Stream<A>
-```
-
-<Aside type="note">
-  `distinctN` limits the seen-set size. Useful for memory-bounded deduplication on large streams.
-  When the set is full it clears and starts over, trading perfect dedup for bounded memory.
-</Aside>
-
-## Terminals
-
-```ts
-toArray<A>(stream: Stream<A>): A[]
-collect<A>(stream: Stream<A>): A[]     // alias for toArray
-reduce<A, B>(stream: Stream<A>, f: (acc: B, a: A) => B, init: B): B
-first<A>(stream: Stream<A>): A | undefined
-last<A>(stream: Stream<A>): A | undefined
-count<A>(stream: Stream<A>): number
-every<A>(stream: Stream<A>, pred: (a: A) => boolean): boolean
-some<A>(stream: Stream<A>, pred: (a: A) => boolean): boolean
-find<A>(stream: Stream<A>, pred: (a: A) => boolean): A | undefined
-forEach<A>(stream: Stream<A>, f: (a: A) => void): void
-```
-
-`reduce`, `every`, `some`, `find`, `forEach` are dual-form.
+Read the [Iter API](/api/iter) for constructors, transformations, terminals,
+iterator-closing semantics, and mutable `*Into` escape hatches.
 
 ---
 # svg

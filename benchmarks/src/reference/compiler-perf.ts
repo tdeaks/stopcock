@@ -1,39 +1,179 @@
-// W6 exit gate: fp-compiler measured against the frozen reference emitter,
-// non-circular -- the compiler transforms a synthesized source string for
-// each corpus case (not the tagged-op arrays interpret.ts/compile.ts use),
-// the emitter lowers the same case's PipelineDesc via new Function, and the
-// two are ABBA-paired with perf-runner.ts's helpers. Plan gate (see
-// docs/superpowers/plans/2026-07-21-stopcock-fp-tiered-execution-
-// implementation.md, W6): >= 90% geomean vs frozen reference, nothing below
-// 80%, over the subset of perf-corpus.json cases the compiler claims to
-// support (every step kind other than the synthetic `toArray` sink, which
-// carries no real opcode and is dropped from the synthesized source --
-// dropping it is semantically identical to the compiler's own "no terminal"
-// behavior, which already collects to an array).
-//
-// bun-runnable: `bun run src/reference/compiler-perf.ts` (wired as
-// "perf:compiler" in benchmarks/package.json).
-import { readFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+// fp-compiler performance runner. Every supported portable-corpus case is
+// measured in a fresh process against the frozen reference emitter. The
+// coordinator writes a complete raw-sample artifact; policy is applied by
+// compiler-perf-gate.ts so generation and evaluation stay independently
+// auditable.
+import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import { SUPPORTED_OP_NAMES } from '../../../packages/fp-compiler/src/ops'
+import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
+import * as A from '../../../packages/fp/src/array'
+import { none } from '../../../packages/fp/src/option'
+import { pipe } from '../../../packages/fp/src/pipe'
 import type { CallbackSpec } from './binding-specs'
-import { generateInputArray, type SerializedPipeline, type SerializedStep } from './generate'
-import { compileEmittedPipeline, type PipelineDesc, type EmitterBinding } from './emitter'
-import { geomean, runPaired } from './perf-runner'
+import {
+  COMPILER_PERF_POLICIES,
+  EXPECTED_COMPILER_IMPLEMENTATION_FILES,
+  EXPECTED_COMPILER_SUBJECT_ID,
+  minimumCompilerBatchIterations,
+} from './compiler-perf-contract'
+import {
+  compileEmittedPipeline,
+  FROZEN_EMITTER_ID,
+  type EmitterBinding,
+  type PipelineDesc,
+} from './emitter'
+import { generateInputArray, type SerializedStep } from './generate'
+import { currentPerfEngine, type PerfEngine } from './perf-engine'
+import {
+  consumedItemsMicroBatchIterations,
+  geomean,
+  runInterleavedPaired,
+  type InterleavedPairedSampling,
+} from './perf-runner'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
+const localDirectory = dirname(fileURLToPath(import.meta.url))
+const WORKER_MARKER = 'COMPILER_PERF_RESULT_JSON:'
 
-interface PerfCaseFile {
+export interface CompilerPerfCorpusCase {
   readonly name: string
-  readonly strata: Record<string, unknown>
+  readonly strata: Readonly<Record<string, unknown>>
   readonly inputSeed: number
   readonly size: number
   readonly steps: readonly SerializedStep[]
 }
 
-function specSource(spec: CallbackSpec): string {
+export interface CompilerPerfGap {
+  readonly name: string
+  readonly steps: readonly string[]
+  readonly unsupportedOps: readonly string[]
+  readonly reason: string
+}
+
+export interface CompilerPerfCase {
+  readonly name: string
+  readonly stepKinds: readonly string[]
+  readonly strata: Readonly<Record<string, unknown>>
+  readonly inputSize: number
+  readonly consumedInputItems: number
+  readonly correctnessOk: boolean
+  readonly transformedSiteCount: number
+  readonly workerEngine: PerfEngine
+  readonly rounds: number
+  readonly batchIterations: number
+  readonly sampling: InterleavedPairedSampling & {
+    readonly targetConsumedItemsPerMicroBatch: number
+    readonly nominalConsumedItemsPerMicroBatch: number
+  }
+  readonly medianRatio: number
+  readonly meanRatio: number
+  readonly ciLow: number
+  readonly ciHigh: number
+  readonly signTestP: number
+  readonly relativeMarginOfError: number
+  readonly compilerSamplesNs: readonly number[]
+  readonly referenceSamplesNs: readonly number[]
+  readonly pairedRatios: readonly number[]
+}
+
+export interface CompilerPerfArgs {
+  readonly rounds: number
+  readonly warmupRounds: number
+  readonly minimumBatchInputItems: number
+  readonly targetConsumedItemsPerMicroBatch: number
+  readonly quick: boolean
+  readonly casesFilter?: string
+  readonly corpusPath: string
+  readonly out?: string
+  readonly caseIndex?: number
+}
+
+export interface CompilerPerfReport {
+  readonly version: 1
+  readonly generatedAt: string
+  readonly engine: PerfEngine
+  readonly corpus: {
+    readonly id: string
+    readonly version: number
+    readonly sha256: string
+    readonly totalCaseCount: number
+  }
+  readonly reference: {
+    readonly id: string
+    readonly sha256: string
+  }
+  readonly compiler: {
+    readonly id: string
+    readonly implementationFiles: readonly string[]
+    readonly implementationSha256: string
+    readonly supportedOps: readonly string[]
+    readonly supportedOpsSha256: string
+  }
+  readonly coverage: {
+    readonly corpusCaseCount: number
+    readonly supportedCaseCount: number
+    readonly gapCount: number
+    readonly supportedCaseNamesSha256: string
+    readonly projectionSha256: string
+    readonly gaps: readonly CompilerPerfGap[]
+  }
+  readonly args: Omit<CompilerPerfArgs, 'caseIndex'>
+  readonly summary: {
+    readonly count: number
+    readonly expectedSupportedCount: number
+    readonly corpusCaseCount: number
+    readonly gapCount: number
+    readonly geomeanRatio: number
+    readonly minRatio: number
+    readonly maxRelativeMarginOfError: number
+    readonly allCorrect: boolean
+    readonly complete: boolean
+  }
+  readonly cases: readonly CompilerPerfCase[]
+  readonly skipped: readonly string[]
+}
+
+interface LoadedCorpus {
+  readonly raw: Uint8Array
+  readonly id: string
+  readonly version: number
+  readonly cases: readonly CompilerPerfCorpusCase[]
+}
+
+interface CoverageProjection {
+  readonly supportedCases: readonly CompilerPerfCorpusCase[]
+  readonly gaps: readonly CompilerPerfGap[]
+  readonly supportedCaseNamesSha256: string
+  readonly projectionSha256: string
+}
+
+interface WorkerSuccess {
+  readonly ok: true
+  readonly result: CompilerPerfCase
+}
+
+interface WorkerFailure {
+  readonly ok: false
+  readonly reason: string
+}
+
+type WorkerOutcome = WorkerSuccess | WorkerFailure
+
+const sha256 = (contents: string | Uint8Array): string =>
+  createHash('sha256').update(contents).digest('hex')
+
+const jsonSha256 = (value: unknown): string => sha256(JSON.stringify(value))
+
+const relativeMarginOfError = (low: number, high: number, median: number): number =>
+  ((high - low) / (2 * median)) * 100
+
+const sameEngine = (left: PerfEngine, right: PerfEngine): boolean =>
+  JSON.stringify(left) === JSON.stringify(right)
+
+const specSource = (spec: CallbackSpec): string => {
   switch (spec.kind) {
     case 'identity':
       return '(x) => x'
@@ -70,275 +210,606 @@ function specSource(spec: CallbackSpec): string {
 
 const BARE_BOUNDARY_KINDS = new Set(['sort', 'sortAsc', 'sortDesc', 'reverse', 'uniq', 'sum'])
 
-/** Renders one SerializedStep as compiler-facing source text, or undefined for the synthetic toArray sink (no real opcode -- dropped, not a bail). */
-function stepSource(step: SerializedStep): string | undefined {
+const stepSource = (step: SerializedStep): string | undefined => {
   if (step.kind === 'toArray') return undefined
   if (BARE_BOUNDARY_KINDS.has(step.kind)) return `A.${step.kind}`
   if (step.kind === 'take' || step.kind === 'drop') return `A.${step.kind}(${step.n})`
-  if (step.kind === 'reduce') return `A.reduce(${specSource(step.spec!)}, ${step.a1})`
+  if (step.kind === 'reduce' || step.kind === 'scan') {
+    return `A.${step.kind}(${specSource(step.spec!)}, ${step.a1})`
+  }
+  if (step.kind === 'without') return `A.without(${JSON.stringify(step.values ?? [])})`
   return `A.${step.kind}(${specSource(step.spec!)})`
 }
 
-/** True if every step in the case is something this compiler wave can fuse (or the droppable toArray sink). */
-function isSupportedCase(steps: readonly SerializedStep[]): boolean {
-  return steps.every((s) => s.kind === 'toArray' || SUPPORTED_OP_NAMES.has(s.kind))
+const synthesizeSource = (steps: readonly SerializedStep[]): string => {
+  const renderedSteps = steps.map(stepSource).filter((step): step is string => step !== undefined)
+  const body =
+    renderedSteps.length === 0
+      ? 'return input;'
+      : `return pipe(input, ${renderedSteps.join(', ')});`
+  return `import { pipe } from '@stopcock/fp'\nimport * as A from '@stopcock/fp/array'\nfunction __run(input) {\n${body}\n}\nexport { __run };`
 }
 
-function synthesizeSource(steps: readonly SerializedStep[]): string {
-  const stepTexts = steps.map(stepSource).filter((s): s is string => s !== undefined)
-  const body = stepTexts.length === 0 ? 'return input;' : `return pipe(input, ${stepTexts.join(', ')});`
-  return `import { pipe, A } from '@stopcock/fp'\nfunction __run(input) {\n${body}\n}\nexport { __run };`
-}
-
-function compileTransformed(source: string): (input: readonly number[]) => unknown {
-  const result = transformStopcockPipelines(source, 'compiler-perf-case.ts', { diagnostics: false })
-  const stripped = result.code
+export const compileTransformedCompilerPerfSource = (
+  source: string,
+): {
+  readonly run: (input: readonly number[]) => unknown
+  readonly transformedSiteCount: number
+} => {
+  const transformed = transformStopcockPipelines(source, 'compiler-perf-case.ts', {
+    diagnostics: 'verbose',
+  })
+  const transformedSiteCount = transformed.diagnostics.filter((site) => site.transformed).length
+  if (transformedSiteCount !== 1) {
+    const reasons = transformed.diagnostics
+      .filter((site) => !site.transformed)
+      .map((site) => site.reason ?? 'unknown reason')
+      .join(', ')
+    throw new Error(
+      `expected exactly one compiler-transformed site, found ${transformedSiteCount}${reasons ? ` (${reasons})` : ''}`,
+    )
+  }
+  const noneAlias = transformed.code.match(
+    /import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u,
+  )?.[1]
+  const stripped = transformed.code
     .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
     .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gm, '')
-  const full = `${stripped}\nreturn __run;`
   // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-  const factory = new Function(full)
-  return factory() as (input: readonly number[]) => unknown
+  const factory = new Function(
+    'pipe',
+    'A',
+    ...(noneAlias ? [noneAlias] : []),
+    `${stripped}\nreturn __run;`,
+  )
+  return {
+    run: factory(pipe, A, ...(noneAlias ? [none] : [])) as (input: readonly number[]) => unknown,
+    transformedSiteCount,
+  }
 }
 
-function desc(steps: readonly SerializedStep[]): PipelineDesc {
-  return { steps: steps.filter((s) => s.kind !== 'toArray').map((s) => ({ kind: s.kind as any })) }
-}
+const pipelineDesc = (steps: readonly SerializedStep[]): PipelineDesc => ({
+  steps: steps
+    .filter((step) => step.kind !== 'toArray')
+    .map((step) => ({ kind: step.kind as PipelineDesc['steps'][number]['kind'] })),
+})
 
-function bindingsFor(steps: readonly SerializedStep[]): readonly EmitterBinding[] {
-  return steps
-    .filter((s) => s.kind !== 'toArray')
-    .map((s) => {
-      if (s.kind === 'take' || s.kind === 'drop') return { fn: s.n }
-      if (s.kind === 'reduce') return { fn: buildCallbackFromSpec(s.spec!), a1: s.a1 }
-      if (s.spec) return { fn: buildCallbackFromSpec(s.spec) }
-      return {}
-    })
-}
-
-// Local re-implementation mirroring binding-specs.ts's buildCallback, kept
-// independent so this script never imports live closures shared with the
-// transformed side -- only the emitter's bindings need real functions here.
-function buildCallbackFromSpec(spec: CallbackSpec): unknown {
+const buildCallbackFromSpec = (spec: CallbackSpec): unknown => {
   switch (spec.kind) {
     case 'identity':
-      return (x: number) => x
+      return (value: number) => value
     case 'linear':
-      return (x: number) => x * spec.a + spec.b
+      return (value: number) => value * spec.a + spec.b
     case 'allocLinear':
-      return (x: number) => {
-        const tmp = [x, x + spec.a]
-        return tmp[0] + tmp[1]
+      return (value: number) => {
+        const temporary = [value, value + spec.a]
+        return temporary[0] + temporary[1]
       }
     case 'mod':
-      return (x: number) => x % spec.m === spec.r
+      return (value: number) => value % spec.m === spec.r
     case 'allocMod':
-      return (x: number) => {
-        const tmp = { v: x }
-        return tmp.v % spec.m === spec.r
+      return (value: number) => {
+        const temporary = { value }
+        return temporary.value % spec.m === spec.r
       }
     case 'constTrue':
       return () => true
     case 'constFalse':
       return () => false
     case 'filterMapMod':
-      return (x: number) => (x % spec.m === spec.r ? x * spec.a + spec.b : undefined)
+      return (value: number) => (value % spec.m === spec.r ? value * spec.a + spec.b : undefined)
     case 'flatMapRange': {
       const { factor, a, b } = spec
-      return (x: number) => {
-        const out: number[] = new Array(factor)
-        for (let i = 0; i < factor; i++) out[i] = x * a + b + i
-        return out
+      return (value: number) => {
+        const output: number[] = new Array(factor)
+        for (let index = 0; index < factor; index++) output[index] = value * a + b + index
+        return output
       }
     }
     case 'reduceAdd':
-      return (acc: number, x: number) => acc + x
+      return (accumulator: number, value: number) => accumulator + value
     case 'reduceSub':
-      return (acc: number, x: number) => acc - x
+      return (accumulator: number, value: number) => accumulator - value
     case 'allocReduceAdd':
-      return (acc: number, x: number) => ({ v: acc + x }).v
+      return (accumulator: number, value: number) => ({ value: accumulator + value }).value
     case 'noop':
       return () => {}
     case 'sortCmpAsc':
-      return (a: number, b: number) => a - b
+      return (left: number, right: number) => left - right
     case 'sortCmpDesc':
-      return (a: number, b: number) => b - a
+      return (left: number, right: number) => right - left
   }
 }
 
-function deepEqual(a: unknown, b: unknown): boolean {
-  if (typeof a === 'number' && typeof b === 'number') {
-    if (Number.isNaN(a) && Number.isNaN(b)) return true
-    return Object.is(a, b)
+const bindingsFor = (steps: readonly SerializedStep[]): readonly EmitterBinding[] =>
+  steps
+    .filter((step) => step.kind !== 'toArray')
+    .map((step) => {
+      if (step.kind === 'take' || step.kind === 'drop') return { fn: step.n }
+      if (step.kind === 'reduce' || step.kind === 'scan') {
+        return { fn: buildCallbackFromSpec(step.spec!), a1: step.a1 }
+      }
+      if (step.kind === 'without') return { fn: step.values ?? [] }
+      if (step.spec) return { fn: buildCallbackFromSpec(step.spec) }
+      return {}
+    })
+
+export const compilerPerfSemanticEqual = (left: unknown, right: unknown): boolean => {
+  if (typeof left === 'number' && typeof right === 'number') {
+    if (Number.isNaN(left) && Number.isNaN(right)) return true
+    return Object.is(left, right)
   }
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false
-    for (let i = 0; i < a.length; i++) if (!deepEqual(a[i], b[i])) return false
+  if (Array.isArray(left) && Array.isArray(right)) {
+    if (left.length !== right.length) return false
+    for (let index = 0; index < left.length; index++) {
+      if (!compilerPerfSemanticEqual(left[index], right[index])) return false
+    }
     return true
   }
-  return Object.is(a, b)
-}
-
-interface CaseResult {
-  readonly name: string
-  readonly n: number
-  readonly correctnessOk: boolean
-  readonly medianRatio: number
-  readonly meanRatio: number
-}
-
-interface Args {
-  readonly rounds: number
-  readonly casesFilter?: string
-  readonly corpusPath: string
-  readonly caseIndex?: number
-}
-
-function parseArgs(argv: readonly string[]): Args {
-  let rounds = 40
-  let casesFilter: string | undefined
-  let corpusPath = join(__dirname, 'perf-corpus.json')
-  let caseIndex: number | undefined
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--rounds') rounds = Number(argv[++i])
-    else if (argv[i] === '--cases') casesFilter = argv[++i]
-    else if (argv[i] === '--corpus') corpusPath = argv[++i]
-    else if (argv[i] === '--quick') rounds = Math.min(rounds, 8)
-    else if (argv[i] === '--case-index') caseIndex = Number(argv[++i])
-  }
-  return { rounds, casesFilter, corpusPath, caseIndex }
-}
-
-async function loadCases(args: { corpusPath: string; casesFilter?: string }): Promise<readonly PerfCaseFile[]> {
-  const raw = await readFile(args.corpusPath, 'utf8')
-  const corpus = JSON.parse(raw) as { version: number; cases: readonly PerfCaseFile[] }
-  let cases = corpus.cases.filter((c) => isSupportedCase(c.steps) && !c.steps.every((s) => s.kind === 'toArray'))
-  if (args.casesFilter) cases = cases.filter((c) => c.name.includes(args.casesFilter!))
-  return cases
-}
-
-interface WorkerOutcome {
-  readonly ok: true
-  readonly correctnessOk: boolean
-  readonly medianRatio: number
-  readonly meanRatio: number
-  readonly n: number
-}
-
-function measureCase(c: PerfCaseFile, rounds: number): WorkerOutcome {
-  const input = generateInputArray(c.inputSeed, c.size) as readonly number[]
-  const source = synthesizeSource(c.steps)
-  const runTransformed = compileTransformed(source)
-
-  const emittedRun = compileEmittedPipeline(desc(c.steps))
-  const bindings = bindingsFor(c.steps)
-  const refFn = (): unknown => emittedRun(input, bindings)
-  const stopcockFn = (): unknown => runTransformed(input)
-
-  const correctnessOk = deepEqual(stopcockFn(), refFn())
-
-  const result = runPaired(
-    () => {
-      stopcockFn()
-    },
-    () => {
-      refFn()
-    },
-    { rounds, warmupRounds: Math.max(5, Math.min(30, rounds)) },
-  )
-  return { ok: true, correctnessOk, medianRatio: result.medianRatio, meanRatio: result.meanRatio, n: result.pairedRatios.length }
-}
-
-const WORKER_MARKER = 'RESULT_JSON:'
-
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2))
-
-  // Single-case worker mode: each case gets its own process so a 100k-element
-  // allocating pipeline run 39th in sequence doesn't inherit GC pressure or
-  // megamorphic call-site pollution from the 38 differently-shaped closures
-  // that ran before it in the same isolate -- variance that's an artifact of
-  // this harness sharing a process, not of the generated code's real speed.
-  if (args.caseIndex !== undefined) {
-    const cases = await loadCases(args)
-    const c = cases[args.caseIndex]
-    if (!c) {
-      console.log(`${WORKER_MARKER}${JSON.stringify({ ok: false, reason: 'case index out of range' })}`)
-      return
+  if (left !== null && right !== null && typeof left === 'object' && typeof right === 'object') {
+    const leftRecord = left as Record<PropertyKey, unknown>
+    const rightRecord = right as Record<PropertyKey, unknown>
+    const leftKeys = Reflect.ownKeys(leftRecord)
+    if (leftKeys.length !== Reflect.ownKeys(rightRecord).length) return false
+    for (const key of leftKeys) {
+      if (
+        !Object.prototype.hasOwnProperty.call(rightRecord, key) ||
+        !compilerPerfSemanticEqual(leftRecord[key], rightRecord[key])
+      ) {
+        return false
+      }
     }
-    try {
-      const outcome = measureCase(c, args.rounds)
-      console.log(`${WORKER_MARKER}${JSON.stringify(outcome)}`)
-    } catch (e) {
-      console.log(`${WORKER_MARKER}${JSON.stringify({ ok: false, reason: (e as Error).message })}`)
-    }
-    return
+    return true
   }
+  return Object.is(left, right)
+}
 
-  const cases = await loadCases(args)
-  const results: CaseResult[] = []
-  const skipped: string[] = []
-  const selfPath = fileURLToPath(import.meta.url)
-
-  for (let i = 0; i < cases.length; i++) {
-    const c = cases[i]
-    const proc = Bun.spawnSync({
-      cmd: [
-        'bun',
-        'run',
-        selfPath,
-        '--case-index',
-        String(i),
-        '--rounds',
-        String(args.rounds),
-        '--corpus',
-        args.corpusPath,
-        ...(args.casesFilter ? ['--cases', args.casesFilter] : []),
-      ],
-      stdout: 'pipe',
-      stderr: 'pipe',
+const classifyCoverage = (cases: readonly CompilerPerfCorpusCase[]): CoverageProjection => {
+  const supportedCases: CompilerPerfCorpusCase[] = []
+  const gaps: CompilerPerfGap[] = []
+  for (const item of cases) {
+    const stepKinds = item.steps.map((step) => step.kind)
+    const unsupportedOps = [
+      ...new Set(stepKinds.filter((kind) => kind !== 'toArray' && !SUPPORTED_OP_NAMES.has(kind))),
+    ].sort()
+    const syntheticOnly = item.steps.every((step) => step.kind === 'toArray')
+    if (unsupportedOps.length === 0 && !syntheticOnly) {
+      supportedCases.push(item)
+      continue
+    }
+    gaps.push({
+      name: item.name,
+      steps: stepKinds,
+      unsupportedOps,
+      reason: syntheticOnly
+        ? 'synthetic-only toArray pipeline has no compiler work'
+        : `unsupported compiler ops: ${unsupportedOps.join(', ')}`,
     })
-    const out = proc.stdout.toString()
-    const line = out.split('\n').find((l: string) => l.startsWith(WORKER_MARKER))
-    if (!line) {
-      skipped.push(`${c.name}: worker produced no result (stderr: ${proc.stderr.toString().slice(0, 300)})`)
-      continue
+  }
+  const supportedProjection = supportedCases.map((item) => ({
+    name: item.name,
+    steps: item.steps.map((step) => step.kind),
+  }))
+  return {
+    supportedCases,
+    gaps,
+    supportedCaseNamesSha256: jsonSha256(supportedCases.map((item) => item.name)),
+    projectionSha256: jsonSha256({ supportedCases: supportedProjection, gaps }),
+  }
+}
+
+const loadCorpus = async (corpusPath: string): Promise<LoadedCorpus> => {
+  const raw = await readFile(corpusPath)
+  const parsed = JSON.parse(raw.toString('utf8')) as {
+    readonly id: string
+    readonly version: number
+    readonly cases: readonly CompilerPerfCorpusCase[]
+  }
+  if (!Array.isArray(parsed.cases)) throw new Error('compiler perf corpus has no cases array')
+  return { raw, id: parsed.id, version: parsed.version, cases: parsed.cases }
+}
+
+const compilerImplementationSha256 = async (): Promise<string> => {
+  const root = resolve(localDirectory, '..', '..', '..')
+  const hash = createHash('sha256')
+  for (const relativePath of EXPECTED_COMPILER_IMPLEMENTATION_FILES) {
+    hash.update(relativePath)
+    hash.update('\0')
+    hash.update(await readFile(join(root, relativePath)))
+    hash.update('\0')
+  }
+  return hash.digest('hex')
+}
+
+let compilerMeasurementSink: unknown
+let referenceMeasurementSink: unknown
+
+const consumedSourceItems = (
+  run: (input: readonly number[]) => unknown,
+  input: readonly number[],
+  strata: Readonly<Record<string, unknown>>,
+): number => {
+  if (strata.sinkKind !== 'short-circuit' || strata.boundary !== 'none') return input.length
+  let consumed = 0
+  const observed = new Proxy(input, {
+    get(target, key, receiver) {
+      if (typeof key === 'string' && /^(?:0|[1-9]\d*)$/u.test(key) && Number(key) < target.length) {
+        consumed++
+      }
+      return Reflect.get(target, key, receiver)
+    },
+  })
+  run(observed)
+  return Math.max(1, consumed)
+}
+
+const measureCase = (item: CompilerPerfCorpusCase, args: CompilerPerfArgs): CompilerPerfCase => {
+  const input = generateInputArray(item.inputSeed, item.size) as readonly number[]
+  const compiled = compileTransformedCompilerPerfSource(synthesizeSource(item.steps))
+  const emitted = compileEmittedPipeline(pipelineDesc(item.steps))
+  const bindings = bindingsFor(item.steps)
+  const compilerRun = (): unknown => compiled.run(input)
+  const referenceRun = (): unknown => emitted(input, bindings)
+  const correctnessOk = compilerPerfSemanticEqual(compilerRun(), referenceRun())
+  const consumedInputItems = consumedSourceItems(
+    (observed) => emitted(observed, bindings),
+    input,
+    item.strata,
+  )
+  const batchIterations = minimumCompilerBatchIterations(consumedInputItems, args)
+  const microBatchIterations = consumedItemsMicroBatchIterations(
+    consumedInputItems,
+    batchIterations,
+    args.targetConsumedItemsPerMicroBatch,
+  )
+  const measured = runInterleavedPaired(compilerRun, referenceRun, {
+    rounds: args.rounds,
+    warmupRounds: args.warmupRounds,
+    batchIterations,
+    microBatchIterations,
+    observe: (compilerLast, referenceLast) => {
+      compilerMeasurementSink = compilerLast
+      referenceMeasurementSink = referenceLast
+    },
+  })
+  return {
+    name: item.name,
+    stepKinds: item.steps.map((step) => step.kind),
+    strata: item.strata,
+    inputSize: item.size,
+    consumedInputItems,
+    correctnessOk,
+    transformedSiteCount: compiled.transformedSiteCount,
+    workerEngine: currentPerfEngine(),
+    rounds: measured.pairedRatios.length,
+    batchIterations,
+    sampling: {
+      ...measured.sampling,
+      targetConsumedItemsPerMicroBatch: args.targetConsumedItemsPerMicroBatch,
+      nominalConsumedItemsPerMicroBatch: microBatchIterations * consumedInputItems,
+    },
+    medianRatio: measured.medianRatio,
+    meanRatio: measured.meanRatio,
+    ciLow: measured.ciLow,
+    ciHigh: measured.ciHigh,
+    signTestP: measured.signTestP,
+    relativeMarginOfError: relativeMarginOfError(
+      measured.ciLow,
+      measured.ciHigh,
+      measured.medianRatio,
+    ),
+    compilerSamplesNs: measured.aSamples,
+    referenceSamplesNs: measured.bSamples,
+    pairedRatios: measured.pairedRatios,
+  }
+}
+
+export const parseCompilerPerfArgs = (
+  argv: readonly string[],
+  engine = currentPerfEngine(),
+): CompilerPerfArgs => {
+  const policy = COMPILER_PERF_POLICIES[engine.id]
+  let rounds: number = policy.minimumRounds
+  let warmupRounds: number = policy.minimumWarmupRounds
+  let minimumBatchInputItems: number = policy.minimumBatchInputItems
+  let targetConsumedItemsPerMicroBatch: number = policy.targetConsumedItemsPerMicroBatch
+  let quick = false
+  let casesFilter: string | undefined
+  let corpusPath = join(localDirectory, 'perf-corpus.json')
+  let out: string | undefined
+  let caseIndex: number | undefined
+
+  for (let index = 0; index < argv.length; index++) {
+    const argument = argv[index]
+    if (argument === '--rounds') rounds = Number(argv[++index])
+    else if (argument === '--warmup') warmupRounds = Number(argv[++index])
+    else if (argument === '--batch-inputs') minimumBatchInputItems = Number(argv[++index])
+    else if (argument === '--micro-batch-inputs') {
+      targetConsumedItemsPerMicroBatch = Number(argv[++index])
+    } else if (argument === '--quick') quick = true
+    else if (argument === '--cases') casesFilter = argv[++index]
+    else if (argument === '--corpus') corpusPath = argv[++index]
+    else if (argument === '--out') out = argv[++index]
+    else if (argument === '--case-index') caseIndex = Number(argv[++index])
+    else throw new Error(`unknown compiler perf argument: ${argument}`)
+  }
+  if (quick) rounds = Math.min(rounds, 8)
+  for (const [flag, value] of [
+    ['--rounds', rounds],
+    ['--warmup', warmupRounds],
+    ['--batch-inputs', minimumBatchInputItems],
+    ['--micro-batch-inputs', targetConsumedItemsPerMicroBatch],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      throw new Error(`${flag} must be a positive integer`)
     }
-    const outcome = JSON.parse(line.slice(WORKER_MARKER.length)) as WorkerOutcome | { ok: false; reason: string }
-    if (!outcome.ok) {
-      skipped.push(`${c.name}: ${outcome.reason}`)
-      continue
+  }
+  if (caseIndex !== undefined && (!Number.isSafeInteger(caseIndex) || caseIndex < 0)) {
+    throw new Error('--case-index must be a non-negative integer')
+  }
+  return {
+    rounds,
+    warmupRounds,
+    minimumBatchInputItems,
+    targetConsumedItemsPerMicroBatch,
+    quick,
+    casesFilter,
+    corpusPath,
+    out,
+    caseIndex,
+  }
+}
+
+const selectedSupportedCases = (
+  supportedCases: readonly CompilerPerfCorpusCase[],
+  args: CompilerPerfArgs,
+): readonly CompilerPerfCorpusCase[] => {
+  let selected = supportedCases
+  if (args.casesFilter) {
+    selected = selected.filter((item) => item.name.includes(args.casesFilter as string))
+  }
+  if (args.quick) selected = selected.filter((item) => item.size <= 10_000)
+  return selected
+}
+
+const workerArgs = (
+  selfPath: string,
+  engine: PerfEngine,
+  args: CompilerPerfArgs,
+  caseIndex: number,
+): readonly string[] => {
+  const benchmarkArgs = [
+    selfPath,
+    '--case-index',
+    String(caseIndex),
+    '--rounds',
+    String(args.rounds),
+    '--warmup',
+    String(args.warmupRounds),
+    '--batch-inputs',
+    String(args.minimumBatchInputItems),
+    '--micro-batch-inputs',
+    String(args.targetConsumedItemsPerMicroBatch),
+    '--corpus',
+    args.corpusPath,
+    ...(args.casesFilter ? ['--cases', args.casesFilter] : []),
+    ...(args.quick ? ['--quick'] : []),
+  ]
+  return engine.id === 'bun-jsc' ? ['run', ...benchmarkArgs] : ['--import=tsx', ...benchmarkArgs]
+}
+
+const runWorker = (
+  item: CompilerPerfCorpusCase,
+  caseIndex: number,
+  args: CompilerPerfArgs,
+  engine: PerfEngine,
+): WorkerOutcome => {
+  const processResult = spawnSync(
+    process.execPath,
+    workerArgs(fileURLToPath(import.meta.url), engine, args, caseIndex),
+    { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 },
+  )
+  const markerLine = (processResult.stdout ?? '')
+    .split('\n')
+    .find((line) => line.startsWith(WORKER_MARKER))
+  if (!markerLine) {
+    return {
+      ok: false,
+      reason: `worker produced no result (status ${String(processResult.status)}, signal ${String(processResult.signal)}, stderr: ${(processResult.stderr ?? '').slice(0, 500)})`,
     }
-    results.push({ name: c.name, n: outcome.n, correctnessOk: outcome.correctnessOk, medianRatio: outcome.medianRatio, meanRatio: outcome.meanRatio })
+  }
+  try {
+    const outcome = JSON.parse(markerLine.slice(WORKER_MARKER.length)) as WorkerOutcome
+    if (!outcome.ok) return outcome
+    if (processResult.status !== 0 || processResult.signal !== null) {
+      return {
+        ok: false,
+        reason: `worker exited with status ${String(processResult.status)} and signal ${String(processResult.signal)}`,
+      }
+    }
+    if (outcome.result.name !== item.name) {
+      return {
+        ok: false,
+        reason: `worker returned case ${outcome.result.name} instead of ${item.name}`,
+      }
+    }
+    if (!sameEngine(outcome.result.workerEngine, engine)) {
+      return {
+        ok: false,
+        reason: `worker runtime identity does not match coordinator (${outcome.result.workerEngine.id}/${outcome.result.workerEngine.runtimeVersion})`,
+      }
+    }
+    return outcome
+  } catch (error) {
+    return { ok: false, reason: `worker result was invalid JSON: ${(error as Error).message}` }
+  }
+}
+
+const defaultOutputPath = (engine: PerfEngine): string =>
+  join(
+    resolve(process.env.PERF_ARTIFACT_DIR ?? join(localDirectory, '..', '..', 'reports')),
+    `compiler-performance-${engine.id}.json`,
+  )
+
+export const runCompilerPerf = async (
+  args: CompilerPerfArgs,
+): Promise<{ readonly report: CompilerPerfReport; readonly outputPath: string }> => {
+  if (args.caseIndex !== undefined) {
+    throw new Error('runCompilerPerf coordinator cannot be called in worker mode')
+  }
+  const engine = currentPerfEngine()
+  const corpus = await loadCorpus(args.corpusPath)
+  const coverage = classifyCoverage(corpus.cases)
+  const selectedCases = selectedSupportedCases(coverage.supportedCases, args)
+  const results: CompilerPerfCase[] = []
+  const skipped: string[] = []
+
+  for (let index = 0; index < selectedCases.length; index++) {
+    const item = selectedCases[index]
+    const outcome = runWorker(item, index, args, engine)
+    if (outcome.ok) results.push(outcome.result)
+    else skipped.push(`${item.name}: ${outcome.reason}`)
   }
 
-  const ratios = results.map((r) => r.medianRatio)
-  const geo = geomean(ratios)
-  const min = Math.min(...ratios, Infinity)
-  const allCorrect = results.every((r) => r.correctnessOk)
+  const ratios = results.map((result) => result.medianRatio)
+  const supportedOps = [...SUPPORTED_OP_NAMES].sort()
+  const emitterPath = fileURLToPath(new URL('./emitter.ts', import.meta.url))
+  const reportArgs: Omit<CompilerPerfArgs, 'caseIndex'> = {
+    rounds: args.rounds,
+    warmupRounds: args.warmupRounds,
+    minimumBatchInputItems: args.minimumBatchInputItems,
+    targetConsumedItemsPerMicroBatch: args.targetConsumedItemsPerMicroBatch,
+    quick: args.quick,
+    casesFilter: args.casesFilter,
+    corpusPath: args.corpusPath,
+    out: args.out,
+  }
+  const summary = {
+    count: results.length,
+    expectedSupportedCount: coverage.supportedCases.length,
+    corpusCaseCount: corpus.cases.length,
+    gapCount: coverage.gaps.length,
+    geomeanRatio: geomean(ratios),
+    minRatio: Math.min(...ratios, Infinity),
+    maxRelativeMarginOfError: Math.max(
+      ...results.map((result) => result.relativeMarginOfError),
+      Number.NEGATIVE_INFINITY,
+    ),
+    allCorrect: results.every((result) => result.correctnessOk),
+    complete:
+      selectedCases.length === coverage.supportedCases.length &&
+      results.length === coverage.supportedCases.length &&
+      skipped.length === 0,
+  }
+  const report: CompilerPerfReport = {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    engine,
+    corpus: {
+      id: corpus.id,
+      version: corpus.version,
+      sha256: sha256(corpus.raw),
+      totalCaseCount: corpus.cases.length,
+    },
+    reference: {
+      id: FROZEN_EMITTER_ID,
+      sha256: sha256(await readFile(emitterPath)),
+    },
+    compiler: {
+      id: EXPECTED_COMPILER_SUBJECT_ID,
+      implementationFiles: EXPECTED_COMPILER_IMPLEMENTATION_FILES,
+      implementationSha256: await compilerImplementationSha256(),
+      supportedOps,
+      supportedOpsSha256: jsonSha256(supportedOps),
+    },
+    coverage: {
+      corpusCaseCount: corpus.cases.length,
+      supportedCaseCount: coverage.supportedCases.length,
+      gapCount: coverage.gaps.length,
+      supportedCaseNamesSha256: coverage.supportedCaseNamesSha256,
+      projectionSha256: coverage.projectionSha256,
+      gaps: coverage.gaps,
+    },
+    args: reportArgs,
+    summary,
+    cases: results,
+    skipped,
+  }
+  const outputPath = args.out ?? defaultOutputPath(engine)
+  await mkdir(dirname(outputPath), { recursive: true })
+  await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`)
 
-  console.log(`\nW6 fp-compiler perf report (ratio = referenceNs / stopcockNs; >1 == fp-compiler faster)\n`)
-  console.log(['case', 'n', 'median', 'mean', 'correct'].join('\t'))
-  for (const r of results) {
+  console.log(
+    `\nfp-compiler raw performance report (${engine.name}; referenceNs / compilerNs; >1 == compiler faster)\n`,
+  )
+  console.log(
+    ['case', 'input', 'consumed', 'batch', 'n', 'median', 'CI95', 'RME', 'correct'].join('\t'),
+  )
+  for (const result of results) {
     console.log(
       [
-        r.name.length > 52 ? r.name.slice(0, 49) + '...' : r.name,
-        r.n,
-        r.medianRatio.toFixed(3),
-        r.meanRatio.toFixed(3),
-        r.correctnessOk ? 'ok' : 'MISMATCH',
+        result.name.length > 52 ? `${result.name.slice(0, 49)}...` : result.name,
+        result.inputSize,
+        result.consumedInputItems,
+        result.batchIterations,
+        result.rounds,
+        result.medianRatio.toFixed(3),
+        `[${result.ciLow.toFixed(3)},${result.ciHigh.toFixed(3)}]`,
+        `${result.relativeMarginOfError.toFixed(2)}%`,
+        result.correctnessOk ? 'ok' : 'MISMATCH',
       ].join('\t'),
     )
   }
-  console.log(`\ncases: ${results.length}  geomean: ${geo.toFixed(3)}  min: ${min.toFixed(3)}  allCorrect: ${allCorrect}`)
-  console.log(`gate: geomean >= 0.90 and min >= 0.80 -> ${geo >= 0.9 && min >= 0.8 ? 'PASS' : 'FAIL'}`)
+  console.log(
+    `\ncases: ${summary.count}/${summary.expectedSupportedCount}; corpus gaps: ${summary.gapCount}; geomean: ${summary.geomeanRatio.toFixed(3)}; min: ${summary.minRatio.toFixed(3)}; allCorrect: ${summary.allCorrect}`,
+  )
+  console.log(`raw report: ${outputPath}`)
   if (skipped.length > 0) {
     console.log(`\nskipped (${skipped.length}):`)
-    for (const s of skipped) console.log(`  - ${s}`)
+    for (const item of skipped) console.log(`  - ${item}`)
+  }
+  void compilerMeasurementSink
+  void referenceMeasurementSink
+  return { report, outputPath }
+}
+
+const runWorkerMain = async (args: CompilerPerfArgs): Promise<void> => {
+  const corpus = await loadCorpus(args.corpusPath)
+  const coverage = classifyCoverage(corpus.cases)
+  const selectedCases = selectedSupportedCases(coverage.supportedCases, args)
+  const item = selectedCases[args.caseIndex as number]
+  if (!item) {
+    console.log(
+      `${WORKER_MARKER}${JSON.stringify({ ok: false, reason: 'case index out of range' } satisfies WorkerFailure)}`,
+    )
+    process.exitCode = 1
+    return
+  }
+  try {
+    const result = measureCase(item, args)
+    console.log(`${WORKER_MARKER}${JSON.stringify({ ok: true, result } satisfies WorkerSuccess)}`)
+  } catch (error) {
+    console.log(
+      `${WORKER_MARKER}${JSON.stringify({ ok: false, reason: (error as Error).message } satisfies WorkerFailure)}`,
+    )
+    process.exitCode = 1
   }
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+const main = async (): Promise<void> => {
+  const args = parseCompilerPerfArgs(process.argv.slice(2))
+  if (args.caseIndex !== undefined) {
+    await runWorkerMain(args)
+    return
+  }
+  const { report } = await runCompilerPerf(args)
+  if (!report.summary.complete || !report.summary.allCorrect) process.exitCode = 1
+}
+
+const invokedPath = process.argv[1] === undefined ? undefined : resolve(process.argv[1])
+if (invokedPath === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}

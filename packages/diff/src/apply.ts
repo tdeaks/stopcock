@@ -1,4 +1,6 @@
-import { dual, ok, err, type Result, isDeepEqual } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
+import { deep } from '@stopcock/fp/eq'
+import { err, ok, type Result } from '@stopcock/fp/result'
 import type { Operation, Patch, PatchError, Path } from './types'
 
 function patchError(message: string, op: Operation, path: Path): PatchError {
@@ -98,7 +100,7 @@ function applyOp(target: unknown, op: Operation): Result<unknown, PatchError> {
     }
     case 'test': {
       const actual = getAtPath(target, op.path)
-      return isDeepEqual(actual, op.value)
+      return deep.equals(actual, op.value)
         ? ok(target)
         : err(
             patchError(

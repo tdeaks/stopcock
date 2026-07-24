@@ -1,8 +1,16 @@
 ---
 const libraries = [
-  { name: 'fp', desc: 'Pipe, Option, Result, Array, String, lenses, and Stream. The core everything else builds on.', href: '/libraries/fp' },
+  { name: 'fp', desc: 'Pipe, Option, Result, collections, algebra, optics, validation, and lazy Iter.', href: '/libraries/fp' },
+  { name: 'fp-compiler', desc: 'Optional build-time lowering for portable, CSP-safe FP pipelines.', href: '/libraries/fp-compiler' },
+  { name: 'fp-interop', desc: 'Explicit boundaries for foreign tagged values, Standard Schema, native protocols, and wire data.', href: '/libraries/fp-interop' },
+  { name: 'pattern', desc: 'Exhaustive structural matching, predicates, captures, and tagged-data dispatch.', href: '/libraries/pattern' },
+  { name: 'parser', desc: 'Typed parser combinators with precise source errors and stack-safe expression parsing.', href: '/libraries/parser' },
+  { name: 'persistent', desc: 'Structurally shared vectors, maps, sets, queues, deques, and stacks.', href: '/libraries/persistent' },
   { name: 'date', desc: 'Date arithmetic, formatting, parsing, timezones, and business day logic.', href: '/libraries/date' },
   { name: 'async', desc: 'Lazy Task type with retry, timeout, concurrency limits, and cancellation via AbortSignal.', href: '/libraries/async' },
+  { name: 'fp-testing', desc: 'Deterministic law checks, edge-case data, and iterator cleanup probes.', href: '/libraries/fp-testing' },
+  { name: 'eslint-plugin-fp', desc: 'Flat-config rules for FP 2 migrations, focused imports, and pipeline performance.', href: '/libraries/eslint-plugin-fp' },
+  { name: 'fp-codemod', desc: 'Conservative TypeScript-aware migrations from the FP 1 surface to FP 2.', href: '/libraries/fp-codemod' },
   { name: 'http', desc: 'Typed HTTP client with retry, timeout, dedup, and Task integration.', href: '/libraries/http' },
   { name: 'autodiff', desc: 'Reverse-mode automatic differentiation for scalar, vector, and matrix values.', href: '/libraries/autodiff' },
   { name: 'la', desc: 'Typed-array vectors, matrices, decompositions, and optional acceleration hooks.', href: '/libraries/la' },

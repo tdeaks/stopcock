@@ -28,7 +28,11 @@ export const libraryPack = (
     format: ['esm'],
     dts: false,
     fixedExtension: false,
-    minify: true,
+    // Published ESM is an input to the consumer's bundler. Keeping it
+    // unminified preserves useful stack traces and avoids engine optimiser
+    // cliffs caused by pre-mangling very large shared chunks; applications
+    // still minify the final, tree-shaken output.
+    minify: false,
     treeshake: true,
     sourcemap: false,
     clean: true,

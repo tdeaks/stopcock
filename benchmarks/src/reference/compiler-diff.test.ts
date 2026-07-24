@@ -25,6 +25,7 @@ import { pipe } from '../../../packages/fp/src/pipe'
 import { compile } from '../../../packages/fp/src/compile'
 import { flow } from '../../../packages/fp/src/flow'
 import * as A from '../../../packages/fp/src/array'
+import { none } from '../../../packages/fp/src/option'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import { compileEmittedPipeline, type EmitterBinding, type PipelineDesc } from './emitter'
 
@@ -43,7 +44,7 @@ interface Fixture {
 }
 
 function probeSource(source: string): string {
-  return `import { pipe, A } from '@stopcock/fp'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+  return `import { pipe } from '@stopcock/fp'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
 }
 
 function run(source: string, input: readonly number[], log: number[]): unknown {
@@ -56,13 +57,29 @@ function run(source: string, input: readonly number[], log: number[]): unknown {
 function runTransformed(source: string, input: readonly number[], log: number[]): unknown {
   const wrapped = probeSource(source)
   const result = transformStopcockPipelines(wrapped, 'fixture.ts', { diagnostics: false })
+  const noneAlias = result.code.match(
+    /import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u,
+  )?.[1]
   const stripped = result.code
     .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
     .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gm, '')
   const call = `${stripped}\nreturn __fixture(input, track);`
   // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-  const fn = new Function('input', 'track', 'pipe', 'A', call)
-  return fn(input.slice(), (x: number) => log.push(x), pipe, A)
+  const fn = new Function(
+    'input',
+    'track',
+    'pipe',
+    'A',
+    ...(noneAlias ? [noneAlias] : []),
+    call,
+  )
+  return fn(
+    input.slice(),
+    (x: number) => log.push(x),
+    pipe,
+    A,
+    ...(noneAlias ? [none] : []),
+  )
 }
 
 const fixtures: Fixture[] = [
@@ -320,7 +337,7 @@ describe('W6: flatMap and boundary ops diff clean against fp-compiler', () => {
 // `(input, bindings) => data`).
 
 function probeSourceDeferred(source: string): string {
-  return `import { compile, flow, A } from '@stopcock/fp'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+  return `import { compile, flow } from '@stopcock/fp'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
 }
 
 function runDeferred(source: string, input: readonly number[], log: number[]): unknown {
@@ -333,13 +350,31 @@ function runDeferred(source: string, input: readonly number[], log: number[]): u
 function runTransformedDeferred(source: string, input: readonly number[], log: number[]): unknown {
   const wrapped = probeSourceDeferred(source)
   const result = transformStopcockPipelines(wrapped, 'fixture.ts', { diagnostics: false })
+  const noneAlias = result.code.match(
+    /import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u,
+  )?.[1]
   const stripped = result.code
     .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
     .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gm, '')
   const call = `${stripped}\nreturn __fixture(input, track);`
   // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-  const fn = new Function('input', 'track', 'compile', 'flow', 'A', call)
-  return fn(input.slice(), (x: number) => log.push(x), compile, flow, A)
+  const fn = new Function(
+    'input',
+    'track',
+    'compile',
+    'flow',
+    'A',
+    ...(noneAlias ? [noneAlias] : []),
+    call,
+  )
+  return fn(
+    input.slice(),
+    (x: number) => log.push(x),
+    compile,
+    flow,
+    A,
+    ...(noneAlias ? [none] : []),
+  )
 }
 
 const deferredFixtures: Fixture[] = [
@@ -400,23 +435,31 @@ describe('W6: flow()/compile() with >= 2 steps diff clean against fp-compiler', 
   }
 })
 
-// --- diagnose cases: grammar members that must be left untransformed ---
+// --- transform and diagnose edges outside the generated differential corpus ---
 
-describe('W6: unsupported/unregistered ops diagnose cleanly (no transform)', () => {
-  it('scan is diagnosed, not transformed (registered in the registry, but not fuseable this wave)', () => {
+describe('W6: expanded compiler coverage and clean unsupported diagnostics', () => {
+  it('scan is transformed through its exact full-array boundary', () => {
     const source = probeSource(`return pipe(input, A.scan((acc, x) => acc + x, 0));`)
     const result = transformStopcockPipelines(source, 'scan.ts', { diagnostics: 'verbose' })
-    expect(result.code).toBe(source)
-    expect(result.diagnostics[0].transformed).toBe(false)
-    expect(result.diagnostics[0].reason).toContain('unsupported op: scan')
+    expect(result.code).not.toBe(source)
+    expect(result.diagnostics[0].transformed).toBe(true)
   })
 
-  it('without is diagnosed, not transformed (registered in the registry, but not fuseable this wave)', () => {
-    const source = probeSource(`return pipe(input, A.without(1, 2));`)
+  it('without is transformed through its exact full-array boundary', () => {
+    const source = probeSource(`return pipe(input, A.without([1, 2]));`)
     const result = transformStopcockPipelines(source, 'without.ts', { diagnostics: 'verbose' })
+    expect(result.code).not.toBe(source)
+    expect(result.diagnostics[0].transformed).toBe(true)
+  })
+
+  it('without with an invalid data-last arity is diagnosed and left unchanged', () => {
+    const source = probeSource(`return pipe(input, A.without(1, 2));`)
+    const result = transformStopcockPipelines(source, 'without-invalid.ts', {
+      diagnostics: 'verbose',
+    })
     expect(result.code).toBe(source)
     expect(result.diagnostics[0].transformed).toBe(false)
-    expect(result.diagnostics[0].reason).toContain('unsupported op: without')
+    expect(result.diagnostics[0].reason).toContain('without: unexpected arg count 2')
   })
 
   it('toArray (not a real op) is diagnosed, not transformed', () => {
@@ -427,21 +470,19 @@ describe('W6: unsupported/unregistered ops diagnose cleanly (no transform)', () 
     expect(result.diagnostics[0].reason).toContain('unknown op: toArray')
   })
 
-  it('compile() with a single step is diagnosed, not transformed (single-step semantics diverge from flow())', () => {
+  it('compile() with a single step is transformed', () => {
     const source = probeSourceDeferred(`const run = compile(A.map((x) => x * 2)); return run(input);`)
     const result = transformStopcockPipelines(source, 'compile-single.ts', { diagnostics: 'verbose' })
-    expect(result.code).toBe(source)
-    expect(result.diagnostics[0].transformed).toBe(false)
-    expect(result.diagnostics[0].reason).toContain('deferred')
+    expect(result.code).not.toBe(source)
+    expect(result.diagnostics[0].transformed).toBe(true)
   })
 
-  it('flow() containing an unsupported op stays deferred', () => {
+  it('flow() containing scan transforms through its full-array boundary', () => {
     const source = probeSourceDeferred(
       `const run = flow(A.map((x) => x * 2), A.scan((acc, x) => acc + x, 0)); return run(input);`,
     )
     const result = transformStopcockPipelines(source, 'flow-scan.ts', { diagnostics: 'verbose' })
-    expect(result.code).toBe(source)
-    expect(result.diagnostics[0].transformed).toBe(false)
-    expect(result.diagnostics[0].reason).toContain('deferred')
+    expect(result.code).not.toBe(source)
+    expect(result.diagnostics[0].transformed).toBe(true)
   })
 })

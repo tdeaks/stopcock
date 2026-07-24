@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vite-plus/test'
 import { toLens, fromLens, fromTraversal } from '../optics-bridge'
-import { prop, view, set } from '@stopcock/fp'
-import type { Lens, Traversal } from '@stopcock/fp'
+import { prop, set, traversal, view } from '@stopcock/fp/optic'
 
 describe('toLens', () => {
   it('returns null for empty path', () => {
@@ -18,16 +17,18 @@ describe('toLens', () => {
     }
     const l = toLens(op)
     expect(l).not.toBeNull()
-    expect(l!.get({ user: { name: 'Tom' } })).toBe('Tom')
-    expect(l!.set({ user: { name: 'Tom' } }, 'Alice')).toEqual({ user: { name: 'Alice' } })
+    expect(view(l!, { user: { name: 'Tom' } })).toBe('Tom')
+    expect(set(l!, { user: { name: 'Tom' } }, 'Alice')).toEqual({
+      user: { name: 'Alice' },
+    })
   })
 
   it('mixed-path lens setter handles single-segment path', () => {
     const op = { op: 'replace' as const, path: [0] as const, oldValue: 'a', newValue: 'b' }
     const l = toLens(op)
     expect(l).not.toBeNull()
-    expect(l!.get(['x', 'y'])).toBe('x')
-    expect(l!.set(['x', 'y'], 'z')).toEqual(['z', 'y'])
+    expect(view(l!, ['x', 'y'])).toBe('x')
+    expect(set(l!, ['x', 'y'], 'z')).toEqual(['z', 'y'])
   })
 
   it('creates lens for mixed path (with numeric segments)', () => {
@@ -40,8 +41,8 @@ describe('toLens', () => {
     const l = toLens(op)
     expect(l).not.toBeNull()
     const data = { items: [{ name: 'first' }, { name: 'second' }] }
-    expect(l!.get(data)).toBe('first')
-    const updated = l!.set(data, 'changed')
+    expect(view(l!, data)).toBe('first')
+    const updated = set(l!, data, 'changed')
     expect(updated.items[0].name).toBe('changed')
     expect(updated.items[1].name).toBe('second')
   })
@@ -65,10 +66,10 @@ describe('fromLens', () => {
 
 describe('fromTraversal', () => {
   it('creates patch from traversal modifications', () => {
-    const t: Traversal<number[], number> = {
-      getAll: (s) => [...s],
-      modify: (s, f) => s.map(f),
-    }
+    const t = traversal<number[], number>(
+      (source) => [...source],
+      (source, transform) => source.map(transform),
+    )
     const p = fromTraversal([1, 2, 3], t, (n) => n * 2)
     expect(p.ops).toHaveLength(3)
     for (const op of p.ops) {
@@ -77,10 +78,10 @@ describe('fromTraversal', () => {
   })
 
   it('skips unchanged elements', () => {
-    const t: Traversal<number[], number> = {
-      getAll: (s) => [...s],
-      modify: (s, f) => s.map(f),
-    }
+    const t = traversal<number[], number>(
+      (source) => [...source],
+      (source, transform) => source.map(transform),
+    )
     const p = fromTraversal([1, 2, 3], t, (n) => (n > 2 ? n * 2 : n))
     expect(p.ops).toHaveLength(1)
     expect((p.ops[0] as any).newValue).toBe(6)

@@ -1,0 +1,42 @@
+{
+  "name": "@stopcock/fp-testing",
+  "version": "0.0.0",
+  "description": "Deterministic law checks and iterable probes for functional TypeScript libraries",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tdeaks/stopcock.git",
+    "directory": "packages/fp-testing"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./laws": {
+      "types": "./dist/laws.d.ts",
+      "import": "./dist/laws.js"
+    },
+    "./data": {
+      "types": "./dist/data.d.ts",
+      "import": "./dist/data.js"
+    },
+    "./iterable": {
+      "types": "./dist/iterable.d.ts",
+      "import": "./dist/iterable.js"
+    }
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

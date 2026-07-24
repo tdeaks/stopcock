@@ -1,0 +1,40 @@
+---
+title: fp-interop
+description: Explicit boundaries between Stopcock FP and foreign values
+---
+
+```bash
+bun add @stopcock/fp @stopcock/fp-interop
+```
+
+`fp-interop` converts foreign tagged values and native JavaScript protocols at
+explicit boundaries. It has no runtime dependency on fp-ts, Effect, or another
+FP runtime; `@stopcock/fp` is its only peer.
+
+```ts
+import * as O from '@stopcock/fp/option'
+import { fromOptionLike, toOptionLike } from '@stopcock/fp-interop/option-like'
+
+const local = fromOptionLike(foreignOption, {
+  read: (value) =>
+    foreignIsSome(value) ? { _tag: 'Some', value: foreignValue(value) } : { _tag: 'None' },
+})
+
+const foreign = toOptionLike(O.some(42), {
+  none: foreignNone,
+  some: foreignSome,
+})
+```
+
+Readers accept caller-supplied structural contracts. Converting back requires
+the foreign library's real constructors, so the package never fabricates
+branded values. Tagged Option, Either, and non-empty Validation helpers cover
+the common fp-ts and Effect data shapes.
+
+Other focused entries provide nullable and throwable boundaries, Promise,
+iterable and async-iterable conversion, direct Standard Schema delegation,
+validated JSON wire codecs, and Node callback adapters. Node-only helpers stay
+isolated in `@stopcock/fp-interop/node`; the root has no Node runtime import.
+
+Public subpaths are `option-like`, `either-like`, `boundary`,
+`standard-schema`, `wire`, and `node`.

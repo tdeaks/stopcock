@@ -1,6 +1,7 @@
 {
   "name": "@stopcock/state",
   "version": "1.0.0",
+  "description": "Reactive immutable state with fine-grained subscriptions, patches, history, and framework adapters.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -8,7 +9,10 @@
     "directory": "packages/state"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -64,5 +68,8 @@
     "vue": {
       "optional": true
     }
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

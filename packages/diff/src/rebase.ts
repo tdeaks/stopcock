@@ -1,4 +1,5 @@
-import { dual, ok, err, type Result } from '@stopcock/fp'
+import { dual } from '@stopcock/fp/dual'
+import { err, ok, type Result } from '@stopcock/fp/result'
 import type { Operation, Patch, ConflictError, Path } from './types'
 import { patch, empty } from './patch'
 

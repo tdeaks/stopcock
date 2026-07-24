@@ -1,0 +1,34 @@
+---
+title: persistent
+description: Immutable collections with structural sharing and explicit builders
+---
+
+```bash
+bun add @stopcock/persistent
+```
+
+```ts
+import { HashMap, Vector } from '@stopcock/persistent'
+
+const original = Vector.of(1, 2, 3)
+const updated = original.set(1, 20).push(4)
+
+const users = HashMap.empty<string, { name: string }>()
+  .set('ada', { name: 'Ada' })
+  .set('grace', { name: 'Grace' })
+```
+
+Ordinary updates never mutate an existing value. `Vector` uses a 32-way
+bitmapped trie, hash collections use a HAMT, ordered collections retain
+insertion order, and queue, deque, and stack use persistent linked spines.
+Every collection implements `Iterable`.
+
+For bulk construction, each collection exposes `builder()` and `transient()`.
+Builders mutate private working storage; `build()` returns an immutable value
+and permanently seals the builder.
+
+Hash collections use JavaScript `Map` key semantics by default. Domain
+equality is opt-in through a coherent `HashEq`, where equal keys must have
+equal hashes. Focused subpaths include `@stopcock/persistent/vector`,
+`@stopcock/persistent/hash-map`, `@stopcock/persistent/ordered-map`,
+`@stopcock/persistent/queue`, and their sibling collection modules.

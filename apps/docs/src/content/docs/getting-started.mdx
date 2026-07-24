@@ -8,7 +8,10 @@ bun add @stopcock/fp
 ```
 
 ```ts
-import { pipe, flow, A, S, N, O, R } from '@stopcock/fp'
+import { flow, pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
 ```
 
 ## pipe
@@ -27,7 +30,8 @@ const leaderboard = pipe(
 )
 ```
 
-`filter → map` fuses into a single loop. `take(10)` terminates early, so the loop stops after 10 results.
+Portable tagged operators can be planned into a single loop. `take(10)`
+terminates early, so work stops after ten matching results.
 
 ## flow
 
@@ -45,7 +49,9 @@ activeNames(usersB)
 
 ## Fusion
 
-`pipe` detects tagged array operations and fuses them into a single loop. `take` and `find` bail out early, so you're not iterating the whole thing.
+`pipe` recognizes tagged array operations and uses checked-in portable loop
+templates. `take` and short-circuiting terminals can stop before the input is
+exhausted.
 
 ```ts
 const big = Array.from({ length: 1_000_000 }, (_, i) => i)
@@ -76,7 +82,7 @@ pipe(users, A.take(5)) // data-last
 pipe(
   O.fromNullable(user.email),
   O.map((e) => e.split('@')[1]),
-  O.getWithDefault('unknown'),
+  O.getOrElse(() => 'unknown'),
 )
 
 pipe(

@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
-import { A, pipe } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+import * as O from '@stopcock/fp/option'
 import { getData } from '../setup'
 
 const sizes = [1_000, 10_000, 100_000]
@@ -77,8 +79,10 @@ describe.each(sizes)('filterMap -> take(25), native chain vs native loop n=%i', 
 describe.each(sizes)('findMap first bucket > 990, native chain vs native loop n=%i', (n) => {
   const data = getData<number>('numbers', n)
 
-  bench('stopcock fused findMap inline', () => A.findMap(data, findLargeBucket))
-  bench('stopcock fused findMap hoisted', () => findLargeBucketOp(data))
+  bench('stopcock fused findMap inline', () =>
+    pipe(data, A.findMap(findLargeBucket), O.toUndefined))
+  bench('stopcock fused findMap hoisted', () =>
+    pipe(data, findLargeBucketOp, O.toUndefined))
   bench('native chain map -> find(isPresent)', () => data.map(findLargeBucket).find(isPresent))
   bench('native loop findMap with early exit', () => nativeFindMapLoop(data))
 })
