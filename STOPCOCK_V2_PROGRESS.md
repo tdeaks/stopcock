@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0R
-Current slice: REMEDIATE_ASYNC_SOURCE_TYPES_AND_PACKAGE_METADATA
-Last verified commit: 80e73ecfa080c798e326e92e6093c9fcfdb2d097
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -52,7 +52,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | Stage | Status             | Verified commit or evidence                                                                                                                    |
 | ----- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers |
-| S0R   | IN_PROGRESS        | Conditional stage                                                                                                                              |
+| S0R   | CHECKPOINT_PENDING | Conditional stage; blocked by the state-coupled readiness test's frozen S0R scope omission                                                     |
 | S0B   | NOT_STARTED        | —                                                                                                                                              |
 | S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                          |
 | S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                    |
@@ -105,6 +105,11 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-24) Recorded `@stopcock/async`, `@stopcock/date`, and
       `@stopcock/diff` as explicit source-type/build blockers and bound each to
       a predecessor-recorded, literal-package S0R scope.
+- [x] (2026-07-24) Reproduced the first S0R Async source-type blocker and
+      traced the smallest package-local implementation and metadata repair.
+- [x] (2026-07-24) Stopped before package edits after an independent
+      `v2_verifier` audit proved that the immutable Async target cannot produce
+      an independently test-valid readiness transition.
 
 ## Evidence log
 
@@ -204,6 +209,28 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     benchmark-byte failures, and the sandboxed task orchestrator could not
     create its communication channel. Bounded direct package commands provided
     the disposition evidence instead.
+- S0R Async pre-implementation audit:
+  - startup HEAD was
+    `04460afad794b78bbac9834c67dbc67b77ff58ae`, with a clean worktree on the
+    recorded branch and isolated worktree;
+  - both preserved source-plan hashes matched the canonical pins, the frozen
+    base and last verified commit were ancestors, and the trusted project
+    configuration plus custom agents were active;
+  - `vp exec tsc -p tsconfig.json --noEmit` from `packages/async` reproduced
+    the three recorded TS2322 failures at `src/task.ts:94`, `src/task.ts:124`,
+    and `src/task.ts:140`;
+  - the smallest runtime-preserving repair is confined to narrow Async-local
+    typing adapters for `map`, `tap`, and `mapError`, plus packing the existing
+    `CHANGELOG.md`;
+  - the starting-HEAD `async-source-types` target permits only
+    `packages/async/**` and the readiness inventory;
+  - the currently green 9-test readiness suite hard-codes all three original
+    blockers in its live-inventory and `--require-ready` assertions, so
+    clearing Async's disposition necessarily makes that checked-in test fail;
+  - the readiness test is outside the immutable target, and S0R is forbidden
+    from editing or widening that target during its own iteration;
+  - the independent `v2_verifier` returned `BLOCKED`; no package, inventory,
+    dynamic-scope, test, generated, or ignored source file was changed.
 
 ## Surprises and discoveries
 
@@ -241,6 +268,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   dependent-package overload surfaces under the repository's TypeScript
   toolchain. Async, Date, and Diff are the only persistent source/build
   failures found by the complete public-package probe.
+- The focused readiness test encodes the mutable three-package blocker list,
+  but every predecessor-recorded S0R target omits that shared test path. A
+  correct per-package readiness transition therefore induces an out-of-scope
+  test failure, and no later S0R target can repair it.
 
 ## Decision log
 
@@ -311,6 +342,15 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   its own scope.
   Date: 2026-07-24.
 
+- Decision: Stop the first S0R iteration before Async implementation and
+  request a ledger-only blocked checkpoint.
+  Rationale: Marking Async ready must refresh the live inventory, which
+  deterministically breaks a checked-in readiness test that the frozen target
+  cannot edit. Keeping Async blocked would not complete the remediation, and
+  checkpointing a known failing product would violate the canonical slice
+  invariant.
+  Date: 2026-07-24.
+
 ## Current blockers
 
 - `@stopcock/async` fails source types and declaration build at
@@ -324,13 +364,20 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 These are S0R remediation blockers. They block S0B, not the completed S0
 inventory/contract gate.
 
+- S0R execution is additionally blocked by a frozen-scope conflict:
+  `tooling/__tests__/stopcock-v2-package-cohort-readiness.test.mjs` asserts the
+  original three-package blocker set, while `async-source-types` permits only
+  Async and the inventory. A correct Async readiness transition makes that test
+  fail, but editing the test or dynamic contract from this iteration is
+  forbidden.
+
 ## Exact next action
 
-After this S0 readiness checkpoint is applied, enter S0R with scope target
-`async-source-types`. Repair only the Async package's overload typing and
-packed changelog metadata, rerun its scoped correctness/type/build/pack/import
-contract, and refresh the shared readiness disposition without editing the
-dynamic-scope contract.
+Create a clean, explicitly authorized setup/predecessor checkpoint outside an
+S0R controller iteration that makes the readiness test transition-stable, or
+records its exact path as a narrow shared test pattern for every affected S0R
+target. Then restore S0R to `IN_PROGRESS` and resume `async-source-types` from a
+clean worktree; do not widen a target during its own remediation iteration.
 
 ## Outcomes and retrospective
 
@@ -345,3 +392,8 @@ public FP-dependant register, an explicit assertion for the intentional
 pre-S0B version mismatch, and durable S0R scope targets for every discovered
 blocker. This slice changes no package runtime, public export, package version,
 lockfile, generated product output, or external state.
+
+The first S0R controller iteration stopped before implementation because the
+predecessor-recorded target cannot keep the state-coupled readiness test green
+while clearing Async's disposition. The blocked checkpoint is ledger-only; no
+invalid package or inventory work is being handed to the launcher.
