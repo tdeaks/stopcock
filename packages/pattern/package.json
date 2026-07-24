@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/pattern",
-  "version": "0.0.0",
+  "version": "2.0.0-next.0",
   "description": "Exhaustive, structural pattern matching for TypeScript",
   "license": "MIT",
   "repository": {

@@ -9,12 +9,12 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: BLOCKED
+Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0B
-Current slice: ALIGN_LIVE_2_0_NEXT_COHORT
+Current slice: PACK_AND_VALIDATE_ALIGNED_COHORT
 Last verified commit: a627469cbeb7ba4626a3e3efbba92994e46622da
 Last controller run: 2026-07-24
 
@@ -53,7 +53,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED        | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                         |
 | S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready |
-| S0B   | BLOCKED | —; deterministic cohort version authority implemented and independently validated; live package manifests and lockfile remain unchanged; immutable single-build cohort packer and exact packed-manifest checker implemented and independently validated; private Synth packed-dependency compatibility runner implemented and independently validated; credential-free deterministic cohort changelog rendering implemented and independently validated after the live alignment failed closed; the exact live alignment remains blocked because Bun cannot complete the required non-frozen lockfile regeneration in the network-disabled controller environment |
+| S0B   | IN_PROGRESS | —; deterministic cohort version authority, immutable single-build packer, exact packed-manifest checker, private Synth compatibility runner, and credential-free changelog renderer independently validated; the live 20-public-package plus private Synth cohort is aligned to `2.0.0-next.0`, six public changesets are consumed into prerelease state/changelogs, and the regenerated lockfile is frozen-valid; clean-checkpoint no-write replay, development packing, exact packed inspection, private Synth compatibility, and final stage validation remain |
 | S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                                                                                                                                                                                                                                                                  |
 | S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                            |
 | S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                          |
@@ -152,6 +152,12 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       with a ledger-only blocker after Bun could not perform the mandatory
       non-frozen lockfile regeneration; every attempted cohort transaction
       restored the tracked worktree to its starting bytes.
+- [x] (2026-07-24) Continued S0B directly from the clean recorded checkpoint
+      after the user abandoned the controller workflow. The exact canonical
+      alignment completed with registry read access, aligned all selected
+      manifests and internal prerelease peers, consumed the six public
+      changesets, generated prerelease changelogs/state, and regenerated
+      `bun.lock`.
 
 ## Evidence log
 
@@ -598,6 +604,33 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     reformatting unrelated historical ledger content was deliberately excluded;
   - no package, source, generated artifact, ignored repository evidence,
     external state, or Git metadata was changed.
+- S0B successful live cohort alignment:
+  - direct execution resumed from clean HEAD
+    `7ce1532eaf255c98e51af39ac8d27be0cc7c65c4` on the recorded
+    `codex/stopcock-v2` branch and canonical worktree;
+  - `bun run release:v2:align-next --target 2.0.0-next.0` completed and
+    reported `changed: true`, 20 public packages, one private compatibility
+    package, no pending public changeset, and no untouched private changeset;
+  - the operation consumed
+    `add-fp-companion-tools`, `add-fp-interop`,
+    `add-persistent-collections`, `fp-absolute-performance`,
+    `fp-validation-composition`, and
+    `normalize-public-package-metadata` into Changesets prerelease state and
+    deterministic package changelogs;
+  - every selected public manifest and private Synth is
+    `2.0.0-next.0`; public prerelease peer ranges are exact, Synth remains
+    private, and excluded app/docs/benchmark workspaces have no diff;
+  - the mandatory non-frozen Bun lockfile update completed with registry read
+    access; `bun install --lockfile-only --frozen-lockfile` then passed and
+    preserved the complete alignment diff SHA-256
+    `0fdd05be4697c31e3be4db5c3c2c796488801baf2bd11128c09e43a5005409e0`;
+  - `bun run release:v2:check-cohort` passed with the exact selected cohort and
+    no pending public changeset;
+  - the combined cohort, packer, and Synth fixture suite passed 13 tests;
+    all three tooling syntax checks and `git diff --check` passed;
+  - the aligned metadata is ready for a clean checkpoint. Development packing
+    deliberately remains the next slice because the immutable packer requires
+    a clean canonical worktree.
 
 ## Surprises and discoveries
 
@@ -697,6 +730,11 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   registry manifests, while this controller environment permits neither those
   requests nor a loopback registry; a valid frozen starting lockfile does not
   supply equivalent regeneration evidence.
+- The S0 readiness checker intentionally fingerprints the pre-alignment S0
+  package manifests and deliberate 1.x/2.x mismatch. After S0B alignment it is
+  historical readiness evidence rather than a live cohort command;
+  `release:v2:check-cohort` owns the aligned train. Rewriting the S0 inventory
+  to chase prerelease metadata would erase its frozen boundary.
 
 ## Decision log
 
@@ -892,29 +930,37 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   the release-cohort gate.
   Date: 2026-07-24.
 
+- Decision: Continue the canonical programme directly in the recorded
+  execution worktree and do not invoke the controller launcher again.
+  Rationale: The user explicitly replaced the failed controller workflow with
+  direct staged implementation. The controller-only environment prevented a
+  required registry read; direct execution completed the exact canonical
+  command without weakening or substituting its lockfile gate.
+  Date: 2026-07-24.
+
+- Decision: Preserve the S0 readiness inventory as frozen pre-alignment
+  evidence and use `release:v2:check-cohort` for the live aligned train.
+  Rationale: The S0 contract deliberately records the old manifest hash,
+  versions, ranges, and inconsistent 1.x/2.x boundary. Refreshing it in S0B
+  would rewrite historical entry evidence and is outside S0B's allowed files;
+  the cohort authority already consumes its ready dispositions and owns exact
+  post-alignment version/range/prerelease validation.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-The exact S0B live alignment cannot complete its mandatory
-`bun install --lockfile-only` step in the current controller environment. The
-default Bun temporary/cache location is not writable; dedicated writable
-locations expose missing or unusable registry-manifest cache entries, and
-network plus loopback listeners are denied. A complete fresh writable Bun
-metadata cache or an otherwise authorized local environment with registry read
-access is required. The failed transaction restored every non-ledger byte, so
-there is no aligned cohort to checkpoint.
+None. The controller-only Bun metadata/network blocker is resolved by direct
+execution in the recorded canonical worktree.
 
 ## Exact next action
 
-Restart S0B from a clean checkpoint only after the controller can give Bun
-1.3.14 a complete fresh writable metadata cache or permitted registry read
-access. Rerun the exact
-`bun run release:v2:align-next --target 2.0.0-next.0` command without manually
-editing `bun.lock` or replacing its non-frozen lockfile step. Then prove all 20
-selected public manifests plus private Synth, exact internal prerelease ranges,
-changelogs/prerelease state, excluded-private byte preservation, `bun.lock`,
-the live Changesets plan parser, `check-cohort`, and byte-stable no-write
-re-execution. Do not pack, publish, or change production runtime behavior in
-that alignment slice.
+Checkpoint the aligned cohort, then rerun
+`bun run release:v2:align-next --target 2.0.0-next.0` from that clean checkpoint
+and prove it reports `changed: false` without changing bytes. Build and pack the
+selected public cohort once with development mode, run `check-packed`, run the
+private Synth compatibility command against that exact manifest, and complete
+the remaining S0B package/install/import/type evidence. Do not publish or
+change production runtime behavior.
 
 ## Outcomes and retrospective
 
@@ -993,9 +1039,10 @@ requires this remediation to checkpoint before live alignment is retried; the
 package versions, ranges, changelogs, prerelease state, and lockfile therefore
 remain unchanged.
 
-The retried live alignment passed deterministic planning and readiness, applied
-the cohort transaction, and then failed closed at the canonical non-frozen Bun
-lockfile step because the controller has neither sufficient writable cached
-registry metadata nor registry access. All non-ledger bytes were restored.
-This checkpoint records only that environmental S0B blocker; it does not claim
-an aligned cohort or weaken the required lockfile evidence.
+The formerly blocked live alignment has now completed through the canonical
+non-frozen Bun lockfile step. The repository contains one coherent local
+`2.0.0-next.0` metadata cohort with deterministic prerelease changelogs and no
+runtime/API change. This is a partial S0B checkpoint: clean no-write replay,
+immutable development packing, exact packed inspection, all-package
+install/import/type evidence, and private Synth compatibility remain before
+the stage can pass.

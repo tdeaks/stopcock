@@ -146,14 +146,14 @@
     },
     "packages/async": {
       "name": "@stopcock/async",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
       },
     },
     "packages/autodiff": {
       "name": "@stopcock/autodiff",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
         "@stopcock/la": "workspace:*",
@@ -161,7 +161,7 @@
     },
     "packages/color": {
       "name": "@stopcock/color",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
         "@stopcock/la": "workspace:*",
@@ -169,21 +169,21 @@
     },
     "packages/date": {
       "name": "@stopcock/date",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
       },
     },
     "packages/diff": {
       "name": "@stopcock/diff",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
       },
     },
     "packages/eslint-plugin-fp": {
       "name": "@stopcock/eslint-plugin-fp",
-      "version": "0.0.0",
+      "version": "2.0.0-next.0",
       "devDependencies": {
         "vite-plus": "catalog:",
       },
@@ -193,11 +193,11 @@
     },
     "packages/fp": {
       "name": "@stopcock/fp",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
     },
     "packages/fp-codemod": {
       "name": "@stopcock/fp-codemod",
-      "version": "0.0.0",
+      "version": "2.0.0-next.0",
       "bin": {
         "stopcock-fp-codemod": "./dist/cli.js",
       },
@@ -212,7 +212,7 @@
     },
     "packages/fp-compiler": {
       "name": "@stopcock/fp-compiler",
-      "version": "0.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@babel/parser": "^8.0.4",
         "@babel/traverse": "^8.0.4",
@@ -230,30 +230,30 @@
         "webpack": "^5.108.4",
       },
       "peerDependencies": {
-        "@stopcock/fp": "^2.0.0",
+        "@stopcock/fp": "2.0.0-next.0",
       },
     },
     "packages/fp-interop": {
       "name": "@stopcock/fp-interop",
-      "version": "0.0.0",
+      "version": "2.0.0-next.0",
       "devDependencies": {
         "@stopcock/fp": "workspace:*",
         "vite-plus": "catalog:",
       },
       "peerDependencies": {
-        "@stopcock/fp": "^2.0.0",
+        "@stopcock/fp": "2.0.0-next.0",
       },
     },
     "packages/fp-testing": {
       "name": "@stopcock/fp-testing",
-      "version": "0.0.0",
+      "version": "2.0.0-next.0",
       "devDependencies": {
         "vite-plus": "catalog:",
       },
     },
     "packages/http": {
       "name": "@stopcock/http",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/async": "workspace:*",
         "@stopcock/fp": "workspace:*",
@@ -261,7 +261,7 @@
     },
     "packages/img": {
       "name": "@stopcock/img",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/color": "workspace:*",
         "@stopcock/la": "workspace:*",
@@ -269,40 +269,40 @@
     },
     "packages/la": {
       "name": "@stopcock/la",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
     },
     "packages/parser": {
       "name": "@stopcock/parser",
-      "version": "0.0.0",
+      "version": "2.0.0-next.0",
       "devDependencies": {
         "@stopcock/fp": "workspace:*",
         "vite-plus": "catalog:",
       },
       "peerDependencies": {
-        "@stopcock/fp": "^2.0.0",
+        "@stopcock/fp": "2.0.0-next.0",
       },
     },
     "packages/pattern": {
       "name": "@stopcock/pattern",
-      "version": "0.0.0",
+      "version": "2.0.0-next.0",
       "devDependencies": {
         "vite-plus": "catalog:",
       },
     },
     "packages/persistent": {
       "name": "@stopcock/persistent",
-      "version": "0.0.0",
+      "version": "2.0.0-next.0",
       "devDependencies": {
         "vite-plus": "catalog:",
       },
     },
     "packages/signal": {
       "name": "@stopcock/signal",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
     },
     "packages/state": {
       "name": "@stopcock/state",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/diff": "workspace:*",
         "@stopcock/fp": "workspace:*",
@@ -325,7 +325,7 @@
     },
     "packages/svg": {
       "name": "@stopcock/svg",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/color": "workspace:*",
         "@stopcock/la": "workspace:*",
@@ -333,7 +333,7 @@
     },
     "packages/synth": {
       "name": "@stopcock/synth",
-      "version": "1.0.0",
+      "version": "2.0.0-next.0",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
         "@stopcock/signal": "workspace:*",

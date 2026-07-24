@@ -1,5 +1,16 @@
 # @stopcock/svg
 
+## 2.0.0-next.0
+
+### Patch Changes
+
+- 5db6fca: Ship complete package descriptions, minimum Node.js engine metadata, README
+  files, changelogs, and package-local MIT licences with every public package.
+- Updated dependencies [b8d5ce2]
+- Updated dependencies [5db6fca]
+  - @stopcock/color@2.0.0-next.0
+  - @stopcock/la@2.0.0-next.0
+
 ## 0.0.2
 
 ### Patch Changes

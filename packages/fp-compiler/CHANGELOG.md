@@ -1,8 +1,8 @@
-# @stopcock/color
+# @stopcock/fp-compiler
 
 ## 2.0.0-next.0
 
-### Patch Changes
+### Major Changes
 
 - b8d5ce2: Release the clean FP 2.0 architecture: a slim root, explicit subpaths, strict
   generated sources, portable-only pipeline compilation, Iter in place of
@@ -28,18 +28,9 @@
   also gated. The public runtime has no `eval`, `new Function`, function-source
   parsing, or runtime-loaded JIT; optional specialization happens at build time.
 
-- 5db6fca: Ship complete package descriptions, minimum Node.js engine metadata, README
-  files, changelogs, and package-local MIT licences with every public package.
+### Patch Changes
+
 - Updated dependencies [b8d5ce2]
 - Updated dependencies [5db6fca]
 - Updated dependencies [5db6fca]
   - @stopcock/fp@2.0.0-next.0
-  - @stopcock/la@2.0.0-next.0
-
-## 0.0.2
-
-### Patch Changes
-
-- Updated dependencies []:
-  - @stopcock/fp@0.0.3
-  - @stopcock/la@0.0.3

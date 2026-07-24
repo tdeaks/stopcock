@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/state",
-  "version": "1.0.0",
+  "version": "2.0.0-next.0",
   "description": "Reactive immutable state with fine-grained subscriptions, patches, history, and framework adapters.",
   "license": "MIT",
   "repository": {
@@ -50,7 +50,7 @@
     "vue": "^3.5.40"
   },
   "peerDependencies": {
-    "@stopcock/async": "workspace:*",
+    "@stopcock/async": "2.0.0-next.0",
     "react": ">=18.0.0",
     "svelte": ">=3.0.0",
     "vue": ">=3.0.0"

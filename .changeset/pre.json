@@ -1,0 +1,39 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "color-demo": "0.0.1",
+    "demo": "0.0.1",
+    "@stopcock/diff-demo": "0.0.1",
+    "synth-studio": "0.0.2",
+    "@stopcock/async": "1.0.0",
+    "@stopcock/autodiff": "1.0.0",
+    "@stopcock/color": "1.0.0",
+    "@stopcock/date": "1.0.0",
+    "@stopcock/diff": "1.0.0",
+    "@stopcock/eslint-plugin-fp": "0.0.0",
+    "@stopcock/fp": "1.0.0",
+    "@stopcock/fp-codemod": "0.0.0",
+    "@stopcock/fp-compiler": "0.0.0",
+    "@stopcock/fp-interop": "0.0.0",
+    "@stopcock/fp-testing": "0.0.0",
+    "@stopcock/http": "1.0.0",
+    "@stopcock/img": "1.0.0",
+    "@stopcock/la": "1.0.0",
+    "@stopcock/parser": "0.0.0",
+    "@stopcock/pattern": "0.0.0",
+    "@stopcock/persistent": "0.0.0",
+    "@stopcock/signal": "1.0.0",
+    "@stopcock/state": "1.0.0",
+    "@stopcock/svg": "1.0.0",
+    "@stopcock/synth": "1.0.0"
+  },
+  "changesets": [
+    "add-fp-companion-tools",
+    "add-fp-interop",
+    "add-persistent-collections",
+    "fp-absolute-performance",
+    "fp-validation-composition",
+    "normalize-public-package-metadata"
+  ]
+}
