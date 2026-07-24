@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: CHECKPOINT_PENDING
+Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0R
-Current slice: CHECKPOINT_PENDING
-Last verified commit: CHECKPOINT_PENDING
+Current slice: REMEDIATE_DATE_SOURCE_TYPES
+Last verified commit: 643a2ec9a82a9f359c756ba3c1d72d7c15cb2897
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -52,7 +52,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | Stage | Status      | Verified commit or evidence                                                                                                                    |
 | ----- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers |
-| S0R   | CHECKPOINT_PENDING | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain |
+| S0R   | IN_PROGRESS | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain |
 | S0B   | NOT_STARTED | —                                                                                                                                              |
 | S1A   | NOT_STARTED | Consumer, size, and topology evidence                                                                                                          |
 | S1B   | NOT_STARTED | Dedicated performance-profile qualification                                                                                                    |
