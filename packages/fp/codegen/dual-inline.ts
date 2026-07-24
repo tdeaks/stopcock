@@ -6,12 +6,10 @@
  * Output: src/*.ts            (generated, body inlined into dispatch functions)
  */
 
-import { pipe, flow } from '../src'
-import * as A from '../src/array'
-import { OP_CODES } from '../src/opcodes'
 import { type Parser, type ParseResult, seq, map, string as pStr, char, run } from './parse'
 import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
+import { findRuntimeOpcodeByNameV1 } from './protocol/operator-definitions'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const DEFS_DIR = join(ROOT, 'codegen', 'defs')
@@ -188,7 +186,9 @@ const singleQuoted: Parser<string> = (input, pos) => {
 // Optional trailing comma before a closing delimiter
 const optComma: Parser<null> = (input, pos) => {
   const r = char(',')(input, pos)
-  return r.success ? { success: true, value: null, remaining: r.remaining, position: r.position } : { success: true, value: null, remaining: input.slice(pos), position: pos }
+  return r.success
+    ? { success: true, value: null, remaining: r.remaining, position: r.position }
+    : { success: true, value: null, remaining: input.slice(pos), position: pos }
 }
 
 // Tag parser: { op: 'name' } → name (tolerates a trailing comma: { op: 'name', })
@@ -360,7 +360,7 @@ function implementationParams(arity: number): string {
 }
 
 function generateArity1Tagged(dc: DualCall): string {
-  const opcode = dc.tag ? (OP_CODES[dc.tag] ?? 0) : 0
+  const opcode = dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0
   const decl = typeDecl(dc.name, dc.typeAnnotation)
 
   if (dc.bodyIsRef) {
@@ -393,7 +393,7 @@ function generateArity1Untagged(dc: DualCall): string {
 
 function generateArityN(dc: DualCall): string {
   const n = dc.arity
-  const opcode = dc.tag ? (OP_CODES[dc.tag] ?? 0) : 0
+  const opcode = dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0
   const hasTag = dc.tag !== null && opcode > 0
 
   if (dc.bodyIsRef) {
@@ -405,10 +405,7 @@ function generateArityN(dc: DualCall): string {
 function generateArityNRef(dc: DualCall, n: number, opcode: number, hasTag: boolean): string {
   const ref = dc.bodyStr
   const argsList = Array.from({ length: n }, (_, i) => `_arg${i}`).join(', ')
-  const curryCapture = Array.from(
-    { length: n - 1 },
-    (_, i) => `const _a${i} = _arg${i}`,
-  ).join('; ')
+  const curryCapture = Array.from({ length: n - 1 }, (_, i) => `const _a${i} = _arg${i}`).join('; ')
   const curryCall = `${ref}(data, ${Array.from({ length: n - 1 }, (_, i) => `_a${i}`).join(', ')})`
   const decl = typeDecl(dc.name, dc.typeAnnotation)
 
@@ -528,14 +525,14 @@ function transformModule(src: string): string {
   return outputLines.join('\n')
 }
 
-const countBraces = (s: string): number =>
-  pipe(
-    Array.from(s),
-    A.reduce(
-      (d: number, ch: string) => ('({['.includes(ch) ? d + 1 : ')}]'.includes(ch) ? d - 1 : d),
-      0,
-    ),
-  )
+const countBraces = (source: string): number => {
+  let depth = 0
+  for (const character of source) {
+    if ('({['.includes(character)) depth++
+    else if (')}]'.includes(character)) depth--
+  }
+  return depth
+}
 
 function isDeclarationComplete(text: string): boolean {
   // A declaration is complete when all braces/parens are balanced
@@ -552,19 +549,15 @@ function isDeclarationComplete(text: string): boolean {
 const processModule = (mod: string) => {
   const src = readFileSync(join(DEFS_DIR, `${mod}.ts`), 'utf8')
   const transformed = transformModule(src)
-  const output =
-    mod === 'array' ? `${transformed}\n\nexport * from './array-extra'\n` : transformed
+  const output = mod === 'array' ? `${transformed}\n\nexport * from './array-extra'\n` : transformed
   const dualCount = (src.match(/= dual\(/g) || []).length
   writeFileSync(join(SRC_DIR, `${mod}.ts`), output)
   console.log(`  ${mod}.ts: ${dualCount} dual() calls`)
   return dualCount
 }
 
-const totalFns = pipe(
-  MODULES,
-  A.map(processModule),
-  A.reduce((acc, n) => acc + n, 0),
-)
+let totalFns = 0
+for (const moduleName of MODULES) totalFns += processModule(moduleName)
 
 console.log(`\nGenerated ${MODULES.length} modules, ${totalFns} functions inlined → src/`)
 /// <reference types="bun" />

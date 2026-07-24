@@ -1,0 +1,26 @@
+{
+  "protocol": "stopcock.future-tier-manifest",
+  "protocolVersion": 1,
+  "semanticManifestHash": "sha256:3e5965cc012340e21667b4a1c07109a1637394e472f463e953198019f2dbcde5",
+  "semanticFactsHash": "sha256:b8fc99c1023be40c96da6df4c393ed1a0f17c86d86c7d1d5546fd37ed10b5c16",
+  "tiers": [
+    {
+      "tier": "compact",
+      "status": "deferred",
+      "loweringAbiVersion": 1,
+      "descriptors": []
+    },
+    {
+      "tier": "optimized",
+      "status": "deferred",
+      "loweringAbiVersion": 1,
+      "descriptors": []
+    }
+  ],
+  "unsupportedCapabilities": [
+    "worker",
+    "simd",
+    "wasm",
+    "incremental"
+  ]
+}

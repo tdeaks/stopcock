@@ -6,7 +6,9 @@
   },
   "include": [
     "./dual-inline.ts",
+    "./generate.ts",
     "./parse.ts",
-    "./portable-templates.ts"
+    "./portable-templates.ts",
+    "./protocol/**/*.ts"
   ]
 }

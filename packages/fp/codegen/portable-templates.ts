@@ -9,26 +9,26 @@
  */
 import { writeFileSync } from 'fs'
 import { join, dirname } from 'path'
+import { runtimeOpcodeByNameV1 } from './protocol/operator-definitions'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const OUT = join(ROOT, 'src', 'portable-templates.ts')
 
-// Must match src/opcodes.ts.
-const OP_MAP = 1
-const OP_FILTER = 2
-const OP_TAKE = 3
-const OP_FLAT_MAP = 7
-const OP_REDUCE = 8
-const OP_EVERY = 10
-const OP_SOME = 11
-const OP_FIND = 12
-const OP_FIND_INDEX = 13
-const OP_FILTER_MAP = 14
-const OP_REJECT = 16
-const OP_NONE = 17
-const OP_COUNT = 18
-const OP_FIND_MAP = 22
-const OP_SUM = 41
+const OP_MAP = runtimeOpcodeByNameV1('map')
+const OP_FILTER = runtimeOpcodeByNameV1('filter')
+const OP_TAKE = runtimeOpcodeByNameV1('take')
+const OP_FLAT_MAP = runtimeOpcodeByNameV1('flatMap')
+const OP_REDUCE = runtimeOpcodeByNameV1('reduce')
+const OP_EVERY = runtimeOpcodeByNameV1('every')
+const OP_SOME = runtimeOpcodeByNameV1('some')
+const OP_FIND = runtimeOpcodeByNameV1('find')
+const OP_FIND_INDEX = runtimeOpcodeByNameV1('findIndex')
+const OP_FILTER_MAP = runtimeOpcodeByNameV1('filterMap')
+const OP_REJECT = runtimeOpcodeByNameV1('reject')
+const OP_NONE = runtimeOpcodeByNameV1('none')
+const OP_COUNT = runtimeOpcodeByNameV1('count')
+const OP_FIND_MAP = runtimeOpcodeByNameV1('findMap')
+const OP_SUM = runtimeOpcodeByNameV1('sum')
 
 type StageKind = 'map' | 'filter' | 'reject' | 'filterMap'
 
