@@ -92,6 +92,7 @@ describe('packed tarball', () => {
       await expect(access(join(installedRoot, entry.import))).resolves.toBeUndefined()
     }
     await expect(access(join(installedRoot, 'README.md'))).resolves.toBeUndefined()
+    await expect(access(join(installedRoot, 'CHANGELOG.md'))).resolves.toBeUndefined()
     await expect(access(join(installedRoot, 'LICENSE'))).resolves.toBeUndefined()
 
     const files = await readdir(installedRoot, { recursive: true })

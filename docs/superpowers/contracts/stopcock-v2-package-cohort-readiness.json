@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "canonicalStage": "S0",
   "canonicalPlan": "docs/superpowers/plans/2026-07-24-stopcock-v2-performance-density-superplan.md",
-  "manifestSetSha256": "sha256:4baee38a8b79d0eb58e2b2636b631526552a4834329e36bedfcdbf3faee31d2c",
+  "manifestSetSha256": "sha256:b0520d9c21911fad7c1eb8a44f96ffffcbd11238eeb62692547de5e33f8bca5c",
   "dispositionPolicy": "S0 ready means the package has a complete static release surface and passed the recorded source-type and direct-build probe. S0R still owns scoped correctness, pack, clean-install, declared-export import, and blocker-remediation proof before S0B may align versions.",
   "cohort": {
     "public": [
@@ -114,24 +114,24 @@
         },
         "changelog": {
           "path": "CHANGELOG.md",
-          "state": "present-unpacked",
+          "state": "present-packed",
           "pendingChangesets": ["fp-absolute-performance.md"]
         }
       },
       "disposition": {
-        "status": "blocked:source-types-and-package-metadata",
+        "status": "ready",
         "scopeTarget": "async-source-types",
-        "blockers": [
-          "Source types and declaration build fail with TS2322 at src/task.ts:94, src/task.ts:124, and src/task.ts:140 because the generic DualOperation result is not assignable to the declared data-first/data-last overloads.",
-          "CHANGELOG.md exists but is absent from the package files allowlist."
-        ],
+        "blockers": [],
         "evidence": [
           "2026-07-24: vp exec tsc -p tsconfig.json --noEmit exited 1.",
           "2026-07-24: node ../../tooling/build-package.mjs emitted JavaScript, then exited 2 in declaration generation.",
-          "2026-07-24: static metadata inspection recorded CHANGELOG.md as present-unpacked."
+          "2026-07-24: static metadata inspection recorded CHANGELOG.md as present-unpacked.",
+          "2026-07-24: source types and public type contracts passed after narrow Async-local overload adapters preserved the existing dual runtime.",
+          "2026-07-24: the direct package build passed and the 7-file, 99-test package suite passed, including packed runtime imports and Bundler/NodeNext declaration consumers.",
+          "2026-07-24: the packed Async tarball contains CHANGELOG.md alongside README.md and LICENSE."
         ],
         "transitionRequirements": [
-          "S0R must repair the Async overload typing and packed changelog metadata, then rerun scoped types, tests, build, pack, clean install, and every declared export.",
+          "S0R remediation passed scoped source types, public type contracts, tests, direct build, pack, isolated extracted-consumer imports, and declarations.",
           "S0B must align the public version and internal FP range to the selected 2.0.0-next cohort."
         ]
       }
