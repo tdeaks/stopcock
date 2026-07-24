@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S0B
-Current slice: PACK_AND_VALIDATE_ALIGNED_COHORT
-Last verified commit: 7d2d2220dc4719b2c1b73cc85c94744c80aac7b6
+Current canonical stage: S1A
+Current slice: BUILD_CONSUMER_SIZE_TOPOLOGY_EVIDENCE
+Last verified commit: 551852a06c1c22a2241fb9e3c75815524fdbc9fb
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -53,8 +53,8 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED        | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                         |
 | S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready |
-| S0B   | IN_PROGRESS | —; deterministic cohort version authority, immutable single-build packer, exact packed-manifest checker, private Synth compatibility runner, and credential-free changelog renderer independently validated; the live 20-public-package plus private Synth cohort is aligned to `2.0.0-next.0`, six public changesets are consumed into prerelease state/changelogs, and the regenerated lockfile is frozen-valid; clean-checkpoint no-write replay, development packing, exact packed inspection, private Synth compatibility, and final stage validation remain |
-| S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                                                                                                                                                                                                                                                                  |
+| S0B   | GATE_PASSED | Aligned 20-package public plus private Synth `2.0.0-next.0` cohort at `551852a06c1c22a2241fb9e3c75815524fdbc9fb`; no-write alignment replay, immutable 20-tarball development artifact `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`, exact packed checks, 117-export Bun/Node/type consumer, private Synth compatibility, and independent exit validation passed |
+| S1A   | IN_PROGRESS        | Consumer, size, and topology evidence                                                                                                                                                                                                                                                                                                                                                  |
 | S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                            |
 | S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                          |
 | S2    | NOT_STARTED        | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                               |
@@ -163,6 +163,11 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       the complete 20-package public cohort once into immutable development
       artifact
       `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`.
+- [x] (2026-07-24) Completed S0B: clean alignment replay wrote no byte; the
+      immutable development pack reproduced the same content hash; exact
+      packed inspection, all-cohort clean install, 117-export Bun/Node runtime
+      imports and declaration type-check, private Synth compatibility, 13
+      focused tests, and independent exit validation all passed.
 
 ## Evidence log
 
@@ -655,8 +660,25 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     and 20 exact package/tarball records;
   - the packer's integrated exact packed check passed, and an explicit
     `release:v2:check-packed` replay passed against the same manifest;
-  - the immutable artifact is ready for a clean checkpoint. Private Synth
-    compatibility and byte-identical pack replay remain before S0B exit.
+  - after the immutable artifact checkpoint, private Synth source types and
+    the bounded FP/Signal runtime contract passed against only the exact packed
+    FP and Signal tarballs;
+  - a second development pack rebuilt the 20 packages, resolved to the same
+    content hash, reported `changed: false`, and left the canonical worktree
+    clean;
+  - a clean isolated consumer installed all 20 tarballs through local
+    content-addressed paths and overrides with no peer warning; all installed
+    Stopcock packages reported `2.0.0-next.0`;
+  - all 117 declared packed exports imported under Bun 1.3.14 and Node
+    24.18.0, and TypeScript 7.0.2 type-checked those exact installed
+    declarations; optional React, Svelte, and Vue peers were present for their
+    explicit State subpaths;
+  - an independent `v2_test_runner` repeated clean no-write alignment, cohort
+    checking, exact packed checking, Synth compatibility, the 13 focused
+    tooling tests, both 117-export runtime imports, the packed declaration
+    consumer, diff hygiene, and final clean status without source edits;
+  - S0B exits at clean verified commit
+    `551852a06c1c22a2241fb9e3c75815524fdbc9fb`.
 
 ## Surprises and discoveries
 
@@ -975,17 +997,14 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 
 ## Current blockers
 
-None. The controller-only Bun metadata/network blocker is resolved by direct
-execution in the recorded canonical worktree.
+None for the completed S0B gate.
 
 ## Exact next action
 
-Checkpoint the immutable development artifact, run the private Synth
-compatibility command against that exact manifest, then rerun development
-packing from the clean checkpoint and prove it resolves to the same content
-hash without changing bytes. Complete the remaining S0B package/install/import/
-type evidence and stage gate. Do not publish or change production runtime
-behavior.
+Implement S1A's additive behavior-valid cross-bundler consumer-size and
+topology evidence from the aligned packed cohort. Preserve the current runtime,
+exports, distribution bytes, legacy topology mode, and immutable S0B artifact.
+Do not begin hot-path implementation or replace a baseline in this slice.
 
 ## Outcomes and retrospective
 
@@ -1067,7 +1086,14 @@ remain unchanged.
 The formerly blocked live alignment has now completed through the canonical
 non-frozen Bun lockfile step. The repository contains one coherent local
 `2.0.0-next.0` metadata cohort with deterministic prerelease changelogs and no
-runtime/API change. This is a partial S0B checkpoint: clean no-write replay,
+runtime/API change. At that partial checkpoint, clean no-write replay,
 immutable development packing, exact packed inspection, all-package
-install/import/type evidence, and private Synth compatibility remain before
-the stage can pass.
+install/import/type evidence, and private Synth compatibility still remained.
+
+S0B is complete at
+`551852a06c1c22a2241fb9e3c75815524fdbc9fb`. The exact local
+`2.0.0-next.0` cohort is aligned, packable, peer-consistent, independently
+validated, and retained as one immutable 20-tarball development artifact;
+private Synth is aligned, compatibility-green, and absent from the publication
+manifest. No registry or other external release state changed. S1A now owns
+the first post-alignment implementation work.
