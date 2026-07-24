@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: CHECKPOINT_PENDING
+Programme status: BLOCKED
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0R
-Current slice: CHECKPOINT_PENDING
-Last verified commit: CHECKPOINT_PENDING
+Current slice: SETUP_PREDECESSOR_SCOPE_REPAIR_FOR_ASYNC_S0R
+Last verified commit: 044dd5c39666fb204911c43f0b4898ee007f3846
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -52,7 +52,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | Stage | Status             | Verified commit or evidence                                                                                                                    |
 | ----- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers |
-| S0R   | CHECKPOINT_PENDING | Conditional stage; blocked by the state-coupled readiness test's frozen S0R scope omission                                                     |
+| S0R   | BLOCKED | Conditional stage; blocked by the state-coupled readiness test's frozen S0R scope omission                                                     |
 | S0B   | NOT_STARTED        | —                                                                                                                                              |
 | S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                          |
 | S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                    |
