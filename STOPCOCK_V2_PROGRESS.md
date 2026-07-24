@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S0B
-Current slice: IMPLEMENT_SYNTH_COMPAT_RUNNER
-Last verified commit: b55e500ba279d208b60f383458fe1b9438f73391
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -53,7 +53,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | S0    | GATE_PASSED        | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                         |
 | S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready |
-| S0B   | IN_PROGRESS | —; deterministic cohort version authority implemented and independently validated; live package manifests and lockfile remain unchanged; immutable single-build cohort packer and exact packed-manifest checker implemented and independently validated                                                                                                                                     |
+| S0B   | CHECKPOINT_PENDING | —; deterministic cohort version authority implemented and independently validated; live package manifests and lockfile remain unchanged; immutable single-build cohort packer and exact packed-manifest checker implemented and independently validated; private Synth packed-dependency compatibility runner implemented and independently validated                                  |
 | S1A   | NOT_STARTED        | Consumer, size, and topology evidence                                                                                                                                                                                                                                                                                                                                                  |
 | S1B   | NOT_STARTED        | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                            |
 | S1C   | NOT_STARTED        | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                          |
@@ -136,6 +136,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       cohort packer and packed-manifest checker with deterministic dependency
       order, exact workspace/packed identity, content-addressed development
       evidence, and private Synth exclusion.
+- [x] (2026-07-24) Implemented and independently validated S0B's private Synth
+      compatibility runner against exact packed FP/Signal dependency closures,
+      copied live Synth source, and a bounded source-type/runtime contract
+      without aligning live manifests, rebuilding Synth WASM, or publishing.
 
 ## Evidence log
 
@@ -454,6 +458,48 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     new packer, its focused test, and this ledger. No package manifest,
     changelog, Changesets state, lockfile, generated cohort artifact, runtime
     source, or external state was changed.
+- S0B private Synth compatibility runner:
+  - startup HEAD was
+    `b41b0bad5f46d66dbfc428022e35abc8ba9de8bb`, with a clean worktree on the
+    recorded branch and isolated worktree;
+  - the frozen base and prior verified commit were ancestors, both preserved
+    source-plan hashes matched the canonical pins, and the trusted project
+    configuration plus custom Stopcock 2.0 agents were active;
+  - `tooling/v2-synth-compat.mjs` now requires one explicit immutable cohort
+    manifest, validates it before and after execution, proves private Synth is
+    excluded from the public package set, and refuses a live Synth manifest
+    outside the exact aligned cohort;
+  - the runner derives Synth's exact non-development dependency closure,
+    copies only hash-matched public tarballs into a fresh temporary consumer,
+    installs through local `file:` dependencies plus local overrides with an
+    unreachable registry, disables lifecycle scripts and shared cache use, and
+    verifies every installed manifest byte against the packed evidence;
+  - the compatibility contract copies the real private Synth source tree
+    without symbolic links, type-checks that copy against the packed
+    dependencies, and executes a bounded `pipe` plus Signal-backed wavetable
+    and embedded-WASM render smoke without running Cargo, rebuilding WASM, or
+    publishing Synth;
+  - focused coverage uses the live Synth source tree and real fixture tarballs;
+    it proves recursive runtime dependency admission, development-only
+    dependency exclusion, non-runtime package exclusion, deterministic
+    results, exact cleanup after install/type/runtime failures, invalid or
+    missing manifests, public/non-private Synth drift, registry-only
+    dependency rejection, tarball tampering, and symlink refusal;
+  - the focused runner suite passed 3 tests, and the existing cohort, packer,
+    controller, and readiness suites passed 38 tests;
+  - both readiness modes still validate 21 package records with no blocker,
+    live Synth source types pass, and syntax, focused lint, focused formatting,
+    and `git diff --check` all pass;
+  - an independent `v2_explorer` audit found no canonical contradiction and
+    its three concrete coverage gaps were remediated before final validation;
+  - an independent `v2_test_runner` repeated every command above without
+    changing HEAD, any dirty path, or any dirty byte, and left no repository
+    artifact. Its sandbox denied `ps`, but every assigned command and the
+    runner implementation itself use bounded synchronous child processes;
+  - the slice changes only the root command surface, the Synth compatibility
+    runner, its focused test, and this ledger. No package manifest, changelog,
+    Changesets state, lockfile, generated cohort artifact, production source,
+    external state, or ignored repository evidence was changed.
 
 ## Surprises and discoveries
 
@@ -532,6 +578,11 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - Package declaration builds inherit `tsconfig.base.json` outside each package
   tree. Reproducible packed identity must hash that root configuration as a
   canonical build input rather than relying only on package-local source.
+- Bun does not satisfy an exact transitive dependency inside one local tarball
+  merely because the same package is also a top-level `file:` tarball
+  dependency. The isolated Synth install therefore needs hash-matched local
+  overrides for the complete non-development closure; the unreachable
+  registry fixture fails if any edge escapes that closure.
 
 ## Decision log
 
@@ -691,20 +742,32 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   separate mutation and validation boundaries.
   Date: 2026-07-24.
 
+- Decision: Define S0B's bounded private Synth compatibility contract as a
+  copied-source type-check plus one deterministic runtime smoke against only
+  the exact packed FP/Signal runtime dependency closure.
+  Rationale: This exercises the private dependent's real import/type graph and
+  the root `pipe`, Signal-backed wavetable, and embedded-WASM runtime seams
+  affected by the 2.0 cohort without expanding a package-compatibility lane
+  into Synth implementation work, a Cargo/WASM rebuild, or the full Synth
+  suite.
+  Date: 2026-07-24.
+
 ## Current blockers
 
-None. The deterministic version authority plus immutable packer and
-packed-manifest checker are independently valid. S0B still owns the private
-Synth compatibility runner, live cohort alignment, and complete packed exit
-gate before S1 becomes eligible.
+None. The deterministic version authority, immutable packer/packed-manifest
+checker, and private Synth compatibility runner are independently valid. S0B
+still owns live cohort alignment and the complete real packed exit gate before
+S1 becomes eligible.
 
 ## Exact next action
 
-From the clean immutable-packer checkpoint, implement and focused-test
-`tooling/v2-synth-compat.mjs` as the next independently valid S0B slice. Consume
-an explicit cohort manifest, prove Synth is private and absent from publication,
-install only its packed cohort dependencies, and run its bounded compatibility
-contract; do not align the live manifests or lockfile or publish in that slice.
+From the clean private-Synth-runner checkpoint, run
+`bun run release:v2:align-next --target 2.0.0-next.0` as the next independently
+valid S0B slice. Prove the filtered Changesets operation aligns all 20 selected
+public manifests plus private Synth, exact internal prerelease ranges,
+changelogs/prerelease state, and `bun.lock`; rerun `check-cohort` and the
+byte-stable second execution, but do not pack, publish, or change production
+runtime behavior in that alignment slice.
 
 ## Outcomes and retrospective
 
@@ -765,3 +828,11 @@ content-addressed same-version snapshots, and fail-closed archive and overwrite
 behavior. Private Synth is asserted and excluded but its packed compatibility
 runner remains the next slice; live package versions, ranges, changelogs,
 prerelease state, lockfile, and external release state remain untouched.
+
+S0B now also has an independently valid private Synth packed-dependency
+compatibility runner. A hermetic real-tar fixture proves that only the exact
+non-development dependency closure is installed and that the real Synth source
+type-checks and executes its bounded FP/Signal compatibility smoke. Live
+package versions, ranges, changelogs, prerelease state, lockfile, generated
+cohort artifacts, production source, and external release state remain
+untouched, so live `2.0.0-next.0` alignment is the next partial S0B slice.
