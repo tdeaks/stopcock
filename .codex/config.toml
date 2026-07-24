@@ -1,0 +1,28 @@
+# Project-scoped defaults for demanding Stopcock implementation work.
+# This file configures Codex but does not launch a task.
+model = "gpt-5.6-sol"
+model_reasoning_effort = "max"
+
+sandbox_mode = "workspace-write"
+approval_policy = { granular = { sandbox_approval = true, rules = true, mcp_elicitations = false, request_permissions = false, skill_approval = false } }
+approvals_reviewer = "auto_review"
+allow_login_shell = false
+
+[sandbox_workspace_write]
+network_access = false
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+default_subagent_model = "gpt-5.6-terra"
+default_subagent_reasoning_effort = "high"
+interrupt_message = true
+
+[auto_review]
+policy = """
+Approve only bounded, non-destructive local implementation and validation work
+inside the isolated Stopcock 2.0 worktree. Deny network enablement, credential
+access, external writes, git push, registry or dist-tag mutation, GitHub release
+mutation, publication, destructive recovery, sandbox expansion beyond the
+recorded worktree, and any attempt to weaken or bypass these controls.
+"""
