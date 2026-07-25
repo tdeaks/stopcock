@@ -32,6 +32,8 @@
     "perf:iter:node": "node --import=tsx src/reference/iter-perf-gate.ts",
     "perf:iter-broad:bun": "bun run src/reference/iter-broad-perf-gate.ts",
     "perf:iter-broad:node": "node --import=tsx src/reference/iter-broad-perf-gate.ts",
+    "perf:iter-view:bun": "bun run src/reference/iter-typed-array-kernel-gate.ts",
+    "perf:iter-view:node": "node --import=tsx src/reference/iter-typed-array-kernel-gate.ts",
     "perf:hot-paths:bun": "bun run src/reference/transducer-collector-without-perf-gate.ts",
     "perf:hot-paths:node": "node --import=tsx src/reference/transducer-collector-without-perf-gate.ts",
     "perf:portable:gate": "bun run src/reference/portable-perf-gate.ts",
