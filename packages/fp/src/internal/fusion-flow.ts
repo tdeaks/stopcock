@@ -1,4 +1,6 @@
 import { compile } from '../compile'
+import { trustedOperatorEntry } from './provenance'
+import { sequentialFlow } from './sequential'
 
 export function flow<A, B>(f1: (a: A) => B): (a: A) => B
 export function flow<A, B, C>(f1: (a: A) => B, f2: (b: B) => C): (a: A) => C
@@ -244,5 +246,14 @@ export function flow<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,
 export function flow(...fns: Array<(x: unknown) => unknown>): (a: unknown) => unknown {
   const len = fns.length
   if (len === 1) return fns[0]
-  return compile(...fns) as (a: unknown) => unknown
+  // Compiling is only worth its construction cost when there is something to
+  // fuse. flow(f, g) over plain functions used to build a whole plan to
+  // discover it had nothing to do, which made composing 15x slower than
+  // lodash for an identical result.
+  for (let index = 0; index < len; index++) {
+    if (trustedOperatorEntry(fns[index]) !== undefined) {
+      return compile(...fns) as (a: unknown) => unknown
+    }
+  }
+  return sequentialFlow(...(fns as never[])) as (a: unknown) => unknown
 }
