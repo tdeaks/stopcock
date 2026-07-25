@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S8
-Current slice: ATOMIC_ROOT_CUTOVER
-Last verified commit: 9301314
+Current canonical stage: S9
+Current slice: COMPACT_FUSION
+Last verified commit: 55ca6a1
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -65,7 +65,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S5B   | GATE_PASSED | Weak callback-keyed operator cache at `706d5ad`; the strong one-entry slot is gone, `map(f) === map(f)` holds while `f` is live, and all seven optional candidates are recorded as measured stops                                                                                                                                                                                             |
 | S6    | GATE_PASSED | Engine-owned fusion module plus three additive entries at `547de0d`; facades bind to the engine, not to root, and a direct-only consumer retains neither engine nor debug                                                                                                                                                                                                                     |
 | S7    | GATE_PASSED | Receipt emission, `stopcock check` CLI and renderer, import pruning, callback and source-map hardening, canonical Option terminals, lane split, and the topology-neutral package gate at `9301314`                                                                                                                                                                                            |
-| S8    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S8    | GATE_PASSED | Root `pipe`/`flow` sequential at `55ca6a1`; root surface narrowed to the migration map, every size ceiling met with no planner retained. Non-publishable integration state, as the stage requires                                                                                                                                                                                             |
 | S9    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | S10   | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
 | S10X  | NOT_STARTED | Conditional optimizer extraction                                                                                                                                                                                                                                                                                                                                                              |
@@ -290,6 +290,50 @@ check` CLI finally has something producing what it reads, and proved the
       two halves end to end.
 
 ## Evidence log
+
+- S8 evidence:
+  - root `pipe` and `flow` delegate to the dependency-free sequential core.
+    The 20 overload signatures moved with them, so the public type surface is
+    unchanged;
+  - measured root entries, all under their ceilings and none retaining the
+    planner, lowerer, registry, shape cache, or templates:
+
+    | entry                      | gzip  | ceiling |
+    | -------------------------- | ----- | ------- |
+    | `root.pipe`                | 191 B | 512 B   |
+    | `root.flow`                | 143 B | 512 B   |
+    | sequential common pipeline | 640 B | 1,536 B |
+    | root named fixture         | 221 B | 512 B   |
+    | root enumerated            | 442 B | 8,192 B |
+
+  - operator identity (`_op`) is present in the common-pipeline row and is
+    exactly what S8 permits a reachable data-last wrapper to keep; the gate's
+    forbidden-marker list excludes it deliberately and a test pins that;
+  - `compile`, `compilePure`, `dual`, and `explain` moved to the subpaths that
+    own them, and `@stopcock/fp-codemod` rewrites all four;
+  - the S0 boundary contract now asserts against the recorded migration map in
+    both directions: a name destined for the root must be present, a name
+    destined elsewhere must be absent. That is a stronger check than the
+    pre-cutover snapshot it replaces;
+  - tests exercising fused execution moved to the explicit entry, which is
+    where that behaviour now lives. Root sequencing has its own 19-test
+    contract covering execution order (`map,map,filter,filter` rather than
+    interleaved), agreement with fusion at arities one to five, and the
+    narrowed surface;
+  - `@stopcock/fp` passes 2,643 tests, `@stopcock/fp-compiler` 234,
+    `@stopcock/fp-codemod` 14, the benchmarks reference suite 418, and the
+    deterministic gates 4/4;
+  - per the stage's own exit gate this is a complete but **non-publishable**
+    2.0-next integration state.
+
+- Hazard found during the cutover:
+  - `fuzz-correctness.test.ts` appends every disagreement it finds to a
+    checked-in pinned corpus. Running it while the cutover was half-applied —
+    root already sequential, harness still comparing against fused
+    expectations — wrote 9,082 lines of bogus cases into that corpus, which
+    then replayed as permanent failures. Reverting the file and pointing the
+    harness at the engine restored a clean 78-test pass. A self-recording
+    corpus will absorb any transient breakage as though it were a finding.
 
 - S7 callback, source-map, and Option evidence:
   - eleven callback-context cases pass against the real runtime, executed
