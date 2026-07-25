@@ -10,6 +10,8 @@
     "bench:dist": "vp test bench --run --config vitest.config.dist.ts",
     "validate:autodiff": "vp test run --config vitest.config.validate.ts src/autodiff-validate.test.ts",
     "validate": "vp test run --config vitest.config.validate.ts",
+    "perf:baseline:s1c:bun": "bun run src/reference/s1c-baseline-run.ts",
+    "perf:baseline:s1c:node": "node --expose-gc --import=tsx src/reference/s1c-baseline-run.ts",
     "perf:profile": "bun run src/reference/perf-profile-gate.ts",
     "perf:profile:bun": "bun run src/reference/perf-profile-gate.ts",
     "perf:profile:node": "node --import=tsx src/reference/perf-profile-gate.ts",
