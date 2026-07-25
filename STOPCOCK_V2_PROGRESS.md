@@ -2323,6 +2323,23 @@ This blocks S1C, S3B, and every later timing- or memory-dependent promotion
 lane. It does not invalidate the independently complete S1A, S2, or S3A
 checkpoints.
 
+## The eight remaining local stages
+
+Named here so completion is checkable rather than a matter of recollection.
+S13 and S14 are excluded: both are external publication and remain
+user-authorized, with `External mutation authorization: NONE`.
+
+| #   | Stage | Status      |
+| --- | ----- | ----------- |
+| 1   | S10   | GATE_PASSED |
+| 2   | S10X  | GATE_PASSED (conditional; fired on S10J's verdict) |
+| 3   | S10J  | GATE_PASSED |
+| 4   | S11   | IN_PROGRESS |
+| 5   | P3B   | NOT_STARTED |
+| 6   | DISP  | NOT_STARTED |
+| 7   | S12P  | NOT_STARTED |
+| 8   | S12   | NOT_STARTED |
+
 ## Blocker: compiler worst-case row regressed during S10X
 
 `compiler-perf-gate` fails its `minimumCaseRatio` of 0.80. The failing row is
