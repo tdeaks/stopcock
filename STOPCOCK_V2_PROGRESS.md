@@ -249,8 +249,50 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Completed P3A in an isolated lane and merged it: throughput
       and memory measurement now run in separate workers, and the allocation
       corpus reports per-family dispositions.
+- [x] (2026-07-25) Landed S7's consuming half in an isolated lane and merged
+      it: a deterministic receipt renderer, an evidence policy engine, and
+      `stopcock check` packed as a real bin.
 
 ## Evidence log
+
+- S7 CLI-slice evidence (partial stage; emission and transform work remain):
+  - `packages/fp-compiler/src/receipt-report.ts` renders six evidence classes
+    in a fixed order and never merges them: declared capability, static
+    decision, corpus evidence, runtime observation, qualified benchmark, and
+    packed release evidence, each with its own status and its own invalidating
+    hash classes;
+  - `src/cli.ts` ships as `"bin": { "stopcock": "./dist/cli.js" }` with a
+    required `check` subcommand. Exit `0` every requested policy passed, `1` a
+    checked policy failed, `2` invalid arguments, schema, or artifacts;
+  - at least one policy is mandatory: there is no implicit default, and both
+    "no expectations supplied" and "referenced evidence not supplied" fail
+    rather than pass. No missing evidence is treated as success;
+  - `--json` writes key-sorted newline-terminated JSON to stdout with prose on
+    stderr; without it prose goes to stdout and stderr stays empty;
+  - stale-hash invalidation, each proven by a test: source invalidates all six
+    classes; config and package invalidate everything except declared
+    capability; semantic manifest invalidates corpus evidence; output
+    invalidates runtime, benchmark, and release; runtime invalidates runtime
+    observation. A stale class has its statements removed rather than
+    annotated, so an allocation or execution sentence cannot outlive its label;
+  - render rules proven by test: a fallback renders as not transformed with no
+    lowering or allocation claim; a transformed site renders "selection is not
+    execution"; a site with no hash-joined runtime profile renders
+    `unavailable` and carries no consumed-item or early-exit claim; corpus
+    statements carry the qualifier that a corpus pass is not proof an arbitrary
+    user callback is equivalent; absent evidence renders `unavailable` with
+    "absence is not a pass";
+  - determinism is proven both in-process and from the packed bin, including
+    across reordered `--receipts`, `--evidence`, and `--policy` flags;
+  - packed proof: `bun pm pack`, extracted into a clean consumer, run through
+    the `node_modules/.bin/stopcock` shim. Every import specifier in
+    `dist/cli.js` is a `node:` builtin, so the checker cannot import a
+    production fusion runtime to render a report;
+  - 36 focused tests; the whole `@stopcock/fp-compiler` suite passes 179 tests
+    with clean types after the merge;
+  - the receipt schema itself was not extended: `--expectations` and
+    `--policy-file` are CLI-level envelopes validated with unknown-field
+    rejection.
 
 - P3A evidence:
   - `benchmarks/src/reference/allocation-perf-*` adds the corpus, its metric
