@@ -10,9 +10,28 @@
 import { writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { runtimeOpcodeByNameV1 } from './protocol/operator-definitions'
+import {
+  bankHashOf,
+  descriptorHashOf,
+  fusionRunnerId,
+  GENERIC_FALLBACK_ID,
+  FUSION_RUNNER_PROTOCOL,
+  FUSION_RUNNER_PROTOCOL_VERSION,
+  type FusionRunnerDescriptorV1,
+} from './protocol/fusion-runner-v1'
+import { OPERATOR_MANIFEST_V1_HASH as SEMANTIC_MANIFEST_HASH } from './protocol/generate-protocol'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const OUT = join(ROOT, 'src', 'portable-templates.ts')
+const DESCRIPTOR_OUT = join(ROOT, 'codegen', 'generated', 'fusion-runner-bank-v1.json')
+
+/** Everything a descriptor says that is not one of its two identity fields. */
+type DescriptorFacts = Omit<
+  FusionRunnerDescriptorV1,
+  'protocol' | 'protocolVersion' | 'semanticManifestHash' | 'bankHash'
+>
+
+const descriptorFacts: DescriptorFacts[] = []
 
 const OP_MAP = runtimeOpcodeByNameV1('map')
 const OP_FILTER = runtimeOpcodeByNameV1('filter')
@@ -490,6 +509,94 @@ function longSinkManifestEntry(sink: Exclude<LongFlatMapSink, 'collect'>, fn: Em
   return `  { key: '${opcodes.join(',')}', opcodes: [${opcodes.join(', ')}], kind: '${sink}', run: ${fn.name} }`
 }
 
+const SINK_OUTPUT: Readonly<Record<SinkKind, DescriptorFacts['outputShape']>> = {
+  reduce: 'scalar',
+  count: 'scalar',
+  sum: 'scalar',
+  every: 'boolean',
+  some: 'boolean',
+  none: 'boolean',
+  find: 'option',
+  findMap: 'option',
+  findIndex: 'index',
+}
+
+/** A chain shrinks its input unless every stage is a total mapping. */
+function chainCardinality(
+  chain: readonly { kind: StageKind; op: number }[],
+): 'one-to-one' | 'filtering' {
+  return chain.every((stage) => stage.kind === 'map') ? 'one-to-one' : 'filtering'
+}
+
+/**
+ * Every runner in this bank shares one binding ABI and one evaluation
+ * contract: callbacks are read from the caller's binding array per call, never
+ * retained, and invoked left to right per element. Only the parts that differ
+ * per runner are arguments here.
+ */
+function describe(facts: {
+  family: 'array' | 'sink'
+  key: string
+  opcodes: readonly number[]
+  outputShape: DescriptorFacts['outputShape']
+  cardinality: DescriptorFacts['cardinality']
+  termination: DescriptorFacts['termination']
+  reportsConsumed: boolean
+  readsSeed?: boolean
+  domainBoundary?: DescriptorFacts['domainBoundary']
+}): void {
+  const materializes = facts.outputShape === 'array'
+  descriptorFacts.push({
+    runnerId: fusionRunnerId(facts.family, facts.key),
+    semanticSequence: [...facts.opcodes],
+    mode: 'exact',
+    capability: {
+      layouts: ['dense-array'],
+      arity: facts.opcodes.length,
+      readsBindingSlots: facts.readsSeed === true ? ['fn', 'a1'] : ['fn'],
+      requiredBindingSlots: ['fn'],
+      rejectionCodes: ['layout-unsupported', 'arity-mismatch', 'binding-incomplete'],
+    },
+    outputShape: facts.outputShape,
+    cardinality: facts.cardinality,
+    termination: facts.termination,
+    materializes,
+    domainBoundary: facts.domainBoundary ?? 'none',
+    reportsConsumed: facts.reportsConsumed,
+    resultOwnership: 'fresh',
+    aliasesInput: false,
+    allocationScope: materializes ? 'result-only' : 'none',
+    scratchClass: 'none',
+    fallbackRunnerId: GENERIC_FALLBACK_ID,
+  })
+}
+
+function writeDescriptorBank(): void {
+  const bankHash = bankHashOf(descriptorFacts)
+  const descriptors: FusionRunnerDescriptorV1[] = descriptorFacts.map((facts) => ({
+    protocol: FUSION_RUNNER_PROTOCOL,
+    protocolVersion: FUSION_RUNNER_PROTOCOL_VERSION,
+    semanticManifestHash: SEMANTIC_MANIFEST_HASH,
+    bankHash,
+    ...facts,
+  }))
+  const bank = {
+    protocol: 'stopcock.fusion-runner-bank',
+    protocolVersion: 1,
+    semanticManifestHash: SEMANTIC_MANIFEST_HASH,
+    bankHash,
+    genericFallbackId: GENERIC_FALLBACK_ID,
+    runnerCount: descriptors.length,
+    descriptors: descriptors
+      .map((descriptor) => ({ ...descriptor, descriptorHash: descriptorHashOf(descriptor) }))
+      .sort((a, b) => (a.runnerId < b.runnerId ? -1 : 1)),
+  }
+  writeFileSync(DESCRIPTOR_OUT, `${JSON.stringify(bank, null, 2)}\n`)
+  console.log(
+    `fusion-runner-bank: ${descriptors.length} descriptors, bank ${bankHash} -> ${DESCRIPTOR_OUT}`,
+  )
+}
+
 function main(): void {
   const chains = chainsUpToLength(3)
   const fns: EmittedFn[] = []
@@ -505,6 +612,18 @@ function main(): void {
     const fn = usesCallbackLanesForSink(chain, sink) ? emitCallbackLanes(emitted) : emitted
     fns.push(fn)
     manifestSink.push(sinkManifestEntry(chain, sink, fn))
+    const shortCircuit = (SHORT_CIRCUIT_SINKS as readonly string[]).includes(sink)
+    describe({
+      family: 'sink',
+      key: sink === 'sum' ? `${chain[0].op}>SUM` : key,
+      opcodes: [...chain.map((stage) => stage.op), SINK_OPS[sink]],
+      outputShape: SINK_OUTPUT[sink],
+      cardinality: 'folding',
+      termination: shortCircuit ? 'predicate' : 'exhaustive',
+      reportsConsumed: shortCircuit,
+      readsSeed: sink === 'reduce',
+      domainBoundary: sink === 'sum' ? 'sum-materializer' : 'none',
+    })
   }
 
   for (const chain of chains) {
@@ -522,6 +641,24 @@ function main(): void {
     manifestArray.push(
       `  { key: '${codesLimit.join(',')}', opcodes: [${codesLimit.join(', ')}], run: ${withLimit.name} }`,
     )
+    describe({
+      family: 'array',
+      key: codesNoLimit.join(','),
+      opcodes: codesNoLimit,
+      outputShape: 'array',
+      cardinality: chainCardinality(chain),
+      termination: 'exhaustive',
+      reportsConsumed: false,
+    })
+    describe({
+      family: 'array',
+      key: codesLimit.join(','),
+      opcodes: codesLimit,
+      outputShape: 'array',
+      cardinality: 'filtering',
+      termination: 'limit',
+      reportsConsumed: true,
+    })
   }
 
   // Direct reducing and short-circuit sinks should never pay for the generic
@@ -558,6 +695,15 @@ function main(): void {
     manifestArray.push(
       `  { key: '${opcodes.join(',')}', opcodes: [${opcodes.join(', ')}], run: ${fn.name} }`,
     )
+    describe({
+      family: 'array',
+      key: opcodes.join(','),
+      opcodes,
+      outputShape: 'array',
+      cardinality: 'expanding',
+      termination: 'exhaustive',
+      reportsConsumed: false,
+    })
   }
   const longCollect = emitLongFlatMapTemplate('collect')
   fns.push(emitCallbackLanes(longCollect))
@@ -569,6 +715,15 @@ function main(): void {
       OP_FILTER_MAP,
     ].join(', ')}], run: ${longCollect.name} }`,
   )
+  describe({
+    family: 'array',
+    key: [OP_MAP, OP_FLAT_MAP, OP_FILTER, OP_FILTER_MAP].join(','),
+    opcodes: [OP_MAP, OP_FLAT_MAP, OP_FILTER, OP_FILTER_MAP],
+    outputShape: 'array',
+    cardinality: 'expanding',
+    termination: 'exhaustive',
+    reportsConsumed: false,
+  })
   for (const sink of ['reduce', 'find'] as const) {
     const fn = emitCallbackLanes(emitLongFlatMapTemplate(sink), sink === 'find')
     fns.push(fn)
@@ -582,6 +737,16 @@ function main(): void {
     if (sinkKeys.has(key)) throw new Error(`duplicate portable-template key: ${key}`)
     sinkKeys.add(key)
     manifestSink.push(longSinkManifestEntry(sink, fn))
+    describe({
+      family: 'sink',
+      key,
+      opcodes: key.split(',').map(Number),
+      outputShape: sink === 'reduce' ? 'scalar' : 'option',
+      cardinality: 'folding',
+      termination: sink === 'reduce' ? 'exhaustive' : 'predicate',
+      reportsConsumed: sink === 'find',
+      readsSeed: sink === 'reduce',
+    })
   }
 
   const header = `// GENERATED FILE. Do not edit by hand — run \`bun run codegen\` to regenerate.
@@ -632,6 +797,17 @@ ${manifestSink.join(',\n')},
 
   writeFileSync(OUT, header + body + '\n' + manifest)
   console.log(`portable-templates: emitted ${fns.length} templates to ${OUT}`)
+
+  // Descriptors come off the same enumeration as the templates. A template
+  // that ships without a descriptor is not possible from here, which is the
+  // point: the two drifting is exactly the failure this stage exists to close.
+  const shipped = manifestArray.length + manifestSink.length
+  if (descriptorFacts.length !== shipped) {
+    throw new Error(
+      `descriptor/template mismatch: ${descriptorFacts.length} descriptors for ${shipped} entries`,
+    )
+  }
+  writeDescriptorBank()
 }
 
 main()
