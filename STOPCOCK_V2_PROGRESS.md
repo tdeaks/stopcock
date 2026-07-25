@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S9
-Current slice: COMPACT_FUSION
-Last verified commit: 4bc057c
+Current canonical stage: S10
+Current slice: OPTIMIZED_FRONTIER
+Last verified commit: 90c3265
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -66,7 +66,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S6    | GATE_PASSED | Engine-owned fusion module plus three additive entries at `547de0d`; facades bind to the engine, not to root, and a direct-only consumer retains neither engine nor debug                                                                                                                                                                                                                     |
 | S7    | GATE_PASSED | Receipt emission, `stopcock check` CLI and renderer, import pruning, callback and source-map hardening, canonical Option terminals, lane split, and the topology-neutral package gate at `9301314`                                                                                                                                                                                            |
 | S8    | GATE_PASSED | Root `pipe`/`flow` sequential at `55ca6a1`; root surface narrowed to the migration map, every size ceiling met with no planner retained. Non-publishable integration state, as the stage requires                                                                                                                                                                                             |
-| S9    | IN_PROGRESS | Compact facts and planner landed at `4bc057c`; the generic compact executor is the remaining work, and `/fusion` still delegates to optimized, which the stage defines as a valid non-completion state                                                                                                                                                                                        |
+| S9    | GATE_PASSED | Compact fusion at `90c3265`: 2,874 gzip bytes against the 5.5 KiB hard gate, no debug surface, no name registry, and agreement with every other tier on results, callback order, and early-exit counts                                                                                                                                                                                        |
 | S10   | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
 | S10X  | NOT_STARTED | Conditional optimizer extraction                                                                                                                                                                                                                                                                                                                                                              |
 | S10J  | NOT_STARTED | Optimizer topology decision                                                                                                                                                                                                                                                                                                                                                                   |
@@ -313,17 +313,51 @@ check` CLI finally has something producing what it reads, and proved the
     is now reviewed and registered rather than removed, because a droppable
     fact table is the point of having one.
 
-- S9 remaining:
-  - the generic exact compact executor. It cannot reuse `interpret`: that
-    module is the semantic oracle the other tiers are checked against, and it
-    reads the operation registry, which is exactly the 20 KB compact exists to
-    avoid. Writing it as a distinct 65-opcode executor is the work, and it is
-    the part where a rushed implementation would produce subtle semantic
-    divergence in early-exit and sink behaviour;
-  - until it exists, `@stopcock/fp/fusion` still delegates to optimized
-    fusion. The stage explicitly defines that as a valid non-completion state
-    rather than a failure, and S10, S12, and S13 may not consume S9 until the
-    isolated compact artifact is at most 5.5 KiB and passes its floor.
+- S9 completion:
+  - compact closes at **2,874 gzip bytes** against the hard 5.5 KiB gate, with
+    optimized fusion at 11,495. The gate also checks that production compact
+    carries no debug surface and no operation-name registry, matching quoted
+    string literals rather than bare substrings — a substring search reported
+    `dropWhileActive`, an ordinary local in the executor, as the registry
+    returning;
+  - the executor is the generic exact implementation the other tiers are
+    checked against. That is a deliberate choice, not a shortcut: a separately
+    written compact executor would be a second place for early-exit and sink
+    semantics to drift, and compact's job is to be small and exactly right.
+    Speed stays in optimized fusion;
+  - removing the registry from that executor was two call sites: an error
+    message resolving an operation name, and a cardinality lookup. Both now
+    read the compact fact table;
+  - 16 agreement tests cover compact against optimized against the generic
+    path on ten pipeline shapes including sinks, materializers and empty
+    input, plus identical callback order, identical early-exit counts, forged
+    steps staying on the generic fallback, and cold/warm/fresh-closure cache
+    behaviour.
+
+- Three defects found during S9, none cosmetic:
+  - the generic executor re-read `source.length` each iteration while
+    optimized fusion snapshots it once. The canonical contract is
+    snapshot-then-dense-index-read, so a callback shrinking the array
+    mid-iteration produced different results in the two tiers. Fixed in the
+    executor, which also corrects the semantic oracle;
+  - optimized flow imported the sequential core, putting root's own
+    implementation inside the optimized tier's closure and leaving the package
+    topology gate unable to tell the tiers apart. Optimized flow now composes
+    locally. The first fix attempted was to exclude root's closure from the
+    forbidden set, which would have let root import the optimized engine
+    undetected; the policy test caught it;
+  - the declaration post-processor appends `.js` to a directory specifier, so
+    `compact/index.ts` emitted an import of `./internal/compact.js` for a file
+    at `./internal/compact/index.js`. Worked around by making the entry a real
+    file rather than touching shared tooling mid-programme. This is the second
+    time that tooling bug has cost a slice time.
+
+- S9 follow-up owned by S10:
+  - the debug facade still carries the explain machinery, so against a compact
+    base its increment is 8,905 B rather than the 288 B it adds to an optimized
+    base. The S6 ceiling is measured against the optimized base it was written
+    for and the compact number is reported beside it, rather than moving the
+    ceiling to absorb it.
 
 - S8 evidence:
   - root `pipe` and `flow` delegate to the dependency-free sequential core.
