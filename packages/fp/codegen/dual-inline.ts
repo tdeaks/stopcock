@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { generatedPureAnnotationV1, type GeneratedInitializerSiteV1 } from './purity'
 import { findRuntimeOpcodeByNameV1 } from './protocol/operator-definitions'
+import { directLeafPolicyForV1, renderDirectLeafV1 } from './direct-leaf'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const DEFS_DIR = join(ROOT, 'codegen', 'defs')
@@ -473,6 +474,17 @@ function generateArityNInline(dc: DualCall, n: number, opcode: number, hasTag: b
 }
 
 function generateDecl(dc: DualCall, moduleName: GeneratedModule): string {
+  const directLeaf = directLeafPolicyForV1(moduleName, dc.name)
+  if (directLeaf !== undefined && dc.arity === directLeaf.arity && !dc.bodyIsRef) {
+    const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
+    return renderDirectLeafV1({
+      policy: directLeaf,
+      declaration: typeDecl(dc.name, dc.typeAnnotation),
+      opcode: dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0,
+      params,
+      bodyCode: isExpression ? `return ${bodyText}` : bodyText,
+    })
+  }
   if (dc.arity <= 1) {
     return dc.tag ? generateArity1Tagged(dc, moduleName) : generateArity1Untagged(dc)
   }
