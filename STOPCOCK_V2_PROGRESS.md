@@ -15,7 +15,7 @@ Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S7
 Current slice: PRE_CUTOVER_GATES
-Last verified commit: bd13eaf
+Last verified commit: 0bf8e17
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -271,8 +271,50 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       policy table.
 - [x] (2026-07-25) Recorded the Iter kernel floor exceptions and stripped the
       typed-array policy seam at `bd13eaf` and `e31d00c`.
+- [x] (2026-07-25) Ran the competitor comparison suite for the first time this
+      programme, on a qualified quiet machine, and found `flow` composing 15x
+      slower than lodash. Fixed at `0bf8e17`.
 
 ## Evidence log
+
+- Competitor comparison, measured on the integrated tree with the profile gate
+  passing (`spread 0.0501`, `bias 0.0`). 80 benchmark groups across the
+  pipeline and core array suites; ratios are stopcock throughput over theirs:
+
+  | library | median | behind in    |
+  | ------- | ------ | ------------ |
+  | remeda  | 3.23x  | 2% of groups |
+  | ramda   | 2.63x  | 10%          |
+  | lodash  | 2.59x  | 11%          |
+  | rambda  | 2.27x  | 6%           |
+  | ts-belt | 1.15x  | 25%          |
+  - ts-belt is genuinely competitive and wins a quarter of the groups. The
+    other four sit at roughly 2–3x;
+  - against a hand-written fused loop the S1C lanes remain the honest figure:
+    parity, not a win;
+  - the large-`n` early-exit rows (`filter→map→take(100)` at 10M elements,
+    916,503 ops/sec against native's 30) measure short-circuiting versus
+    materializing a 10-million-element intermediate. They are real but they are
+    not a general speed claim;
+  - `vitest bench` omits sample arrays for a few very fast rows, which reports
+    as a missing `hz` rather than an error. The five-chained-`map` pipeline was
+    verified directly (100,000 elements in 5 ms) and those rows are excluded
+    from the aggregate rather than counted as zero.
+
+- `flow` composition repair:
+  - `flow` compiled every composition. Over plain functions that built a whole
+    plan to discover there was nothing to fuse, then ran the steps in order
+    anyway. It now scans for a trusted operator and compiles only when one is
+    present;
+  - measured on the pipe-flow benchmark: creating a composed function went from
+    2.3M to 35.4M ops/sec against lodash's 9.8M, and create-plus-call from 0.5M
+    to 29.1M against lodash's 9.0M. That is 15x slower than lodash before and
+    3.6x faster after;
+  - semantics are pinned on both sides: plain compositions apply each step once
+    in order and propagate throws unwrapped, and a composition containing an
+    operator still fuses, proven by callback interleaving rather than by
+    timing;
+  - the worst-case tail across the whole comparison moved from 0.06x to 0.54x.
 
 - P1A evidence:
   - `packages/fp/codegen/iter-kernels.ts` generates `src/iter-kernels.ts` and a
