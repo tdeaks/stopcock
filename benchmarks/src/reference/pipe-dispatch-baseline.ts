@@ -8,9 +8,28 @@ import {
   dispatchAndTrack,
   planAndLowerFast,
   type Runner,
-} from '../../../packages/fp/src/compile'
-import { extractBinding, type StepBinding } from '../../../packages/fp/src/plan'
-import type { ShapeEntry } from '../../../packages/fp/src/shape-entry'
+} from '../../../packages/fp-optimizer/src/compile'
+import type { StepBinding } from '../../../packages/fp/src/plan'
+import type { ShapeEntry } from '../../../packages/fp-optimizer/src/shape-entry'
+
+/**
+ * The frozen implementation read its bindings straight off the operator's
+ * public fields. S5A moved live binding authority into a private table, but
+ * this fixture must keep costing what it cost then: importing the current
+ * extractBinding would both break (it now takes a provenance entry, not a
+ * function) and change the denominator every ratio is measured against.
+ */
+const baselineExtractBinding = (step: {
+  _fn?: unknown
+  _a1?: unknown
+  _a2?: unknown
+}): StepBinding => {
+  const binding: { fn?: unknown; a1?: unknown; a2?: unknown } = {}
+  if (step._fn !== undefined) binding.fn = step._fn
+  if (step._a1 !== undefined) binding.a1 = step._a1
+  if (step._a2 !== undefined) binding.a2 = step._a2
+  return binding
+}
 
 interface CacheEntry {
   readonly fns: readonly unknown[]
@@ -124,7 +143,7 @@ function runTagged(input: unknown, args: ArrayLike<unknown>, argc: number): unkn
     entry = cachedEntry
     const bound = new Array(length)
     for (let index = 0; index < length; index++) {
-      bound[index] = extractBinding(fns[index] as any)
+      bound[index] = baselineExtractBinding(fns[index] as never)
     }
     bindings = bound
   } else {

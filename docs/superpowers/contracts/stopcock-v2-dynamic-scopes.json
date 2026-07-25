@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "stages": {
+    "S0R": [
+      {
+        "id": "async-source-types",
+        "allowedPatterns": [
+          "packages/async/**",
+          "docs/superpowers/contracts/stopcock-v2-package-cohort-readiness.json",
+          "tooling/__tests__/stopcock-v2-package-cohort-readiness.test.mjs"
+        ]
+      },
+      {
+        "id": "date-source-types",
+        "allowedPatterns": [
+          "packages/date/**",
+          "docs/superpowers/contracts/stopcock-v2-package-cohort-readiness.json",
+          "tooling/__tests__/stopcock-v2-package-cohort-readiness.test.mjs"
+        ]
+      },
+      {
+        "id": "diff-source-types",
+        "allowedPatterns": [
+          "packages/diff/**",
+          "docs/superpowers/contracts/stopcock-v2-package-cohort-readiness.json",
+          "tooling/__tests__/stopcock-v2-package-cohort-readiness.test.mjs"
+        ]
+      }
+    ]
+  }
+}

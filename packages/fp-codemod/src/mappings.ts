@@ -38,6 +38,11 @@ const aliases = (
   )
 
 export const ROOT_NAMED_MIGRATIONS: Readonly<Record<string, NamedMigration>> = {
+  // S8 narrowed the root. These four names still exist, just not there.
+  compile: { module: 'compile', exported: 'compile' },
+  compilePure: { module: 'compile', exported: 'compilePure' },
+  dual: { module: 'dual', exported: 'dual' },
+  explain: { module: 'fusion/debug', exported: 'explain' },
   ...aliases('option', {
     fromPredicate: 'fromPredicate',
     mapOption: 'map',

@@ -223,7 +223,7 @@ assert.ok(result.diagnostics.some((site) => site.transformed))
 
     expect(installedPackage.dependencies?.['@stopcock/fp']).toBeUndefined()
     expect(installedPackage.peerDependencies?.['@stopcock/fp']).toBe(
-      '^2.0.0',
+      pkg.peerDependencies['@stopcock/fp'],
     )
 
     await writeFile(

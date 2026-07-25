@@ -252,35 +252,23 @@ export const xprod: {
 )
 
 // Arity 2
-function runMap(arr: readonly any[], f: (value: any) => any): any[] {
-  const len = arr.length,
-    out = new Array(len)
-  for (let i = 0; i < len; i++) out[i] = f(arr[i])
-  return out
-}
-
-let mapOperatorFn: Function | null = null
-let mapOperator: any = null
-
-export function map<A, B>(arr: readonly A[], f: (a: A) => B): B[]
-export function map<A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
-export function map(): any {
-  if (arguments.length >= 2) {
-    const _a0 = arguments[0]
-    const _a1 = arguments[1]
-    return runMap(_a0, _a1)
-  }
-  const _a0 = arguments[0]
-  if (_a0 === mapOperatorFn && mapOperator) return mapOperator
-  const _dl: any = function (data: any) {
-    return runMap(data, _a0)
-  }
-  _dl._op = 1
-  _dl._fn = _a0
-  mapOperatorFn = _a0
-  mapOperator = _dl
-  return _dl
-}
+//
+// map is the S4 direct-leaf pilot: codegen splits it into an isolated
+// execution leaf and an isolated curried constructor. See
+// codegen/direct-leaf.ts.
+export const map: {
+  <A, B>(arr: readonly A[], f: (a: A) => B): B[]
+  <A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
+} = dual(
+  2,
+  (arr: any[], f: any) => {
+    const len = arr.length,
+      out = new Array(len)
+    for (let i = 0; i < len; i++) out[i] = f(arr[i])
+    return out
+  },
+  { op: 'map' },
+)
 
 export const mapWithIndex: {
   <A, B>(arr: readonly A[], f: (a: A, i: number) => B): B[]
@@ -1347,23 +1335,14 @@ const without4Raw = (arr: any, v0: any, v1: any, v2: any, v3: any): any[] => {
   return result
 }
 
-const without5Raw = (
-  arr: any,
-  v0: any,
-  v1: any,
-  v2: any,
-  v3: any,
-  v4: any,
-): any[] => {
+const without5Raw = (arr: any, v0: any, v1: any, v2: any, v3: any, v4: any): any[] => {
   const len = arr.length
   const result = new Array(len)
   let outputLength = 0
   const hasNaN = v0 !== v0 || v1 !== v1 || v2 !== v2 || v3 !== v3 || v4 !== v4
   for (let i = 0; i < len; ++i) {
     const x = arr[i]
-    if (
-      !(x !== x ? hasNaN : x === v0 || x === v1 || x === v2 || x === v3 || x === v4)
-    ) {
+    if (!(x !== x ? hasNaN : x === v0 || x === v1 || x === v2 || x === v3 || x === v4)) {
       result[outputLength++] = x
     }
   }
@@ -1371,27 +1350,14 @@ const without5Raw = (
   return result
 }
 
-const without6Raw = (
-  arr: any,
-  v0: any,
-  v1: any,
-  v2: any,
-  v3: any,
-  v4: any,
-  v5: any,
-): any[] => {
+const without6Raw = (arr: any, v0: any, v1: any, v2: any, v3: any, v4: any, v5: any): any[] => {
   const len = arr.length
   const result = []
-  const hasNaN =
-    v0 !== v0 || v1 !== v1 || v2 !== v2 || v3 !== v3 || v4 !== v4 || v5 !== v5
+  const hasNaN = v0 !== v0 || v1 !== v1 || v2 !== v2 || v3 !== v3 || v4 !== v4 || v5 !== v5
   for (let i = 0; i < len; ++i) {
     const x = arr[i]
     if (
-      !(
-        x !== x
-          ? hasNaN
-          : x === v0 || x === v1 || x === v2 || x === v3 || x === v4 || x === v5
-      )
+      !(x !== x ? hasNaN : x === v0 || x === v1 || x === v2 || x === v3 || x === v4 || x === v5)
     ) {
       result.push(x)
     }
@@ -1412,27 +1378,13 @@ const without7Raw = (
   const len = arr.length
   const result = []
   const hasNaN =
-    v0 !== v0 ||
-    v1 !== v1 ||
-    v2 !== v2 ||
-    v3 !== v3 ||
-    v4 !== v4 ||
-    v5 !== v5 ||
-    v6 !== v6
+    v0 !== v0 || v1 !== v1 || v2 !== v2 || v3 !== v3 || v4 !== v4 || v5 !== v5 || v6 !== v6
   for (let i = 0; i < len; ++i) {
     const x = arr[i]
     if (
-      !(
-        x !== x
-          ? hasNaN
-          : x === v0 ||
-            x === v1 ||
-            x === v2 ||
-            x === v3 ||
-            x === v4 ||
-            x === v5 ||
-            x === v6
-      )
+      !(x !== x
+        ? hasNaN
+        : x === v0 || x === v1 || x === v2 || x === v3 || x === v4 || x === v5 || x === v6)
     ) {
       result.push(x)
     }
@@ -1466,18 +1418,16 @@ const without8Raw = (
   for (let i = 0; i < len; ++i) {
     const x = arr[i]
     if (
-      !(
-        x !== x
-          ? hasNaN
-          : x === v0 ||
-            x === v1 ||
-            x === v2 ||
-            x === v3 ||
-            x === v4 ||
-            x === v5 ||
-            x === v6 ||
-            x === v7
-      )
+      !(x !== x
+        ? hasNaN
+        : x === v0 ||
+          x === v1 ||
+          x === v2 ||
+          x === v3 ||
+          x === v4 ||
+          x === v5 ||
+          x === v6 ||
+          x === v7)
     ) {
       result[outputLength++] = x
     }
@@ -1565,11 +1515,7 @@ const withoutDispatchRaw = (arr: any, values: any): any[] => {
 export const without: {
   <A>(arr: readonly A[], values: readonly A[]): A[]
   <A>(values: readonly A[]): (arr: readonly A[]) => A[]
-} = dual(
-  2,
-  withoutDispatchRaw,
-  { op: 'without' },
-)
+} = dual(2, withoutDispatchRaw, { op: 'without' })
 
 export const pluck: {
   <A, K extends keyof A>(arr: readonly A[], key: K): A[K][]

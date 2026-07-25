@@ -184,6 +184,16 @@ describe('add with timezone', () => {
     expect(Tz.format(result, 'YYYY-MM-DD HH:mm', 'America/New_York')).toBe('2024-03-15 10:00')
   })
 
+  it('honors explicit data-first disambiguation at a fold', () => {
+    const ts = utc(2024, 11, 2, 5, 30, 0) // Nov 2, 1:30 AM EDT
+    const earlier = Tz.add(ts, 1, 'day', 'America/New_York', 'earlier')
+    const later = Tz.add(ts, 1, 'day', 'America/New_York', 'later')
+
+    expect(Tz.format(earlier, 'YYYY-MM-DD HH:mm', 'America/New_York')).toBe('2024-11-03 01:30')
+    expect(Tz.format(later, 'YYYY-MM-DD HH:mm', 'America/New_York')).toBe('2024-11-03 01:30')
+    expect((later as number) - (earlier as number)).toBe(3_600_000)
+  })
+
   it('add hours is absolute (no tz adjustment)', () => {
     const ts = utc(2024, 3, 10, 6, 0, 0) // 1:00 AM EST, just before spring forward
     const result = Tz.add(ts, 2, 'hour', 'America/New_York')

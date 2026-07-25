@@ -4,7 +4,7 @@ model = "gpt-5.6-sol"
 model_reasoning_effort = "max"
 
 sandbox_mode = "workspace-write"
-approval_policy = { granular = { sandbox_approval = true, rules = true, mcp_elicitations = false, request_permissions = false, skill_approval = false } }
+approval_policy = { granular = { sandbox_approval = false, rules = false, mcp_elicitations = false, request_permissions = false, skill_approval = false } }
 approvals_reviewer = "auto_review"
 allow_login_shell = false
 
@@ -18,11 +18,24 @@ default_subagent_model = "gpt-5.6-terra"
 default_subagent_reasoning_effort = "high"
 interrupt_message = true
 
+[agents.v2_explorer]
+description = "Read-only Stopcock 2.0 repository tracing."
+config_file = "./agents/v2_explorer.toml"
+
+[agents.v2_test_runner]
+description = "Bounded Stopcock 2.0 validation without source fixes."
+config_file = "./agents/v2_test_runner.toml"
+
+[agents.v2_verifier]
+description = "Independent critical-gate audit for Stopcock 2.0."
+config_file = "./agents/v2_verifier.toml"
+
 [auto_review]
 policy = """
 Approve only bounded, non-destructive local implementation and validation work
 inside the isolated Stopcock 2.0 worktree. Deny network enablement, credential
 access, external writes, git push, registry or dist-tag mutation, GitHub release
-mutation, publication, destructive recovery, sandbox expansion beyond the
-recorded worktree, and any attempt to weaken or bypass these controls.
+mutation, publication, every local Git-metadata mutation, destructive
+recovery, sandbox expansion beyond the recorded worktree, and any attempt to
+weaken or bypass these controls.
 """

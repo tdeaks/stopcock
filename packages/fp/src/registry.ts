@@ -1,21 +1,20 @@
-// Canonical operation registry: one entry per opcode in opcodes.ts.
-// This is the single source of truth the Plan IR (plan.ts) and the
-// reference interpreter (interpret.ts) are driven from.
+// GENERATED FILE -- do not edit by hand.
+// Compatibility runtime projection of the canonical definition-only operator protocol.
+// Legacy callback/capability fields preserve 1.x bytes and never authorize a semantic or backend.
+// Source: packages/fp/codegen/protocol/operator-definitions.ts
+// Semantic facts hash: sha256:b8fc99c1023be40c96da6df4c393ed1a0f17c86d86c7d1d5546fd37ed10b5c16
 import * as OpCodes from './opcodes'
 import { OP_CODES, OP_NON_FUSEABLE } from './opcodes'
 
 export type OpCode = number
-
 export type OpDomain = 'array' | 'scalar' | 'iterable'
-
 export type OpCardinality =
-  | 'one-to-one' // exactly one output per accepted input, same domain
-  | 'filtering' // zero or one output per accepted input
-  | 'expanding' // zero or many outputs per accepted input
-  | 'stateful' // carries running state across items (take/drop/while family)
-  | 'sink' // terminal, consumes the stream and returns a scalar/void
-  | 'materializer' // operates on the fully materialized array, not per-item
-
+  | 'one-to-one'
+  | 'filtering'
+  | 'expanding'
+  | 'stateful'
+  | 'sink'
+  | 'materializer'
 export type ArgBinding = 'fn' | 'a1' | 'a2'
 
 export interface OpMeta {
@@ -24,25 +23,16 @@ export interface OpMeta {
   readonly inputDomain: OpDomain
   readonly outputDomain: OpDomain
   readonly cardinality: OpCardinality
-  /** Number of user-supplied callback arguments the op invokes (0, 1, or 2). */
   readonly callbackArity: 0 | 1 | 2
-  /** Which tagged-fn slots (_fn/_a1/_a2) are bound and in what role. */
   readonly bindings: readonly ArgBinding[]
-  /** True when the op can stop consuming input before the source is exhausted. */
   readonly earlyTermination: boolean
-  /** True when the op preserves the input array's constructor (e.g. typed arrays). */
   readonly constructorPreserving: boolean
-  /** Dense semantics: holes read as undefined and the callback still runs. Always true. */
   readonly denseHoles: true
-  /** True when running the op backwards over the same input yields the same result set. */
   readonly reverseSafe: boolean
-  /** Exact (left-to-right, no elision) lowering is always permitted. */
   readonly exactLowering: true
-  /** Pure-mode lowering may reorder/eliminate/reassociate this op. */
   readonly pureLowering: boolean
   readonly simdEligible: boolean
   readonly workerEligible: boolean
-  /** True when this op forces a segment boundary in the Plan IR. */
   readonly isMaterializationBoundary: boolean
 }
 
@@ -85,7 +75,6 @@ function meta(partial: {
 const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
   (
     [
-      // Fuseable stream ops
       meta({
         op: OpCodes.OP_MAP,
         name: 'map',
@@ -159,8 +148,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         earlyTermination: true,
         reverseSafe: false,
       }),
-
-      // Fuseable terminal ops (sinks)
       meta({
         op: OpCodes.OP_REDUCE,
         name: 'reduce',
@@ -223,8 +210,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         earlyTermination: true,
         reverseSafe: false,
       }),
-
-      // Fuseable stream ops (extended)
       meta({
         op: OpCodes.OP_FILTER_MAP,
         name: 'filterMap',
@@ -264,8 +249,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         bindings: ['fn'],
         earlyTermination: true,
       }),
-
-      // Fuseable terminal ops (extended)
       meta({
         op: OpCodes.OP_NONE,
         name: 'none',
@@ -296,8 +279,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         earlyTermination: true,
         reverseSafe: false,
       }),
-
-      // Non-fuseable but recognized (materialization boundaries)
       meta({
         op: OpCodes.OP_SORT_BY,
         name: 'sortBy',
@@ -319,8 +300,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         bindings: [],
         constructorPreserving: true,
       }),
-
-      // Accessor terminal ops (operate on the completed result, not per-element)
       meta({
         op: OpCodes.OP_HEAD,
         name: 'head',
@@ -457,8 +436,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         simdEligible: true,
         workerEligible: true,
       }),
-
-      // String accessor ops (transforms on string values, no callback)
       meta({
         op: OpCodes.OP_STR_TRIM,
         name: 'trim',
@@ -531,8 +508,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         callbackArity: 0,
         bindings: [],
       }),
-
-      // Dict accessor ops
       meta({
         op: OpCodes.OP_DICT_KEYS,
         name: 'keys',
@@ -560,8 +535,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         callbackArity: 0,
         bindings: [],
       }),
-
-      // Math stream ops (inline arithmetic, no callback)
       meta({
         op: OpCodes.OP_MATH_ADD,
         name: 'add',
@@ -639,10 +612,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         simdEligible: true,
         workerEligible: true,
       }),
-
-      // Guard predicate ops (inline typeof checks). Standalone in a scalar
-      // chain they transform the value to a boolean; inlined inside filter
-      // or reject they act as the predicate directly (see fuse.ts).
       meta({
         op: OpCodes.OP_GUARD_IS_NUMBER,
         name: 'isNumber',
@@ -706,8 +675,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         callbackArity: 0,
         bindings: [],
       }),
-
-      // Sort specialization
       meta({
         op: OpCodes.OP_SORT_ASC,
         name: 'sortAsc',
@@ -726,10 +693,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         callbackArity: 0,
         bindings: [],
       }),
-
-      // Array-domain scan: emits the initial accumulator (a1) before any
-      // element is processed, then one output per input -- length n+1 for
-      // n inputs.
       meta({
         op: OpCodes.OP_SCAN,
         name: 'scan',
@@ -740,12 +703,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         bindings: ['fn', 'a1'],
         reverseSafe: false,
       }),
-
-      // without(arr, values): whole-array materializer, values is a single
-      // array binding. dual-inline's arity-2 codegen always writes the sole
-      // curried argument into the _fn slot (see take/drop above, which bind
-      // their plain numeric count the same way) -- bindings: ['fn'] here
-      // matches that, not the semantic "is this a callback" question.
       meta({
         op: OpCodes.OP_WITHOUT,
         name: 'without',
@@ -785,7 +742,9 @@ export function isRegisteredOp(op: OpCode): boolean {
 
 export function isTerminal(op: OpCode): boolean {
   const found = REGISTRY.get(op)
-  return found !== undefined && (found.cardinality === 'sink' || found.cardinality === 'materializer')
+  return (
+    found !== undefined && (found.cardinality === 'sink' || found.cardinality === 'materializer')
+  )
 }
 
 export function isBoundary(op: OpCode): boolean {
@@ -804,7 +763,6 @@ export function isStreamable(op: OpCode): boolean {
   )
 }
 
-/** All opcode names exported from opcodes.ts, excluding the OP_NON_FUSEABLE sentinel (0, "not tagged"). */
 export function allSourceOpCodes(): readonly OpCode[] {
   const codes = new Set<OpCode>()
   for (const value of Object.values(OP_CODES)) codes.add(value)

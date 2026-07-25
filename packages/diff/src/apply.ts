@@ -113,10 +113,7 @@ function applyOp(target: unknown, op: Operation): Result<unknown, PatchError> {
   }
 }
 
-export const apply: {
-  <T>(target: T, p: Patch): Result<T, PatchError>
-  (p: Patch): <T>(target: T) => Result<T, PatchError>
-} = dual(2, <T>(target: T, p: Patch): Result<T, PatchError> => {
+export const apply = dual(2, <T>(target: T, p: Patch): Result<T, PatchError> => {
   let current: unknown = target
   for (const op of p.ops) {
     const result = applyOp(current, op)
@@ -124,13 +121,16 @@ export const apply: {
     current = result.value
   }
   return ok(current as T)
-})
+}) as {
+  <T>(target: T, p: Patch): Result<T, PatchError>
+  (p: Patch): <T>(target: T) => Result<T, PatchError>
+}
 
-export const applyUnsafe: {
-  <T>(target: T, p: Patch): T
-  (p: Patch): <T>(target: T) => T
-} = dual(2, <T>(target: T, p: Patch): T => {
+export const applyUnsafe = dual(2, <T>(target: T, p: Patch): T => {
   const result = apply(target, p)
   if (result._tag === 0) throw new Error(result.error.message)
   return result.value
-})
+}) as {
+  <T>(target: T, p: Patch): T
+  (p: Patch): <T>(target: T) => T
+}

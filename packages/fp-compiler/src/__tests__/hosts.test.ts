@@ -6,6 +6,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { gzipSync } from 'node:zlib'
 import { afterAll, describe, expect, it } from 'vitest'
 import { stopcockFp as stopcockEsbuild } from '../esbuild'
 import { stopcockFp as stopcockRollup } from '../rollup'
@@ -48,6 +49,27 @@ function assertFused(bundleText: string, host: string) {
   expect(bundleText, `${host} bundle should contain a fused loop`).toMatch(/for\s*\(/)
 }
 
+/**
+ * S7's consumer rule: a fully transformed common consumer is at most 1 KiB and
+ * retains no runtime engine.
+ *
+ * The markers are property keys and field names, which survive minification.
+ * Internal function names do not, so checking for those would pass on a bundle
+ * that carried the entire engine.
+ */
+const ENGINE_MARKERS = ['takeWhile', 'dropWhile', 'sortBy', 'filterMap', '_op', 'segments']
+
+const CONSUMER_CEILING_BYTES = 1024
+
+function assertNoRuntimeEngine(bundleText: string, host: string) {
+  const found = ENGINE_MARKERS.filter((marker) => bundleText.includes(marker))
+  expect(found, `${host} bundle retains runtime engine markers`).toEqual([])
+  const gzipBytes = gzipSync(Buffer.from(bundleText), { level: 9 }).byteLength
+  expect(gzipBytes, `${host} transformed consumer is ${gzipBytes} B gzip`).toBeLessThanOrEqual(
+    CONSUMER_CEILING_BYTES,
+  )
+}
+
 afterAll(async () => {
   await Promise.all(dirs.map((d) => rm(d, { recursive: true, force: true })))
 })
@@ -71,7 +93,9 @@ describe('real-host smoke tests', () => {
     // Rollup may split the build into a facade entry plus real chunks, so
     // assert over and write out every chunk, then import the entry.
     const chunks = output.filter((o) => o.type === 'chunk')
-    assertFused(chunks.map((c) => c.code).join('\n'), 'rollup')
+    const rollupBundle = chunks.map((c) => c.code).join('\n')
+    assertFused(rollupBundle, 'rollup')
+    assertNoRuntimeEngine(rollupBundle, 'rollup')
 
     for (const c of chunks) await writeFile(join(dir, c.fileName), c.code)
     const entryChunk = chunks.find((c) => c.isEntry) ?? chunks[0]
@@ -97,10 +121,9 @@ describe('real-host smoke tests', () => {
         {
           name: 'alias-stopcock-fp',
           setup(build) {
-            build.onResolve(
-              { filter: /^@stopcock\/fp(?:\/array)?$/ },
-              ({ path }) => ({ path: resolveFpEntry(path)! }),
-            )
+            build.onResolve({ filter: /^@stopcock\/fp(?:\/array)?$/ }, ({ path }) => ({
+              path: resolveFpEntry(path)!,
+            }))
           },
         },
       ],
@@ -108,6 +131,7 @@ describe('real-host smoke tests', () => {
 
     const code = await readFile(outfile, 'utf8')
     assertFused(code, 'esbuild')
+    assertNoRuntimeEngine(code, 'esbuild')
 
     const mod = await import(pathToFileURL(outfile).href)
     expect(mod.result).toEqual(EXPECTED)
@@ -123,7 +147,11 @@ describe('real-host smoke tests', () => {
 
     await new Promise<void>((resolve, reject) => {
       const compiler = webpack({
-        mode: 'development',
+        // Production, because the consumer rule is about what a consumer
+        // ships. Webpack's development output carries 1,192 B of its own
+        // scaffolding for an empty module, so measuring it would be measuring
+        // webpack's debugger, not this compiler.
+        mode: 'production',
         entry,
         target: 'node',
         output: {
@@ -151,6 +179,7 @@ describe('real-host smoke tests', () => {
     const outFile = join(dir, outFileName)
     const code = await readFile(outFile, 'utf8')
     assertFused(code, 'webpack')
+    assertNoRuntimeEngine(code, 'webpack')
 
     delete require.cache[outFile]
     const mod = require(outFile)
@@ -189,8 +218,41 @@ describe('real-host smoke tests', () => {
     const outFile = join(dir, 'dist', 'out.mjs')
     const code = await readFile(outFile, 'utf8')
     assertFused(code, 'vite')
+    assertNoRuntimeEngine(code, 'vite')
 
     const mod = await import(pathToFileURL(outFile).href)
     expect(mod.result).toEqual(EXPECTED)
+  })
+})
+
+describe('the consumer rule discriminates', () => {
+  it('detects the engine in an untransformed bundle', async () => {
+    const dir = await scratchDir('untransformed')
+    const entry = join(dir, 'fixture.js')
+    await writeFile(entry, FIXTURE_SOURCE)
+
+    const { build } = await import('esbuild')
+    const result = await build({
+      entryPoints: [entry],
+      bundle: true,
+      format: 'esm',
+      write: false,
+      logLevel: 'silent',
+      plugins: [
+        {
+          name: 'alias',
+          setup(builder) {
+            builder.onResolve({ filter: /^@stopcock\/fp$/ }, () => ({ path: FP_DIST_ENTRY }))
+            builder.onResolve({ filter: /^@stopcock\/fp\/array$/ }, () => ({
+              path: FP_ARRAY_DIST_ENTRY,
+            }))
+          },
+        },
+      ],
+    })
+    const code = result.outputFiles[0].text
+    // Without the compiler the engine is present and the bundle is far over
+    // the ceiling, so both halves of the rule are doing work.
+    expect(() => assertNoRuntimeEngine(code, 'untransformed')).toThrow()
   })
 })

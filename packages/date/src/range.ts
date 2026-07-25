@@ -5,7 +5,7 @@ import { add } from './arithmetic'
 
 export const range: {
   (start: Timestamp, end: Timestamp, step: number, unit: DateUnit): Timestamp[]
-  (step: number, unit: DateUnit): (start: Timestamp, end: Timestamp) => Timestamp[]
+  (end: Timestamp, step: number, unit: DateUnit): (start: Timestamp) => Timestamp[]
 } = dual(4, (start: Timestamp, end: Timestamp, step: number, unit: DateUnit): Timestamp[] => {
   const result: Timestamp[] = []
   let current = start
@@ -18,7 +18,7 @@ export const range: {
 
 export const rangeBy: {
   (start: Timestamp, end: Timestamp, stepFn: (ts: Timestamp) => Timestamp): Timestamp[]
-  (stepFn: (ts: Timestamp) => Timestamp): (start: Timestamp, end: Timestamp) => Timestamp[]
+  (end: Timestamp, stepFn: (ts: Timestamp) => Timestamp): (start: Timestamp) => Timestamp[]
 } = dual(
   3,
   (start: Timestamp, end: Timestamp, stepFn: (ts: Timestamp) => Timestamp): Timestamp[] => {

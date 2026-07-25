@@ -6,23 +6,19 @@
  * Output: src/*.ts            (generated, body inlined into dispatch functions)
  */
 
-import { pipe, flow } from '../src'
-import * as A from '../src/array'
-import { OP_CODES } from '../src/opcodes'
 import { type Parser, type ParseResult, seq, map, string as pStr, char, run } from './parse'
 import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
+import { generatedPureAnnotationV1, type GeneratedInitializerSiteV1 } from './purity'
+import { findRuntimeOpcodeByNameV1 } from './protocol/operator-definitions'
+import { directLeafPolicyForV1, renderDirectLeafV1 } from './direct-leaf'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const DEFS_DIR = join(ROOT, 'codegen', 'defs')
 const SRC_DIR = join(ROOT, 'src')
 
 const GENERATED_MODULES = ['array', 'boolean', 'math'] as const
-const requestedModules = process.argv.slice(2)
-const MODULES =
-  requestedModules.length === 0
-    ? [...GENERATED_MODULES]
-    : GENERATED_MODULES.filter((module) => requestedModules.includes(module))
+type GeneratedModule = (typeof GENERATED_MODULES)[number]
 
 // --- Brace-counting utilities ---
 
@@ -188,7 +184,9 @@ const singleQuoted: Parser<string> = (input, pos) => {
 // Optional trailing comma before a closing delimiter
 const optComma: Parser<null> = (input, pos) => {
   const r = char(',')(input, pos)
-  return r.success ? { success: true, value: null, remaining: r.remaining, position: r.position } : { success: true, value: null, remaining: input.slice(pos), position: pos }
+  return r.success
+    ? { success: true, value: null, remaining: r.remaining, position: r.position }
+    : { success: true, value: null, remaining: input.slice(pos), position: pos }
 }
 
 // Tag parser: { op: 'name' } → name (tolerates a trailing comma: { op: 'name', })
@@ -355,29 +353,50 @@ function typeDecl(name: string, annotation: string): string {
   return annotation ? `export const ${name}: ${annotation}` : `export const ${name}`
 }
 
+/**
+ * Registration call for a constructed data-last operator. The opcode is
+ * resolved here, at generation time, and the bindings come from the captured
+ * arguments, so nothing a caller supplies reaches the private table.
+ */
+function registration(opcode: number, arity: number): string {
+  const args = ['_dl', String(opcode), '_a0']
+  if (arity >= 3) args.push('_a1')
+  if (arity >= 4) args.push('_a2')
+  return `registerTrustedOperator(${args.join(', ')})`
+}
+
 function implementationParams(arity: number): string {
   return Array.from({ length: arity }, (_, index) => `_arg${index}?: any`).join(', ')
 }
 
-function generateArity1Tagged(dc: DualCall): string {
-  const opcode = dc.tag ? (OP_CODES[dc.tag] ?? 0) : 0
+function generateArity1Tagged(dc: DualCall, moduleName: GeneratedModule): string {
+  const opcode = dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0
   const decl = typeDecl(dc.name, dc.typeAnnotation)
+  const bodyKind: GeneratedInitializerSiteV1['bodyKind'] = dc.bodyIsRef ? 'reference' : 'inline'
+  const pure =
+    moduleName === 'array' || moduleName === 'math'
+      ? generatedPureAnnotationV1({
+          module: moduleName,
+          name: dc.name,
+          bodyKind,
+        })
+      : ''
 
   if (dc.bodyIsRef) {
-    return `${decl} = /* @__PURE__ */ (() => {
+    return `${decl} = ${pure}(() => {
   const _f: any = ${dc.bodyStr}
   _f._op = ${opcode}
-  return _f
+  return registerTrustedOperator(_f, ${opcode})
 })()\n`
   }
 
   const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
   const bodyCode = isExpression ? `return ${bodyText}` : bodyText
 
-  return `${decl} = /* @__PURE__ */ (() => {
+  return `${decl} = ${pure}(() => {
   const _f: any = function ${dc.name}(${params.join(': any, ')}: any) { ${bodyCode} }
   _f._op = ${opcode}
-  return _f
+  return registerTrustedOperator(_f, ${opcode})
 })()\n`
 }
 
@@ -393,7 +412,7 @@ function generateArity1Untagged(dc: DualCall): string {
 
 function generateArityN(dc: DualCall): string {
   const n = dc.arity
-  const opcode = dc.tag ? (OP_CODES[dc.tag] ?? 0) : 0
+  const opcode = dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0
   const hasTag = dc.tag !== null && opcode > 0
 
   if (dc.bodyIsRef) {
@@ -405,10 +424,7 @@ function generateArityN(dc: DualCall): string {
 function generateArityNRef(dc: DualCall, n: number, opcode: number, hasTag: boolean): string {
   const ref = dc.bodyStr
   const argsList = Array.from({ length: n }, (_, i) => `_arg${i}`).join(', ')
-  const curryCapture = Array.from(
-    { length: n - 1 },
-    (_, i) => `const _a${i} = _arg${i}`,
-  ).join('; ')
+  const curryCapture = Array.from({ length: n - 1 }, (_, i) => `const _a${i} = _arg${i}`).join('; ')
   const curryCall = `${ref}(data, ${Array.from({ length: n - 1 }, (_, i) => `_a${i}`).join(', ')})`
   const decl = typeDecl(dc.name, dc.typeAnnotation)
 
@@ -419,12 +435,13 @@ function generateArityNRef(dc: DualCall, n: number, opcode: number, hasTag: bool
     if (n >= 3) closureProps += `\n    _dl._a1 = _a1`
     if (n >= 4) closureProps += `\n    _dl._a2 = _a2`
   }
+  const returnLine = hasTag ? `return ${registration(opcode, n)}` : 'return _dl'
 
   return `${decl} = function ${dc.name}(${implementationParams(n)}) {
   if (arguments.length >= ${n}) return ${ref}(${argsList})
   ${curryCapture}
   const _dl: any = (data: any) => ${curryCall}${closureProps}
-  return _dl
+  ${returnLine}
 } as any\n`
 }
 
@@ -454,6 +471,7 @@ function generateArityNInline(dc: DualCall, n: number, opcode: number, hasTag: b
     if (n >= 3) closureProps += `\n    _dl._a1 = _a1`
     if (n >= 4) closureProps += `\n    _dl._a2 = _a2`
   }
+  const returnLine = hasTag ? `return ${registration(opcode, n)}` : 'return _dl'
 
   return `${decl} = function ${dc.name}(${implementationParams(n)}) {
   if (arguments.length < ${n}) {
@@ -462,29 +480,42 @@ function generateArityNInline(dc: DualCall, n: number, opcode: number, hasTag: b
       ${dlAssign}
       ${bodyCode}
     }${closureProps}
-    return _dl
+    ${returnLine}
   }
   const ${dfAssign}
   ${bodyCode}
 } as any\n`
 }
 
-function generateDecl(dc: DualCall): string {
+function generateDecl(dc: DualCall, moduleName: GeneratedModule): string {
+  const directLeaf = directLeafPolicyForV1(moduleName, dc.name)
+  if (directLeaf !== undefined && dc.arity === directLeaf.arity && !dc.bodyIsRef) {
+    const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
+    return renderDirectLeafV1({
+      policy: directLeaf,
+      declaration: typeDecl(dc.name, dc.typeAnnotation),
+      opcode: dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0,
+      params,
+      bodyCode: isExpression ? `return ${bodyText}` : bodyText,
+    })
+  }
   if (dc.arity <= 1) {
-    return dc.tag ? generateArity1Tagged(dc) : generateArity1Untagged(dc)
+    return dc.tag ? generateArity1Tagged(dc, moduleName) : generateArity1Untagged(dc)
   }
   return generateArityN(dc)
 }
 
 // --- Module Transformer ---
 
-function transformModule(src: string): string {
+export function transformModuleV1(src: string, moduleName: GeneratedModule): string {
   const lines = src.split('\n')
   const outputLines: string[] = []
 
   // Add header
   outputLines.push('// Auto-generated by codegen/dual-inline.ts. Do not edit')
   outputLines.push('// Source of truth: codegen/defs/')
+  outputLines.push('')
+  outputLines.push("import { registerTrustedOperator } from './internal/provenance'")
   outputLines.push('')
 
   let i = 0
@@ -510,7 +541,7 @@ function transformModule(src: string): string {
       if (declText.includes('= dual(')) {
         const dc = tryParse(dualCallP, declText)
         if (dc) {
-          outputLines.push(generateDecl(dc))
+          outputLines.push(generateDecl(dc, moduleName))
           i = j
           continue
         }
@@ -528,14 +559,14 @@ function transformModule(src: string): string {
   return outputLines.join('\n')
 }
 
-const countBraces = (s: string): number =>
-  pipe(
-    Array.from(s),
-    A.reduce(
-      (d: number, ch: string) => ('({['.includes(ch) ? d + 1 : ')}]'.includes(ch) ? d - 1 : d),
-      0,
-    ),
-  )
+const countBraces = (source: string): number => {
+  let depth = 0
+  for (const character of source) {
+    if ('({['.includes(character)) depth++
+    else if (')}]'.includes(character)) depth--
+  }
+  return depth
+}
 
 function isDeclarationComplete(text: string): boolean {
   // A declaration is complete when all braces/parens are balanced
@@ -549,22 +580,24 @@ function isDeclarationComplete(text: string): boolean {
 
 // --- Main ---
 
-const processModule = (mod: string) => {
+const processModule = (mod: GeneratedModule) => {
   const src = readFileSync(join(DEFS_DIR, `${mod}.ts`), 'utf8')
-  const transformed = transformModule(src)
-  const output =
-    mod === 'array' ? `${transformed}\n\nexport * from './array-extra'\n` : transformed
+  const transformed = transformModuleV1(src, mod)
+  const output = mod === 'array' ? `${transformed}\n\nexport * from './array-extra'\n` : transformed
   const dualCount = (src.match(/= dual\(/g) || []).length
   writeFileSync(join(SRC_DIR, `${mod}.ts`), output)
   console.log(`  ${mod}.ts: ${dualCount} dual() calls`)
   return dualCount
 }
 
-const totalFns = pipe(
-  MODULES,
-  A.map(processModule),
-  A.reduce((acc, n) => acc + n, 0),
-)
-
-console.log(`\nGenerated ${MODULES.length} modules, ${totalFns} functions inlined → src/`)
+if (import.meta.main) {
+  const requestedModules = process.argv.slice(2)
+  const modules =
+    requestedModules.length === 0
+      ? [...GENERATED_MODULES]
+      : GENERATED_MODULES.filter((module) => requestedModules.includes(module))
+  let totalFns = 0
+  for (const moduleName of modules) totalFns += processModule(moduleName)
+  console.log(`\nGenerated ${modules.length} modules, ${totalFns} functions inlined → src/`)
+}
 /// <reference types="bun" />

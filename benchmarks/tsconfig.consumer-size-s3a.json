@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "src/reference/fp-consumer-size-s3a-contract.ts",
+    "src/reference/fp-consumer-size-s3a-contract.test.ts",
+    "src/reference/fp-consumer-size-s3a-gate.ts",
+    "src/reference/fp-consumer-size-s3a-repro.ts"
+  ]
+}

@@ -1,17 +1,79 @@
-import { dual as publicDual, type DualTag } from './dual'
+/**
+ * Untagged internal duals.
+ *
+ * These are deliberately independent of `./dual` and `./opcodes`. A non-fusible
+ * operation has no opcode and never will, so routing it through the public
+ * tagged dispatcher only makes every consumer bundle retain the opcode table
+ * and the fusion-shaped wrappers.
+ *
+ * `arguments.length` dispatch, partial application, `this`, error, identity,
+ * and allocation behavior match the untagged branches of the public `dual`.
+ * The public API is unchanged and is not re-exported here.
+ */
 
 type AnyFunction = (...args: never[]) => unknown
+
+export const dualUntagged2 = <Body extends AnyFunction, Operation extends AnyFunction>(
+  body: Body,
+): Operation =>
+  function () {
+    if (arguments.length >= 2) return (body as Function)(arguments[0], arguments[1])
+    const a0 = arguments[0]
+    return (data: unknown) => (body as Function)(data, a0)
+  } as unknown as Operation
+
+export const dualUntagged3 = <Body extends AnyFunction, Operation extends AnyFunction>(
+  body: Body,
+): Operation =>
+  function () {
+    if (arguments.length >= 3) {
+      return (body as Function)(arguments[0], arguments[1], arguments[2])
+    }
+    const a0 = arguments[0],
+      a1 = arguments[1]
+    return (data: unknown) => (body as Function)(data, a0, a1)
+  } as unknown as Operation
+
+export const dualUntagged4 = <Body extends AnyFunction, Operation extends AnyFunction>(
+  body: Body,
+): Operation =>
+  function () {
+    if (arguments.length >= 4) {
+      return (body as Function)(arguments[0], arguments[1], arguments[2], arguments[3])
+    }
+    const a0 = arguments[0],
+      a1 = arguments[1],
+      a2 = arguments[2]
+    return (data: unknown) => (body as Function)(data, a0, a1, a2)
+  } as unknown as Operation
+
+/** Bounded fallback for arity 1 and 5+. Rest arguments only where unavoidable. */
+export const dualUntaggedN = <Body extends AnyFunction, Operation extends AnyFunction>(
+  arity: number,
+  body: Body,
+): Operation =>
+  function (...args: unknown[]) {
+    if (args.length >= arity) return (body as Function)(...args)
+    return (data: unknown) => (body as Function)(data, ...args)
+  } as unknown as Operation
 
 interface InternalDual {
   <Body extends AnyFunction, Operation extends AnyFunction>(
     arity: Parameters<Body>['length'],
     body: Body,
-    tag?: DualTag,
   ): Operation
 }
 
 /**
- * Contextual escape hatch for the package's explicitly declared generic operations.
- * It is deliberately absent from the package export map.
+ * Arity-dispatched form for modules that have not been migrated to a fixed
+ * arity yet. A migrated module calls its exact `dualUntagged*` directly so its
+ * bundle retains only that one wrapper.
  */
-export const dual = publicDual as unknown as InternalDual
+export const dual: InternalDual = ((arity: number, body: AnyFunction) =>
+  arity === 2
+    ? dualUntagged2(body)
+    : arity === 3
+      ? dualUntagged3(body)
+      : arity === 4
+        ? dualUntagged4(body)
+        : dualUntaggedN(arity, body)) as InternalDual

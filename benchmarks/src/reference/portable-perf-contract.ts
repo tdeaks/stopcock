@@ -26,20 +26,29 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
   id: 'stopcock-portable-runtime-source-v1',
   files: Object.freeze([
     'packages/fp/src/array.ts',
-    'packages/fp/src/compile.ts',
+    'packages/fp-optimizer/src/compile.ts',
     'packages/fp/src/dual.ts',
     'packages/fp/src/interpret.ts',
-    'packages/fp/src/lower.ts',
+    // Rewrite policy that compile.ts used to hold inline. Part of the executed
+    // runtime, so the frozen subject has to cover it.
+    'packages/fp/src/internal/plan-analysis.ts',
+    // S10X split the portable runtime across two packages. The subject spans
+    // both: FP owns the plan, the operations, and the exact executor; the
+    // optimizer owns the bank the corpus actually measures. Selection tracing
+    // sits on the dispatch path and is part of the subject even though it
+    // records nothing unless a trace is open.
+    'packages/fp-optimizer/src/lower.ts',
+    'packages/fp-optimizer/src/selection-trace.ts',
     'packages/fp/src/number.ts',
     'packages/fp/src/opcodes.ts',
     'packages/fp/src/option.ts',
     'packages/fp/src/plan.ts',
-    'packages/fp/src/portable-templates.ts',
+    'packages/fp-optimizer/src/portable-templates.ts',
     'packages/fp/src/registry.ts',
-    'packages/fp/src/shape-entry.ts',
+    'packages/fp-optimizer/src/shape-entry.ts',
     'packages/fp/src/sort-kernel.ts',
   ] as const),
-  sha256: '432fd22d0c96e673721e2edb5e4c9da9e29720b692c7e322a1ba163ac555e869',
+  sha256: '301036c1a47c4369cc0e7aa7d0c48567d137a56c6a423376367c6612371e704f',
 })
 
 export interface PortableBatchPolicy {

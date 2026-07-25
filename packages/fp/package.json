@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/fp",
-  "version": "1.0.0",
+  "version": "2.0.0-next.0",
   "description": "Portable, performant functional programming utilities for TypeScript.",
   "license": "MIT",
   "repository": {
@@ -149,6 +149,18 @@
       "types": "./dist/compile.d.ts",
       "import": "./dist/compile.js"
     },
+    "./abi": {
+      "types": "./dist/abi.d.ts",
+      "import": "./dist/abi.js"
+    },
+    "./fusion": {
+      "types": "./dist/fusion.d.ts",
+      "import": "./dist/fusion.js"
+    },
+    "./fusion/debug": {
+      "types": "./dist/fusion/debug.d.ts",
+      "import": "./dist/fusion/debug.js"
+    },
     "./optic": {
       "types": "./dist/optic.d.ts",
       "import": "./dist/optic.js"
@@ -184,8 +196,9 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "codegen": "bun run codegen/dual-inline.ts && bun run codegen/portable-templates.ts && bun run scripts/sync-module-manifest.ts",
-    "codegen:check": "bun run codegen && git diff --exit-code -- src package.json module-manifest.ts",
+    "codegen": "bun run codegen/generate.ts",
+    "codegen:check": "bun run scripts/check-codegen-reproducibility.ts",
+    "codegen:repro": "bun run scripts/check-codegen-reproducibility.ts --no-git-diff",
     "manifest:check": "bun run scripts/sync-module-manifest.ts --check",
     "check:portable": "bun run scripts/check-portable-boundary.ts",
     "check:codegen-types": "tsc -p codegen/tsconfig.json --noEmit",
@@ -193,7 +206,7 @@
     "check:source": "tsc -p tsconfig.json --noEmit",
     "check:types": "tsc -p tsconfig.type-tests.json",
     "check:contract": "bun run scripts/check-package-contract.ts",
-    "check:release": "bun run codegen:check && bun run manifest:check && bun run check:portable && bun run check:codegen-types && bun run check:script-types && bun run check:source && bun run check:types && node ../../tooling/build-package.mjs && bunx vitest run src/__tests__ && bun run check:contract"
+    "check:release": "bun run codegen:check && bun run manifest:check && bun run check:portable && bun run check:codegen-types && bun run check:script-types && bun run check:source && bun run check:types && bunx vitest run src/__tests__ && bun run check:contract"
   },
   "engines": {
     "node": ">=22"

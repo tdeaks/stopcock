@@ -91,10 +91,7 @@ export const never: Task<never, never> = {
 
 // --- Combinators ---
 
-export const map: {
-  <A, B, E>(task: Task<A, E>, f: (a: A) => B): Task<B, E>
-  <A, B>(f: (a: A) => B): <E>(task: Task<A, E>) => Task<B, E>
-} = dual(
+export const map = dual(
   2,
   <A, B, E>(task: Task<A, E>, f: (a: A) => B): Task<B, E> => ({
     _tag: 'Task',
@@ -104,7 +101,10 @@ export const map: {
       return f(a)
     },
   }),
-)
+) as {
+  <A, B, E>(task: Task<A, E>, f: (a: A) => B): Task<B, E>
+  <A, B>(f: (a: A) => B): <E>(task: Task<A, E>) => Task<B, E>
+}
 
 export const flatMap: {
   <A, B, E, E2>(task: Task<A, E>, f: (a: A) => Task<B, E2>): Task<B, E | E2>
@@ -121,10 +121,7 @@ export const flatMap: {
   }),
 )
 
-export const tap: {
-  <A, E>(task: Task<A, E>, f: (a: A) => void | Promise<void>): Task<A, E>
-  <A>(f: (a: A) => void | Promise<void>): <E>(task: Task<A, E>) => Task<A, E>
-} = dual(
+export const tap = dual(
   2,
   <A, E>(task: Task<A, E>, f: (a: A) => void | Promise<void>): Task<A, E> => ({
     _tag: 'Task',
@@ -135,12 +132,12 @@ export const tap: {
       return a
     },
   }),
-)
+) as {
+  <A, E>(task: Task<A, E>, f: (a: A) => void | Promise<void>): Task<A, E>
+  <A>(f: (a: A) => void | Promise<void>): <E>(task: Task<A, E>) => Task<A, E>
+}
 
-export const mapError: {
-  <A, E, E2>(task: Task<A, E>, f: (e: E) => E2): Task<A, E2>
-  <E, E2>(f: (e: E) => E2): <A>(task: Task<A, E>) => Task<A, E2>
-} = dual(
+export const mapError = dual(
   2,
   <A, E, E2>(task: Task<A, E>, f: (e: E) => E2): Task<A, E2> => ({
     _tag: 'Task',
@@ -152,7 +149,10 @@ export const mapError: {
       }
     },
   }),
-)
+) as {
+  <A, E, E2>(task: Task<A, E>, f: (e: E) => E2): Task<A, E2>
+  <E, E2>(f: (e: E) => E2): <A>(task: Task<A, E>) => Task<A, E2>
+}
 
 export const catchError: {
   <A, E, B>(task: Task<A, E>, f: (e: E) => B): Task<A | B, never>
@@ -226,8 +226,5 @@ export const runSafe = <A, E>(task: Task<A, E>): Promise<Result<A, E>> =>
 
 export const runWithCancel = <A, E>(task: Task<A, E>): [Promise<A>, () => void] => {
   const controller = new AbortController()
-  return [
-    task.run(controller.signal),
-    () => controller.abort(new CancelledError()),
-  ]
+  return [task.run(controller.signal), () => controller.abort(new CancelledError())]
 }

@@ -1,4 +1,4 @@
-import { dual } from './dual-internal'
+import { dual } from './dual'
 import { none, some, type Option } from './option'
 import { err, ok, type Result } from './result'
 
@@ -9,17 +9,13 @@ export const isEmpty: (value: string) => boolean = dual(
 )
 
 /** UTF-16 code-unit length, matching String.prototype.length. */
-export const length: (value: string) => number = dual(
-  1,
-  (value: string): number => value.length,
-  { op: 'strLength' },
-)
+export const length: (value: string) => number = dual(1, (value: string): number => value.length, {
+  op: 'strLength',
+})
 
-export const trim: (value: string) => string = dual(
-  1,
-  (value: string): string => value.trim(),
-  { op: 'trim' },
-)
+export const trim: (value: string) => string = dual(1, (value: string): string => value.trim(), {
+  op: 'trim',
+})
 
 export const trimStart: (value: string) => string = dual(
   1,
@@ -48,31 +44,29 @@ export const toUpperCase: (value: string) => string = dual(
 export const startsWith: {
   (value: string, prefix: string): boolean
   (prefix: string): (value: string) => boolean
-} = dual(2, (value: string, prefix: string): boolean => value.startsWith(prefix))
+} = /* @__PURE__ */ dual(2, (value: string, prefix: string): boolean => value.startsWith(prefix))
 
 export const endsWith: {
   (value: string, suffix: string): boolean
   (suffix: string): (value: string) => boolean
-} = dual(2, (value: string, suffix: string): boolean => value.endsWith(suffix))
+} = /* @__PURE__ */ dual(2, (value: string, suffix: string): boolean => value.endsWith(suffix))
 
 export const includes: {
   (value: string, search: string): boolean
   (search: string): (value: string) => boolean
-} = dual(2, (value: string, search: string): boolean => value.includes(search))
+} = /* @__PURE__ */ dual(2, (value: string, search: string): boolean => value.includes(search))
 
 export const split: {
   (value: string, separator: string | RegExp): string[]
   (separator: string | RegExp): (value: string) => string[]
-} = dual(
-  2,
-  (value: string, separator: string | RegExp): string[] => value.split(separator),
-  { op: 'split' },
-)
+} = dual(2, (value: string, separator: string | RegExp): string[] => value.split(separator), {
+  op: 'split',
+})
 
 export const repeat: {
   (value: string, count: number): string
   (count: number): (value: string) => string
-} = dual(2, (value: string, count: number): string => value.repeat(count))
+} = /* @__PURE__ */ dual(2, (value: string, count: number): string => value.repeat(count))
 
 export const slice: {
   (value: string, start: number, end?: number): string
@@ -124,7 +118,7 @@ export const padEnd: typeof padStart = function padEnd(
 export const stripPrefix: {
   (value: string, prefix: string): Option<string>
   (prefix: string): (value: string) => Option<string>
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   (value: string, prefix: string): Option<string> =>
     value.startsWith(prefix) ? some(value.slice(prefix.length)) : none,
@@ -133,7 +127,7 @@ export const stripPrefix: {
 export const stripSuffix: {
   (value: string, suffix: string): Option<string>
   (suffix: string): (value: string) => Option<string>
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   (value: string, suffix: string): Option<string> =>
     value.endsWith(suffix) ? some(value.slice(0, -suffix.length || undefined)) : none,
@@ -149,25 +143,21 @@ export const words = (value: string): string[] => {
 export const replace: {
   (value: string, search: string | RegExp, replacement: string): string
   (search: string | RegExp, replacement: string): (value: string) => string
-} = dual(
-  3,
-  (value: string, search: string | RegExp, replacement: string): string =>
-    value.replace(search, replacement),
+} = /* @__PURE__ */ dual(3, (value: string, search: string | RegExp, replacement: string): string =>
+  value.replace(search, replacement),
 )
 
 export const replaceAll: {
   (value: string, search: string | RegExp, replacement: string): string
   (search: string | RegExp, replacement: string): (value: string) => string
-} = dual(
-  3,
-  (value: string, search: string | RegExp, replacement: string): string =>
-    value.replaceAll(search, replacement),
+} = /* @__PURE__ */ dual(3, (value: string, search: string | RegExp, replacement: string): string =>
+  value.replaceAll(search, replacement),
 )
 
 export const test: {
   (value: string, expression: RegExp): boolean
   (expression: RegExp): (value: string) => boolean
-} = dual(2, (value: string, expression: RegExp): boolean => {
+} = /* @__PURE__ */ dual(2, (value: string, expression: RegExp): boolean => {
   expression.lastIndex = 0
   return expression.test(value)
 })
@@ -175,7 +165,7 @@ export const test: {
 export const match: {
   (value: string, expression: RegExp): Option<RegExpMatchArray>
   (expression: RegExp): (value: string) => Option<RegExpMatchArray>
-} = dual(2, (value: string, expression: RegExp): Option<RegExpMatchArray> => {
+} = /* @__PURE__ */ dual(2, (value: string, expression: RegExp): Option<RegExpMatchArray> => {
   expression.lastIndex = 0
   const result = value.match(expression)
   return result === null ? none : some(result)
@@ -256,11 +246,9 @@ export const camelCase = (value: string): string => {
   return result
 }
 
-export const kebabCase = (value: string): string =>
-  lowerCaseWordParts(value).join('-')
+export const kebabCase = (value: string): string => lowerCaseWordParts(value).join('-')
 
-export const snakeCase = (value: string): string =>
-  lowerCaseWordParts(value).join('_')
+export const snakeCase = (value: string): string => lowerCaseWordParts(value).join('_')
 
 export const titleCase = (value: string): string => {
   const parts = wordParts(value)
@@ -278,9 +266,10 @@ export const codePointLength = (value: string): number => {
   return count
 }
 
-const segmenter = (locale?: string): Intl.Segmenter => new Intl.Segmenter(locale, {
-  granularity: 'grapheme',
-})
+const segmenter = (locale?: string): Intl.Segmenter =>
+  new Intl.Segmenter(locale, {
+    granularity: 'grapheme',
+  })
 
 export const graphemes = (value: string, locale?: string): string[] =>
   Array.from(segmenter(locale).segment(value), (part) => part.segment)

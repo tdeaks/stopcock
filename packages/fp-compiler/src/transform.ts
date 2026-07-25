@@ -3,6 +3,7 @@ import _traverse from '@babel/traverse'
 import type { NodePath, Scope } from '@babel/traverse'
 import * as t from '@babel/types'
 import MagicString from 'magic-string'
+import { collectPrunableImports, planImportPrune, type ReplacedRange } from './prune-imports'
 import {
   BOUNDARY_OPS,
   FINAL_BOUNDARY_OPS,
@@ -31,7 +32,17 @@ import type {
 const traverse: typeof _traverse =
   (_traverse as unknown as { default?: typeof _traverse }).default ?? _traverse
 
-const DEFAULT_IMPORT_SOURCES = ['@stopcock/fp']
+/**
+ * Specifiers whose `pipe`/`flow`/`compile` the compiler will fuse away.
+ *
+ * `@stopcock/fp-optimizer` is here because S10X moved the fused runner bank
+ * out of FP. Someone who installed the optimizer chose the fastest runtime
+ * tier, and compiling their pipeline is strictly better than that tier: it
+ * beats both and leaves no engine in the bundle. Recognising only FP's root
+ * would have silently stopped compiling exactly the pipelines whose authors
+ * cared most about speed.
+ */
+const DEFAULT_IMPORT_SOURCES = ['@stopcock/fp', '@stopcock/fp-optimizer', '@stopcock/fp/fusion']
 const OPTION_TERMINALS = new Set(['find', 'findIndex', 'findMap', 'head', 'last', 'min', 'max'])
 const PURE_SORT_OPS = new Set(['sort', 'sortBy', 'sortAsc', 'sortDesc'])
 
@@ -368,6 +379,12 @@ interface StepsResult {
   readonly ok: boolean
   readonly steps?: Step[]
   readonly reason?: string
+  /**
+   * Operators recognised before the collector gave up. A rejected site that
+   * used real operators is still worth describing: without these it produces
+   * no receipt at all and becomes invisible to coverage.
+   */
+  readonly partialNames?: readonly string[]
 }
 
 /** Validates and collects a flat step list, enforcing that a terminal op (if any) is last. */
@@ -379,10 +396,15 @@ function collectSteps(
   const steps: Step[] = []
   for (let i = 0; i < stepNodes.length; i++) {
     const check = analyzeStep(stepNodes[i], bindings, scope)
-    if (!check.ok) return { ok: false, reason: check.reason }
+    const recognised = steps.map((step) => step.name)
+    if (!check.ok) return { ok: false, reason: check.reason, partialNames: recognised }
     const opName = check.name!
     if (i < stepNodes.length - 1 && (TERMINAL_OPS.has(opName) || FINAL_BOUNDARY_OPS.has(opName))) {
-      return { ok: false, reason: `${opName}: terminal op must be the last step` }
+      return {
+        ok: false,
+        reason: `${opName}: terminal op must be the last step`,
+        partialNames: [...recognised, opName],
+      }
     }
     steps.push({ name: opName, node: stepNodes[i], args: check.args })
   }
@@ -497,6 +519,13 @@ export function transformStopcockPipelines(
   }
 
   const magicString = new MagicString(code)
+  // Ranges the transform replaced. A reference inside one of these no longer
+  // exists in the output, which is what makes import pruning safe to decide.
+  const replacedRanges: ReplacedRange[] = []
+  let prunedSpecifiers = 0
+  const recordReplaced = (start: number, end: number): void => {
+    replacedRanges.push({ start, end })
+  }
   const diagnostics: DiagnosticSite[] = []
   const optionNoneLocal = uniqueLocal(code, DEFAULT_OPTION_NONE_LOCAL)
   let changed = false
@@ -519,6 +548,7 @@ export function transformStopcockPipelines(
           optionNoneLocal,
         )
         if (result.code) {
+          recordReplaced(call.start!, call.end!)
           magicString.overwrite(call.start!, call.end!, result.code)
           changed = true
           needsOptionImport ||= result.needsOptionImport === true
@@ -572,7 +602,17 @@ export function transformStopcockPipelines(
 
       if (!collected.ok) {
         if (diagnosticsLevel !== false) {
-          diagnostics.push(site(call, id, false, stepNodes.length, semantics, collected.reason))
+          diagnostics.push(
+            site(
+              call,
+              id,
+              false,
+              stepNodes.length,
+              semantics,
+              collected.reason,
+              collected.steps?.map((step) => step.name) ?? collected.partialNames,
+            ),
+          )
           if (diagnosticsLevel === 'error') {
             throw new Error(
               `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${collected.reason}`,
@@ -596,19 +636,39 @@ export function transformStopcockPipelines(
       const parent = path.parentPath
       const arrayConstructorExpression = arrayConstructorForScope(path.scope)
       const hasGlobalUndefined = globalUndefinedIsUnbound(path.scope)
-      if (
+      // The statement that actually sits in a Program or BlockStatement body.
+      // For `export const r = pipe(...)` that is the export declaration, not
+      // the declaration inside it: splicing between `export` and `const` would
+      // not parse.
+      const declarationPath =
         parent?.isVariableDeclarator() &&
         parent.node.init === call &&
         parent.parentPath?.isVariableDeclaration() &&
-        parent.parentPath.node.declarations.length === 1 &&
-        parent.parentPath.parentPath?.isBlockStatement()
+        parent.parentPath.node.declarations.length === 1
+          ? parent.parentPath
+          : undefined
+      const hostPath =
+        declarationPath === undefined
+          ? undefined
+          : declarationPath.parentPath?.isExportNamedDeclaration() ||
+              declarationPath.parentPath?.isExportDefaultDeclaration()
+            ? declarationPath.parentPath
+            : declarationPath
+      if (
+        hostPath !== undefined &&
+        (hostPath.parentPath?.isBlockStatement() || hostPath.parentPath?.isProgram())
       ) {
         // A lone declaration statement can host the loop directly while
         // preserving the original declaration text and scope. This avoids an
         // IIFE for common `const result = pipe(...)` sites, which otherwise
         // forces JavaScriptCore to tier a second function before optimizing
         // the hot loop.
-        const declaration = parent.parentPath.node
+        //
+        // Program bodies host statements just as well as block bodies, and
+        // module-level `export const r = pipe(...)` is common enough that
+        // excluding it meant the most ordinary shape in a module always paid
+        // for a wrapper call.
+        const declaration = hostPath.node
         const { stmts, resultVar } = generateFusedBody(
           code,
           sourceText,
@@ -620,6 +680,7 @@ export function transformStopcockPipelines(
         )
         const prefix = code.slice(declaration.start!, call.start!)
         const suffix = code.slice(call.end!, declaration.end!)
+        recordReplaced(call.start!, call.end!)
         magicString.overwrite(
           declaration.start!,
           declaration.end!,
@@ -628,7 +689,7 @@ export function transformStopcockPipelines(
       } else if (
         parent?.isExpressionStatement() &&
         parent.node.expression === call &&
-        parent.parentPath?.isBlockStatement()
+        (parent.parentPath?.isBlockStatement() || parent.parentPath?.isProgram())
       ) {
         // The result is discarded, so the fused statements can replace the
         // expression statement without a wrapper call.
@@ -641,6 +702,7 @@ export function transformStopcockPipelines(
           arrayConstructorExpression,
           hasGlobalUndefined,
         )
+        recordReplaced(parent.node.start!, parent.node.end!)
         magicString.overwrite(parent.node.start!, parent.node.end!, `{\n${stmts}\n}`)
       } else if (parent?.isArrowFunctionExpression() && parent.node.body === call) {
         const tailBody = generateFusedTailBody(
@@ -653,6 +715,7 @@ export function transformStopcockPipelines(
           hasConstantLocalSource(sourceNode, path.scope),
         )
         if (tailBody !== undefined) {
+          recordReplaced(call.start!, call.end!)
           magicString.overwrite(call.start!, call.end!, `{\n${tailBody}\n}`)
         } else {
           const { stmts, resultVar } = generateFusedBody(
@@ -664,6 +727,7 @@ export function transformStopcockPipelines(
             arrayConstructorExpression,
             hasGlobalUndefined,
           )
+          recordReplaced(call.start!, call.end!)
           magicString.overwrite(call.start!, call.end!, `{\n${stmts}\nreturn ${resultVar};\n}`)
         }
       } else if (parent?.isReturnStatement() && parent.node.argument === call) {
@@ -696,6 +760,7 @@ export function transformStopcockPipelines(
             arrayConstructorExpression,
             hasGlobalUndefined,
           )
+          recordReplaced(returnStart, returnEnd)
           magicString.overwrite(returnStart, returnEnd, `{\n${stmts}\nreturn ${resultVar};\n}`)
         }
       } else {
@@ -707,11 +772,22 @@ export function transformStopcockPipelines(
           arrayConstructorExpression,
           hasGlobalUndefined,
         )
+        recordReplaced(call.start!, call.end!)
         magicString.overwrite(call.start!, call.end!, generated)
       }
       changed = true
       if (diagnosticsLevel !== false) {
-        diagnostics.push(site(call, id, true, steps.length, semantics))
+        diagnostics.push(
+          site(
+            call,
+            id,
+            true,
+            steps.length,
+            semantics,
+            undefined,
+            steps.map((step) => step.name),
+          ),
+        )
       }
       path.skip()
     },
@@ -724,6 +800,35 @@ export function transformStopcockPipelines(
       semantics,
       diagnostics: diagnosticsLevel === false ? [] : diagnostics,
     }
+  }
+
+  // Only after every site is decided: a reference that a fallback site still
+  // needs must never be pruned because a sibling site fused.
+  if (replacedRanges.length > 0) {
+    const references: { name: string; position: number }[] = []
+    traverse(ast, {
+      Identifier(path) {
+        if (!path.isReferencedIdentifier()) return
+        if (path.node.start == null) return
+        references.push({ name: path.node.name, position: path.node.start })
+      },
+    })
+    const prunableSources = new Set([
+      ...importSources,
+      ...arrayImportSources,
+      ...compileImportSources,
+    ])
+    const edits = planImportPrune({
+      imports: collectPrunableImports(ast.program, prunableSources),
+      references,
+      replaced: replacedRanges,
+      code,
+    })
+    for (const edit of edits) {
+      if (edit.kind === 'declaration') magicString.remove(edit.start, edit.end)
+      else magicString.remove(edit.start, edit.end)
+    }
+    prunedSpecifiers = edits.length
   }
 
   if (needsOptionImport) {
@@ -750,6 +855,7 @@ function site(
   steps: number,
   semantics: CompilerSemantics,
   reason?: string,
+  opNames?: readonly string[],
 ): DiagnosticSite {
   return {
     id,
@@ -759,6 +865,7 @@ function site(
     steps,
     semantics,
     reason,
+    opNames,
   }
 }
 

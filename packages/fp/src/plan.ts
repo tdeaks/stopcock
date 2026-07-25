@@ -2,8 +2,9 @@
 // reference interpreter all lower from. See docs/superpowers/plans/
 // 2026-07-21-stopcock-fp-absolute-performance-implementation.md,
 // "Canonical optimizer architecture".
+import { trustedOperatorEntry, type TrustedOperatorEntry } from './internal/provenance'
 import { OP_NON_FUSEABLE } from './opcodes'
-import { type OpCode, type OpDomain, requireOpMeta } from './registry'
+import { getOpMeta, type OpCode, type OpDomain, requireOpMeta } from './registry'
 
 export type SegmentKind = 'stream' | 'boundary' | 'opaque'
 
@@ -52,24 +53,16 @@ interface BoundStep {
   readonly binding: StepBinding
 }
 
-interface TaggedFn {
-  readonly _op?: number
-  readonly _fn?: unknown
-  readonly _a1?: unknown
-  readonly _a2?: unknown
-}
-
-function isTaggedStep(fn: unknown): fn is TaggedFn & ((value: unknown) => unknown) {
-  if (typeof fn !== 'function') return false
-  const op = (fn as TaggedFn)._op
-  return typeof op === 'number' && op > 0
-}
-
-export function extractBinding(step: TaggedFn): StepBinding {
+/**
+ * Bindings come from the private provenance entry, never from the public
+ * fields. Deleting, copying, reordering, or overwriting `_fn`/`_a1`/`_a2` on a
+ * trusted operator therefore cannot change what a kernel executes.
+ */
+export function extractBinding(entry: { fn?: unknown; a1?: unknown; a2?: unknown }): StepBinding {
   const binding: { fn?: unknown; a1?: unknown; a2?: unknown } = {}
-  if (step._fn !== undefined) binding.fn = step._fn
-  if (step._a1 !== undefined) binding.a1 = step._a1
-  if (step._a2 !== undefined) binding.a2 = step._a2
+  if (entry.fn !== undefined) binding.fn = entry.fn
+  if (entry.a1 !== undefined) binding.a1 = entry.a1
+  if (entry.a2 !== undefined) binding.a2 = entry.a2
   return binding
 }
 
@@ -150,17 +143,23 @@ function segmentBoundSteps(entries: readonly BoundStep[]): BoundPlan {
 }
 
 /**
- * Builds a Plan from a list of pipeline steps: tagged functions carrying
- * _op/_fn/_a1/_a2 (as produced by array.ts's data-last operators), or plain
- * untagged functions, treated as opaque whole-domain transforms.
+ * Builds a Plan from a list of pipeline steps. A step is fused only when this
+ * package constructed it and the opcode recorded at construction time resolves
+ * to a known operation. Everything else, including a function carrying a
+ * perfectly valid forged `_op`, is an opaque whole-domain transform and runs
+ * the complete generic path.
  */
 export function buildPlan(steps: readonly unknown[]): BoundPlan {
   const entries: BoundStep[] = steps.map((step) => {
-    if (!isTaggedStep(step)) {
-      return { op: OP_NON_FUSEABLE, binding: { opaqueFn: step as (value: unknown) => unknown } }
-    }
-    const opMeta = requireOpMeta(step._op as number)
-    return { op: opMeta.op, binding: extractBinding(step) }
+    const opaque = (): BoundStep => ({
+      op: OP_NON_FUSEABLE,
+      binding: { opaqueFn: step as (value: unknown) => unknown },
+    })
+    const entry = trustedOperatorEntry(step)
+    if (entry === undefined || entry.op <= 0) return opaque()
+    const opMeta = getOpMeta(entry.op as OpCode)
+    if (opMeta === undefined) return opaque()
+    return { op: opMeta.op, binding: extractBinding(entry) }
   })
   return segmentBoundSteps(entries)
 }

@@ -1,0 +1,1283 @@
+{
+  "schemaVersion": 1,
+  "canonicalStage": "S0",
+  "canonicalPlan": "docs/superpowers/plans/2026-07-24-stopcock-v2-performance-density-superplan.md",
+  "manifestSetSha256": "sha256:b0520d9c21911fad7c1eb8a44f96ffffcbd11238eeb62692547de5e33f8bca5c",
+  "dispositionPolicy": "S0 ready means the package has a complete static release surface and passed the recorded source-type and direct-build probe. S0R still owns scoped correctness, pack, clean-install, declared-export import, and blocker-remediation proof before S0B may align versions.",
+  "cohort": {
+    "public": [
+      "@stopcock/async",
+      "@stopcock/autodiff",
+      "@stopcock/color",
+      "@stopcock/date",
+      "@stopcock/diff",
+      "@stopcock/eslint-plugin-fp",
+      "@stopcock/fp",
+      "@stopcock/fp-codemod",
+      "@stopcock/fp-compiler",
+      "@stopcock/fp-interop",
+      "@stopcock/fp-testing",
+      "@stopcock/http",
+      "@stopcock/img",
+      "@stopcock/la",
+      "@stopcock/parser",
+      "@stopcock/pattern",
+      "@stopcock/persistent",
+      "@stopcock/signal",
+      "@stopcock/state",
+      "@stopcock/svg"
+    ],
+    "privateCompatibility": ["@stopcock/synth"]
+  },
+  "currentState": {
+    "intentionallyInconsistent": true,
+    "promotionOwner": "S0B",
+    "assertions": [
+      {
+        "package": "@stopcock/fp",
+        "section": "manifest",
+        "field": "version",
+        "actual": "1.0.0",
+        "target": "2.0.0-next.0"
+      },
+      {
+        "package": "@stopcock/fp-compiler",
+        "section": "peerDependencies",
+        "field": "@stopcock/fp",
+        "actual": "^2.0.0",
+        "target": "2.0.0-next.0"
+      },
+      {
+        "package": "@stopcock/fp-interop",
+        "section": "peerDependencies",
+        "field": "@stopcock/fp",
+        "actual": "^2.0.0",
+        "target": "2.0.0-next.0"
+      },
+      {
+        "package": "@stopcock/parser",
+        "section": "peerDependencies",
+        "field": "@stopcock/fp",
+        "actual": "^2.0.0",
+        "target": "2.0.0-next.0"
+      }
+    ]
+  },
+  "fpDependants": {
+    "public": [
+      "@stopcock/async",
+      "@stopcock/autodiff",
+      "@stopcock/color",
+      "@stopcock/date",
+      "@stopcock/diff",
+      "@stopcock/fp-compiler",
+      "@stopcock/fp-interop",
+      "@stopcock/http",
+      "@stopcock/parser",
+      "@stopcock/state"
+    ],
+    "privateCompatibility": ["@stopcock/synth"]
+  },
+  "packages": [
+    {
+      "name": "@stopcock/async",
+      "path": "packages/async/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": [".", "./async-iter", "./task"],
+      "commands": {
+        "cwd": "packages/async",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": ["fp-absolute-performance.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": "async-source-types",
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: vp exec tsc -p tsconfig.json --noEmit exited 1.",
+          "2026-07-24: node ../../tooling/build-package.mjs emitted JavaScript, then exited 2 in declaration generation.",
+          "2026-07-24: static metadata inspection recorded CHANGELOG.md as present-unpacked.",
+          "2026-07-24: source types and public type contracts passed after narrow Async-local overload adapters preserved the existing dual runtime.",
+          "2026-07-24: the direct package build passed and the 7-file, 99-test package suite passed, including packed runtime imports and Bundler/NodeNext declaration consumers.",
+          "2026-07-24: the packed Async tarball contains CHANGELOG.md alongside README.md and LICENSE."
+        ],
+        "transitionRequirements": [
+          "S0R remediation passed scoped source types, public type contracts, tests, direct build, pack, isolated extracted-consumer imports, and declarations.",
+          "S0B must align the public version and internal FP range to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/autodiff",
+      "path": "packages/autodiff/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": [".", "./mat", "./math", "./scalar", "./tape", "./vec"],
+      "commands": {
+        "cwd": "packages/autodiff",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "bun run test",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        },
+        {
+          "section": "dependencies",
+          "name": "@stopcock/la",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": [
+            "fp-absolute-performance.md",
+            "normalize-public-package-metadata.md"
+          ]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed after the internal LA dependency was built."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must align the public version and internal Stopcock ranges to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/color",
+      "path": "packages/color/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": ["."],
+      "commands": {
+        "cwd": "packages/color",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        },
+        {
+          "section": "dependencies",
+          "name": "@stopcock/la",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": [
+            "fp-absolute-performance.md",
+            "normalize-public-package-metadata.md"
+          ]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed after the internal LA dependency was built."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must align the public version and internal Stopcock ranges to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/date",
+      "path": "packages/date/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": ["."],
+      "commands": {
+        "cwd": "packages/date",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": [
+            "fp-absolute-performance.md",
+            "normalize-public-package-metadata.md"
+          ]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": "date-source-types",
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: vp exec tsc -p tsconfig.json --noEmit exited 1.",
+          "2026-07-24: node ../../tooling/build-package.mjs emitted JavaScript, then exited 2 in declaration generation.",
+          "2026-07-24: source types and focused public type contracts passed after Date's range and timezone overloads were aligned with length-based runtime dispatch.",
+          "2026-07-24: the direct package build and 16-file, 331-test suite passed, including a real tarball, extracted runtime execution, and Bundler/NodeNext declaration consumers.",
+          "2026-07-24: the packed Date tarball contains every declared root target plus README.md, CHANGELOG.md, and LICENSE without source or test files."
+        ],
+        "transitionRequirements": [
+          "S0R remediation passed scoped source types, public type contracts, tests, direct build, pack, isolated extracted-consumer imports, and declarations.",
+          "S0B must align the public version and internal FP range to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/diff",
+      "path": "packages/diff/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": ["."],
+      "commands": {
+        "cwd": "packages/diff",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": [
+            "fp-absolute-performance.md",
+            "normalize-public-package-metadata.md"
+          ]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": "diff-source-types",
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: vp exec tsc -p tsconfig.json --noEmit exited 1.",
+          "2026-07-24: node ../../tooling/build-package.mjs emitted JavaScript, then exited 2 in declaration generation.",
+          "2026-07-24: source types and focused public type contracts passed after Diff's apply overloads were preserved through package-local declaration assertions.",
+          "2026-07-24: the direct package build and 10-file, 151-test suite passed, including a real tarball, extracted runtime execution, and Bundler/NodeNext declaration consumers.",
+          "2026-07-24: the independently packed 29-file Diff tarball was 9.39 kB with Bun shasum ec493a9bab9ea786f1a27093c89ab851e3ed32f7; it contains the declared root plus README.md, CHANGELOG.md, and LICENSE without source or test files."
+        ],
+        "transitionRequirements": [
+          "S0R remediation passed scoped source types, public type contracts, tests, direct build, pack, isolated extracted-consumer imports, and declarations.",
+          "S0B must align the public version and internal FP range to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/eslint-plugin-fp",
+      "path": "packages/eslint-plugin-fp/package.json",
+      "currentVersion": "0.0.0",
+      "visibility": "public",
+      "exports": [".", "./rules"],
+      "commands": {
+        "cwd": "packages/eslint-plugin-fp",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": null,
+          "state": "pending-first-release",
+          "pendingChangesets": ["add-fp-companion-tools.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; the pending first-release changeset supplies changelog provenance."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must consume the pending changeset, create and pack the first changelog, and align the public version to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/fp",
+      "path": "packages/fp/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": [
+        ".",
+        "./array",
+        "./boolean",
+        "./collector",
+        "./compile",
+        "./dual",
+        "./eq",
+        "./function",
+        "./group",
+        "./guard",
+        "./hash",
+        "./indexed",
+        "./iter",
+        "./map",
+        "./match",
+        "./math",
+        "./monoid",
+        "./non-empty-array",
+        "./nullable",
+        "./number",
+        "./object",
+        "./optic",
+        "./option",
+        "./ord",
+        "./ordering",
+        "./package.json",
+        "./reader",
+        "./readonly-array",
+        "./record",
+        "./recursion",
+        "./result",
+        "./schema",
+        "./semigroup",
+        "./set",
+        "./state-fn",
+        "./string",
+        "./these",
+        "./transducer",
+        "./tuple",
+        "./typed-array",
+        "./validation",
+        "./writer"
+      ],
+      "commands": {
+        "cwd": "packages/fp",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": [
+            "fp-absolute-performance.md",
+            "fp-validation-composition.md",
+            "normalize-public-package-metadata.md"
+          ]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; the prior S0 contract slice separately proved focused source, type, build, pack, and packed imports."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must consume pending changesets and align the public version to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/fp-codemod",
+      "path": "packages/fp-codemod/package.json",
+      "currentVersion": "0.0.0",
+      "visibility": "public",
+      "exports": [".", "./node"],
+      "commands": {
+        "cwd": "packages/fp-codemod",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": null,
+          "state": "pending-first-release",
+          "pendingChangesets": ["add-fp-companion-tools.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; the pending first-release changeset supplies changelog provenance."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must consume the pending changeset, create and pack the first changelog, and align the public version to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/fp-compiler",
+      "path": "packages/fp-compiler/package.json",
+      "currentVersion": "0.0.0",
+      "visibility": "public",
+      "exports": [".", "./esbuild", "./package.json", "./rollup", "./vite", "./webpack"],
+      "commands": {
+        "cwd": "packages/fp-compiler",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
+        "test": "bun run test",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "peerDependencies",
+          "name": "@stopcock/fp",
+          "range": "^2.0.0",
+          "optional": false
+        },
+        {
+          "section": "devDependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": null,
+          "state": "pending-first-release",
+          "pendingChangesets": ["fp-absolute-performance.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; the pending first-release changeset supplies changelog provenance."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must consume the pending changeset, create and pack the first changelog, align the public version, and replace the currently incompatible FP peer state with the exact selected prerelease cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/fp-interop",
+      "path": "packages/fp-interop/package.json",
+      "currentVersion": "0.0.0",
+      "visibility": "public",
+      "exports": [
+        ".",
+        "./boundary",
+        "./either-like",
+        "./node",
+        "./option-like",
+        "./package.json",
+        "./standard-schema",
+        "./wire"
+      ],
+      "commands": {
+        "cwd": "packages/fp-interop",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "peerDependencies",
+          "name": "@stopcock/fp",
+          "range": "^2.0.0",
+          "optional": false
+        },
+        {
+          "section": "devDependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": null,
+          "state": "pending-first-release",
+          "pendingChangesets": ["add-fp-interop.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; the pending first-release changeset supplies changelog provenance."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must consume the pending changeset, create and pack the first changelog, align the public version, and replace the currently incompatible FP peer state with the exact selected prerelease cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/fp-testing",
+      "path": "packages/fp-testing/package.json",
+      "currentVersion": "0.0.0",
+      "visibility": "public",
+      "exports": [".", "./data", "./iterable", "./laws"],
+      "commands": {
+        "cwd": "packages/fp-testing",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": null,
+          "state": "pending-first-release",
+          "pendingChangesets": ["add-fp-companion-tools.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; the pending first-release changeset supplies changelog provenance."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must consume the pending changeset, create and pack the first changelog, and align the public version to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/http",
+      "path": "packages/http/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": ["."],
+      "commands": {
+        "cwd": "packages/http",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/async",
+          "range": "workspace:*",
+          "optional": false
+        },
+        {
+          "section": "dependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": ["normalize-public-package-metadata.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; Async remains a separately recorded upstream readiness blocker."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export after Async remediation.",
+          "S0B must align the public version and internal Stopcock ranges to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/img",
+      "path": "packages/img/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": ["."],
+      "commands": {
+        "cwd": "packages/img",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/color",
+          "range": "workspace:*",
+          "optional": false
+        },
+        {
+          "section": "dependencies",
+          "name": "@stopcock/la",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": ["normalize-public-package-metadata.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed after the internal LA dependency was built."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must align the public version and internal Stopcock ranges to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/la",
+      "path": "packages/la/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": [".", "./accel", "./fast", "./primitives"],
+      "commands": {
+        "cwd": "packages/la",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": ["normalize-public-package-metadata.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": ["2026-07-24: source types and direct build passed."],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must align the public version to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/parser",
+      "path": "packages/parser/package.json",
+      "currentVersion": "0.0.0",
+      "visibility": "public",
+      "exports": [".", "./combinators", "./core", "./primitives"],
+      "commands": {
+        "cwd": "packages/parser",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "peerDependencies",
+          "name": "@stopcock/fp",
+          "range": "^2.0.0",
+          "optional": false
+        },
+        {
+          "section": "devDependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": null,
+          "state": "pending-first-release",
+          "pendingChangesets": ["add-fp-companion-tools.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; the pending first-release changeset supplies changelog provenance."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must consume the pending changeset, create and pack the first changelog, align the public version, and replace the currently incompatible FP peer state with the exact selected prerelease cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/pattern",
+      "path": "packages/pattern/package.json",
+      "currentVersion": "0.0.0",
+      "visibility": "public",
+      "exports": [".", "./match", "./pattern"],
+      "commands": {
+        "cwd": "packages/pattern",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": null,
+          "state": "pending-first-release",
+          "pendingChangesets": ["add-fp-companion-tools.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; the pending first-release changeset supplies changelog provenance."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must consume the pending changeset, create and pack the first changelog, and align the public version to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/persistent",
+      "path": "packages/persistent/package.json",
+      "currentVersion": "0.0.0",
+      "visibility": "public",
+      "exports": [
+        ".",
+        "./deque",
+        "./hash",
+        "./hash-map",
+        "./hash-set",
+        "./ordered-map",
+        "./ordered-set",
+        "./queue",
+        "./stack",
+        "./vector"
+      ],
+      "commands": {
+        "cwd": "packages/persistent",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": "vp exec tsc -p tsconfig.type-tests.json",
+        "test": "bun run test",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": ["add-persistent-collections.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": ["2026-07-24: source types and direct build passed."],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must consume the pending changeset and align the public version to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/signal",
+      "path": "packages/signal/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": [
+        ".",
+        "./analysis",
+        "./biquad",
+        "./convolve",
+        "./fft",
+        "./fir",
+        "./onepole",
+        "./resample",
+        "./types",
+        "./window"
+      ],
+      "commands": {
+        "cwd": "packages/signal",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "bun run test",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": ["normalize-public-package-metadata.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": ["2026-07-24: source types and direct build passed."],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must align the public version to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/state",
+      "path": "packages/state/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": [".", "./async", "./persist", "./react", "./svelte", "./vue"],
+      "commands": {
+        "cwd": "packages/state",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/diff",
+          "range": "workspace:*",
+          "optional": false
+        },
+        {
+          "section": "dependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        },
+        {
+          "section": "peerDependencies",
+          "name": "@stopcock/async",
+          "range": "workspace:*",
+          "optional": true
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": [
+            "fp-absolute-performance.md",
+            "normalize-public-package-metadata.md"
+          ]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: source types and direct build passed; Async and Diff remain separately recorded upstream readiness blockers."
+        ],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export after Async and Diff remediation.",
+          "S0B must align the public version and internal Stopcock ranges to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/svg",
+      "path": "packages/svg/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "public",
+      "exports": [".", "./la"],
+      "commands": {
+        "cwd": "packages/svg",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "vp test run",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/color",
+          "range": "workspace:*",
+          "optional": false
+        },
+        {
+          "section": "dependencies",
+          "name": "@stopcock/la",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "present",
+        "readme": {
+          "path": "README.md",
+          "state": "present-packed"
+        },
+        "license": {
+          "field": "MIT",
+          "path": "LICENSE",
+          "state": "present-packed"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-packed",
+          "pendingChangesets": ["normalize-public-package-metadata.md"]
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": ["2026-07-24: source types and direct build passed."],
+        "transitionRequirements": [
+          "S0R exit must revalidate scoped tests, pack, clean install, and every declared export.",
+          "S0B must align the public version and internal Stopcock ranges to the selected 2.0.0-next cohort."
+        ]
+      }
+    },
+    {
+      "name": "@stopcock/synth",
+      "path": "packages/synth/package.json",
+      "currentVersion": "1.0.0",
+      "visibility": "private-compatibility",
+      "exports": [".", "./types"],
+      "commands": {
+        "cwd": "packages/synth",
+        "build": "vp run build",
+        "sourceTypes": "vp exec tsc -p tsconfig.json --noEmit",
+        "typeContracts": null,
+        "test": "bun run test",
+        "pack": "bun pm pack --destination <temporary-directory>"
+      },
+      "internalStopcockRequirements": [
+        {
+          "section": "dependencies",
+          "name": "@stopcock/fp",
+          "range": "workspace:*",
+          "optional": false
+        },
+        {
+          "section": "dependencies",
+          "name": "@stopcock/signal",
+          "range": "workspace:*",
+          "optional": false
+        }
+      ],
+      "metadata": {
+        "description": "missing",
+        "readme": {
+          "path": "README.md",
+          "state": "present-unpacked"
+        },
+        "license": {
+          "field": "MIT",
+          "path": null,
+          "state": "manifest-only"
+        },
+        "changelog": {
+          "path": "CHANGELOG.md",
+          "state": "present-unpacked",
+          "pendingChangesets": []
+        }
+      },
+      "disposition": {
+        "status": "ready",
+        "scopeTarget": null,
+        "blockers": [],
+        "evidence": [
+          "2026-07-24: private manifest, private publication status, declared exports, and workspace dependencies satisfy the bounded compatibility prerequisites; no Synth implementation or publication claim is made."
+        ],
+        "transitionRequirements": [
+          "S0B must align the private manifest and internal Stopcock dependencies to the selected 2.0.0-next cohort.",
+          "S0B must add and run the bounded packed-dependency Synth compatibility lane while keeping Synth absent from publication."
+        ]
+      }
+    }
+  ]
+}

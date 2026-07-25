@@ -1,0 +1,37 @@
+{
+  "name": "@stopcock/fp-optimizer",
+  "version": "2.0.0-next.0",
+  "description": "Maximum-throughput fused runners for @stopcock/fp. Opt-in: install and import it deliberately.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tdeaks/stopcock.git",
+    "directory": "packages/fp-optimizer"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "peerDependencies": {
+    "@stopcock/fp": "2.0.0-next.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check:source": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@stopcock/fp": "workspace:*"
+  }
+}

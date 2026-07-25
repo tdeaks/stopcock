@@ -165,6 +165,32 @@ test('iterable and transducer Into terminals preserve and validate exact targets
   Transducer.intoArrayInto(['value'], Transducer.identity<string>(), fixedTarget)
 })
 
+test('toArrayInto reads the element type through an inline lazy pipeline', () => {
+  const input: readonly number[] = [1, 2, 3]
+  const double = (value: number): number => value * 2
+  const isEven = (value: number): boolean => value % 2 === 0
+  const numbers: number[] = []
+  const texts: string[] = []
+
+  // Every stage here is an overloaded dual call. The element type has to survive
+  // being read out of one, or the target-capacity rules resolve against nothing.
+  expectTypeOf(Iter.toArrayInto(Iter.map(Iter.from(input), double), numbers)).toEqualTypeOf<
+    number[]
+  >()
+  expectTypeOf(
+    Iter.toArrayInto(Iter.filter(Iter.map(Iter.from(input), double), isEven), numbers),
+  ).toEqualTypeOf<number[]>()
+  expectTypeOf(
+    Iter.toArrayInto(Iter.take(Iter.map(Iter.from(input), double), 2), numbers),
+  ).toEqualTypeOf<number[]>()
+  expectTypeOf(
+    Iter.toArrayInto<number, number[]>(Iter.map(Iter.from(input), double), numbers),
+  ).toEqualTypeOf<number[]>()
+
+  // @ts-expect-error the mapped element type still has to fit the target.
+  Iter.toArrayInto(Iter.map(Iter.from(input), double), texts)
+})
+
 test('collector target factories derive input capacity and preserve exact targets', () => {
   const arrayTarget = new TextBucket()
   const setTarget = new TextSet()

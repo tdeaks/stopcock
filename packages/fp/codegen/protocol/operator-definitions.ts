@@ -1,0 +1,1843 @@
+import {
+  LOWERING_PROTOCOL_V1,
+  LOWERING_PROTOCOL_VERSION_V1,
+  OPERATOR_PROTOCOL_V1,
+  OPERATOR_PROTOCOL_VERSION_V1,
+  assertOperatorCatalogueV1,
+  defineLoweringV1,
+  defineOperatorV1,
+  projectRunnerDescriptorV1,
+  type BindingDefinitionV1,
+  type BindingSlotV1,
+  type CallbackContractV1,
+  type CardinalityV1,
+  type CompilerPipelineRoleV1,
+  type LogicalDomainV1,
+  type OperatorLoweringV1,
+  type OperatorSemanticV1,
+  type OwnershipContractV1,
+  type PhysicalLayoutV1,
+  type ResultOwnershipV1,
+  type SemanticIdentityV1,
+  type UnsupportedCapabilitiesV1,
+} from './operator-v1'
+
+export type OperatorNamespaceV1 = 'array' | 'string' | 'object' | 'math' | 'guard'
+
+export const COMPILER_OPERATION_CORPUS_ID_V1 =
+  'stopcock-fp-compiler-operation-complete-w0-v1' as const
+
+/**
+ * Byte-compatible projection of the 1.x runtime registry. These fields are
+ * never semantic, lowering, or backend-selection authority.
+ */
+export interface LegacyRuntimeFactV1 {
+  readonly opcode: number
+  readonly opcodeConstant: string
+  readonly tagName: string | null
+  readonly name: string
+  readonly inputDomain: LogicalDomainV1
+  readonly outputDomain: LogicalDomainV1
+  readonly cardinality: CardinalityV1
+  readonly callbackArity: 0 | 1 | 2
+  readonly callbackArityDisposition: 'matches-semantic' | 'legacy-comparator-metadata-preserved'
+  readonly bindings: readonly BindingSlotV1[]
+  readonly earlyTermination: boolean
+  readonly constructorPreserving: boolean
+  readonly reverseSafe: boolean
+  readonly exactLowering: true
+  readonly pureLowering: boolean
+  readonly simdEligible: boolean
+  readonly workerEligible: boolean
+  readonly isMaterializationBoundary: boolean
+}
+
+export interface OperatorDefinitionRecordV1 {
+  readonly semantic: OperatorSemanticV1
+  readonly lowerings: readonly OperatorLoweringV1[]
+  readonly legacyRuntime: LegacyRuntimeFactV1
+  readonly namespace: OperatorNamespaceV1
+  readonly publicArrayExport: boolean
+  readonly compilerPipelineRole: CompilerPipelineRoleV1
+  readonly compilerFinalBoundary: boolean
+  readonly contradictionDisposition:
+    | 'legacy-classification-retained'
+    | 'compiler-streaming-terminal-is-canonical'
+  readonly previousCapabilityDeclarations: {
+    readonly simd: boolean
+    readonly worker: boolean
+    /** The canonical capability remains explicit unsupported. */
+    readonly disposition: 'unsupported-without-owned-implementation-and-corpus'
+  }
+}
+
+interface LegacyRowV1 {
+  readonly opcode: number
+  readonly name: string
+  readonly namespace: OperatorNamespaceV1
+  readonly inputDomain: LogicalDomainV1
+  readonly outputDomain: LogicalDomainV1
+  readonly cardinality: CardinalityV1
+  readonly callbackArity: 0 | 1 | 2
+  readonly bindings: readonly BindingSlotV1[]
+  readonly earlyTermination: boolean
+  readonly constructorPreserving: boolean
+  readonly reverseSafe: boolean
+  readonly pureLowering: boolean
+  readonly previousSimdDeclaration: boolean
+  readonly previousWorkerDeclaration: boolean
+  readonly hasPublicTagEncoding: boolean
+  readonly publicArrayExport: boolean
+  readonly compilerPipelineRole: Exclude<CompilerPipelineRoleV1, 'none'> | null
+}
+
+const UNSUPPORTED_CAPABILITIES = {
+  worker: 'unsupported',
+  simd: 'unsupported',
+  wasm: 'unsupported',
+  incremental: 'unsupported',
+} as const satisfies UnsupportedCapabilitiesV1
+
+const ARRAY_LAYOUTS = [
+  'js-array-dense',
+  'js-array-sparse-as-undefined',
+] as const satisfies readonly PhysicalLayoutV1[]
+
+const SCALAR_LAYOUTS = ['js-scalar'] as const satisfies readonly PhysicalLayoutV1[]
+
+const NO_CALLBACK = {
+  arity: 0,
+  arguments: [],
+  index: 'not-passed',
+  count: 'not-applicable',
+  order: 'left-to-right',
+  evaluationPoint: 'not-applicable',
+} as const satisfies CallbackContractV1
+
+const VALUE_CALLBACK = {
+  arity: 1,
+  arguments: ['value'],
+  index: 'not-passed',
+  count: 'once-per-consumed-value',
+  order: 'left-to-right',
+  evaluationPoint: 'during-element-consumption',
+} as const satisfies CallbackContractV1
+
+const REDUCER_CALLBACK = {
+  arity: 2,
+  arguments: ['accumulator', 'value'],
+  index: 'not-passed',
+  count: 'once-per-consumed-value',
+  order: 'left-to-right',
+  evaluationPoint: 'during-element-consumption',
+} as const satisfies CallbackContractV1
+
+const COMPARATOR_CALLBACK = {
+  arity: 2,
+  arguments: ['left', 'right'],
+  index: 'not-passed',
+  count: 'once-per-stable-merge-comparison',
+  order: 'stable-merge-sort-order',
+  evaluationPoint: 'during-full-materialization',
+} as const satisfies CallbackContractV1
+
+function op(
+  opcode: number,
+  name: string,
+  namespace: OperatorNamespaceV1,
+  inputDomain: LogicalDomainV1,
+  outputDomain: LogicalDomainV1,
+  cardinality: CardinalityV1,
+  callbackArity: 0 | 1 | 2,
+  bindings: readonly BindingSlotV1[],
+  earlyTermination: boolean,
+  constructorPreserving: boolean,
+  reverseSafe: boolean,
+  pureLowering: boolean,
+  previousSimdDeclaration: boolean,
+  previousWorkerDeclaration: boolean,
+  hasPublicTagEncoding: boolean,
+  publicArrayExport: boolean,
+  compilerPipelineRole: Exclude<CompilerPipelineRoleV1, 'none'> | null,
+): LegacyRowV1 {
+  return {
+    opcode,
+    name,
+    namespace,
+    inputDomain,
+    outputDomain,
+    cardinality,
+    callbackArity,
+    bindings,
+    earlyTermination,
+    constructorPreserving,
+    reverseSafe,
+    pureLowering,
+    previousSimdDeclaration,
+    previousWorkerDeclaration,
+    hasPublicTagEncoding,
+    publicArrayExport,
+    compilerPipelineRole,
+  }
+}
+
+const LEGACY_ROWS = [
+  op(
+    1,
+    'map',
+    'array',
+    'array',
+    'array',
+    'one-to-one',
+    1,
+    ['fn'],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    2,
+    'filter',
+    'array',
+    'array',
+    'array',
+    'filtering',
+    1,
+    ['fn'],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    3,
+    'take',
+    'array',
+    'array',
+    'array',
+    'stateful',
+    0,
+    ['fn'],
+    true,
+    true,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    4,
+    'drop',
+    'array',
+    'array',
+    'array',
+    'stateful',
+    0,
+    ['fn'],
+    false,
+    true,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    5,
+    'takeWhile',
+    'array',
+    'array',
+    'array',
+    'stateful',
+    1,
+    ['fn'],
+    true,
+    true,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    6,
+    'dropWhile',
+    'array',
+    'array',
+    'array',
+    'stateful',
+    1,
+    ['fn'],
+    false,
+    true,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    7,
+    'flatMap',
+    'array',
+    'array',
+    'array',
+    'expanding',
+    1,
+    ['fn'],
+    true,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    8,
+    'reduce',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    2,
+    ['fn', 'a1'],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    9,
+    'forEach',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    1,
+    ['fn'],
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    10,
+    'every',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    1,
+    ['fn'],
+    true,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    11,
+    'some',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    1,
+    ['fn'],
+    true,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    12,
+    'find',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    1,
+    ['fn'],
+    true,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    13,
+    'findIndex',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    1,
+    ['fn'],
+    true,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    14,
+    'filterMap',
+    'array',
+    'array',
+    'array',
+    'filtering',
+    1,
+    ['fn'],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    15,
+    'mapWhile',
+    'array',
+    'array',
+    'array',
+    'stateful',
+    1,
+    ['fn'],
+    true,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    16,
+    'reject',
+    'array',
+    'array',
+    'array',
+    'filtering',
+    1,
+    ['fn'],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    17,
+    'none',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    1,
+    ['fn'],
+    true,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    18,
+    'count',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    1,
+    ['fn'],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    19,
+    'takeUntil',
+    'array',
+    'array',
+    'array',
+    'stateful',
+    1,
+    ['fn'],
+    true,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    20,
+    'sortBy',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    1,
+    ['fn'],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    21,
+    'sort',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    [],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    22,
+    'findMap',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    1,
+    ['fn'],
+    true,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    30,
+    'head',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    31,
+    'last',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    32,
+    'length',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    33,
+    'isEmpty',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    34,
+    'tail',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    [],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    35,
+    'init',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    [],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    36,
+    'reverse',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    [],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    37,
+    'sortInline',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    1,
+    ['fn'],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    false,
+    false,
+    null,
+  ),
+  op(
+    38,
+    'uniq',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    39,
+    'join',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    ['a1'],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    40,
+    'flatten',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    41,
+    'sum',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    42,
+    'min',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    43,
+    'max',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    'terminal',
+  ),
+  op(
+    50,
+    'trim',
+    'string',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    51,
+    'toLowerCase',
+    'string',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    52,
+    'toUpperCase',
+    'string',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    53,
+    'trimStart',
+    'string',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    54,
+    'trimEnd',
+    'string',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    55,
+    'split',
+    'string',
+    'scalar',
+    'array',
+    'one-to-one',
+    0,
+    ['a1'],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    56,
+    'strLength',
+    'string',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    57,
+    'strIsEmpty',
+    'string',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    60,
+    'keys',
+    'object',
+    'scalar',
+    'array',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    61,
+    'values',
+    'object',
+    'scalar',
+    'array',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    62,
+    'dictIsEmpty',
+    'object',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    70,
+    'add',
+    'math',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    ['a1'],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    null,
+  ),
+  op(
+    71,
+    'subtract',
+    'math',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    ['a1'],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    null,
+  ),
+  op(
+    72,
+    'multiply',
+    'math',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    ['a1'],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    null,
+  ),
+  op(
+    73,
+    'divide',
+    'math',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    ['a1'],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    null,
+  ),
+  op(
+    74,
+    'negate',
+    'math',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    null,
+  ),
+  op(
+    75,
+    'inc',
+    'math',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    null,
+  ),
+  op(
+    76,
+    'dec',
+    'math',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    null,
+  ),
+  op(
+    80,
+    'isNumber',
+    'guard',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    81,
+    'isString',
+    'guard',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    82,
+    'isBoolean',
+    'guard',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    83,
+    'isNil',
+    'guard',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    84,
+    'isArray',
+    'guard',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    85,
+    'isObject',
+    'guard',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    86,
+    'isFunction',
+    'guard',
+    'scalar',
+    'scalar',
+    'one-to-one',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    false,
+    null,
+  ),
+  op(
+    90,
+    'sortAsc',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    91,
+    'sortDesc',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    102,
+    'scan',
+    'array',
+    'array',
+    'array',
+    'stateful',
+    2,
+    ['fn', 'a1'],
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    103,
+    'without',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    ['fn'],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+] as const satisfies readonly LegacyRowV1[]
+
+function opcodeConstantFor(row: LegacyRowV1): string {
+  const special: Readonly<Record<string, string>> = {
+    sortInline: 'OP_SORT_INLINE',
+    uniq: 'OP_UNIQ_INLINE',
+    trim: 'OP_STR_TRIM',
+    toLowerCase: 'OP_STR_LOWER',
+    toUpperCase: 'OP_STR_UPPER',
+    trimStart: 'OP_STR_TRIM_START',
+    trimEnd: 'OP_STR_TRIM_END',
+    split: 'OP_STR_SPLIT',
+    strLength: 'OP_STR_LENGTH',
+    strIsEmpty: 'OP_STR_IS_EMPTY',
+    keys: 'OP_DICT_KEYS',
+    values: 'OP_DICT_VALUES',
+    dictIsEmpty: 'OP_DICT_IS_EMPTY',
+  }
+  const explicit = special[row.name]
+  if (explicit) return explicit
+  const snake = row.name.replace(/([a-z0-9])([A-Z])/gu, '$1_$2').toUpperCase()
+  const prefix =
+    row.namespace === 'math' ? 'OP_MATH_' : row.namespace === 'guard' ? 'OP_GUARD_' : 'OP_'
+  return `${prefix}${snake}`
+}
+
+function semanticPublicName(row: LegacyRowV1): string {
+  if (row.namespace === 'string' && row.name === 'strLength') return 'length'
+  if (row.namespace === 'string' && row.name === 'strIsEmpty') return 'isEmpty'
+  if (row.namespace === 'object' && row.name === 'dictIsEmpty') return 'isEmpty'
+  return row.name
+}
+
+function semanticCardinality(row: LegacyRowV1): CardinalityV1 {
+  return row.compilerPipelineRole === 'terminal' ? 'sink' : row.cardinality
+}
+
+function semanticEarlyTermination(row: LegacyRowV1): boolean {
+  return row.earlyTermination || row.name === 'head' || row.name === 'isEmpty'
+}
+
+function semanticFullMaterialization(row: LegacyRowV1): boolean {
+  return (
+    row.cardinality === 'materializer' &&
+    row.compilerPipelineRole !== 'terminal' &&
+    row.name !== 'scan'
+  )
+}
+
+function outputShapeFunction(row: LegacyRowV1, cardinality: CardinalityV1): string {
+  if (row.outputDomain === 'scalar') return '@stopcock/fp/shape/scalar-v1'
+  if (row.inputDomain === 'scalar') return '@stopcock/fp/shape/array-from-scalar-v1'
+  if (row.name === 'scan') return '@stopcock/fp/shape/input-plus-seed-array-v1'
+  if (cardinality === 'one-to-one') return '@stopcock/fp/shape/same-length-array-v1'
+  if (cardinality === 'filtering') return '@stopcock/fp/shape/filtered-array-v1'
+  if (cardinality === 'expanding') return '@stopcock/fp/shape/expanded-array-v1'
+  if (cardinality === 'stateful') return '@stopcock/fp/shape/bounded-array-v1'
+  return '@stopcock/fp/shape/materialized-array-v1'
+}
+
+function bindingDefinitions(row: LegacyRowV1): readonly BindingDefinitionV1[] {
+  return row.bindings.map((slot, index) => ({
+    slot,
+    role:
+      row.callbackArity > 0 && index === 0 && slot === 'fn'
+        ? 'callback'
+        : slot === 'a1' && row.callbackArity === 2
+          ? 'seed'
+          : 'constant',
+    required: true,
+  }))
+}
+
+function callbackContract(row: LegacyRowV1): CallbackContractV1 {
+  if (row.name === 'sortBy' || row.name === 'sortInline') return COMPARATOR_CALLBACK
+  if (row.callbackArity === 0) return NO_CALLBACK
+  if (row.callbackArity === 1) return VALUE_CALLBACK
+  return REDUCER_CALLBACK
+}
+
+function semanticIdentity(semantic: OperatorSemanticV1): SemanticIdentityV1 {
+  return {
+    semanticId: semantic.semanticId,
+    semanticRevision: semantic.semanticRevision,
+    semanticHash: semantic.semanticHash,
+  }
+}
+
+function resultOwnership(outputDomain: LogicalDomainV1): ResultOwnershipV1 {
+  return outputDomain === 'array' ? 'fresh' : 'scalar-or-borrowed'
+}
+
+function createRecord(row: LegacyRowV1): OperatorDefinitionRecordV1 {
+  const cardinality = semanticCardinality(row)
+  const callback = callbackContract(row)
+  const acceptedLayouts = row.inputDomain === 'array' ? ARRAY_LAYOUTS : SCALAR_LAYOUTS
+  const streamTermination = row.inputDomain === 'array' && row.outputDomain !== 'array'
+  const termination = {
+    earlyTermination: semanticEarlyTermination(row),
+    streamTermination,
+    fullMaterialization: semanticFullMaterialization(row),
+    domainTransition: row.inputDomain !== row.outputDomain,
+  } as const
+  const result = resultOwnership(row.outputDomain)
+  const ownership: OwnershipContractV1 = {
+    input: 'borrowed-readonly',
+    result,
+    aliasing: result === 'fresh' ? 'none' : 'borrowed-element-only',
+    detachment: 'forbidden',
+    resultStorage:
+      row.outputDomain === 'array' ? (['js-array'] as const) : (['js-scalar'] as const),
+    scratchStorage:
+      row.cardinality === 'materializer' ? (['js-array'] as const) : (['none'] as const),
+    allocationScopes:
+      row.outputDomain === 'array'
+        ? (['fusion-runner-result', 'fusion-runner-scratch'] as const)
+        : (['none'] as const),
+  }
+  const semanticId = `@stopcock/fp/${row.namespace}/${semanticPublicName(row)}`
+  const semantic = defineOperatorV1({
+    protocol: OPERATOR_PROTOCOL_V1,
+    protocolVersion: OPERATOR_PROTOCOL_VERSION_V1,
+    semanticId,
+    semanticRevision: 1,
+    publicName: semanticPublicName(row),
+    inputDomain: row.inputDomain,
+    outputDomain: row.outputDomain,
+    acceptedLayouts,
+    cardinality,
+    outputShapeFunction: outputShapeFunction(row, cardinality),
+    bindings: bindingDefinitions(row),
+    callback,
+    evaluation: {
+      exact: 'observable-order-and-count',
+      pure: row.pureLowering ? 'equivalent-rewrite-allowed' : 'unsupported',
+      effects: callback.arity > 0 ? 'callback-effects-observable' : 'built-in-effects-only',
+      determinism: 'deterministic-except-user-code',
+      sourceMutationVisibility:
+        row.inputDomain === 'array'
+          ? 'snapshot-array-length-then-dense-index-read'
+          : 'scalar-value',
+      thrownErrorIdentity: 'preserved',
+      thrownErrorTiming: 'original-evaluation-point',
+    },
+    termination,
+    ownership,
+    capabilities: UNSUPPORTED_CAPABILITIES,
+    diagnosticTag: {
+      opcodeField: '_op',
+      bindingFields: row.bindings.map((slot) => `_${slot}` as const),
+      authority: 'diagnostic-only',
+    },
+    links: {
+      referenceImplementationId: `@stopcock/fp/reference/${row.namespace}/${row.name}/v1`,
+      lawIds: [`@stopcock/fp/law/${row.namespace}/${row.name}/v1`],
+      differentialCorpusIds:
+        row.compilerPipelineRole === null ? [] : [COMPILER_OPERATION_CORPUS_ID_V1],
+    },
+  })
+  const identity = semanticIdentity(semantic)
+  const acceptedSemanticModes = row.pureLowering
+    ? (['exact', 'pure'] as const)
+    : (['exact'] as const)
+  const loweringOwnership = {
+    result: ownership.result,
+    aliasing: ownership.aliasing,
+    resultStorage: ownership.resultStorage,
+    scratchStorage: ownership.scratchStorage,
+    allocationScopes: ownership.allocationScopes,
+  }
+  const legacyLowering = defineLoweringV1({
+    protocol: LOWERING_PROTOCOL_V1,
+    protocolVersion: LOWERING_PROTOCOL_VERSION_V1,
+    loweringId: `${semanticId}/lowering/legacy-portable`,
+    loweringRevision: 1,
+    loweringAbiVersion: 1,
+    semantic: identity,
+    targetTier: 'legacy',
+    targetBackend: 'portable',
+    acceptedSemanticModes,
+    acceptedLayouts,
+    cardinality,
+    outputShapeFunction: semantic.outputShapeFunction,
+    termination,
+    ownership: loweringOwnership,
+    capability: {
+      predicateId: '@stopcock/fp/capability/legacy-portable-v1',
+      rejectionCodes: [
+        '@stopcock/reason/unsupported-layout',
+        '@stopcock/reason/semantic-mode-mismatch',
+      ],
+    },
+    runnerId: `@stopcock/fp/runner/legacy/${row.name}/v1`,
+    exactFallback: identity,
+    compilerPipelineRole: 'none',
+    compilerFinalBoundary: false,
+  })
+  const compilerRole = row.compilerPipelineRole ?? 'none'
+  const lowerings: OperatorLoweringV1[] = [legacyLowering]
+  if (compilerRole !== 'none') {
+    lowerings.push(
+      defineLoweringV1({
+        protocol: LOWERING_PROTOCOL_V1,
+        protocolVersion: LOWERING_PROTOCOL_VERSION_V1,
+        loweringId: `${semanticId}/lowering/compiler-aot`,
+        loweringRevision: 1,
+        loweringAbiVersion: 1,
+        semantic: identity,
+        targetTier: 'compiler',
+        targetBackend: 'aot',
+        acceptedSemanticModes,
+        acceptedLayouts,
+        cardinality,
+        outputShapeFunction: semantic.outputShapeFunction,
+        termination,
+        ownership: loweringOwnership,
+        capability: {
+          predicateId: '@stopcock/fp-compiler/capability/static-pipeline-v1',
+          rejectionCodes: [
+            '@stopcock/reason/unsupported-binding-form',
+            '@stopcock/reason/opaque-callback',
+            '@stopcock/reason/semantic-mode-mismatch',
+          ],
+        },
+        runnerId: `@stopcock/fp-compiler/runner/${compilerRole}/${row.name}/v1`,
+        exactFallback: identity,
+        compilerPipelineRole: compilerRole,
+        compilerFinalBoundary: row.name === 'join',
+      }),
+    )
+  }
+
+  return {
+    semantic,
+    lowerings,
+    legacyRuntime: {
+      opcode: row.opcode,
+      opcodeConstant: opcodeConstantFor(row),
+      tagName: row.hasPublicTagEncoding ? row.name : null,
+      name: row.name,
+      inputDomain: row.inputDomain,
+      outputDomain: row.outputDomain,
+      cardinality: row.cardinality,
+      callbackArity: row.callbackArity,
+      callbackArityDisposition:
+        row.callbackArity === semantic.callback.arity
+          ? 'matches-semantic'
+          : 'legacy-comparator-metadata-preserved',
+      bindings: row.bindings,
+      earlyTermination: row.earlyTermination,
+      constructorPreserving: row.constructorPreserving,
+      reverseSafe: row.reverseSafe,
+      exactLowering: true,
+      pureLowering: row.pureLowering,
+      simdEligible: row.previousSimdDeclaration,
+      workerEligible: row.previousWorkerDeclaration,
+      isMaterializationBoundary: row.cardinality === 'sink' || row.cardinality === 'materializer',
+    },
+    namespace: row.namespace,
+    publicArrayExport: row.publicArrayExport,
+    compilerPipelineRole: compilerRole,
+    compilerFinalBoundary: row.name === 'join',
+    contradictionDisposition:
+      row.cardinality === cardinality
+        ? 'legacy-classification-retained'
+        : 'compiler-streaming-terminal-is-canonical',
+    previousCapabilityDeclarations: {
+      simd: row.previousSimdDeclaration,
+      worker: row.previousWorkerDeclaration,
+      disposition: 'unsupported-without-owned-implementation-and-corpus',
+    },
+  }
+}
+
+function freezeDefinitionRecordV1(record: OperatorDefinitionRecordV1): OperatorDefinitionRecordV1 {
+  return Object.freeze({
+    ...record,
+    lowerings: Object.freeze([...record.lowerings]),
+    legacyRuntime: Object.freeze({
+      ...record.legacyRuntime,
+      bindings: Object.freeze([...record.legacyRuntime.bindings]),
+    }),
+    previousCapabilityDeclarations: Object.freeze({
+      ...record.previousCapabilityDeclarations,
+    }),
+  })
+}
+
+export const OPERATOR_DEFINITION_RECORDS_V1: readonly OperatorDefinitionRecordV1[] = Object.freeze(
+  LEGACY_ROWS.map(createRecord)
+    .map(freezeDefinitionRecordV1)
+    .sort((left, right) => {
+      const byId = left.semantic.semanticId.localeCompare(right.semantic.semanticId)
+      return byId !== 0 ? byId : left.semantic.semanticRevision - right.semantic.semanticRevision
+    }),
+)
+
+export function assertRuntimeEncodingCatalogueV1(
+  records: readonly OperatorDefinitionRecordV1[],
+): void {
+  const opcodes = new Set<number>()
+  const constants = new Set<string>()
+  const runtimeNames = new Set<string>()
+  const publicTags = new Set<string>()
+  for (const {
+    semantic,
+    legacyRuntime,
+    previousCapabilityDeclarations,
+    publicArrayExport,
+  } of records) {
+    if (!Number.isSafeInteger(legacyRuntime.opcode) || legacyRuntime.opcode < 1) {
+      throw new Error(`operator definitions v1: invalid opcode ${legacyRuntime.opcode}`)
+    }
+    if (opcodes.has(legacyRuntime.opcode)) {
+      throw new Error(`operator definitions v1: duplicate opcode ${legacyRuntime.opcode}`)
+    }
+    if (constants.has(legacyRuntime.opcodeConstant)) {
+      throw new Error(
+        `operator definitions v1: duplicate opcode constant ${legacyRuntime.opcodeConstant}`,
+      )
+    }
+    if (runtimeNames.has(legacyRuntime.name)) {
+      throw new Error(`operator definitions v1: duplicate runtime name ${legacyRuntime.name}`)
+    }
+    if (publicArrayExport && legacyRuntime.name !== semantic.publicName) {
+      throw new Error(`operator definitions v1: runtime name contradicts ${semantic.semanticId}`)
+    }
+    if (legacyRuntime.tagName !== null && publicTags.has(legacyRuntime.tagName)) {
+      throw new Error(`operator definitions v1: duplicate public tag ${legacyRuntime.tagName}`)
+    }
+    const callbackArityMatches = legacyRuntime.callbackArity === semantic.callback.arity
+    if (callbackArityMatches !== (legacyRuntime.callbackArityDisposition === 'matches-semantic')) {
+      throw new Error(
+        `operator definitions v1: runtime callback disposition contradicts ${semantic.semanticId}`,
+      )
+    }
+    if (
+      !callbackArityMatches &&
+      !(
+        legacyRuntime.callbackArityDisposition === 'legacy-comparator-metadata-preserved' &&
+        legacyRuntime.callbackArity === 1 &&
+        semantic.callback.arity === 2 &&
+        semantic.callback.arguments[0] === 'left' &&
+        semantic.callback.arguments[1] === 'right' &&
+        (legacyRuntime.name === 'sortBy' || legacyRuntime.name === 'sortInline')
+      )
+    ) {
+      throw new Error(
+        `operator definitions v1: undeclared runtime callback contradiction for ${semantic.semanticId}`,
+      )
+    }
+    if (
+      JSON.stringify(legacyRuntime.bindings) !==
+      JSON.stringify(semantic.bindings.map(({ slot }) => slot))
+    ) {
+      throw new Error(`operator definitions v1: runtime bindings contradict ${semantic.semanticId}`)
+    }
+    if (
+      legacyRuntime.simdEligible !== previousCapabilityDeclarations.simd ||
+      legacyRuntime.workerEligible !== previousCapabilityDeclarations.worker
+    ) {
+      throw new Error(
+        `operator definitions v1: legacy capability projection drifted for ${semantic.semanticId}`,
+      )
+    }
+    opcodes.add(legacyRuntime.opcode)
+    constants.add(legacyRuntime.opcodeConstant)
+    runtimeNames.add(legacyRuntime.name)
+    if (legacyRuntime.tagName !== null) publicTags.add(legacyRuntime.tagName)
+  }
+}
+
+export const OPERATOR_SEMANTICS_V1: readonly OperatorSemanticV1[] = Object.freeze(
+  OPERATOR_DEFINITION_RECORDS_V1.map((record) => record.semantic),
+)
+
+export const OPERATOR_LOWERINGS_V1: readonly OperatorLoweringV1[] = Object.freeze(
+  OPERATOR_DEFINITION_RECORDS_V1.flatMap((record) => record.lowerings).sort((left, right) => {
+    const byId = left.loweringId.localeCompare(right.loweringId)
+    return byId !== 0 ? byId : left.loweringRevision - right.loweringRevision
+  }),
+)
+
+export const FUSION_RUNNER_DESCRIPTORS_V1 = Object.freeze(
+  OPERATOR_LOWERINGS_V1.map(projectRunnerDescriptorV1),
+)
+
+assertRuntimeEncodingCatalogueV1(OPERATOR_DEFINITION_RECORDS_V1)
+assertOperatorCatalogueV1(
+  OPERATOR_SEMANTICS_V1,
+  OPERATOR_LOWERINGS_V1,
+  FUSION_RUNNER_DESCRIPTORS_V1,
+)
+
+const RUNTIME_RECORDS_BY_NAME = new Map(
+  OPERATOR_DEFINITION_RECORDS_V1.map((record) => [record.legacyRuntime.name, record]),
+)
+
+export function requireOperatorDefinitionByNameV1(name: string): OperatorDefinitionRecordV1 {
+  const record = RUNTIME_RECORDS_BY_NAME.get(name)
+  if (!record) throw new Error(`operator definitions v1: unknown operator ${name}`)
+  return record
+}
+
+export function runtimeOpcodeByNameV1(name: string): number {
+  const record = requireOperatorDefinitionByNameV1(name)
+  if (record.legacyRuntime.tagName === null) {
+    throw new Error(`operator definitions v1: ${name} has no public tag encoding`)
+  }
+  return record.legacyRuntime.opcode
+}
+
+export function findRuntimeOpcodeByNameV1(name: string): number | undefined {
+  const record = RUNTIME_RECORDS_BY_NAME.get(name)
+  return record?.legacyRuntime.tagName === null ? undefined : record?.legacyRuntime.opcode
+}
+
+export function runtimeRecordsInOpcodeOrderV1(): readonly OperatorDefinitionRecordV1[] {
+  return Object.freeze(
+    [...OPERATOR_DEFINITION_RECORDS_V1].sort(
+      (left, right) => left.legacyRuntime.opcode - right.legacyRuntime.opcode,
+    ),
+  )
+}

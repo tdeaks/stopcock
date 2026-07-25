@@ -18,7 +18,7 @@
 import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { compile } from '../../../packages/fp/src/compile'
+import { compile } from '../../../packages/fp-optimizer/src/compile'
 import { generateInputArray, resolvePipeline, type SerializedStep } from './generate'
 import { compileEmittedPipeline, type PipelineDesc } from './emitter'
 import { geomean, runPaired } from './perf-runner'

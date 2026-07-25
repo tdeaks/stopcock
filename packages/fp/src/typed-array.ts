@@ -1,3 +1,4 @@
+import { inspectCanonicalView } from './internal/typed-array-view'
 import { none, some, type Option } from './option'
 
 type OptionalFloat16Array = typeof globalThis extends {
@@ -133,24 +134,25 @@ const typedArraySort = Reflect.get(Uint8Array.prototype, 'sort') as TypedArraySo
 
 const SMALL_BULK_COPY_LENGTH = 128
 
-const isCanonicalTypedArray = (source: AnyTypedArray): boolean => {
-  if (Object.hasOwn(source, 'constructor')) return false
-  const prototype = Object.getPrototypeOf(source)
-  return (
-    prototype === Float64Array.prototype ||
-    (float16ArrayConstructor !== undefined && prototype === float16ArrayConstructor.prototype) ||
-    prototype === BigInt64Array.prototype ||
-    prototype === BigUint64Array.prototype ||
-    prototype === Uint8Array.prototype ||
-    prototype === Int8Array.prototype ||
-    prototype === Uint8ClampedArray.prototype ||
-    prototype === Uint32Array.prototype ||
-    prototype === Int32Array.prototype ||
-    prototype === Float32Array.prototype ||
-    prototype === Int16Array.prototype ||
-    prototype === Uint16Array.prototype
-  )
-}
+const isCanonicalTypedArray = (source: AnyTypedArray): boolean =>
+  inspectCanonicalView(source) !== undefined
+
+/**
+ * Every strategy candidate P2 measured lost against the real exported
+ * functions, so every family stays size-banded.
+ *
+ * Dropping the size band so a short canonical view always takes the stashed
+ * intrinsic looked like a clear win in the lab and was a reproducible loss in
+ * production: on Bun 1.3.14 a 64-element Float64Array slice went from 0.98x to
+ * 0.78x its frozen baseline, and reverse from 1.10x to 0.93x. The lab kernel
+ * was not the production kernel, so the production A/B is what counts.
+ *
+ * There is therefore nothing to key on a runtime version, and a policy table
+ * whose bands all select the same strategy would be structure with no
+ * behaviour. Add one when a band actually earns a row.
+ */
+const SLICE_ALWAYS_INTRINSIC = false
+const REVERSE_ALWAYS_INTRINSIC = false
 
 const constructorOf = <T extends AnyTypedArray>(source: T): TypedArrayConstructor<T> =>
   source.constructor as unknown as TypedArrayConstructor<T>
@@ -561,7 +563,9 @@ const sliceImpl = <T extends AnyTypedArray>(
   const to = normalizeRelativeIndex(end, sourceLength)
   const length = Math.max(0, to - from)
   if (
-    (sourceLength >= SMALL_BULK_COPY_LENGTH || isBigIntTypedArray(source)) &&
+    (SLICE_ALWAYS_INTRINSIC ||
+      sourceLength >= SMALL_BULK_COPY_LENGTH ||
+      isBigIntTypedArray(source)) &&
     isCanonicalTypedArray(source)
   ) {
     return typedArraySlice.call(source, from, to) as Reallocated<T>
@@ -597,7 +601,9 @@ export function slice<T extends AnyTypedArray>(
   const directStart = startOrEnd ?? 0
   const directEnd = end ?? sourceOrStart.length
   if (
-    (sourceOrStart.length >= SMALL_BULK_COPY_LENGTH || isBigIntTypedArray(sourceOrStart)) &&
+    (SLICE_ALWAYS_INTRINSIC ||
+      sourceOrStart.length >= SMALL_BULK_COPY_LENGTH ||
+      isBigIntTypedArray(sourceOrStart)) &&
     isCanonicalTypedArray(sourceOrStart)
   ) {
     return typedArraySlice.call(sourceOrStart, directStart, directEnd) as Reallocated<T>
@@ -671,7 +677,9 @@ export function concat<T extends AnyTypedArray>(
 
 export const reverse = <T extends AnyTypedArray>(source: T): Reallocated<T> => {
   if (
-    (source.length >= SMALL_BULK_COPY_LENGTH || isBigIntTypedArray(source)) &&
+    (REVERSE_ALWAYS_INTRINSIC ||
+      source.length >= SMALL_BULK_COPY_LENGTH ||
+      isBigIntTypedArray(source)) &&
     isCanonicalTypedArray(source)
   ) {
     const result = typedArraySlice.call(source)

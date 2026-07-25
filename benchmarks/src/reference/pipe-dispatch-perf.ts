@@ -4,8 +4,8 @@
 // small inputs expose dispatch and binding costs instead of hiding them behind
 // the loop. The frozen local baseline makes every comparison same-process.
 import * as A from '../../../packages/fp/src/array'
-import { compile } from '../../../packages/fp/src/compile'
-import { pipe } from '../../../packages/fp/src/pipe'
+import { compile } from '../../../packages/fp-optimizer/src/compile'
+import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
 import { baselinePipe } from './pipe-dispatch-baseline'
 import { runPaired } from './perf-runner'
 

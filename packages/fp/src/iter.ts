@@ -1,4 +1,36 @@
 import { dual } from './dual-internal'
+import {
+  ITER_DROP,
+  ITER_DROP_WHILE,
+  ITER_FILTER,
+  ITER_FILTER_MAP,
+  ITER_FLAT_MAP,
+  ITER_MAP,
+  ITER_SCAN,
+  ITER_TAKE,
+  ITER_TAKE_WHILE,
+  ITER_TERMINAL_COUNT,
+  ITER_TERMINAL_EVERY,
+  ITER_KERNEL_MISSING,
+  ITER_TERMINAL_FIND,
+  ITER_TERMINAL_FIRST,
+  ITER_TERMINAL_FOR_EACH,
+  ITER_TERMINAL_LAST,
+  ITER_TERMINAL_NTH,
+  ITER_TERMINAL_REDUCE,
+  ITER_TERMINAL_SOME,
+  ITER_TERMINAL_TO_ARRAY,
+  ITER_TERMINAL_TO_ARRAY_INTO,
+  iterArrayKernel,
+  iterArrayShapeCode,
+  iterViewKernel,
+  type IterArrayKernel,
+} from './iter-kernels'
+import {
+  admitTypedArraySource,
+  throwTypedArrayDetached,
+  typedArraySourceIntact,
+} from './internal/typed-array-source'
 import { none, some as optionSome, type Option } from './option'
 
 /**
@@ -11,22 +43,10 @@ export interface Iter<A> extends Iterable<A> {}
 type Predicate<A> = (value: A, index: number) => boolean
 type Refinement<A, B extends A> = (value: A, index: number) => value is B
 
-type RejectingArrayTargets<Value, Target extends unknown[]> = Target extends unknown
-  ? [Value] extends [Target[number]]
-    ? never
-    : Target
-  : never
-
 type FixedLengthArrayTargets<Target extends unknown[]> = Target extends unknown
   ? number extends Target['length']
     ? never
     : Target
-  : never
-
-type EveryArrayTargetAccepts<Value, Target extends unknown[]> = [
-  RejectingArrayTargets<Value, Target>,
-] extends [never]
-  ? unknown
   : never
 
 type EveryArrayTargetHasDynamicLength<Target extends unknown[]> = [
@@ -44,23 +64,20 @@ type IsUnion<Value, Whole = Value> = Value extends Whole
 type EveryArrayTargetIsConcrete<Target extends unknown[]> =
   true extends IsUnion<Target> ? never : unknown
 
-type ArrayTargetCapacity<Value, Target extends unknown[]> = EveryArrayTargetAccepts<Value, Target> &
-  EveryArrayTargetHasDynamicLength<Target> &
+/**
+ * Shape rules the target must satisfy. Whether the target *accepts* the source
+ * element type is not checked here: a conditional type in a rest parameter is
+ * evaluated before an overloaded call in an earlier argument has been resolved,
+ * so `Iter.toArrayInto(Iter.map(...), target)` saw an unresolved element type
+ * and rejected every target. That rule lives on the source parameter instead,
+ * where it is plain assignability and needs no inference ordering.
+ */
+type ArrayTargetCapacity<Target extends unknown[]> = EveryArrayTargetHasDynamicLength<Target> &
   EveryArrayTargetIsConcrete<Target>
 
 type IterUnary = (value: unknown, index: number) => unknown
 type IterPredicate = (value: unknown, index: number) => boolean
 type IterReducer = (state: unknown, value: unknown, index: number) => unknown
-
-const ITER_MAP = 0
-const ITER_FILTER = 1
-const ITER_FILTER_MAP = 2
-const ITER_FLAT_MAP = 3
-const ITER_TAKE = 4
-const ITER_DROP = 5
-const ITER_TAKE_WHILE = 6
-const ITER_DROP_WHILE = 7
-const ITER_SCAN = 8
 
 type IterStep =
   | { readonly kind: 'map'; readonly op: typeof ITER_MAP; readonly fn: IterUnary }
@@ -300,15 +317,57 @@ const nativeArrayIteratorPrototype = Object.getPrototypeOf(nativeArrayIterator.c
 }
 const nativeArrayIteratorNext = nativeArrayIteratorPrototype.next
 
+const PLAN_SOURCE_ARRAY = 0
+const PLAN_SOURCE_ITERABLE = 1
+const PLAN_SOURCE_TYPED_ARRAY = 2
+
+/**
+ * The internal source forms. `array` is only ever set when the value is a plain
+ * Array whose iteration protocol is observably the native one, so an indexed
+ * kernel and the public iterator cannot disagree.
+ *
+ * A typed array that clears every admission fact gets its own form rather than
+ * joining `array`. It carries `indexed` for the generated kernels and nothing
+ * else: the lazy iterator, the hand-written fast plans, and the generic
+ * executor all read `array`, so they keep iterating a typed array exactly as
+ * they did before.
+ */
 interface PlanSourceAccess {
+  readonly form:
+    | typeof PLAN_SOURCE_ARRAY
+    | typeof PLAN_SOURCE_ITERABLE
+    | typeof PLAN_SOURCE_TYPED_ARRAY
   readonly array: unknown[] | undefined
+  /** What a generated kernel may loop over: a plain Array or an admitted view. */
+  readonly indexed: readonly unknown[] | undefined
+  /** The admitted view's length, so a mid-traversal detach stays observable. */
+  readonly indexedLength: number
   readonly iterable: Iterable<unknown>
   readonly replacesSource: boolean
 }
 
+const genericSource = (iterable: Iterable<unknown>, replacesSource: boolean): PlanSourceAccess => ({
+  form: PLAN_SOURCE_ITERABLE,
+  array: undefined,
+  indexed: undefined,
+  indexedLength: -1,
+  iterable,
+  replacesSource,
+})
+
 const inspectPlanSource = (source: Iterable<unknown>): PlanSourceAccess => {
   if (!Array.isArray(source)) {
-    return { array: undefined, iterable: source, replacesSource: false }
+    const length = admitTypedArraySource(source as object)
+    return length < 0
+      ? genericSource(source, false)
+      : {
+          form: PLAN_SOURCE_TYPED_ARRAY,
+          array: undefined,
+          indexed: source as unknown as readonly unknown[],
+          indexedLength: length,
+          iterable: source,
+          replacesSource: false,
+        }
   }
 
   // Read the actual method once. This catches Array proxies whose traps report
@@ -319,15 +378,85 @@ const inspectPlanSource = (source: Iterable<unknown>): PlanSourceAccess => {
     nativeArrayIteratorPrototype.next === nativeArrayIteratorNext &&
     !('return' in nativeArrayIteratorPrototype)
   ) {
-    return { array: source, iterable: source, replacesSource: false }
+    return {
+      form: PLAN_SOURCE_ARRAY,
+      array: source,
+      indexed: source,
+      indexedLength: -1,
+      iterable: source,
+      replacesSource: false,
+    }
   }
 
-  const iterable: Iterable<unknown> = {
-    [Symbol.iterator](): Iterator<unknown> {
-      return Reflect.apply(iteratorMethod as Function, source, []) as Iterator<unknown>
+  return genericSource(
+    {
+      [Symbol.iterator](): Iterator<unknown> {
+        return Reflect.apply(iteratorMethod as Function, source, []) as Iterator<unknown>
+      },
     },
+    true,
+  )
+}
+
+/**
+ * The terminals an admitted typed array may run through a kernel, as a bit per
+ * terminal code: toArray, toArrayInto, reduce, count, forEach, last.
+ *
+ * Every one of them consumes the whole source. That is the property the
+ * detachment check needs — a traversal that ends short can only mean the buffer
+ * went away, so the check knows when to throw. A terminal that stops on its own
+ * answer, and any shape carrying take, cannot tell the two apart and keeps
+ * iterating.
+ */
+const TYPED_ARRAY_TERMINALS =
+  (1 << ITER_TERMINAL_TO_ARRAY) |
+  (1 << ITER_TERMINAL_TO_ARRAY_INTO) |
+  (1 << ITER_TERMINAL_REDUCE) |
+  (1 << ITER_TERMINAL_COUNT) |
+  (1 << ITER_TERMINAL_FOR_EACH) |
+  (1 << ITER_TERMINAL_LAST)
+
+const stopsEarly = (steps: readonly IterStep[]): boolean => {
+  for (const step of steps) {
+    if (step.kind === 'take' || step.kind === 'takeWhile') return true
   }
-  return { array: undefined, iterable, replacesSource: true }
+  return false
+}
+
+/**
+ * Selects a generated indexed kernel for one terminal. A miss is not a failure:
+ * the plan simply executes generically, which is what every unshipped matrix
+ * row does. `take(0)` is excluded because it must never evaluate its upstream,
+ * and a kernel would run the stages above it for the first element.
+ */
+const arrayKernelFor = (
+  steps: readonly IterStep[],
+  access: PlanSourceAccess,
+  terminal: number,
+): IterArrayKernel | undefined => {
+  if (access.form === PLAN_SOURCE_TYPED_ARRAY) {
+    if ((TYPED_ARRAY_TERMINALS & (1 << terminal)) === 0 || stopsEarly(steps)) return undefined
+    // Same call shape, wider source parameter; the cast is the seam between the
+    // two kernel families rather than anything the caller has to know about.
+    return iterViewKernel(iterArrayShapeCode(steps), terminal) as IterArrayKernel | undefined
+  }
+  if (access.form !== PLAN_SOURCE_ARRAY) return undefined
+  const kernel = iterArrayKernel(iterArrayShapeCode(steps), terminal)
+  return kernel !== undefined && !hasZeroTake(steps) ? kernel : undefined
+}
+
+/**
+ * Hands back a kernel result, or reports the detachment the iterator would have
+ * reported. A plain Array cannot vanish under a loop, so it costs one compare.
+ */
+const finishKernel = (access: PlanSourceAccess, result: unknown): unknown => {
+  if (
+    access.form === PLAN_SOURCE_TYPED_ARRAY &&
+    !typedArraySourceIntact(access.indexed as readonly unknown[], access.indexedLength)
+  ) {
+    throwTypedArrayDetached(access.iterable)
+  }
+  return result
 }
 
 class ArrayPlanIterator implements IterableIterator<unknown> {
@@ -518,22 +647,6 @@ const advancePlan = (
   return emit(value)
 }
 
-const executeArrayMapFilterPlan = (
-  source: readonly unknown[],
-  steps: readonly IterStep[],
-  emit: IterEmit,
-): boolean => {
-  if (steps.length !== 2 || steps[0].kind !== 'map' || steps[1].kind !== 'filter') return false
-
-  const mapFn = steps[0].fn
-  const filterFn = steps[1].fn
-  for (let index = 0; index < source.length; index++) {
-    const value = mapFn(source[index], index)
-    if (filterFn(value, index) && emit(value)) break
-  }
-  return true
-}
-
 const executeArrayFastPlan = (
   source: readonly unknown[],
   steps: readonly IterStep[],
@@ -545,21 +658,6 @@ const executeArrayFastPlan = (
     return true
   }
 
-  if (length === 1 && steps[0].kind === 'map') {
-    const fn = steps[0].fn
-    for (let index = 0; index < source.length; index++) {
-      if (emit(fn(source[index], index))) break
-    }
-    return true
-  }
-  if (length === 1 && steps[0].kind === 'filter') {
-    const fn = steps[0].fn
-    for (let index = 0; index < source.length; index++) {
-      const value = source[index]
-      if (fn(value, index) && emit(value)) break
-    }
-    return true
-  }
   if (length === 1 && steps[0].kind === 'filterMap') {
     const fn = steps[0].fn
     for (let index = 0; index < source.length; index++) {
@@ -638,18 +736,6 @@ const executeArrayFastPlan = (
     }
     return true
   }
-  if (length === 2 && steps[0].kind === 'filterMap' && steps[1].kind === 'take') {
-    const filterMapFn = steps[0].fn
-    const limit = steps[1].count
-    let emitted = 0
-    for (let index = 0; index < source.length && emitted < limit; index++) {
-      const result = filterMapFn(source[index], index) as Option<unknown>
-      if (result._tag !== 1) continue
-      emitted++
-      if (emit(result.value)) break
-    }
-    return true
-  }
   if (length === 2 && steps[0].kind === 'drop' && steps[1].kind === 'takeWhile') {
     const start = Math.min(steps[0].count, source.length)
     const takeWhileFn = steps[1].fn
@@ -684,24 +770,6 @@ const executeArrayFastPlan = (
     return true
   }
 
-  if (
-    length === 3 &&
-    steps[0].kind === 'map' &&
-    steps[1].kind === 'filter' &&
-    steps[2].kind === 'take'
-  ) {
-    const mapFn = steps[0].fn
-    const filterFn = steps[1].fn
-    const limit = steps[2].count
-    let emitted = 0
-    for (let index = 0; index < source.length && emitted < limit; index++) {
-      const value = mapFn(source[index], index)
-      if (!filterFn(value, index)) continue
-      emitted++
-      if (emit(value)) break
-    }
-    return true
-  }
   if (
     length === 3 &&
     steps[0].kind === 'flatMap' &&
@@ -904,13 +972,7 @@ const executePlan = (
     }
     return
   }
-  if (
-    arraySource &&
-    (executeArrayMapFilterPlan(arraySource, steps, emit) ||
-      executeArrayFastPlan(arraySource, steps, emit))
-  ) {
-    return
-  }
+  if (arraySource && executeArrayFastPlan(arraySource, steps, emit)) return
   if (!arraySource && executeIterableFastPlan(access.iterable, steps, emit)) return
 
   const state = makeExecutionState(steps)
@@ -951,17 +1013,10 @@ const collectFastPlan = (
   if (length === 2 && steps[0].kind === 'map' && steps[1].kind === 'filter') {
     const mapFn = steps[0].fn
     const filterFn = steps[1].fn
-    if (arraySource) {
-      for (let index = 0; index < arraySource.length; index++) {
-        const value = mapFn(arraySource[index], index)
-        if (filterFn(value, index)) target.push(value)
-      }
-    } else {
-      let index = 0
-      for (const sourceValue of access.iterable) {
-        const value = mapFn(sourceValue, index)
-        if (filterFn(value, index++)) target.push(value)
-      }
+    let index = 0
+    for (const sourceValue of access.iterable) {
+      const value = mapFn(sourceValue, index)
+      if (filterFn(value, index++)) target.push(value)
     }
     return true
   }
@@ -977,24 +1032,14 @@ const collectFastPlan = (
     const limit = steps[2].count
     if (limit === 0) return true
     let emitted = 0
-    if (arraySource) {
-      for (let index = 0; index < arraySource.length && emitted < limit; index++) {
-        const value = mapFn(arraySource[index], index)
-        if (filterFn(value, index)) {
-          target.push(value)
-          emitted++
-        }
+    let index = 0
+    for (const sourceValue of access.iterable) {
+      const value = mapFn(sourceValue, index)
+      if (filterFn(value, index)) {
+        target.push(value)
+        if (++emitted >= limit) break
       }
-    } else {
-      let index = 0
-      for (const sourceValue of access.iterable) {
-        const value = mapFn(sourceValue, index)
-        if (filterFn(value, index)) {
-          target.push(value)
-          if (++emitted >= limit) break
-        }
-        index++
-      }
+      index++
     }
     return true
   }
@@ -1004,22 +1049,12 @@ const collectFastPlan = (
     const limit = steps[1].count
     if (limit === 0) return true
     let emitted = 0
-    if (arraySource) {
-      for (let index = 0; index < arraySource.length && emitted < limit; index++) {
-        const result = filterMapFn(arraySource[index], index) as Option<unknown>
-        if (result._tag === 1) {
-          target.push(result.value)
-          emitted++
-        }
-      }
-    } else {
-      let index = 0
-      for (const sourceValue of access.iterable) {
-        const result = filterMapFn(sourceValue, index++) as Option<unknown>
-        if (result._tag === 1) {
-          target.push(result.value)
-          if (++emitted >= limit) break
-        }
+    let index = 0
+    for (const sourceValue of access.iterable) {
+      const result = filterMapFn(sourceValue, index++) as Option<unknown>
+      if (result._tag === 1) {
+        target.push(result.value)
+        if (++emitted >= limit) break
       }
     }
     return true
@@ -1470,6 +1505,8 @@ export const toArray = <A>(source: Iterable<A>): A[] => {
   const output: A[] = []
   if (hasZeroTake(plan.steps)) return output
   const access = inspectPlanSource(plan.source)
+  const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_TO_ARRAY)
+  if (kernel) return finishKernel(access, kernel(access.indexed as unknown[], plan.steps)) as A[]
   if (!collectFastPlan(plan, output, access)) {
     executePlan(
       plan,
@@ -1493,20 +1530,16 @@ const toArrayIntoImpl = <A, Target extends unknown[]>(
     if (hasZeroTake(plan.steps)) return target
     const access = inspectPlanSource(plan.source)
     const steps = plan.steps
+    const kernel = arrayKernelFor(steps, access, ITER_TERMINAL_TO_ARRAY_INTO)
+    if (kernel)
+      return finishKernel(access, kernel(access.indexed as unknown[], steps, target)) as Target
     if (steps.length === 2 && steps[0].kind === 'map' && steps[1].kind === 'filter') {
       const mapFn = steps[0].fn
       const filterFn = steps[1].fn
-      if (access.array) {
-        for (let index = 0; index < access.array.length; index++) {
-          const value = mapFn(access.array[index], index)
-          if (filterFn(value, index)) target.push(value as A)
-        }
-      } else {
-        let index = 0
-        for (const sourceValue of access.iterable) {
-          const value = mapFn(sourceValue, index)
-          if (filterFn(value, index++)) target.push(value as A)
-        }
+      let index = 0
+      for (const sourceValue of access.iterable) {
+        const value = mapFn(sourceValue, index)
+        if (filterFn(value, index++)) target.push(value as A)
       }
       return target
     }
@@ -1529,9 +1562,9 @@ const toArrayIntoImpl = <A, Target extends unknown[]>(
 
 interface ToArrayIntoOperation {
   <A, const Target extends unknown[]>(
-    source: Iterable<A>,
+    source: Iterable<A> & Iterable<Target[number]>,
     target: Target,
-    ..._capacity: [] & ArrayTargetCapacity<A, Target>
+    ..._capacity: [] & ArrayTargetCapacity<Target>
   ): Target
 }
 
@@ -1548,19 +1581,9 @@ const reduceImpl = <A, B>(
   if (plan) {
     const access = inspectPlanSource(plan.source)
     const steps = plan.steps
-    if (
-      access.array &&
-      steps.length === 2 &&
-      steps[0].kind === 'map' &&
-      steps[1].kind === 'filter'
-    ) {
-      const mapFn = steps[0].fn
-      const filterFn = steps[1].fn
-      for (let sourceIndex = 0; sourceIndex < access.array.length; sourceIndex++) {
-        const value = mapFn(access.array[sourceIndex], sourceIndex)
-        if (filterFn(value, sourceIndex)) state = reducer(state, value as A, index++)
-      }
-      return state
+    const kernel = arrayKernelFor(steps, access, ITER_TERMINAL_REDUCE)
+    if (kernel) {
+      return finishKernel(access, kernel(access.indexed as unknown[], steps, reducer, initial)) as B
     }
     executePlan(
       plan,
@@ -1585,11 +1608,22 @@ export const reduce: {
 export const firstOrUndefined = <A>(source: Iterable<A>): A | undefined => {
   const plan = planOf(source)
   if (plan) {
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_FIRST)
+    if (kernel) {
+      const found = kernel(access.indexed as unknown[], plan.steps)
+      return found === ITER_KERNEL_MISSING ? undefined : (found as A)
+    }
     let result: A | undefined
-    executePlan(plan, source, (value) => {
-      result = value as A
-      return true
-    })
+    executePlan(
+      plan,
+      source,
+      (value) => {
+        result = value as A
+        return true
+      },
+      access,
+    )
     return result
   }
   for (const value of source) return value
@@ -1599,11 +1633,22 @@ export const firstOrUndefined = <A>(source: Iterable<A>): A | undefined => {
 export const first = <A>(source: Iterable<A>): Option<A> => {
   const plan = planOf(source)
   if (plan) {
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_FIRST)
+    if (kernel) {
+      const found = kernel(access.indexed as unknown[], plan.steps)
+      return found === ITER_KERNEL_MISSING ? none : optionSome(found as A)
+    }
     let result: Option<A> = none
-    executePlan(plan, source, (value) => {
-      result = optionSome(value as A)
-      return true
-    })
+    executePlan(
+      plan,
+      source,
+      (value) => {
+        result = optionSome(value as A)
+        return true
+      },
+      access,
+    )
     return result
   }
   for (const value of source) return optionSome(value)
@@ -1614,10 +1659,21 @@ export const lastOrUndefined = <A>(source: Iterable<A>): A | undefined => {
   let result: A | undefined
   const plan = planOf(source)
   if (plan) {
-    executePlan(plan, source, (value) => {
-      result = value as A
-      return false
-    })
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_LAST)
+    if (kernel) {
+      const found = finishKernel(access, kernel(access.indexed as unknown[], plan.steps))
+      return found === ITER_KERNEL_MISSING ? undefined : (found as A)
+    }
+    executePlan(
+      plan,
+      source,
+      (value) => {
+        result = value as A
+        return false
+      },
+      access,
+    )
     return result
   }
   for (const value of source) result = value
@@ -1629,11 +1685,22 @@ export const last = <A>(source: Iterable<A>): Option<A> => {
   let result: A | undefined
   const plan = planOf(source)
   if (plan) {
-    executePlan(plan, source, (value) => {
-      found = true
-      result = value as A
-      return false
-    })
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_LAST)
+    if (kernel) {
+      const found = finishKernel(access, kernel(access.indexed as unknown[], plan.steps))
+      return found === ITER_KERNEL_MISSING ? none : optionSome(found as A)
+    }
+    executePlan(
+      plan,
+      source,
+      (value) => {
+        found = true
+        result = value as A
+        return false
+      },
+      access,
+    )
   } else {
     for (const value of source) {
       found = true
@@ -1649,19 +1716,10 @@ const findOrUndefinedImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): A
   if (plan) {
     const access = inspectPlanSource(plan.source)
     const steps = plan.steps
-    if (
-      access.array &&
-      steps.length === 2 &&
-      steps[0].kind === 'map' &&
-      steps[1].kind === 'filter'
-    ) {
-      const mapFn = steps[0].fn
-      const filterFn = steps[1].fn
-      for (let sourceIndex = 0; sourceIndex < access.array.length; sourceIndex++) {
-        const value = mapFn(access.array[sourceIndex], sourceIndex)
-        if (filterFn(value, sourceIndex) && predicate(value as A, index++)) return value as A
-      }
-      return undefined
+    const kernel = arrayKernelFor(steps, access, ITER_TERMINAL_FIND)
+    if (kernel) {
+      const found = kernel(access.indexed as unknown[], steps, predicate)
+      return found === ITER_KERNEL_MISSING ? undefined : (found as A)
     }
     let result: A | undefined
     executePlan(
@@ -1695,21 +1753,10 @@ const findImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Option<A> =>
   if (plan) {
     const access = inspectPlanSource(plan.source)
     const steps = plan.steps
-    if (
-      access.array &&
-      steps.length === 2 &&
-      steps[0].kind === 'map' &&
-      steps[1].kind === 'filter'
-    ) {
-      const mapFn = steps[0].fn
-      const filterFn = steps[1].fn
-      for (let sourceIndex = 0; sourceIndex < access.array.length; sourceIndex++) {
-        const value = mapFn(access.array[sourceIndex], sourceIndex)
-        if (filterFn(value, sourceIndex) && predicate(value as A, index++)) {
-          return optionSome(value as A)
-        }
-      }
-      return none
+    const kernel = arrayKernelFor(steps, access, ITER_TERMINAL_FIND)
+    if (kernel) {
+      const found = kernel(access.indexed as unknown[], steps, predicate)
+      return found === ITER_KERNEL_MISSING ? none : optionSome(found as A)
     }
     let result: Option<A> = none
     executePlan(
@@ -1742,12 +1789,23 @@ const nthOrUndefinedImpl = <A>(source: Iterable<A>, index: number): A | undefine
   let current = 0
   const plan = planOf(source)
   if (plan) {
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_NTH)
+    if (kernel) {
+      const found = kernel(access.indexed as unknown[], plan.steps, index)
+      return found === ITER_KERNEL_MISSING ? undefined : (found as A)
+    }
     let result: A | undefined
-    executePlan(plan, source, (value) => {
-      if (current++ !== index) return false
-      result = value as A
-      return true
-    })
+    executePlan(
+      plan,
+      source,
+      (value) => {
+        if (current++ !== index) return false
+        result = value as A
+        return true
+      },
+      access,
+    )
     return result
   }
   for (const value of source) {
@@ -1766,12 +1824,23 @@ const nthImpl = <A>(source: Iterable<A>, index: number): Option<A> => {
   let current = 0
   const plan = planOf(source)
   if (plan) {
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_NTH)
+    if (kernel) {
+      const found = kernel(access.indexed as unknown[], plan.steps, index)
+      return found === ITER_KERNEL_MISSING ? none : optionSome(found as A)
+    }
     let result: Option<A> = none
-    executePlan(plan, source, (value) => {
-      if (current++ !== index) return false
-      result = optionSome(value as A)
-      return true
-    })
+    executePlan(
+      plan,
+      source,
+      (value) => {
+        if (current++ !== index) return false
+        result = optionSome(value as A)
+        return true
+      },
+      access,
+    )
     return result
   }
   for (const value of source) {
@@ -1789,12 +1858,20 @@ const someImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => {
   let index = 0
   const plan = planOf(source)
   if (plan) {
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_SOME)
+    if (kernel) return kernel(access.indexed as unknown[], plan.steps, predicate) as boolean
     let result = false
-    executePlan(plan, source, (value) => {
-      if (!predicate(value as A, index++)) return false
-      result = true
-      return true
-    })
+    executePlan(
+      plan,
+      source,
+      (value) => {
+        if (!predicate(value as A, index++)) return false
+        result = true
+        return true
+      },
+      access,
+    )
     return result
   }
   for (const value of source) {
@@ -1812,12 +1889,20 @@ const everyImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => 
   let index = 0
   const plan = planOf(source)
   if (plan) {
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_EVERY)
+    if (kernel) return kernel(access.indexed as unknown[], plan.steps, predicate) as boolean
     let result = true
-    executePlan(plan, source, (value) => {
-      if (predicate(value as A, index++)) return false
-      result = false
-      return true
-    })
+    executePlan(
+      plan,
+      source,
+      (value) => {
+        if (predicate(value as A, index++)) return false
+        result = false
+        return true
+      },
+      access,
+    )
     return result
   }
   for (const value of source) {
@@ -1835,10 +1920,19 @@ export const count = (source: Iterable<unknown>): number => {
   let total = 0
   const plan = planOf(source)
   if (plan) {
-    executePlan(plan, source, () => {
-      total++
-      return false
-    })
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_COUNT)
+    if (kernel)
+      return finishKernel(access, kernel(access.indexed as unknown[], plan.steps)) as number
+    executePlan(
+      plan,
+      source,
+      () => {
+        total++
+        return false
+      },
+      access,
+    )
     return total
   }
   for (const _value of source) total++
@@ -1849,10 +1943,21 @@ const forEachImpl = <A>(source: Iterable<A>, effect: (value: A, index: number) =
   let index = 0
   const plan = planOf(source)
   if (plan) {
-    executePlan(plan, source, (value) => {
-      effect(value as A, index++)
-      return false
-    })
+    const access = inspectPlanSource(plan.source)
+    const kernel = arrayKernelFor(plan.steps, access, ITER_TERMINAL_FOR_EACH)
+    if (kernel) {
+      finishKernel(access, kernel(access.indexed as unknown[], plan.steps, effect))
+      return
+    }
+    executePlan(
+      plan,
+      source,
+      (value) => {
+        effect(value as A, index++)
+        return false
+      },
+      access,
+    )
     return
   }
   for (const value of source) effect(value, index++)

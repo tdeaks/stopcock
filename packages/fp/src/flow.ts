@@ -1,4 +1,10 @@
-import { compile } from './compile'
+/**
+ * Root `flow`: sequential composition, left to right.
+ *
+ * As with `pipe`, this composed a fused pipeline in 1.x and no longer does.
+ * `@stopcock/fp/fusion` is where fusion lives now.
+ */
+import { sequentialFlow } from './internal/sequential'
 
 export function flow<A, B>(f1: (a: A) => B): (a: A) => B
 export function flow<A, B, C>(f1: (a: A) => B, f2: (b: B) => C): (a: A) => C
@@ -241,8 +247,7 @@ export function flow<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,
   f19: (s: S) => T,
   f20: (t: T) => U,
 ): (a: A) => U
-export function flow(...fns: Array<(x: unknown) => unknown>): (a: unknown) => unknown {
-  const len = fns.length
-  if (len === 1) return fns[0]
-  return compile(...fns) as (a: unknown) => unknown
+export function flow(...fns: readonly unknown[]): (a: unknown) => unknown {
+  if (fns.length === 1) return fns[0] as (a: unknown) => unknown
+  return sequentialFlow(...(fns as readonly never[])) as (a: unknown) => unknown
 }

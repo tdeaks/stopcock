@@ -6,6 +6,7 @@ import {
   isTerminal,
   REGISTERED_OP_CODES,
 } from '../registry'
+import { OP_SORT_BY, OP_SORT_INLINE } from '../opcodes'
 
 describe('operation registry', () => {
   it('has exactly one entry per opcode exported from opcodes.ts', () => {
@@ -72,5 +73,10 @@ describe('operation registry', () => {
       expect(entry.denseHoles).toBe(true)
       expect(entry.exactLowering).toBe(true)
     }
+  })
+
+  it('preserves the legacy comparator arity in the emitted runtime projection', () => {
+    expect(getOpMeta(OP_SORT_BY)?.callbackArity).toBe(1)
+    expect(getOpMeta(OP_SORT_INLINE)?.callbackArity).toBe(1)
   })
 })

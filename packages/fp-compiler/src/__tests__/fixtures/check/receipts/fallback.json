@@ -1,0 +1,28 @@
+{
+  "kind": "stopcock.compiler-receipt",
+  "schemaVersion": 1,
+  "receiptId": "sha256:0c022ed22569c22ff78125c3885c83fe559df17954fa23124a7a67e85b6d9c38",
+  "sourcePath": "src/opaque.ts",
+  "sourceHash": "sha256:9521bfb26c414dca07035b4aee66f991b69e55f6b1bed4d046a64f34ddfba685",
+  "siteFingerprint": "sha256:072b4830e8af38aa5e52fe40c1f6173ee1830c2bc032e85b8e07b9caf211199a",
+  "compilerHash": "sha256:8a2ed10fdf3456c2be73eaab15ba1dc45f4719484dd4b3677b33adfdfee082bb",
+  "configHash": "sha256:46ce179126eaf00a592be24a9a00fcb1fb41c40c21ae62b06052e8469d26f5e7",
+  "semanticManifestHash": "sha256:49902ee18e501988cdd1b8e632d20b480d67ce9486ae8f9b95690cebca589b94",
+  "semanticIds": [
+    {
+      "semanticId": "@stopcock/fp/array/map",
+      "semanticRevision": 1,
+      "semanticHash": "sha256:7fbaac14c16ce6107d7cf9be70f5a5f0deee2c592c22db367bbf79e6550de7a0",
+      "mode": "exact"
+    }
+  ],
+  "semanticMode": "exact",
+  "segmentKinds": ["opaque"],
+  "disposition": "fallback",
+  "loweringHash": null,
+  "fallbackTier": "sequential",
+  "reasonCodes": ["opaque-callback"],
+  "emittedCodeHash": null,
+  "sourceMapHash": null,
+  "evidenceRefs": []
+}

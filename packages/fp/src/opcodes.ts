@@ -1,4 +1,7 @@
-// Fuseable stream ops
+// GENERATED FILE -- do not edit by hand.
+// Source: packages/fp/codegen/protocol/operator-definitions.ts
+// Numeric opcodes are compact internal encodings, never semantic identity or authority.
+
 export const OP_MAP = 1
 export const OP_FILTER = 2
 export const OP_TAKE = 3
@@ -6,31 +9,21 @@ export const OP_DROP = 4
 export const OP_TAKE_WHILE = 5
 export const OP_DROP_WHILE = 6
 export const OP_FLAT_MAP = 7
-
-// Fuseable terminal ops
 export const OP_REDUCE = 8
 export const OP_FOR_EACH = 9
 export const OP_EVERY = 10
 export const OP_SOME = 11
 export const OP_FIND = 12
 export const OP_FIND_INDEX = 13
-
-// Fuseable stream ops (extended)
 export const OP_FILTER_MAP = 14
 export const OP_MAP_WHILE = 15
 export const OP_REJECT = 16
 export const OP_TAKE_UNTIL = 19
-
-// Fuseable terminal ops (extended)
 export const OP_NONE = 17
 export const OP_COUNT = 18
 export const OP_FIND_MAP = 22
-
-// Non-fuseable but recognized (for pattern matching at boundaries)
 export const OP_SORT_BY = 20
 export const OP_SORT = 21
-
-// Accessor terminal ops (operate on completed result, not per-element)
 export const OP_HEAD = 30
 export const OP_LAST = 31
 export const OP_LENGTH = 32
@@ -45,8 +38,6 @@ export const OP_FLATTEN = 40
 export const OP_SUM = 41
 export const OP_MIN = 42
 export const OP_MAX = 43
-
-// String accessor ops (transforms on string values, no callback)
 export const OP_STR_TRIM = 50
 export const OP_STR_LOWER = 51
 export const OP_STR_UPPER = 52
@@ -55,13 +46,9 @@ export const OP_STR_TRIM_END = 54
 export const OP_STR_SPLIT = 55
 export const OP_STR_LENGTH = 56
 export const OP_STR_IS_EMPTY = 57
-
-// Dict accessor ops
 export const OP_DICT_KEYS = 60
 export const OP_DICT_VALUES = 61
 export const OP_DICT_IS_EMPTY = 62
-
-// Math stream ops (inline arithmetic, no callback)
 export const OP_MATH_ADD = 70
 export const OP_MATH_SUBTRACT = 71
 export const OP_MATH_MULTIPLY = 72
@@ -69,8 +56,6 @@ export const OP_MATH_DIVIDE = 73
 export const OP_MATH_NEGATE = 74
 export const OP_MATH_INC = 75
 export const OP_MATH_DEC = 76
-
-// Guard predicate ops (inline typeof checks)
 export const OP_GUARD_IS_NUMBER = 80
 export const OP_GUARD_IS_STRING = 81
 export const OP_GUARD_IS_BOOLEAN = 82
@@ -78,27 +63,14 @@ export const OP_GUARD_IS_NIL = 83
 export const OP_GUARD_IS_ARRAY = 84
 export const OP_GUARD_IS_OBJECT = 85
 export const OP_GUARD_IS_FUNCTION = 86
-
-// Sort specialization
 export const OP_SORT_ASC = 90
 export const OP_SORT_DESC = 91
-
-// Array-domain scan (array.ts's codegen'd scan, tagged { op: 'scan' }).
-// Emits the initial accumulator before any element is processed: output
-// length is n+1 for n inputs and out[0] is the seed.
 export const OP_SCAN = 102
-
-// without(arr, values): a whole-array materializer, values is a single
-// array-valued argument (not variadic at the dual() call site), so it fits
-// bindings: ['a1'] cleanly.
 export const OP_WITHOUT = 103
 
-// Non-fuseable (tagged but materialization boundary)
 export const OP_NON_FUSEABLE = 0
 
-// Lookup table: op name → opcode (used by dual to tag)
 export const OP_CODES: Record<string, number> = {
-  // Array stream
   map: OP_MAP,
   filter: OP_FILTER,
   take: OP_TAKE,
@@ -110,7 +82,6 @@ export const OP_CODES: Record<string, number> = {
   filterMap: OP_FILTER_MAP,
   mapWhile: OP_MAP_WHILE,
   takeUntil: OP_TAKE_UNTIL,
-  // Array terminal
   reduce: OP_REDUCE,
   forEach: OP_FOR_EACH,
   every: OP_EVERY,
@@ -120,7 +91,6 @@ export const OP_CODES: Record<string, number> = {
   none: OP_NONE,
   count: OP_COUNT,
   findMap: OP_FIND_MAP,
-  // Array accessor
   head: OP_HEAD,
   last: OP_LAST,
   length: OP_LENGTH,
@@ -136,12 +106,10 @@ export const OP_CODES: Record<string, number> = {
   max: OP_MAX,
   scan: OP_SCAN,
   without: OP_WITHOUT,
-  // Sort
   sort: OP_SORT,
   sortBy: OP_SORT_BY,
   sortAsc: OP_SORT_ASC,
   sortDesc: OP_SORT_DESC,
-  // String
   trim: OP_STR_TRIM,
   toLowerCase: OP_STR_LOWER,
   toUpperCase: OP_STR_UPPER,
@@ -150,11 +118,9 @@ export const OP_CODES: Record<string, number> = {
   split: OP_STR_SPLIT,
   strLength: OP_STR_LENGTH,
   strIsEmpty: OP_STR_IS_EMPTY,
-  // Dict
   keys: OP_DICT_KEYS,
   values: OP_DICT_VALUES,
   dictIsEmpty: OP_DICT_IS_EMPTY,
-  // Math
   add: OP_MATH_ADD,
   subtract: OP_MATH_SUBTRACT,
   multiply: OP_MATH_MULTIPLY,
@@ -162,7 +128,6 @@ export const OP_CODES: Record<string, number> = {
   negate: OP_MATH_NEGATE,
   inc: OP_MATH_INC,
   dec: OP_MATH_DEC,
-  // Guards
   isNumber: OP_GUARD_IS_NUMBER,
   isString: OP_GUARD_IS_STRING,
   isBoolean: OP_GUARD_IS_BOOLEAN,
@@ -172,7 +137,6 @@ export const OP_CODES: Record<string, number> = {
   isFunction: OP_GUARD_IS_FUNCTION,
 }
 
-// Fast range checks
 export const isFuseableOp = (op: number): boolean =>
   (op >= OP_MAP && op <= OP_FLAT_MAP) ||
   op === OP_FILTER_MAP ||

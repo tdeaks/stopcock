@@ -1,5 +1,7 @@
 import { expectTypeOf, test } from 'vite-plus/test'
 import * as Root from '..'
+import * as Compile from '../compile'
+import * as FusionDebug from '../fusion-debug'
 import * as A from '../array'
 import type { Eq } from '../eq'
 import * as G from '../guard'
@@ -21,7 +23,8 @@ import * as V from '../validation'
 test('the root remains intentionally slim', () => {
   expectTypeOf(Root.pipe).toBeFunction()
   expectTypeOf(Root.flow).toBeFunction()
-  expectTypeOf(Root.compile).toBeFunction()
+  // compile moved to the subpath in S8; the root keeps composition only.
+  expectTypeOf(Compile.compile).toBeFunction()
   expectTypeOf(Root.some(1)).toEqualTypeOf<O.Some<number>>()
   expectTypeOf(Root.ok(1)).toEqualTypeOf<R.Ok<number>>()
 
@@ -259,14 +262,14 @@ test('algebra and inclusive data types expose concrete instances', () => {
 })
 
 test('portable compiler runners retain endpoint types', () => {
-  const runner = Root.compile(
+  const runner = Compile.compile(
     A.map((value: number) => value + 1),
     A.filter((value: number) => value > 2),
     A.sum,
   )
   expectTypeOf(runner).toEqualTypeOf<(input: readonly number[]) => number>()
   expectTypeOf(
-    Root.explain(
+    FusionDebug.explain(
       A.map((value: number) => value + 1),
       A.sum,
     ).runtimeCodeGeneration,
