@@ -32,6 +32,11 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'the machine matches a recorded profile and is quiet enough to time on',
   }),
   Object.freeze({
+    script: 'competitor-floor-gate.ts',
+    kind: 'timing',
+    checks: 'stopcock has not fallen off a cliff against lodash, ramda, or ts-belt',
+  }),
+  Object.freeze({
     script: 'fp-package-size-gate.ts',
     kind: 'deterministic',
     checks: 'packed topology and per-artifact shared-runtime ceilings',

@@ -22,6 +22,7 @@
     "perf:lanes:s7:bun": "bun run src/reference/s7-optimized-sequential-lanes.ts",
     "perf:lanes:s7:node": "node --import=tsx src/reference/s7-optimized-sequential-lanes.ts",
     "perf:size:s3b": "bun run src/reference/s3b-untagged-size-gate.ts",
+    "perf:competitors": "bun run src/reference/competitor-floor-gate.ts",
     "perf:gates": "bun run src/reference/run-gates.ts",
     "perf:gates:deterministic": "bun run src/reference/run-gates.ts --deterministic",
     "perf:profile": "bun run src/reference/perf-profile-gate.ts",
