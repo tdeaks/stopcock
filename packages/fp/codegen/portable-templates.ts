@@ -24,6 +24,7 @@ import { OPERATOR_MANIFEST_V1_HASH as SEMANTIC_MANIFEST_HASH } from './protocol/
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const OUT = join(ROOT, 'src', 'portable-templates.ts')
 const DESCRIPTOR_OUT = join(ROOT, 'codegen', 'generated', 'fusion-runner-bank-v1.json')
+const KEYS_OUT = join(ROOT, 'src', 'internal', 'runner-keys.generated.ts')
 
 /** Everything a descriptor says that is not one of its two identity fields. */
 type DescriptorFacts = Omit<
@@ -597,6 +598,42 @@ function writeDescriptorBank(): void {
   )
 }
 
+/**
+ * The key set, without the runners. `explain` needs to answer "is this segment
+ * template-executed or generic", which is a question about which keys exist —
+ * not about the loop bodies. Emitting the keys separately is what lets the
+ * debug facade stop dragging the whole optimized engine into a compact
+ * consumer.
+ */
+function writeRunnerKeys(): void {
+  const arrayKeys = descriptorFacts
+    .filter((facts) => facts.runnerId.startsWith('fusion-runner/array/'))
+    .map((facts) => facts.runnerId.slice('fusion-runner/array/'.length))
+  const sinkKeys = descriptorFacts
+    .filter((facts) => facts.runnerId.startsWith('fusion-runner/sink/'))
+    .map((facts) => facts.runnerId.slice('fusion-runner/sink/'.length))
+  const quoted = (keys: readonly string[]): string =>
+    keys.map((key) => `  '${key}',`).join('\n')
+  writeFileSync(
+    KEYS_OUT,
+    `// GENERATED FILE. Do not edit by hand — run \`bun run codegen\` to regenerate.
+// Runner keys only, no runner bodies. Diagnostics ask which shapes the bank
+// covers; answering from here keeps \`explain\` off the optimized engine.
+
+/** Stream-segment shapes with a fused array runner. */
+export const ARRAY_RUNNER_KEYS: readonly string[] = [
+${quoted(arrayKeys)}
+]
+
+/** Sink shapes with a fused runner, including the \`<op>>SUM\` boundary fusions. */
+export const SINK_RUNNER_KEYS: readonly string[] = [
+${quoted(sinkKeys)}
+]
+`,
+  )
+  console.log(`runner-keys: ${arrayKeys.length} array, ${sinkKeys.length} sink -> ${KEYS_OUT}`)
+}
+
 function main(): void {
   const chains = chainsUpToLength(3)
   const fns: EmittedFn[] = []
@@ -808,6 +845,7 @@ ${manifestSink.join(',\n')},
     )
   }
   writeDescriptorBank()
+  writeRunnerKeys()
 }
 
 main()

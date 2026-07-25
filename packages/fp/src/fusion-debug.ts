@@ -1,19 +1,14 @@
 /**
  * Fusion diagnostics.
  *
- * Absent from every bundle that does not import it. The explanation and
- * statistics surface is pinned here so tooling has one place to depend on;
- * physically separating diagnostic implementation from production bytes is
- * S9's job, not this entry's.
+ * Absent from every bundle that does not import it. `explain` is static: it
+ * reads the plan, the generated runner key set, and the compact fact table,
+ * so explaining a pipeline no longer pulls the optimized engine in behind it.
+ *
+ * `explainRunner` and the optimizer statistics moved to `@stopcock/fp/fusion/
+ * optimized`. They are engine-bound — a runner only exists because `compile`
+ * made one — and re-exporting them from here put the engine's chunk back into
+ * any consumer that imported this entry, which defeated the whole point.
  */
-export {
-  explain,
-  explainPure,
-  explainRunner,
-  getOptimizerStats,
-  resetOptimizerStats,
-  type OptimizerStats,
-  type PipelineExplanation,
-  type PureRewrite,
-  type RunnerExplanation,
-} from './compile'
+export { explain, explainPure, type PipelineExplanation } from './internal/explain'
+export { type PureRewrite } from './internal/plan-analysis'

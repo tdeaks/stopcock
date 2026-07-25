@@ -14,8 +14,14 @@ import {
   OP_TAKE,
 } from './opcodes'
 import { trustedOperatorEntry } from './internal/provenance'
+import {
+  findElidableMapBeforeLength,
+  findSortThenTake,
+  pureRewrites,
+  type PureRewrite,
+} from './internal/plan-analysis'
 import { none as optionNone, some as optionSome } from './option'
-import { lowerShape, segmentExecutorKinds, type PortableRunner } from './lower'
+import { lowerShape, type PortableRunner } from './lower'
 import {
   buildPlan,
   planShapeKey,
@@ -63,23 +69,9 @@ type ValidChain<Steps extends readonly AnyUnary[]> = Steps extends readonly [
 
 export type Runner<Input = unknown, Output = unknown> = (input: Input) => Output
 
-export interface PureRewrite {
-  readonly kind: 'top-k' | 'elide-unused-map'
-  readonly description: string
-}
+export type { PureRewrite }
 
-export interface PipelineExplanation {
-  readonly version: 1
-  readonly domains: readonly OpDomain[]
-  readonly segments: readonly SegmentShape[]
-  readonly materializationBoundaries: readonly number[]
-  readonly semanticMode: 'exact' | 'pure'
-  readonly executor: 'portable'
-  readonly segmentExecutors: readonly ('template' | 'generic')[]
-  readonly rewrites: readonly PureRewrite[]
-  readonly runtimeCodeGeneration: false
-  readonly aotRecommended: true
-}
+
 
 export interface OptimizerStats {
   readonly plansBuilt: number
@@ -294,83 +286,10 @@ export function __shapeEntryForSteps(
   return shapeEntryFor(plan.shape, mode, 'none')
 }
 
-function domainsOf(shape: PlanShape): readonly OpDomain[] {
-  return shape.segments.map((segment) => segment.domain)
-}
 
-function boundaryIndexes(shape: PlanShape): readonly number[] {
-  const indexes: number[] = []
-  for (const segment of shape.segments) {
-    if (segment.kind === 'boundary') indexes.push(segment.startIndex)
-  }
-  return indexes
-}
 
-function findSortThenTake(
-  codes: readonly OpCode[],
-  segments: readonly SegmentShape[],
-): { readonly sortSegment: number; readonly takeSegment: number } | undefined {
-  for (let index = 0; index < segments.length - 1; index++) {
-    const segment = segments[index]
-    const next = segments[index + 1]
-    if (segment.kind !== 'boundary' || next.kind !== 'stream' || next.length !== 1) continue
-    const op = codes[segment.startIndex]
-    if (
-      op !== OP_SORT &&
-      op !== OP_SORT_ASC &&
-      op !== OP_SORT_DESC &&
-      op !== OP_SORT_BY &&
-      op !== OP_SORT_INLINE
-    ) {
-      continue
-    }
-    if (codes[next.startIndex] === OP_TAKE) {
-      return { sortSegment: index, takeSegment: index + 1 }
-    }
-  }
-  return undefined
-}
 
-function findElidableMapBeforeLength(
-  codes: readonly OpCode[],
-  segments: readonly SegmentShape[],
-): number | undefined {
-  for (let index = 0; index < segments.length - 1; index++) {
-    const segment = segments[index]
-    const next = segments[index + 1]
-    if (segment.kind !== 'stream' || next.kind !== 'boundary') continue
-    if (codes[next.startIndex] !== OP_LENGTH) continue
-    let onlyMaps = true
-    for (let offset = 0; offset < segment.length; offset++) {
-      if (codes[segment.startIndex + offset] !== OP_MAP) {
-        onlyMaps = false
-        break
-      }
-    }
-    if (onlyMaps) return index
-  }
-  return undefined
-}
 
-function pureRewrites(shape: PlanShape): readonly PureRewrite[] {
-  if (findSortThenTake(shape.codes, shape.segments)) {
-    return Object.freeze([
-      {
-        kind: 'top-k',
-        description: 'sort followed by take uses a bounded stable top-k',
-      },
-    ])
-  }
-  if (findElidableMapBeforeLength(shape.codes, shape.segments) !== undefined) {
-    return Object.freeze([
-      {
-        kind: 'elide-unused-map',
-        description: 'map callbacks are elided when only downstream length observes the segment',
-      },
-    ])
-  }
-  return Object.freeze([])
-}
 
 function stableTopK(
   data: readonly unknown[],
@@ -534,31 +453,6 @@ export function compilePure<const Steps extends readonly [AnyUnary, ...AnyUnary[
 export function compilePure(...steps: readonly Runner[]): Runner
 export function compilePure(...steps: readonly unknown[]): Runner {
   return compileInternal(true, steps)
-}
-
-function explainInternal(pure: boolean, steps: readonly unknown[]): PipelineExplanation {
-  const plan = buildPlan(steps)
-  const rewrites = pure ? pureRewrites(plan.shape) : Object.freeze([])
-  return Object.freeze({
-    version: 1,
-    domains: Object.freeze([...domainsOf(plan.shape)]),
-    segments: Object.freeze([...plan.shape.segments]),
-    materializationBoundaries: Object.freeze(boundaryIndexes(plan.shape)),
-    semanticMode: pure ? 'pure' : 'exact',
-    executor: 'portable',
-    segmentExecutors: Object.freeze([...segmentExecutorKinds(plan.shape)]),
-    rewrites,
-    runtimeCodeGeneration: false,
-    aotRecommended: true,
-  })
-}
-
-export function explain(...steps: readonly unknown[]): PipelineExplanation {
-  return explainInternal(false, steps)
-}
-
-export function explainPure(...steps: readonly unknown[]): PipelineExplanation {
-  return explainInternal(true, steps)
 }
 
 export interface RunnerExplanation {
