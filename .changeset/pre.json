@@ -26,7 +26,8 @@
     "@stopcock/signal": "1.0.0",
     "@stopcock/state": "1.0.0",
     "@stopcock/svg": "1.0.0",
-    "@stopcock/synth": "1.0.0"
+    "@stopcock/synth": "1.0.0",
+    "@stopcock/fp-optimizer": "2.0.0-next.0"
   },
   "changesets": [
     "add-fp-companion-tools",
