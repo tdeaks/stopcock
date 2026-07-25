@@ -71,9 +71,9 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S10X  | NOT_STARTED | Conditional optimizer extraction                                                                                                                                                                                                                                                                                                                                                              |
 | S10J  | NOT_STARTED | Optimizer topology decision                                                                                                                                                                                                                                                                                                                                                                   |
 | S11   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
-| P1A   | NOT_STARTED | Array Iter kernels                                                                                                                                                                                                                                                                                                                                                                            |
+| P1A   | BLOCKED     | Kernels, oracles, and codegen merged at `358746c`, but 8 shipped rows measure below the stage's own `0.80x` per-terminal floor. The floor was not lowered and the rows report as failures; shipping-vs-floor needs a decision                                                                                                                                                                 |
 | P1B   | NOT_STARTED | Typed-array Iter admission                                                                                                                                                                                                                                                                                                                                                                    |
-| P2    | NOT_STARTED | Typed-array policy                                                                                                                                                                                                                                                                                                                                                                            |
+| P2    | GATE_PASSED | Canonical-view inspection seam merged; every candidate strategy measured and stopped, so typed-array behaviour is unchanged by design                                                                                                                                                                                                                                                         |
 | P3A   | GATE_PASSED | Allocation and memory evidence infrastructure merged at `9bde654`; seven families calibrated on the release lane, three uncalibrated on the canary and reported rather than tuned                                                                                                                                                                                                             |
 | P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                                |
 | P4    | GATE_PASSED | Compiled object read paths, guarded plain-data write tier, and lazy `Map.getOrElse` merged at `908f5f6`; the Record narrow-path candidate stopped on measurement and one row deferred to S4                                                                                                                                                                                                   |
@@ -261,8 +261,77 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Repaired the frozen pipe-dispatch baseline at `58809a4`
       after that lane found S5A had silently broken it. The regression was
       mine and had been live since `e0becf5`.
+- [x] (2026-07-25) Merged P1A's Iter Array kernels and P2's typed-array
+      inspection seam. P2 shipped no strategy: every candidate lost when
+      measured against the real exported functions rather than a lab kernel.
+- [x] (2026-07-25) Wired the Iter subpath ceiling to the built artifact after
+      finding it was only ever checked against synthetic reports.
 
 ## Evidence log
+
+- P1A evidence:
+  - `packages/fp/codegen/iter-kernels.ts` generates `src/iter-kernels.ts` and a
+    210-row manifest: 15 terminals x 14 shapes, each row present exactly once,
+    75 shipped across five shapes and 135 recorded as `generic-fallback` with a
+    byte reason. Codegen reproducibility passes with git-diff checking;
+  - admission rests only on observable facts. A shadowed `Symbol.iterator`, a
+    proxy, or a mutated array-iterator prototype takes the generic path, and
+    typed arrays are deliberately not admitted;
+  - 85 oracle rows compare each shipped pair against the same plan on a generic
+    source, asserting both the result and the exact per-stage `(value, index)`
+    call sequence across four input sizes, plus holes-as-undefined, live length
+    during mutation, `take(0)` non-evaluation, early-exit read counts, throwing
+    callbacks, repeated completion, consumer `return()`, and nested flatMap
+    closing;
+  - kernels versus the generic emit path, same harness, ratio is hand-written
+    loop over Iter so higher is faster: `map-filter/reduce` 0.095 to 0.975,
+    `map-filter/count` 0.100 to 1.173, `map-filter/findOrUndefined` 0.115 to
+    1.196, `map-filter/toArray` 0.718 to 1.086, `map/toArray` 0.388 to 0.914;
+  - the existing gates hold at unchanged thresholds: `iter-perf-gate` geomean
+    0.892 with min 0.852 against floors of 0.84 and 0.82, and
+    `iter-broad-perf-gate` geomean 1.872 with min 0.991;
+  - the `Iter.toArrayInto` inference defect was root-caused rather than worked
+    around: the target-capacity rule lived in a rest parameter as a conditional
+    type, which TypeScript evaluates before resolving an overloaded call in an
+    earlier argument, and every `Iter.map`/`filter`/`take` is an overloaded
+    `dual`. Moving the element rule onto the source parameter as plain
+    assignability fixes it with the same type parameters, same return type, and
+    the same accepted and rejected calls. A regression test was verified to fail
+    on the pre-fix source;
+  - the Iter subpath size exception is the one the stage explicitly permits.
+    The subpath went from 6,438 to 8,433 gzip bytes; 5% would have been 322
+    bytes while the fixed seam alone costs about 480, so no terminal-fused
+    kernel set fits inside the ordinary tolerance. The contract names the five
+    accepted kernel shapes and fails on further growth or any unnamed kernel;
+  - the ceiling is now measured against `dist/iter.js` rather than a synthetic
+    report. That found the pin stale by 9 bytes on P1A's own branch and 21 on
+    the integrated tree, with the kernel set unchanged.
+
+- P2 evidence:
+  - `packages/fp/src/internal/typed-array-view.ts` adds the canonical-view
+    inspection seam that P1B will consume. It imports nothing from the public
+    typed-array entry;
+  - **no strategy shipped, and that is the result.** Every candidate the lab
+    ranked as a clear win lost when measured against the real exported
+    functions. Dropping the size band so a short canonical view always takes
+    the stashed intrinsic measured 0.81x in the lab and regressed the existing
+    gate from 0.988/0.977/0.975 to 0.796/0.770/0.779 on `float64/slice/64` and
+    from 1.120/1.095/0.996 to 0.934/0.938/0.883 on `float64/reverse/64`;
+  - the root cause is recorded in the lab's own header so the next lane does not
+    repeat it: the lab kernel is not the production kernel, because it allocates
+    through a shared helper with a different call-site shape;
+  - a declared noise floor of 0.83–1.21 on JSC and 0.85–1.16 on V8, measured by
+    timing a function against itself at n=216, bounds what was acted on;
+  - the Bun BigInt filter replacement was rejected on its own bar: tiny −11.8%,
+    small +1.2%, bulk +1.8% against a required 10% improvement with the
+    confidence interval wholly above parity;
+  - the existing `typed-array-perf-gate` is green on both engines with no
+    threshold moved: Bun frozen geomean 8.735 and native 1.197, Node frozen
+    2.346 and native 1.236;
+  - deferred without action: `bigint64` filters measure 0.71–0.86x native
+    against a 0.85x bar, because native `filter` keeps each element unboxed
+    across the predicate call and no userland one-pass predicate can. No stage
+    in the superplan owns closing it.
 
 - S7 lane-split and package-gate evidence (partial stage):
   - `s7-optimized-sequential-lanes.ts` declares four lanes in one frozen table,
