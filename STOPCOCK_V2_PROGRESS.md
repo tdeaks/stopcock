@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S1C
-Current slice: FROZEN_BASELINES
-Last verified commit: 0c207b9
+Current canonical stage: S3B
+Current slice: UNTAGGED_INTERNAL_DUALS
+Last verified commit: cfa0669
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -56,7 +56,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S0B   | GATE_PASSED | Aligned 20-package public plus private Synth `2.0.0-next.0` cohort at `551852a06c1c22a2241fb9e3c75815524fdbc9fb`; no-write alignment replay, immutable 20-tarball development artifact `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`, exact packed checks, 117-export Bun/Node/type consumer, private Synth compatibility, and independent exit validation passed |
 | S1A   | GATE_PASSED | Cross-bundler packed consumer, behavior, size, identity, topology, and lower-bound package evidence checkpoint `81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`; independent consumer and topology audits passed                                                                                                                                                                                    |
 | S1B   | GATE_PASSED | Local scope only at `0c207b9`; checked-in profile registry, fail-closed host resolution, and repeated no-change qualification. The user descoped self-hosted runner provisioning, so `perf-linux-x64` stays recorded as unprovisioned and hosted CI matches no profile                                                                                                                        |
-| S1C   | NOT_STARTED | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                                 |
+| S1C   | GATE_PASSED | Frozen lane contract, fail-closed manifest validation, and three-session release manifests for both engines at `cfa0669`; identity-bound raw samples, memory capability matrix, and the pre-approved compact floor recorded before any compact implementation                                                                                                                                 |
 | S2    | GATE_PASSED | Acyclic canonical semantic/lowering/evidence/receipt generation checkpoint `cad86c15ae64b90a86675bbca96f6bea362d25ff`; complete clean gates and independent `v2_verifier` audit passed                                                                                                                                                                                                        |
 | S3A   | GATE_PASSED | Package-wide fail-closed initializer-purity checkpoint `6ced74a4574123a36284d2baaca9cf7f4f449436`; exact packed/local four-bundler size and behavior evidence, two-run reproducibility, full clean release gates, and independent audit passed                                                                                                                                                |
 | S3B   | NOT_STARTED | Untagged internal duals                                                                                                                                                                                                                                                                                                                                                                       |
@@ -211,8 +211,56 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       authorized the local implementation only, so S1B resumed against the one
       real machine: a checked-in profile registry, fail-closed host resolution,
       and repeated no-change noise qualification at `0c207b9`.
+- [x] (2026-07-25) Completed S1C at `cfa0669`: seven frozen lanes measured
+      against hand-written sequential references, two declared-inactive future
+      lanes, three-session release manifests on both engines, and a fail-closed
+      validator bound to exact source/dist/packed identity.
+- [x] (2026-07-25) Repinned the stale `EXPECTED_PORTABLE_SUBJECT` digest that
+      S3A invalidated, restoring the portable release gate.
 
 ## Evidence log
+
+- S1C evidence:
+  - `s1c-baseline-contract.ts` freezes the lane registry (`direct`,
+    `root-fused`, `compiler`, `iter`, `typed-array`, `startup`, `allocation`
+    frozen; `compact-fusion` and `optimized-fusion` explicitly inactive with
+    the stage that activates them), the `0.97x`/`0.90x`/`1.00x` hot-path
+    floors, the pre-approved compact `0.75x` geomean and `0.60x` per-row
+    size-first floor, bounded quick/release session, round, worker, retry, and
+    wall-clock budgets, and the frozen `"sideEffects": false` package fact;
+  - `validateBaselineManifest` fails closed on unexpected kind or schema,
+    foreign profile or engine, empty worker identity, any source/dist/packed
+    identity mismatch, a release manifest missing an identity, an omitted lane,
+    a wrong lane status, rows on an inactive lane, a frozen lane with no rows,
+    duplicate rows, a foreign sampler or orientation, unpaired samples, a
+    median or ratio that does not reproduce from raw samples, too few sessions
+    for the budget, an omitted or unavailable required memory metric, and a
+    metric claimed on an engine declared unable to collect it;
+  - the memory capability matrix records collection method, unit, and required
+    status per engine, with explicit `null` where unsupported: JSC exposes no
+    GC-count or GC-pause observation, and Bun's retained heap must come from
+    `Bun.gc(true)`'s return value because `heapUsed` does not track live
+    allocation there;
+  - three-session release manifests were produced and self-validated on both
+    engines and are checked in at
+    `benchmarks/reports/s1c-baseline-bun-jsc-release.json` and
+    `benchmarks/reports/s1c-baseline-node-v8-release.json`, both bound to
+    source `sha256:15c2f27c...`, dist `sha256:bdf15152...`, and packed
+    `sha256:c1a8be1c...`;
+  - `direct`, `root-fused`, and `typed-array` reproduce to within ~1% across
+    repeated runs; `compiler` and `iter` are visibly bimodal on this profile,
+    which is why the frozen rows retain every raw sample rather than one
+    number;
+  - 59 focused tests passed:
+
+    ```sh
+    bun run ../node_modules/vitest/vitest.mjs run \
+      src/reference/s1c-baseline-gate.test.ts \
+      src/reference/perf-profile-gate.test.ts \
+      src/reference/portable-perf-gate.test.ts
+    ```
+
+  - `vp fmt` and `git diff --check` passed.
 
 - S1B local evidence:
   - `benchmarks/src/reference/perf-profile-contract.ts` records
