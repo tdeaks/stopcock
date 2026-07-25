@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  FP_PACKAGE_LEGACY_SHARED_GZIP_MAXIMUM_BYTES,
-  FP_PACKAGE_LEGACY_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS,
+  FP_PACKAGE_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS,
   FP_PACKAGE_LEGACY_TARBALL_MAXIMUM_BYTES,
+  FP_PACKAGE_SHARED_RUNTIME_GZIP_MAXIMUM_BYTES,
   FP_PACKAGE_NAME,
   FP_PACKAGE_PROJECTION_ASSUMPTIONS,
   FP_PACKAGE_STABLE_TARBALL_MAXIMUM_BYTES,
@@ -27,9 +27,9 @@ import {
 } from './fp-package-topology'
 
 export {
-  FP_PACKAGE_LEGACY_SHARED_GZIP_MAXIMUM_BYTES,
-  FP_PACKAGE_LEGACY_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS,
+  FP_PACKAGE_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS,
   FP_PACKAGE_LEGACY_TARBALL_MAXIMUM_BYTES,
+  FP_PACKAGE_SHARED_RUNTIME_GZIP_MAXIMUM_BYTES,
   FP_PACKAGE_STABLE_TARBALL_MAXIMUM_BYTES,
   createFpPackageFileEvidence,
   createFpPackageFileSetIdentity,
@@ -50,15 +50,16 @@ export type {
 } from './fp-package-topology'
 
 export const FP_PACKAGE_SIZE_POLICY = Object.freeze({
-  legacySharedRuntime: Object.freeze({
-    description: 'shared legacy compile/runtime artifact, gzip level 9',
-    maximumBytes: FP_PACKAGE_LEGACY_SHARED_GZIP_MAXIMUM_BYTES,
+  sharedRuntime: Object.freeze({
+    description:
+      'per-artifact ceiling on runtime the root and optimized entries both reach, gzip level 9',
+    maximumBytesPerArtifact: FP_PACKAGE_SHARED_RUNTIME_GZIP_MAXIMUM_BYTES,
   }),
   legacyPackedTarball: Object.freeze({
     description: 'legacy-layout published @stopcock/fp tarball',
     maximumBytes: FP_PACKAGE_LEGACY_TARBALL_MAXIMUM_BYTES,
   }),
-  legacyAllowedDuplicateRuntimePathGroups: FP_PACKAGE_LEGACY_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS,
+  allowedDuplicateRuntimePathGroups: FP_PACKAGE_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS,
   samePackageProjection: Object.freeze({
     description: 'publish-style lower-bound feasibility signal, not release evidence',
     stableMaximumBytes: FP_PACKAGE_STABLE_TARBALL_MAXIMUM_BYTES,
@@ -351,7 +352,7 @@ const main = async (): Promise<void> => {
     gatePath,
     `${JSON.stringify(
       {
-        version: 3,
+        version: 4,
         generatedAt: new Date().toISOString(),
         policy: FP_PACKAGE_SIZE_POLICY,
         report,
@@ -373,13 +374,11 @@ const main = async (): Promise<void> => {
           ? ` / ${FP_PACKAGE_LEGACY_TARBALL_MAXIMUM_BYTES} legacy bytes`
           : ' (tiered migration evidence)'),
     )
-    if (report.topology.legacy !== null) {
-      const sharedPath = report.topology.legacy.sharedDirectArtifacts[0]
-      const shared = report.files.find(({ path }) => path === sharedPath)
-      console.log(
-        `legacy shared runtime: ${String(shared?.gzipBytes)} / ${FP_PACKAGE_LEGACY_SHARED_GZIP_MAXIMUM_BYTES} gzip bytes (${String(sharedPath)})`,
-      )
-    }
+    const shared = report.topology.sharedRuntime
+    console.log(
+      `shared runtime (${shared.rootEntry} and ${shared.optimizedSpecifier}): ${shared.artifacts.length} artifacts, ` +
+        `${shared.gzipBytes} gzip bytes total, largest ${shared.largestGzipBytes} / ${FP_PACKAGE_SHARED_RUNTIME_GZIP_MAXIMUM_BYTES} per artifact`,
+    )
     console.log(
       `same-package lower-bound projection: ${report.projection.packedTarball.bytes} / <${FP_PACKAGE_STABLE_TARBALL_MAXIMUM_BYTES} bytes`,
     )

@@ -81,6 +81,9 @@ const legacyFiles = (
 const tieredFiles = (
   options: Readonly<{
     rootImportsOptimized?: boolean
+    /** Pre-cutover shape: tier entries exist but root still fuses. */
+    rootFusesThroughSharedEngine?: boolean
+    sharedEngineContent?: string
     duplicateInternalRuntime?: boolean
     duplicateExportTargetRuntime?: boolean
     duplicatePublicRuntimeTargets?: boolean
@@ -119,7 +122,9 @@ const tieredFiles = (
         duplicatePublicContent ??
         (options.rootImportsOptimized
           ? "export { optimized as pipe } from './optimized-engine.js'\n"
-          : "export { sequential as pipe } from './sequential.js'\n"),
+          : options.rootFusesThroughSharedEngine
+            ? "export { compact as pipe } from './compact-engine.js'\n"
+            : "export { sequential as pipe } from './sequential.js'\n"),
     },
     {
       path: 'dist/compile.js',
@@ -147,8 +152,13 @@ const tieredFiles = (
       content:
         "export { compact } from './compact-engine.js'\nexport { debug } from './debug-engine.js'\n",
     },
-    { path: 'dist/sequential.js', content: 'export const sequential = (value) => value\n' },
-    { path: 'dist/compact-engine.js', content: "export const compact = 'compact'\n" },
+    ...(options.rootFusesThroughSharedEngine
+      ? []
+      : [{ path: 'dist/sequential.js', content: 'export const sequential = (value) => value\n' }]),
+    {
+      path: 'dist/compact-engine.js',
+      content: options.sharedEngineContent ?? "export const compact = 'compact'\n",
+    },
     {
       path: 'dist/optimized-engine.js',
       content: sharedTierContent ?? "export const optimized = 'optimized'\n",
@@ -208,27 +218,70 @@ describe('@stopcock/fp topology-neutral package-size policy', () => {
     const report = makeReport(legacyFiles())
     expect(report.topology.mode).toBe('legacy')
     expect(report.topology.legacy?.sharedDirectArtifacts).toEqual(['dist/engine-renamed.js'])
+    expect(report.topology.sharedRuntime.optimizedSpecifier).toBe('./compile')
+    expect(report.topology.sharedRuntime.artifacts).toEqual(['dist/engine-renamed.js'])
     expect(report.topology.declarations.unreachable).toEqual(['dist/orphan.d.ts'])
     expect(evaluate(report)).toEqual({ passed: true, failures: [] })
   })
 
-  test('retains the legacy-only shared-runtime and tarball ceilings', () => {
+  test('bounds shared runtime per artifact rather than counting chunks', () => {
     const entropy = Array.from({ length: 2_000 }, (_, index) =>
       createHash('sha256').update(String(index)).digest('hex'),
     ).join('')
-    const oversizedRuntime = makeReport(
+
+    const oversizedLegacy = makeReport(
       legacyFiles(`export const engine = ${JSON.stringify(entropy)}\n`),
     )
     expect(
-      evaluate(oversizedRuntime).failures.some((failure) =>
-        failure.includes('legacy shared runtime gzip is'),
+      evaluate(oversizedLegacy).failures.some((failure) =>
+        failure.startsWith('shared runtime artifact dist/engine-renamed.js is'),
       ),
     ).toBe(true)
+
+    // Splitting the same engine across two chunks is not a policy question, so
+    // it passes; each chunk is still bounded on its own.
+    const split = makeReport([
+      ...legacyFiles("export { engine } from './engine-part-two.js'\n"),
+      { path: 'dist/engine-part-two.js', content: "export const engine = 'two'\n" },
+    ])
+    expect(split.topology.sharedRuntime.artifacts).toEqual([
+      'dist/engine-part-two.js',
+      'dist/engine-renamed.js',
+    ])
+    expect(evaluate(split)).toEqual({ passed: true, failures: [] })
 
     const oversizedTarball = makeReport(legacyFiles(), { sourceTarballBytes: 150_001 })
     expect(evaluate(oversizedTarball).failures).toContain(
       'legacy packed @stopcock/fp tarball is 150001 bytes; budget is 150000',
     )
+  })
+
+  test('applies the same shared-runtime ceiling to a pre-cutover tiered artifact', () => {
+    // What the package actually looks like today: tier entries exist, root has
+    // not been rewired, so root and optimized still share the engine.
+    const fused = makeReport(tieredFiles({ rootFusesThroughSharedEngine: true }), {
+      sourceTarballBytes: 175_000,
+    })
+    expect(fused.topology.mode).toBe('tiered')
+    expect(fused.topology.sharedRuntime.optimizedSpecifier).toBe('./fusion/optimized')
+    expect(fused.topology.sharedRuntime.artifacts).toEqual(['dist/compact-engine.js'])
+    expect(evaluate(fused)).toEqual({ passed: true, failures: [] })
+
+    const entropy = Array.from({ length: 2_000 }, (_, index) =>
+      createHash('sha256').update(String(index)).digest('hex'),
+    ).join('')
+    const oversized = makeReport(
+      tieredFiles({
+        rootFusesThroughSharedEngine: true,
+        sharedEngineContent: `export const compact = ${JSON.stringify(entropy)}\n`,
+      }),
+      { sourceTarballBytes: 175_000 },
+    )
+    expect(
+      evaluate(oversized).failures.some((failure) =>
+        failure.startsWith('shared runtime artifact dist/compact-engine.js is'),
+      ),
+    ).toBe(true)
   })
 
   test('accepts a clean tiered graph and does not apply the legacy tarball ceiling', () => {
@@ -291,20 +344,20 @@ describe('@stopcock/fp topology-neutral package-size policy', () => {
     )
   })
 
-  test('enforces mode-specific duplicate policy and rejects unreachable runtime artifacts', () => {
+  test('enforces one duplicate policy in both modes and rejects unreachable runtime artifacts', () => {
     const duplicates = makeReport(tieredFiles({ duplicateInternalRuntime: true }))
     expect(evaluate(duplicates).failures).toContain(
-      'tiered package contains duplicate runtime artifacts',
+      'package contains unexpected duplicate runtime artifacts',
     )
 
     const exportTargetDuplicate = makeReport(tieredFiles({ duplicateExportTargetRuntime: true }))
     expect(evaluate(exportTargetDuplicate).failures).toContain(
-      'tiered package contains duplicate runtime artifacts',
+      'package contains unexpected duplicate runtime artifacts',
     )
 
     const publicTargetDuplicates = makeReport(tieredFiles({ duplicatePublicRuntimeTargets: true }))
     expect(evaluate(publicTargetDuplicates).failures).toContain(
-      'tiered package contains duplicate runtime artifacts',
+      'package contains unexpected duplicate runtime artifacts',
     )
 
     const unexpectedLegacyDuplicate = makeReport(
@@ -315,7 +368,7 @@ describe('@stopcock/fp topology-neutral package-size policy', () => {
       ),
     )
     expect(evaluate(unexpectedLegacyDuplicate).failures).toContain(
-      'legacy package contains unexpected duplicate runtime artifacts',
+      'package contains unexpected duplicate runtime artifacts',
     )
 
     const allowedLegacyFiles = legacyFiles()
@@ -336,6 +389,28 @@ describe('@stopcock/fp topology-neutral package-size policy', () => {
       'dist/readonly-array.js',
     ])
     expect(evaluate(allowedLegacyDuplicate)).toEqual({ passed: true, failures: [] })
+
+    // The same allowance, on the same frozen list, once tier entries exist.
+    // readonly-array is the array module either way.
+    const allowedTieredFiles = tieredFiles()
+      .map((file) => {
+        if (file.path !== 'package.json') return file
+        const parsed = JSON.parse(file.content) as { exports: Record<string, unknown> }
+        parsed.exports['./readonly-array'] = publicEntry('readonly-array')
+        return { path: file.path, content: `${JSON.stringify(parsed, null, 2)}\n` }
+      })
+      .concat([
+        { path: 'dist/readonly-array.d.ts', content: 'export declare const map: unknown\n' },
+        { path: 'dist/readonly-array.js', content: 'export const map = (value) => value\n' },
+      ])
+    const allowedTieredDuplicate = makeReport(allowedTieredFiles, {
+      sourceTarballBytes: 175_000,
+    })
+    expect(allowedTieredDuplicate.topology.duplicateRuntimeArtifacts[0]?.paths).toEqual([
+      'dist/array.js',
+      'dist/readonly-array.js',
+    ])
+    expect(evaluate(allowedTieredDuplicate)).toEqual({ passed: true, failures: [] })
 
     const orphan = makeReport(tieredFiles({ orphanJavascript: true }))
     expect(evaluate(orphan).failures).toContain(
