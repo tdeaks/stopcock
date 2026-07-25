@@ -42,7 +42,7 @@ import { spawnSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as A from '../../../packages/fp/src/array'
-import { compile } from '../../../packages/fp/src/compile'
+import { compile } from '../../../packages/fp-optimizer/src/compile'
 import { runInterleavedPaired } from './perf-runner'
 
 const SIZE = 100_000

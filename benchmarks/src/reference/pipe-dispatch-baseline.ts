@@ -8,9 +8,9 @@ import {
   dispatchAndTrack,
   planAndLowerFast,
   type Runner,
-} from '../../../packages/fp/src/compile'
+} from '../../../packages/fp-optimizer/src/compile'
 import type { StepBinding } from '../../../packages/fp/src/plan'
-import type { ShapeEntry } from '../../../packages/fp/src/shape-entry'
+import type { ShapeEntry } from '../../../packages/fp-optimizer/src/shape-entry'
 
 /**
  * The frozen implementation read its bindings straight off the operator's

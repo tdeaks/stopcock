@@ -138,6 +138,7 @@
         "remeda": "2.34.1",
       },
       "devDependencies": {
+        "@stopcock/fp-optimizer": "workspace:*",
         "@types/lodash-es": "4.17.12",
         "@types/luxon": "3.7.2",
         "@types/ramda": "0.31.1",

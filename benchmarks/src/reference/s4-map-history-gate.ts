@@ -19,7 +19,7 @@ import { spawnSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as A from '../../../packages/fp/src/array'
-import { pipe } from '../../../packages/fp/src/internal/fusion-engine'
+import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
 import { PERF_PROFILE_ENV } from './perf-profile-contract'
 import { describeHost, resolveProfile } from './perf-profile-gate'
 

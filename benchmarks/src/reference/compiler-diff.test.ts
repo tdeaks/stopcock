@@ -21,9 +21,9 @@
 // here -- see packages/fp-compiler/src/__tests__/transform.test.ts for
 // their correctness fixtures (transformed vs. real @stopcock/fp semantics).
 import { describe, expect, it } from 'vite-plus/test'
-import { pipe } from '../../../packages/fp/src/internal/fusion-engine'
-import { compile } from '../../../packages/fp/src/compile'
-import { flow } from '../../../packages/fp/src/internal/fusion-flow'
+import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
+import { compile } from '../../../packages/fp-optimizer/src/compile'
+import { flow } from '../../../packages/fp-optimizer/src/fusion-flow'
 import * as A from '../../../packages/fp/src/array'
 import { none } from '../../../packages/fp/src/option'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'

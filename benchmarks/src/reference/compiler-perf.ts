@@ -12,7 +12,7 @@ import { SUPPORTED_OP_NAMES } from '../../../packages/fp-compiler/src/ops'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import * as A from '../../../packages/fp/src/array'
 import { none } from '../../../packages/fp/src/option'
-import { pipe } from '../../../packages/fp/src/internal/fusion-engine'
+import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
 import type { CallbackSpec } from './binding-specs'
 import {
   COMPILER_PERF_POLICIES,

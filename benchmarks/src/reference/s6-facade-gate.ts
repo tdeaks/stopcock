@@ -43,14 +43,14 @@ export const result = pipe([1, 2, 3], map((x) => x * 2), filter((x) => x > 2))
   }),
   Object.freeze({
     id: 'optimized.pipeline',
-    source: `import { pipe } from '@stopcock/fp/fusion/optimized'
+    source: `import { pipe } from '@stopcock/fp-optimizer'
 import { filter, map } from '@stopcock/fp/array'
 export const result = pipe([1, 2, 3], map((x) => x * 2), filter((x) => x > 2))
 `,
   }),
   Object.freeze({
     id: 'fusion.pipeline.debug',
-    source: `import { pipe } from '@stopcock/fp/fusion/optimized'
+    source: `import { pipe } from '@stopcock/fp-optimizer'
 import { explain } from '@stopcock/fp/fusion/debug'
 import { filter, map } from '@stopcock/fp/array'
 const steps = [map((x) => x * 2), filter((x) => x > 2)]

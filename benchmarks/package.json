@@ -119,6 +119,7 @@
     "rollup": "4.62.2",
     "terser": "5.49.0",
     "tsx": "4.22.3",
-    "webpack": "5.108.4"
+    "webpack": "5.108.4",
+    "@stopcock/fp-optimizer": "workspace:*"
   }
 }
