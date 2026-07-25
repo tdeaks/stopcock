@@ -2367,11 +2367,23 @@ module graph and JIT warmup for the whole process. An `n=100` trivial row is the
 most sensitive thing in the corpus to exactly that — the S10 hand-loop lanes
 varied about ±30% per process for the same reason.
 
+Per-commit attribution was attempted and does not hold up. Re-measuring the
+same row across candidate commits gave 0.681 at `969f191` — a benchmark-only
+commit that changes no shipped code — and 0.798 at the later `e75c9be`. A
+bisect that puts the worst reading on a commit which cannot have caused it is
+not measuring the commit; it is measuring the process.
+
+What is solid: the row was 1.156 and 1.159 on two consecutive runs at
+`86d2dc8`, and 0.68–0.80 across many runs since. The drop is real and specific
+to this row. Which change caused it is not established, and the single-process
+harness cannot establish it.
+
 The gate is left failing. It has not been weakened, re-pinned, or excepted, and
-the worst-case rule has not been moved off the row that fails it. Settling this
+the worst-case rule has not been moved off the row that fails it. Settling it
 needs the per-row measurement rebuilt on fresh processes with per-session
-medians, the way `s10-hand-loop-gate` was, so that a row can be shown slower
-rather than merely measured lower once. That is the next S11 action.
+medians, the way `s10-hand-loop-gate` was, so that a row fails on a median
+rather than on one draw. That is the next S11 action, and it is a prerequisite
+for S11's exit gate rather than something S12 can consume around.
 
 ## Exact next action
 
