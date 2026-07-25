@@ -74,7 +74,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | P1A   | NOT_STARTED | Array Iter kernels                                                                                                                                                                                                                                                                                                                                                                            |
 | P1B   | NOT_STARTED | Typed-array Iter admission                                                                                                                                                                                                                                                                                                                                                                    |
 | P2    | NOT_STARTED | Typed-array policy                                                                                                                                                                                                                                                                                                                                                                            |
-| P3A   | NOT_STARTED | Allocation evidence infrastructure                                                                                                                                                                                                                                                                                                                                                            |
+| P3A   | GATE_PASSED | Allocation and memory evidence infrastructure merged at `9bde654`; seven families calibrated on the release lane, three uncalibrated on the canary and reported rather than tuned                                                                                                                                                                                                             |
 | P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                                |
 | P4    | NOT_STARTED | Object, Record, and Map candidates                                                                                                                                                                                                                                                                                                                                                            |
 | DISP  | NOT_STARTED | Optional-candidate dispositions                                                                                                                                                                                                                                                                                                                                                               |
@@ -246,8 +246,66 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Completed S6 at `547de0d`: the fused implementation moved to
       an engine-owned module, three additive fusion entries ship, and a
       dependency-free sequential core exists without being connected to root.
+- [x] (2026-07-25) Completed P3A in an isolated lane and merged it: throughput
+      and memory measurement now run in separate workers, and the allocation
+      corpus reports per-family dispositions.
 
 ## Evidence log
+
+- P3A evidence:
+  - `benchmarks/src/reference/allocation-perf-*` adds the corpus, its metric
+    contract, separate memory and throughput workers, a startup lane, and a
+    fail-closed gate with 17 focused tests. No package source, public API, or
+    threshold changed: P3A is evidence infrastructure and the shipped runtime is
+    byte-identical;
+  - release budget is 3 sessions, 32 held outputs of 50,000 elements per
+    target, one process per session per lane. Memory is never measured in a
+    process that also times throughput;
+  - retained heap on Bun via `Bun.gc(true)`'s return value, in bytes, median of
+    three sessions:
+
+    | target                     | retained   | per element |
+    | -------------------------- | ---------- | ----------- |
+    | `array.map`                | 12,388,398 | 7.74 B      |
+    | `array.filter`             | 6,390,642  | 3.99 B      |
+    | `pipe.map-filter`          | 14,410,474 | 9.01 B      |
+    | `compile.map-filter`       | 14,380,000 | 8.99 B      |
+    | `iter.map-filter-toArray`  | 14,409,021 | 9.01 B      |
+    | `typed-array.map`          | 12,408,604 | 7.76 B      |
+    | `collector.array`          | 14,385,270 | 8.99 B      |
+    | `transducer.intoArray`     | 14,393,789 | 9.00 B      |
+    | `array.mapInto`            | 3,272      | ~0          |
+    | `array.filterInto`         | 1,966      | ~0          |
+    | `typed-array.mapInto`      | 2,831      | ~0          |
+    | `iter.toArrayInto`         | 10,368     | 0.01 B      |
+    | `transducer.intoArrayInto` | 10,509     | 0.01 B      |
+    | `collector.arrayInto`      | 4,845      | ~0          |
+
+  - the existing `*Into` surface retains 2–10 KB where its allocating
+    equivalent retains 12–14 MB. That is the number P3B has to beat;
+  - on Node, allocating targets retain 13.0–13.1 MB and `typed-array.map` reads
+    only 11,200 B of retained heap against 12,800,000 B of external buffer,
+    exactly 32 × 50,000 × 8;
+  - startup, measured against an esbuild bundle of the source entry: Bun 3.82
+    ms import and 515,428 B retained, Node 2.40 ms and 4,020,288 B;
+  - unsupported metrics are recorded, not zeroed: `gcCount` and `gcPauseMs` are
+    unsupported on JSC, which accepts a `gc` PerformanceObserver and then never
+    emits an entry, and `externalBufferBytes` is unsupported on JSC, which
+    counts backing stores inside the `Bun.gc(true)` heap size instead;
+  - `gcCount` on Node is declared a lower bound, not a total: V8 delivers `gc`
+    entries on a later turn and the observation window closes on a declared 50
+    ms timer;
+  - a 64 KiB noise floor was declared before observation, below which a byte
+    metric is calibrated on absolute range rather than relative spread. At 1.5
+    KB retained a `*Into` row can measure negative, so a relative spread there
+    is meaningless; the absolute band is the stricter test at that scale;
+  - all seven families calibrated on the Bun release lane. Three came back
+    uncalibrated on the Node canary and were reported rather than tuned away:
+    `array-direct` on `array.map` peak-RSS spread 0.161 against a 0.15 limit,
+    `typed-array` on throughput spread 0.182, and `writable-target` on
+    `typed-array.mapInto` throughput spread 0.658. Several lanes were running
+    concurrently, which is the likely cause;
+  - the benchmarks reference suite passed 350 tests after the merge.
 
 - S6 evidence:
   - `src/internal/fusion-engine.ts` and `src/internal/fusion-flow.ts` hold the
