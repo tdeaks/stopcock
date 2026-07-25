@@ -1443,3 +1443,64 @@ const out = pipe([1, 2, 3], A.map((x) => x * 2), A.sum);`
     expect(original).toBe(source)
   })
 })
+
+describe('dead import pruning', () => {
+  const run = (source: string) =>
+    transformStopcockPipelines(source, '/repo/src/a.ts', { diagnostics: 'summary' }).code
+
+  it('removes imports a fused site consumed entirely', () => {
+    const out = run(`import { pipe } from '@stopcock/fp'
+import { filter, map } from '@stopcock/fp/array'
+export const r = pipe([1,2,3], map((x) => x * 2), filter((x) => x > 2))
+`)
+    expect(out).not.toContain('@stopcock/fp/array')
+    expect(out).not.toContain("from '@stopcock/fp'")
+  })
+
+  it('retains exactly what a fallback site still needs', () => {
+    const out = run(`import { pipe } from '@stopcock/fp'
+import { filter, map } from '@stopcock/fp/array'
+export const a = pipe([1,2,3], map((x) => x * 2), filter((x) => x > 2))
+export const b = pipe([1,2,3], map((x) => x * 2), (xs) => xs)
+`)
+    expect(out).toContain("import { map } from '@stopcock/fp/array'")
+    expect(out).toContain("import { pipe } from '@stopcock/fp'")
+    expect(out).not.toContain('filter')
+  })
+
+  it('leaves a type-only import alone', () => {
+    const out = run(`import type { Option } from '@stopcock/fp/option'
+import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+export const r = pipe([1,2,3], map((x) => x * 2))
+export type T = Option<number>
+`)
+    expect(out).toContain("import type { Option } from '@stopcock/fp/option'")
+  })
+
+  it('leaves a side-effect import alone', () => {
+    const out = run(`import '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+export const r = pipe([1,2,3], map((x) => x * 2))
+`)
+    expect(out).toContain("import '@stopcock/fp'")
+  })
+
+  it('keeps an alias that is still referenced elsewhere', () => {
+    const out = run(`import { pipe } from '@stopcock/fp'
+import { map as m } from '@stopcock/fp/array'
+export const r = pipe([1,2,3], m((x) => x * 2))
+export const other = m((x) => x + 1)
+`)
+    expect(out).toContain("import { map as m } from '@stopcock/fp/array'")
+  })
+
+  it('leaves a file with nothing transformed untouched', () => {
+    const source = `import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+export const r = pipe([1,2,3], map((x) => x * 2), (xs) => xs)
+`
+    expect(run(source)).toBe(source)
+  })
+})

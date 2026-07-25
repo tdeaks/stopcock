@@ -3,6 +3,7 @@ import _traverse from '@babel/traverse'
 import type { NodePath, Scope } from '@babel/traverse'
 import * as t from '@babel/types'
 import MagicString from 'magic-string'
+import { collectPrunableImports, planImportPrune, type ReplacedRange } from './prune-imports'
 import {
   BOUNDARY_OPS,
   FINAL_BOUNDARY_OPS,
@@ -508,6 +509,13 @@ export function transformStopcockPipelines(
   }
 
   const magicString = new MagicString(code)
+  // Ranges the transform replaced. A reference inside one of these no longer
+  // exists in the output, which is what makes import pruning safe to decide.
+  const replacedRanges: ReplacedRange[] = []
+  let prunedSpecifiers = 0
+  const recordReplaced = (start: number, end: number): void => {
+    replacedRanges.push({ start, end })
+  }
   const diagnostics: DiagnosticSite[] = []
   const optionNoneLocal = uniqueLocal(code, DEFAULT_OPTION_NONE_LOCAL)
   let changed = false
@@ -530,6 +538,7 @@ export function transformStopcockPipelines(
           optionNoneLocal,
         )
         if (result.code) {
+          recordReplaced(call.start!, call.end!)
           magicString.overwrite(call.start!, call.end!, result.code)
           changed = true
           needsOptionImport ||= result.needsOptionImport === true
@@ -641,6 +650,7 @@ export function transformStopcockPipelines(
         )
         const prefix = code.slice(declaration.start!, call.start!)
         const suffix = code.slice(call.end!, declaration.end!)
+        recordReplaced(call.start!, call.end!)
         magicString.overwrite(
           declaration.start!,
           declaration.end!,
@@ -662,6 +672,7 @@ export function transformStopcockPipelines(
           arrayConstructorExpression,
           hasGlobalUndefined,
         )
+        recordReplaced(parent.node.start!, parent.node.end!)
         magicString.overwrite(parent.node.start!, parent.node.end!, `{\n${stmts}\n}`)
       } else if (parent?.isArrowFunctionExpression() && parent.node.body === call) {
         const tailBody = generateFusedTailBody(
@@ -674,6 +685,7 @@ export function transformStopcockPipelines(
           hasConstantLocalSource(sourceNode, path.scope),
         )
         if (tailBody !== undefined) {
+          recordReplaced(call.start!, call.end!)
           magicString.overwrite(call.start!, call.end!, `{\n${tailBody}\n}`)
         } else {
           const { stmts, resultVar } = generateFusedBody(
@@ -685,6 +697,7 @@ export function transformStopcockPipelines(
             arrayConstructorExpression,
             hasGlobalUndefined,
           )
+          recordReplaced(call.start!, call.end!)
           magicString.overwrite(call.start!, call.end!, `{\n${stmts}\nreturn ${resultVar};\n}`)
         }
       } else if (parent?.isReturnStatement() && parent.node.argument === call) {
@@ -717,6 +730,7 @@ export function transformStopcockPipelines(
             arrayConstructorExpression,
             hasGlobalUndefined,
           )
+          recordReplaced(returnStart, returnEnd)
           magicString.overwrite(returnStart, returnEnd, `{\n${stmts}\nreturn ${resultVar};\n}`)
         }
       } else {
@@ -728,6 +742,7 @@ export function transformStopcockPipelines(
           arrayConstructorExpression,
           hasGlobalUndefined,
         )
+        recordReplaced(call.start!, call.end!)
         magicString.overwrite(call.start!, call.end!, generated)
       }
       changed = true
@@ -755,6 +770,35 @@ export function transformStopcockPipelines(
       semantics,
       diagnostics: diagnosticsLevel === false ? [] : diagnostics,
     }
+  }
+
+  // Only after every site is decided: a reference that a fallback site still
+  // needs must never be pruned because a sibling site fused.
+  if (replacedRanges.length > 0) {
+    const references: { name: string; position: number }[] = []
+    traverse(ast, {
+      Identifier(path) {
+        if (!path.isReferencedIdentifier()) return
+        if (path.node.start == null) return
+        references.push({ name: path.node.name, position: path.node.start })
+      },
+    })
+    const prunableSources = new Set([
+      ...importSources,
+      ...arrayImportSources,
+      ...compileImportSources,
+    ])
+    const edits = planImportPrune({
+      imports: collectPrunableImports(ast.program, prunableSources),
+      references,
+      replaced: replacedRanges,
+      code,
+    })
+    for (const edit of edits) {
+      if (edit.kind === 'declaration') magicString.remove(edit.start, edit.end)
+      else magicString.remove(edit.start, edit.end)
+    }
+    prunedSpecifiers = edits.length
   }
 
   if (needsOptionImport) {
