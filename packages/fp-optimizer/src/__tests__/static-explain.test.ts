@@ -1,16 +1,21 @@
 import { describe, expect, it } from 'vite-plus/test'
-import * as A from '../array'
+import * as A from '@stopcock/fp/array'
 import expected from './fixtures/engine-explain-v1.json'
-import { explain as staticExplain, explainPure as staticExplainPure } from '../internal/explain'
+import { explain as staticExplain, explainPure as staticExplainPure } from '../explain'
 
 /**
- * S10. `explain` moved off the optimized engine so the debug facade stops
- * carrying it into a compact consumer.
+ * The fixture was captured from the engine implementation in `@stopcock/fp`
+ * immediately before S10 deleted it, and it still has to hold here after S10X
+ * moved the whole optimizer into this package.
  *
- * The fixture was captured from the engine implementation immediately before
- * it was deleted. Comparing against the live engine would have been the
- * stronger check, but it only holds while both exist; freezing its output
- * keeps the guard after the engine copy is gone.
+ * That makes it the strongest single check on the extraction: if reporting the
+ * same explanations for the same pipelines still works, the bank, the plan
+ * segmentation, and the fused-shape coverage all survived the move across a
+ * package boundary intact.
+ *
+ * FP's own `explain` now answers `generic` everywhere, which is true for an
+ * FP-only install. These template answers are this package's truth, so this
+ * test lives here.
  */
 const PIPELINES: readonly (readonly [string, readonly unknown[]])[] = [
   ['map', [A.map((x: number) => x * 2)]],

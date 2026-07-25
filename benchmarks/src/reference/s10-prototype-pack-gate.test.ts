@@ -12,10 +12,12 @@ import {
  */
 describe('S10 prototype pack categorizer', () => {
   test.each([
-    ['dist/compile-DbN7wkY0.js', 'optimizer'],
-    ['dist/plan-DHehCDS7.js', 'optimizer'],
+    ['dist/lower-DbN7wkY0.js', 'optimizer'],
+    ['dist/portable-templates-Ab12Cd34.js', 'optimizer'],
     ['dist/fusion/optimized.js', 'optimizer'],
     ['dist/fusion.js', 'compact'],
+    ['dist/compile.js', 'compact'],
+    ['dist/plan-DHehCDS7.js', 'direct'],
     ['dist/array-D-NykSoV.js', 'direct'],
     ['dist/array.d.ts', 'types'],
     ['package.json', 'metadata'],
@@ -31,11 +33,17 @@ describe('S10 prototype pack', () => {
     () => {
       const pack = buildPrototypePack()
 
-      // An earlier version of the categorizer stripped the wrong path prefix
-      // and attributed 0 B to the optimizer, which produced a confident
-      // `same-package-feasible` from a measurement of nothing.
-      expect(pack.optimizerBytes).toBeGreaterThan(0)
+      // S10X extracted the optimizer, so zero is the correct answer here and
+      // is itself the evidence: FP's tarball carries none of it.
+      //
+      // Zero used to mean the categorizer was broken -- an early version
+      // stripped the wrong path prefix and reported a confident
+      // `same-package-feasible` from a measurement of nothing. That guard now
+      // lives in the categorizer unit tests above, which pin a known optimizer
+      // filename to `optimizer`, so a silently broken categorizer still fails.
+      expect(pack.optimizerBytes).toBe(0)
       expect(pack.files.length).toBeGreaterThan(0)
+      expect(pack.decision).toBe('same-package-feasible')
       expect(pack.totalBytes).toBe(pack.files.reduce((sum, file) => sum + file.bytes, 0))
       expect(Object.values(pack.categoryBytes).reduce((a, b) => a + b, 0)).toBe(pack.totalBytes)
 

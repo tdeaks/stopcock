@@ -5,22 +5,19 @@
  * compact consumer instead of the 288 B it added to an optimized one: `explain`
  * lived in `compile.ts` and dragged the whole optimized engine behind it.
  *
- * Nothing here executes a pipeline. Whether a segment runs on a fused runner is
- * a question about which shapes the bank covers, so it is answered from the
- * generated key set; cardinality comes from the compact fact table rather than
- * the 20 KB operation registry. Compact facts cover all 65 registered opcodes,
- * so the segmentation reported here is the segmentation that runs.
+ * Nothing here executes a pipeline.
+ *
+ * Since S10X extracted the optimizer, `segmentExecutors` reports `generic` for
+ * every segment, and that is the truth rather than a loss of detail: what this
+ * package executes is the generic exact executor. The fused runner bank lives
+ * in `@stopcock/fp-optimizer`, which may not be installed, and claiming a
+ * segment runs on a template FP cannot see would be a guess. The optimizer
+ * reports its own selection through its own trace.
  */
-import { OP_SCAN, OP_SUM, OP_TAKE } from '../opcodes'
 import type { PlanShape, SegmentShape } from '../plan'
-import type { OpCode, OpDomain } from '../registry'
+import type { OpDomain } from '../registry'
 import { buildCompactPlan } from './compact/plan'
-import { CARD_SINK, compactCardinality } from './compact/facts.generated'
 import { boundaryIndexes, domainsOf, pureRewrites, type PureRewrite } from './plan-analysis'
-import { ARRAY_RUNNER_KEYS, SINK_RUNNER_KEYS } from './runner-keys.generated'
-
-const ARRAY_KEYS = new Set(ARRAY_RUNNER_KEYS)
-const SINK_KEYS = new Set(SINK_RUNNER_KEYS)
 
 export interface PipelineExplanation {
   readonly version: 1
@@ -35,44 +32,13 @@ export interface PipelineExplanation {
   readonly aotRecommended: true
 }
 
-function isBareSingleOpSegment(codes: readonly OpCode[], segment: SegmentShape): boolean {
-  if (segment.kind !== 'stream' || segment.length !== 1) return false
-  const op = codes[segment.startIndex]
-  return compactCardinality(op) !== CARD_SINK && op !== OP_TAKE && op !== OP_SCAN
-}
-
 /**
- * Executor kind per segment, or per fused pair. Mirrors the lookup performed by
- * `lowerShape`, including the stream+SUM boundary fusion that collapses two
- * segments into one pass.
+ * Executor kind per segment. Compact fusion runs every segment through the
+ * generic exact executor, so this is uniformly `generic` for an FP-only
+ * install.
  */
 export function segmentExecutorKinds(shape: PlanShape): readonly ('template' | 'generic')[] {
-  const { codes, segments } = shape
-  const kinds: ('template' | 'generic')[] = []
-  let index = 0
-  while (index < segments.length) {
-    const segment = segments[index]
-    const next = segments[index + 1]
-    if (
-      next &&
-      isBareSingleOpSegment(codes, segment) &&
-      next.kind === 'boundary' &&
-      codes[next.startIndex] === OP_SUM &&
-      SINK_KEYS.has(`${codes[segment.startIndex]}>SUM`)
-    ) {
-      kinds.push('template', 'template')
-      index += 2
-      continue
-    }
-    if (segment.kind === 'stream') {
-      const key = codes.slice(segment.startIndex, segment.startIndex + segment.length).join(',')
-      kinds.push(ARRAY_KEYS.has(key) || SINK_KEYS.has(key) ? 'template' : 'generic')
-    } else {
-      kinds.push('generic')
-    }
-    index++
-  }
-  return kinds
+  return shape.segments.map(() => 'generic' as const)
 }
 
 function explainInternal(pure: boolean, steps: readonly unknown[]): PipelineExplanation {

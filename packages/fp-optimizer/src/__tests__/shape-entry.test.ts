@@ -1,12 +1,13 @@
+import { buildPlan } from '../plan-bridge'
 import { describe, it, expect } from 'vite-plus/test'
 // These exercise fused execution, which since S8 lives behind the explicit
 // entry rather than at the root. Root pipe is sequential and is covered by
 // root-sequential.test.ts.
-import { pipe } from '../fusion-optimized'
-import * as A from '../array'
+import { pipe } from '../index'
+import * as A from '@stopcock/fp/array'
 import { compile, compilePure, __shapeEntryForSteps } from '../compile'
 import { __clearEntries, __lookupEntry, executionIdentityKey } from '../shape-entry'
-import { buildPlan, planShapeKey } from '../plan'
+import { planShapeKey } from '@stopcock/fp/abi'
 
 const data = [5, 3, 8, 1, 9, 2, 7, 4, 6, 0]
 

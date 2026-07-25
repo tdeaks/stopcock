@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test'
-import * as A from '../array'
-import * as compact from '../fusion'
-import * as optimized from '../fusion-optimized'
-import { resetCompactCache } from '../internal/compact-runtime'
-import { interpret } from '../interpret'
-import { buildPlan } from '../plan'
+import * as A from '@stopcock/fp/array'
+import * as compact from '@stopcock/fp/fusion'
+import * as optimized from '../index'
+import { resetCompactCache } from '@stopcock/fp/abi'
+import { buildPlan } from '../plan-bridge'
+import { interpret } from '@stopcock/fp/abi'
 
 const double = (x: number) => x * 2
 const big = (x: number) => x > 4

@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vite-plus/test'
 // These exercise fused execution, which since S8 lives behind the explicit
 // entry rather than at the root. Root pipe is sequential and is covered by
 // root-sequential.test.ts.
-import { pipe } from '../fusion-optimized'
-import { none, some } from '../option'
-import * as A from '../array'
-import * as S from '../string'
-import * as M from '../math'
+import { pipe } from '../index'
+import { none, some } from '@stopcock/fp/option'
+import * as A from '@stopcock/fp/array'
+import * as S from '@stopcock/fp/string'
+import * as M from '@stopcock/fp/math'
 import { getOptimizerStats, resetOptimizerStats } from '../compile'
-import { explain } from '../internal/explain'
+import { explain } from '../explain'
 
 describe('pipe fusion', () => {
   describe('optimizer diagnostics', () => {

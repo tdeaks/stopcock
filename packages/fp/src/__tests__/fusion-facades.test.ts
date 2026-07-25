@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test'
 import * as A from '../array'
-import { compile, getOptimizerStats } from '../compile'
+import { compile } from '../compile'
 import { explain } from '../internal/explain'
 import * as fusion from '../fusion'
 import * as fusionDebug from '../fusion-debug'
-import * as fusionOptimized from '../fusion-optimized'
-import { pipe as enginePipe } from '../internal/fusion-engine'
-import { flow as engineFlow } from '../internal/fusion-flow'
 import { sequentialFlow, sequentialPipe } from '../internal/sequential'
 import { PUBLIC_MODULES } from '../../module-manifest'
 import { flow } from '../flow'
@@ -33,23 +30,18 @@ const traceCallbacks = (run: typeof fusion.pipe): string[] => {
 }
 
 describe('explicit fusion facades', () => {
-  it('keeps optimized fusion on the proven engine, not on a root symbol', () => {
-    // The exit gate that matters: root pipe is sequential since S8, and a
-    // facade pointed at that symbol would silently change meaning.
-    expect(fusionOptimized.pipe).toBe(enginePipe)
-    expect(fusionOptimized.flow).toBe(engineFlow)
+  it('ships no optimized facade at all', () => {
+    // S10X moved the optimizer out. This package must not expose it under any
+    // name, or the extraction would be a rename rather than a removal, and the
+    // bytes would still be in the tarball.
+    expect(PUBLIC_MODULES.some((module) => module.subpath.includes('optimized'))).toBe(false)
   })
 
-  it('is a separate implementation from optimized fusion since S9', () => {
-    // Before S9 these were the same function. Compact is now its own runtime,
-    // and conflating them again would hide a rollback to optimized.
-    expect(fusion.pipe).not.toBe(fusionOptimized.pipe)
-    expect(fusion.flow).not.toBe(fusionOptimized.flow)
-  })
-
-  it('agrees with optimized fusion on results', () => {
-    const steps = [A.map(double), A.filter(big)] as const
-    expect(fusion.pipe([1, 2, 3], ...steps)).toEqual(fusionOptimized.pipe([1, 2, 3], ...steps))
+  it('resolves the deprecated compile subpath to compact fusion', () => {
+    // An FP-only install has to stay complete. This specifier must not become
+    // a hidden forwarder to a package that may not be installed.
+    const viaCompile = compile(A.map(double), A.filter(big))([1, 2, 3])
+    expect(viaCompile).toEqual(fusion.pipe([1, 2, 3], A.map(double), A.filter(big)))
   })
 
   it('matches current fused semantics', () => {
@@ -89,11 +81,11 @@ describe('fusion debug facade', () => {
     expect(Object.keys(fusionDebug).sort()).toEqual(['explain', 'explainPure'])
   })
 
-  it('leaves the engine-bound diagnostics on the optimized entry', () => {
-    expect(fusionOptimized.getOptimizerStats).toBe(getOptimizerStats)
+  it('keeps engine-bound diagnostics out of this package entirely', () => {
+    // They moved to @stopcock/fp-optimizer with the engine that produces them.
     for (const name of ['explainRunner', 'getOptimizerStats', 'resetOptimizerStats']) {
-      expect(Object.keys(fusionOptimized)).toContain(name)
       expect(Object.keys(fusionDebug)).not.toContain(name)
+      expect(Object.keys(fusion)).not.toContain(name)
     }
   })
 
@@ -149,11 +141,12 @@ describe('internal sequential core', () => {
 })
 
 describe('public manifest', () => {
-  it('publishes the three additive fusion entries', () => {
+  it('publishes the fusion entries that survived extraction', () => {
     const subpaths = PUBLIC_MODULES.map((module) => module.subpath)
     expect(subpaths).toContain('./fusion')
-    expect(subpaths).toContain('./fusion/optimized')
     expect(subpaths).toContain('./fusion/debug')
+    // `./fusion/optimized` was removed by S10X rather than left as a shim.
+    expect(subpaths).not.toContain('./fusion/optimized')
   })
 
   it('keeps the engine and sequential core private', () => {

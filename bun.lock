@@ -218,6 +218,9 @@
     "packages/fp-compiler": {
       "name": "@stopcock/fp-compiler",
       "version": "2.0.0-next.0",
+      "bin": {
+        "stopcock": "./dist/cli.js",
+      },
       "dependencies": {
         "@babel/parser": "^8.0.4",
         "@babel/traverse": "^8.0.4",
@@ -244,6 +247,16 @@
       "devDependencies": {
         "@stopcock/fp": "workspace:*",
         "vite-plus": "catalog:",
+      },
+      "peerDependencies": {
+        "@stopcock/fp": "2.0.0-next.0",
+      },
+    },
+    "packages/fp-optimizer": {
+      "name": "@stopcock/fp-optimizer",
+      "version": "2.0.0-next.0",
+      "devDependencies": {
+        "@stopcock/fp": "workspace:*",
       },
       "peerDependencies": {
         "@stopcock/fp": "2.0.0-next.0",
@@ -886,6 +899,8 @@
     "@stopcock/fp-compiler": ["@stopcock/fp-compiler@workspace:packages/fp-compiler"],
 
     "@stopcock/fp-interop": ["@stopcock/fp-interop@workspace:packages/fp-interop"],
+
+    "@stopcock/fp-optimizer": ["@stopcock/fp-optimizer@workspace:packages/fp-optimizer"],
 
     "@stopcock/fp-testing": ["@stopcock/fp-testing@workspace:packages/fp-testing"],
 

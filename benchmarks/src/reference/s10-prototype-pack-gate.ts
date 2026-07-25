@@ -51,23 +51,21 @@ export interface PrototypePack {
 /**
  * Which part of the product a packed file belongs to.
  *
- * The optimizer is the engine plus everything only it pulls in: the runner
- * bank, the lowerer, the plan machinery, and the operation registry. The
- * compact tier and the direct operations are separately reachable and are not
- * charged to it.
+ * S10X extracted the optimizer, so this list is now what must NOT appear in
+ * FP's tarball. `plan`, `plan-analysis`, and `sort-kernel` were charged here
+ * before the extraction and are deliberately not any more: they are FP's own —
+ * the plan IR the ABI hands across, the shape analysis `explain` reads, and the
+ * sort kernels `array` uses. Leaving them labelled `optimizer` would report
+ * 9 KB of optimizer in a package that no longer contains any.
  */
 const OPTIMIZER_FILES = [
-  'compile',
   'lower',
   'portable-templates',
-  'plan',
   'registry',
   'shape-entry',
-  'sort-kernel',
   'fusion-engine',
   'fusion-flow',
   'fusion/optimized',
-  'plan-analysis',
   'selection-trace',
 ]
 
@@ -75,8 +73,11 @@ export const categorize = (path: string): PackCategory => {
   if (path.endsWith('.d.ts')) return 'types'
   if (!path.endsWith('.js')) return 'metadata'
   // Packed paths are `dist/<name>[-<8-char content hash>].js`.
-  const base = path.replace(/^dist\//u, '').replace(/-[A-Za-z0-9_-]{8}\.js$/u, '')
-  if (base.startsWith('compact') || base === 'fusion.js' || base === 'fusion') return 'compact'
+  const base = path
+    .replace(/^dist\//u, '')
+    .replace(/-[A-Za-z0-9_-]{8}\.js$/u, '')
+    .replace(/\.js$/u, '')
+  if (base.startsWith('compact') || base === 'fusion' || base === 'compile') return 'compact'
   if (base.startsWith('compiler') || base.includes('receipt')) return 'compiler'
   if (OPTIMIZER_FILES.some((name) => base === name || base.startsWith(`${name}.`))) {
     return 'optimizer'

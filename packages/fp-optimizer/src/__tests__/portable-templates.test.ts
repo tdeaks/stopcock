@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vite-plus/test'
-import * as A from '../array'
-import { buildPlan } from '../plan'
-import { interpret } from '../interpret'
+import * as A from '@stopcock/fp/array'
+import { buildPlan } from '../plan-bridge'
+import { interpret } from '@stopcock/fp/abi'
 import { compile, planAndLowerFast } from '../compile'
-import { explain } from '../internal/explain'
+import { explain } from '../explain'
 import { ARRAY_TEMPLATES, SINK_TEMPLATES } from '../portable-templates'
 import {
   OP_MAP,
@@ -21,7 +21,7 @@ import {
   OP_COUNT,
   OP_FIND_MAP,
   OP_SUM,
-} from '../opcodes'
+} from '@stopcock/fp/abi'
 
 function tracked<F extends (...args: any[]) => any>(fn: F): F & { calls: unknown[][] } {
   const calls: unknown[][] = []

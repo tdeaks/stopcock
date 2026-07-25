@@ -70,12 +70,12 @@ import {
   OP_GUARD_IS_ARRAY,
   OP_GUARD_IS_OBJECT,
   OP_GUARD_IS_FUNCTION,
-} from './opcodes'
-import { type OpCode, requireOpMeta } from './registry'
-import { mergeSortAsc, mergeSortBy, mergeSortDesc } from './sort-kernel'
-import { type BoundPlan, type PlanShape, type SegmentShape, type StepBinding } from './plan'
+} from '@stopcock/fp/abi'
+import { CARD_SINK, compactCardinality, type OpCode } from '@stopcock/fp/abi'
+import { mergeSortAsc, mergeSortBy, mergeSortDesc } from '@stopcock/fp/abi'
+import { type BoundPlan, type PlanShape, type SegmentShape, type StepBinding } from '@stopcock/fp/abi'
 import { ARRAY_TEMPLATES, SINK_TEMPLATES, type PortableTemplateFn } from './portable-templates'
-import { none as optionNone, some as optionSome } from './option'
+import { none as optionNone, some as optionSome } from '@stopcock/fp/option'
 
 export const HALT = Symbol('lower.halt')
 
@@ -89,14 +89,17 @@ const sumFusionByKey = new Map<string, PortableTemplateFn>()
 for (const t of SINK_TEMPLATES) if (t.kind === 'sum') sumFusionByKey.set(t.key, t.run)
 
 function unsupportedOp(op: OpCode): never {
-  throw new Error(`lower: unsupported op ${op} (${requireOpMeta(op).name})`)
+  // The operation registry carries names for diagnostics and costs 20 KB to
+  // do it. The optimizer does not ship it: an opcode is enough to identify the
+  // gap, and the name is one lookup away in FP.
+  throw new Error(`lower: unsupported op ${op}`)
 }
 
 // ConsumeMeta is only meaningful for the first segment in a shape --
 // everything downstream reads from an already-realized intermediate array,
 // not the caller's source. Re-exported from plan.ts, which also defines it
 // for portable-templates.ts (avoiding a circular import between the two).
-import type { ConsumeMeta } from './plan'
+import type { ConsumeMeta } from '@stopcock/fp/abi'
 export type { ConsumeMeta }
 
 /**
@@ -759,8 +762,7 @@ function lowerStreamSegment(codes: readonly OpCode[], seg: SegmentShape): Portab
   const start = seg.startIndex
   const len = seg.length
   const lastOp = codes[start + len - 1]
-  const lastMeta = requireOpMeta(lastOp)
-  const hasSink = lastMeta.cardinality === 'sink'
+  const hasSink = compactCardinality(lastOp) === CARD_SINK
   const streamLen = hasSink ? len - 1 : len
 
   const templateKey = codes.slice(start, start + len).join(',')
@@ -796,7 +798,7 @@ export function lowerSegment(codes: readonly OpCode[], seg: SegmentShape): Porta
 function isBareSingleOpSegment(codes: readonly OpCode[], seg: SegmentShape): boolean {
   if (seg.kind !== 'stream' || seg.length !== 1) return false
   const op = codes[seg.startIndex]
-  return requireOpMeta(op).cardinality !== 'sink' && op !== OP_TAKE && op !== OP_SCAN
+  return compactCardinality(op) !== CARD_SINK && op !== OP_TAKE && op !== OP_SCAN
 }
 
 /** Executor kind actually used for a segment, or a fused pair: 'template' when a checked-in fused-loop template exists, 'generic' otherwise. Mirrors the lookup performed by lowerSegment/lowerShape. */

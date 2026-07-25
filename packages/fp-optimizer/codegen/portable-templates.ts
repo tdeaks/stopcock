@@ -9,7 +9,7 @@
  */
 import { writeFileSync } from 'fs'
 import { join, dirname } from 'path'
-import { runtimeOpcodeByNameV1 } from './protocol/operator-definitions'
+import { runtimeOpcodeByNameV1 } from '../../fp/codegen/protocol/operator-definitions'
 import {
   bankHashOf,
   descriptorHashOf,
@@ -18,13 +18,14 @@ import {
   FUSION_RUNNER_PROTOCOL,
   FUSION_RUNNER_PROTOCOL_VERSION,
   type FusionRunnerDescriptorV1,
-} from './protocol/fusion-runner-v1'
-import { OPERATOR_MANIFEST_V1_HASH as SEMANTIC_MANIFEST_HASH } from './protocol/generate-protocol'
+} from '../../fp/codegen/protocol/fusion-runner-v1'
+import { OPERATOR_MANIFEST_V1_HASH as SEMANTIC_MANIFEST_HASH } from '../../fp/codegen/protocol/generate-protocol'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const OUT = join(ROOT, 'src', 'portable-templates.ts')
 const DESCRIPTOR_OUT = join(ROOT, 'codegen', 'generated', 'fusion-runner-bank-v1.json')
-const KEYS_OUT = join(ROOT, 'src', 'internal', 'runner-keys.generated.ts')
+const KEYS_OUT = join(ROOT, 'src', 'runner-keys.generated.ts')
+const BANK_IDENTITY_OUT = join(ROOT, 'src', 'bank-identity.generated.ts')
 
 /** Everything a descriptor says that is not one of its two identity fields. */
 type DescriptorFacts = Omit<
@@ -634,6 +635,32 @@ ${quoted(sinkKeys)}
   console.log(`runner-keys: ${arrayKeys.length} array, ${sinkKeys.length} sink -> ${KEYS_OUT}`)
 }
 
+/**
+ * The optimizer's own identity: which bank these runners came from, and which
+ * semantic manifest they were generated against. Negotiated against FP's ABI
+ * identity before any specialized runner is invoked.
+ */
+function writeBankIdentity(bankHash: string): void {
+  writeFileSync(
+    BANK_IDENTITY_OUT,
+    `// GENERATED FILE. Do not edit by hand — run \`bun run codegen\` to regenerate.
+
+export interface OptimizerBankIdentityV1 {
+  readonly bankHash: string
+  readonly semanticManifestHash: string
+  readonly runnerCount: number
+}
+
+export const OPTIMIZER_BANK_IDENTITY: OptimizerBankIdentityV1 = Object.freeze({
+  bankHash: '${bankHash}',
+  semanticManifestHash: '${SEMANTIC_MANIFEST_HASH}',
+  runnerCount: ${descriptorFacts.length},
+})
+`,
+  )
+  console.log(`bank-identity: ${bankHash}`)
+}
+
 function main(): void {
   const chains = chainsUpToLength(3)
   const fns: EmittedFn[] = []
@@ -792,8 +819,8 @@ function main(): void {
 // set of flatMap-heavy shapes. Looked up by opcode-shape key from
 // src/lower.ts before falling back to the generic stage machine. Semantics
 // mirror src/interpret.ts exactly.
-import { type StepBinding, type ConsumeMeta } from './plan'
-import { none as optionNone, some as optionSome } from './option'
+import { type StepBinding, type ConsumeMeta } from '@stopcock/fp/abi'
+import { none as optionNone, some as optionSome } from '@stopcock/fp/option'
 
 const IS_BUN_RUNTIME =
   typeof (globalThis as { readonly Bun?: unknown }).Bun !== 'undefined'
@@ -846,6 +873,7 @@ ${manifestSink.join(',\n')},
   }
   writeDescriptorBank()
   writeRunnerKeys()
+  writeBankIdentity(bankHashOf(descriptorFacts))
 }
 
 main()

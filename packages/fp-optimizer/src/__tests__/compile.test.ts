@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vite-plus/test'
-import * as A from '../array'
-import * as S from '../string'
-import { buildPlan } from '../plan'
-import { interpret } from '../interpret'
+import * as A from '@stopcock/fp/array'
+import * as S from '@stopcock/fp/string'
+import { buildPlan } from '../plan-bridge'
+import { interpret } from '@stopcock/fp/abi'
 import { compile, compilePure, getOptimizerStats, resetOptimizerStats } from '../compile'
-import { explain, explainPure } from '../internal/explain'
+import { explain, explainPure } from '../explain'
 
 function tracked<F extends (...args: any[]) => any>(fn: F): F & { calls: unknown[][] } {
   const calls: unknown[][] = []

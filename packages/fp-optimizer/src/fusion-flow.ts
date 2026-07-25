@@ -1,5 +1,5 @@
-import { compile } from '../compile'
-import { trustedOperatorEntry } from './provenance'
+import { compile } from './compile'
+import { vetOperator } from '@stopcock/fp/abi'
 
 export function flow<A, B>(f1: (a: A) => B): (a: A) => B
 export function flow<A, B, C>(f1: (a: A) => B, f2: (b: B) => C): (a: A) => C
@@ -250,7 +250,7 @@ export function flow(...fns: Array<(x: unknown) => unknown>): (a: unknown) => un
   // discover it had nothing to do, which made composing 15x slower than
   // lodash for an identical result.
   for (let index = 0; index < len; index++) {
-    if (trustedOperatorEntry(fns[index]) !== undefined) {
+    if (vetOperator(fns[index]) !== undefined) {
       return compile(...fns) as (a: unknown) => unknown
     }
   }

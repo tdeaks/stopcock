@@ -149,16 +149,16 @@
       "types": "./dist/compile.d.ts",
       "import": "./dist/compile.js"
     },
+    "./abi": {
+      "types": "./dist/abi.d.ts",
+      "import": "./dist/abi.js"
+    },
     "./fusion": {
       "types": "./dist/fusion.d.ts",
       "import": "./dist/fusion.js"
     },
-    "./fusion/optimized": {
-      "types": "./dist/fusion-optimized.d.ts",
-      "import": "./dist/fusion/optimized.js"
-    },
     "./fusion/debug": {
-      "types": "./dist/fusion-debug.d.ts",
+      "types": "./dist/fusion/debug.d.ts",
       "import": "./dist/fusion/debug.js"
     },
     "./optic": {

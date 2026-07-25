@@ -12,17 +12,17 @@
 // compile() per call. See docs/superpowers/plans/
 // 2026-07-21-stopcock-fp-absolute-performance-implementation.md, "Runtime
 // caches".
-import { compile, dispatchAndTrack, planAndLowerFast, type Runner } from '../compile'
-import { trustedOperatorEntry, type TrustedOperatorEntry } from './provenance'
-import { extractBinding, type StepBinding } from '../plan'
-import type { ShapeEntry } from '../shape-entry'
+import { compile, dispatchAndTrack, planAndLowerFast, type Runner } from './compile'
+import { vetOperator, type VettedOperatorV1 } from '@stopcock/fp/abi'
+import { extractBinding, type StepBinding } from '@stopcock/fp/abi'
+import type { ShapeEntry } from './shape-entry'
 
 /**
  * Authority comes from the private provenance table, never from a public
  * `_op` field. A forged tag makes a step opaque, not fused.
  */
-const _entry = trustedOperatorEntry
-const _opOf = (fn: unknown): number => trustedOperatorEntry(fn)?.op ?? 0
+const _entry = vetOperator
+const _opOf = (fn: unknown): number => vetOperator(fn)?.op ?? 0
 const _hasOp = (fn: unknown): boolean => _opOf(fn) > 0
 
 /**
@@ -368,7 +368,7 @@ function runTagged(
   let numKey = 0
   let strKey = ''
   let allTagged = true
-  const entries: Array<TrustedOperatorEntry | undefined> = new Array(len)
+  const entries: Array<VettedOperatorV1 | undefined> = new Array(len)
   for (let i = 0; i < len; i++) {
     const step = args[i + 1]
     fns[i] = step

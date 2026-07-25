@@ -10,14 +10,14 @@ import { describe, it, expect } from 'vite-plus/test'
 // These exercise fused execution, which since S8 lives behind the explicit
 // entry rather than at the root. Root pipe is sequential and is covered by
 // root-sequential.test.ts.
-import { pipe } from '../fusion'
-import * as A from '../array'
-import * as M from '../math'
-import { buildPlan } from '../plan'
-import { interpret } from '../interpret'
+import { pipe } from '@stopcock/fp/fusion'
+import * as A from '@stopcock/fp/array'
+import * as M from '@stopcock/fp/math'
+import { buildPlan } from '../plan-bridge'
+import { interpret } from '@stopcock/fp/abi'
 import { getOptimizerStats, resetOptimizerStats } from '../compile'
-import { NUM_KEY_BASE, NUM_KEY_MAX_LEN } from '../internal/fusion-engine'
-import { OP_CODES } from '../opcodes'
+import { NUM_KEY_BASE, NUM_KEY_MAX_LEN } from '../fusion-engine'
+import { OP_CODES } from '@stopcock/fp/abi'
 
 const ITERATIONS = 25
 

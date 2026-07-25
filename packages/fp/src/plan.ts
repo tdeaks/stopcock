@@ -58,7 +58,7 @@ interface BoundStep {
  * fields. Deleting, copying, reordering, or overwriting `_fn`/`_a1`/`_a2` on a
  * trusted operator therefore cannot change what a kernel executes.
  */
-export function extractBinding(entry: TrustedOperatorEntry): StepBinding {
+export function extractBinding(entry: { fn?: unknown; a1?: unknown; a2?: unknown }): StepBinding {
   const binding: { fn?: unknown; a1?: unknown; a2?: unknown } = {}
   if (entry.fn !== undefined) binding.fn = entry.fn
   if (entry.a1 !== undefined) binding.a1 = entry.a1

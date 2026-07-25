@@ -16,8 +16,8 @@ import {
   OP_SOME,
   OP_SUM,
   OP_TAKE,
-} from "../opcodes";
-import type { ConsumeMeta, StepBinding } from "../plan";
+} from "@stopcock/fp/abi";
+import type { ConsumeMeta, StepBinding } from "@stopcock/fp/abi";
 import { ARRAY_TEMPLATES, SINK_TEMPLATES, type PortableTemplateFn } from "../portable-templates";
 
 /**

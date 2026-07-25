@@ -4,8 +4,8 @@
 // set of flatMap-heavy shapes. Looked up by opcode-shape key from
 // src/lower.ts before falling back to the generic stage machine. Semantics
 // mirror src/interpret.ts exactly.
-import { type StepBinding, type ConsumeMeta } from './plan'
-import { none as optionNone, some as optionSome } from './option'
+import { type StepBinding, type ConsumeMeta } from '@stopcock/fp/abi'
+import { none as optionNone, some as optionSome } from '@stopcock/fp/option'
 
 const IS_BUN_RUNTIME =
   typeof (globalThis as { readonly Bun?: unknown }).Bun !== 'undefined'

@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vite-plus/test'
 import * as F from '../index'
 import * as A from '../array'
 import * as Iter from '../iter'
-import { compile } from '../compile'
+import { compile } from '../fusion'
 import { interpret } from '../interpret'
-import { lowerPlan } from '../lower'
 import { buildPlan } from '../plan'
 import {
   V2_EAGER_FLAT_MAP_EXPECTATIONS,
@@ -35,7 +34,7 @@ const happyPathArraySurfaces: readonly EagerSurface[] = [
   },
   {
     id: 'portable-lowering',
-    run: (input, callback) => lowerPlan(buildPlan([A.flatMap(callback)]))(input),
+    run: (input, callback) => interpret(buildPlan([A.flatMap(callback)]), input),
   },
   {
     id: 'runtime-compile',
@@ -57,7 +56,7 @@ const divergentArraySurfaces: readonly EagerSurface[] = [
   {
     id: 'portable-lowering',
     run: (input, callback) =>
-      lowerPlan(buildPlan([A.flatMap(callback), A.map((value: number) => value)]))(input),
+      interpret(buildPlan([A.flatMap(callback), A.map((value: number) => value)]), input),
   },
   {
     id: 'runtime-compile',

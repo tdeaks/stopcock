@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vite-plus/test'
-import * as A from '../array'
+import * as A from '@stopcock/fp/array'
 import { compile } from '../compile'
 import { __clearEntries } from '../shape-entry'
-import { __resetFusionCaches } from '../internal/fusion-engine'
-import { pipe as optimizedPipe } from '../internal/fusion-engine'
-import { explain } from '../internal/explain'
+import { __resetFusionCaches } from '../fusion-engine'
+import { pipe as optimizedPipe } from '../fusion-engine'
+import { explain } from '@stopcock/fp/fusion/debug'
 import {
   beginSelectionTrace,
   endSelectionTrace,
   type SelectionEvent,
-} from '../internal/selection-trace'
+} from '../selection-trace'
 
 /**
  * S10 exit gate: every initial fusion-runner descriptor/binding combination is
