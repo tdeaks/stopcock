@@ -28,7 +28,7 @@
  * the gate is what keeps it honest.
  */
 
-export type DirectLeafCacheV1 = 'none' | 'single-entry-strong'
+export type DirectLeafCacheV1 = 'none' | 'weak-callback-map'
 
 /**
  * Where the curried constructor lives. `isolated` emits a separate function;
@@ -47,10 +47,10 @@ export interface DirectLeafPolicyV1 {
   /** Why this construction form, in one line. */
   readonly constructionReason: string
   /**
-   * The single-entry strong cache is frozen compatibility debt inherited from
-   * the hand-written `map`. S4 may move it behind the constructor but may
-   * neither expand it nor claim collection safety; S5B owns its collectable
-   * replacement.
+   * `weak-callback-map` keys operators on the callback itself, so `map(f)`
+   * returns the same operator while `f` is live and retains nothing once it is
+   * not. It replaces the one-entry strong slot the hand-written `map` used to
+   * carry.
    */
   readonly cache: DirectLeafCacheV1
 }
@@ -65,7 +65,7 @@ export const DIRECT_LEAF_POLICIES_V1: readonly DirectLeafPolicyV1[] = Object.fre
     construction: 'inline',
     constructionReason:
       'an isolated constructor function costs ~70% on JSC and ~85% on V8 on the direct path after a data-last or mixed-size history',
-    cache: 'single-entry-strong',
+    cache: 'weak-callback-map',
   }),
 ] as const)
 
@@ -87,25 +87,20 @@ export interface DirectLeafModelV1 {
 export const renderDirectLeafV1 = (model: DirectLeafModelV1): string => {
   const { policy, params, bodyCode } = model
   const [data, arg] = params
-  const cacheFn = `${policy.construct}Fn`
-  const cacheOperator = `${policy.construct}Operator`
+  const cacheName = `${policy.construct}Cache`
 
   const cacheState =
-    policy.cache === 'none'
-      ? ''
-      : `let ${cacheFn}: Function | null = null
-let ${cacheOperator}: any = null
-
-`
+    policy.cache === 'none' ? '' : `const ${cacheName} = new WeakMap<object, any>()\n\n`
   const cacheHit =
     policy.cache === 'none'
       ? ''
-      : `  if (_a0 === ${cacheFn} && ${cacheOperator}) return ${cacheOperator}\n`
+      : `  const _hit = typeof _a0 === 'function' ? ${cacheName}.get(_a0) : undefined
+  if (_hit !== undefined) return _hit
+`
   const cacheStore =
     policy.cache === 'none'
       ? ''
-      : `  ${cacheFn} = _a0
-  ${cacheOperator} = _dl
+      : `  if (typeof _a0 === 'function') ${cacheName}.set(_a0, _dl)
 `
 
   const leaf = `function ${policy.leaf}(${data}: any, ${arg}: any): any {

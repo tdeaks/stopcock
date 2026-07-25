@@ -39,7 +39,7 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
     'packages/fp/src/shape-entry.ts',
     'packages/fp/src/sort-kernel.ts',
   ] as const),
-  sha256: 'a44557b40f98675ee57b33d8ba71adf732a03239977f907856c528493ba07b7c',
+  sha256: 'ff590a4f260222a654b4bae52a6bd626f5564d28586fb3c08de3dd52c51bd542',
 })
 
 export interface PortableBatchPolicy {

@@ -29,8 +29,8 @@ describe('direct-leaf policy', () => {
     ])
   })
 
-  it('keeps the single-entry strong cache as recorded compatibility debt', () => {
-    expect(policy.cache).toBe('single-entry-strong')
+  it('keys the operator cache on the callback so nothing is strongly retained', () => {
+    expect(policy.cache).toBe('weak-callback-map')
   })
 
   it('records why construction stays inline', () => {
@@ -51,16 +51,16 @@ describe('direct-leaf policy', () => {
     const rendered = render()
     const leaf = rendered.slice(
       rendered.indexOf('function runMap'),
-      rendered.indexOf('let constructMapFn'),
+      rendered.indexOf('const constructMapCache'),
     )
-    for (const forbidden of ['_op', '_fn', 'constructMapFn', 'constructMapOperator']) {
+    for (const forbidden of ['_op', '_fn', 'constructMapCache']) {
       expect(leaf).not.toContain(forbidden)
     }
   })
 
   it('renders no cache state when a policy asks for none', () => {
     const rendered = render({ cache: 'none' })
-    expect(rendered).not.toContain('constructMapFn')
+    expect(rendered).not.toContain('constructMapCache')
     expect(rendered).toContain('_dl._op = 1')
   })
 
@@ -86,12 +86,12 @@ describe('generated array module', () => {
       declaration.indexOf('if (arguments.length >= 2)'),
       declaration.indexOf('const _a0 = arguments[0]\n'),
     )
-    for (const forbidden of ['_op', '_fn', 'constructMapFn', 'constructMapOperator']) {
+    for (const forbidden of ['_op', '_fn', 'constructMapCache']) {
       expect(direct).not.toContain(forbidden)
     }
     const leaf = generatedArray.slice(
       generatedArray.indexOf('function runMap('),
-      generatedArray.indexOf('let constructMapFn'),
+      generatedArray.indexOf('const constructMapCache'),
     )
     expect(leaf).not.toContain('_op')
   })

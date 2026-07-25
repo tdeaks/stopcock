@@ -314,8 +314,7 @@ function runMap(arr: any, f: any): any {
     return out
 }
 
-let constructMapFn: Function | null = null
-let constructMapOperator: any = null
+const constructMapCache = new WeakMap<object, any>()
 
 export const map: {
   <A, B>(arr: readonly A[], f: (a: A) => B): B[]
@@ -327,15 +326,15 @@ export const map: {
     return runMap(_a0, _a1)
   }
   const _a0 = arguments[0]
-  if (_a0 === constructMapFn && constructMapOperator) return constructMapOperator
+  const _hit = typeof _a0 === 'function' ? constructMapCache.get(_a0) : undefined
+  if (_hit !== undefined) return _hit
   const _dl: any = function (data: any) {
     return runMap(data, _a0)
   }
   _dl._op = 1
   _dl._fn = _a0
   registerTrustedOperator(_dl, 1, _a0)
-  constructMapFn = _a0
-  constructMapOperator = _dl
+  if (typeof _a0 === 'function') constructMapCache.set(_a0, _dl)
   return _dl
 } as any
 
