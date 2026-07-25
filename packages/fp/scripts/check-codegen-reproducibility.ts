@@ -24,6 +24,8 @@ const GENERATED_PATHS = [
   'packages/fp/src/array.ts',
   'packages/fp/src/boolean.ts',
   'packages/fp/src/math.ts',
+  'packages/fp/src/iter-kernels.ts',
+  'packages/fp/codegen/generated/iter-kernel-manifest-v1.json',
   'packages/fp/src/portable-templates.ts',
   'packages/fp/package.json',
 ] as const
