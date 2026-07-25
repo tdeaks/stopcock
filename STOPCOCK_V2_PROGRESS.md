@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S5B
-Current slice: MAP_RETENTION_REPAIR
-Last verified commit: e0becf5
+Current canonical stage: S6
+Current slice: EXPLICIT_FUSION_FACADES
+Last verified commit: 706d5ad
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -62,7 +62,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S3B   | NOT_STARTED | Untagged internal duals                                                                                                                                                                                                                                                                                                                                                                       |
 | S4    | GATE_PASSED | One measured direct-leaf codegen policy entry at `393bb06`; map generated instead of hand-written, cache confined to construction, every history within 3% of a hand-written loop on the release lane                                                                                                                                                                                         |
 | S5A   | GATE_PASSED | Module-private provenance table at `e0becf5`; public tag fields keep existing and authorize nothing, full valid-opcode forgery corpus passes, no public registrar ships                                                                                                                                                                                                                       |
-| S5B   | NOT_STARTED | Measured retention policy                                                                                                                                                                                                                                                                                                                                                                     |
+| S5B   | GATE_PASSED | Weak callback-keyed operator cache at `706d5ad`; the strong one-entry slot is gone, `map(f) === map(f)` holds while `f` is live, and all seven optional candidates are recorded as measured stops                                                                                                                                                                                             |
 | S6    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | S7    | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
 | S8    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -237,8 +237,51 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Replaced the S0 tag-authority characterization, which
       existed to document the forgeable behaviour, with the forgery corpus that
       proves it is gone.
+- [x] (2026-07-25) Completed S5B's mandatory half at `706d5ad`: `Array.map`'s
+      one-entry strong callback slot is a WeakMap keyed on the callback, so
+      nothing is retained once the callback is not.
+- [x] (2026-07-25) Measured all seven optional direct-leaf candidates and
+      stopped every one of them with a recorded reason rather than rewriting
+      them mechanically.
 
 ## Evidence log
+
+- S5B evidence:
+  - the generated `Array.map` cache is now `new WeakMap<object, any>()` keyed on
+    the callback. The previous shape held the most recent callback and its
+    operator alive for the process lifetime and evicted the first callback as
+    soon as a second arrived;
+  - 8 focused contract tests cover same-operator identity while the callback is
+    live, distinct operators for distinct callbacks, more than one callback
+    cached at once, each cached operator staying bound to its own callback, the
+    absence of any strong module-level slot, reentrancy never exposing a
+    partially constructed operator, a cached operator remaining fusible, and a
+    non-function argument not being cached. None of them depends on GC timing;
+  - `benchmarks/src/reference/s5b-construction-gate.ts` measures every optional
+    candidate on both paths a cache touches, batching 1,000 constructions per
+    sample because one construction is below this profile's clock resolution:
+
+    | candidate | repeat    | churn      | net    |
+    | --------- | --------- | ---------- | ------ |
+    | `filter`  | 35 → 7 ns | 42 → 54 ns | +17 ns |
+    | `flatMap` | 25 → 8 ns | 30 → 40 ns | +7 ns  |
+    | `find`    | 27 → 6 ns | 34 → 46 ns | +10 ns |
+    | `reduce`  | 24 → 6 ns | 30 → 46 ns | +2 ns  |
+    | `some`    | 32 → 6 ns | 26 → 46 ns | +7 ns  |
+    | `every`   | 27 → 6 ns | 27 → 50 ns | −2 ns  |
+    | `take`    | 23 → 5 ns | 27 → 47 ns | −3 ns  |
+
+  - every candidate clears the 5% repeat-construction bar and every candidate
+    pays 8–82% on churn. Against a 100,000-element execution costing ~44,000
+    ns none of those nets is observable, several flip sign between sessions,
+    and `take` has no callback to key on at all, so all seven are recorded as
+    stopped with their reason;
+  - the gate fails closed if a candidate has no recorded disposition, has an
+    empty reason, or is marked enabled without qualifying in the run it is
+    recorded against;
+  - `packages/fp` passed 2437 tests and a clean build; the benchmarks reference
+    suite passed 327 tests; the S3B size rows are unchanged;
+  - `vp fmt` and `git diff --check` passed.
 
 - S5A evidence:
   - `packages/fp/src/internal/provenance.ts` holds a module-scoped `WeakMap`
