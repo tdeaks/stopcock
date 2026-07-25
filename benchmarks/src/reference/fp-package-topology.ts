@@ -2,12 +2,24 @@ import { createHash } from 'node:crypto'
 import { gzipSync } from 'node:zlib'
 import { posix } from 'node:path'
 
-export const FP_PACKAGE_TOPOLOGY_SCHEMA_VERSION = 3 as const
+export const FP_PACKAGE_TOPOLOGY_SCHEMA_VERSION = 4 as const
 export const FP_PACKAGE_NAME = '@stopcock/fp' as const
-export const FP_PACKAGE_LEGACY_SHARED_GZIP_MAXIMUM_BYTES = 18_000
+/**
+ * Per-artifact ceiling on the runtime the root entry and the optimized entry
+ * both reach. It is deliberately not a ceiling on how many such artifacts
+ * exist: the number of chunks a bundler emits is not a public fact, and the
+ * gate used to assert there was exactly one of them, which stops being true
+ * the moment the tier entries land.
+ */
+export const FP_PACKAGE_SHARED_RUNTIME_GZIP_MAXIMUM_BYTES = 18_000
 export const FP_PACKAGE_LEGACY_TARBALL_MAXIMUM_BYTES = 150_000
 export const FP_PACKAGE_STABLE_TARBALL_MAXIMUM_BYTES = 100_000
-export const FP_PACKAGE_LEGACY_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS = Object.freeze([
+/**
+ * Runtime files that are allowed to be byte-identical. `readonly-array` is the
+ * same module as `array` by design. This is a property of the direct-operation
+ * topology, not of whether fusion entries exist, so it applies in both modes.
+ */
+export const FP_PACKAGE_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS = Object.freeze([
   Object.freeze(['dist/array.js', 'dist/readonly-array.js'] as const),
 ] as const)
 
@@ -73,6 +85,18 @@ export interface FpPackageTopologyEvidence {
     readonly sha256: string
     readonly paths: readonly string[]
   }[]
+  /**
+   * Runtime the root entry and the optimized entry both reach, derived the same
+   * way in both modes. While root still fuses, this is the engine root carries;
+   * once S8 rewires root it shrinks, and the gate does not have to change.
+   */
+  readonly sharedRuntime: {
+    readonly rootEntry: string
+    readonly optimizedSpecifier: string
+    readonly artifacts: readonly string[]
+    readonly gzipBytes: number
+    readonly largestGzipBytes: number
+  }
   readonly legacy: {
     readonly rootEntry: string
     readonly compileEntry: string
@@ -473,6 +497,25 @@ export const deriveFpPackageTopology = (
     )
     .sort((left, right) => left.sha256.localeCompare(right.sha256))
 
+  const optimizedSpecifier = mode === 'legacy' ? './compile' : './fusion/optimized'
+  const optimizedSource = entries.find(({ specifier }) => specifier === optimizedSpecifier)
+  if (optimizedSource === undefined) {
+    throw new Error(`topology has no ${optimizedSpecifier} entry`)
+  }
+  const sharedRuntimeArtifacts = intersection(root.closure, new Set(optimizedSource.closure))
+  const sharedRuntimeFiles = sharedRuntimeArtifacts.map(
+    (path) => fileByPath.get(path) as FpPackageFileEvidence,
+  )
+  const sharedRuntime = Object.freeze({
+    rootEntry: root.javascript,
+    optimizedSpecifier,
+    artifacts: sharedRuntimeArtifacts,
+    gzipBytes: sharedRuntimeFiles.reduce((total, file) => total + file.gzipBytes, 0),
+    largestGzipBytes: sharedRuntimeFiles.reduce((largest, file) => {
+      return file.gzipBytes > largest ? file.gzipBytes : largest
+    }, 0),
+  })
+
   let legacy: FpPackageTopologyEvidence['legacy'] = null
   let tiered: FpPackageTopologyEvidence['tiered'] = null
   if (mode === 'legacy') {
@@ -534,6 +577,7 @@ export const deriveFpPackageTopology = (
     }),
     unreachableJavascript,
     duplicateRuntimeArtifacts: Object.freeze(duplicateRuntimeArtifacts),
+    sharedRuntime,
     legacy,
     tiered,
   })
@@ -667,35 +711,42 @@ export const evaluateFpPackageSizeReport = (
       'package contains JavaScript unreachable from public exports',
     )
 
-    if (recomputedTopology.mode === 'legacy') {
-      const unexpectedDuplicateRuntimeArtifacts =
-        recomputedTopology.duplicateRuntimeArtifacts.filter(
-          ({ paths }) =>
-            !FP_PACKAGE_LEGACY_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS.some((allowedPaths) =>
-              sameJson(paths, allowedPaths),
-            ),
-        )
+    const unexpectedDuplicateRuntimeArtifacts = recomputedTopology.duplicateRuntimeArtifacts.filter(
+      ({ paths }) =>
+        !FP_PACKAGE_ALLOWED_DUPLICATE_RUNTIME_PATH_GROUPS.some((allowedPaths) =>
+          sameJson(paths, allowedPaths),
+        ),
+    )
+    recordFailure(
+      failures,
+      unexpectedDuplicateRuntimeArtifacts.length === 0,
+      'package contains unexpected duplicate runtime artifacts',
+    )
+
+    // Chunk-agnostic: every artifact root and optimized both reach is bounded,
+    // however many of them the bundler emits.
+    for (const path of recomputedTopology.sharedRuntime.artifacts) {
+      const artifact = recomputedFiles.find((candidate) => candidate.path === path)
       recordFailure(
         failures,
-        unexpectedDuplicateRuntimeArtifacts.length === 0,
-        'legacy package contains unexpected duplicate runtime artifacts',
+        artifact !== undefined &&
+          artifact.kind === 'javascript' &&
+          artifact.gzipBytes <= FP_PACKAGE_SHARED_RUNTIME_GZIP_MAXIMUM_BYTES,
+        artifact === undefined || artifact.kind !== 'javascript'
+          ? `shared runtime artifact ${path} is missing or is not JavaScript`
+          : `shared runtime artifact ${path} is ${artifact.gzipBytes} gzip bytes; per-artifact budget is ${FP_PACKAGE_SHARED_RUNTIME_GZIP_MAXIMUM_BYTES}`,
       )
+    }
+
+    if (recomputedTopology.mode === 'legacy') {
+      // Root has not been rewired yet, so in a legacy artifact it must still
+      // reach the compile engine directly. S8 deletes this assertion when it
+      // deletes the topology it describes.
       const shared = recomputedTopology.legacy?.sharedDirectArtifacts ?? []
       recordFailure(
         failures,
-        shared.length === 1,
-        `legacy root and compile entries must share exactly one direct runtime artifact; found ${shared.length}`,
-      )
-      const sharedFile =
-        shared.length === 1 ? recomputedFiles.find(({ path }) => path === shared[0]) : undefined
-      recordFailure(
-        failures,
-        sharedFile !== undefined &&
-          sharedFile.kind === 'javascript' &&
-          sharedFile.gzipBytes <= FP_PACKAGE_LEGACY_SHARED_GZIP_MAXIMUM_BYTES,
-        sharedFile === undefined
-          ? 'legacy shared runtime artifact is missing'
-          : `legacy shared runtime gzip is ${sharedFile.gzipBytes} bytes; budget is ${FP_PACKAGE_LEGACY_SHARED_GZIP_MAXIMUM_BYTES}`,
+        shared.length >= 1,
+        'legacy root and compile entries must share at least one direct runtime artifact; found 0',
       )
       recordFailure(
         failures,
@@ -707,11 +758,6 @@ export const evaluateFpPackageSizeReport = (
         failures,
         recomputedTopology.tiered?.forbiddenTierArtifactsByEntry.length === 0,
         'root or direct specialist entry reaches optimized/debug-only runtime artifacts',
-      )
-      recordFailure(
-        failures,
-        recomputedTopology.duplicateRuntimeArtifacts.length === 0,
-        'tiered package contains duplicate runtime artifacts',
       )
     }
 
