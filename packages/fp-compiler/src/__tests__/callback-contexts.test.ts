@@ -61,8 +61,11 @@ const run = (source: string) =>
 /** Executes transformed output with the operators stubbed to the real runtime. */
 const execute = async (source: string): Promise<unknown> => {
   const out = run(source)
-  const fpDist = new URL('../../../fp/dist/index.js', import.meta.url).pathname
-  const arrayDist = new URL('../../../fp/dist/array.js', import.meta.url).pathname
+  // `file://` hrefs, not bare paths: these fixtures happen to have every
+  // import pruned, so nothing needs resolving today, but a bare path would
+  // fail the moment one did.
+  const fpDist = new URL('../../../fp/dist/index.js', import.meta.url).href
+  const arrayDist = new URL('../../../fp/dist/array.js', import.meta.url).href
   const code = out.code
     .split(`'${ARRAY}'`)
     .join(`'${arrayDist}'`)

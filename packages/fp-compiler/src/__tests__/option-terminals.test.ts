@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { transformStopcockPipelines } from '../transform'
 
-const FP_DIST = new URL('../../../fp/dist', import.meta.url).pathname
+// A `file://` href, not a bare path: a `data:` URL module can resolve neither
+// bare specifiers nor absolute filesystem paths, which is why rewriting to a
+// pathname still failed to import.
+const FP_DIST = new URL('../../../fp/dist', import.meta.url).href
 
 /**
  * Compiled Option terminals must return the *same* `none`, not an equal one.
@@ -9,6 +12,21 @@ const FP_DIST = new URL('../../../fp/dist', import.meta.url).pathname
  * against the runtime, and would silently break against a compiler that emitted
  * a fresh `{ _tag: 0 }` per site.
  */
+
+/**
+ * Rewrites a bare specifier to a filesystem path so the compiled module can be
+ * imported from a `data:` URL, which cannot resolve bare specifiers or relative
+ * paths.
+ *
+ * Quote-agnostic on purpose: the compiler injects the Option-terminal import of
+ * `none` through babel's generator, which double-quotes, while the fixture
+ * sources are single-quoted. A single-quote-only replacement left that injected
+ * import bare and every test here failed on module resolution rather than on
+ * anything about Option semantics.
+ */
+const rewriteSpecifier = (code: string, specifier: string, target: string): string =>
+  code.split(`'${specifier}'`).join(`'${target}'`).split(`"${specifier}"`).join(`"${target}"`)
+
 const compileAndRun = async (body: string): Promise<unknown> => {
   const source = `import { pipe } from '@stopcock/fp'
 import { find, findIndex, head, last, map } from '@stopcock/fp/array'
@@ -16,11 +34,11 @@ ${body}
 `
   const out = transformStopcockPipelines(source, '/repo/src/a.ts', { diagnostics: 'summary' })
   expect(out.diagnostics.every((site) => site.transformed)).toBe(true)
-  const code = out.code
-    .split("'@stopcock/fp/array'")
-    .join(`'${FP_DIST}/array.js'`)
-    .split("'@stopcock/fp'")
-    .join(`'${FP_DIST}/index.js'`)
+  const code = rewriteSpecifier(
+      rewriteSpecifier(out.code, '@stopcock/fp/array', `${FP_DIST}/array.js`),
+      '@stopcock/fp',
+      `${FP_DIST}/index.js`,
+    )
   const module = (await import(
     `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
   )) as { r: unknown }
@@ -50,13 +68,15 @@ import { none } from '@stopcock/fp/option'
 export const r = pipe([1,2,3], map((x)=>x*2), find((x)=>x>99)) === none
 `
     const out = transformStopcockPipelines(source, '/repo/src/a.ts', { diagnostics: 'summary' })
-    const code = out.code
-      .split("'@stopcock/fp/array'")
-      .join(`'${FP_DIST}/array.js'`)
-      .split("'@stopcock/fp/option'")
-      .join(`'${FP_DIST}/option.js'`)
-      .split("'@stopcock/fp'")
-      .join(`'${FP_DIST}/index.js'`)
+    const code = rewriteSpecifier(
+      rewriteSpecifier(
+        rewriteSpecifier(out.code, '@stopcock/fp/array', `${FP_DIST}/array.js`),
+        '@stopcock/fp/option',
+        `${FP_DIST}/option.js`,
+      ),
+      '@stopcock/fp',
+      `${FP_DIST}/index.js`,
+    )
     const module = (await import(
       `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
     )) as { r: boolean }
@@ -83,11 +103,11 @@ const b = pipe([2], map((x)=>x), find((x)=>x>99))
 export const r = a === b
 `
     const out = transformStopcockPipelines(source, '/repo/src/a.ts', { diagnostics: 'summary' })
-    const code = out.code
-      .split("'@stopcock/fp/array'")
-      .join(`'${FP_DIST}/array.js'`)
-      .split("'@stopcock/fp'")
-      .join(`'${FP_DIST}/index.js'`)
+    const code = rewriteSpecifier(
+      rewriteSpecifier(out.code, '@stopcock/fp/array', `${FP_DIST}/array.js`),
+      '@stopcock/fp',
+      `${FP_DIST}/index.js`,
+    )
     const module = (await import(
       `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
     )) as { r: boolean }

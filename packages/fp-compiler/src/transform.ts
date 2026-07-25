@@ -32,7 +32,17 @@ import type {
 const traverse: typeof _traverse =
   (_traverse as unknown as { default?: typeof _traverse }).default ?? _traverse
 
-const DEFAULT_IMPORT_SOURCES = ['@stopcock/fp']
+/**
+ * Specifiers whose `pipe`/`flow`/`compile` the compiler will fuse away.
+ *
+ * `@stopcock/fp-optimizer` is here because S10X moved the fused runner bank
+ * out of FP. Someone who installed the optimizer chose the fastest runtime
+ * tier, and compiling their pipeline is strictly better than that tier: it
+ * beats both and leaves no engine in the bundle. Recognising only FP's root
+ * would have silently stopped compiling exactly the pipelines whose authors
+ * cared most about speed.
+ */
+const DEFAULT_IMPORT_SOURCES = ['@stopcock/fp', '@stopcock/fp-optimizer', '@stopcock/fp/fusion']
 const OPTION_TERMINALS = new Set(['find', 'findIndex', 'findMap', 'head', 'last', 'min', 'max'])
 const PURE_SORT_OPS = new Set(['sort', 'sortBy', 'sortAsc', 'sortDesc'])
 
