@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S3B
-Current slice: UNTAGGED_INTERNAL_DUALS
-Last verified commit: cfa0669
+Current canonical stage: S4
+Current slice: DIRECT_DISPATCH_PILOT
+Last verified commit: f6a62be
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -217,8 +217,56 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       validator bound to exact source/dist/packed identity.
 - [x] (2026-07-25) Repinned the stale `EXPECTED_PORTABLE_SUBJECT` digest that
       S3A invalidated, restoring the portable release gate.
+- [x] (2026-07-25) Completed S3B at `f6a62be`: `dual-internal` no longer
+      re-exports the public tagged dual, Option and Result call their exact
+      arity directly, and the enforced consumer size rows pass with no opcode
+      table.
+- [x] (2026-07-25) Recorded the fusible `string.trim` ceiling as deferred to
+      S11 instead of meeting it by changing public `dual`, which S3B's own
+      scope forbids.
 
 ## Evidence log
+
+- S3B evidence:
+  - `packages/fp/src/dual-internal.ts` now imports nothing: `dualUntagged2`,
+    `dualUntagged3`, `dualUntagged4`, and a bounded `dualUntaggedN` fallback
+    replace the re-exported public tagged dual, and an arity-dispatched `dual`
+    remains for the modules that are not migrated to a fixed arity yet;
+  - `packages/fp/src/string.ts` moved to the public `./dual` because its
+    operations are tagged; every other `dual-internal` consumer was already
+    untagged and now sheds the opcode table for free;
+  - Option and Result call `dualUntagged2`/`dualUntagged3` directly, so their
+    bundles retain only the wrapper they use;
+  - 12 focused contract tests cover parity with the untagged public dual on
+    both call forms, `arguments.length` dispatch at arity 3 and 4, absence of
+    `_op`/`_fn`/argument fields, per-partial-application allocation, unchanged
+    error propagation, single body invocation, the generic fallback, exact
+    Option/Result representations, canonical `none` identity, and both call
+    forms on migrated operations;
+  - `benchmarks/src/reference/s3b-untagged-size-gate.ts` bundles each flow from
+    the built dist with esbuild, minifies with the frozen terser settings, and
+    gzips at level 9:
+
+    | flow          | gzip  | ceiling | opcode table |
+    | ------------- | ----- | ------- | ------------ |
+    | `option.flow` | 216 B | 922 B   | absent       |
+    | `result.flow` | 203 B | 922 B   | absent       |
+    | `object.pick` | 363 B | 717 B   | absent       |
+    | `string.trim` | 851 B | 717 B   | retained     |
+
+  - `option.flow` and `result.flow` land below their expected 0.25–0.45 KiB and
+    0.30–0.55 KiB bands;
+  - `string.trim` is fusible, carries opcode 50, and stays on the public tagged
+    dual, which resolves its opcode through the whole `OP_CODES` table at
+    runtime. The row is recorded as `deferred to S11` and reported on every
+    run; it is not enforced, not removed, and not met by widening the ceiling;
+  - the S3A purity policy gained a `dual-untagged` call kind and a separate
+    reviewed inventory for the migrated Option/Result initializers;
+  - `EXPECTED_PORTABLE_SUBJECT` and `EXPECTED_THIRD_WAVE_SUBJECT_SHA256` were
+    repinned for the changed candidate bytes in the same change;
+  - `packages/fp` passed 2406 tests, source types, public type tests, and a
+    clean build; the benchmarks reference suite passed 322 tests;
+  - `vp fmt` and `git diff --check` passed.
 
 - S1C evidence:
   - `s1c-baseline-contract.ts` freezes the lane registry (`direct`,
