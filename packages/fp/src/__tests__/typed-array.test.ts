@@ -76,9 +76,9 @@ describe('TypedArray number families', () => {
 
   it('performs compatible numeric conversion without staging values in JS objects', () => {
     const target = new Uint8ClampedArray(6)
-    expect(
-      TypedArray.copyInto(new Float64Array([-20, 1.6, 300, Number.NaN]), target, 1),
-    ).toBe(target)
+    expect(TypedArray.copyInto(new Float64Array([-20, 1.6, 300, Number.NaN]), target, 1)).toBe(
+      target,
+    )
     expect(Array.from(target)).toEqual([0, 0, 2, 255, 0, 0])
 
     const mapped = new Int16Array(4)
@@ -139,18 +139,8 @@ describe('TypedArray bigint families', () => {
 
     expect(Array.from(TypedArray.filter(signed, () => true))).toEqual(Array.from(signed))
     expect(Array.from(TypedArray.filter(unsigned, () => true))).toEqual(Array.from(unsigned))
-    expect(Array.from(TypedArray.sort(signed))).toEqual([
-      -(2n ** 63n),
-      -1n,
-      0n,
-      2n ** 63n - 1n,
-    ])
-    expect(Array.from(TypedArray.sort(unsigned))).toEqual([
-      0n,
-      1n,
-      2n ** 63n,
-      2n ** 64n - 1n,
-    ])
+    expect(Array.from(TypedArray.sort(signed))).toEqual([-(2n ** 63n), -1n, 0n, 2n ** 63n - 1n])
+    expect(Array.from(TypedArray.sort(unsigned))).toEqual([0n, 1n, 2n ** 63n, 2n ** 64n - 1n])
   })
 
   it('uses the large BigInt filter path without changing values or constructor', () => {
@@ -158,9 +148,7 @@ describe('TypedArray bigint families', () => {
     const result = TypedArray.filter(source, (value) => (value & 1n) === 0n)
 
     expect(result).toBeInstanceOf(BigInt64Array)
-    expect(Array.from(result)).toEqual(
-      Array.from(source).filter((value) => (value & 1n) === 0n),
-    )
+    expect(Array.from(result)).toEqual(Array.from(source).filter((value) => (value & 1n) === 0n))
   })
 })
 
@@ -243,7 +231,13 @@ describe('TypedArray callback and subclass contracts', () => {
 
     expect(Array.from(result)).toEqual([2, 4])
     expect(predicate).toHaveBeenCalledTimes(4)
-    expect(events).toEqual(['predicate:0', 'predicate:1', 'predicate:2', 'predicate:3', 'construct'])
+    expect(events).toEqual([
+      'predicate:0',
+      'predicate:1',
+      'predicate:2',
+      'predicate:3',
+      'construct',
+    ])
   })
 
   it('sorts stably and allocates the public result after comparisons', () => {
@@ -338,6 +332,59 @@ describe('TypedArray callback and subclass contracts', () => {
     expect(result.length).toBe(256)
     expect(result[0]).toBe(1)
     expect(result[255]).toBe(2)
+  })
+
+  it('produces the same result either side of the strategy size band', () => {
+    // The runtime band decides whether a short canonical view takes the
+    // intrinsic or an element loop. Whichever branch this engine selects, the
+    // observable result has to be the hand-computed one at every size.
+    for (const Constructor of [...numberConstructors, ...bigIntConstructors]) {
+      const bigint = Constructor === BigInt64Array || Constructor === BigUint64Array
+      const value = (index: number): never => (bigint ? BigInt(index % 64) : index % 64) as never
+
+      for (const length of [0, 1, 32, 127, 128, 129, 512]) {
+        const source = new Constructor(length) as unknown as {
+          [index: number]: unknown
+          length: number
+        }
+        for (let index = 0; index < length; index++) source[index] = value(index)
+        const view = source as never
+        const expected = Array.from({ length }, (_, index) => value(index))
+
+        expect(Array.from(TypedArray.clone(view))).toEqual(expected)
+        expect(Array.from(TypedArray.reverse(view))).toEqual([...expected].reverse())
+        expect(Array.from(TypedArray.slice(view))).toEqual(expected)
+        expect(Array.from(TypedArray.slice(view, 1, length))).toEqual(expected.slice(1))
+        expect(Array.from(TypedArray.slice(view, -3))).toEqual(expected.slice(-3))
+        expect(Array.from(TypedArray.concat(view, view))).toEqual([...expected, ...expected])
+        for (const result of [
+          TypedArray.clone(view),
+          TypedArray.reverse(view),
+          TypedArray.slice(view),
+          TypedArray.concat(view, view),
+        ]) {
+          expect(result).toBeInstanceOf(Constructor)
+        }
+      }
+    }
+  })
+
+  it('keeps the concrete constructor and numeric conversion on short non-canonical views', () => {
+    class Shorts extends Int16Array {}
+    const source = new Shorts([1, 2, 3, 4])
+
+    // Below the old 128-element band these went through an element loop; they
+    // now bulk-copy, which has to keep both the constructor and the conversion.
+    expect(TypedArray.clone(source)).toBeInstanceOf(Shorts)
+    expect(Array.from(TypedArray.clone(source))).toEqual([1, 2, 3, 4])
+    expect(TypedArray.concat(source, new Shorts([5]))).toBeInstanceOf(Shorts)
+    expect(Array.from(TypedArray.concat(source, new Shorts([5])))).toEqual([1, 2, 3, 4, 5])
+
+    class Clamped extends Uint8ClampedArray {}
+    const wide = new Float64Array([-20, 1.6, 300, Number.NaN])
+    const narrowed = TypedArray.concat(new Clamped(0), wide as never)
+    expect(narrowed).toBeInstanceOf(Clamped)
+    expect(Array.from(narrowed)).toEqual([0, 2, 255, 0])
   })
 
   it('fully consumes from iterables before allocating the result', () => {
