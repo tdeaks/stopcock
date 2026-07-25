@@ -14,6 +14,7 @@ import {
   OP_TAKE,
 } from './opcodes'
 import { trustedOperatorEntry } from './internal/provenance'
+import { recordSelection } from './internal/selection-trace'
 import {
   findElidableMapBeforeLength,
   findSortThenTake,
@@ -133,6 +134,7 @@ export function dispatchAndTrack(
   bindings: readonly StepBinding[],
 ): unknown {
   entry.execCount++
+  recordSelection('executed', 'shared', entry.shapeKey)
   return entry.run(data, bindings)
 }
 
@@ -142,6 +144,7 @@ const bindEntryRunner = (entry: ShapeEntry, bindings: readonly StepBinding[]): R
   // and callback-bearing bindings monomorphic for tiny early-exit pipelines.
   return (input) => {
     entry.execCount++
+    recordSelection('executed', 'shared', entry.shapeKey)
     return entry.run(input, bindings)
   }
 }
@@ -156,6 +159,7 @@ const bindCriticalRunner = (
   entry: ShapeEntry,
   shape: PlanShape,
   bindings: readonly StepBinding[],
+  shapeKey: string,
 ): Runner | undefined => {
   if (
     shape.segments.length !== 1 ||
@@ -176,6 +180,7 @@ const bindCriticalRunner = (
       // collectors; V8 optimizes the callback-bound loop substantially better.
       if (IS_BUN_RUNTIME && source.length >= 512) return fallback(input)
       entry.execCount++
+      recordSelection('executed', 'bound', entry.shapeKey)
       const output: unknown[] = []
       let outputLength = 0
       const sourceLength = source.length
@@ -204,6 +209,7 @@ const bindCriticalRunner = (
     return (input) => {
       const source = input as readonly unknown[]
       entry.execCount++
+      recordSelection('executed', 'bound', entry.shapeKey)
       let state = initial
       for (let index = 0; index < source.length; index++) {
         const items = flatMap(map(source[index]))
@@ -240,6 +246,7 @@ const bindCriticalRunner = (
       const source = input as readonly unknown[]
       if (source.length >= 512) return fallback(input)
       entry.execCount++
+      recordSelection('executed', 'bound', entry.shapeKey)
       let state = initial
       for (let index = 0; index < source.length; index++) {
         const value = map(source[index])
@@ -255,6 +262,7 @@ const bindCriticalRunner = (
       const source = input as readonly unknown[]
       if (source.length >= 512) return fallback(input)
       entry.execCount++
+      recordSelection('executed', 'bound', entry.shapeKey)
       for (let index = 0; index < source.length; index++) {
         const value = map(source[index])
         if (filter(value) && find(value)) return optionSome(value)
@@ -272,10 +280,12 @@ export function planAndLowerFast(steps: readonly unknown[]): {
 } {
   const plan = buildPlan(steps)
   plansBuilt++
-  return {
-    entry: shapeEntryFor(plan.shape, 'exact', 'none'),
-    bindings: plan.bindings,
-  }
+  // `pipe` never reaches bindCriticalRunner, so its selection is always the
+  // shared runner. Recording it here rather than inferring it from the cache
+  // keeps the trace honest about which path the value actually took.
+  const entry = shapeEntryFor(plan.shape, 'exact', 'none')
+  recordSelection('selected', 'shared', entry.shapeKey)
+  return { entry, bindings: plan.bindings }
 }
 
 export function __shapeEntryForSteps(
@@ -356,6 +366,7 @@ function buildPortable(
         return value
       }
       const entry = shapeEntryFor(shape, 'pure', 'top-k', () => (input) => portable(input))
+      recordSelection('selected', 'shared', entry.shapeKey)
       return {
         run: bindEntryRunner(entry, bindings),
         rewrites: pureRewrites(shape),
@@ -384,6 +395,7 @@ function buildPortable(
         'elide-unused-map',
         () => (input) => portable(input),
       )
+      recordSelection('selected', 'shared', entry.shapeKey)
       return {
         run: bindEntryRunner(entry, bindings),
         rewrites: pureRewrites(shape),
@@ -393,8 +405,14 @@ function buildPortable(
   }
 
   const entry = shapeEntryFor(shape, pure ? 'pure' : 'exact', 'none')
+  // `selected` comes from this branch — the one that resolves the canonical
+  // runner — and nowhere else. A hand-bound runner can still hand control back
+  // to the shared one at its size threshold, so what actually ran is recorded
+  // separately, inside the runner.
+  const bound = bindCriticalRunner(entry, shape, bindings, entry.shapeKey)
+  recordSelection('selected', bound === undefined ? 'shared' : 'bound', entry.shapeKey)
   return {
-    run: bindCriticalRunner(entry, shape, bindings) ?? bindEntryRunner(entry, bindings),
+    run: bound ?? bindEntryRunner(entry, bindings),
     rewrites: Object.freeze([]),
     entry,
   }

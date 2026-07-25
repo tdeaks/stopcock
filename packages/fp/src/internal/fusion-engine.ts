@@ -91,6 +91,18 @@ function frontCacheSet<K>(cache: Map<K, ShapeEntry>, key: K, entry: ShapeEntry):
   }
 }
 
+/**
+ * Test-only cache reset. Both caches here are keyed independently of the
+ * shape-entry map, so clearing that alone leaves a shape warm and makes an
+ * observation of cold selection impossible.
+ */
+export function __resetFusionCaches(): void {
+  frontCacheNum.clear()
+  frontCacheStr.clear()
+  for (let i = 0; i < CACHE_SIZE; i++) cache[i] = undefined as unknown as CacheEntry
+  hotEntry = undefined
+}
+
 function matchesArgs(fns: readonly unknown[], args: ArrayLike<unknown>, argc: number): boolean {
   if (fns.length !== argc - 1) return false
   for (let i = 0; i < fns.length; i++) if (fns[i] !== args[i + 1]) return false

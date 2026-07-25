@@ -12,6 +12,13 @@ export type SemanticMode = 'exact' | 'pure'
 export interface ShapeEntry {
   run: PortableRunner
   execCount: number
+  /**
+   * The shape this entry was built for. Set once at construction so selection
+   * tracing can join `executed` back to `selected` without threading a key
+   * through every dispatch site — including the front-cache hit, where the
+   * caller no longer has the plan.
+   */
+  readonly shapeKey: string
 }
 
 let evictionCount = 0
@@ -59,6 +66,7 @@ export function getOrCreateEntry(
   const entry: ShapeEntry = {
     run: createPortableRun(),
     execCount: 0,
+    shapeKey,
   }
   entries.set(key, entry)
   if (entries.size > ENTRY_LIMIT) evictOldest()
