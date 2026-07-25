@@ -572,7 +572,17 @@ export function transformStopcockPipelines(
 
       if (!collected.ok) {
         if (diagnosticsLevel !== false) {
-          diagnostics.push(site(call, id, false, stepNodes.length, semantics, collected.reason))
+          diagnostics.push(
+            site(
+              call,
+              id,
+              false,
+              stepNodes.length,
+              semantics,
+              collected.reason,
+              collected.steps?.map((step) => step.name),
+            ),
+          )
           if (diagnosticsLevel === 'error') {
             throw new Error(
               `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${collected.reason}`,
@@ -711,7 +721,17 @@ export function transformStopcockPipelines(
       }
       changed = true
       if (diagnosticsLevel !== false) {
-        diagnostics.push(site(call, id, true, steps.length, semantics))
+        diagnostics.push(
+          site(
+            call,
+            id,
+            true,
+            steps.length,
+            semantics,
+            undefined,
+            steps.map((step) => step.name),
+          ),
+        )
       }
       path.skip()
     },
@@ -750,6 +770,7 @@ function site(
   steps: number,
   semantics: CompilerSemantics,
   reason?: string,
+  opNames?: readonly string[],
 ): DiagnosticSite {
   return {
     id,
@@ -759,6 +780,7 @@ function site(
     steps,
     semantics,
     reason,
+    opNames,
   }
 }
 

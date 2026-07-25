@@ -1,4 +1,9 @@
+import { createHash } from 'node:crypto'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join, resolve as resolvePath } from 'node:path'
 import { createUnplugin } from 'unplugin'
+import { buildCompilerReceipt, serializeReceipts } from './receipt-emit'
+import type { CompilerReceiptV1 } from './receipt-schema.generated'
 import { transformStopcockPipelines } from './transform'
 import type { FilterPattern, StopcockCompilerOptions } from './types'
 
@@ -7,7 +12,9 @@ const DEFAULT_EXCLUDE = [/node_modules/]
 
 // unplugin's filter typing wants a mutable array; our public FilterPattern
 // stays readonly, so copy on the way in.
-function toMutableFilter(pattern: FilterPattern): string | RegExp | Array<string | RegExp> | undefined {
+function toMutableFilter(
+  pattern: FilterPattern,
+): string | RegExp | Array<string | RegExp> | undefined {
   if (pattern == null) return undefined
   if (typeof pattern === 'string' || pattern instanceof RegExp) return pattern
   return [...pattern]
@@ -16,6 +23,25 @@ function toMutableFilter(pattern: FilterPattern): string | RegExp | Array<string
 export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | undefined = {}) => {
   const diagnostics = options.diagnostics ?? false
   const semantics = options.assumePure === true ? 'pure' : 'exact'
+  const receiptOptions = options.receipts
+  const receiptRoot = resolvePath(receiptOptions?.root ?? process.cwd())
+  /**
+   * Only the options that can change a decision. `diagnostics` and the receipt
+   * settings themselves cannot, so including them would invalidate every
+   * receipt when someone merely turned logging on.
+   */
+  const configHash = `sha256:${createHash('sha256')
+    .update(
+      JSON.stringify({
+        semantics,
+        importSources: options.importSources ?? null,
+        compileImportSources: options.compileImportSources ?? null,
+        arrayImportSources: options.arrayImportSources ?? null,
+      }),
+    )
+    .digest('hex')}`
+  let receipts: CompilerReceiptV1[] = []
+  let sitesWithoutReceipt = 0
   let fileCount = 0
   let transformedCount = 0
   let pipelineFileCount = 0
@@ -31,6 +57,8 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
       pipelineFileCount = 0
       fusedSiteCount = 0
       skippedSiteCount = 0
+      receipts = []
+      sitesWithoutReceipt = 0
     },
     transform: {
       filter: {
@@ -52,9 +80,25 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
           }
         }
 
+        if (receiptOptions !== undefined) {
+          for (const receiptSite of result.diagnostics) {
+            const receipt = buildCompilerReceipt(receiptSite, code, {
+              root: receiptRoot,
+              configHash,
+              semantics,
+              emittedCode: result.code === code ? null : result.code,
+              sourceMap: result.map === null ? null : JSON.stringify(result.map),
+            })
+            if (receipt === undefined) sitesWithoutReceipt++
+            else receipts.push(receipt)
+          }
+        }
+
         if (diagnostics === 'verbose') {
           for (const site of result.diagnostics) {
-            const status = site.transformed ? `fused (${site.steps} steps)` : `skipped: ${site.reason}`
+            const status = site.transformed
+              ? `fused (${site.steps} steps)`
+              : `skipped: ${site.reason}`
             this.warn(
               `stopcock-fp: ${id}:${site.line}:${site.column} [${site.semantics}] ${status}`,
             )
@@ -71,12 +115,25 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
       },
     },
     buildEnd() {
+      if (receiptOptions !== undefined) {
+        receiptOptions.onReceipts?.(receipts)
+        if (receiptOptions.dir !== undefined) {
+          const directory = resolvePath(receiptOptions.dir)
+          mkdirSync(directory, { recursive: true })
+          writeFileSync(join(directory, 'stopcock-receipts.json'), serializeReceipts(receipts))
+        }
+        if (diagnostics !== false && sitesWithoutReceipt > 0) {
+          // Surfaced rather than swallowed: a site with no receipt is a site
+          // `stopcock check` cannot see.
+          console.log(
+            `stopcock-fp: ${sitesWithoutReceipt} site(s) had no identifiable operators and produced no receipt`,
+          )
+        }
+      }
       if (diagnostics === 'summary') {
         const totalSites = fusedSiteCount + skippedSiteCount
         const coverage =
-          totalSites === 0
-            ? 'n/a'
-            : `${((fusedSiteCount / totalSites) * 100).toFixed(1)}%`
+          totalSites === 0 ? 'n/a' : `${((fusedSiteCount / totalSites) * 100).toFixed(1)}%`
         console.log(
           `stopcock-fp: [${semantics}] fused ${fusedSiteCount}/${totalSites} pipelines (${coverage} coverage; ${skippedSiteCount} skipped) across ${transformedCount}/${pipelineFileCount} pipeline files; scanned ${fileCount} files`,
         )
