@@ -104,6 +104,7 @@ export default defineConfig({
                 { label: 'Number', slug: 'api/number' },
                 { label: 'Guards', slug: 'api/guards' },
                 { label: 'Object', slug: 'api/object' },
+                { label: 'Map and Record', slug: 'api/keyed' },
                 { label: 'Math', slug: 'api/math' },
                 { label: 'Boolean', slug: 'api/boolean' },
                 { label: 'Option', slug: 'api/option' },
