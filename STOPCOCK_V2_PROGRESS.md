@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S5A
-Current slice: TRUSTED_PROVENANCE
-Last verified commit: 393bb06
+Current canonical stage: S5B
+Current slice: MAP_RETENTION_REPAIR
+Last verified commit: e0becf5
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -61,7 +61,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S3A   | GATE_PASSED | Package-wide fail-closed initializer-purity checkpoint `6ced74a4574123a36284d2baaca9cf7f4f449436`; exact packed/local four-bundler size and behavior evidence, two-run reproducibility, full clean release gates, and independent audit passed                                                                                                                                                |
 | S3B   | NOT_STARTED | Untagged internal duals                                                                                                                                                                                                                                                                                                                                                                       |
 | S4    | GATE_PASSED | One measured direct-leaf codegen policy entry at `393bb06`; map generated instead of hand-written, cache confined to construction, every history within 3% of a hand-written loop on the release lane                                                                                                                                                                                         |
-| S5A   | NOT_STARTED | Trusted provenance                                                                                                                                                                                                                                                                                                                                                                            |
+| S5A   | GATE_PASSED | Module-private provenance table at `e0becf5`; public tag fields keep existing and authorize nothing, full valid-opcode forgery corpus passes, no public registrar ships                                                                                                                                                                                                                       |
 | S5B   | NOT_STARTED | Measured retention policy                                                                                                                                                                                                                                                                                                                                                                     |
 | S6    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | S7    | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
@@ -231,8 +231,51 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Rejected three candidate emission shapes on measured
       evidence rather than preference, after the new map history gate caught
       each of them regressing the direct path on one engine or the other.
+- [x] (2026-07-25) Completed S5A at `e0becf5`: optimized execution now requires
+      an entry in a module-private provenance table, and every public tag-field
+      forgery reaches the complete generic path.
+- [x] (2026-07-25) Replaced the S0 tag-authority characterization, which
+      existed to document the forgeable behaviour, with the forgery corpus that
+      proves it is gone.
 
 ## Evidence log
+
+- S5A evidence:
+  - `packages/fp/src/internal/provenance.ts` holds a module-scoped `WeakMap`
+    with no package export, no public registrar, and no caller-supplied
+    descriptor, evidence label, or eligibility claim;
+  - generated code registers each operator it constructs with an opcode
+    resolved at generation time and bindings taken from the captured
+    arguments, so nothing a caller supplies reaches the table;
+  - `plan.ts`, every arity-specialized fast path in `pipe.ts`, and
+    `compile.ts`'s single-step filter check read provenance instead of public
+    fields; a step this package did not construct is opaque and runs the
+    complete generic path;
+  - the 13-test forgery corpus covers every registered opcode forged with
+    bindings, an out-of-range forged opcode, a forged operator staying callable
+    and correct, public `dual(..., { op })` operators staying callable but
+    generic, deleted public fields, overwritten public fields, a copied trusted
+    operator, per-call-site bindings, same-shape pipelines not sharing
+    bindings, absence from the public export map, a foreign table failing to
+    grant authority, exactly what the registrar records, and non-function
+    candidates;
+  - an out-of-range forged opcode used to throw `registry: no metadata for
+opcode N`; it is now simply generic, and the pipe fast-path test was
+    updated to that outcome;
+  - a codegen structural test asserts every emitted public tag write has a
+    matching registration, so a future operator cannot ship tagged but
+    unregistered;
+  - fresh-operator construction costs 84 ns instead of 42 ns, the WeakMap
+    write; construction with a live cached callback is unchanged at 83 ns;
+  - the map history gate, S3B size rows, and the S3A fresh consumer-size gate
+    are unaffected: `array.map.direct` measures 438–443 gzip bytes and
+    `option.specialist-flow` 207–217 across all four bundlers, from both
+    local dist and the packed tarball;
+  - `packages/fp` passed 2429 tests, source types, public type tests, and a
+    clean build; the benchmarks reference suite passed 322 tests;
+  - a `@stopcock/fp` major changeset records the behaviour change and what it
+    means for callers;
+  - `vp fmt` and `git diff --check` passed.
 
 - S4 evidence:
   - `packages/fp/codegen/direct-leaf.ts` holds the whole policy: one entry
