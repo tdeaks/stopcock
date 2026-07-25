@@ -24,6 +24,7 @@
     "perf:size:s3b": "bun run src/reference/s3b-untagged-size-gate.ts",
     "perf:competitors": "bun run src/reference/competitor-floor-gate.ts",
     "perf:root-size:s8": "bun run src/reference/s8-root-size-gate.ts",
+    "perf:compact:s9": "bun run src/reference/s9-compact-size-gate.ts",
     "perf:gates": "bun run src/reference/run-gates.ts",
     "perf:gates:deterministic": "bun run src/reference/run-gates.ts --deterministic",
     "perf:profile": "bun run src/reference/perf-profile-gate.ts",

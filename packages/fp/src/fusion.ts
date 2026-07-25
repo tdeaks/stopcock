@@ -1,16 +1,16 @@
 /**
- * Explicit fusion.
+ * Compact fusion.
  *
- * Root `pipe` and `flow` fuse automatically today, and in 2.0 they stop. This
- * entry is the stable way to ask for fusion and keep getting it: it delegates
- * to the engine-owned module, never to the root symbols, so it means the same
- * thing before and after that change.
+ * Fuses through one generic exact executor rather than a bank of specialized
+ * templates. It is honestly size-first: smaller than optimized fusion and
+ * slower than it. If you want the fastest fused execution, import
+ * `@stopcock/fp/fusion/optimized`; if you build with a bundler,
+ * `@stopcock/fp-compiler` beats both and leaves no runtime engine at all.
  *
- * `@stopcock/fp/fusion` and `@stopcock/fp/fusion/optimized` are the same
- * implementation today. They are separate entries so a consumer can commit to
- * one now and not have to move later, when optimized fusion becomes its own
- * runner.
+ * Semantics are identical to every other tier: same results, same callback
+ * order, same early-exit counts.
  */
-export { pipe, pipe as fusedPipe } from './internal/fusion-engine'
-export { flow, flow as fusedFlow } from './internal/fusion-flow'
-export { compile, compilePure, type Runner } from './compile'
+export { compactPipe as pipe, compactPipe as fusedPipe } from './internal/compact-runtime'
+export { compactFlow as flow, compactFlow as fusedFlow } from './internal/compact-runtime'
+export { compactCompile as compile } from './internal/compact-runtime'
+export type { Runner } from './compile'

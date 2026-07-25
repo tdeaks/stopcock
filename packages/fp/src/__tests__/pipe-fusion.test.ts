@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vite-plus/test'
 // These exercise fused execution, which since S8 lives behind the explicit
 // entry rather than at the root. Root pipe is sequential and is covered by
 // root-sequential.test.ts.
-import { pipe } from '../fusion'
+import { pipe } from '../fusion-optimized'
 import { none, some } from '../option'
 import * as A from '../array'
 import * as S from '../string'

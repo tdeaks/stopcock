@@ -32,19 +32,23 @@ const traceCallbacks = (run: typeof fusion.pipe): string[] => {
 }
 
 describe('explicit fusion facades', () => {
-  it('delegates to the engine module, not to the root symbols', () => {
-    // The exit gate that matters: S8 makes root pipe sequential, and a facade
-    // pointed at that symbol would silently change meaning when it does.
-    expect(fusion.pipe).toBe(enginePipe)
-    expect(fusion.flow).toBe(engineFlow)
+  it('keeps optimized fusion on the proven engine, not on a root symbol', () => {
+    // The exit gate that matters: root pipe is sequential since S8, and a
+    // facade pointed at that symbol would silently change meaning.
     expect(fusionOptimized.pipe).toBe(enginePipe)
     expect(fusionOptimized.flow).toBe(engineFlow)
   })
 
-  it('is the same implementation as optimized fusion for now', () => {
-    expect(fusionOptimized.pipe).toBe(fusion.pipe)
-    expect(fusionOptimized.flow).toBe(fusion.flow)
-    expect(fusionOptimized.compile).toBe(fusion.compile)
+  it('is a separate implementation from optimized fusion since S9', () => {
+    // Before S9 these were the same function. Compact is now its own runtime,
+    // and conflating them again would hide a rollback to optimized.
+    expect(fusion.pipe).not.toBe(fusionOptimized.pipe)
+    expect(fusion.flow).not.toBe(fusionOptimized.flow)
+  })
+
+  it('agrees with optimized fusion on results', () => {
+    const steps = [A.map(double), A.filter(big)] as const
+    expect(fusion.pipe([1, 2, 3], ...steps)).toEqual(fusionOptimized.pipe([1, 2, 3], ...steps))
   })
 
   it('matches current fused semantics', () => {

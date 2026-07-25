@@ -69,7 +69,12 @@ import {
   OP_UNIQ_INLINE,
   OP_WITHOUT,
 } from './opcodes'
-import { type OpCode, requireOpMeta } from './registry'
+import type { OpCode } from './registry'
+// Cardinality comes from the compact fact table rather than the registry.
+// The registry is 20 KB of names and descriptions for diagnostics, and this
+// module is also compact fusion's executor, where those bytes are the whole
+// budget. Nothing here needs a name.
+import { CARD_SINK, compactCardinality } from './internal/compact/facts.generated'
 import { mergeSortAsc, mergeSortBy, mergeSortDesc } from './sort-kernel'
 import { type BoundPlan, type SegmentShape, type StepBinding } from './plan'
 import { none as optionNone, some as optionSome } from './option'
@@ -77,7 +82,8 @@ import { none as optionNone, some as optionSome } from './option'
 const HALT = Symbol('interpret.halt')
 
 function unsupportedOp(op: OpCode): never {
-  throw new Error(`interpret: unsupported op ${op} (${requireOpMeta(op).name})`)
+  // Numeric only: resolving the name would pull the registry back in.
+  throw new Error(`interpret: unsupported op ${op}`)
 }
 
 function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[]): unknown {
@@ -252,8 +258,7 @@ function runStreamSegment(
   const start = seg.startIndex
   const len = seg.length
   const lastOp = codes[start + len - 1]
-  const lastMeta = requireOpMeta(lastOp)
-  const hasSink = lastMeta.cardinality === 'sink'
+  const hasSink = compactCardinality(lastOp) === CARD_SINK
   const streamLen = hasSink ? len - 1 : len
   const sinkBinding = hasSink ? bindings[start + len - 1] : undefined
 
@@ -436,7 +441,13 @@ function runStreamSegment(
   }
 
   if (!scanHalted) {
-    outer: for (let i = 0; i < source.length; i++) {
+    // Snapshot the length once. The canonical source-mutation contract is
+    // snapshot-then-dense-index-read: a callback that shrinks the array still
+    // sees one call per original index, and one that grows it sees no extra
+    // calls. Re-reading `source.length` each iteration silently gave compact
+    // different behaviour from optimized fusion and the compiler.
+    const sourceLength = source.length
+    outer: for (let i = 0; i < sourceLength; i++) {
       try {
         processFrom(0, source[i])
       } catch (e) {

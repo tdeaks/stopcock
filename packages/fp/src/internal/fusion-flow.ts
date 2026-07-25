@@ -1,6 +1,5 @@
 import { compile } from '../compile'
 import { trustedOperatorEntry } from './provenance'
-import { sequentialFlow } from './sequential'
 
 export function flow<A, B>(f1: (a: A) => B): (a: A) => B
 export function flow<A, B, C>(f1: (a: A) => B, f2: (b: B) => C): (a: A) => C
@@ -255,5 +254,14 @@ export function flow(...fns: Array<(x: unknown) => unknown>): (a: unknown) => un
       return compile(...fns) as (a: unknown) => unknown
     }
   }
-  return sequentialFlow(...(fns as never[])) as (a: unknown) => unknown
+  // Composed locally rather than through the sequential core. Importing it
+  // would put root's own implementation in the optimized tier's closure, which
+  // makes the package topology gate unable to tell the two apart.
+  return (value: unknown) => {
+    let current = value
+    for (let index = 0; index < len; index++) {
+      current = (fns[index] as (input: unknown) => unknown)(current)
+    }
+    return current
+  }
 }

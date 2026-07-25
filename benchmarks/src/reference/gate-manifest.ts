@@ -47,6 +47,11 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'root pipe and flow stay small and drag no optimizer in',
   }),
   Object.freeze({
+    script: 's9-compact-size-gate.ts',
+    kind: 'deterministic',
+    checks: 'compact fusion stays under its hard gate and carries no debug or registry',
+  }),
+  Object.freeze({
     script: 's3b-untagged-size-gate.ts',
     kind: 'deterministic',
     checks: 'non-fusible flows keep the opcode table out of consumer bundles',
