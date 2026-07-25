@@ -30,10 +30,11 @@ const enumerableKeys = (value: object): PropertyKey[] => {
   return result
 }
 
+const isUnsafeKey = (key: PropertyKey): boolean =>
+  key === '__proto__' || key === 'constructor' || key === 'prototype'
+
 const assertSafeKey = (key: PropertyKey): void => {
-  if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-    throw new TypeError(`Unsafe object key: ${String(key)}`)
-  }
+  if (isUnsafeKey(key)) throw new TypeError(`Unsafe object key: ${String(key)}`)
 }
 
 const define = (target: object, key: PropertyKey, value: unknown): void => {
@@ -105,6 +106,69 @@ const arrayIndexOf = (key: PropertyKey): number | undefined => {
     : undefined
 }
 
+/**
+ * Guarded plain-data clone.
+ *
+ * The exact clone copies every own descriptor, which is the only correct thing
+ * to do for accessors, non-enumerables, frozen slots, and exotic prototypes.
+ * When a container is provably ordinary plain data the descriptor is
+ * redundant: assigning an own default data property onto a fresh object with
+ * the same prototype produces exactly what the exact path would define.
+ *
+ * The guard reads through the same `Reflect.ownKeys` plus
+ * `getOwnPropertyDescriptor` sequence as the exact path, so a Proxy source
+ * observes the same traps, and no accessor or modifier can run before the
+ * shortcut has been chosen. Anything it cannot prove ordinary returns
+ * `undefined` and falls back to the exact clone.
+ *
+ * `changedKey` must already be normalized. Arrays are excluded up front rather
+ * than left to the descriptor scan: a null-prototype array would otherwise
+ * reach it, and it should not depend on `length` happening to be
+ * non-enumerable. The unsafe-key and accessor checks are likewise deliberate
+ * belt and braces, since assignment is the one place a `__proto__` setter
+ * could fire.
+ */
+const plainCloneWith = (
+  source: object,
+  changedKey: PropertyKey,
+  replacement: unknown,
+): object | undefined => {
+  const prototype = Object.getPrototypeOf(source)
+  if (prototype !== Object.prototype && prototype !== null) return undefined
+  if (isUnsafeKey(changedKey)) return undefined
+
+  const ownKeys = Reflect.ownKeys(source)
+  const values = new Array<unknown>(ownKeys.length)
+  for (let index = 0; index < ownKeys.length; index += 1) {
+    const key = ownKeys[index]!
+    // An own `__proto__` data property is legal but cannot be reproduced by
+    // assignment, and the other two are rejected by the write contract anyway.
+    if (isUnsafeKey(key)) return undefined
+    const descriptor = Object.getOwnPropertyDescriptor(source, key)
+    if (
+      descriptor === undefined ||
+      !('value' in descriptor) ||
+      descriptor.writable !== true ||
+      descriptor.enumerable !== true ||
+      descriptor.configurable !== true
+    ) {
+      return undefined
+    }
+    values[index] = descriptor.value
+  }
+
+  const output = (prototype === null ? Object.create(null) : {}) as Record<PropertyKey, unknown>
+  // Same write order as the exact clone: every untouched key first, then the
+  // changed key last whether or not it was already there.
+  for (let index = 0; index < ownKeys.length; index += 1) {
+    const key = ownKeys[index]!
+    if (key === changedKey) continue
+    output[key] = values[index]
+  }
+  output[changedKey] = replacement
+  return output
+}
+
 const clonePathContainer = (
   source: object,
   changedKey: PropertyKey,
@@ -115,6 +179,11 @@ const clonePathContainer = (
   const sourceIsArray = Array.isArray(source)
   if (sourceIsArray && keyToChange === 'length') {
     throw new TypeError('Object paths cannot write array length')
+  }
+
+  if (!remove && !sourceIsArray) {
+    const plain = plainCloneWith(source, keyToChange, replacement)
+    if (plain !== undefined) return plain
   }
 
   const output = sourceIsArray ? [] : Object.create(Object.getPrototypeOf(source))
@@ -671,6 +740,101 @@ export const pathOf =
   <T>() =>
   <const P extends ValidPath<T>>(...path: P & LiteralPath<P>): P =>
     path
+
+/** Module-private, so no caller value can ever collide with it. */
+const ABSENT = Symbol('absent path')
+
+const isTraversable = (value: unknown): value is object =>
+  value !== null && (typeof value === 'object' || typeof value === 'function')
+
+const readSegments = (value: unknown, path: PathSegments): unknown => {
+  let current = value
+  for (let depth = 0; depth < path.length; depth += 1) {
+    const key = path[depth]
+    if (!isTraversable(current) || !hasOwn(current, key)) return ABSENT
+    current = (current as Record<PropertyKey, unknown>)[key]
+  }
+  return current
+}
+
+/**
+ * Bounded static depth branches. Beyond three segments the generic loop wins
+ * back nothing worth unrolling, so it stays the fallback.
+ */
+const compileReader = (path: PathSegments): ((value: unknown) => unknown) => {
+  if (path.length === 1) {
+    const k0 = path[0]!
+    return (value) =>
+      isTraversable(value) && hasOwn(value, k0)
+        ? (value as Record<PropertyKey, unknown>)[k0]
+        : ABSENT
+  }
+  if (path.length === 2) {
+    const k0 = path[0]!
+    const k1 = path[1]!
+    return (value) => {
+      if (!isTraversable(value) || !hasOwn(value, k0)) return ABSENT
+      const inner = (value as Record<PropertyKey, unknown>)[k0]
+      return isTraversable(inner) && hasOwn(inner, k1)
+        ? (inner as Record<PropertyKey, unknown>)[k1]
+        : ABSENT
+    }
+  }
+  if (path.length === 3) {
+    const k0 = path[0]!
+    const k1 = path[1]!
+    const k2 = path[2]!
+    return (value) => {
+      if (!isTraversable(value) || !hasOwn(value, k0)) return ABSENT
+      const inner = (value as Record<PropertyKey, unknown>)[k0]
+      if (!isTraversable(inner) || !hasOwn(inner, k1)) return ABSENT
+      const leaf = (inner as Record<PropertyKey, unknown>)[k1]
+      return isTraversable(leaf) && hasOwn(leaf, k2)
+        ? (leaf as Record<PropertyKey, unknown>)[k2]
+        : ABSENT
+    }
+  }
+  return (value) => readSegments(value, path)
+}
+
+export interface CompiledPath<T, P extends PathSegments> {
+  /** The frozen copy the reader was compiled from. */
+  readonly path: P
+  readonly get: (value: T) => Option<PathValue<T, P>>
+  readonly getOrUndefined: (value: T) => PathValue<T, P> | undefined
+  readonly has: (value: T) => boolean
+}
+
+/**
+ * Compiles a path once so repeated reads stop re-walking it.
+ *
+ * The segments are copied and frozen at compile time, so a later mutation of
+ * the caller's array cannot change what the reader does. Results match
+ * `getPath`, `getPathOrUndefined`, and `hasPath` exactly, including a present
+ * `undefined` leaf, which stays `Some(undefined)`.
+ *
+ * There is no compiled write. A path write is dominated by structurally
+ * cloning each container, not by walking the path, so compiling one buys
+ * nothing measurable.
+ */
+export const compilePathOf =
+  <T>() =>
+  <const P extends ValidPath<T>>(...path: P & LiteralPath<P>): CompiledPath<T, P> => {
+    const segments = Object.freeze([...path]) as unknown as PathSegments
+    const read = compileReader(segments)
+    return Object.freeze({
+      path: segments as unknown as P,
+      get: (value: T): Option<PathValue<T, P>> => {
+        const found = read(value)
+        return found === ABSENT ? none : some(found as PathValue<T, P>)
+      },
+      getOrUndefined: (value: T): PathValue<T, P> | undefined => {
+        const found = read(value)
+        return found === ABSENT ? undefined : (found as PathValue<T, P>)
+      },
+      has: (value: T): boolean => read(value) !== ABSENT,
+    })
+  }
 
 export const evolve: {
   <T extends object>(
