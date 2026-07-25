@@ -32,6 +32,9 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
     // Rewrite policy that compile.ts used to hold inline. Part of the executed
     // runtime, so the frozen subject has to cover it.
     'packages/fp/src/internal/plan-analysis.ts',
+    // Selection tracing sits on the dispatch path, so it is part of the
+    // subject even though it records nothing unless a trace is open.
+    'packages/fp/src/internal/selection-trace.ts',
     'packages/fp/src/lower.ts',
     'packages/fp/src/number.ts',
     'packages/fp/src/opcodes.ts',
@@ -42,7 +45,7 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
     'packages/fp/src/shape-entry.ts',
     'packages/fp/src/sort-kernel.ts',
   ] as const),
-  sha256: 'c349c2c8436127ab7e0851e458a43cf7314d9dc89f26d465d4baba94079640c5',
+  sha256: '1b6cca3891ea08a40628a0a3c799113e56a5a5f93de6af04e96fdacdc307d4a7',
 })
 
 export interface PortableBatchPolicy {
