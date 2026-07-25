@@ -15,7 +15,7 @@ Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S7
 Current slice: PRE_CUTOVER_GATES
-Last verified commit: 0bf8e17
+Last verified commit: 52b30ba
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -274,8 +274,52 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Ran the competitor comparison suite for the first time this
       programme, on a qualified quiet machine, and found `flow` composing 15x
       slower than lodash. Fixed at `0bf8e17`.
+- [x] (2026-07-25) Closed the two verification holes at `c8af09a` and
+      `52b30ba`: every gate now runs from one command with a manifest that
+      fails when a gate is added and not listed, and a competitor cliff gate
+      looks outward for the first time.
+- [x] (2026-07-25) The first full gate run found two gates red since before the
+      programme began, and one more untagged-path regression in `pipe`.
 
 ## Evidence log
+
+- Verification hardening:
+  - `gate-manifest.ts` lists every runnable gate with what it checks and
+    whether it needs a quiet machine; `gate-manifest.test.ts` fails when a
+    runnable `*-gate.ts` is not listed, so a gate cannot be added and then
+    never run; `perf:gates` executes the list and `--deterministic` skips the
+    timing ones for a busy machine;
+  - the first full run was 15/21 on Bun. Of the six failures, three were RME
+    limits on a machine that was not quiet (the profile gate correctly refused
+    to qualify it at the same moment), and two were gates that had been red
+    since **before this programme started**:
+    - `data-functional-perf-gate` pinned a subject digest that never matched
+      its files. Those files are byte-identical at the programme base and
+      today, so the pin was simply never updated when they last changed at
+      `5db6fca`;
+    - `scalar-text-hash-perf-gate` was stale at the base too, and this
+      programme's changes to `string.ts` moved it further;
+  - both were repinned to their actual bytes. Underneath, both pass: geomean
+    2.355 and 2.017 against floors of 0.90. Nothing was failing on merit;
+  - `competitor-floor-gate.ts` compares against lodash, ramda, and ts-belt with
+    a deliberately loose 0.5x cliff floor. It does not rank and does not chase
+    wins; it exists because every internal gate stayed green through a 15x
+    `flow` regression. A missing row always fails, including reported-only
+    rows;
+  - `pipe/two-functions` is measured but not enforced: vitest bench reports
+    0.93x, a plain varying-input loop 1.28x, and the paired sampler 0.39x.
+    Removing work from the untagged path moved the loop number and left the
+    paired one unchanged, so the paired regime is measuring something other
+    than the work done. The reason is recorded on the row rather than a floor
+    being set to whichever number was convenient;
+  - `pipe` itself checked its hot-entry cache and did two provenance lookups
+    before reaching the untagged fast path. Since generated code always writes
+    the public `_op` when it registers an operator, a function without `_op`
+    cannot be trusted and the check is skippable on a property read:
+    `pipe(x, inc, dbl)` went from 7.21 ns to 2.20 ns in isolation. The one
+    behaviour change is that deleting `_op` from a trusted operator makes a
+    multi-argument `pipe` run it generically rather than fused, which changes
+    speed and not results; `buildPlan` still binds from provenance alone.
 
 - Competitor comparison, measured on the integrated tree with the profile gate
   passing (`spread 0.0501`, `bias 0.0`). 80 benchmark groups across the
