@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: BLOCKED
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S3A
-Current slice: REPAIR_INITIALIZER_PURITY
-Last verified commit: cad86c15ae64b90a86675bbca96f6bea362d25ff
+Current canonical stage: S1B
+Current slice: PROVISION_AND_QUALIFY_DEDICATED_RUNNERS
+Last verified commit: 6ced74a4574123a36284d2baaca9cf7f4f449436
 Last controller run: 2026-07-24
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -55,10 +55,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready        |
 | S0B   | GATE_PASSED | Aligned 20-package public plus private Synth `2.0.0-next.0` cohort at `551852a06c1c22a2241fb9e3c75815524fdbc9fb`; no-write alignment replay, immutable 20-tarball development artifact `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`, exact packed checks, 117-export Bun/Node/type consumer, private Synth compatibility, and independent exit validation passed |
 | S1A   | GATE_PASSED | Cross-bundler packed consumer, behavior, size, identity, topology, and lower-bound package evidence checkpoint `81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`; independent consumer and topology audits passed                                                                                                                                                                                    |
-| S1B   | NOT_STARTED | Dedicated performance-profile qualification                                                                                                                                                                                                                                                                                                                                                   |
+| S1B   | BLOCKED     | Entry gate failed: the repository has zero self-hosted runners, no accountable infrastructure owner or provisioning runbook is recorded, and the checked-in profile remains explicitly interim                                                                                                                                                                                                |
 | S1C   | NOT_STARTED | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                                 |
-| S2    | GATE_PASSED | Acyclic canonical semantic/lowering/evidence/receipt generation checkpoint `cad86c15ae64b90a86675bbca96f6bea362d25ff`; complete clean gates and independent `v2_verifier` audit passed                                                                                                                                                                                                       |
-| S3A   | IN_PROGRESS | Initializer purity                                                                                                                                                                                                                                                                                                                                                                            |
+| S2    | GATE_PASSED | Acyclic canonical semantic/lowering/evidence/receipt generation checkpoint `cad86c15ae64b90a86675bbca96f6bea362d25ff`; complete clean gates and independent `v2_verifier` audit passed                                                                                                                                                                                                        |
+| S3A   | GATE_PASSED | Package-wide fail-closed initializer-purity checkpoint `6ced74a4574123a36284d2baaca9cf7f4f449436`; exact packed/local four-bundler size and behavior evidence, two-run reproducibility, full clean release gates, and independent audit passed                                                                                                                                                |
 | S3B   | NOT_STARTED | Untagged internal duals                                                                                                                                                                                                                                                                                                                                                                       |
 | S4    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | S5A   | NOT_STARTED | Trusted provenance                                                                                                                                                                                                                                                                                                                                                                            |
@@ -194,6 +194,19 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       `cad86c15ae64b90a86675bbca96f6bea362d25ff`; the clean release,
       reproducibility, consumer/package-size, type-contract, and mandatory
       independent exit gates all passed.
+- [x] (2026-07-25) Completed S3A at
+      `6ced74a4574123a36284d2baaca9cf7f4f449436` with one central
+      package-wide purity authority, deterministic generated annotations,
+      proven manual annotations, built-output enforcement, and exact
+      packed/local consumer evidence.
+- [x] (2026-07-25) Closed the S3A verifier's reproducibility blocker by
+      retaining raw closure hashes as validated diagnostics while binding
+      stable evidence to exact minified executable closures, then proving the
+      same evidence hash across two fresh sequential builds and packs.
+- [x] (2026-07-25) Evaluated the S1B entry gate and stopped before
+      implementation: GitHub reports zero self-hosted repository runners,
+      hosted CI remains canary-only, and no accountable owner or provisioning
+      runbook exists for the required dedicated profiles.
 
 ## Evidence log
 
@@ -808,6 +821,64 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
     commit `cad86c15ae64b90a86675bbca96f6bea362d25ff`, confirmed both original
     blockers closed, accepted the unchanged-byte two-run consumer evidence,
     and found no new blocker.
+- S3A initializer-purity evidence:
+  - the exact independently verified checkpoint is
+    `6ced74a4574123a36284d2baaca9cf7f4f449436`;
+  - one fail-closed package-wide inventory classifies every production-source
+    pure marker and rejects unknown, duplicated, missing, or shape-drifted
+    annotations. Built output contains 16 generated markers, 98 proven manual
+    `dual` markers, and one immutable `option.none` initializer marker;
+  - generated `array.ts`, `boolean.ts`, and `math.ts` remain deterministic at
+    canonical manifest SHA-256
+    `3e5965cc012340e21667b4a1c07109a1637394e472f463e953198019f2dbcde5`;
+    complete codegen/build reproducibility passed at aggregate SHA-256
+    `1c3798c96b5d28a07f69099a1decb35ab724c2db40fe18ce856007d11d735e57`;
+  - the clean FP release gate passed 41 files and 2,388 tests, every strict
+    source/codegen/script/type layer, package construction, NodeNext and
+    runtime consumers, and the built purity contract. The S3A contract passed
+    6 tests and its focused TypeScript project;
+  - the separate S3A fixture manifest is pinned at
+    `sha256:c29186d691905282902684edb5e2b09d8e387a76b4bf1a66c8b748f220045687`.
+    It reuses frozen `array.map.direct` and adds a specialist Option-only
+    fixture without changing the frozen S1A root-pipe denominator;
+  - the 16-row fresh local-dist/packed matrix passed exact behavior in esbuild,
+    Rollup, Rolldown, and Webpack. Direct `map` measured
+    `277/222/222/247` gzip bytes and specialist Option measured
+    `834/827/826/835`; local and packed rows are identical, remain below
+    `512/922`, and have zero origin delta;
+  - package projection SHA-256
+    `4f4d0e32bccdebb9433af1c079b52461f43c750575de24e5429ef3b111df8b04`,
+    dist-tree SHA-256
+    `ca6f9f99fb75404f122e07f49aa3f219a0da2490e3a2810c80ea8e80236387eb`,
+    and packed-tarball SHA-256
+    `c1a8be1cf1483d0de0a8c591088caf156d2ca01a509389c63f06cd75f2ac35bf`
+    match across the package and consumer gates;
+  - raw bundle closure hashes remain present and format-validated as diagnostic
+    evidence. Stable evidence excludes only those hashes because Webpack and
+    Rolldown embed randomized absolute scratch paths in unminified output; it
+    still binds all identities, behavior, measurements, topology, artifact
+    counts, and exact minified executable closure hashes;
+  - two fresh sequential build/pack/measure runs reproduced S3A evidence
+    SHA-256
+    `9b7157becbf282a8465e73b6be16dd178155488e8b59a730a3a98e98052be5ee`.
+    The independent verifier reran that gate at the exact clean commit and
+    returned `PASS`;
+  - frozen S1A consumer/tamper tests passed 36 tests, package-size/tamper tests
+    passed 9 tests, and all 9 package type-contract suites passed. The current
+    source tarball is 126,194/150,000 bytes, legacy shared runtime is
+    16,287/18,000 gzip bytes, and the lower-bound projection is
+    60,760/<100,000 bytes.
+- S1B entry-gate evidence:
+  - `gh api repos/tdeaks/stopcock/actions/runners` returned
+    `{"runners":[],"total_count":0}`;
+  - `.github/workflows/ci.yml` runs performance jobs only on
+    `ubuntu-latest` and `macos-14`, and `benchmarks/PERF_PROFILE.md` states
+    that the required `perf-linux-x64` and `perf-macos-arm64` runners do not
+    yet exist and that its results are not release evidence;
+  - repository search found no accountable infrastructure owner, provisioned
+    runner identity, power/thermal profile, provisioning runbook, profile
+    validator, or repeated noise qualification. S1B therefore failed its entry
+    gate before any implementation or external mutation.
 
 ## Surprises and discoveries
 
@@ -950,6 +1021,25 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   implementation tests: bare semantic IDs and mutable exported catalogue
   arrays after module-initialization validation. The exit remediation now
   freezes the complete catalogue and exercises the actual pre-emission gate.
+- The first S3A audit found that a module-local marker test was still
+  fail-open for annotations added outside its known files. The final contract
+  recursively inventories every production source marker and rejects unknown,
+  duplicated, missing, or structurally drifted annotations.
+- `option.none` is safe to annotate only in its exact immutable
+  `Object.freeze({ _tag: 0 })` form. The package-wide source and built
+  contracts pin that shape and its singleton behavior instead of relying on a
+  broad pure-function assumption.
+- Generated tagged `sum`, `min`, and `max` initializers mutate imported aliases,
+  while tagged String factories read the mutable public opcode table. Both
+  groups remain deliberately denied even though nearby factories are safe.
+- Raw Webpack and Rolldown output can contain randomized absolute scratch paths
+  in non-executable comments. Raw closure hashes are useful diagnostics but
+  cannot be stable report identity; exact minified executable closures remain
+  stable and byte-identical across fresh local and packed runs.
+- S1B is not merely missing checked-in configuration. The live GitHub
+  repository has no self-hosted runner registered, and no repository artifact
+  identifies an accountable owner who can provision and qualify either
+  required profile.
 
 ## Decision log
 
@@ -1224,21 +1314,60 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
   exported array or definition record can be mutated before emission.
   Date: 2026-07-24.
 
+- Decision: Centralize S3A source and built-output annotation authority in one
+  package-wide allowlist/denylist, including the exact immutable
+  `option.none` initializer.
+  Rationale: File-local positive tests cannot detect a new unsound marker
+  elsewhere, while the exact frozen singleton form is a safe initializer and
+  preserves canonical Option identity.
+  Date: 2026-07-25.
+
+- Decision: Use a separate specialist Option fixture for S3A while leaving the
+  frozen S1A root-pipe `option.flow` denominator unchanged.
+  Rationale: S3A owns initializer purity, not root topology. The canonical size
+  plan's Option construction/map/fallback target is independently measurable
+  without smuggling later root work into this stage.
+  Date: 2026-07-25.
+
+- Decision: Retain raw bundle closure hashes as validated diagnostics but
+  exclude them from S3A's stable evidence projection.
+  Rationale: Absolute randomized scratch paths in raw bundler comments change
+  those hashes without changing code. Stable evidence still binds exact
+  minified executable closures, behavior, measurements, topology, tools,
+  source commit, and package identities, and a sequential two-run gate proves
+  reproducibility.
+  Date: 2026-07-25.
+
+- Decision: Stop at the S1B entry gate without creating placeholder runner
+  labels, inventing an infrastructure owner, or treating this local Mac or
+  GitHub-hosted workers as qualified release evidence.
+  Rationale: The canonical stage requires real named capacity with an
+  accountable owner before implementation. Provisioning or registering
+  external runners is not covered by the ledger's current external mutation
+  authority, and fabricated configuration would not satisfy the gate.
+  Date: 2026-07-25.
+
 ## Current blockers
 
-No blocker for S3A's S1A-dependent initializer-purity work. S1B dedicated
-runner ownership and qualification remain unverified and will block S1C, S3B,
-and later timing/memory promotion lanes until completed.
+S1B is blocked before implementation. The live GitHub repository reports zero
+self-hosted runners; hosted CI is explicitly canary-only; and no accountable
+infrastructure owner, provisioning runbook, dedicated machine identity, or
+qualified Linux x64/macOS arm64 profile is recorded. External mutation
+authorization remains `NONE`, so the programme cannot provision or register
+those machines autonomously.
+
+This blocks S1C, S3B, and every later timing- or memory-dependent promotion
+lane. It does not invalidate the independently complete S1A, S2, or S3A
+checkpoints.
 
 ## Exact next action
 
-Implement S3A's central pure-annotation emitter with an explicit generated and
-manual initializer allowlist/denylist. Preserve tagged factories that mutate
-external aliases, tagged String factories, and Option's canonical `none`
-singleton outside the allowlist. Add built-dist marker/inlining checks and a
-fresh packed-versus-local consumer gate proving exact minified behavior,
-direct `map` at most 512 gzip bytes, Option flow at most 922 gzip bytes, and a
-per-row size delta no greater than 2%.
+Name an accountable infrastructure owner and explicitly authorize the
+provisioning/registration action for real dedicated `perf-linux-x64` and
+`perf-macos-arm64` capacity. Once both machines exist, resume S1B by recording
+their exact CPU, OS, runtime, power, and thermal profiles; add fail-closed
+profile validation; and run repeated no-change noise qualification. Do not
+start S1C or S3B from hosted or unqualified results.
 
 ## Outcomes and retrospective
 
@@ -1353,3 +1482,20 @@ and the mandatory independent verifier passed after its original fail-open
 findings were closed. No public behavior, root fusion path, package topology,
 version, lockfile, or external release state changed. S3A is now admissible;
 S1B/S1C still gate S3B and later timing-dependent work.
+
+S3A is complete at
+`6ced74a4574123a36284d2baaca9cf7f4f449436`. Safe generated and manual
+initializers now have one package-wide fail-closed purity authority, the built
+package proves those markers survive or inline as intended, and exact fresh
+packed/local consumer artifacts satisfy the direct-map and specialist-Option
+budgets in all four bundlers without behavior or public-runtime changes. A
+reproducibility defect in raw diagnostic hashes was corrected without hiding
+or normalizing those diagnostics; two fresh sequential runs and the
+independent audit reproduced the same stable executable evidence.
+
+S1B is the next canonical stage but failed its entry gate before source or
+workflow edits. Neither required dedicated runner exists in the live GitHub
+repository, no accountable provisioning owner is recorded, and the only
+checked-in profile is explicitly interim. The programme is durably blocked at
+that boundary until real capacity and authority are supplied; no external
+runner, GitHub release, registry, package, or publication state was changed.
