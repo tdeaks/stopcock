@@ -25,6 +25,22 @@ const _entry = trustedOperatorEntry
 const _opOf = (fn: unknown): number => trustedOperatorEntry(fn)?.op ?? 0
 const _hasOp = (fn: unknown): boolean => _opOf(fn) > 0
 
+/**
+ * Cheap negative filter for the untagged fast path.
+ *
+ * Generated code always writes the public `_op` alongside registering the
+ * operator, so a trusted operator always has one. A function without `_op`
+ * therefore cannot be trusted, and a plain composition can skip the hot-entry
+ * check and two WeakMap lookups that used to run before it.
+ *
+ * This is a fusion decision, not an authority decision: a forged `_op` still
+ * has to pass the private table before anything fuses, and deleting `_op` from
+ * a trusted operator makes it run generically rather than fused, which changes
+ * speed and not results.
+ */
+const _mayBeTagged = (fn: unknown): boolean =>
+  (fn as { _op?: unknown } | undefined)?._op !== undefined
+
 // Two shapes share this slot type: a plain Runner (untagged/opaque fallback,
 // from compile()) or a (ShapeEntry, bindings) pair (tagged fast path). The
 // latter avoids allocating a wrapper closure per store -- on churny call
@@ -652,6 +668,7 @@ export function pipe(a?: unknown, f1?: any, f2?: any, f3?: any, f4?: any, f5?: a
   if (argc === 2) return f1(a)
 
   if (argc === 3) {
+    if (!_mayBeTagged(f1) && !_mayBeTagged(f2)) return f2(f1(a))
     const cached = hotEntry
     const cachedFns = cached?.fns
     if (cached && cachedFns?.length === 2 && cachedFns[0] === f1 && cachedFns[1] === f2) {
@@ -665,6 +682,7 @@ export function pipe(a?: unknown, f1?: any, f2?: any, f3?: any, f4?: any, f5?: a
     return runTagged2(a, f1, f2)
   }
   if (argc === 4) {
+    if (!_mayBeTagged(f1) && !_mayBeTagged(f2) && !_mayBeTagged(f3)) return f3(f2(f1(a)))
     const cached = hotEntry
     const cachedFns = cached?.fns
     if (
@@ -684,6 +702,9 @@ export function pipe(a?: unknown, f1?: any, f2?: any, f3?: any, f4?: any, f5?: a
     return runTagged3(a, f1, f2, f3)
   }
   if (argc === 5) {
+    if (!_mayBeTagged(f1) && !_mayBeTagged(f2) && !_mayBeTagged(f3) && !_mayBeTagged(f4)) {
+      return f4(f3(f2(f1(a))))
+    }
     const cached = hotEntry
     const cachedFns = cached?.fns
     if (
@@ -704,6 +725,15 @@ export function pipe(a?: unknown, f1?: any, f2?: any, f3?: any, f4?: any, f5?: a
     return runTagged4(a, f1, f2, f3, f4)
   }
   if (argc === 6) {
+    if (
+      !_mayBeTagged(f1) &&
+      !_mayBeTagged(f2) &&
+      !_mayBeTagged(f3) &&
+      !_mayBeTagged(f4) &&
+      !_mayBeTagged(f5)
+    ) {
+      return f5(f4(f3(f2(f1(a)))))
+    }
     const cached = hotEntry
     const cachedFns = cached?.fns
     if (
