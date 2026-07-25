@@ -9,14 +9,14 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: BLOCKED
+Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S1B
-Current slice: PROVISION_AND_QUALIFY_DEDICATED_RUNNERS
-Last verified commit: 6ced74a4574123a36284d2baaca9cf7f4f449436
-Last controller run: 2026-07-24
+Current canonical stage: S1C
+Current slice: FROZEN_BASELINES
+Last verified commit: 0c207b9
+Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
 workflow has been installed. It changes only after the user explicitly asks to
@@ -55,7 +55,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready        |
 | S0B   | GATE_PASSED | Aligned 20-package public plus private Synth `2.0.0-next.0` cohort at `551852a06c1c22a2241fb9e3c75815524fdbc9fb`; no-write alignment replay, immutable 20-tarball development artifact `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`, exact packed checks, 117-export Bun/Node/type consumer, private Synth compatibility, and independent exit validation passed |
 | S1A   | GATE_PASSED | Cross-bundler packed consumer, behavior, size, identity, topology, and lower-bound package evidence checkpoint `81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`; independent consumer and topology audits passed                                                                                                                                                                                    |
-| S1B   | BLOCKED     | Entry gate failed: the repository has zero self-hosted runners, no accountable infrastructure owner or provisioning runbook is recorded, and the checked-in profile remains explicitly interim                                                                                                                                                                                                |
+| S1B   | GATE_PASSED | Local scope only at `0c207b9`; checked-in profile registry, fail-closed host resolution, and repeated no-change qualification. The user descoped self-hosted runner provisioning, so `perf-linux-x64` stays recorded as unprovisioned and hosted CI matches no profile                                                                                                                        |
 | S1C   | NOT_STARTED | Frozen runtime, startup, and memory baselines                                                                                                                                                                                                                                                                                                                                                 |
 | S2    | GATE_PASSED | Acyclic canonical semantic/lowering/evidence/receipt generation checkpoint `cad86c15ae64b90a86675bbca96f6bea362d25ff`; complete clean gates and independent `v2_verifier` audit passed                                                                                                                                                                                                        |
 | S3A   | GATE_PASSED | Package-wide fail-closed initializer-purity checkpoint `6ced74a4574123a36284d2baaca9cf7f4f449436`; exact packed/local four-bundler size and behavior evidence, two-run reproducibility, full clean release gates, and independent audit passed                                                                                                                                                |
@@ -207,8 +207,41 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       implementation: GitHub reports zero self-hosted repository runners,
       hosted CI remains canary-only, and no accountable owner or provisioning
       runbook exists for the required dedicated profiles.
+- [x] (2026-07-25) The user descoped self-hosted runner provisioning and
+      authorized the local implementation only, so S1B resumed against the one
+      real machine: a checked-in profile registry, fail-closed host resolution,
+      and repeated no-change noise qualification at `0c207b9`.
 
 ## Evidence log
+
+- S1B local evidence:
+  - `benchmarks/src/reference/perf-profile-contract.ts` records
+    `local-macos-arm64` (Apple M4 Pro, 14 logical cores, Darwin 25.x, Bun
+    1.3.14 release lane, Node 24.18.0 canary) and `perf-linux-x64` as
+    explicitly unprovisioned;
+  - `resolveProfile` fails closed on unknown profile id, foreign platform or
+    architecture, wrong CPU brand, wrong core count, drifted OS release major,
+    an unqualified runtime, and an unlisted runtime version; a hosted or
+    otherwise unrecorded host matches nothing;
+  - `releaseEvidenceEligible` is false for the Node canary even when the host
+    qualifies, so no canary number can become a baseline or release claim;
+  - qualification runs five in-process paired sessions of an identical
+    no-change subject against itself after a discarded tier-up/ramp prelude,
+    and reports within-session spread, session-median spread, and pooled
+    no-change bias as relative interdecile ranges;
+  - measured limits recorded in `benchmarks/PERF_PROFILE.md` are `0.12`
+    within-session spread, `0.15` session-median spread, and `0.10` no-change
+    bias; a busier machine fails the gate rather than widening them;
+  - `bun run perf:profile:bun` and `bun run perf:profile:node` both pass on the
+    live host; session medians on a quiet machine land within ~0.5% of 1.0;
+  - the focused suite passed 18 tests:
+
+    ```sh
+    bun run ../node_modules/vitest/vitest.mjs run \
+      src/reference/perf-profile-gate.test.ts
+    ```
+
+  - `vp fmt` and `git diff --check` passed.
 
 - Start-gate evidence:
   - live branch `codex/stopcock-v2`;
