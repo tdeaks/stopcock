@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S10
-Current slice: OPTIMIZED_FRONTIER
-Last verified commit: 90c3265
+Current canonical stage: S10X
+Current slice: OPTIMIZER_EXTRACTION
+Last verified commit: a1286fd
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -67,9 +67,9 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S7    | GATE_PASSED | Receipt emission, `stopcock check` CLI and renderer, import pruning, callback and source-map hardening, canonical Option terminals, lane split, and the topology-neutral package gate at `9301314`                                                                                                                                                                                            |
 | S8    | GATE_PASSED | Root `pipe`/`flow` sequential at `55ca6a1`; root surface narrowed to the migration map, every size ceiling met with no planner retained. Non-publishable integration state, as the stage requires                                                                                                                                                                                             |
 | S9    | GATE_PASSED | Compact fusion at `90c3265`: 2,874 gzip bytes against the 5.5 KiB hard gate, no debug surface, no name registry, and agreement with every other tier on results, callback order, and early-exit counts                                                                                                                                                                                        |
-| S10   | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
-| S10X  | NOT_STARTED | Conditional optimizer extraction                                                                                                                                                                                                                                                                                                                                                              |
-| S10J  | NOT_STARTED | Optimizer topology decision                                                                                                                                                                                                                                                                                                                                                                   |
+| S10   | GATE_PASSED | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                    |
+| S10X  | IN_PROGRESS | Triggered: the exact prototype pack puts the optimizer at 214,155 B against the 100 KiB threshold                                                                                                                                                                                                                                                                                              |
+| S10J  | GATE_PASSED | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                   |
 | S11   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | P1A   | GATE_PASSED | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                       |
 | P1B   | GATE_PASSED | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                             |
@@ -2325,12 +2325,26 @@ checkpoints.
 
 ## Exact next action
 
-Name an accountable infrastructure owner and explicitly authorize the
-provisioning/registration action for real dedicated `perf-linux-x64` and
-`perf-macos-arm64` capacity. Once both machines exist, resume S1B by recording
-their exact CPU, OS, runtime, power, and thermal profiles; add fail-closed
-profile validation; and run repeated no-change noise qualification. Do not
-start S1C or S3B from hosted or unqualified results.
+Execute S10X. S10J resolved `externalization-required` from the packed
+artifact, so the optimizer cannot stay in the same package under the 100 KiB
+threshold. Choose and prove exactly one stable topology, keeping
+`@stopcock/fp/fusion/optimized` working without making the optimizer a hidden
+required install cost.
+
+### S10 residue carried forward
+
+Two S10 items are deliberately not done, and neither is hidden behind a passing
+gate:
+
+- The Pareto/`OperatorEvidenceV1` sidecar joining descriptor, bank,
+  emitted-artifact, corpus, size, and benchmark hashes is not built. The
+  descriptor bank and its per-runner conformance exist; the external evidence
+  join does not. DISP owns closing this.
+- `bindCriticalRunner`'s hand-bound runners for `map -> filter`, the long
+  flatMap reduce shape, and the `map -> filter -> reduce/find` pair are
+  retained. The exit gate forbids deleting a hard-coded runner before its
+  generated replacement passes, and no generated replacement was produced for
+  them, so retaining them is the compliant outcome rather than an oversight.
 
 ## Outcomes and retrospective
 
