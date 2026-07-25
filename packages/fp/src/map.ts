@@ -112,6 +112,41 @@ export function getOrUndefined<K, V>(
   return (sourceOrKey as ReadonlyMap<K, V>).get(key as K)
 }
 
+const getOrElseImpl = <K, V, B>(source: ReadonlyMap<K, V>, key: K, fallback: () => B): V | B => {
+  const value = source.get(key)
+  if (value !== undefined) return value
+  // A stored `undefined` is a present value, so the fallback must not run for
+  // it. `has` is the only way to tell it from an absent key, and it is worth
+  // paying for only once `get` has already come back empty.
+  return source.has(key) ? (value as V) : fallback()
+}
+
+/**
+ * Reads a key, or produces a fallback for an absent one.
+ *
+ * The fallback is lazy and runs at most once, and only when the key really is
+ * absent. A key whose stored value is `undefined` is present, so it returns
+ * `undefined` rather than the fallback.
+ */
+export function getOrElse<K, V, B>(source: ReadonlyMap<K, V>, key: K, fallback: () => B): V | B
+export function getOrElse<K, B>(
+  key: K,
+  fallback: () => B,
+): <SourceKey, V>(source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>) => V | B
+export function getOrElse<K, V, B>(
+  sourceOrKey: ReadonlyMap<K, V> | K,
+  keyOrFallback: K | (() => B),
+  fallback?: () => B,
+): V | B | (<SourceKey, A>(source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>) => A | B) {
+  if (arguments.length === 2) {
+    const search = sourceOrKey as K
+    const produce = keyOrFallback as () => B
+    return <SourceKey, A>(source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>): A | B =>
+      getOrElseImpl(source, search as unknown as SourceKey, produce)
+  }
+  return getOrElseImpl(sourceOrKey as ReadonlyMap<K, V>, keyOrFallback as K, fallback as () => B)
+}
+
 const setImpl = <K, L, A, B>(
   source: ReadonlyMap<K, A>,
   key: L,

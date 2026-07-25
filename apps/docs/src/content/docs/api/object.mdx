@@ -95,3 +95,28 @@ The literal keys `__proto__`, `constructor`, and `prototype` are rejected by the
 write APIs. A broad `string` key for an index signature cannot be ruled out
 statically, so it is checked at runtime and throws `TypeError` if its actual
 value is unsafe.
+
+## Compiled paths
+
+If you read the same path over and over, compile it once:
+
+```ts
+const city = Obj.compilePathOf<User>()('profile', 'address', 'city')
+
+city.get(user) // Option<string>
+city.getOrUndefined(user) // string | undefined
+city.has(user)
+```
+
+The segments are copied and frozen when you compile, so mutating the array you
+passed in cannot change what the reader does. Results are identical to
+`getPath`, `getPathOrUndefined`, and `hasPath`, including a present `undefined`
+leaf staying `Some(undefined)`.
+
+There is deliberately no compiled write. A path write is dominated by
+structurally cloning each container it passes through, not by walking the path,
+so `setPath` and `modifyPath` already do the fast thing on their own: when every
+container on the branch is ordinary plain data, they skip the descriptor-by-
+descriptor clone. Anything with an accessor, a non-enumerable or frozen slot, an
+exotic prototype, or an own `__proto__` property falls back to the exact clone,
+so the output is the same either way.
