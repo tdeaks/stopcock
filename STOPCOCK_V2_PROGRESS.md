@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S11
+Current canonical stage: S11 (blocked), P3B (blocked)
 Current slice: COMPILER_RESIDUAL
-Last verified commit: e75c9be
+Last verified commit: e51c7a0
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -2322,6 +2322,21 @@ those machines autonomously.
 This blocks S1C, S3B, and every later timing- or memory-dependent promotion
 lane. It does not invalidate the independently complete S1A, S2, or S3A
 checkpoints.
+
+## Regression found while closing out: an unenforced gate
+
+`iter-array-kernel-gate.test.ts` had git conflict markers committed into it at
+`83264e5`. A stale stash from a much older commit re-entered the tree during
+the checkout cycles used to bisect the compiler row, and a `git add -A` swept
+the unresolved markers in. The file did not parse from that commit until
+`e51c7a0`, so the Iter subpath ceiling was not enforced across that range.
+
+Resolved to the side that reads `ITER_SUBPATH_SIZE_CONTRACT.exception
+.distinctKernels`, the field that exists since the P1A exception landed. The
+stashed side referenced `distinctKernelCount`, which predates it.
+
+The stash is still in the stash list, untouched. Do not pop it: it is an
+obsolete variant of this same file.
 
 ## The eight remaining local stages
 
