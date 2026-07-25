@@ -76,7 +76,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | P2    | NOT_STARTED | Typed-array policy                                                                                                                                                                                                                                                                                                                                                                            |
 | P3A   | GATE_PASSED | Allocation and memory evidence infrastructure merged at `9bde654`; seven families calibrated on the release lane, three uncalibrated on the canary and reported rather than tuned                                                                                                                                                                                                             |
 | P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                                |
-| P4    | NOT_STARTED | Object, Record, and Map candidates                                                                                                                                                                                                                                                                                                                                                            |
+| P4    | GATE_PASSED | Compiled object read paths, guarded plain-data write tier, and lazy `Map.getOrElse` merged at `908f5f6`; the Record narrow-path candidate stopped on measurement and one row deferred to S4                                                                                                                                                                                                   |
 | DISP  | NOT_STARTED | Optional-candidate dispositions                                                                                                                                                                                                                                                                                                                                                               |
 | S12P  | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | S12   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -252,8 +252,66 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Landed S7's consuming half in an isolated lane and merged
       it: a deterministic receipt renderer, an evidence policy engine, and
       `stopcock check` packed as a real bin.
+- [x] (2026-07-25) Completed P4 in an isolated lane and merged it: three
+      candidates shipped on measured evidence, one stopped, and one row
+      deferred to S4 without moving its bar.
 
 ## Evidence log
+
+- P4 evidence (reproduced on the merged tree; ratios are candidate over
+  reference, so lower is faster):
+  - `Obj.compilePathOf<T>()(...segments)` returns a frozen reader triple with
+    segments copied and frozen once, depths 1–3 unrolled, and depth 4+ falling
+    back to the generic loop:
+
+    | row                        | candidate | reference | ratio                      |
+    | -------------------------- | --------- | --------- | -------------------------- |
+    | compiled read depth 1      | 10.4 ns   | 51.4 ns   | 0.206x                     |
+    | compiled read depth 2      | 14.5 ns   | 69.4 ns   | 0.202x                     |
+    | compiled read depth 3      | 13.5 ns   | 89.7 ns   | 0.147x                     |
+    | compiled `hasPath` depth 3 | 11.1 ns   | 95.1 ns   | 0.116x                     |
+    | compiled read depth 4      | 56.6 ns   | 111.0 ns  | 0.505x, reported not gated |
+
+  - no compiled _write_ shipped: a path write is dominated by structurally
+    cloning each container, not by walking the path, so compiling it buys
+    nothing. Recorded in the docs and the disposition rather than shipped and
+    explained away;
+  - the guarded plain-data write tier lives inside `clonePathContainer`, so
+    `setPath` and `modifyPath` benefit with no new API. The guard reads through
+    the same `Reflect.ownKeys` plus `getOwnPropertyDescriptor` sequence as the
+    exact clone, so a Proxy observes identical traps and no accessor can fire
+    before the shortcut is chosen. Measured 0.583x, 0.486x, 0.396x at depths
+    1–3, 0.471x on a null-prototype source, and 0.452x for `modifyPath`;
+  - the write guard was mutation-tested clause by clause. The enumerable,
+    writable, configurable, prototype, unsafe-own-key, key-ordering, and
+    null-prototype clauses each fail a mutation. The accessor, array, and
+    key-safety clauses survive because another clause already covers them; they
+    were kept as deliberate belt-and-braces at the single point of assignment
+    and documented as such rather than deleted;
+  - `Map.getOrElse` ships direct and data-last with the exact required
+    sequence: `get` first, `has` only when `get` returned `undefined`, fallback
+    evaluated exactly once and only when absent. 1.35x a hand-written lookup on
+    a hit and 1.09x on a miss. The win is skipping a default nobody needed, not
+    nanoseconds, and the changeset says so;
+  - the Record narrow-path candidate is **stopped**: `Record.set` already costs
+    0.798x the now-faster plain-data `Obj` write on the same flat data, so
+    Record is the fast contract without an addition and a narrow helper would
+    duplicate `Obj` traversal for no measured gain. The positioning is
+    documented instead;
+  - `map/getOrUndefined-present` measures 1.172x native `Map.get` against a 10%
+    bar. The bar was **not** moved. The row still prints `MISSES BAR
+(deferred)` and names S4 as owner, because pre-P4 `map.ts` measures
+    1.00–1.28x in the same harness: this is the pre-existing direct-dispatch
+    wrapper frame at ~0.6 ns against a ~5.5 ns native lookup, so the bar is
+    tighter than a single JS call frame;
+  - two live subject digests moved with their subjects:
+    `EXPECTED_STRUCTURAL_SUBJECT_SHA256` for `object.ts` and
+    `EXPECTED_CORE_UTILITIES_SUBJECT_SHA256` for `map.ts`. Neither
+    `portable-perf-contract.ts` nor `third-wave-perf-contract.ts` pins those
+    files;
+  - after the merge `packages/fp` passes 2471 tests with clean source and
+    type-test types and a clean build, and the benchmarks reference suite
+    passes 358 tests.
 
 - S7 CLI-slice evidence (partial stage; emission and transform work remain):
   - `packages/fp-compiler/src/receipt-report.ts` renders six evidence classes
