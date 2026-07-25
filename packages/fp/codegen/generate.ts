@@ -25,9 +25,11 @@ function run(relativeScript: string): void {
 
 generateProtocolViewsV1({ includeEvidence: false })
 run('codegen/dual-inline.ts')
+run('codegen/iter-kernels.ts')
 run('codegen/portable-templates.ts')
 run('scripts/sync-module-manifest.ts')
 formatGeneratedProtocolTypeScriptV1()
+formatGeneratedProtocolTypeScriptV1(['packages/fp/src/iter-kernels.ts'])
 writeOperatorEvidenceIndexV1()
 
 console.log(`canonical codegen complete: ${OPERATOR_MANIFEST_V1_HASH}`)
