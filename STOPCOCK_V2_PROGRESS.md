@@ -2323,6 +2323,39 @@ This blocks S1C, S3B, and every later timing- or memory-dependent promotion
 lane. It does not invalidate the independently complete S1A, S2, or S3A
 checkpoints.
 
+## Blocker: compiler worst-case row regressed during S10X
+
+`compiler-perf-gate` fails its `minimumCaseRatio` of 0.80. The failing row is
+`4+ ops, sink=reduce-like, boundary=none (trivial, n=100)`.
+
+Measured, not inferred:
+
+| commit    | what landed        | worst case                |
+| --------- | ------------------ | ------------------------- |
+| `86d2dc8` | before this session| 0.910, 0.837, 0.942 (pass)|
+| `8c745bb` | static explain     | 0.918 (pass)              |
+| `6ff7bdb` | selection tracing  | 0.817 (pass, lower)       |
+| `HEAD`    | after extraction   | 0.691, 0.694, 0.728, 0.735, 0.764 (fail) |
+
+Global geomean is unaffected at 2.01–2.04 against a 0.90 floor, so this is one
+row, not a broad slowdown.
+
+What makes it puzzling, and why it is recorded rather than fixed: neither side
+of this ratio runs FP's runtime. The reference is the frozen hand-written
+emitter and the subject is compiled output with no runtime engine in it, so no
+change in this session touches either directly. The leading hypothesis is
+process-level: the benchmark imports `pipe` from the optimizer package, which
+now reaches FP through built `dist` rather than through source, changing the
+module graph and JIT warmup for the whole process. An `n=100` trivial row is the
+most sensitive thing in the corpus to exactly that — the S10 hand-loop lanes
+varied about ±30% per process for the same reason.
+
+The gate is left failing. It has not been weakened, re-pinned, or excepted, and
+the worst-case rule has not been moved off the row that fails it. Settling this
+needs the per-row measurement rebuilt on fresh processes with per-session
+medians, the way `s10-hand-loop-gate` was, so that a row can be shown slower
+rather than merely measured lower once. That is the next S11 action.
+
 ## Exact next action
 
 Execute S11: bound the compiler residual. S11 also owns the recorded P1A
