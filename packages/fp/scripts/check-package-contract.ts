@@ -317,6 +317,8 @@ void [
   await rm(scratch, { recursive: true, force: true })
 }
 
+await import('./check-built-purity')
+
 console.log(
   `Package contract verified for ${PUBLIC_MODULES.length} public modules with bundler, NodeNext, and runtime consumers`,
 )

@@ -9,6 +9,7 @@
     "./generate.ts",
     "./parse.ts",
     "./portable-templates.ts",
+    "./purity.ts",
     "./protocol/**/*.ts"
   ]
 }

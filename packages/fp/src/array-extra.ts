@@ -72,7 +72,7 @@ export const partitionMap: {
   <A, E, B>(
     f: (value: A, index: number) => Result<B, E>,
   ): (values: readonly A[]) => readonly [E[], B[]]
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <A, E, B>(
     values: readonly A[],
@@ -92,7 +92,7 @@ export const partitionMap: {
 export const traverse: {
   <A, B, E>(values: readonly A[], f: (value: A, index: number) => Result<B, E>): Result<B[], E>
   <A, B, E>(f: (value: A, index: number) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <A, B, E>(values: readonly A[], f: (value: A, index: number) => Result<B, E>): Result<B[], E> => {
     const output: B[] = []
@@ -118,7 +118,7 @@ export function sequence(values: readonly Result<unknown, unknown>[]): Result<un
 export const groupMap: {
   <A, K, B>(values: readonly A[], key: (value: A) => K, project: (value: A) => B): Map<K, B[]>
   <A, K, B>(key: (value: A) => K, project: (value: A) => B): (values: readonly A[]) => Map<K, B[]>
-} = dual(
+} = /* @__PURE__ */ dual(
   3,
   <A, K, B>(values: readonly A[], key: (value: A) => K, project: (value: A) => B): Map<K, B[]> => {
     const output = new Map<K, B[]>()
@@ -144,7 +144,7 @@ export const groupMapReduce: {
     project: (value: A) => B,
     combine: (left: B, right: B) => B,
   ): (values: readonly A[]) => Map<K, B>
-} = dual(
+} = /* @__PURE__ */ dual(
   4,
   <A, K, B>(
     values: readonly A[],
@@ -165,7 +165,7 @@ export const groupMapReduce: {
 export const countBy: {
   <A, K>(values: readonly A[], key: (value: A) => K): Map<K, number>
   <A, K>(key: (value: A) => K): (values: readonly A[]) => Map<K, number>
-} = dual(2, <A, K>(values: readonly A[], key: (value: A) => K): Map<K, number> => {
+} = /* @__PURE__ */ dual(2, <A, K>(values: readonly A[], key: (value: A) => K): Map<K, number> => {
   const output = new Map<K, number>()
   for (const value of values) {
     const group = key(value)
@@ -177,7 +177,7 @@ export const countBy: {
 export const zipAll: {
   <A, B>(left: readonly A[], right: readonly B[]): Array<readonly [Option<A>, Option<B>]>
   <B>(right: readonly B[]): <A>(left: readonly A[]) => Array<readonly [Option<A>, Option<B>]>
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <A, B>(left: readonly A[], right: readonly B[]): Array<readonly [Option<A>, Option<B>]> => {
     const output: Array<readonly [Option<A>, Option<B>]> = []
@@ -207,7 +207,7 @@ export const span: {
   <A>(
     predicate: (value: A, index: number) => boolean,
   ): (values: readonly A[]) => readonly [A[], A[]]
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <A>(
     values: readonly A[],
@@ -222,25 +222,31 @@ export const span: {
 export const dropUntil: {
   <A>(values: readonly A[], predicate: (value: A, index: number) => boolean): A[]
   <A>(predicate: (value: A, index: number) => boolean): (values: readonly A[]) => A[]
-} = dual(2, <A>(values: readonly A[], predicate: (value: A, index: number) => boolean): A[] => {
-  let index = 0
-  while (index < values.length && !predicate(values[index], index)) index++
-  return values.slice(index)
-})
+} = /* @__PURE__ */ dual(
+  2,
+  <A>(values: readonly A[], predicate: (value: A, index: number) => boolean): A[] => {
+    let index = 0
+    while (index < values.length && !predicate(values[index], index)) index++
+    return values.slice(index)
+  },
+)
 
 export const cartesian: {
   <A, B>(left: readonly A[], right: readonly B[]): Array<readonly [A, B]>
   <B>(right: readonly B[]): <A>(left: readonly A[]) => Array<readonly [A, B]>
-} = dual(2, <A, B>(left: readonly A[], right: readonly B[]): Array<readonly [A, B]> => {
-  const output: Array<readonly [A, B]> = []
-  for (const a of left) for (const b of right) output.push([a, b])
-  return output
-})
+} = /* @__PURE__ */ dual(
+  2,
+  <A, B>(left: readonly A[], right: readonly B[]): Array<readonly [A, B]> => {
+    const output: Array<readonly [A, B]> = []
+    for (const a of left) for (const b of right) output.push([a, b])
+    return output
+  },
+)
 
 export const combinations: {
   <A>(values: readonly A[], size: number): A[][]
   (size: number): <A>(values: readonly A[]) => A[][]
-} = dual(2, <A>(values: readonly A[], size: number): A[][] => {
+} = /* @__PURE__ */ dual(2, <A>(values: readonly A[], size: number): A[][] => {
   const count = Math.trunc(size)
   if (count < 0) throw new RangeError('combinations: size must be non-negative')
   if (count === 0) return [[]]
@@ -285,7 +291,7 @@ export const permutations = <A>(values: readonly A[]): A[][] => {
 export const binarySearch: {
   <A>(values: readonly A[], target: A, compare: (left: A, right: A) => number): Option<number>
   <A>(target: A, compare: (left: A, right: A) => number): (values: readonly A[]) => Option<number>
-} = dual(
+} = /* @__PURE__ */ dual(
   3,
   <A>(values: readonly A[], target: A, compare: (left: A, right: A) => number): Option<number> => {
     let low = 0
@@ -324,23 +330,17 @@ export const mapInto: {
     values: Source,
     target: Target,
     f: (value: ArrayElement<NoInfer<Source>>, index: number) => Output,
-    ..._capacity: [] &
-      EveryArrayTargetHasDynamicLength<Target> &
-      EveryArrayTargetIsConcrete<Target>
+    ..._capacity: [] & EveryArrayTargetHasDynamicLength<Target> & EveryArrayTargetIsConcrete<Target>
   ): Target
   <
     const Target extends unknown[],
-    const Transform extends (
-      ...args: never[]
-    ) => ArrayTargetElementCapacity<NoInfer<Target>>,
+    const Transform extends (...args: never[]) => ArrayTargetElementCapacity<NoInfer<Target>>,
   >(
     target: Target,
     f: Transform,
-    ..._capacity: [] &
-      EveryArrayTargetHasDynamicLength<Target> &
-      EveryArrayTargetIsConcrete<Target>
+    ..._capacity: [] & EveryArrayTargetHasDynamicLength<Target> & EveryArrayTargetIsConcrete<Target>
   ): (values: readonly TransformInput<Transform>[]) => Target
-} = dual(
+} = /* @__PURE__ */ dual(
   3,
   (
     values: readonly unknown[],
@@ -382,7 +382,7 @@ export const filterInto: {
     predicate: (value: A, index: number) => boolean,
     ..._capacity: [] & ArrayTargetCapacity<A, Target>
   ): (values: readonly A[]) => Target
-} = dual(
+} = /* @__PURE__ */ dual(
   3,
   (
     values: readonly unknown[],
@@ -401,7 +401,7 @@ export const filterInto: {
 export const shuffleWith: {
   <A>(values: readonly A[], random: () => number): A[]
   (random: () => number): <A>(values: readonly A[]) => A[]
-} = dual(2, <A>(values: readonly A[], random: () => number): A[] => {
+} = /* @__PURE__ */ dual(2, <A>(values: readonly A[], random: () => number): A[] => {
   const output = values.slice()
   for (let index = output.length - 1; index > 0; index--) {
     const other = Math.floor(random() * (index + 1))

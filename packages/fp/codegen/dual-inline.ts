@@ -9,6 +9,7 @@
 import { type Parser, type ParseResult, seq, map, string as pStr, char, run } from './parse'
 import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
+import { generatedPureAnnotationV1, type GeneratedInitializerSiteV1 } from './purity'
 import { findRuntimeOpcodeByNameV1 } from './protocol/operator-definitions'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
@@ -16,11 +17,7 @@ const DEFS_DIR = join(ROOT, 'codegen', 'defs')
 const SRC_DIR = join(ROOT, 'src')
 
 const GENERATED_MODULES = ['array', 'boolean', 'math'] as const
-const requestedModules = process.argv.slice(2)
-const MODULES =
-  requestedModules.length === 0
-    ? [...GENERATED_MODULES]
-    : GENERATED_MODULES.filter((module) => requestedModules.includes(module))
+type GeneratedModule = (typeof GENERATED_MODULES)[number]
 
 // --- Brace-counting utilities ---
 
@@ -359,12 +356,21 @@ function implementationParams(arity: number): string {
   return Array.from({ length: arity }, (_, index) => `_arg${index}?: any`).join(', ')
 }
 
-function generateArity1Tagged(dc: DualCall): string {
+function generateArity1Tagged(dc: DualCall, moduleName: GeneratedModule): string {
   const opcode = dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0
   const decl = typeDecl(dc.name, dc.typeAnnotation)
+  const bodyKind: GeneratedInitializerSiteV1['bodyKind'] = dc.bodyIsRef ? 'reference' : 'inline'
+  const pure =
+    moduleName === 'array' || moduleName === 'math'
+      ? generatedPureAnnotationV1({
+          module: moduleName,
+          name: dc.name,
+          bodyKind,
+        })
+      : ''
 
   if (dc.bodyIsRef) {
-    return `${decl} = /* @__PURE__ */ (() => {
+    return `${decl} = ${pure}(() => {
   const _f: any = ${dc.bodyStr}
   _f._op = ${opcode}
   return _f
@@ -374,7 +380,7 @@ function generateArity1Tagged(dc: DualCall): string {
   const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
   const bodyCode = isExpression ? `return ${bodyText}` : bodyText
 
-  return `${decl} = /* @__PURE__ */ (() => {
+  return `${decl} = ${pure}(() => {
   const _f: any = function ${dc.name}(${params.join(': any, ')}: any) { ${bodyCode} }
   _f._op = ${opcode}
   return _f
@@ -466,16 +472,16 @@ function generateArityNInline(dc: DualCall, n: number, opcode: number, hasTag: b
 } as any\n`
 }
 
-function generateDecl(dc: DualCall): string {
+function generateDecl(dc: DualCall, moduleName: GeneratedModule): string {
   if (dc.arity <= 1) {
-    return dc.tag ? generateArity1Tagged(dc) : generateArity1Untagged(dc)
+    return dc.tag ? generateArity1Tagged(dc, moduleName) : generateArity1Untagged(dc)
   }
   return generateArityN(dc)
 }
 
 // --- Module Transformer ---
 
-function transformModule(src: string): string {
+export function transformModuleV1(src: string, moduleName: GeneratedModule): string {
   const lines = src.split('\n')
   const outputLines: string[] = []
 
@@ -507,7 +513,7 @@ function transformModule(src: string): string {
       if (declText.includes('= dual(')) {
         const dc = tryParse(dualCallP, declText)
         if (dc) {
-          outputLines.push(generateDecl(dc))
+          outputLines.push(generateDecl(dc, moduleName))
           i = j
           continue
         }
@@ -546,9 +552,9 @@ function isDeclarationComplete(text: string): boolean {
 
 // --- Main ---
 
-const processModule = (mod: string) => {
+const processModule = (mod: GeneratedModule) => {
   const src = readFileSync(join(DEFS_DIR, `${mod}.ts`), 'utf8')
-  const transformed = transformModule(src)
+  const transformed = transformModuleV1(src, mod)
   const output = mod === 'array' ? `${transformed}\n\nexport * from './array-extra'\n` : transformed
   const dualCount = (src.match(/= dual\(/g) || []).length
   writeFileSync(join(SRC_DIR, `${mod}.ts`), output)
@@ -556,8 +562,14 @@ const processModule = (mod: string) => {
   return dualCount
 }
 
-let totalFns = 0
-for (const moduleName of MODULES) totalFns += processModule(moduleName)
-
-console.log(`\nGenerated ${MODULES.length} modules, ${totalFns} functions inlined → src/`)
+if (import.meta.main) {
+  const requestedModules = process.argv.slice(2)
+  const modules =
+    requestedModules.length === 0
+      ? [...GENERATED_MODULES]
+      : GENERATED_MODULES.filter((module) => requestedModules.includes(module))
+  let totalFns = 0
+  for (const moduleName of modules) totalFns += processModule(moduleName)
+  console.log(`\nGenerated ${modules.length} modules, ${totalFns} functions inlined → src/`)
+}
 /// <reference types="bun" />

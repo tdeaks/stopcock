@@ -184,7 +184,7 @@ export const pick: {
   <T extends object, const K extends readonly (keyof T)[]>(
     selected: K,
   ): (value: T) => Pick<T, K[number]>
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <T extends object, const K extends readonly (keyof T)[]>(
     value: T,
@@ -205,7 +205,7 @@ export const omit: {
   <T extends object, const K extends readonly (keyof T)[]>(
     omitted: K,
   ): (value: T) => Omit<T, K[number]>
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <T extends object, const K extends readonly (keyof T)[]>(
     value: T,
@@ -230,7 +230,7 @@ export const assoc: {
     key: K,
     replacement: V,
   ): <T extends object>(value: T) => Omit<T, K> & { readonly [P in K]: V }
-} = dual(
+} = /* @__PURE__ */ dual(
   3,
   <T extends object, K extends PropertyKey, V>(
     value: T,
@@ -246,7 +246,7 @@ export const assoc: {
 export const dissoc: {
   <T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
   <K extends PropertyKey>(key: K): <T extends object>(value: T) => Omit<T, Extract<K, keyof T>>
-} = dual(2, <T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> => {
+} = /* @__PURE__ */ dual(2, <T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> => {
   const output = Object.create(Object.getPrototypeOf(value)) as object
   for (const current of enumerableKeys(value)) {
     if (current !== key) define(output, current, Reflect.get(value, current))
@@ -259,7 +259,7 @@ export const mapValues: {
   <T extends object, B>(
     f: (value: T[keyof T], key: keyof T) => B,
   ): (value: T) => { [K in keyof T]: B }
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <T extends object, B>(
     value: T,
@@ -281,7 +281,7 @@ export const mapKeys: {
   <T extends object, K extends PropertyKey>(
     f: (key: keyof T, value: T[keyof T]) => K,
   ): (value: T) => Record<K, T[keyof T]>
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <T extends object, K extends PropertyKey>(
     value: T,
@@ -301,7 +301,7 @@ export const pickBy: {
   <T extends object>(
     predicate: (value: T[keyof T], key: keyof T) => boolean,
   ): (value: T) => Partial<T>
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <T extends object>(
     value: T,
@@ -316,7 +316,7 @@ export const pickBy: {
   },
 )
 
-export const omitBy: typeof pickBy = dual(
+export const omitBy: typeof pickBy = /* @__PURE__ */ dual(
   2,
   <T extends object>(
     value: T,
@@ -351,7 +351,7 @@ export const mergeWith: {
     right: B,
     resolve: (left: unknown, right: unknown, key: keyof A | keyof B) => unknown,
   ): (left: A) => A & B
-} = dual(
+} = /* @__PURE__ */ dual(
   3,
   <A extends object, B extends object>(
     left: A,
@@ -473,22 +473,25 @@ const readPath = <T, const P extends PathSegments>(value: T, path: P): Option<Pa
 export const getPathOrUndefined: {
   <T, const P extends PathSegments>(value: T, path: P): PathValue<T, P> | undefined
   <const P extends PathSegments>(path: P): <T>(value: T) => PathValue<T, P> | undefined
-} = dual(2, <T, const P extends PathSegments>(value: T, path: P): PathValue<T, P> | undefined => {
-  let current: unknown = value
-  for (const key of path) {
-    if (current === null || (typeof current !== 'object' && typeof current !== 'function')) {
-      return undefined
+} = /* @__PURE__ */ dual(
+  2,
+  <T, const P extends PathSegments>(value: T, path: P): PathValue<T, P> | undefined => {
+    let current: unknown = value
+    for (const key of path) {
+      if (current === null || (typeof current !== 'object' && typeof current !== 'function')) {
+        return undefined
+      }
+      if (!hasOwn(current, key)) return undefined
+      current = Reflect.get(current, key)
     }
-    if (!hasOwn(current, key)) return undefined
-    current = Reflect.get(current, key)
-  }
-  return current as PathValue<T, P>
-})
+    return current as PathValue<T, P>
+  },
+)
 
 export const getPath: {
   <T, const P extends PathSegments>(value: T, path: P): Option<PathValue<T, P>>
   <const P extends PathSegments>(path: P): <T>(value: T) => Option<PathValue<T, P>>
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <T, const P extends PathSegments>(value: T, path: P): Option<PathValue<T, P>> =>
     readPath(value, path),
@@ -497,7 +500,7 @@ export const getPath: {
 export const hasPath: {
   <T>(value: T, path: PathSegments): boolean
   (path: PathSegments): <T>(value: T) => boolean
-} = dual(2, <T>(value: T, path: PathSegments): boolean => {
+} = /* @__PURE__ */ dual(2, <T>(value: T, path: PathSegments): boolean => {
   let current: unknown = value
   for (const key of path) {
     if (current === null || (typeof current !== 'object' && typeof current !== 'function')) {
@@ -582,7 +585,7 @@ export const setPath: {
     path: P & LiteralPath<P>,
     replacement: B,
   ): <T>(value: T & ValidSetSource<T, P, B>) => T
-} = dual(
+} = /* @__PURE__ */ dual(
   3,
   <T, const P extends PathSegments>(value: T, path: P, replacement: PathWriteValue<T, P>): T =>
     (path.length === 0 ? replacement : updatePath(value, path, () => replacement, false)) as T,
@@ -609,7 +612,7 @@ export const modifyPath: {
     path: P & LiteralPath<P>,
     f: (current: A) => B,
   ): <T>(value: T & ValidModifySource<T, P, A, B>) => T
-} = dual(
+} = /* @__PURE__ */ dual(
   3,
   <T, const P extends PathSegments>(
     value: T,
@@ -658,7 +661,7 @@ export const removePath: {
   <const P extends PathSegments>(
     path: P & LiteralPath<P>,
   ): <T>(value: T & ValidRemoveSource<T, P>) => T
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <T>(value: T, path: PathSegments): T =>
     (path.length === 0 ? value : removePathValue(value, path, 0)) as T,
@@ -677,7 +680,7 @@ export const evolve: {
   <T extends object>(
     transformations: Partial<{ readonly [K in keyof T]: (value: T[K]) => T[K] }>,
   ): (value: T) => T
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   <T extends object>(
     value: T,

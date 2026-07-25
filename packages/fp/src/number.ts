@@ -18,7 +18,7 @@ export const isOdd = (value: number): boolean => value % 2 !== 0
 export const clamp: {
   (value: number, minimum: number, maximum: number): number
   (minimum: number, maximum: number): (value: number) => number
-} = dual(3, (value: number, minimum: number, maximum: number): number => {
+} = /* @__PURE__ */ dual(3, (value: number, minimum: number, maximum: number): number => {
   const low = Math.min(minimum, maximum)
   const high = Math.max(minimum, maximum)
   return Math.min(Math.max(value, low), high)
@@ -27,7 +27,7 @@ export const clamp: {
 export const between: {
   (value: number, minimum: number, maximum: number): boolean
   (minimum: number, maximum: number): (value: number) => boolean
-} = dual(3, (value: number, minimum: number, maximum: number): boolean => {
+} = /* @__PURE__ */ dual(3, (value: number, minimum: number, maximum: number): boolean => {
   const low = Math.min(minimum, maximum)
   const high = Math.max(minimum, maximum)
   return value >= low && value <= high
@@ -59,26 +59,32 @@ export const meanNonEmpty = (values: readonly [number, ...number[]]): number =>
 export const weightedMeanOrUndefined: {
   (values: readonly number[], weights: readonly number[]): number | undefined
   (weights: readonly number[]): (values: readonly number[]) => number | undefined
-} = dual(2, (values: readonly number[], weights: readonly number[]): number | undefined => {
-  if (values.length !== weights.length) {
-    throw new RangeError('weightedMean: values and weights must have equal lengths')
-  }
-  let weighted = 0
-  let totalWeight = 0
-  for (let index = 0; index < values.length; index++) {
-    weighted += values[index] * weights[index]
-    totalWeight += weights[index]
-  }
-  return totalWeight === 0 ? undefined : weighted / totalWeight
-})
+} = /* @__PURE__ */ dual(
+  2,
+  (values: readonly number[], weights: readonly number[]): number | undefined => {
+    if (values.length !== weights.length) {
+      throw new RangeError('weightedMean: values and weights must have equal lengths')
+    }
+    let weighted = 0
+    let totalWeight = 0
+    for (let index = 0; index < values.length; index++) {
+      weighted += values[index] * weights[index]
+      totalWeight += weights[index]
+    }
+    return totalWeight === 0 ? undefined : weighted / totalWeight
+  },
+)
 
 export const weightedMean: {
   (values: readonly number[], weights: readonly number[]): Option<number>
   (weights: readonly number[]): (values: readonly number[]) => Option<number>
-} = dual(2, (values: readonly number[], weights: readonly number[]): Option<number> => {
-  const value = weightedMeanOrUndefined(values, weights)
-  return value === undefined ? none : some(value)
-})
+} = /* @__PURE__ */ dual(
+  2,
+  (values: readonly number[], weights: readonly number[]): Option<number> => {
+    const value = weightedMeanOrUndefined(values, weights)
+    return value === undefined ? none : some(value)
+  },
+)
 
 export const medianOrUndefined = (values: readonly number[]): number | undefined => {
   if (values.length === 0) return undefined
@@ -242,7 +248,7 @@ const interpolateSorted = (values: readonly number[], fraction: number): number 
 export const quantileOrUndefined: {
   (values: readonly number[], q: number): number | undefined
   (q: number): (values: readonly number[]) => number | undefined
-} = dual(2, (values: readonly number[], q: number): number | undefined => {
+} = /* @__PURE__ */ dual(2, (values: readonly number[], q: number): number | undefined => {
   if (q < 0 || q > 1 || Number.isNaN(q)) {
     throw new RangeError('quantile: q must be in the inclusive range [0, 1]')
   }
@@ -252,7 +258,7 @@ export const quantileOrUndefined: {
 export const quantile: {
   (values: readonly number[], q: number): Option<number>
   (q: number): (values: readonly number[]) => Option<number>
-} = dual(2, (values: readonly number[], q: number): Option<number> => {
+} = /* @__PURE__ */ dual(2, (values: readonly number[], q: number): Option<number> => {
   const value = quantileOrUndefined(values, q)
   return value === undefined ? none : some(value)
 })
@@ -260,7 +266,7 @@ export const quantile: {
 export const quantileNonEmpty: {
   (values: readonly [number, ...number[]], q: number): number
   (q: number): (values: readonly [number, ...number[]]) => number
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   (values: readonly [number, ...number[]], q: number): number =>
     quantileOrUndefined(values, q) as number,
@@ -269,7 +275,7 @@ export const quantileNonEmpty: {
 export const percentileOrUndefined: {
   (values: readonly number[], p: number): number | undefined
   (p: number): (values: readonly number[]) => number | undefined
-} = dual(2, (values: readonly number[], p: number): number | undefined => {
+} = /* @__PURE__ */ dual(2, (values: readonly number[], p: number): number | undefined => {
   if (p < 0 || p > 100 || Number.isNaN(p)) {
     throw new RangeError('percentile: p must be in the inclusive range [0, 100]')
   }
@@ -279,7 +285,7 @@ export const percentileOrUndefined: {
 export const percentile: {
   (values: readonly number[], p: number): Option<number>
   (p: number): (values: readonly number[]) => Option<number>
-} = dual(2, (values: readonly number[], p: number): Option<number> => {
+} = /* @__PURE__ */ dual(2, (values: readonly number[], p: number): Option<number> => {
   const value = percentileOrUndefined(values, p)
   return value === undefined ? none : some(value)
 })
@@ -287,7 +293,7 @@ export const percentile: {
 export const percentileNonEmpty: {
   (values: readonly [number, ...number[]], p: number): number
   (p: number): (values: readonly [number, ...number[]]) => number
-} = dual(
+} = /* @__PURE__ */ dual(
   2,
   (values: readonly [number, ...number[]], p: number): number =>
     percentileOrUndefined(values, p) as number,
@@ -296,7 +302,7 @@ export const percentileNonEmpty: {
 export const dotProduct: {
   (left: readonly number[], right: readonly number[]): number
   (right: readonly number[]): (left: readonly number[]) => number
-} = dual(2, (left: readonly number[], right: readonly number[]): number => {
+} = /* @__PURE__ */ dual(2, (left: readonly number[], right: readonly number[]): number => {
   if (left.length !== right.length) {
     throw new RangeError('dotProduct: vectors must have equal lengths')
   }
@@ -308,7 +314,7 @@ export const dotProduct: {
 export const dotProductTruncate: {
   (left: readonly number[], right: readonly number[]): number
   (right: readonly number[]): (left: readonly number[]) => number
-} = dual(2, (left: readonly number[], right: readonly number[]): number => {
+} = /* @__PURE__ */ dual(2, (left: readonly number[], right: readonly number[]): number => {
   const length = Math.min(left.length, right.length)
   let total = 0
   for (let index = 0; index < length; index++) total += left[index] * right[index]
@@ -318,7 +324,7 @@ export const dotProductTruncate: {
 export const gcd: {
   (left: number, right: number): number
   (right: number): (left: number) => number
-} = dual(2, (left: number, right: number): number => {
+} = /* @__PURE__ */ dual(2, (left: number, right: number): number => {
   let a = Math.abs(Math.trunc(left))
   let b = Math.abs(Math.trunc(right))
   while (b !== 0) {
@@ -332,7 +338,7 @@ export const gcd: {
 export const lcm: {
   (left: number, right: number): number
   (right: number): (left: number) => number
-} = dual(2, (left: number, right: number): number =>
+} = /* @__PURE__ */ dual(2, (left: number, right: number): number =>
   left === 0 || right === 0 ? 0 : Math.abs((left / gcd(left, right)) * right),
 )
 

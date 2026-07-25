@@ -1599,14 +1599,14 @@ export const scan: {
 
 
 // Array numeric terminals (JIT-inlined in pipe)
-export const sum: (arr: readonly number[]) => number = /* @__PURE__ */ (() => {
+export const sum: (arr: readonly number[]) => number = (() => {
   const _f: any = nSum
   _f._op = 41
   return _f
 })()
 
 export const minOrUndefined = nMinOrUndefined
-export const min: (arr: readonly number[]) => Option<number> = /* @__PURE__ */ (() => {
+export const min: (arr: readonly number[]) => Option<number> = (() => {
   const _f: any = nMin
   _f._op = 42
   return _f
@@ -1614,7 +1614,7 @@ export const min: (arr: readonly number[]) => Option<number> = /* @__PURE__ */ (
 
 export const minNonEmpty = nMinNonEmpty
 export const maxOrUndefined = nMaxOrUndefined
-export const max: (arr: readonly number[]) => Option<number> = /* @__PURE__ */ (() => {
+export const max: (arr: readonly number[]) => Option<number> = (() => {
   const _f: any = nMax
   _f._op = 43
   return _f
