@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S7
-Current slice: PRE_CUTOVER_GATES
-Last verified commit: 7b1c452
+Current canonical stage: S8
+Current slice: ATOMIC_ROOT_CUTOVER
+Last verified commit: 9301314
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -64,7 +64,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S5A   | GATE_PASSED | Module-private provenance table at `e0becf5`; public tag fields keep existing and authorize nothing, full valid-opcode forgery corpus passes, no public registrar ships                                                                                                                                                                                                                       |
 | S5B   | GATE_PASSED | Weak callback-keyed operator cache at `706d5ad`; the strong one-entry slot is gone, `map(f) === map(f)` holds while `f` is live, and all seven optional candidates are recorded as measured stops                                                                                                                                                                                             |
 | S6    | GATE_PASSED | Engine-owned fusion module plus three additive entries at `547de0d`; facades bind to the engine, not to root, and a direct-only consumer retains neither engine nor debug                                                                                                                                                                                                                     |
-| S7    | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
+| S7    | GATE_PASSED | Receipt emission, `stopcock check` CLI and renderer, import pruning, callback and source-map hardening, canonical Option terminals, lane split, and the topology-neutral package gate at `9301314`                                                                                                                                                                                            |
 | S8    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | S9    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | S10   | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
@@ -290,6 +290,32 @@ check` CLI finally has something producing what it reads, and proved the
       two halves end to end.
 
 ## Evidence log
+
+- S7 callback, source-map, and Option evidence:
+  - eleven callback-context cases pass against the real runtime, executed
+    rather than inspected: closure capture, a shadowed name binding to the
+    right scope, destructured parameters, a member-expression callback, `this`
+    surviving through a bound method, an enclosing `arguments` object not
+    leaking into a callback, a throw propagating unchanged, and callback order
+    staying interleaved per element (`m1,f2,m2,f4,m3,f6`) rather than staged;
+  - source maps resolve after both edit kinds this stage introduced. A callback
+    body maps to the line it was written on, generated pipeline code maps to
+    the call site it replaced, and a file whose imports were pruned still maps
+    its callback body correctly. The lookup decodes VLQ locally rather than
+    adding a dependency mid-programme;
+  - compiled Option terminals return the canonical `none`, not a copy: a
+    compiled miss is identical to the runtime's export, and two separately
+    compiled sites return the same object as each other. A per-site singleton
+    would pass a deep-equality check and fail that second one;
+  - six terminal cases are compared against the interpreted pipeline rather
+    than against hand-written expectations, so the compiled and runtime paths
+    have to agree with each other;
+  - the `none` identity comparison runs inside the compiled module. Comparing
+    across vitest's loader and the `data:` URL import yields two copies of the
+    singleton and fails for reasons unrelated to the compiler — worth knowing
+    before someone reads that as a defect;
+  - `@stopcock/fp-compiler` passes 234 tests, `@stopcock/fp` 2,622, the
+    benchmarks reference suite 412, and the deterministic gates 3/3.
 
 - S7 consumer-rule evidence:
   - the host tests built and executed a fused bundle in Rollup, esbuild,
