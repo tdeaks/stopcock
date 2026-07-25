@@ -15,7 +15,7 @@ Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S9
 Current slice: COMPACT_FUSION
-Last verified commit: 55ca6a1
+Last verified commit: 4bc057c
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -66,7 +66,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S6    | GATE_PASSED | Engine-owned fusion module plus three additive entries at `547de0d`; facades bind to the engine, not to root, and a direct-only consumer retains neither engine nor debug                                                                                                                                                                                                                     |
 | S7    | GATE_PASSED | Receipt emission, `stopcock check` CLI and renderer, import pruning, callback and source-map hardening, canonical Option terminals, lane split, and the topology-neutral package gate at `9301314`                                                                                                                                                                                            |
 | S8    | GATE_PASSED | Root `pipe`/`flow` sequential at `55ca6a1`; root surface narrowed to the migration map, every size ceiling met with no planner retained. Non-publishable integration state, as the stage requires                                                                                                                                                                                             |
-| S9    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S9    | IN_PROGRESS | Compact facts and planner landed at `4bc057c`; the generic compact executor is the remaining work, and `/fusion` still delegates to optimized, which the stage defines as a valid non-completion state                                                                                                                                                                                        |
 | S10   | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
 | S10X  | NOT_STARTED | Conditional optimizer extraction                                                                                                                                                                                                                                                                                                                                                              |
 | S10J  | NOT_STARTED | Optimizer topology decision                                                                                                                                                                                                                                                                                                                                                                   |
@@ -290,6 +290,40 @@ check` CLI finally has something producing what it reads, and proved the
       two halves end to end.
 
 ## Evidence log
+
+- S9 progress, partial:
+  - measured budget before building anything: `buildPlan` plus a generic
+    executor closes at 3,846 gzip bytes against the stage's hard 5.5 KiB gate,
+    while the optimized engine closes at 11,502 because of its template bank.
+    So the gate is reachable by dropping templates, not by shaving;
+  - `internal/compact/facts.generated.ts` encodes cardinality and input domain
+    as one byte per opcode: 65 opcodes in 1,426 bytes against a 20 KB registry
+    whose names exist for diagnostics. Generated from the registry, with a test
+    asserting the two agree for every registered opcode and that no operation
+    name appears in the generated file;
+  - `internal/compact/plan.ts` is the canonical planner with registry lookups
+    replaced. It produces identical codes, segments, and bindings, and keeps
+    the same authority rule: an untrusted step or an unregistered opcode is
+    opaque;
+  - the agreement test caught an encoding collision immediately: a one-to-one
+    array operator encoded to zero, which was also the unregistered sentinel.
+    Presence now has its own bit;
+  - a `@__PURE__` marker on the fact table was added and left the S3A purity
+    policy failing for one commit. The policy was right to object; the marker
+    is now reviewed and registered rather than removed, because a droppable
+    fact table is the point of having one.
+
+- S9 remaining:
+  - the generic exact compact executor. It cannot reuse `interpret`: that
+    module is the semantic oracle the other tiers are checked against, and it
+    reads the operation registry, which is exactly the 20 KB compact exists to
+    avoid. Writing it as a distinct 65-opcode executor is the work, and it is
+    the part where a rushed implementation would produce subtle semantic
+    divergence in early-exit and sink behaviour;
+  - until it exists, `@stopcock/fp/fusion` still delegates to optimized
+    fusion. The stage explicitly defines that as a valid non-completion state
+    rather than a failure, and S10, S12, and S13 may not consume S9 until the
+    isolated compact artifact is at most 5.5 KiB and passes its floor.
 
 - S8 evidence:
   - root `pipe` and `flow` delegate to the dependency-free sequential core.
