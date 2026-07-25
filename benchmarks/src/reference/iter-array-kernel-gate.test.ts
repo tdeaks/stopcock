@@ -12,7 +12,11 @@ import {
   type IterKernelPerfReport,
   ITER_KERNEL_FLOOR_EXCEPTIONS,
 } from './iter-array-kernel-gate'
-import { evaluateIterSubpathSize, ITER_SUBPATH_SIZE_CONTRACT } from './iter-subpath-size-contract'
+import {
+  evaluateIterSubpathSize,
+  ITER_SUBPATH_SIZE_CONTRACT,
+  measureIterSubpathGzipBytes,
+} from './iter-subpath-size-contract'
 import type { PerfEngine } from './perf-engine'
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..')
@@ -124,6 +128,23 @@ describe('shipped Array kernel policy', () => {
         : { ...item, medianRatio: 0.2, pairedRatios: item.pairedRatios.map(() => 0.2) },
     )
     expect(evaluateIterKernelPerfReport(makeReport(withSlowFirst)).passed).toBe(true)
+  })
+})
+
+describe('iter subpath size, measured against the built artifact', () => {
+  test('the real dist subpath is within the accepted ceiling', async () => {
+    const { readFile } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    // Checking a synthetic report only proves the evaluator. The ceiling is
+    // about the file consumers actually download, and a breach here was silent
+    // until a lane reported it by hand.
+    const dist = join(REPO_ROOT, 'packages', 'fp', 'dist', 'iter.js')
+    const measured = measureIterSubpathGzipBytes(await readFile(dist))
+    const evaluation = evaluateIterSubpathSize({
+      gzipBytes: measured,
+      kernelCount: ITER_SUBPATH_SIZE_CONTRACT.exception.distinctKernels,
+    })
+    expect({ measured, failures: evaluation.failures }).toEqual({ measured, failures: [] })
   })
 })
 
