@@ -16,6 +16,8 @@
     "perf:map-history:bun": "bun run src/reference/s4-map-history-gate.ts",
     "perf:map-history:node": "node --import=tsx src/reference/s4-map-history-gate.ts",
     "perf:facades:s6": "bun run src/reference/s6-facade-gate.ts",
+    "perf:lanes:s7:bun": "bun run src/reference/s7-optimized-sequential-lanes.ts",
+    "perf:lanes:s7:node": "node --import=tsx src/reference/s7-optimized-sequential-lanes.ts",
     "perf:size:s3b": "bun run src/reference/s3b-untagged-size-gate.ts",
     "perf:profile": "bun run src/reference/perf-profile-gate.ts",
     "perf:profile:bun": "bun run src/reference/perf-profile-gate.ts",
