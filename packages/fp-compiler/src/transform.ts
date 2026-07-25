@@ -368,6 +368,12 @@ interface StepsResult {
   readonly ok: boolean
   readonly steps?: Step[]
   readonly reason?: string
+  /**
+   * Operators recognised before the collector gave up. A rejected site that
+   * used real operators is still worth describing: without these it produces
+   * no receipt at all and becomes invisible to coverage.
+   */
+  readonly partialNames?: readonly string[]
 }
 
 /** Validates and collects a flat step list, enforcing that a terminal op (if any) is last. */
@@ -379,10 +385,15 @@ function collectSteps(
   const steps: Step[] = []
   for (let i = 0; i < stepNodes.length; i++) {
     const check = analyzeStep(stepNodes[i], bindings, scope)
-    if (!check.ok) return { ok: false, reason: check.reason }
+    const recognised = steps.map((step) => step.name)
+    if (!check.ok) return { ok: false, reason: check.reason, partialNames: recognised }
     const opName = check.name!
     if (i < stepNodes.length - 1 && (TERMINAL_OPS.has(opName) || FINAL_BOUNDARY_OPS.has(opName))) {
-      return { ok: false, reason: `${opName}: terminal op must be the last step` }
+      return {
+        ok: false,
+        reason: `${opName}: terminal op must be the last step`,
+        partialNames: [...recognised, opName],
+      }
     }
     steps.push({ name: opName, node: stepNodes[i], args: check.args })
   }
@@ -580,7 +591,7 @@ export function transformStopcockPipelines(
               stepNodes.length,
               semantics,
               collected.reason,
-              collected.steps?.map((step) => step.name),
+              collected.steps?.map((step) => step.name) ?? collected.partialNames,
             ),
           )
           if (diagnosticsLevel === 'error') {
