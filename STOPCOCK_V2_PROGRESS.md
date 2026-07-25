@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S6
-Current slice: EXPLICIT_FUSION_FACADES
-Last verified commit: 706d5ad
+Current canonical stage: S7
+Current slice: PRE_CUTOVER_GATES
+Last verified commit: 547de0d
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -63,7 +63,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S4    | GATE_PASSED | One measured direct-leaf codegen policy entry at `393bb06`; map generated instead of hand-written, cache confined to construction, every history within 3% of a hand-written loop on the release lane                                                                                                                                                                                         |
 | S5A   | GATE_PASSED | Module-private provenance table at `e0becf5`; public tag fields keep existing and authorize nothing, full valid-opcode forgery corpus passes, no public registrar ships                                                                                                                                                                                                                       |
 | S5B   | GATE_PASSED | Weak callback-keyed operator cache at `706d5ad`; the strong one-entry slot is gone, `map(f) === map(f)` holds while `f` is live, and all seven optional candidates are recorded as measured stops                                                                                                                                                                                             |
-| S6    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S6    | GATE_PASSED | Engine-owned fusion module plus three additive entries at `547de0d`; facades bind to the engine, not to root, and a direct-only consumer retains neither engine nor debug                                                                                                                                                                                                                     |
 | S7    | NOT_STARTED | Requires independent `v2_verifier` audit                                                                                                                                                                                                                                                                                                                                                      |
 | S8    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | S9    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -243,8 +243,42 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Measured all seven optional direct-leaf candidates and
       stopped every one of them with a recorded reason rather than rewriting
       them mechanically.
+- [x] (2026-07-25) Completed S6 at `547de0d`: the fused implementation moved to
+      an engine-owned module, three additive fusion entries ship, and a
+      dependency-free sequential core exists without being connected to root.
 
 ## Evidence log
+
+- S6 evidence:
+  - `src/internal/fusion-engine.ts` and `src/internal/fusion-flow.ts` hold the
+    unchanged fused implementation; `src/pipe.ts` and `src/flow.ts` are thin
+    re-exports, so root behaviour, exports, and bytes are unchanged;
+  - `@stopcock/fp/fusion`, `/fusion/optimized`, and `/fusion/debug` are wired
+    through `module-manifest.ts` and the package export map, build to real dist
+    entries, and import and run from the built package;
+  - the facades bind to the engine module, not to root `pipe`. The contract
+    test asserts that identity directly, which is the property S8 would
+    otherwise break silently;
+  - fused and sequential execution are told apart by callback order rather than
+    by counters: fused runs `map,filter,map,filter` over two elements,
+    sequential runs `map,map,filter,filter`;
+  - `src/internal/sequential.ts` imports nothing, is asserted not to be root,
+    and agrees with the fused engine on the same pipeline;
+  - the measured facade gate:
+
+    | fixture                 | gzip     | engine  | debug   |
+    | ----------------------- | -------- | ------- | ------- |
+    | `direct.map`            | 465 B    | absent  | absent  |
+    | `fusion.pipeline`       | 11,437 B | present | absent  |
+    | `fusion.pipeline.debug` | 11,725 B | present | present |
+
+  - the debug facade adds 288 B over the same pipeline without it, against its
+    3,072 B incremental ceiling, and is absent from a pipeline that does not
+    import it;
+  - `packages/fp` passed 2452 tests, source types, public type tests, and a
+    clean build; the benchmarks reference suite passed 333 tests;
+  - a `@stopcock/fp` minor changeset records the additive entries;
+  - `vp fmt` and `git diff --check` passed.
 
 - S5B evidence:
   - the generated `Array.map` cache is now `new WeakMap<object, any>()` keyed on
