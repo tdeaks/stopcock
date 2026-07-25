@@ -104,6 +104,13 @@ describe('generated array module', () => {
     }
   })
 
+  it('registers every tagged operator it constructs', () => {
+    const publicTags = generatedArray.match(/_dl\._op = \d+/gu) ?? []
+    const registrations = generatedArray.match(/registerTrustedOperator\(_dl, \d+/gu) ?? []
+    expect(publicTags.length).toBeGreaterThan(0)
+    expect(registrations).toHaveLength(publicTags.length)
+  })
+
   it('reproduces byte for byte from the checked-in definitions', () => {
     const definitions = readFileSync(join(root, 'codegen', 'defs', 'array.ts'), 'utf8')
     const expected = `${transformModuleV1(definitions, 'array')}\n\nexport * from './array-extra'\n`

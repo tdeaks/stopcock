@@ -119,6 +119,7 @@ let ${cacheOperator}: any = null
   }
   _dl._op = ${model.opcode}
   _dl._fn = _a0
+  registerTrustedOperator(_dl, ${model.opcode}, _a0)
 ${cacheStore}  return _dl
 `
 

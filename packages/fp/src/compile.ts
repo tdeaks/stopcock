@@ -13,6 +13,7 @@ import {
   OP_SORT_INLINE,
   OP_TAKE,
 } from './opcodes'
+import { trustedOperatorEntry } from './internal/provenance'
 import { none as optionNone, some as optionSome } from './option'
 import { lowerShape, segmentExecutorKinds, type PortableRunner } from './lower'
 import {
@@ -32,8 +33,7 @@ import {
   type ShapeEntry,
 } from './shape-entry'
 
-const IS_BUN_RUNTIME =
-  typeof (globalThis as { readonly Bun?: unknown }).Bun !== 'undefined'
+const IS_BUN_RUNTIME = typeof (globalThis as { readonly Bun?: unknown }).Bun !== 'undefined'
 
 type AnyUnary = (input: never) => unknown
 
@@ -175,11 +175,7 @@ const bindCriticalRunner = (
 
   const fallback = bindEntryRunner(entry, bindings)
 
-  if (
-    shape.codes.length === 2 &&
-    shape.codes[0] === OP_MAP &&
-    shape.codes[1] === OP_FILTER
-  ) {
+  if (shape.codes.length === 2 && shape.codes[0] === OP_MAP && shape.codes[1] === OP_FILTER) {
     const map = bindings[0].fn as (value: unknown) => unknown
     const filter = bindings[1].fn as (value: unknown) => boolean
     return (input) => {
@@ -208,15 +204,10 @@ const bindCriticalRunner = (
     shape.codes[4] === OP_REDUCE
   ) {
     const map = bindings[0].fn as (value: unknown) => unknown
-    const flatMap = bindings[1].fn as (
-      value: unknown,
-    ) => Iterable<unknown>
+    const flatMap = bindings[1].fn as (value: unknown) => Iterable<unknown>
     const filter = bindings[2].fn as (value: unknown) => boolean
     const filterMap = bindings[3].fn as (value: unknown) => unknown
-    const reduce = bindings[4].fn as (
-      state: unknown,
-      value: unknown,
-    ) => unknown
+    const reduce = bindings[4].fn as (state: unknown, value: unknown) => unknown
     const initial = bindings[4].a1
     return (input) => {
       const source = input as readonly unknown[]
@@ -225,11 +216,7 @@ const bindCriticalRunner = (
       for (let index = 0; index < source.length; index++) {
         const items = flatMap(map(source[index]))
         if (Array.isArray(items)) {
-          for (
-            let itemIndex = 0;
-            itemIndex < items.length;
-            itemIndex++
-          ) {
+          for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
             const item = items[itemIndex]
             if (!filter(item)) continue
             const value = filterMap(item)
@@ -247,11 +234,7 @@ const bindCriticalRunner = (
     }
   }
 
-  if (
-    shape.codes.length !== 3 ||
-    shape.codes[0] !== OP_MAP ||
-    shape.codes[1] !== OP_FILTER
-  ) {
+  if (shape.codes.length !== 3 || shape.codes[0] !== OP_MAP || shape.codes[1] !== OP_FILTER) {
     return undefined
   }
 
@@ -514,7 +497,7 @@ function compileInternal(pure: boolean, steps: readonly unknown[]): Runner {
     // A data-last filter closure shares one callback callsite across every
     // predicate identity. Route it through the checked-in callback-lane
     // template below; other single operations retain the cheaper direct call.
-    if ((step as Runner & { readonly _op?: number })._op !== OP_FILTER) {
+    if (trustedOperatorEntry(step)?.op !== OP_FILTER) {
       plansBuilt++
       return (input) => step(input)
     }

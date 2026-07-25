@@ -13,10 +13,17 @@
 // 2026-07-21-stopcock-fp-absolute-performance-implementation.md, "Runtime
 // caches".
 import { compile, dispatchAndTrack, planAndLowerFast, type Runner } from './compile'
+import { trustedOperatorEntry, type TrustedOperatorEntry } from './internal/provenance'
 import { extractBinding, type StepBinding } from './plan'
 import type { ShapeEntry } from './shape-entry'
 
-const _hasOp = (fn: any): boolean => typeof fn._op === 'number' && fn._op > 0
+/**
+ * Authority comes from the private provenance table, never from a public
+ * `_op` field. A forged tag makes a step opaque, not fused.
+ */
+const _entry = trustedOperatorEntry
+const _opOf = (fn: unknown): number => trustedOperatorEntry(fn)?.op ?? 0
+const _hasOp = (fn: unknown): boolean => _opOf(fn) > 0
 
 // Two shapes share this slot type: a plain Runner (untagged/opaque fallback,
 // from compile()) or a (ShapeEntry, bindings) pair (tagged fast path). The
@@ -117,7 +124,11 @@ function storeCacheRunner(fns: readonly unknown[], runner: Runner): void {
   hotEntry = stored
 }
 
-function storeCacheTagged(fns: readonly unknown[], entry: ShapeEntry, bindings: readonly StepBinding[]): void {
+function storeCacheTagged(
+  fns: readonly unknown[],
+  entry: ShapeEntry,
+  bindings: readonly StepBinding[],
+): void {
   const slot = cacheSlot()
   const stored = { fns, entry, bindings, used: ++clock }
   cache[slot] = stored
@@ -133,8 +144,10 @@ function runCached(cached: CacheEntry, input: unknown): unknown {
  * most common inline pipeline arity while preserving the same bounded caches. */
 function runTagged2(a: unknown, f1: any, f2: any): unknown {
   const fns = [f1, f2]
-  const op1 = f1._op
-  const op2 = f2._op
+  const e1 = _entry(f1)
+  const e2 = _entry(f2)
+  const op1 = e1 === undefined ? 0 : e1.op
+  const op2 = e2 === undefined ? 0 : e2.op
   if (
     !Number.isSafeInteger(op1) ||
     op1 <= 0 ||
@@ -152,7 +165,7 @@ function runTagged2(a: unknown, f1: any, f2: any): unknown {
   let entry = frontCacheNum.get(numKey)
   let bindings: readonly StepBinding[]
   if (entry) {
-    bindings = [extractBinding(f1), extractBinding(f2)]
+    bindings = [extractBinding(e1!), extractBinding(e2!)]
   } else {
     const built = planAndLowerFast(fns)
     entry = built.entry
@@ -166,9 +179,12 @@ function runTagged2(a: unknown, f1: any, f2: any): unknown {
 
 function runTagged3(a: unknown, f1: any, f2: any, f3: any): unknown {
   const fns = [f1, f2, f3]
-  const op1 = f1._op
-  const op2 = f2._op
-  const op3 = f3._op
+  const e1 = _entry(f1)
+  const e2 = _entry(f2)
+  const op1 = e1 === undefined ? 0 : e1.op
+  const op2 = e2 === undefined ? 0 : e2.op
+  const e3 = _entry(f3)
+  const op3 = e3 === undefined ? 0 : e3.op
   if (
     !Number.isSafeInteger(op1) ||
     op1 <= 0 ||
@@ -189,7 +205,7 @@ function runTagged3(a: unknown, f1: any, f2: any, f3: any): unknown {
   let entry = frontCacheNum.get(numKey)
   let bindings: readonly StepBinding[]
   if (entry) {
-    bindings = [extractBinding(f1), extractBinding(f2), extractBinding(f3)]
+    bindings = [extractBinding(e1!), extractBinding(e2!), extractBinding(e3!)]
   } else {
     const built = planAndLowerFast(fns)
     entry = built.entry
@@ -203,10 +219,14 @@ function runTagged3(a: unknown, f1: any, f2: any, f3: any): unknown {
 
 function runTagged4(a: unknown, f1: any, f2: any, f3: any, f4: any): unknown {
   const fns = [f1, f2, f3, f4]
-  const op1 = f1._op
-  const op2 = f2._op
-  const op3 = f3._op
-  const op4 = f4._op
+  const e1 = _entry(f1)
+  const e2 = _entry(f2)
+  const op1 = e1 === undefined ? 0 : e1.op
+  const op2 = e2 === undefined ? 0 : e2.op
+  const e3 = _entry(f3)
+  const e4 = _entry(f4)
+  const op3 = e3 === undefined ? 0 : e3.op
+  const op4 = e4 === undefined ? 0 : e4.op
   if (
     !Number.isSafeInteger(op1) ||
     op1 <= 0 ||
@@ -226,17 +246,11 @@ function runTagged4(a: unknown, f1: any, f2: any, f3: any, f4: any): unknown {
     return runner(a)
   }
 
-  const numKey =
-    ((op1 * NUM_KEY_BASE + op2) * NUM_KEY_BASE + op3) * NUM_KEY_BASE + op4
+  const numKey = ((op1 * NUM_KEY_BASE + op2) * NUM_KEY_BASE + op3) * NUM_KEY_BASE + op4
   let entry = frontCacheNum.get(numKey)
   let bindings: readonly StepBinding[]
   if (entry) {
-    bindings = [
-      extractBinding(f1),
-      extractBinding(f2),
-      extractBinding(f3),
-      extractBinding(f4),
-    ]
+    bindings = [extractBinding(e1!), extractBinding(e2!), extractBinding(e3!), extractBinding(e4!)]
   } else {
     const built = planAndLowerFast(fns)
     entry = built.entry
@@ -250,11 +264,16 @@ function runTagged4(a: unknown, f1: any, f2: any, f3: any, f4: any): unknown {
 
 function runTagged5(a: unknown, f1: any, f2: any, f3: any, f4: any, f5: any): unknown {
   const fns = [f1, f2, f3, f4, f5]
-  const op1 = f1._op
-  const op2 = f2._op
-  const op3 = f3._op
-  const op4 = f4._op
-  const op5 = f5._op
+  const e1 = _entry(f1)
+  const e2 = _entry(f2)
+  const op1 = e1 === undefined ? 0 : e1.op
+  const op2 = e2 === undefined ? 0 : e2.op
+  const e3 = _entry(f3)
+  const e4 = _entry(f4)
+  const e5 = _entry(f5)
+  const op3 = e3 === undefined ? 0 : e3.op
+  const op4 = e4 === undefined ? 0 : e4.op
+  const op5 = e5 === undefined ? 0 : e5.op
   if (
     !Number.isSafeInteger(op1) ||
     op1 <= 0 ||
@@ -278,17 +297,15 @@ function runTagged5(a: unknown, f1: any, f2: any, f3: any, f4: any, f5: any): un
   }
 
   const numKey =
-    (((op1 * NUM_KEY_BASE + op2) * NUM_KEY_BASE + op3) * NUM_KEY_BASE + op4) *
-      NUM_KEY_BASE +
-    op5
+    (((op1 * NUM_KEY_BASE + op2) * NUM_KEY_BASE + op3) * NUM_KEY_BASE + op4) * NUM_KEY_BASE + op5
   let entry = frontCacheNum.get(numKey)
   let bindings: readonly StepBinding[]
   if (entry) {
     bindings = [
-      extractBinding(f1),
-      extractBinding(f2),
-      extractBinding(f3),
-      extractBinding(f4),
+      extractBinding(e1!),
+      extractBinding(e2!),
+      extractBinding(e3!),
+      extractBinding(e4!),
       extractBinding(f5),
     ]
   } else {
@@ -323,11 +340,14 @@ function runTagged(
   let numKey = 0
   let strKey = ''
   let allTagged = true
+  const entries: Array<TrustedOperatorEntry | undefined> = new Array(len)
   for (let i = 0; i < len; i++) {
     const step = args[i + 1]
     fns[i] = step
     if (!allTagged) continue
-    const op = (step as any)._op
+    const entry = _entry(step)
+    entries[i] = entry
+    const op = entry === undefined ? 0 : entry.op
     if (!Number.isSafeInteger(op) || op <= 0) allTagged = false
     else if (useNumKey && op >= NUM_KEY_BASE) allTagged = false
     else if (useNumKey) {
@@ -350,7 +370,7 @@ function runTagged(
   if (cachedEntry) {
     entry = cachedEntry
     const bound = new Array(len)
-    for (let i = 0; i < len; i++) bound[i] = extractBinding(fns[i] as any)
+    for (let i = 0; i < len; i++) bound[i] = extractBinding(entries[i]!)
     bindings = bound
   } else {
     const built = planAndLowerFast(fns)
@@ -625,14 +645,7 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,
   f19: (s: S) => T,
   f20: (t: T) => U,
 ): U
-export function pipe(
-  a?: unknown,
-  f1?: any,
-  f2?: any,
-  f3?: any,
-  f4?: any,
-  f5?: any,
-): unknown {
+export function pipe(a?: unknown, f1?: any, f2?: any, f3?: any, f4?: any, f5?: any): unknown {
   const argc = arguments.length
   if (argc <= 1) return a
 

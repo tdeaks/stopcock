@@ -22,14 +22,20 @@ interface Counter {
   n: number
 }
 
-function run<T>(data: readonly unknown[], build: (c: Counter) => unknown[]): { result: T; count: number } {
+function run<T>(
+  data: readonly unknown[],
+  build: (c: Counter) => unknown[],
+): { result: T; count: number } {
   const c: Counter = { n: 0 }
   const steps = build(c)
   const result = pipe(data as any, ...(steps as [any])) as T
   return { result, count: c.n }
 }
 
-function oracle<T>(data: readonly unknown[], build: (c: Counter) => unknown[]): { result: T; count: number } {
+function oracle<T>(
+  data: readonly unknown[],
+  build: (c: Counter) => unknown[],
+): { result: T; count: number } {
   const c: Counter = { n: 0 }
   const steps = build(c)
   const plan = buildPlan(steps)
@@ -41,189 +47,190 @@ function oracle<T>(data: readonly unknown[], build: (c: Counter) => unknown[]): 
 // creates new closure identities (defeating the identity cache) while the
 // opcode sequence (and therefore the front-cache key) stays the same across
 // iterations.
-const shapes: Array<{ name: string; data: readonly unknown[]; build: (c: Counter) => unknown[] }> = [
-  {
-    name: 'filterMap + take (template-covered)',
-    data: Array.from({ length: 40 }, (_, i) => i),
-    build: (c) => [
-      A.filterMap((x: number) => {
-        c.n++
-        return x % 2 === 0 ? x * 2 : undefined
-      }),
-      A.take(5),
-    ],
-  },
-  {
-    name: 'map + filter',
-    data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    build: (c) => [
-      A.map((x: number) => {
-        c.n++
-        return x + 1
-      }),
-      A.filter((x: number) => x % 2 === 0),
-    ],
-  },
-  {
-    name: 'map + take',
-    data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    build: (c) => [
-      A.map((x: number) => {
-        c.n++
-        return x * 2
-      }),
-      A.take(3),
-    ],
-  },
-  {
-    name: 'filter + drop',
-    data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    build: (c) => [
-      A.filter((x: number) => {
-        c.n++
-        return x % 2 === 0
-      }),
-      A.drop(1),
-    ],
-  },
-  {
-    name: 'map + reject',
-    data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    build: (c) => [
-      A.map((x: number) => {
-        c.n++
-        return x - 1
-      }),
-      A.reject((x: number) => x < 3),
-    ],
-  },
-  {
-    name: 'takeWhile',
-    data: [1, 2, 3, 4, 5, -1, 6, 7],
-    build: (c) => [
-      A.takeWhile((x: number) => {
-        c.n++
-        return x > 0
-      }),
-    ],
-  },
-  {
-    name: 'dropWhile + map',
-    data: [1, 2, 3, 4, 5, 6, 7, 8],
-    build: (c) => [
-      A.dropWhile((x: number) => x < 3),
-      A.map((x: number) => {
-        c.n++
-        return x * 10
-      }),
-    ],
-  },
-  {
-    name: 'find',
-    data: [1, 2, 3, 4, 5, 6, 7, 8],
-    build: (c) => [
-      A.find((x: number) => {
-        c.n++
-        return x > 4
-      }),
-    ],
-  },
-  {
-    name: 'findIndex',
-    data: [1, 2, 3, 4, 5, 6, 7, 8],
-    build: (c) => [
-      A.findIndex((x: number) => {
-        c.n++
-        return x > 4
-      }),
-    ],
-  },
-  {
-    name: 'every',
-    data: [1, 2, 3, 4, 5, 6, 7, 8],
-    build: (c) => [
-      A.every((x: number) => {
-        c.n++
-        return x > 0
-      }),
-    ],
-  },
-  {
-    name: 'some',
-    data: [1, 2, 3, 4, 5, 6, 7, 8],
-    build: (c) => [
-      A.some((x: number) => {
-        c.n++
-        return x > 6
-      }),
-    ],
-  },
-  {
-    name: 'reduce with fresh reducer',
-    data: [1, 2, 3, 4, 5, 6, 7, 8],
-    build: (c) => [
-      A.reduce((acc: number, x: number) => {
-        c.n++
-        return acc + x
-      }, 0),
-    ],
-  },
-  {
-    name: 'map + sum + scalar math',
-    data: [1, 2, 3, 4],
-    build: (c) => [
-      A.map((x: number) => {
-        c.n++
-        return x * 2
-      }),
-      A.sum,
-      M.add(1),
-    ],
-  },
-  {
-    name: 'sortBy + take (generic, materializer boundary)',
-    data: [5, 3, 8, 1, 9, 2],
-    build: (c) => [
-      A.sortBy((x: number) => {
-        c.n++
-        return -x
-      }),
-      A.take(3),
-    ],
-  },
-  {
-    name: 'flatMap + takeWhile',
-    data: [1, 2, 3],
-    build: (c) => [
-      A.flatMap((x: number) => {
-        c.n++
-        return [x, x + 10]
-      }),
-      A.takeWhile((v: number) => v < 12),
-    ],
-  },
-  {
-    name: 'mapWhile',
-    data: [1, 2, 3, 4, -1, 5],
-    build: (c) => [
-      A.mapWhile((x: number) => {
-        c.n++
-        return x > 0 ? x * 3 : undefined
-      }),
-    ],
-  },
-  {
-    name: 'join (boundary op with bound arg)',
-    data: ['a', 'b', 'c'],
-    build: (c) => [
-      A.map((x: string) => {
-        c.n++
-        return x.toUpperCase()
-      }),
-      A.join('-'),
-    ],
-  },
-]
+const shapes: Array<{ name: string; data: readonly unknown[]; build: (c: Counter) => unknown[] }> =
+  [
+    {
+      name: 'filterMap + take (template-covered)',
+      data: Array.from({ length: 40 }, (_, i) => i),
+      build: (c) => [
+        A.filterMap((x: number) => {
+          c.n++
+          return x % 2 === 0 ? x * 2 : undefined
+        }),
+        A.take(5),
+      ],
+    },
+    {
+      name: 'map + filter',
+      data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      build: (c) => [
+        A.map((x: number) => {
+          c.n++
+          return x + 1
+        }),
+        A.filter((x: number) => x % 2 === 0),
+      ],
+    },
+    {
+      name: 'map + take',
+      data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      build: (c) => [
+        A.map((x: number) => {
+          c.n++
+          return x * 2
+        }),
+        A.take(3),
+      ],
+    },
+    {
+      name: 'filter + drop',
+      data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      build: (c) => [
+        A.filter((x: number) => {
+          c.n++
+          return x % 2 === 0
+        }),
+        A.drop(1),
+      ],
+    },
+    {
+      name: 'map + reject',
+      data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      build: (c) => [
+        A.map((x: number) => {
+          c.n++
+          return x - 1
+        }),
+        A.reject((x: number) => x < 3),
+      ],
+    },
+    {
+      name: 'takeWhile',
+      data: [1, 2, 3, 4, 5, -1, 6, 7],
+      build: (c) => [
+        A.takeWhile((x: number) => {
+          c.n++
+          return x > 0
+        }),
+      ],
+    },
+    {
+      name: 'dropWhile + map',
+      data: [1, 2, 3, 4, 5, 6, 7, 8],
+      build: (c) => [
+        A.dropWhile((x: number) => x < 3),
+        A.map((x: number) => {
+          c.n++
+          return x * 10
+        }),
+      ],
+    },
+    {
+      name: 'find',
+      data: [1, 2, 3, 4, 5, 6, 7, 8],
+      build: (c) => [
+        A.find((x: number) => {
+          c.n++
+          return x > 4
+        }),
+      ],
+    },
+    {
+      name: 'findIndex',
+      data: [1, 2, 3, 4, 5, 6, 7, 8],
+      build: (c) => [
+        A.findIndex((x: number) => {
+          c.n++
+          return x > 4
+        }),
+      ],
+    },
+    {
+      name: 'every',
+      data: [1, 2, 3, 4, 5, 6, 7, 8],
+      build: (c) => [
+        A.every((x: number) => {
+          c.n++
+          return x > 0
+        }),
+      ],
+    },
+    {
+      name: 'some',
+      data: [1, 2, 3, 4, 5, 6, 7, 8],
+      build: (c) => [
+        A.some((x: number) => {
+          c.n++
+          return x > 6
+        }),
+      ],
+    },
+    {
+      name: 'reduce with fresh reducer',
+      data: [1, 2, 3, 4, 5, 6, 7, 8],
+      build: (c) => [
+        A.reduce((acc: number, x: number) => {
+          c.n++
+          return acc + x
+        }, 0),
+      ],
+    },
+    {
+      name: 'map + sum + scalar math',
+      data: [1, 2, 3, 4],
+      build: (c) => [
+        A.map((x: number) => {
+          c.n++
+          return x * 2
+        }),
+        A.sum,
+        M.add(1),
+      ],
+    },
+    {
+      name: 'sortBy + take (generic, materializer boundary)',
+      data: [5, 3, 8, 1, 9, 2],
+      build: (c) => [
+        A.sortBy((x: number) => {
+          c.n++
+          return -x
+        }),
+        A.take(3),
+      ],
+    },
+    {
+      name: 'flatMap + takeWhile',
+      data: [1, 2, 3],
+      build: (c) => [
+        A.flatMap((x: number) => {
+          c.n++
+          return [x, x + 10]
+        }),
+        A.takeWhile((v: number) => v < 12),
+      ],
+    },
+    {
+      name: 'mapWhile',
+      data: [1, 2, 3, 4, -1, 5],
+      build: (c) => [
+        A.mapWhile((x: number) => {
+          c.n++
+          return x > 0 ? x * 3 : undefined
+        }),
+      ],
+    },
+    {
+      name: 'join (boundary op with bound arg)',
+      data: ['a', 'b', 'c'],
+      build: (c) => [
+        A.map((x: string) => {
+          c.n++
+          return x.toUpperCase()
+        }),
+        A.join('-'),
+      ],
+    },
+  ]
 
 describe('pipe() fast path: inline fresh closures', () => {
   for (const shape of shapes) {
@@ -258,8 +265,16 @@ describe('pipe() fast path: distinct bound args, same opcode sequence', () => {
     const data = [1, 2, 3, 4, 5]
     for (let i = 0; i < ITERATIONS; i++) {
       const reducer = (a: number, b: number) => a + b
-      const rZero = pipe(data, A.filter((x: number) => x % 2 === 0), A.reduce(reducer, 0))
-      const rHundred = pipe(data, A.filter((x: number) => x % 2 === 0), A.reduce(reducer, 100))
+      const rZero = pipe(
+        data,
+        A.filter((x: number) => x % 2 === 0),
+        A.reduce(reducer, 0),
+      )
+      const rHundred = pipe(
+        data,
+        A.filter((x: number) => x % 2 === 0),
+        A.reduce(reducer, 100),
+      )
       expect(rZero).toBe(6)
       expect(rHundred).toBe(106)
     }
@@ -293,7 +308,7 @@ describe('pipe() fast path: bail conditions stay correct', () => {
     }
   })
 
-  it('nested tagged callback (a tagged step used as another step\'s bound arg) stays correct', () => {
+  it("nested tagged callback (a tagged step used as another step's bound arg) stays correct", () => {
     const data = [[1, 2], [3, 4], [5]]
     for (let i = 0; i < ITERATIONS; i++) {
       // A.take(1) is itself a tagged function; using it as map's mapper is
@@ -327,7 +342,7 @@ describe('pipe() fast path: numeric front-cache key is collision-free', () => {
     expect(Number.isSafeInteger(key)).toBe(true)
   })
 
-  it('rejects an out-of-range forged opcode instead of hitting a colliding shape', () => {
+  it('makes an out-of-range forged opcode generic instead of hitting a colliding shape', () => {
     // [map=1, 129] and [filter=2, map=1] both pack to 257 unless every
     // numeric-cache digit is validated before lookup.
     pipe(
@@ -338,13 +353,16 @@ describe('pipe() fast path: numeric front-cache key is collision-free', () => {
     const forged = A.map((value: number) => value)
     ;(forged as { _op: number })._op = NUM_KEY_BASE + 1
 
-    expect(() =>
+    // Since S5A the forged tag carries no authority at all, so the step is
+    // opaque and the pipeline runs generically rather than reaching the
+    // numeric cache with an unvalidated digit.
+    expect(
       pipe(
         [1, 2, 3],
         A.map((value: number) => value),
         forged,
       ),
-    ).toThrow(`registry: no metadata for opcode ${NUM_KEY_BASE + 1}`)
+    ).toEqual([1, 2, 3])
   })
 
   it('6+ step pipelines (beyond the numeric-key length) still match interpret() via the string-key fallback', () => {
