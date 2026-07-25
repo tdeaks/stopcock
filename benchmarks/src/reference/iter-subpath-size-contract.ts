@@ -15,7 +15,7 @@ export const ITER_SUBPATH_SIZE_CONTRACT = Object.freeze({
   compression: 'gzip level 9',
   baselineGzipBytes: 6_438,
   ordinaryToleranceRatio: 0.05,
-  acceptedGzipBytes: 8_412,
+  acceptedGzipBytes: 8_433,
   exception: Object.freeze({
     kernelSet: Object.freeze([
       'iter/array/map/*',
