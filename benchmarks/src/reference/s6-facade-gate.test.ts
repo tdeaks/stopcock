@@ -15,6 +15,7 @@ const clean = (): FacadeRow[] => [
   rowOf('fusion.pipeline', 2_900, 'compact, no engine'),
   rowOf('optimized.pipeline', 11_000, `uses ${ENGINE_MARKER}`),
   rowOf('fusion.pipeline.debug', 11_300, `uses ${ENGINE_MARKER} and ${DEBUG_MARKER}`),
+  rowOf('compact.pipeline.debug', 3_900, `compact plus ${DEBUG_MARKER}`),
 ]
 
 describe('S6 facade policy', () => {
@@ -50,6 +51,28 @@ describe('S6 facade policy', () => {
     expect(evaluateFacades(rows)).toContain(
       'the debug fixture does not actually reach the debug surface',
     )
+  })
+
+  test('rejects explain dragging the engine into a compact consumer', () => {
+    // The regression S10 exists to prevent. No byte ceiling on the optimized
+    // base would catch it, because that base already contains the engine.
+    const rows = clean()
+    rows[4] = rowOf('compact.pipeline.debug', 3_900, `${ENGINE_MARKER} ${DEBUG_MARKER}`)
+    expect(evaluateFacades(rows)).toContain(
+      'explaining a compact pipeline pulls in the optimized engine',
+    )
+  })
+
+  test('rejects a compact debug increment over the ceiling', () => {
+    const rows = clean()
+    rows[4] = rowOf(
+      'compact.pipeline.debug',
+      2_900 + DEBUG_FACADE_CEILING_BYTES + 1,
+      DEBUG_MARKER,
+    )
+    expect(
+      evaluateFacades(rows).some((failure) => failure.includes('over a compact base')),
+    ).toBe(true)
   })
 })
 

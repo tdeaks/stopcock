@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vite-plus/test'
 import * as A from '../array'
 import { buildPlan } from '../plan'
 import { interpret } from '../interpret'
-import { compile, explain, planAndLowerFast } from '../compile'
+import { compile, planAndLowerFast } from '../compile'
+import { explain } from '../internal/explain'
 import { ARRAY_TEMPLATES, SINK_TEMPLATES } from '../portable-templates'
 import {
   OP_MAP,

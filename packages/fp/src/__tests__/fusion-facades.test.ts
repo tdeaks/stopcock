@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 import * as A from '../array'
-import { compile, explain, getOptimizerStats } from '../compile'
+import { compile, getOptimizerStats } from '../compile'
+import { explain } from '../internal/explain'
 import * as fusion from '../fusion'
 import * as fusionDebug from '../fusion-debug'
 import * as fusionOptimized from '../fusion-optimized'
@@ -80,16 +81,20 @@ describe('explicit fusion facades', () => {
 })
 
 describe('fusion debug facade', () => {
-  it('re-exports the pinned explanation and statistics surface', () => {
+  it('exposes only the static explanation surface', () => {
+    // S10 moved explainRunner and the optimizer statistics to
+    // `/fusion/optimized`. Re-exporting them here put the engine's chunk back
+    // into every consumer of this entry, which is what the whole move was for.
     expect(fusionDebug.explain).toBe(explain)
-    expect(fusionDebug.getOptimizerStats).toBe(getOptimizerStats)
-    expect(Object.keys(fusionDebug).sort()).toEqual([
-      'explain',
-      'explainPure',
-      'explainRunner',
-      'getOptimizerStats',
-      'resetOptimizerStats',
-    ])
+    expect(Object.keys(fusionDebug).sort()).toEqual(['explain', 'explainPure'])
+  })
+
+  it('leaves the engine-bound diagnostics on the optimized entry', () => {
+    expect(fusionOptimized.getOptimizerStats).toBe(getOptimizerStats)
+    for (const name of ['explainRunner', 'getOptimizerStats', 'resetOptimizerStats']) {
+      expect(Object.keys(fusionOptimized)).toContain(name)
+      expect(Object.keys(fusionDebug)).not.toContain(name)
+    }
   })
 
   it('explains a facade pipeline', () => {

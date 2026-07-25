@@ -3,14 +3,8 @@ import * as A from '../array'
 import * as S from '../string'
 import { buildPlan } from '../plan'
 import { interpret } from '../interpret'
-import {
-  compile,
-  compilePure,
-  explain,
-  explainPure,
-  getOptimizerStats,
-  resetOptimizerStats,
-} from '../compile'
+import { compile, compilePure, getOptimizerStats, resetOptimizerStats } from '../compile'
+import { explain, explainPure } from '../internal/explain'
 
 function tracked<F extends (...args: any[]) => any>(fn: F): F & { calls: unknown[][] } {
   const calls: unknown[][] = []

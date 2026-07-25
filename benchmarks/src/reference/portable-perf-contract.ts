@@ -29,6 +29,9 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
     'packages/fp/src/compile.ts',
     'packages/fp/src/dual.ts',
     'packages/fp/src/interpret.ts',
+    // Rewrite policy that compile.ts used to hold inline. Part of the executed
+    // runtime, so the frozen subject has to cover it.
+    'packages/fp/src/internal/plan-analysis.ts',
     'packages/fp/src/lower.ts',
     'packages/fp/src/number.ts',
     'packages/fp/src/opcodes.ts',
@@ -39,7 +42,7 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
     'packages/fp/src/shape-entry.ts',
     'packages/fp/src/sort-kernel.ts',
   ] as const),
-  sha256: '2239f77ddb38d766fe712ef22b704182804b452116344ca5298fea5d50d2c17a',
+  sha256: 'c349c2c8436127ab7e0851e458a43cf7314d9dc89f26d465d4baba94079640c5',
 })
 
 export interface PortableBatchPolicy {

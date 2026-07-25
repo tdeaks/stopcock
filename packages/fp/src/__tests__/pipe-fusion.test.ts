@@ -7,7 +7,8 @@ import { none, some } from '../option'
 import * as A from '../array'
 import * as S from '../string'
 import * as M from '../math'
-import { explain, getOptimizerStats, resetOptimizerStats } from '../compile'
+import { getOptimizerStats, resetOptimizerStats } from '../compile'
+import { explain } from '../internal/explain'
 
 describe('pipe fusion', () => {
   describe('optimizer diagnostics', () => {
