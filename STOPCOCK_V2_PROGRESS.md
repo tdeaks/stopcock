@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S10X
-Current slice: OPTIMIZER_EXTRACTION
-Last verified commit: a1286fd
+Current canonical stage: S11
+Current slice: COMPILER_RESIDUAL
+Last verified commit: e75c9be
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -68,7 +68,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S8    | GATE_PASSED | Root `pipe`/`flow` sequential at `55ca6a1`; root surface narrowed to the migration map, every size ceiling met with no planner retained. Non-publishable integration state, as the stage requires                                                                                                                                                                                             |
 | S9    | GATE_PASSED | Compact fusion at `90c3265`: 2,874 gzip bytes against the 5.5 KiB hard gate, no debug surface, no name registry, and agreement with every other tier on results, callback order, and early-exit counts                                                                                                                                                                                        |
 | S10   | GATE_PASSED | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                    |
-| S10X  | IN_PROGRESS | Triggered: the exact prototype pack puts the optimizer at 214,155 B against the 100 KiB threshold                                                                                                                                                                                                                                                                                              |
+| S10X  | GATE_PASSED | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                  |
 | S10J  | GATE_PASSED | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                   |
 | S11   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | P1A   | GATE_PASSED | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                       |
@@ -2325,11 +2325,43 @@ checkpoints.
 
 ## Exact next action
 
-Execute S10X. S10J resolved `externalization-required` from the packed
-artifact, so the optimizer cannot stay in the same package under the 100 KiB
-threshold. Choose and prove exactly one stable topology, keeping
-`@stopcock/fp/fusion/optimized` working without making the optimizer a hidden
-required install cost.
+Execute S11: bound the compiler residual. S11 also owns the recorded P1A
+exception, the ten Iter terminals shipping below the 0.80x floor.
+
+### S10X outcome
+
+The user chose the external-package branch over shrinking the bank. Evidence:
+
+- FP tarball optimizer footprint 214,155 B -> 0 B, from `npm pack`, not an
+  estimate. Total pack 917,316 B -> 668,637 B.
+- Debug facade increment 245 B over a compact base and 290 B over an optimized
+  one, against a 3 KiB ceiling. The optimized consumer is 10,617 B against
+  12 KiB.
+- The 26 explain assertions frozen before S10 deleted the engine still pass
+  unchanged from the extracted package, which is the strongest single check
+  that the move preserved behaviour.
+- FP 1,200 tests, optimizer 1,749, compiler 234, benchmarks 437.
+
+Two consequences worth carrying forward rather than discovering later:
+
+- FP's `explain` now reports every segment as `generic`. That is true for an
+  FP-only install and is not a loss of detail: the bank lives in a package FP
+  cannot see, and claiming a segment runs on a template would be a guess. The
+  bank-aware `explain` ships in the optimizer.
+- `option-terminals.test.ts` in the compiler had been failing since before this
+  programme, so its eight Option-identity assertions had never executed. Two
+  harness bugs, now fixed. Worth assuming other suites have the same shape of
+  problem until checked.
+
+### Still open from S10X
+
+The spec's full extracted-topology matrix is not complete. Done: package,
+ABI, negotiation, cohort join, compiler specifier recognition, FP-only
+completeness, boundary tests. Not done: the S7 host matrix rerun against
+content-addressed extracted artifacts, duplicate-install and hoisting layout
+tests, cross-package receipts naming both package hashes, and the codemod and
+migration-doc updates. S12P owns re-running package qualification; the S7
+rerun should happen before DISP freezes dispositions.
 
 ### S10 residue carried forward
 
