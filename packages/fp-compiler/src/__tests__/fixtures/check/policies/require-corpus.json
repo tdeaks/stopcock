@@ -1,0 +1,10 @@
+{
+  "kind": "stopcock.check-policy",
+  "schemaVersion": 1,
+  "policyId": "project/require-corpus",
+  "requireTransformed": true,
+  "forbidReasonCodes": ["opaque-callback"],
+  "minCoverageNumerator": 1,
+  "minCoverageDenominator": 1,
+  "requireEvidence": ["corpus-evidence"]
+}

@@ -1,0 +1,21 @@
+{
+  "kind": "stopcock.check-expectations",
+  "schemaVersion": 1,
+  "compilerHash": "sha256:8a2ed10fdf3456c2be73eaab15ba1dc45f4719484dd4b3677b33adfdfee082bb",
+  "configHash": "sha256:46ce179126eaf00a592be24a9a00fcb1fb41c40c21ae62b06052e8469d26f5e7",
+  "semanticManifestHash": "sha256:49902ee18e501988cdd1b8e632d20b480d67ce9486ae8f9b95690cebca589b94",
+  "runtimeHash": "sha256:939407c1489b39f2e384e9b28a7a8f182ab839155f21e6b174aa6981df5ffd31",
+  "sites": [
+    {
+      "receiptId": "sha256:2ae736fe01baf2aa2fb2f5aa969a775ac895d2d4d57f18d073e038eb46bd5c72",
+      "sourceHash": "sha256:0305c26e156dab80b8400f3fac76efbc5d45aca1bebf6465e05ce209abc09564",
+      "emittedCodeHash": "sha256:0c0b483de895bb7e810df39ff6e3aab1f01ecce3717bd24dbfa69c7ae406a845",
+      "artifactHash": "sha256:59468522a3ea8c415825be8389fc21d4838cceafcfffaeaf0e186d8e5132c4ab"
+    },
+    {
+      "receiptId": "sha256:0c022ed22569c22ff78125c3885c83fe559df17954fa23124a7a67e85b6d9c38",
+      "sourceHash": "sha256:9521bfb26c414dca07035b4aee66f991b69e55f6b1bed4d046a64f34ddfba685",
+      "emittedCodeHash": null
+    }
+  ]
+}
