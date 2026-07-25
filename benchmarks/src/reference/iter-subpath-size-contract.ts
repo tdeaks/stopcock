@@ -9,13 +9,28 @@ import { gzipSync } from 'node:zlib'
  * published chunk and costs about 40 gzip bytes, while 5% of the pre-kernel
  * subpath is 322 bytes in total. So the exception is taken explicitly, once,
  * for one named kernel set, with the measured gain recorded beside the bytes.
+ *
+ * There are now two exceptions. The second, for typed-array admission, is the
+ * expensive one: the kernels themselves are about 397 gzip bytes and the
+ * admission seam is about 1,723, because admitting a typed array safely means
+ * authenticating the view, its iteration, its length, and its buffer. A
+ * consumer importing `iter` pays those bytes whether or not it ever passes a
+ * typed array, and the closure grows further because `iter` now reaches P2's
+ * typed-array view module.
  */
 export const ITER_SUBPATH_SIZE_CONTRACT = Object.freeze({
   artifact: 'dist/iter.js',
   compression: 'gzip level 9',
+  /**
+   * Bun and Node's zlib produce different output for identical bytes: this
+   * artifact measures 10,563 under Bun and 10,543 under Node. Every number here
+   * is Bun's, because that is what runs the suite. Re-measuring under Node and
+   * "correcting" the ceiling would silently move it by 20 bytes.
+   */
+  measuredUnder: 'bun',
   baselineGzipBytes: 6_438,
   ordinaryToleranceRatio: 0.05,
-  acceptedGzipBytes: 8_433,
+  acceptedGzipBytes: 10_563,
   exception: Object.freeze({
     kernelSet: Object.freeze([
       'iter/array/map/*',
@@ -39,6 +54,35 @@ export const ITER_SUBPATH_SIZE_CONTRACT = Object.freeze({
       Object.freeze({ row: 'map/toArray', before: 0.388, after: 0.914 }),
       Object.freeze({ row: 'map-filter-take/toArray', before: 0.555, after: 0.905 }),
     ]),
+  }),
+  /**
+   * Typed-array admission. Granted deliberately after the lane reported the
+   * overage rather than raising the ceiling itself.
+   */
+  typedArrayException: Object.freeze({
+    kernelSet: Object.freeze([
+      'iter/typed-array/map/*',
+      'iter/typed-array/filter/*',
+      'iter/typed-array/map-filter/*',
+    ]),
+    shippedMatrixRows: 21,
+    distinctKernels: 18,
+    gzipBytesSpent: 2_110,
+    admissionSeamGzipBytes: 1_723,
+    consumerClosureGzipBytes: Object.freeze({ before: 10_481, after: 13_747 }),
+    /**
+     * Geomean of the shipped typed-array rows against hand-written indexed
+     * loops over the same Float64Array, before and after admission. Bun
+     * 1.3.14, n=4096, median of paired in-process sessions.
+     */
+    measuredGain: Object.freeze({ before: 0.075, after: 1.095 }),
+    /**
+     * Three `forEach` rows ship at 0.24-0.36 against the same floor P1A's
+     * terminals carry, for the same measured reason: the hand reference
+     * inlines the effect and the public terminal forces one indirect call per
+     * element. The generic path they replace measures 0.03.
+     */
+    floorExceptionOwner: 'S11',
   }),
 })
 

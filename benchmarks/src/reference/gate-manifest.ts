@@ -57,6 +57,11 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'shipped Iter kernels against hand loops, and the subpath size exception',
   }),
   Object.freeze({
+    script: 'iter-typed-array-kernel-gate.ts',
+    kind: 'timing',
+    checks: 'shipped typed-array Iter kernels against hand-written indexed loops',
+  }),
+  Object.freeze({
     script: 'pipe-dispatch-gate.ts',
     kind: 'timing',
     checks: 'current dispatch against the frozen pre-hot-identity baseline',
