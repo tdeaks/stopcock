@@ -15,7 +15,7 @@ Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S7
 Current slice: PRE_CUTOVER_GATES
-Last verified commit: 1810394
+Last verified commit: 72ebcfc
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -286,10 +286,34 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       landed the iter subpath enforcement that an earlier commit of mine had
       claimed but not contained.
 - [x] (2026-07-25) Landed S7 receipt emission at `1810394`, so the `stopcock
-    check` CLI finally has something producing what it reads, and proved the
+  check` CLI finally has something producing what it reads, and proved the
       two halves end to end.
 
 ## Evidence log
+
+- S7 import-pruning slice:
+  - the transform never pruned anything, only added, so a fully transformed file
+    still imported operators it no longer mentioned;
+  - pruning is decided from reference analysis over the post-transform program.
+    Each replacement records its range, a reference inside a replaced range no
+    longer exists, and everything else still counts. That is what lets a mixed
+    file keep exactly what its fallback site needs while dropping what the fused
+    site consumed;
+  - it refuses to touch type-only imports and type-only specifiers, bare
+    side-effect imports, and any binding still referenced anywhere including
+    under an alias;
+  - removing a specifier widens over its separator. Without that,
+    `import { filter, map }` losing `filter` emits `import { , map }`, which
+    does not parse. Caught by executing the transformed output rather than
+    reading it, and both pipelines in the mixed fixture return correct values
+    with imports pruned;
+  - the step collector's partial-recognition fix landed alongside: a site that
+    used real operators before hitting one the compiler could not handle now
+    emits a skipped receipt naming them, instead of vanishing from coverage;
+  - 14 focused tests over the planner and 6 over the transform cover full
+    removal, mixed retention, type-only, side-effect-only, aliases, an
+    untouched file, and separator widening in all three positions;
+  - `@stopcock/fp-compiler` passes 214 tests with clean types.
 
 - S7 receipt-emission slice:
   - the plugin emits one `CompilerReceiptV1` per recognised site, opt-in
