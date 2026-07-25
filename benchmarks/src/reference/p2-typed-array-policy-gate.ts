@@ -709,35 +709,6 @@ export type RuntimeBandId = (typeof RUNTIME_BANDS)[number]
  */
 export const BIGINT_REPLACEMENT_MINIMUM_IMPROVEMENT = 0.1
 
-export interface PolicySource {
-  readonly bands: readonly string[]
-  readonly strategies: readonly string[]
-}
-
-/**
- * Reads the policy the production module actually carries. The policy is not
- * exported — exporting it would widen the public typed-array surface — so the
- * manifest is checked against the frozen literal in the source instead.
- */
-export const readPolicySource = (
-  path = resolve(fileURLToPath(import.meta.url), '../../../../packages/fp/src/typed-array.ts'),
-): PolicySource => {
-  const source = readFileSync(path, 'utf8')
-  const start = source.indexOf('const RUNTIME_POLICIES =')
-  if (start === -1) throw new Error('typed-array.ts carries no RUNTIME_POLICIES literal')
-  const end = source.indexOf('\n} as const)', start)
-  if (end === -1) throw new Error('RUNTIME_POLICIES literal is not terminated')
-  const literal = source.slice(start, end)
-  return {
-    // The formatter drops quotes from keys that do not need them, so a band
-    // name matches with or without them.
-    bands: [...literal.matchAll(/^ {2}'?([a-z0-9.-]+)'?:/gmu)].map((match) => match[1] as string),
-    strategies: [...literal.matchAll(/'([a-z-]+)' as Strategy/gu)].map(
-      (match) => match[1] as string,
-    ),
-  }
-}
-
 export const evaluateDispositions = (
   dispositions: readonly Disposition[],
   corpus: readonly CharacterizationKey[],
@@ -798,39 +769,17 @@ export const evaluateDispositions = (
 export const CONSERVATIVE_STRATEGY = 'size-banded'
 
 /**
- * Every band the policy knows must be recorded, every unrecorded band is a
- * failure, and a `shipped` disposition may not claim a strategy the production
- * policy does not actually carry. That last check is what stops the manifest
- * drifting into a wish list: with every band on the conservative strategy, no
- * row is allowed to say it shipped.
+ * P2 shipped no strategy, so no disposition may claim it did. The production
+ * module carries no policy table to parse: parsing source for this was brittle
+ * enough that the formatter broke it once. If a strategy ever ships, the
+ * production constant and this check flip together.
  */
-export const evaluateBands = (
-  source: PolicySource,
+export const evaluateShippedClaims = (
   dispositions: readonly Disposition[] = P2_DISPOSITIONS,
-): string[] => {
-  const failures: string[] = []
-  for (const band of RUNTIME_BANDS) {
-    if (!source.bands.includes(band)) failures.push(`policy source is missing band ${band}`)
-  }
-  for (const band of source.bands) {
-    if (!(RUNTIME_BANDS as readonly string[]).includes(band)) {
-      failures.push(`policy source carries unrecorded band ${band}`)
-    }
-  }
-  if (!source.bands.includes('generic')) {
-    failures.push('policy source has no generic fallback band')
-  }
-
-  const accepted = source.strategies.some((strategy) => strategy !== CONSERVATIVE_STRATEGY)
-  if (!accepted) {
-    for (const row of dispositions) {
-      if (row.decision === 'shipped') {
-        failures.push(`${row.id} claims shipped while every band selects the conservative fallback`)
-      }
-    }
-  }
-  return failures
-}
+): string[] =>
+  dispositions
+    .filter((row) => row.decision === 'shipped')
+    .map((row) => `${row.id} claims shipped while no typed-array strategy is enabled`)
 
 // --- runner -----------------------------------------------------------------
 
@@ -985,10 +934,7 @@ const main = (): void => {
     )
   }
 
-  const failures = [
-    ...evaluateDispositions(P2_DISPOSITIONS, corpus),
-    ...evaluateBands(readPolicySource()),
-  ]
+  const failures = [...evaluateDispositions(P2_DISPOSITIONS, corpus), ...evaluateShippedClaims()]
   const resolution = resolveProfile(describeHost(), process.env[PERF_PROFILE_ENV])
   const label = resolution.releaseEvidenceEligible ? 'FAIL' : 'CANARY'
   for (const failure of failures) console.error(`${label}\t${failure}`)

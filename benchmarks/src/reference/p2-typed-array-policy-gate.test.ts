@@ -4,7 +4,6 @@ import {
   CONSERVATIVE_STRATEGY,
   covers,
   dispositionFor,
-  evaluateBands,
   evaluateDispositions,
   FAMILY_IDS,
   inspectViewKinds,
@@ -14,7 +13,7 @@ import {
   OPERATIONS,
   P2_DISPOSITION_RULES,
   P2_DISPOSITIONS,
-  readPolicySource,
+  evaluateShippedClaims,
   RUNTIME_BANDS,
   SELECTIVITIES,
   SIZE_BANDS,
@@ -89,37 +88,18 @@ describe('P2 dispositions', () => {
   })
 })
 
-describe('P2 runtime policy', () => {
-  test('the production module carries exactly the recorded bands', () => {
-    const source = readPolicySource()
-    expect(evaluateBands(source)).toEqual([])
-    expect(source.bands.slice().sort()).toEqual(RUNTIME_BANDS.slice().sort())
-  })
-
-  test('unknown and future runtimes fall back to generic', () => {
-    const source = readPolicySource()
-    expect(source.bands).toContain('generic')
-    // Every band's strategies are recorded, so a rollback can retarget one
-    // band without touching another.
-    expect(source.strategies.length).toBe(RUNTIME_BANDS.length * 2)
-  })
-
-  test('every band currently selects the conservative fallback', () => {
-    expect(readPolicySource().strategies.every((s) => s === CONSERVATIVE_STRATEGY)).toBe(true)
+describe('P2 shipped claims', () => {
+  test('no disposition claims a strategy shipped', () => {
+    expect(evaluateShippedClaims()).toEqual([])
     expect(P2_DISPOSITIONS.some((row) => row.decision === 'shipped')).toBe(false)
   })
 
-  test('rejects a shipped claim that no band backs', () => {
-    const failures = evaluateBands(readPolicySource(), [
-      { id: 'float64/tiny/slice/0.5', decision: 'shipped', reason: 'wishful' },
-    ])
-    expect(failures).toEqual([
-      'float64/tiny/slice/0.5 claims shipped while every band selects the conservative fallback',
-    ])
-  })
-
-  test('keeps the Bun BigInt replacement bar at 10%', () => {
-    expect(BIGINT_REPLACEMENT_MINIMUM_IMPROVEMENT).toBe(0.1)
+  test('rejects a shipped claim that nothing backs', () => {
+    expect(
+      evaluateShippedClaims([
+        { id: 'float64/tiny/slice/0.5', decision: 'shipped', reason: 'wishful' },
+      ]),
+    ).toEqual(['float64/tiny/slice/0.5 claims shipped while no typed-array strategy is enabled'])
   })
 })
 

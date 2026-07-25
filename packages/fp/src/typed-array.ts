@@ -137,53 +137,22 @@ const SMALL_BULK_COPY_LENGTH = 128
 const isCanonicalTypedArray = (source: AnyTypedArray): boolean =>
   inspectCanonicalView(source) !== undefined
 
-type Strategy = 'intrinsic' | 'size-banded'
-
 /**
- * Bounded runtime policy for the operations whose strategy could plausibly
- * differ by engine.
+ * Every strategy candidate P2 measured lost against the real exported
+ * functions, so every family stays size-banded.
  *
- * Every band currently selects `size-banded`, the behaviour that shipped
- * before, and that is a measured decision rather than an unfinished one.
  * Dropping the size band so a short canonical view always takes the stashed
  * intrinsic looked like a clear win in the lab and was a reproducible loss in
- * production: on Bun 1.3.14 a 64-element `Float64Array` slice went from 0.98x
- * to 0.78x its frozen baseline and reverse from 1.10x to 0.93x. The lab kernel
+ * production: on Bun 1.3.14 a 64-element Float64Array slice went from 0.98x to
+ * 0.78x its frozen baseline, and reverse from 1.10x to 0.93x. The lab kernel
  * was not the production kernel, so the production A/B is what counts.
  *
- * A version that is not named here — an older Bun, a newer Node, a browser, a
- * runtime that does not exist yet — resolves to `generic`. New evidence
- * retargets one band; it never widens an existing one.
+ * There is therefore nothing to key on a runtime version, and a policy table
+ * whose bands all select the same strategy would be structure with no
+ * behaviour. Add one when a band actually earns a row.
  */
-const RUNTIME_POLICIES = Object.freeze({
-  'bun-1.3': Object.freeze({
-    slice: 'size-banded' as Strategy,
-    reverse: 'size-banded' as Strategy,
-  }),
-  'node-24': Object.freeze({
-    slice: 'size-banded' as Strategy,
-    reverse: 'size-banded' as Strategy,
-  }),
-  generic: Object.freeze({
-    slice: 'size-banded' as Strategy,
-    reverse: 'size-banded' as Strategy,
-  }),
-} as const)
-
-const resolveRuntimeBand = (): keyof typeof RUNTIME_POLICIES => {
-  const bun = (globalThis as { Bun?: { version?: unknown } }).Bun?.version
-  if (typeof bun === 'string') return bun.startsWith('1.3.') ? 'bun-1.3' : 'generic'
-  const node = (globalThis as { process?: { versions?: { node?: unknown } } }).process?.versions
-    ?.node
-  if (typeof node === 'string') return node.startsWith('24.') ? 'node-24' : 'generic'
-  return 'generic'
-}
-
-/** Resolved once, so no operation pays for band selection and no loop sees it. */
-const POLICY = RUNTIME_POLICIES[resolveRuntimeBand()]
-
-const SLICE_ALWAYS_INTRINSIC = POLICY.slice === 'intrinsic'
-const REVERSE_ALWAYS_INTRINSIC = POLICY.reverse === 'intrinsic'
+const SLICE_ALWAYS_INTRINSIC = false
+const REVERSE_ALWAYS_INTRINSIC = false
 
 const constructorOf = <T extends AnyTypedArray>(source: T): TypedArrayConstructor<T> =>
   source.constructor as unknown as TypedArrayConstructor<T>
