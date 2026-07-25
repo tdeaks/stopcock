@@ -15,7 +15,7 @@ Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S7
 Current slice: PRE_CUTOVER_GATES
-Last verified commit: 547de0d
+Last verified commit: bd13eaf
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -71,7 +71,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S10X  | NOT_STARTED | Conditional optimizer extraction                                                                                                                                                                                                                                                                                                                                                              |
 | S10J  | NOT_STARTED | Optimizer topology decision                                                                                                                                                                                                                                                                                                                                                                   |
 | S11   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
-| P1A   | BLOCKED     | Kernels, oracles, and codegen merged at `358746c`, but 8 shipped rows measure below the stage's own `0.80x` per-terminal floor. The floor was not lowered and the rows report as failures; shipping-vs-floor needs a decision                                                                                                                                                                 |
+| P1A   | GATE_PASSED | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                       |
 | P1B   | NOT_STARTED | Typed-array Iter admission                                                                                                                                                                                                                                                                                                                                                                    |
 | P2    | GATE_PASSED | Canonical-view inspection seam merged; every candidate strategy measured and stopped, so typed-array behaviour is unchanged by design                                                                                                                                                                                                                                                         |
 | P3A   | GATE_PASSED | Allocation and memory evidence infrastructure merged at `9bde654`; seven families calibrated on the release lane, three uncalibrated on the canary and reported rather than tuned                                                                                                                                                                                                             |
@@ -266,6 +266,11 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       measured against the real exported functions rather than a lab kernel.
 - [x] (2026-07-25) Wired the Iter subpath ceiling to the built artifact after
       finding it was only ever checked against synthetic reports.
+- [x] (2026-07-25) The user decided both open lane questions: ship the Iter
+      kernels below the floor under a recorded exception, and strip P2's empty
+      policy table.
+- [x] (2026-07-25) Recorded the Iter kernel floor exceptions and stripped the
+      typed-array policy seam at `bd13eaf` and `e31d00c`.
 
 ## Evidence log
 
