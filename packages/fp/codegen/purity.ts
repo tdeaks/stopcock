@@ -24,7 +24,7 @@ export interface PureInitializerSourceModuleV1 {
 export interface PureInitializerSourceSiteV1 {
   readonly module: string
   readonly name: string
-  readonly callKind: 'generated-iife' | 'dual' | 'freeze'
+  readonly callKind: 'generated-iife' | 'dual' | 'dual-untagged' | 'freeze'
 }
 
 const GENERATED_PURE_INITIALIZER_KEYS_V1 = Object.freeze([
@@ -70,54 +70,6 @@ export const MANUAL_PURE_DUAL_INITIALIZERS_V1 = Object.freeze({
     'mapInto',
     'filterInto',
     'shuffleWith',
-  ]),
-  option: Object.freeze([
-    'fromPredicate',
-    'map',
-    'flatMap',
-    'orElse',
-    'orElseWith',
-    'and',
-    'zip',
-    'zipWith',
-    'contains',
-    'exists',
-    'mapNullable',
-    'filter',
-    'getOrElse',
-    'getWithDefault',
-    'match',
-    'tap',
-    'as',
-    'ap',
-    'traverse',
-    'partitionMap',
-    'toResult',
-  ]),
-  result: Object.freeze([
-    'fromPredicate',
-    'map',
-    'mapErr',
-    'mapBoth',
-    'flatMap',
-    'orElse',
-    'and',
-    'zip',
-    'zipWith',
-    'ap',
-    'filterOrElse',
-    'contains',
-    'exists',
-    'getOrElse',
-    'getOrThrow',
-    'match',
-    'traverse',
-    'traverseValidation',
-    'optional',
-    'nullable',
-    'tap',
-    'tapErr',
-    'as',
   ]),
   object: Object.freeze([
     'pick',
@@ -167,6 +119,59 @@ export const MANUAL_PURE_DUAL_INITIALIZERS_V1 = Object.freeze({
   ]),
 } as const)
 
+// S3B moved Option and Result onto the independent untagged duals, so their
+// initializers no longer read the opcode table and are reviewed separately.
+export const MANUAL_PURE_UNTAGGED_DUAL_INITIALIZERS_V1 = Object.freeze({
+  option: Object.freeze([
+    'fromPredicate',
+    'map',
+    'flatMap',
+    'orElse',
+    'orElseWith',
+    'and',
+    'zip',
+    'zipWith',
+    'contains',
+    'exists',
+    'mapNullable',
+    'filter',
+    'getOrElse',
+    'getWithDefault',
+    'match',
+    'tap',
+    'as',
+    'ap',
+    'traverse',
+    'partitionMap',
+    'toResult',
+  ]),
+  result: Object.freeze([
+    'fromPredicate',
+    'map',
+    'mapErr',
+    'mapBoth',
+    'flatMap',
+    'orElse',
+    'and',
+    'zip',
+    'zipWith',
+    'ap',
+    'filterOrElse',
+    'contains',
+    'exists',
+    'getOrElse',
+    'getOrThrow',
+    'match',
+    'traverse',
+    'traverseValidation',
+    'optional',
+    'nullable',
+    'tap',
+    'tapErr',
+    'as',
+  ]),
+} as const)
+
 // Object.freeze receives a fresh literal, so dropping this unused singleton
 // cannot mutate external state or expose a different construction order.
 export const MANUAL_PURE_FREEZE_INITIALIZERS_V1 = Object.freeze({
@@ -195,6 +200,9 @@ const PURE_INITIALIZER_SOURCE_SITES_V1 = Object.freeze([
   }),
   ...Object.entries(MANUAL_PURE_DUAL_INITIALIZERS_V1).flatMap(([module, names]) =>
     names.map((name) => Object.freeze({ module, name, callKind: 'dual' as const })),
+  ),
+  ...Object.entries(MANUAL_PURE_UNTAGGED_DUAL_INITIALIZERS_V1).flatMap(([module, names]) =>
+    names.map((name) => Object.freeze({ module, name, callKind: 'dual-untagged' as const })),
   ),
   ...Object.entries(MANUAL_PURE_FREEZE_INITIALIZERS_V1).flatMap(([module, names]) =>
     names.map((name) => Object.freeze({ module, name, callKind: 'freeze' as const })),
@@ -240,7 +248,9 @@ export function validatePureInitializerSourcePolicyV1(
           ? /^\s*\(\(\)\s*=>\s*\{/u
           : site.callKind === 'dual'
             ? /^\s*dual\(/u
-            : /^\s*Object\.freeze\(\{\s*_tag:\s*0\s*\}\)/u
+            : site.callKind === 'dual-untagged'
+              ? /^\s*dualUntagged[234]\(/u
+              : /^\s*Object\.freeze\(\{\s*_tag:\s*0\s*\}\)/u
       if (!shape.test(afterMarker)) {
         throw new Error(`pure initializer ${key} changed its reviewed ${site.callKind} shape`)
       }
