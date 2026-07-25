@@ -183,5 +183,9 @@ export { extractBinding, planShapeKey } from './plan'
 // Cache control for cross-package differential tests. Not public API: the
 // public entries deliberately expose no cache handle.
 export { resetCompactCache } from './internal/compact-runtime'
+// The compact-tier explanation, so the optimizer can answer `segmentExecutors`
+// against its own bank without importing a public subpath. Everything the
+// optimizer needs from FP arrives through this one module.
+export { explain, explainPure, type PipelineExplanation } from './internal/explain'
 export { interpret } from './interpret'
 export type { BoundPlan, ConsumeMeta, OpCode, OpDomain, PlanShape, SegmentShape, StepBinding }

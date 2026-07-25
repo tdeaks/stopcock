@@ -9,9 +9,10 @@
  * This is the same explanation with `segmentExecutors` answered against the
  * bank actually installed here.
  */
-import { explain as explainCompact, explainPure as explainPureCompact } from '@stopcock/fp/fusion/debug'
-import type { PipelineExplanation } from '@stopcock/fp/fusion/debug'
 import {
+  explain as explainCompact,
+  explainPure as explainPureCompact,
+  type PipelineExplanation,
   CARD_SINK,
   compactCardinality,
   OP_SCAN,

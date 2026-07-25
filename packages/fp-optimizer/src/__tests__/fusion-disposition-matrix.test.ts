@@ -4,7 +4,7 @@ import { compile } from '../compile'
 import { __clearEntries } from '../shape-entry'
 import { __resetFusionCaches } from '../fusion-engine'
 import { pipe as optimizedPipe } from '../fusion-engine'
-import { explain } from '@stopcock/fp/fusion/debug'
+import { explain } from '../explain'
 import {
   beginSelectionTrace,
   endSelectionTrace,

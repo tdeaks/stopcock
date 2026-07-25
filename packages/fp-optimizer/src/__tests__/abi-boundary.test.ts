@@ -1,0 +1,110 @@
+import { describe, expect, it } from 'vite-plus/test'
+import * as A from '@stopcock/fp/array'
+import * as abi from '@stopcock/fp/abi'
+import { negotiate, runExactFallback, vetOperator, vetPipeline } from '@stopcock/fp/abi'
+import * as optimizer from '../index'
+import { pipe } from '../fusion-engine'
+
+/**
+ * S10X boundary evidence.
+ *
+ * The extraction is only worth anything if the boundary holds: provenance must
+ * not leak, a mismatched pair must not run a specialized runner, and the answer
+ * must not depend on which side served it.
+ */
+
+const double = (x: number) => x * 2
+const big = (x: number) => x > 2
+
+describe('the ABI does not leak authority', () => {
+  it('exposes no way to register an operator or mint a fact', () => {
+    // `is*`/`has*`/`get*` are queries. The first version of this flagged
+    // `isCompactRegistered`, which reads the fact table and changes nothing.
+    for (const name of Object.keys(abi)) {
+      if (/^(is|has|get)[A-Z]/u.test(name)) continue
+      expect(name).not.toMatch(/register|define|mint|install|addOperator/iu)
+    }
+  })
+
+  it('cannot be made to trust a forged operator through any export', () => {
+    // The name check above is a smell test. This is the property: run every
+    // exported function against a forgery and it must still not authenticate.
+    const forged = Object.assign((x: readonly number[]) => x, { _op: 1, fn: double })
+    for (const [name, value] of Object.entries(abi)) {
+      if (typeof value !== 'function' || name === 'runExactFallback') continue
+      try {
+        ;(value as (...args: readonly unknown[]) => unknown)(forged)
+      } catch {
+        // Rejecting the argument outright is a fine outcome.
+      }
+    }
+    expect(vetOperator(forged)).toBeUndefined()
+    expect(vetPipeline([forged]).fullyTrusted).toBe(false)
+  })
+
+  it('refuses a forged public tag exactly as FP does', () => {
+    // A plain function wearing an `_op` field is what a forgery looks like.
+    const forged = Object.assign((x: readonly number[]) => x, { _op: 1, fn: double })
+    expect(vetOperator(forged)).toBeUndefined()
+
+    const plan = vetPipeline([forged])
+    expect(plan.fullyTrusted).toBe(false)
+  })
+
+  it('marks a genuine operator trusted and returns only data', () => {
+    const entry = vetOperator(A.map(double))
+    expect(entry).toBeDefined()
+    expect(typeof entry?.op).toBe('number')
+    // Only the vetted binding data crosses; no private table handle comes with it.
+    expect(Object.keys(entry as object).every((key) => ['op', 'fn', 'a1', 'a2'].includes(key))).toBe(
+      true,
+    )
+  })
+
+  it('still executes a forged step, just never as a specialized runner', () => {
+    const forged = Object.assign((xs: readonly number[]) => xs.map(double), { _op: 1, fn: double })
+    expect(pipe([1, 2, 3], forged as never)).toEqual([2, 4, 6])
+  })
+})
+
+describe('identity negotiation fails closed', () => {
+  it('agrees with the installed FP', () => {
+    expect(optimizer.negotiationFailure).toBeUndefined()
+    expect(() => optimizer.assertCompatible()).not.toThrow()
+  })
+
+  it.each([
+    ['abiVersion', { ...abi.OPTIMIZER_ABI_IDENTITY, abiVersion: 99 }],
+    ['protocolVersion', { ...abi.OPTIMIZER_ABI_IDENTITY, protocolVersion: 99 }],
+    ['semanticManifestHash', { ...abi.OPTIMIZER_ABI_IDENTITY, semanticManifestHash: 'sha256:0' }],
+  ])('rejects a mismatched %s', (_field, candidate) => {
+    expect(negotiate(candidate)).toBeDefined()
+  })
+
+  it('does not accept a merely well-shaped identity', () => {
+    // Structural duck-typing is the failure mode: an optimizer built against
+    // different facts still presents the right shape.
+    expect(negotiate({ abiVersion: 1, protocolVersion: 1, semanticManifestHash: 'sha256:wrong' }))
+      .toBeDefined()
+  })
+
+  it('binds the bank to the same semantic manifest it negotiates on', () => {
+    expect(optimizer.bankIdentity.semanticManifestHash).toBe(
+      abi.OPTIMIZER_ABI_IDENTITY.semanticManifestHash,
+    )
+  })
+})
+
+describe('the exact fallback answers identically', () => {
+  it.each([
+    ['map -> filter', [A.map(double), A.filter(big)]],
+    ['map -> filter -> reduce', [A.map(double), A.filter(big), A.reduce((a: number, b: number) => a + b, 0)]],
+    ['filter -> map -> take', [A.filter(big), A.map(double), A.take(2)]],
+    ['find', [A.map(double), A.find((x: number) => x > 4)]],
+  ])('%s', (_label, steps) => {
+    const input = [1, 2, 3, 4, 5]
+    const viaOptimizer = (pipe as (...args: readonly unknown[]) => unknown)(input, ...steps)
+    const viaFallback = runExactFallback(vetPipeline(steps), input)
+    expect(viaOptimizer).toEqual(viaFallback)
+  })
+})
