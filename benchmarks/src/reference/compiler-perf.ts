@@ -12,7 +12,13 @@ import { SUPPORTED_OP_NAMES } from '../../../packages/fp-compiler/src/ops'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import * as A from '../../../packages/fp/src/array'
 import { none } from '../../../packages/fp/src/option'
-import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
+// Root `pipe` from source, because that is what the synthesized fixture
+// imports and therefore what an untransformed site would actually call. It has
+// been sequential since S8, so injecting the optimizer's fused pipe here
+// misrepresented the fallback tier. Importing it from the optimizer package
+// also pulled FP's built dist into this process, which measurably changed how
+// the small-n rows tier.
+import { pipe } from '../../../packages/fp/src/pipe'
 import type { CallbackSpec } from './binding-specs'
 import {
   COMPILER_PERF_POLICIES,

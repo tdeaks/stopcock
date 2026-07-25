@@ -57,6 +57,11 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'non-fusible flows keep the opcode table out of consumer bundles',
   }),
   Object.freeze({
+    script: 'compiler-perf-sessions-gate.ts',
+    kind: 'timing',
+    checks: 'each compiler corpus row on the median of five fresh-process sessions',
+  }),
+  Object.freeze({
     script: 's10-hand-loop-gate.ts',
     kind: 'timing',
     checks: 'reusable reduce and early-exit shapes against hand-written loops',
