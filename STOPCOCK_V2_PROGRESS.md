@@ -15,7 +15,7 @@ Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S7
 Current slice: PRE_CUTOVER_GATES
-Last verified commit: 72ebcfc
+Last verified commit: 7b1c452
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -286,10 +286,32 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       landed the iter subpath enforcement that an earlier commit of mine had
       claimed but not contained.
 - [x] (2026-07-25) Landed S7 receipt emission at `1810394`, so the `stopcock
-  check` CLI finally has something producing what it reads, and proved the
+check` CLI finally has something producing what it reads, and proved the
       two halves end to end.
 
 ## Evidence log
+
+- S7 consumer-rule evidence:
+  - the host tests built and executed a fused bundle in Rollup, esbuild,
+    webpack, and Vite but never checked the rule that matters: at most 1 KiB
+    and no runtime engine retained. Both halves are measured now;
+  - the transformed consumer measures 193 B gzip against 13,420 B untransformed
+    through esbuild, so pruning plus fusion removes the engine rather than
+    relying on the bundler to shake it;
+  - **the first version of the engine check was worthless and was replaced.**
+    It looked for internal function names, which minification renames, so it
+    reported a clean bundle for both the transformed and untransformed builds.
+    The markers are now property keys and field names, which survive
+    minification, and a test asserts an untransformed bundle _fails_ the rule so
+    the guard is itself guarded;
+  - webpack is measured in production. Its development output carries 1,192 B
+    of scaffolding for an empty module against 1,380 B for the pipeline, so a
+    development-mode measurement is mostly webpack's debugger: the 1,399 B
+    failure it first produced was 85% host overhead. In production the floor is
+    332 B and the transformed consumer is 448 B;
+  - the ceiling was verified to bite by lowering it to 100 B and confirming all
+    four hosts fail;
+  - `@stopcock/fp-compiler` passes 215 tests with clean types.
 
 - S7 import-pruning slice:
   - the transform never pruned anything, only added, so a fully transformed file
