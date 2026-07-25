@@ -57,6 +57,11 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'non-fusible flows keep the opcode table out of consumer bundles',
   }),
   Object.freeze({
+    script: 's10-hand-loop-gate.ts',
+    kind: 'timing',
+    checks: 'reusable reduce and early-exit shapes against hand-written loops',
+  }),
+  Object.freeze({
     script: 's10-prototype-pack-gate.ts',
     kind: 'deterministic',
     checks: 'the exact packed optimizer footprint and the S10J topology decision it implies',
