@@ -2340,50 +2340,48 @@ user-authorized, with `External mutation authorization: NONE`.
 | 7   | S12P  | NOT_STARTED |
 | 8   | S12   | NOT_STARTED |
 
-## Blocker: compiler worst-case row regressed during S10X
+## Blocker: one compiler corpus row is genuinely slow
 
-`compiler-perf-gate` fails its `minimumCaseRatio` of 0.80. The failing row is
-`4+ ops, sink=reduce-like, boundary=none (trivial, n=100)`.
+`compiler-perf-gate` fails its `minimumCaseRatio` of 0.80 on
+`4+ ops, sink=reduce-like, boundary=none (trivial, n=100)`. Global geomean is
+unaffected at 2.01 against a 0.90 floor.
 
-Measured, not inferred:
+This is now measured properly rather than argued about. Judged on the median of
+five fresh processes:
 
-| commit    | what landed        | worst case                |
-| --------- | ------------------ | ------------------------- |
-| `86d2dc8` | before this session| 0.910, 0.837, 0.942 (pass)|
-| `8c745bb` | static explain     | 0.918 (pass)              |
-| `6ff7bdb` | selection tracing  | 0.817 (pass, lower)       |
-| `HEAD`    | after extraction   | 0.691, 0.694, 0.728, 0.735, 0.764 (fail) |
+| commit    | row median | readings                                  |
+| --------- | ---------- | ----------------------------------------- |
+| `8c745bb` | 1.238      | 1.238, 1.130, 1.238                       |
+| `6ff7bdb` | 1.111      | 1.111, 1.144, 0.838                       |
+| `HEAD`    | 0.727      | 0.727, 0.716, 0.778, 0.692, 0.763         |
 
-Global geomean is unaffected at 2.01–2.04 against a 0.90 floor, so this is one
-row, not a broad slowdown.
+Two earlier conclusions were wrong and are corrected here. It is not noise: the
+readings cluster tightly across separate processes, and neighbouring small-n
+rows cluster tightly too (1.022–1.046), so the harness is not inherently
+unstable at this size. And the per-commit bisect that appeared to implicate a
+benchmark-only commit was reading single draws from a spread.
 
-What makes it puzzling, and why it is recorded rather than fixed: neither side
-of this ratio runs FP's runtime. The reference is the frozen hand-written
-emitter and the subject is compiled output with no runtime engine in it, so no
-change in this session touches either directly. The leading hypothesis is
-process-level: the benchmark imports `pipe` from the optimizer package, which
-now reaches FP through built `dist` rather than through source, changing the
-module graph and JIT warmup for the whole process. An `n=100` trivial row is the
-most sensitive thing in the corpus to exactly that — the S10 hand-loop lanes
-varied about ±30% per process for the same reason.
+What is established:
 
-Per-commit attribution was attempted and does not hold up. Re-measuring the
-same row across candidate commits gave 0.681 at `969f191` — a benchmark-only
-commit that changes no shipped code — and 0.798 at the later `e75c9be`. A
-bisect that puts the worst reading on a commit which cannot have caused it is
-not measuring the commit; it is measuring the process.
+- The compiled output for this shape is **byte-identical** before and after, so
+  the shipped artifact did not change.
+- The regression appears after `6ff7bdb`, in the range containing the S10X
+  extraction.
+- One real harness defect was found and fixed on the way: the fixture imports
+  `pipe` from `@stopcock/fp`, so an untransformed site would call root
+  sequential `pipe`, but the harness injected the optimizer's fused `pipe`.
+  After extraction that import also pulled FP's built `dist` into the benchmark
+  process. Fixing it moved single reads but not the session median.
 
-What is solid: the row was 1.156 and 1.159 on two consecutive runs at
-`86d2dc8`, and 0.68–0.80 across many runs since. The drop is real and specific
-to this row. Which change caused it is not established, and the single-process
-harness cannot establish it.
+So a byte-identical artifact measures 40% slower on one row in a process whose
+module graph changed. That is a real effect on a real measurement and it is not
+explained. It is not a product regression on the evidence available, and it has
+not been treated as one — but nor has the gate been relaxed to hide it.
 
-The gate is left failing. It has not been weakened, re-pinned, or excepted, and
-the worst-case rule has not been moved off the row that fails it. Settling it
-needs the per-row measurement rebuilt on fresh processes with per-session
-medians, the way `s10-hand-loop-gate` was, so that a row fails on a median
-rather than on one draw. That is the next S11 action, and it is a prerequisite
-for S11's exit gate rather than something S12 can consume around.
+The gate is left failing. `compiler-perf-sessions-gate` is the adjudicator and
+is registered in the gate manifest. Next action is to measure this row's
+absolute compiled and reference nanoseconds directly, rather than their ratio,
+to establish which side moved.
 
 ## Exact next action
 
