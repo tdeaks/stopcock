@@ -255,8 +255,79 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Completed P4 in an isolated lane and merged it: three
       candidates shipped on measured evidence, one stopped, and one row
       deferred to S4 without moving its bar.
+- [x] (2026-07-25) Landed S7's lane-split and topology-gate slice in an
+      isolated lane and merged it: four named performance lanes with their own
+      denominators, and a chunk-agnostic package gate.
+- [x] (2026-07-25) Repaired the frozen pipe-dispatch baseline at `58809a4`
+      after that lane found S5A had silently broken it. The regression was
+      mine and had been live since `e0becf5`.
 
 ## Evidence log
+
+- S7 lane-split and package-gate evidence (partial stage):
+  - `s7-optimized-sequential-lanes.ts` declares four lanes in one frozen table,
+    each naming its own subject, denominator, and floor owner, so gate output
+    says what was timed and what it was divided by:
+
+    | lane               | subject                           | denominator                                       |
+    | ------------------ | --------------------------------- | ------------------------------------------------- |
+    | `sequential`       | `sequentialPipe` from the S6 core | variadic hand-written loop, same process          |
+    | `compact`          | —                                 | inactive until S9                                 |
+    | `optimized-fusion` | `pipe` from `fusion-optimized.ts` | frozen `pre-hot-identity-front-cache-v1` baseline |
+    | `compiler`         | `compile()` runner execution      | the sequential lane                               |
+
+  - compact follows the S1C convention: `inactive` with a reason naming S9, and
+    the evaluator fails if it ever carries rows, reports active, or stops
+    naming a stage;
+  - measured on Bun, 8-element input, 60 rounds of 2,000-iteration batches,
+    ABBA-paired, median of per-pair ratios: sequential 0.79–0.98x of a
+    hand-written loop at 124–292 ns per call; optimized fusion 1.09–1.11x
+    stable-2-step and 1.02–1.04x stable-6-step against the frozen baseline;
+    compiler 2.09x cached 2-step, 0.92x 6-step, and 0.18–0.20x when the runner
+    is rebuilt per call;
+  - one optimized run in four measured 0.947 while a `tsc` run competed for
+    CPU. The other three were clean and the floor was not touched;
+  - the pipe-dispatch RME limit is enforced only on the lane that inherits its
+    floors. The other lanes print RME with a marker rather than being judged
+    against a limit borrowed from a different subject;
+  - the package gate no longer requires root and the optimized entry to share
+    exactly one runtime artifact. It now derives `sharedRuntime` as the
+    intersection of the two entry closures in both modes and holds every
+    artifact in it to the unchanged 18,000 gzip-byte ceiling, so the same gate
+    accepts the legacy and tiered fixtures. Schema and report version 3 → 4;
+  - the legacy-mode assertion is retained until root actually changes: root and
+    `./compile` must still share at least one direct runtime artifact, under
+    the 150,000-byte legacy tarball ceiling;
+  - real packed run is green: topology `tiered`, tarball 130,632 B, projection
+    64,107 B against a 100,000 B ceiling;
+  - **one policy relaxation, recorded rather than slipped through**: S6's
+    fusion entries flipped the real packed artifact to `tiered`, where the gate
+    previously forbade all duplicate runtime artifacts. `dist/array.js` and
+    `dist/readonly-array.js` are the same module by design and were already on
+    the frozen S1A allowlist for legacy mode; that allowlist is unchanged in
+    content and now applies in both modes;
+  - **deferred, not tuned**: a ceiling on shared-runtime total bytes. Measured
+    5 shared artifacts totalling 21,802 gzip bytes, largest 16,531. Any total
+    ceiling would have to be set above the measured value to pass, which is
+    tuning after observation, so it is recorded as evidence for S9/S10 when
+    compact fusion exists to shrink it.
+
+- Pipe-dispatch baseline repair:
+  - S5A moved binding authority into the private table and changed
+    `extractBinding` to take a provenance entry. The frozen baseline still
+    called it with an operator function, so it rebuilt empty bindings and the
+    fused kernel called undefined;
+  - both fresh-closure cases had been skipping since `e0becf5` and the gate
+    reported 5 failures. The vitest suite does not run the gate scripts, which
+    is why 341 passing tests did not catch it;
+  - the fixture now extracts bindings from public fields itself, which is what
+    the implementation it snapshots did. Importing the current
+    `extractBinding` would have changed the denominator every ratio is measured
+    against;
+  - all four cases measure again at 1.06x, 1.02–1.04x, 1.00–1.02x, and
+    0.97–1.00x. `fresh-3-step` still exceeds its 5% RME limit at 8.5–10.0% on a
+    busy machine; the limit was not moved and the row needs a quiet re-run
+    before it can be called green.
 
 - P4 evidence (reproduced on the merged tree; ratios are candidate over
   reference, so lower is faster):
