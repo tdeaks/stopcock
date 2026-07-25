@@ -636,19 +636,39 @@ export function transformStopcockPipelines(
       const parent = path.parentPath
       const arrayConstructorExpression = arrayConstructorForScope(path.scope)
       const hasGlobalUndefined = globalUndefinedIsUnbound(path.scope)
-      if (
+      // The statement that actually sits in a Program or BlockStatement body.
+      // For `export const r = pipe(...)` that is the export declaration, not
+      // the declaration inside it: splicing between `export` and `const` would
+      // not parse.
+      const declarationPath =
         parent?.isVariableDeclarator() &&
         parent.node.init === call &&
         parent.parentPath?.isVariableDeclaration() &&
-        parent.parentPath.node.declarations.length === 1 &&
-        parent.parentPath.parentPath?.isBlockStatement()
+        parent.parentPath.node.declarations.length === 1
+          ? parent.parentPath
+          : undefined
+      const hostPath =
+        declarationPath === undefined
+          ? undefined
+          : declarationPath.parentPath?.isExportNamedDeclaration() ||
+              declarationPath.parentPath?.isExportDefaultDeclaration()
+            ? declarationPath.parentPath
+            : declarationPath
+      if (
+        hostPath !== undefined &&
+        (hostPath.parentPath?.isBlockStatement() || hostPath.parentPath?.isProgram())
       ) {
         // A lone declaration statement can host the loop directly while
         // preserving the original declaration text and scope. This avoids an
         // IIFE for common `const result = pipe(...)` sites, which otherwise
         // forces JavaScriptCore to tier a second function before optimizing
         // the hot loop.
-        const declaration = parent.parentPath.node
+        //
+        // Program bodies host statements just as well as block bodies, and
+        // module-level `export const r = pipe(...)` is common enough that
+        // excluding it meant the most ordinary shape in a module always paid
+        // for a wrapper call.
+        const declaration = hostPath.node
         const { stmts, resultVar } = generateFusedBody(
           code,
           sourceText,
@@ -669,7 +689,7 @@ export function transformStopcockPipelines(
       } else if (
         parent?.isExpressionStatement() &&
         parent.node.expression === call &&
-        parent.parentPath?.isBlockStatement()
+        (parent.parentPath?.isBlockStatement() || parent.parentPath?.isProgram())
       ) {
         // The result is discarded, so the fused statements can replace the
         // expression statement without a wrapper call.

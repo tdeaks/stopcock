@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
+import { transformStopcockPipelines } from '../transform'
 import { runFixture, type Fixture } from './harness'
 
 /**
@@ -173,5 +174,45 @@ describe('temporal dead zone', () => {
     `
     const result = runFixture(fixture('tdz', body))
     expect(result.compiled.value).toEqual(result.original.value)
+  })
+})
+
+/**
+ * S11 statement hoisting. Where the call owns a whole statement the compiler
+ * emits statements directly instead of an IIFE, which keeps the loop in one
+ * call frame. Module bodies host statements as well as function bodies do, and
+ * `export const r = pipe(...)` is the most ordinary shape in a module.
+ */
+describe('module-level sites hoist instead of paying for an IIFE', () => {
+  const transformOf = (source: string) =>
+    transformStopcockPipelines(source, 'module-level.ts', { diagnostics: 'summary' })
+
+  const PRELUDE = `import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+`
+
+  it.each([
+    ['exported declaration', `${PRELUDE}export const r = pipe([1,2,3], map((x) => x * 2))`],
+    ['plain declaration', `${PRELUDE}const r = pipe([1,2,3], map((x) => x * 2))\nexport { r }`],
+    ['expression statement', `${PRELUDE}pipe([1,2,3], map((x) => x * 2))`],
+  ])('%s emits no wrapper call', (_label, source) => {
+    const out = transformOf(source)
+    expect(out.diagnostics.every((site) => site.transformed)).toBe(true)
+    expect(out.code).not.toContain('(function () {')
+  })
+
+  it('keeps several module-level sites independent', () => {
+    // `var` declarations hoist to module scope, so repeated emission has to
+    // stay correct rather than merely parse.
+    const out = transformOf(`${PRELUDE}export const a = pipe([1,2,3], map((x) => x * 2))
+export const b = pipe([4,5], map((x) => x + 1))`)
+    expect(out.code).not.toContain('(function () {')
+    expect(out.diagnostics.filter((site) => site.transformed)).toHaveLength(2)
+  })
+
+  it('does not splice between export and its declaration', () => {
+    const out = transformOf(`${PRELUDE}export const r = pipe([1,2,3], map((x) => x * 2))`)
+    expect(out.code).not.toMatch(/export\s+var\s+_src/u)
+    expect(out.code).toMatch(/export const r = _d0|export const r = _out0/u)
   })
 })
