@@ -15,7 +15,7 @@ Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S7
 Current slice: PRE_CUTOVER_GATES
-Last verified commit: 171826c
+Last verified commit: 1810394
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -285,8 +285,46 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Fixed a real hole in P2's iteration seam and, separately,
       landed the iter subpath enforcement that an earlier commit of mine had
       claimed but not contained.
+- [x] (2026-07-25) Landed S7 receipt emission at `1810394`, so the `stopcock
+    check` CLI finally has something producing what it reads, and proved the
+      two halves end to end.
 
 ## Evidence log
+
+- S7 receipt-emission slice:
+  - the plugin emits one `CompilerReceiptV1` per recognised site, opt-in
+    through a `receipts` option and off by default. Emission changes no
+    generated code and no transform selection;
+  - determinism is enforced by construction: no clock, no random id, no
+    absolute path. Paths are repo-relative and POSIX-separated, keys serialize
+    in a fixed order, and receipts sort by id so discovery order cannot
+    perturb the bytes;
+  - source, config, and semantic-mode changes each move the receipt. The
+    config hash deliberately excludes `diagnostics` and the receipt settings,
+    because neither can change a decision and including them would invalidate
+    every receipt when someone turned logging on;
+  - free-text reasons stay for humans; receipts carry a code from the frozen
+    vocabulary. An unclassifiable reason maps to `compiler-defect` rather than
+    the nearest-looking code, so a gap in the mapping is visible;
+  - a site with no identifiable operators produces no receipt, because the
+    schema requires a semantic identity and inventing one for an unrecognised
+    call is the caller-supplied descriptor the provenance rules forbid. Those
+    sites are counted and reported rather than dropped;
+  - the collector used to discard every operator it had recognised when it hit
+    one it could not handle, so a mixed site vanished from coverage entirely.
+    It now returns the partial names and the site appears as a skip;
+  - 15 focused tests cover schema validity, absence of absolute paths,
+    byte-identical output across runs, stable ordering, source/config/semantics
+    each moving the receipt, a skip carrying a code rather than prose, no
+    emitted-code claim on an untransformed site, no receipt without an
+    identity, unknown operator names being dropped rather than invented, the
+    compiler and manifest identities being bound in, and an unclassifiable
+    reason mapping to `compiler-defect`;
+  - proven end to end on a two-site file: two receipts emitted, the CLI renders
+    both with all six evidence classes separated, and the `unsupported` policy
+    fails on the skipped site. The render shows "selection is not execution",
+    "absence is not a pass", and no runtime claim without a joined profile;
+  - `@stopcock/fp-compiler` passes 194 tests with clean types.
 
 - P1B evidence:
   - typed arrays reach the kernels through a `PLAN_SOURCE_TYPED_ARRAY` form.
