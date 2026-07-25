@@ -1,0 +1,126 @@
+{
+  "protocol": "stopcock.fp-v2-optional-dispositions",
+  "protocolVersion": 1,
+  "note": "DISP is a release join, not a licence to patch. Every optional candidate any slice raised appears here exactly once as shipped or stopped. `deferred` is not a value: a candidate nobody decided is a candidate nobody measured.",
+  "candidates": [
+    {
+      "candidateId": "s5b/direct-leaf/seven-optional-shapes",
+      "ownerSlice": "S5B",
+      "status": "stopped",
+      "surface": "internal",
+      "reason": "All seven optional direct-leaf candidates were measured and every one lost. Recorded as measured stops rather than rewritten mechanically.",
+      "fallback": "the shipped generated direct leaf",
+      "absenceAssertion": "no public export; the direct-leaf codegen policy admits one measured entry"
+    },
+    {
+      "candidateId": "p1a/iter-array-kernels",
+      "ownerSlice": "P1A",
+      "status": "shipped",
+      "surface": "internal",
+      "evidence": "codegen/generated/iter-kernel-manifest-v1.json: 210 expected rows, 75 shipped, each with a per-row disposition and reason",
+      "exception": "Ten Iter terminals ship below the 0.80x floor under an exception the user granted explicitly. The floor was not moved; the rows are recorded below it.",
+      "exceptionOwner": "S11",
+      "fallback": "generic Iter execution"
+    },
+    {
+      "candidateId": "p1b/iter-typed-array-kernels",
+      "ownerSlice": "P1B",
+      "status": "shipped",
+      "surface": "internal",
+      "evidence": "codegen/generated/iter-typed-array-kernel-manifest-v1.json",
+      "exception": "A second named size exception, granted by the user. Kernel families are kept separate because sharing P1A's cost the Array product 2x.",
+      "fallback": "generic Iter execution"
+    },
+    {
+      "candidateId": "p2/typed-array-strategies",
+      "ownerSlice": "P2",
+      "status": "stopped",
+      "surface": "internal",
+      "reason": "Every candidate the lab ranked a clear win lost against the real exported functions. Dropping the size band so a short canonical view always takes the stashed intrinsic measured 0.81x in the lab and regressed the existing gate from 0.988/0.977/0.975 to 0.796/0.770/0.779 on float64/slice/64. Root cause recorded in the lab header: the lab kernel is not the production kernel, because it allocates through a shared helper with a different call-site shape.",
+      "fallback": "existing typed-array behaviour, unchanged by design",
+      "absenceAssertion": "no strategy shipped; the inspection seam is the only artefact"
+    },
+    {
+      "candidateId": "p2/bun-bigint-filter-replacement",
+      "ownerSlice": "P2",
+      "status": "stopped",
+      "surface": "internal",
+      "reason": "Rejected on its own bar: tiny -11.8%, small +1.2%, bulk +1.8% against a required 10% improvement with the confidence interval wholly above parity.",
+      "fallback": "existing filter"
+    },
+    {
+      "candidateId": "p4/compiled-object-read-paths",
+      "ownerSlice": "P4",
+      "status": "shipped",
+      "surface": "internal",
+      "evidence": "merged at 908f5f6 on measured evidence",
+      "fallback": "generic object read"
+    },
+    {
+      "candidateId": "p4/guarded-plain-data-write-tier",
+      "ownerSlice": "P4",
+      "status": "shipped",
+      "surface": "internal",
+      "evidence": "merged at 908f5f6 on measured evidence",
+      "fallback": "generic write path"
+    },
+    {
+      "candidateId": "p4/map-get-or-else-lazy",
+      "ownerSlice": "P4",
+      "status": "shipped",
+      "surface": "public",
+      "evidence": "1.35x a hand-written lookup on a hit, 1.09x on a miss; evaluation sequence get, then has only when get returned undefined, fallback evaluated exactly once and only when absent",
+      "changeset": ".changeset/fp-map-get-or-else.md",
+      "fallback": "Map.get plus an explicit default"
+    },
+    {
+      "candidateId": "p4/record-narrow-path",
+      "ownerSlice": "P4",
+      "status": "stopped",
+      "surface": "public",
+      "reason": "Record.set already costs 0.798x the now-faster plain-data Obj write on the same flat data, so Record is the fast contract without an addition. A narrow helper would duplicate Obj traversal for no measured gain. The positioning is documented instead.",
+      "fallback": "Record.set",
+      "absenceAssertion": "no narrow-path helper is exported and no changeset claims one"
+    },
+    {
+      "candidateId": "s10/hand-bound-critical-runners",
+      "ownerSlice": "S10",
+      "status": "shipped",
+      "surface": "internal",
+      "evidence": "retained deliberately: S10's exit gate forbids deleting a hard-coded runner before its generated replacement passes, and no generated replacement was produced for map->filter, the long flatMap reduce shape, or the map->filter->reduce/find pair",
+      "fallback": "the shared ShapeEntry runner, which these hand off to above their size threshold"
+    },
+    {
+      "candidateId": "p3b/array-exact-indexed-allocation",
+      "ownerSlice": "P3B",
+      "status": "unresolved",
+      "surface": "internal",
+      "reason": "Sizing the result once and index-assigning for map-only chains measured 0.17x-0.51x of push in isolation, but the corpus run that would have adjudicated it was taken while the host was out of perf qualification, and the identical failure reproduced with the change reverted. Reverted for lack of valid supporting evidence, not because it lost.",
+      "blockedOn": "host requalification via perf-profile-gate, then portable-perf-gate"
+    },
+    {
+      "candidateId": "p3b/upper-bound-allocate-and-truncate",
+      "ownerSlice": "P3B",
+      "status": "stopped",
+      "surface": "internal",
+      "reason": "An upper bound is not an exact bound. Sizing to sourceLength and truncating either returns an array with holes where elements were dropped, or needs a second pass to compact it. The first breaks the dense-array contract every other tier upholds; the second adds the extra pass P3B forbids. Stopped on semantics, so never measured.",
+      "fallback": "push"
+    },
+    {
+      "candidateId": "p3b/limit-exact-allocation",
+      "ownerSlice": "P3B",
+      "status": "stopped",
+      "surface": "internal",
+      "reason": "A take limit bounds output length from above but does not fix it: the source can be shorter than the limit and upstream stages can drop elements, so allocating the limit over-allocates on every short input.",
+      "fallback": "push"
+    },
+    {
+      "candidateId": "p3b/expanding-dense-seeding",
+      "ownerSlice": "P3B",
+      "status": "stopped",
+      "surface": "internal",
+      "reason": "Output length of a flatMap chain depends on what the callback returns per element, so there is no bound to allocate against without invoking the callback twice.",
+      "fallback": "push"
+    }
+  ]
+}
