@@ -77,9 +77,9 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | P3A   | GATE_PASSED | Allocation and memory evidence infrastructure merged at `9bde654`; seven families calibrated on the release lane, three uncalibrated on the canary and reported rather than tuned                                                                                                                                                                                                             |
 | P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                                |
 | P4    | GATE_PASSED | Compiled object read paths, guarded plain-data write tier, and lazy `Map.getOrElse` merged at `908f5f6`; the Record narrow-path candidate stopped on measurement and one row deferred to S4                                                                                                                                                                                                   |
-| DISP  | NOT_STARTED | Optional-candidate dispositions                                                                                                                                                                                                                                                                                                                                                               |
-| S12P  | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
-| S12   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| DISP  | BLOCKED     | Manifest, schema, and fail-closed validator at `f435dd6`: 14 candidates, 6 shipped, 7 stopped, 1 unresolved. `deferred` is not an allowed status; the one `unresolved` row is P3B's allocation candidate and it fails the gate by design                                                                                                                                                                                                                                                                                                                                                               |
+| S12P  | BLOCKED     | Gate at `02b79a6`: all 45 public subpaths import and execute from real tarballs, including the optimized pipe across the package boundary. `@stopcock/fp` is 131,017 B against its 100,000 B stable ceiling, so S12 is stopped                                                                                                                                                                                                                                                                                                                                                                                             |
+| S12   | STOPPED_BY_PLAN | S12P's rule is that an over-ceiling pack stops S12 and returns to the owning slice. Not executed, deliberately                                                                                                                                                                                                                                                                                                                                                                                             |
 | S13   | NOT_STARTED | External RC publication remains user-authorized                                                                                                                                                                                                                                                                                                                                               |
 | S14   | NOT_STARTED | Stable acceptance and publication remain user-authorized                                                                                                                                                                                                                                                                                                                                      |
 
@@ -2336,9 +2336,9 @@ user-authorized, with `External mutation authorization: NONE`.
 | 3   | S10J  | GATE_PASSED |
 | 4   | S11   | IN_PROGRESS |
 | 5   | P3B   | NOT_STARTED |
-| 6   | DISP  | NOT_STARTED |
-| 7   | S12P  | NOT_STARTED |
-| 8   | S12   | NOT_STARTED |
+| 6   | DISP  | BUILT, BLOCKED (validator correctly refuses to freeze while P3B is unresolved) |
+| 7   | S12P  | BUILT, VERDICT RECORDED (45/45 subpaths run from tarballs; size over ceiling) |
+| 8   | S12   | STOPPED BY S12P, per S12P's own rule |
 
 ## Blocker: the host has fallen out of perf qualification
 
@@ -2374,6 +2374,36 @@ number, not once at S1B and then trusted for the rest of the programme.
 Nothing here is worked around. No floor was moved, no row excepted, no digest
 repinned to make a red gate green. The P3B candidate stays reverted because it
 has no valid supporting measurement, not because it was shown to lose.
+
+## S12P verdict, and what it does and does not establish
+
+Packed both packages as npm would, installed them together into a throwaway
+consumer, and imported and executed every public subpath from the tarballs.
+
+- **45/45 public subpaths import and run**, including `@stopcock/fp-optimizer`'s
+  pipe against a packed `@stopcock/fp`. The extraction is qualified from the
+  artifact a consumer installs, not from the workspace.
+- `@stopcock/fp` tarball is **131,017 B against a 100,000 B stable ceiling**.
+  It is under the 150,000 B legacy ceiling, so the package is in the legacy
+  band and has not reached its 2.0 target.
+- `@stopcock/fp-optimizer` is 25,229 B.
+
+Composition, so the remedy is aimed at the right thing: 536 KB of JavaScript
+and 332 KB of declarations uncompressed, no source maps, no stray source in
+`dist`, README plus CHANGELOG only 14 KB. Reaching the ceiling needs roughly a
+24% cut.
+
+**What this does not establish.** S12P is specified to measure a prototype with
+the S12 rules already applied, including the inference-safe declaration
+factoring representation. That prototype has not been built, so 131,017 B is an
+**upper bound on the S12P number, not the S12P number**, and the over-ceiling
+verdict is provisional in that direction only — factoring can lower it, nothing
+here can raise it.
+
+S12 is stopped rather than attempted, which is S12P's own rule: an over-ceiling
+pack returns to the owning slice to drop the lowest benefit-per-byte optional
+candidate, or to S10/XDEC to change topology. A late budget waiver is
+explicitly not one of the outcomes, and none has been taken.
 
 ## Exact next action
 
