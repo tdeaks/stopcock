@@ -2364,8 +2364,10 @@ session 2 spread 0.2741 against 0.12, and session median spread 0.2282 against
 0.15 — a second limit now breached, and the first breached by more than twice
 the margin.
 
-Two readings in the same direction, the later one worse, means the host needs
-to be left alone rather than retried. Re-running timing gates on it would
+A third reading put the session median spread at 0.3108. The trend is
+monotonic — 0.1204, 0.2282, 0.3108 — and each profile-gate run is itself a
+benchmark load, so probing the host is now part of what is degrading it. Stop
+measuring and leave the machine idle. Re-running timing gates on it would
 manufacture more of the evidence this section exists to retract. S1B made that check fail-closed precisely so that
 timing evidence cannot be produced on a host that is no longer behaving, and it
 is now refusing.
