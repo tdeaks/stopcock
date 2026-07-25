@@ -134,7 +134,6 @@ describe('shipped Array kernel policy', () => {
 describe('iter subpath size, measured against the built artifact', () => {
   test('the real dist subpath is within the accepted ceiling', async () => {
     const { readFile } = await import('node:fs/promises')
-<<<<<<< Updated upstream
     const { join } = await import('node:path')
     // Checking a synthetic report only proves the evaluator. The ceiling is
     // about the file consumers actually download, and a breach here was silent
@@ -144,26 +143,6 @@ describe('iter subpath size, measured against the built artifact', () => {
     const evaluation = evaluateIterSubpathSize({
       gzipBytes: measured,
       kernelCount: ITER_SUBPATH_SIZE_CONTRACT.exception.distinctKernels,
-=======
-    const { dirname, join, resolve } = await import('node:path')
-    const { fileURLToPath } = await import('node:url')
-    const dist = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      '..',
-      '..',
-      '..',
-      'packages',
-      'fp',
-      'dist',
-    )
-    // Enforcing against a synthetic report only proves the evaluator. The
-    // ceiling is about the artifact consumers actually download.
-    const bytes = await readFile(join(dist, 'iter.js'))
-    const measured = measureIterSubpathGzipBytes(bytes)
-    const evaluation = evaluateIterSubpathSize({
-      gzipBytes: measured,
-      kernelCount: ITER_SUBPATH_SIZE_CONTRACT.distinctKernelCount,
->>>>>>> Stashed changes
     })
     expect({ measured, failures: evaluation.failures }).toEqual({ measured, failures: [] })
   })
