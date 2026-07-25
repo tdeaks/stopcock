@@ -13,9 +13,9 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S4
-Current slice: DIRECT_DISPATCH_PILOT
-Last verified commit: f6a62be
+Current canonical stage: S5A
+Current slice: TRUSTED_PROVENANCE
+Last verified commit: 393bb06
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -60,7 +60,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S2    | GATE_PASSED | Acyclic canonical semantic/lowering/evidence/receipt generation checkpoint `cad86c15ae64b90a86675bbca96f6bea362d25ff`; complete clean gates and independent `v2_verifier` audit passed                                                                                                                                                                                                        |
 | S3A   | GATE_PASSED | Package-wide fail-closed initializer-purity checkpoint `6ced74a4574123a36284d2baaca9cf7f4f449436`; exact packed/local four-bundler size and behavior evidence, two-run reproducibility, full clean release gates, and independent audit passed                                                                                                                                                |
 | S3B   | NOT_STARTED | Untagged internal duals                                                                                                                                                                                                                                                                                                                                                                       |
-| S4    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S4    | GATE_PASSED | One measured direct-leaf codegen policy entry at `393bb06`; map generated instead of hand-written, cache confined to construction, every history within 3% of a hand-written loop on the release lane                                                                                                                                                                                         |
 | S5A   | NOT_STARTED | Trusted provenance                                                                                                                                                                                                                                                                                                                                                                            |
 | S5B   | NOT_STARTED | Measured retention policy                                                                                                                                                                                                                                                                                                                                                                     |
 | S6    | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -224,8 +224,61 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Recorded the fusible `string.trim` ceiling as deferred to
       S11 instead of meeting it by changing public `dual`, which S3B's own
       scope forbids.
+- [x] (2026-07-25) Completed S4 at `393bb06`: `Array.map` moved from a
+      hand-written definition exception to one generated direct-leaf policy
+      entry, with construction and its frozen callback cache off the direct
+      path.
+- [x] (2026-07-25) Rejected three candidate emission shapes on measured
+      evidence rather than preference, after the new map history gate caught
+      each of them regressing the direct path on one engine or the other.
 
 ## Evidence log
+
+- S4 evidence:
+  - `packages/fp/codegen/direct-leaf.ts` holds the whole policy: one entry
+    (`array.map`), a pure model, and a pure renderer, so the emitted shape is
+    testable without running the generator;
+  - the shipped shape is a shared execution leaf called from both the
+    data-first branch and the constructed closure, with the single-entry strong
+    callback cache confined to the data-last branch. The direct path reads no
+    cache, tag, provenance, or fusion state;
+  - the cache is unchanged and still recorded as frozen compatibility debt.
+    S4 moved it; S5B owns its collectable replacement;
+  - `benchmarks/src/reference/s4-map-history-gate.ts` establishes each
+    call-site history in its own process, five sessions per history, and scores
+    the 100,000-element direct call against a hand-written loop measured in the
+    same process with the same callback policy. Normalizing inside the session
+    is what makes the histories comparable at all;
+  - three candidate shapes were measured and rejected, each on the direct path
+    after an unrelated history:
+
+    | rejected shape                         | cost                                                                         |
+    | -------------------------------------- | ---------------------------------------------------------------------------- |
+    | construction as its own function       | ~85% on V8 after a mixed-size history, ~70% on JSC after a data-last history |
+    | both paths inlining the body           | ~89% on JSC after a data-last history                                        |
+    | only the direct path inlining the body | ~78% on JSC                                                                  |
+
+  - the shipped shape holds every history within 3% of a hand-written loop on
+    Bun (`0.99`–`1.03` loops across large-only, ascending, descending,
+    mixed-forms, fresh-callbacks, stable-callback, and one-op-pipe) and within
+    noise on Node;
+  - the construction lane reports `map(f)` on its own: 83 ns for a stable
+    callback and 42–208 ns for a fresh one, with no array ever traversed;
+  - a cross-process denominator was tried first and rejected. It moves every
+    row together when the machine drifts, which reported a plateau that was not
+    there; the earlier `1.15`–`1.27x` readings were that artifact;
+  - Node is the canary lane, so the gate reports its over-limit rows without
+    blocking, consistent with the S1B profile policy;
+  - 10 codegen structural tests cover the single pilot entry, the frozen cache
+    disposition, the recorded construction reason, a leaf free of cache and tag
+    reads, the no-cache rendering, the still-available isolated rendering, the
+    generated dispatcher, a direct path free of cache and tag reads, every
+    other operation keeping its previous shape, and byte-for-byte reproduction
+    of `src/array.ts` from the checked-in definitions;
+  - `packages/fp` passed 2416 tests, source types, public type tests, and a
+    clean build; the benchmarks reference suite passed 322 tests;
+  - `EXPECTED_PORTABLE_SUBJECT` was repinned for the changed bytes;
+  - `vp fmt` and `git diff --check` passed.
 
 - S3B evidence:
   - `packages/fp/src/dual-internal.ts` now imports nothing: `dualUntagged2`,
