@@ -24,7 +24,7 @@ export interface PureInitializerSourceModuleV1 {
 export interface PureInitializerSourceSiteV1 {
   readonly module: string
   readonly name: string
-  readonly callKind: 'generated-iife' | 'dual' | 'dual-untagged' | 'freeze'
+  readonly callKind: 'generated-iife' | 'dual' | 'dual-untagged' | 'typed-array' | 'freeze'
 }
 
 const GENERATED_PURE_INITIALIZER_KEYS_V1 = Object.freeze([
@@ -172,6 +172,15 @@ export const MANUAL_PURE_UNTAGGED_DUAL_INITIALIZERS_V1 = Object.freeze({
   ]),
 } as const)
 
+/**
+ * A typed-array literal built from constants. Dropping it when compact fusion
+ * is unreachable cannot change behaviour, and it is the fact table's whole
+ * purpose to be droppable.
+ */
+export const MANUAL_PURE_TYPED_ARRAY_INITIALIZERS_V1 = Object.freeze({
+  'internal/compact/facts.generated': Object.freeze(['COMPACT_FACTS']),
+} as const)
+
 // Object.freeze receives a fresh literal, so dropping this unused singleton
 // cannot mutate external state or expose a different construction order.
 export const MANUAL_PURE_FREEZE_INITIALIZERS_V1 = Object.freeze({
@@ -203,6 +212,9 @@ const PURE_INITIALIZER_SOURCE_SITES_V1 = Object.freeze([
   ),
   ...Object.entries(MANUAL_PURE_UNTAGGED_DUAL_INITIALIZERS_V1).flatMap(([module, names]) =>
     names.map((name) => Object.freeze({ module, name, callKind: 'dual-untagged' as const })),
+  ),
+  ...Object.entries(MANUAL_PURE_TYPED_ARRAY_INITIALIZERS_V1).flatMap(([module, names]) =>
+    names.map((name) => Object.freeze({ module, name, callKind: 'typed-array' as const })),
   ),
   ...Object.entries(MANUAL_PURE_FREEZE_INITIALIZERS_V1).flatMap(([module, names]) =>
     names.map((name) => Object.freeze({ module, name, callKind: 'freeze' as const })),
@@ -250,7 +262,9 @@ export function validatePureInitializerSourcePolicyV1(
             ? /^\s*dual\(/u
             : site.callKind === 'dual-untagged'
               ? /^\s*dualUntagged[234]\(/u
-              : /^\s*Object\.freeze\(\{\s*_tag:\s*0\s*\}\)/u
+              : site.callKind === 'typed-array'
+                ? /^\s*Uint8Array\.from\(\[/u
+                : /^\s*Object\.freeze\(\{\s*_tag:\s*0\s*\}\)/u
       if (!shape.test(afterMarker)) {
         throw new Error(`pure initializer ${key} changed its reviewed ${site.callKind} shape`)
       }
