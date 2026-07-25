@@ -102,6 +102,12 @@ const intrinsicIterator = Reflect.get(typedArrayPrototype, Symbol.iterator) as u
  * to replace iteration with indexed access need this; callers that only
  * allocate do not, which is why it is separate from `inspectCanonicalView`.
  */
+/**
+ * Resolves the method the value would actually iterate with, rather than
+ * checking only its own property and the shared %TypedArray%.prototype. The
+ * family prototype sits between those two: overriding
+ * `Uint8Array.prototype[Symbol.iterator]` used to leave this answering true
+ * while iteration was entirely custom.
+ */
 export const hasIntrinsicIteration = (value: object): boolean =>
-  !hasOwn(value, Symbol.iterator) &&
-  Reflect.get(typedArrayPrototype, Symbol.iterator) === intrinsicIterator
+  !hasOwn(value, Symbol.iterator) && Reflect.get(value, Symbol.iterator) === intrinsicIterator

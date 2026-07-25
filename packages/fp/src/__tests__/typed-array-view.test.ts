@@ -124,3 +124,38 @@ describe('intrinsic iteration', () => {
     expect(hasIntrinsicIteration(new Uint8Array(2))).toBe(true)
   })
 })
+
+describe('iteration authenticity', () => {
+  it('rejects an override on the family prototype', () => {
+    // The hole this closes: the check looked at the value's own property and
+    // the shared %TypedArray%.prototype, and missed the family prototype
+    // sitting between them.
+    const source = new Uint8Array([1, 2, 3])
+    const original = Object.getOwnPropertyDescriptor(Uint8Array.prototype, Symbol.iterator)
+    Object.defineProperty(Uint8Array.prototype, Symbol.iterator, {
+      value: function* () {
+        yield 99
+      },
+      configurable: true,
+    })
+    try {
+      expect([...source]).toEqual([99])
+      expect(hasIntrinsicIteration(source)).toBe(false)
+    } finally {
+      if (original === undefined) delete (Uint8Array.prototype as never)[Symbol.iterator]
+      else Object.defineProperty(Uint8Array.prototype, Symbol.iterator, original)
+    }
+    expect(hasIntrinsicIteration(new Uint8Array([1]))).toBe(true)
+  })
+
+  it('rejects an override on the value itself', () => {
+    const source = new Uint8Array([1])
+    Object.defineProperty(source, Symbol.iterator, {
+      value: function* () {
+        yield 1
+      },
+      configurable: true,
+    })
+    expect(hasIntrinsicIteration(source)).toBe(false)
+  })
+})
