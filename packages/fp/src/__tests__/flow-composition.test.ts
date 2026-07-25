@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 import * as A from '../array'
 import { flow } from '../flow'
+import { flow as fusedFlow } from '../fusion'
 import { pipe } from '../pipe'
 
 const inc = (x: number) => x + 1
@@ -54,11 +55,28 @@ describe('flow over plain functions', () => {
 })
 
 describe('flow over this package operators', () => {
-  it('still fuses', () => {
+  it('composes sequentially at the root since S8', () => {
+    const order: string[] = []
+    const composed = flow(
+      A.map((x: number) => {
+        order.push('map')
+        return x * 2
+      }),
+      A.filter((x: number) => {
+        order.push('filter')
+        return x > 0
+      }),
+    )
+    expect(composed([1, 2])).toEqual([2, 4])
+    // Sequential: every mapper runs before the first predicate.
+    expect(order).toEqual(['map', 'map', 'filter', 'filter'])
+  })
+
+  it('still fuses through the explicit entry', () => {
     // Fused execution interleaves the callbacks per element; a sequential
     // composition would run every mapper before the first predicate.
     const order: string[] = []
-    const composed = flow(
+    const composed = fusedFlow(
       A.map((x: number) => {
         order.push('map')
         return x * 2

@@ -7,7 +7,7 @@ import { compile } from '../../../packages/fp/src/compile'
 import * as A from '../../../packages/fp/src/array'
 import * as Iter from '../../../packages/fp/src/iter'
 import * as TA from '../../../packages/fp/src/typed-array'
-import { pipe } from '../../../packages/fp/src/pipe'
+import { pipe } from '../../../packages/fp/src/internal/fusion-engine'
 import { currentPerfEngine } from './perf-engine'
 import {
   INTERLEAVED_PAIRED_SAMPLER_ID,

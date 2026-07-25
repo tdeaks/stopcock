@@ -6,7 +6,10 @@
 // from documented/native-JS semantics, not from running the implementation
 // first and pasting its output.
 import { describe, it, expect } from 'vite-plus/test'
-import { pipe } from '../pipe'
+// These exercise fused execution, which since S8 lives behind the explicit
+// entry rather than at the root. Root pipe is sequential and is covered by
+// root-sequential.test.ts.
+import { pipe } from '../fusion'
 import { compile, compilePure } from '../compile'
 import { none, some } from '../option'
 import * as A from '../array'

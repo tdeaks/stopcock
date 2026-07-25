@@ -19,7 +19,7 @@ import * as Iter from '../../../packages/fp/src/iter'
 import * as T from '../../../packages/fp/src/transducer'
 import * as TA from '../../../packages/fp/src/typed-array'
 import { compile } from '../../../packages/fp/src/compile'
-import { pipe } from '../../../packages/fp/src/pipe'
+import { pipe } from '../../../packages/fp/src/internal/fusion-engine'
 import type { AllocationFamilyId } from './allocation-perf-contract'
 
 export const CORPUS_ID = 'stopcock-p3a-allocation-corpus-v1'

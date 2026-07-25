@@ -70,14 +70,29 @@ const divergentArraySurfaces: readonly EagerSurface[] = [
 ]
 
 describe('Stopcock 2.0 root migration snapshot', () => {
-  it('gives every current runtime root export exactly one intentional destination', () => {
+  it('exports exactly the values the migration map keeps at the root', () => {
+    // Before S8 this compared the root against every mapped name, because
+    // everything still lived at the root. After the cutover the map is the
+    // specification: a name destined for the root must be there, and a name
+    // destined elsewhere must be gone.
     const actualRuntimeExports = Object.keys(F).sort()
-    const expectedRuntimeExports = V2_ROOT_MIGRATION.filter(({ kind }) => kind === 'value')
+    const keptAtRoot = V2_ROOT_MIGRATION.filter(
+      ({ kind, destination }) => kind === 'value' && destination === '@stopcock/fp',
+    )
       .map(({ name }) => name)
       .sort()
 
-    expect(actualRuntimeExports).toEqual(expectedRuntimeExports)
-    expect(new Set(expectedRuntimeExports).size).toBe(expectedRuntimeExports.length)
+    expect(actualRuntimeExports).toEqual(keptAtRoot)
+  })
+
+  it('removed every value the migration map sends elsewhere', () => {
+    const moved = V2_ROOT_MIGRATION.filter(
+      ({ kind, destination }) => kind === 'value' && destination !== '@stopcock/fp',
+    )
+    expect(moved.length).toBeGreaterThan(0)
+    for (const { name, destination } of moved) {
+      expect(Object.keys(F), `${name} should have moved to ${destination}`).not.toContain(name)
+    }
   })
 
   it('records one intended destination for every known current root type export', () => {

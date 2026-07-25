@@ -1,17 +1,8 @@
 import { expectTypeOf, test } from 'vite-plus/test'
-import type {
-  Err,
-  Fn,
-  LazyValue,
-  None,
-  Ok,
-  Option,
-  PipelineExplanation,
-  PureRewrite,
-  Result,
-  Runner,
-  Some,
-} from '..'
+import type { Err, Fn, LazyValue, None, Ok, Option, Result, Some } from '..'
+// S8 moved these to the subpaths that own them. They stay importable, just not
+// from the root.
+import type { PipelineExplanation, PureRewrite, Runner } from '../compile'
 
 test('every mapped current root type export remains importable', () => {
   expectTypeOf<Fn<number, string>>().toEqualTypeOf<(value: number) => string>()

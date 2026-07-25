@@ -5,7 +5,7 @@
 // the loop. The frozen local baseline makes every comparison same-process.
 import * as A from '../../../packages/fp/src/array'
 import { compile } from '../../../packages/fp/src/compile'
-import { pipe } from '../../../packages/fp/src/pipe'
+import { pipe } from '../../../packages/fp/src/internal/fusion-engine'
 import { baselinePipe } from './pipe-dispatch-baseline'
 import { runPaired } from './perf-runner'
 

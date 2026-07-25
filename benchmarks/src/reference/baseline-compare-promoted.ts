@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { generateInputArray, type SerializedStep } from './generate'
 import { runPaired } from './perf-runner'
-import { pipe as currentPipe } from '../../../packages/fp/src/pipe'
+import { pipe as currentPipe } from '../../../packages/fp/src/internal/fusion-engine'
 import { explainSteps } from '../../../packages/fp/src/compile'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))

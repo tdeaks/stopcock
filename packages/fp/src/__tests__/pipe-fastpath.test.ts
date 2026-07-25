@@ -7,13 +7,16 @@
 // oracle output and callback counts on every iteration -- not just the
 // first (which would be a plausible way for a shape/binding mixup to hide).
 import { describe, it, expect } from 'vite-plus/test'
-import { pipe } from '../pipe'
+// These exercise fused execution, which since S8 lives behind the explicit
+// entry rather than at the root. Root pipe is sequential and is covered by
+// root-sequential.test.ts.
+import { pipe } from '../fusion'
 import * as A from '../array'
 import * as M from '../math'
 import { buildPlan } from '../plan'
 import { interpret } from '../interpret'
 import { getOptimizerStats, resetOptimizerStats } from '../compile'
-import { NUM_KEY_BASE, NUM_KEY_MAX_LEN } from '../pipe'
+import { NUM_KEY_BASE, NUM_KEY_MAX_LEN } from '../internal/fusion-engine'
 import { OP_CODES } from '../opcodes'
 
 const ITERATIONS = 25

@@ -1,4 +1,7 @@
-import { compile, compilePure, flow, none, pipe } from '@stopcock/fp'
+import { flow, none, pipe } from '@stopcock/fp'
+// S8 moved compile off the root. The harness follows the final import map so a
+// fixture exercises what a consumer would actually write.
+import { compile, compilePure } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
 import { transformStopcockPipelines } from '../transform'
 import type { StopcockCompilerOptions } from '../types'
@@ -38,19 +41,17 @@ export interface RunResult {
   readonly error?: unknown
 }
 
-function runWrapped(wrappedCode: string, paramNames: readonly string[], paramValues: readonly unknown[]): RunResult {
+function runWrapped(
+  wrappedCode: string,
+  paramNames: readonly string[],
+  paramValues: readonly unknown[],
+): RunResult {
   const strippedBody = stripImports(wrappedCode)
   const call = `${strippedBody}\nreturn __fixture();`
-  const noneAlias = wrappedCode.match(
-    /import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u,
-  )?.[1]
+  const noneAlias = wrappedCode.match(/import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u)?.[1]
   try {
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const fn = new Function(
-      ...paramNames,
-      ...(noneAlias ? [noneAlias] : []),
-      call,
-    )
+    const fn = new Function(...paramNames, ...(noneAlias ? [noneAlias] : []), call)
     return { value: fn(...paramValues, ...(noneAlias ? [none] : [])) }
   } catch (error) {
     return { value: undefined, error }
@@ -95,12 +96,19 @@ export function runFixture(
 
   const originalExtra = makeExtra()
   const originalBuilt = build(originalExtra)
-  const originalValues = [...localNames.map((k) => RUNTIME[fixture.locals[k]]), ...Object.values(originalExtra)]
+  const originalValues = [
+    ...localNames.map((k) => RUNTIME[fixture.locals[k]]),
+    ...Object.values(originalExtra),
+  ]
   const original = runWrapped(originalBuilt.fullSource, originalBuilt.paramNames, originalValues)
 
   const compiledExtra = makeExtra()
-  const compiledValues = [...localNames.map((k) => RUNTIME[fixture.locals[k]]), ...Object.values(compiledExtra)]
-  const compiledSource = result.code === probe.fullSource ? build(compiledExtra).fullSource : result.code
+  const compiledValues = [
+    ...localNames.map((k) => RUNTIME[fixture.locals[k]]),
+    ...Object.values(compiledExtra),
+  ]
+  const compiledSource =
+    result.code === probe.fullSource ? build(compiledExtra).fullSource : result.code
   const compiledParamNames = build(compiledExtra).paramNames
   const compiled = runWrapped(compiledSource, compiledParamNames, compiledValues)
 

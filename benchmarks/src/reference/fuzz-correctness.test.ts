@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
 import { buildPlan } from '../../../packages/fp/src/plan'
 import { interpret } from '../../../packages/fp/src/interpret'
-import { pipe } from '../../../packages/fp/src/pipe'
+import { pipe } from '../../../packages/fp/src/internal/fusion-engine'
 import { compile } from '../../../packages/fp/src/compile'
 import { compileEmittedPipeline } from './emitter'
 import {
