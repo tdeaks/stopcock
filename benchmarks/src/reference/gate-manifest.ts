@@ -57,6 +57,11 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'non-fusible flows keep the opcode table out of consumer bundles',
   }),
   Object.freeze({
+    script: 's12p-requalification-gate.ts',
+    kind: 'deterministic',
+    checks: 'every public subpath imports and runs from the packed tarballs, and the stable tarball ceiling',
+  }),
+  Object.freeze({
     script: 'optional-dispositions-gate.ts',
     kind: 'deterministic',
     checks: 'every optional candidate is shipped or stopped, exactly once, with a reason',
