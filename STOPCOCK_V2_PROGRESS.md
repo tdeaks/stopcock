@@ -2357,8 +2357,16 @@ user-authorized, with `External mutation authorization: NONE`.
 
 ## Blocker: the host has fallen out of perf qualification
 
-`perf-profile-gate` now reports `ok: false` — session 0 spread 0.1204 against
-the profile's 0.12 limit. S1B made that check fail-closed precisely so that
+`perf-profile-gate` reports `ok: false`, and is degrading rather than
+recovering. First reading: session 0 spread 0.1204 against the profile's 0.12
+limit. Re-checked later in the same session after a stretch of non-timing work:
+session 2 spread 0.2741 against 0.12, and session median spread 0.2282 against
+0.15 — a second limit now breached, and the first breached by more than twice
+the margin.
+
+Two readings in the same direction, the later one worse, means the host needs
+to be left alone rather than retried. Re-running timing gates on it would
+manufacture more of the evidence this section exists to retract. S1B made that check fail-closed precisely so that
 timing evidence cannot be produced on a host that is no longer behaving, and it
 is now refusing.
 
