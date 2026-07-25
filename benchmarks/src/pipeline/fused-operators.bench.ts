@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
+import { pipe as fusedPipe } from '@stopcock/fp/fusion'
+import { pipe as optPipe } from '@stopcock/fp-optimizer'
 import * as A from '@stopcock/fp/array'
 import * as O from '@stopcock/fp/option'
 import { getData } from '../setup'
@@ -69,8 +71,16 @@ describe.each(sizes)('filterMap -> take(25), native chain vs native loop n=%i', 
 
   bench('stopcock fused filterMap -> take(25) inline', () =>
     pipe(data, A.filterMap(filterMapEvenBucket), A.take(takeLimit)))
+  bench('stopcock fused filterMap -> take(25) inline (fused)', () =>
+    fusedPipe(data, A.filterMap(filterMapEvenBucket), A.take(takeLimit)))
+  bench('stopcock fused filterMap -> take(25) inline (optimizer)', () =>
+    optPipe(data, A.filterMap(filterMapEvenBucket), A.take(takeLimit)))
   bench('stopcock fused filterMap -> take(25) hoisted', () =>
     pipe(data, filterMapEvenBucketOp, takeLimitOp))
+  bench('stopcock fused filterMap -> take(25) hoisted (fused)', () =>
+    fusedPipe(data, filterMapEvenBucketOp, takeLimitOp))
+  bench('stopcock fused filterMap -> take(25) hoisted (optimizer)', () =>
+    optPipe(data, filterMapEvenBucketOp, takeLimitOp))
   bench('native chain map -> filter -> slice(0, 25)', () =>
     data.map(filterMapEvenBucket).filter(isPresent).slice(0, takeLimit))
   bench('native loop filterMap -> take(25)', () => nativeFilterMapLoopTake(data, takeLimit))
@@ -81,8 +91,16 @@ describe.each(sizes)('findMap first bucket > 990, native chain vs native loop n=
 
   bench('stopcock fused findMap inline', () =>
     pipe(data, A.findMap(findLargeBucket), O.toUndefined))
+  bench('stopcock fused findMap inline (fused)', () =>
+    fusedPipe(data, A.findMap(findLargeBucket), O.toUndefined))
+  bench('stopcock fused findMap inline (optimizer)', () =>
+    optPipe(data, A.findMap(findLargeBucket), O.toUndefined))
   bench('stopcock fused findMap hoisted', () =>
     pipe(data, findLargeBucketOp, O.toUndefined))
+  bench('stopcock fused findMap hoisted (fused)', () =>
+    fusedPipe(data, findLargeBucketOp, O.toUndefined))
+  bench('stopcock fused findMap hoisted (optimizer)', () =>
+    optPipe(data, findLargeBucketOp, O.toUndefined))
   bench('native chain map -> find(isPresent)', () => data.map(findLargeBucket).find(isPresent))
   bench('native loop findMap with early exit', () => nativeFindMapLoop(data))
 })
@@ -105,8 +123,16 @@ describe.each(sizes)('map -> takeUntil(mapped > 1.9), native chain vs native loo
 
   bench('stopcock fused map -> takeUntil inline', () =>
     pipe(data, A.map(double), A.takeUntil(doubledOverThreshold)))
+  bench('stopcock fused map -> takeUntil inline (fused)', () =>
+    fusedPipe(data, A.map(double), A.takeUntil(doubledOverThreshold)))
+  bench('stopcock fused map -> takeUntil inline (optimizer)', () =>
+    optPipe(data, A.map(double), A.takeUntil(doubledOverThreshold)))
   bench('stopcock fused map -> takeUntil hoisted', () =>
     pipe(data, doubleOp, takeUntilDoubledOverThresholdOp))
+  bench('stopcock fused map -> takeUntil hoisted (fused)', () =>
+    fusedPipe(data, doubleOp, takeUntilDoubledOverThresholdOp))
+  bench('stopcock fused map -> takeUntil hoisted (optimizer)', () =>
+    optPipe(data, doubleOp, takeUntilDoubledOverThresholdOp))
   bench('native chain map -> findIndex -> slice', () => {
     const mapped = data.map(double)
     const stopAt = mapped.findIndex(doubledOverThreshold)

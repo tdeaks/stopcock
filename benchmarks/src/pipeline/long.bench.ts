@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
+import { pipe as fusedPipe } from '@stopcock/fp/fusion'
+import { pipe as optPipe } from '@stopcock/fp-optimizer'
 import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
@@ -11,6 +13,24 @@ describe.each([1_000, 10_000, 100_000])('filter→map→flatMap→filter→take(
 
   bench('stopcock', () =>
     pipe(
+      data,
+      A.filter((x: number) => x > 0.2),
+      A.map((x: number) => x * 100),
+      A.flatMap((x: number) => [x, x + 1]),
+      A.filter((x: number) => x % 3 === 0),
+      A.take(20),
+    ))
+  bench('stopcock (fused)', () =>
+    fusedPipe(
+      data,
+      A.filter((x: number) => x > 0.2),
+      A.map((x: number) => x * 100),
+      A.flatMap((x: number) => [x, x + 1]),
+      A.filter((x: number) => x % 3 === 0),
+      A.take(20),
+    ))
+  bench('stopcock (optimizer)', () =>
+    optPipe(
       data,
       A.filter((x: number) => x > 0.2),
       A.map((x: number) => x * 100),
@@ -55,6 +75,8 @@ describe.each([1_000, 10_000, 100_000])('map→map→map→map→map — n=%i', 
   const f5 = (x: number) => x / 2
 
   bench('stopcock', () => pipe(data, A.map(f1), A.map(f2), A.map(f3), A.map(f4), A.map(f5)))
+  bench('stopcock (fused)', () => fusedPipe(data, A.map(f1), A.map(f2), A.map(f3), A.map(f4), A.map(f5)))
+  bench('stopcock (optimizer)', () => optPipe(data, A.map(f1), A.map(f2), A.map(f3), A.map(f4), A.map(f5)))
   bench('ts-belt', () => tbPipe(data, TB.map(f1), TB.map(f2), TB.map(f3), TB.map(f4), TB.map(f5)))
   bench('remeda', () => R.pipe(data, R.map(f1), R.map(f2), R.map(f3), R.map(f4), R.map(f5)))
 })

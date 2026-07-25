@@ -88,4 +88,15 @@ export function getDaysInYear(ts: Timestamp): number {
   return _daysInYear(epochDaysToCivil(epochDays(ts)).year)
 }
 
-export { _isLeapYear as isLeapYear }
+/**
+ * Whether the year containing `ts` is a leap year.
+ *
+ * This used to re-export `core.isLeapYear` directly, which takes a *year*, not
+ * a timestamp. `Timestamp` is `number & brand`, so it is assignable to `number`
+ * and the compiler had nothing to object to; the function then computed
+ * `1785196800000 % 4`. Every midnight-UTC timestamp is a whole number of
+ * seconds, so it is divisible by 4, so the answer was `true` for every date.
+ */
+export function isLeapYear(ts: Timestamp): boolean {
+  return _isLeapYear(epochDaysToCivil(epochDays(ts)).year)
+}

@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
+import { pipe as fusedPipe } from '@stopcock/fp/fusion'
+import { pipe as optPipe } from '@stopcock/fp-optimizer'
 import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import { A as TB, pipe as tbPipe } from '@mobily/ts-belt'
@@ -10,6 +12,44 @@ describe.each([1_000, 10_000])('15-step all-fuseable pipeline — n=%i', (n) => 
 
   bench('stopcock', () =>
     pipe(
+      data,
+      A.filter((x: number) => x > 0.1),
+      A.map((x: number) => x * 2),
+      A.filter((x: number) => x > 0.5),
+      A.map((x: number) => x + 1),
+      A.filter((x: number) => x < 3),
+      A.map((x: number) => x * 10),
+      A.filter((x: number) => x > 5),
+      A.map((x: number) => Math.round(x)),
+      A.filter((x: number) => x % 2 === 0),
+      A.map((x: number) => x / 2),
+      A.filter((x: number) => x > 1),
+      A.map((x: number) => x - 1),
+      A.filter((x: number) => x > 0),
+      A.map((x: number) => x * 3),
+      A.take(20),
+    ))
+  bench('stopcock (fused)', () =>
+    fusedPipe(
+      data,
+      A.filter((x: number) => x > 0.1),
+      A.map((x: number) => x * 2),
+      A.filter((x: number) => x > 0.5),
+      A.map((x: number) => x + 1),
+      A.filter((x: number) => x < 3),
+      A.map((x: number) => x * 10),
+      A.filter((x: number) => x > 5),
+      A.map((x: number) => Math.round(x)),
+      A.filter((x: number) => x % 2 === 0),
+      A.map((x: number) => x / 2),
+      A.filter((x: number) => x > 1),
+      A.map((x: number) => x - 1),
+      A.filter((x: number) => x > 0),
+      A.map((x: number) => x * 3),
+      A.take(20),
+    ))
+  bench('stopcock (optimizer)', () =>
+    optPipe(
       data,
       A.filter((x: number) => x > 0.1),
       A.map((x: number) => x * 2),
@@ -52,6 +92,30 @@ describe.each([1_000, 10_000])('8-step mixed fuseable+terminal — n=%i', (n) =>
 
   bench('stopcock', () =>
     pipe(
+      data,
+      A.filter((x: number) => x > 0.2),
+      A.map((x: number) => x * 100),
+      A.filter((x: number) => x > 50),
+      A.map((x: number) => Math.floor(x)),
+      A.filter((x: number) => x % 2 === 0),
+      A.map((x: number) => x / 10),
+      A.filter((x: number) => x > 2),
+      A.reduce((acc: number, x: number) => acc + x, 0),
+    ))
+  bench('stopcock (fused)', () =>
+    fusedPipe(
+      data,
+      A.filter((x: number) => x > 0.2),
+      A.map((x: number) => x * 100),
+      A.filter((x: number) => x > 50),
+      A.map((x: number) => Math.floor(x)),
+      A.filter((x: number) => x % 2 === 0),
+      A.map((x: number) => x / 10),
+      A.filter((x: number) => x > 2),
+      A.reduce((acc: number, x: number) => acc + x, 0),
+    ))
+  bench('stopcock (optimizer)', () =>
+    optPipe(
       data,
       A.filter((x: number) => x > 0.2),
       A.map((x: number) => x * 100),

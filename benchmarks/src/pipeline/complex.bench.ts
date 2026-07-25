@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
+import { pipe as fusedPipe } from '@stopcock/fp/fusion'
+import { pipe as optPipe } from '@stopcock/fp-optimizer'
 import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
@@ -16,6 +18,8 @@ describe.each([1_000, 10_000, 100_000])('filter→map→sort→take(5) — n=%i'
   const data = getData<number>('numbers', n as any)
 
   bench('stopcock', () => pipe(data, A.filter(gt), A.map(dbl), A.sortBy(cmp), A.take(5)))
+  bench('stopcock (fused)', () => fusedPipe(data, A.filter(gt), A.map(dbl), A.sortBy(cmp), A.take(5)))
+  bench('stopcock (optimizer)', () => optPipe(data, A.filter(gt), A.map(dbl), A.sortBy(cmp), A.take(5)))
   bench('ts-belt', () => tbPipe(data, TB.filter(gt), TB.map(dbl), TB.sort(cmp), TB.take(5)))
   bench('remeda', () => R.pipe(data, R.filter(gt), R.map(dbl), R.sort(cmp), R.take(5)))
   bench('rambda', () => Rb.pipe(data, Rb.filter(gt), Rb.map(dbl), Rb.sort(cmp), Rb.take(5) as any))

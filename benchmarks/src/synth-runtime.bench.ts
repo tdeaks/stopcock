@@ -17,7 +17,7 @@ import {
   type RenderOptions,
   type Samples,
 } from '@stopcock/synth'
-import { renderReference } from '../../packages/synth/src/render/offline'
+import { renderReference } from '../../packages/synth/src/render/reference'
 import {
   isSynthWasmBinaryAvailable,
   isSynthWasmRuntimeAvailable,

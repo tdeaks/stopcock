@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
+import { pipe as fusedPipe } from '@stopcock/fp/fusion'
+import { pipe as optPipe } from '@stopcock/fp-optimizer'
 import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
@@ -73,7 +75,11 @@ describe.each(sizes)('map->filter->reduce — n=%i', (n) => {
   const data = makeData(n)
 
   bench('stopcock inline', () => pipe(data, A.map(double), A.filter(isOver), A.reduce(sum, 0)))
+  bench('stopcock inline (fused)', () => fusedPipe(data, A.map(double), A.filter(isOver), A.reduce(sum, 0)))
+  bench('stopcock inline (optimizer)', () => optPipe(data, A.map(double), A.filter(isOver), A.reduce(sum, 0)))
   bench('stopcock hoisted', () => pipe(data, doubleOp, isOverOp, sumOp))
+  bench('stopcock hoisted (fused)', () => fusedPipe(data, doubleOp, isOverOp, sumOp))
+  bench('stopcock hoisted (optimizer)', () => optPipe(data, doubleOp, isOverOp, sumOp))
   bench('ts-belt', () => tbPipe(data, TB.map(double), TB.filter(isOver), TB.reduce(0, sum)))
   bench('remeda', () => R.pipe(data, R.map(double), R.filter(isOver), R.reduce(sum, 0)))
   bench('rambda', () => Rb.pipe(data, Rb.map(double), Rb.filter(isOver), Rb.reduce(sum, 0) as any))

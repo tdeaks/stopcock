@@ -55,7 +55,6 @@ describe('assoc', () => {
   }
 
   bench('stopcock', () => Obj.assoc(obj, 'a', 99))
-  bench('rambda', () => Rb.assoc('a', 99)(obj))
   bench('ramda', () => Ra.assoc('a', 99, obj))
   bench('manual equivalent prototype/symbol-safe clone', exactPlainObjectAssoc)
   bench('native spread (plain string-record subset)', () => ({ ...obj, a: 99 }))
@@ -63,7 +62,6 @@ describe('assoc', () => {
 
 describe('dissoc', () => {
   bench('stopcock', () => Obj.dissoc(obj, 'a'))
-  bench('rambda', () => Rb.dissoc('a')(obj))
   bench('ramda', () => Ra.dissoc('a', obj))
   bench('lodash', () => _.omit(obj, ['a']))
 })

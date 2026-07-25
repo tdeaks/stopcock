@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
+import { pipe as fusedPipe } from '@stopcock/fp/fusion'
+import { pipe as optPipe } from '@stopcock/fp-optimizer'
 import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import * as Ra from 'ramda'
@@ -78,7 +80,11 @@ describe.each(sizes)('flatMap -> uniq -> count — n=%i', (n) => {
   const data = makeData(n)
 
   bench('stopcock inline', () => pipe(data, A.flatMap(expand), A.uniq, A.count(isEven)))
+  bench('stopcock inline (fused)', () => fusedPipe(data, A.flatMap(expand), A.uniq, A.count(isEven)))
+  bench('stopcock inline (optimizer)', () => optPipe(data, A.flatMap(expand), A.uniq, A.count(isEven)))
   bench('stopcock hoisted', () => pipe(data, expandOp, A.uniq, isEvenOp))
+  bench('stopcock hoisted (fused)', () => fusedPipe(data, expandOp, A.uniq, isEvenOp))
+  bench('stopcock hoisted (optimizer)', () => optPipe(data, expandOp, A.uniq, isEvenOp))
   bench('ts-belt', () => tbPipe(data, TB.map(expand), TB.flat, TB.uniq, TB.filter(isEven)).length)
   bench('remeda', () => R.pipe(data, R.flatMap(expand), R.unique(), R.filter(isEven)).length)
   bench('rambda', () => Rb.pipe(data, Rb.flatMap(expand) as any, Rb.uniq, Rb.count(isEven) as any))

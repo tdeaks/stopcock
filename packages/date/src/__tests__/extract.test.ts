@@ -79,8 +79,14 @@ describe('getDaysInYear', () => {
 })
 
 describe('isLeapYear', () => {
-  it('2024 is leap', () => expect(isLeapYear(2024)).toBe(true))
-  it('2023 is not', () => expect(isLeapYear(2023)).toBe(false))
-  it('1900 is not', () => expect(isLeapYear(1900)).toBe(false))
-  it('2000 is leap', () => expect(isLeapYear(2000)).toBe(true))
+  // These used to pass bare years. `isLeapYear` lives beside getDaysInMonth
+  // and getDaysInYear, which both take a Timestamp, and is exported alongside
+  // them; passing a year meant a caller who passed a timestamp -- the obvious
+  // reading -- got `true` for every date. Now takes a Timestamp like its
+  // siblings. See extract-leap-year.test.ts.
+  const y = (year: number) => compose(year, 6, 15, 0, 0, 0, 0)
+  it('2024 is leap', () => expect(isLeapYear(y(2024))).toBe(true))
+  it('2023 is not', () => expect(isLeapYear(y(2023))).toBe(false))
+  it('1900 is not', () => expect(isLeapYear(y(1900))).toBe(false))
+  it('2000 is leap', () => expect(isLeapYear(y(2000))).toBe(true))
 })

@@ -9,6 +9,7 @@ const fpSrc = (subpath = 'index') => path.resolve(__dirname, `../packages/fp/src
 export default defineConfig({
   resolve: {
     alias: [
+      { find: /^@stopcock\/fp-optimizer$/, replacement: src('fp-optimizer') },
       { find: /^@stopcock\/fp\/(.+)$/, replacement: fpSrc('$1') },
       { find: /^@stopcock\/fp$/, replacement: fpSrc() },
       {

@@ -1,29 +1,24 @@
 import { bench, describe } from 'vite-plus/test'
 import * as M from '@stopcock/fp/math'
 import * as Ra from 'ramda'
-import * as Rb from 'rambda'
 
 describe('add', () => {
   bench('stopcock', () => M.add(3, 5))
-  bench('rambda', () => Rb.add(3)(5))
   bench('ramda', () => Ra.add(3, 5))
 })
 
 describe('multiply', () => {
   bench('stopcock', () => M.multiply(3, 5))
-  bench('rambda', () => Rb.multiply(3)(5))
   bench('ramda', () => Ra.multiply(3, 5))
 })
 
 describe('subtract', () => {
   bench('stopcock', () => M.subtract(10, 3))
-  bench('rambda', () => Rb.subtract(10)(3))
   bench('ramda', () => Ra.subtract(10, 3))
 })
 
 describe('divide', () => {
   bench('stopcock', () => M.divide(10, 3))
-  bench('rambda', () => Rb.divide(10)(3))
   bench('ramda', () => Ra.divide(10, 3))
 })
 
@@ -41,9 +36,7 @@ describe('product', () => {
 
 describe('inc/dec', () => {
   bench('stopcock inc', () => M.inc(5))
-  bench('rambda inc', () => Rb.inc(5))
   bench('ramda inc', () => Ra.inc(5))
   bench('stopcock dec', () => M.dec(5))
-  bench('rambda dec', () => Rb.dec(5))
   bench('ramda dec', () => Ra.dec(5))
 })

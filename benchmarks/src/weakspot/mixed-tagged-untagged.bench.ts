@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
+import { pipe as fusedPipe } from '@stopcock/fp/fusion'
+import { pipe as optPipe } from '@stopcock/fp-optimizer'
 import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import { A as TB, pipe as tbPipe } from '@mobily/ts-belt'
@@ -13,6 +15,8 @@ describe.each([100, 1_000, 10_000])('tagged→untagged→tagged — n=%i', (n) =
   const data = getData<number>('numbers', n as any)
 
   bench('stopcock', () => pipe(data, A.filter(gt), custom, A.map(dbl)))
+  bench('stopcock (fused)', () => fusedPipe(data, A.filter(gt), custom, A.map(dbl)))
+  bench('stopcock (optimizer)', () => optPipe(data, A.filter(gt), custom, A.map(dbl)))
   bench('remeda', () => R.pipe(data, R.filter(gt), custom, R.map(dbl)))
 })
 
@@ -20,6 +24,8 @@ describe.each([100, 1_000, 10_000])('untagged→tagged→untagged — n=%i', (n)
   const data = getData<number>('numbers', n as any)
 
   bench('stopcock', () => pipe(data, custom, A.filter(gt), custom))
+  bench('stopcock (fused)', () => fusedPipe(data, custom, A.filter(gt), custom))
+  bench('stopcock (optimizer)', () => optPipe(data, custom, A.filter(gt), custom))
   bench('remeda', () => R.pipe(data, custom, R.filter(gt), custom))
 })
 
@@ -30,5 +36,7 @@ describe.each([100, 1_000, 10_000])('all untagged (worst case for fusion) — n=
   const f3 = (arr: number[]) => arr.slice(0, 10)
 
   bench('stopcock', () => pipe(data, f1, f2, f3))
+  bench('stopcock (fused)', () => fusedPipe(data, f1, f2, f3))
+  bench('stopcock (optimizer)', () => optPipe(data, f1, f2, f3))
   bench('remeda', () => R.pipe(data, f1, f2, f3))
 })

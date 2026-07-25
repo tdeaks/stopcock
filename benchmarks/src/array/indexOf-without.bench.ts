@@ -19,7 +19,6 @@ describe.each([100, 1_000, 10_000])('without — n=%i', (n) => {
   const remove = data.slice(0, 5)
 
   bench('stopcock', () => A.without(data, remove))
-  bench('rambda', () => Rb.without(remove)(data))
   bench('ramda', () => Ra.without(remove, data))
   bench('lodash', () => _.without(data, ...remove))
 })

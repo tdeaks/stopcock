@@ -1,5 +1,8 @@
 import { bench, describe } from 'vite-plus/test'
-import { compilePure, pipe } from '@stopcock/fp'
+import { pipe } from '@stopcock/fp'
+import { pipe as fusedPipe } from '@stopcock/fp/fusion'
+import { pipe as optPipe } from '@stopcock/fp-optimizer'
+import { compilePure } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
@@ -88,6 +91,8 @@ describe.each(sizes)('sortBy -> take(10) — n=%i', (n) => {
   const runner = compilePure(A.sortBy(cmp), A.take(TOP_K))
 
   bench('stopcock inline', () => pipe(data, A.sortBy(cmp), A.take(TOP_K)))
+  bench('stopcock inline (fused)', () => fusedPipe(data, A.sortBy(cmp), A.take(TOP_K)))
+  bench('stopcock inline (optimizer)', () => optPipe(data, A.sortBy(cmp), A.take(TOP_K)))
   bench('stopcock compilePure', () => runner(data))
   bench('ts-belt', () => tbPipe(data, TB.sort(cmp), TB.take(TOP_K)))
   bench('remeda', () => R.pipe(data, R.sort(cmp), R.take(TOP_K)))

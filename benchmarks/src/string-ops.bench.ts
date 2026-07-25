@@ -10,7 +10,6 @@ const long = str.repeat(100)
 describe('trim', () => {
   const padded = '   ' + str + '   '
   bench('stopcock', () => S.trim(padded))
-  bench('rambda', () => Rb.trim(padded))
   bench('ramda', () => Ra.trim(padded))
   bench('lodash', () => _.trim(padded))
 })
@@ -31,14 +30,12 @@ describe('includes (string)', () => {
 
 describe('startsWith', () => {
   bench('stopcock', () => S.startsWith(str, 'The'))
-  bench('rambda', () => Rb.startsWith('The')(str))
   bench('ramda', () => Ra.startsWith('The', str))
   bench('lodash', () => _.startsWith(str, 'The'))
 })
 
 describe('endsWith', () => {
   bench('stopcock', () => S.endsWith(str, 'dog'))
-  bench('rambda', () => Rb.endsWith('dog')(str))
   bench('ramda', () => Ra.endsWith('dog', str))
   bench('lodash', () => _.endsWith(str, 'dog'))
 })
@@ -57,17 +54,15 @@ describe('toUpperCase', () => {
 
 describe('replaceAll', () => {
   bench('stopcock', () => S.replaceAll(str, ' ', '-'))
-  bench('rambda', () => Rb.replaceAll(' ', '-')(str))
+  bench('rambda', () => Rb.replaceAll([' '], '-')(str))
 })
 
 describe('repeat (string)', () => {
   bench('stopcock', () => S.repeat(str, 100))
-  bench('rambda', () => Rb.repeat(str)(100))
   bench('ramda', () => Ra.repeat(str, 100))
 })
 
 describe('slice (string)', () => {
   bench('stopcock', () => S.slice(long, 100, 200))
-  bench('rambda', () => Rb.slice(100, 200)(long))
   bench('ramda', () => Ra.slice(100, 200, long))
 })

@@ -1,5 +1,7 @@
 import { bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
+import { pipe as fusedPipe } from '@stopcock/fp/fusion'
+import { pipe as optPipe } from '@stopcock/fp-optimizer'
 import * as A from '@stopcock/fp/array'
 import * as O from '@stopcock/fp/option'
 import * as R from 'remeda'
@@ -45,6 +47,8 @@ const sum = (a: number, x: number) => a + x
 
 describe('filter→map→take(100) — n=10M', () => {
   bench('stopcock', () => pipe(data, A.filter(gt50), A.map(dbl), A.take(100)))
+  bench('stopcock (fused)', () => fusedPipe(data, A.filter(gt50), A.map(dbl), A.take(100)))
+  bench('stopcock (optimizer)', () => optPipe(data, A.filter(gt50), A.map(dbl), A.take(100)))
   bench('ts-belt', () => tbPipe(data, TB.filter(gt50), TB.map(dbl), TB.take(100)))
   bench('remeda', () => R.pipe(data, R.filter(gt50), R.map(dbl), R.take(100)))
   bench('rambda', () => Rb.pipe(data, Rb.filter(gt50), Rb.map(dbl), Rb.take(100)))
@@ -63,6 +67,34 @@ describe('filter→map→take(100) — n=10M', () => {
 describe('deep 10-step filter+map→take(50) — n=10M', () => {
   bench('stopcock', () =>
     pipe(
+      data,
+      A.filter(gt50),
+      A.map(dbl),
+      A.filter(gt80),
+      A.map(inc),
+      A.filter(lt5),
+      A.map(times10),
+      A.filter(gt10),
+      A.map(round),
+      A.filter(isEven),
+      A.take(50),
+    ))
+  bench('stopcock (fused)', () =>
+    fusedPipe(
+      data,
+      A.filter(gt50),
+      A.map(dbl),
+      A.filter(gt80),
+      A.map(inc),
+      A.filter(lt5),
+      A.map(times10),
+      A.filter(gt10),
+      A.map(round),
+      A.filter(isEven),
+      A.take(50),
+    ))
+  bench('stopcock (optimizer)', () =>
+    optPipe(
       data,
       A.filter(gt50),
       A.map(dbl),
@@ -147,6 +179,8 @@ describe('deep 10-step filter+map→take(50) — n=10M', () => {
 
 describe('filter→map→reduce (sum) — n=10M', () => {
   bench('stopcock', () => pipe(data, A.filter(gt50), A.map(dbl), A.reduce(sum, 0)))
+  bench('stopcock (fused)', () => fusedPipe(data, A.filter(gt50), A.map(dbl), A.reduce(sum, 0)))
+  bench('stopcock (optimizer)', () => optPipe(data, A.filter(gt50), A.map(dbl), A.reduce(sum, 0)))
   bench('ts-belt', () => tbPipe(data, TB.filter(gt50), TB.map(dbl), TB.reduce(0, sum)))
   bench('remeda', () => R.pipe(data, R.filter(gt50), R.map(dbl), R.reduce(sum, 0)))
   bench('rambda', () => Rb.pipe(data, Rb.filter(gt50), Rb.map(dbl), Rb.reduce(sum, 0)))
@@ -166,6 +200,10 @@ describe('filter→map→reduce (sum) — n=10M', () => {
 describe('filter→map→find (rare match) — n=10M', () => {
   bench('stopcock', () =>
     pipe(data, A.filter(gt50), A.map(floor), A.find(is999), O.toUndefined))
+  bench('stopcock (fused)', () =>
+    fusedPipe(data, A.filter(gt50), A.map(floor), A.find(is999), O.toUndefined))
+  bench('stopcock (optimizer)', () =>
+    optPipe(data, A.filter(gt50), A.map(floor), A.find(is999), O.toUndefined))
   bench('ts-belt', () => tbPipe(data, TB.filter(gt50), TB.map(floor), TB.find(is999)))
   bench('remeda', () => R.pipe(data, R.filter(gt50), R.map(floor), R.find(is999)))
   bench('rambda', () => Rb.pipe(data, Rb.filter(gt50), Rb.map(floor), Rb.find(is999)))
@@ -184,6 +222,8 @@ describe('filter→map→find (rare match) — n=10M', () => {
 // remeda has no pipe-compatible `some`, so it uses the same eager pattern as others
 describe('filter→map→some — n=10M', () => {
   bench('stopcock', () => pipe(data, A.filter(lt20), A.map(floor), A.some(gt190)))
+  bench('stopcock (fused)', () => fusedPipe(data, A.filter(lt20), A.map(floor), A.some(gt190)))
+  bench('stopcock (optimizer)', () => optPipe(data, A.filter(lt20), A.map(floor), A.some(gt190)))
   bench('ts-belt', () => tbPipe(data, TB.filter(lt20), TB.map(floor), TB.some(gt190)))
   bench('rambda', () => Rb.pipe(data, Rb.filter(lt20), Rb.map(floor), Rb.any(gt190)))
   bench('ramda', () => Ra.pipe(Ra.filter(lt20), Ra.map(floor), Ra.any(gt190))(data))
@@ -200,6 +240,8 @@ describe('filter→map→some — n=10M', () => {
 
 describe('narrow filter(x>0.99)→map→take(10) — n=10M', () => {
   bench('stopcock', () => pipe(data, A.filter(rare), A.map(dbl), A.take(10)))
+  bench('stopcock (fused)', () => fusedPipe(data, A.filter(rare), A.map(dbl), A.take(10)))
+  bench('stopcock (optimizer)', () => optPipe(data, A.filter(rare), A.map(dbl), A.take(10)))
   bench('ts-belt', () => tbPipe(data, TB.filter(rare), TB.map(dbl), TB.take(10)))
   bench('remeda', () => R.pipe(data, R.filter(rare), R.map(dbl), R.take(10)))
   bench('rambda', () => Rb.pipe(data, Rb.filter(rare), Rb.map(dbl), Rb.take(10)))

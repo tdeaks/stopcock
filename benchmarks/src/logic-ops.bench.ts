@@ -40,14 +40,8 @@ describe('cond', () => {
     [(x) => x === 0, () => 'zero'],
     [(x) => x > 0, () => 'positive'],
   ])
-  const rbFn = Rb.cond<string>([
-    [(x: number) => x < 0, () => 'negative'],
-    [(x: number) => x === 0, () => 'zero'],
-    [(x: number) => x > 0, () => 'positive'],
-  ])
-
+  // rambda dropped cond in v11
   bench('stopcock', () => fn(5))
-  bench('rambda', () => rbFn(5))
   bench('ramda', () => raFn(5))
 })
 
