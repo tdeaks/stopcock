@@ -10,6 +10,7 @@ import {
   ITER_KERNEL_TERMINAL_IDS,
   type IterKernelPerfCase,
   type IterKernelPerfReport,
+  ITER_KERNEL_FLOOR_EXCEPTIONS,
 } from './iter-array-kernel-gate'
 import { evaluateIterSubpathSize, ITER_SUBPATH_SIZE_CONTRACT } from './iter-subpath-size-contract'
 import type { PerfEngine } from './perf-engine'
@@ -95,6 +96,7 @@ describe('shipped Array kernel policy', () => {
     expect(evaluateIterKernelPerfReport(makeReport(cases))).toEqual({
       passed: true,
       failures: [],
+      acceptedBelowFloor: [],
     })
   })
 
@@ -166,5 +168,29 @@ describe('iter subpath size exception', () => {
     ) as { readonly shippedRows: number; readonly expectedRows: number }
     expect(manifest.shippedRows).toBe(ITER_SUBPATH_SIZE_CONTRACT.exception.shippedMatrixRows)
     expect(manifest.expectedRows).toBe(210)
+  })
+})
+
+describe('recorded floor exceptions', () => {
+  test('a listed terminal below the floor is accepted, not failed', () => {
+    // Paired with a clearing row so the geomean floor is not what is measured.
+    const evaluation = evaluateIterKernelPerfReport(
+      makeReport([makeCase('map/forEach', 0.7), makeCase('map/toArray', 1.2)]),
+    )
+    expect(evaluation.failures.filter((f) => f.includes('is below 0.80'))).toEqual([])
+    expect(evaluation.acceptedBelowFloor).toHaveLength(1)
+    expect(evaluation.acceptedBelowFloor[0]).toContain('S11')
+  })
+
+  test('an unlisted terminal below the floor still fails', () => {
+    const evaluation = evaluateIterKernelPerfReport(makeReport([makeCase('map/toArray', 0.7)]))
+    expect(evaluation.failures.some((f) => f.includes('is below'))).toBe(true)
+  })
+
+  test('every exception names an owning stage and a reason', () => {
+    for (const exception of ITER_KERNEL_FLOOR_EXCEPTIONS) {
+      expect(exception.owner.length).toBeGreaterThan(0)
+      expect(exception.reason.length).toBeGreaterThan(0)
+    }
   })
 })
