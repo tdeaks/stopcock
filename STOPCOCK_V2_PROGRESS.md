@@ -2340,53 +2340,51 @@ user-authorized, with `External mutation authorization: NONE`.
 | 7   | S12P  | NOT_STARTED |
 | 8   | S12   | NOT_STARTED |
 
-## Blocker: one compiler corpus row is genuinely slow
+## Blocker: the host has fallen out of perf qualification
 
-`compiler-perf-gate` fails its `minimumCaseRatio` of 0.80 on
-`4+ ops, sink=reduce-like, boundary=none (trivial, n=100)`. Global geomean is
-unaffected at 2.01 against a 0.90 floor.
+`perf-profile-gate` now reports `ok: false` — session 0 spread 0.1204 against
+the profile's 0.12 limit. S1B made that check fail-closed precisely so that
+timing evidence cannot be produced on a host that is no longer behaving, and it
+is now refusing.
 
-This is now measured properly rather than argued about. Judged on the median of
-five fresh processes:
+Everything downstream of that is unusable, and this is retracted evidence, not
+a caveat:
 
-| commit    | row median | readings                                  |
-| --------- | ---------- | ----------------------------------------- |
-| `8c745bb` | 1.238      | 1.238, 1.130, 1.238                       |
-| `6ff7bdb` | 1.111      | 1.111, 1.144, 0.838                       |
-| `HEAD`    | 0.727      | 0.727, 0.716, 0.778, 0.692, 0.763         |
+- `portable-perf-gate` reads geomean 0.985 against a 1.200 floor and a worst
+  case of 0.001, with three rows failing the harness's own relative-margin-of-
+  error check at 6.1%, 8.4% and 12.2%. A worst case of 0.001 is a broken
+  measurement, not a thousandfold slowdown. Earlier in the same session the
+  same gate on the same tree read geomean 1.703 and worst case 0.980.
+- The P3B allocation candidate cannot be adjudicated. It was reverted after a
+  corpus run that looked catastrophic, and then the identical failure
+  reproduced with the change reverted — so that run said nothing about the
+  candidate either way.
+- The S11 compiler row blocker is now doubtful. Its readings were tightly
+  clustered, which is why it looked solid, but it was measured across the same
+  long session on the same drifting host. The finding that a byte-identical
+  compiled artifact measured 40% slower is much better explained by a host
+  drifting out of qualification than by anything in the tree, and it should not
+  be carried forward as a product regression.
 
-Two earlier conclusions were wrong and are corrected here. It is not noise: the
-readings cluster tightly across separate processes, and neighbouring small-n
-rows cluster tightly too (1.022–1.046), so the harness is not inherently
-unstable at this size. And the per-commit bisect that appeared to implicate a
-benchmark-only commit was reading single draws from a spread.
+The general lesson is procedural: this session ran many hours of back-to-back
+benchmarks and never re-checked host qualification between them. `perf-profile-
+gate` should be run immediately before any gate whose verdict is a timing
+number, not once at S1B and then trusted for the rest of the programme.
 
-What is established:
-
-- The compiled output for this shape is **byte-identical** before and after, so
-  the shipped artifact did not change.
-- The regression appears after `6ff7bdb`, in the range containing the S10X
-  extraction.
-- One real harness defect was found and fixed on the way: the fixture imports
-  `pipe` from `@stopcock/fp`, so an untransformed site would call root
-  sequential `pipe`, but the harness injected the optimizer's fused `pipe`.
-  After extraction that import also pulled FP's built `dist` into the benchmark
-  process. Fixing it moved single reads but not the session median.
-
-So a byte-identical artifact measures 40% slower on one row in a process whose
-module graph changed. That is a real effect on a real measurement and it is not
-explained. It is not a product regression on the evidence available, and it has
-not been treated as one — but nor has the gate been relaxed to hide it.
-
-The gate is left failing. `compiler-perf-sessions-gate` is the adjudicator and
-is registered in the gate manifest. Next action is to measure this row's
-absolute compiled and reference nanoseconds directly, rather than their ratio,
-to establish which side moved.
+Nothing here is worked around. No floor was moved, no row excepted, no digest
+repinned to make a red gate green. The P3B candidate stays reverted because it
+has no valid supporting measurement, not because it was shown to lose.
 
 ## Exact next action
 
-Execute S11: bound the compiler residual. S11 also owns the recorded P1A
-exception, the ten Iter terminals shipping below the 0.80x floor.
+Requalify the host before any further timing work: leave the machine idle until
+`perf-profile-gate` reports `ok: true`, then re-run `portable-perf-gate` and
+`compiler-perf-sessions-gate` to establish which of this session's timing
+findings survive. Only then re-measure the P3B allocation candidate and re-test
+the S11 compiler row.
+
+The non-timing stages — DISP, S12P, and S12 — do not depend on host
+qualification and can proceed meanwhile.
 
 ### S10X outcome
 
