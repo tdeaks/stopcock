@@ -15,7 +15,7 @@ Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S7
 Current slice: PRE_CUTOVER_GATES
-Last verified commit: 52b30ba
+Last verified commit: 171826c
 Last controller run: 2026-07-25
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -72,7 +72,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S10J  | NOT_STARTED | Optimizer topology decision                                                                                                                                                                                                                                                                                                                                                                   |
 | S11   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
 | P1A   | GATE_PASSED | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                       |
-| P1B   | NOT_STARTED | Typed-array Iter admission                                                                                                                                                                                                                                                                                                                                                                    |
+| P1B   | GATE_PASSED | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                             |
 | P2    | GATE_PASSED | Canonical-view inspection seam merged; every candidate strategy measured and stopped, so typed-array behaviour is unchanged by design                                                                                                                                                                                                                                                         |
 | P3A   | GATE_PASSED | Allocation and memory evidence infrastructure merged at `9bde654`; seven families calibrated on the release lane, three uncalibrated on the canary and reported rather than tuned                                                                                                                                                                                                             |
 | P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                                |
@@ -280,8 +280,58 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
       looks outward for the first time.
 - [x] (2026-07-25) The first full gate run found two gates red since before the
       programme began, and one more untagged-path regression in `pipe`.
+- [x] (2026-07-25) Completed P1B and merged it. The lane refused to raise the
+      size ceiling itself and escalated; the user granted a named exception.
+- [x] (2026-07-25) Fixed a real hole in P2's iteration seam and, separately,
+      landed the iter subpath enforcement that an earlier commit of mine had
+      claimed but not contained.
 
 ## Evidence log
+
+- P1B evidence:
+  - typed arrays reach the kernels through a `PLAN_SOURCE_TYPED_ARRAY` form.
+    Admission requires a canonical view, intrinsic iteration, the resolved
+    `@@iterator` identical to the intrinsic, `length` agreeing with the
+    intrinsic accessor, and a buffer that is neither resizable, growable, nor
+    detached. SharedArrayBuffer skips the detachment query because it cannot
+    detach, and an engine without `ArrayBuffer.prototype.detached` is never
+    admitted;
+  - a callback detaching mid-traversal is the one residual divergence, closed
+    by comparing source length after traversal and rethrowing through the
+    value's own iterator. That is only conclusive for whole-source terminals,
+    so early-exit terminals and any shape carrying `take` keep iterating;
+  - 21 shipped rows over 18 distinct kernels, 189 stops in three recorded
+    reasons, all 210 rows present exactly once in the manifest;
+  - **the finding that shaped the design**: pointing typed arrays at P1A's
+    existing Array kernels is simpler and is a reproducible regression to the
+    Array product. Array rows measured geomean 0.528 with a minimum of 0.149
+    against an otherwise identical module instance that had only seen Arrays;
+    an Array-only control measured 1.013, and the effect inverted when the
+    instances swapped roles. One function reading both source kinds specialises
+    for neither. With separate families the same comparison measures 1.002;
+  - shipped rows measure geomean 1.095 against hand-written indexed loops, up
+    from 0.075 on the generic path they replace. Three `forEach` rows ship at
+    0.24–0.36 under the same S11-owned floor exception P1A carries, against a
+    generic path measuring 0.03;
+  - the size exception was granted deliberately: 8,421 to 10,563 gzip bytes on
+    the subpath, 10,481 to 13,747 on a consumer closure, with the admission
+    seam accounting for 1,723 of the 2,110 and the kernels only 397;
+  - Bun and Node's zlib disagree by 20 bytes on identical input. The contract
+    records which runtime it was measured under, so a re-measurement elsewhere
+    cannot silently move the ceiling.
+
+- Two defects closed while integrating P1B:
+  - `hasIntrinsicIteration` checked the value's own `@@iterator` and the shared
+    `%TypedArray%.prototype` but not the family prototype between them.
+    Overriding `Uint8Array.prototype[Symbol.iterator]` left it answering true
+    while iteration was entirely custom. It now compares the method the value
+    actually resolves. Reproduced before fixing and covered by tests;
+  - the commit that claimed to enforce the iter subpath ceiling against the
+    built artifact changed only the pin; the test edit was never in it. The
+    ceiling had been checked against synthetic reports and a declaration count,
+    which is how P1B could exceed it by 2,108 bytes with the suite green. Now
+    measured against `dist/iter.js`, and verified by lowering the ceiling and
+    watching it fail.
 
 - Verification hardening:
   - `gate-manifest.ts` lists every runnable gate with what it checks and
