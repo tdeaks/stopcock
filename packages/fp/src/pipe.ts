@@ -10,6 +10,14 @@
  * the same result. What changes is that intermediate arrays are no longer
  * elided, and callbacks run stage by stage rather than interleaved per element.
  * If you were relying on fusion for throughput, import it explicitly.
+ *
+ * One caveat, because the two facts read as contradictory otherwise:
+ * `@stopcock/fp-compiler` lowers this call into a fused loop at build time. So
+ * "stage by stage" describes what this function does at runtime, and a build
+ * with that plugin enabled will interleave callbacks and stop calling upstream
+ * ones at an early-exit terminal. Results are identical either way; callback
+ * counts and order are not. It matters only for effectful callbacks, and the
+ * compiler's README documents it.
  */
 import { sequentialPipe } from './internal/sequential'
 

@@ -75,7 +75,35 @@ This release lowers statically imported array pipelines composed from:
 Terminal operators must be last. The compiler preserves argument evaluation
 order, lexical bindings, thrown errors, the canonical `Option.none` singleton,
 runner-construction timing, reusable reducer seeds, and array semantics for
-accepted sites. `compile` and `compilePure` can be lowered from either the root
+accepted sites.
+
+### What fusing changes
+
+Compiling a pipeline fuses it, and fusing is observable if your callbacks have
+side effects. The result is always the same. How many times your callbacks run,
+and in what order, is not:
+
+```ts
+pipe([1, 2, 3], map(log), filter(big))
+// runtime  (root pipe, sequential): log 1, log 2, log 3, then the filters
+// compiled (fused):                 log 1, filter, log 2, filter, log 3, filter
+
+pipe([1, 2, 3, 4], map(log), find((x) => x === 2))
+// runtime  (root pipe, sequential): log runs 4 times
+// compiled (fused):                 log runs 2 times, then stops
+```
+
+Root `pipe` is sequential at runtime and documents that. This plugin lowers the
+same call into a fused loop, so enabling it changes the above. That is the point
+of the plugin — it is the same thing `@stopcock/fp/fusion` and
+`@stopcock/fp-optimizer` do, obtained by adding a build step instead of changing
+an import — but it means a pipeline whose callbacks log, count, or mutate can
+behave differently with the plugin on.
+
+Pure callbacks are unaffected. If yours are not pure and you depend on
+stage-by-stage order, keep those pipelines out of the compiler (an unsupported
+operator or a dynamic step leaves the site as a runtime call), or write them as
+explicit loops. `compile` and `compilePure` can be lowered from either the root
 or `/compile` entry, including a single static step. A single-step `flow`
 remains untouched because the runtime deliberately returns the original
 function identity. `compilePure` shapes with the runtime's bounded top-k or
