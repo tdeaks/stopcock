@@ -1338,3 +1338,360 @@ const ARRAY_KERNELS = new Map<number, IterArrayKernel>([
 
 export const iterArrayKernel = (shapeCode: number, terminal: number): IterArrayKernel | undefined =>
   shapeCode < 0 ? undefined : ARRAY_KERNELS.get(shapeCode * 16 + terminal)
+
+export type IterViewKernel = (
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a?: unknown,
+  b?: unknown,
+) => unknown
+
+function viewKernel$map$toArray(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const out: unknown[] = []
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    out.push(value0)
+  }
+  return out
+}
+
+function viewKernel$filter$toArray(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+): unknown {
+  const fn0 = steps[0].fn as KernelPredicate
+  let index0 = 0
+  const out: unknown[] = []
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    if (fn0(value, index0++)) {
+      out.push(value)
+    }
+  }
+  return out
+}
+
+function viewKernel$map$filter$toArray(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const fn1 = steps[1].fn as KernelPredicate
+  let index1 = 0
+  const out: unknown[] = []
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    if (fn1(value0, index1++)) {
+      out.push(value0)
+    }
+  }
+  return out
+}
+
+function viewKernel$map$toArrayInto(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a: unknown,
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const out = a as unknown[]
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    out.push(value0)
+  }
+  return out
+}
+
+function viewKernel$filter$toArrayInto(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a: unknown,
+): unknown {
+  const fn0 = steps[0].fn as KernelPredicate
+  let index0 = 0
+  const out = a as unknown[]
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    if (fn0(value, index0++)) {
+      out.push(value)
+    }
+  }
+  return out
+}
+
+function viewKernel$map$filter$toArrayInto(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a: unknown,
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const fn1 = steps[1].fn as KernelPredicate
+  let index1 = 0
+  const out = a as unknown[]
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    if (fn1(value0, index1++)) {
+      out.push(value0)
+    }
+  }
+  return out
+}
+
+function viewKernel$map$reduce(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a: unknown,
+  b: unknown,
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const reducer = a as KernelReducer
+  let state = b
+  let at = 0
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    state = reducer(state, value0, at++)
+  }
+  return state
+}
+
+function viewKernel$filter$reduce(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a: unknown,
+  b: unknown,
+): unknown {
+  const fn0 = steps[0].fn as KernelPredicate
+  let index0 = 0
+  const reducer = a as KernelReducer
+  let state = b
+  let at = 0
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    if (fn0(value, index0++)) {
+      state = reducer(state, value, at++)
+    }
+  }
+  return state
+}
+
+function viewKernel$map$filter$reduce(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a: unknown,
+  b: unknown,
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const fn1 = steps[1].fn as KernelPredicate
+  let index1 = 0
+  const reducer = a as KernelReducer
+  let state = b
+  let at = 0
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    if (fn1(value0, index1++)) {
+      state = reducer(state, value0, at++)
+    }
+  }
+  return state
+}
+
+function viewKernel$map$count(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  let total = 0
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    total++
+  }
+  return total
+}
+
+function viewKernel$filter$count(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+): unknown {
+  const fn0 = steps[0].fn as KernelPredicate
+  let index0 = 0
+  let total = 0
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    if (fn0(value, index0++)) {
+      total++
+    }
+  }
+  return total
+}
+
+function viewKernel$map$filter$count(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const fn1 = steps[1].fn as KernelPredicate
+  let index1 = 0
+  let total = 0
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    if (fn1(value0, index1++)) {
+      total++
+    }
+  }
+  return total
+}
+
+function viewKernel$map$forEach(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a: unknown,
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const effect = a as KernelEffect
+  let at = 0
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    effect(value0, at++)
+  }
+  return undefined
+}
+
+function viewKernel$filter$forEach(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a: unknown,
+): unknown {
+  const fn0 = steps[0].fn as KernelPredicate
+  let index0 = 0
+  const effect = a as KernelEffect
+  let at = 0
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    if (fn0(value, index0++)) {
+      effect(value, at++)
+    }
+  }
+  return undefined
+}
+
+function viewKernel$map$filter$forEach(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a: unknown,
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const fn1 = steps[1].fn as KernelPredicate
+  let index1 = 0
+  const effect = a as KernelEffect
+  let at = 0
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    if (fn1(value0, index1++)) {
+      effect(value0, at++)
+    }
+  }
+  return undefined
+}
+
+function viewKernel$map$last(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  let result: unknown = ITER_KERNEL_MISSING
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    result = value0
+  }
+  return result
+}
+
+function viewKernel$filter$last(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+): unknown {
+  const fn0 = steps[0].fn as KernelPredicate
+  let index0 = 0
+  let result: unknown = ITER_KERNEL_MISSING
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    if (fn0(value, index0++)) {
+      result = value
+    }
+  }
+  return result
+}
+
+function viewKernel$map$filter$last(
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+): unknown {
+  const fn0 = steps[0].fn as KernelUnary
+  let index0 = 0
+  const fn1 = steps[1].fn as KernelPredicate
+  let index1 = 0
+  let result: unknown = ITER_KERNEL_MISSING
+  for (let cursor = 0; cursor < source.length; cursor++) {
+    const value = source[cursor]
+    const value0 = fn0(value, index0++)
+    if (fn1(value0, index1++)) {
+      result = value0
+    }
+  }
+  return result
+}
+
+/**
+ * Separate from ARRAY_KERNELS on purpose. The bodies are identical, but one
+ * function that reads elements from both a plain Array and a view specialises
+ * for neither, which measured a 0.53 geomean on the Array rows.
+ */
+const VIEW_KERNELS = new Map<number, IterViewKernel>([
+  [16, viewKernel$map$toArray],
+  [32, viewKernel$filter$toArray],
+  [288, viewKernel$map$filter$toArray],
+  [17, viewKernel$map$toArrayInto],
+  [33, viewKernel$filter$toArrayInto],
+  [289, viewKernel$map$filter$toArrayInto],
+  [18, viewKernel$map$reduce],
+  [34, viewKernel$filter$reduce],
+  [290, viewKernel$map$filter$reduce],
+  [22, viewKernel$map$count],
+  [38, viewKernel$filter$count],
+  [294, viewKernel$map$filter$count],
+  [23, viewKernel$map$forEach],
+  [39, viewKernel$filter$forEach],
+  [295, viewKernel$map$filter$forEach],
+  [25, viewKernel$map$last],
+  [41, viewKernel$filter$last],
+  [297, viewKernel$map$filter$last],
+])
+
+export const iterViewKernel = (shapeCode: number, terminal: number): IterViewKernel | undefined =>
+  shapeCode < 0 ? undefined : VIEW_KERNELS.get(shapeCode * 16 + terminal)

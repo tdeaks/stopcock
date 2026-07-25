@@ -114,10 +114,24 @@ export const ITER_KERNEL_SHAPES_V1: readonly (readonly IterKernelOpV1[])[] = Obj
 
 export const iterKernelShapeIdV1 = (shape: readonly IterKernelOpV1[]): string => shape.join('-')
 
+/**
+ * Which source a kernel loops over. The loop body is identical either way; what
+ * differs is that they are separate functions, so an element read specialises
+ * on one source kind. Sharing one function measured a 0.53 geomean on the Array
+ * rows once typed arrays reached the same call site.
+ */
+export type IterKernelSourceV1 = 'array' | 'typed-array'
+
+export const ITER_KERNEL_SOURCES_V1: readonly IterKernelSourceV1[] = Object.freeze([
+  'array',
+  'typed-array',
+])
+
 export const iterKernelIdV1 = (
   terminal: IterKernelTerminalV1,
   shape: readonly IterKernelOpV1[],
-): string => `iter/array/${iterKernelShapeIdV1(shape)}/${terminal}`
+  source: IterKernelSourceV1 = 'array',
+): string => `iter/${source}/${iterKernelShapeIdV1(shape)}/${terminal}`
 
 /**
  * `$` separates stage names because `filterMap-take` and `filter-map-take` are
@@ -126,7 +140,9 @@ export const iterKernelIdV1 = (
 export const iterKernelFunctionNameV1 = (
   terminal: IterKernelTerminalV1,
   shape: readonly IterKernelOpV1[],
-): string => `kernel$${shape.join('$')}$${iterKernelFunctionTerminalV1(terminal)}`
+  source: IterKernelSourceV1 = 'array',
+): string =>
+  `${source === 'array' ? 'kernel' : 'viewKernel'}$${shape.join('$')}$${iterKernelFunctionTerminalV1(terminal)}`
 
 export const iterKernelLookupKeyV1 = (
   terminal: IterKernelTerminalV1,
@@ -177,31 +193,85 @@ export const ITER_KERNEL_SHIPPED_V1: Readonly<Record<string, readonly IterKernel
     'filterMap-take': ITER_KERNEL_TERMINALS_V1,
   })
 
+/**
+ * The typed-array rows, which are a strict subset of the Array ones.
+ *
+ * A kernel and `%TypedArrayPrototype%[@@iterator]` disagree about exactly one
+ * thing: a callback that detaches the buffer mid-traversal, where iteration
+ * throws and an indexed loop stops. That is closed by checking the source
+ * length after the traversal, and the check is only conclusive for a terminal
+ * that consumes the whole source — a terminal that stops on its own answer, or
+ * a shape carrying take, cannot tell an early exit from a detachment. Those
+ * rows iterate.
+ */
+export const ITER_TYPED_ARRAY_TERMINALS_V1: readonly IterKernelTerminalV1[] = Object.freeze([
+  'toArray',
+  'toArrayInto',
+  'reduce',
+  'count',
+  'forEach',
+  'last',
+  'lastOrUndefined',
+])
+
+export const ITER_TYPED_ARRAY_SHIPPED_V1: Readonly<
+  Record<string, readonly IterKernelTerminalV1[]>
+> = Object.freeze({
+  map: ITER_TYPED_ARRAY_TERMINALS_V1,
+  filter: ITER_TYPED_ARRAY_TERMINALS_V1,
+  'map-filter': ITER_TYPED_ARRAY_TERMINALS_V1,
+})
+
+const shippedFor = (
+  source: IterKernelSourceV1,
+  shape: readonly IterKernelOpV1[],
+): readonly IterKernelTerminalV1[] =>
+  (source === 'array' ? ITER_KERNEL_SHIPPED_V1 : ITER_TYPED_ARRAY_SHIPPED_V1)[
+    iterKernelShapeIdV1(shape)
+  ] ?? []
+
+const stopReason = (
+  source: IterKernelSourceV1,
+  terminal: IterKernelTerminalV1,
+  shape: readonly IterKernelOpV1[],
+): string => {
+  if (source === 'array') {
+    return 'generic execution retained: every kernel is a distinct function in the published iter subpath, and admitting this shape too would push the subpath further past its 5% gzip ceiling without a comparable measured gain'
+  }
+  if (!ITER_TYPED_ARRAY_TERMINALS_V1.includes(terminal)) {
+    return 'generic iteration retained: this terminal can stop on its own answer, so a short traversal does not prove the buffer was detached and the post-traversal detachment check cannot be trusted'
+  }
+  if (shape.includes('take') || shape.includes('takeWhile')) {
+    return 'generic iteration retained: take ends the traversal on its own count, so a short traversal does not prove the buffer was detached'
+  }
+  return 'generic iteration retained: the Array row is itself unshipped, so there is no kernel to specialise for a view'
+}
+
 export const iterKernelDispositionV1 = (
   terminal: IterKernelTerminalV1,
   shape: readonly IterKernelOpV1[],
+  source: IterKernelSourceV1 = 'array',
 ): { readonly disposition: IterKernelDispositionV1; readonly reason: string } => {
-  const shipped = ITER_KERNEL_SHIPPED_V1[iterKernelShapeIdV1(shape)] ?? []
-  if (shipped.includes(terminal)) {
+  if (shippedFor(source, shape).includes(terminal)) {
     return {
       disposition: 'shipped',
       reason:
-        'indexed Array kernel, terminal inlined at the emission point, measured against a hand loop',
+        source === 'array'
+          ? 'indexed Array kernel, terminal inlined at the emission point, measured against a hand loop'
+          : 'indexed typed-array kernel, admitted only through the canonical-view seam and closed by a post-traversal detachment check, measured against a hand loop over the same view',
     }
   }
-  return {
-    disposition: 'generic-fallback',
-    reason:
-      'generic execution retained: every kernel is a distinct function in the published iter subpath, and admitting this shape too would push the subpath further past its 5% gzip ceiling without a comparable measured gain',
-  }
+  return { disposition: 'generic-fallback', reason: stopReason(source, terminal, shape) }
 }
 
-export const iterKernelManifestV1 = (): readonly IterKernelDispositionRecordV1[] =>
+export const iterKernelManifestV1 = (
+  source: IterKernelSourceV1 = 'array',
+): readonly IterKernelDispositionRecordV1[] =>
   ITER_KERNEL_TERMINALS_V1.flatMap((terminal) =>
     ITER_KERNEL_SHAPES_V1.map((shape) => {
-      const { disposition, reason } = iterKernelDispositionV1(terminal, shape)
+      const { disposition, reason } = iterKernelDispositionV1(terminal, shape, source)
       return {
-        kernelId: iterKernelIdV1(terminal, shape),
+        kernelId: iterKernelIdV1(terminal, shape, source),
         terminal,
         shape,
         shapeCode: iterArrayShapeCodeV1(shape),
@@ -396,6 +466,7 @@ const renderStagesV1 = (
 export interface IterKernelModelV1 {
   readonly terminal: IterKernelTerminalV1
   readonly shape: readonly IterKernelOpV1[]
+  readonly source?: IterKernelSourceV1
 }
 
 export const renderIterKernelV1 = (model: IterKernelModelV1): string => {
@@ -409,12 +480,16 @@ export const renderIterKernelV1 = (model: IterKernelModelV1): string => {
     terminal.emit(value, breakStatement),
   )
   const needsLabel = nested && body.includes('break source')
-  const parameters = ['source: readonly unknown[]', 'steps: readonly IterKernelStep[]']
+  const source = model.source ?? 'array'
+  const parameters = [
+    `source: ${source === 'array' ? 'readonly unknown[]' : 'ArrayLike<unknown>'}`,
+    'steps: readonly IterKernelStep[]',
+  ]
   if (terminal.readsB) parameters.push('a: unknown', 'b: unknown')
   else if (terminal.readsA) parameters.push('a: unknown')
 
   const setup = shape.map((op, stage) => renderStageSetupV1(op, stage)).join('\n')
-  return `function ${iterKernelFunctionNameV1(model.terminal, shape)}(${parameters.join(', ')}): unknown {
+  return `function ${iterKernelFunctionNameV1(model.terminal, shape, source)}(${parameters.join(', ')}): unknown {
 ${setup}
 ${terminal.setup}
 ${needsLabel ? 'source: ' : ''}for (let cursor = 0; cursor < source.length; cursor++) {
@@ -435,6 +510,7 @@ const MODULE_HEADER_V1 = `/**
 
 export const renderIterKernelsModuleV1 = (
   records: readonly IterKernelDispositionRecordV1[],
+  viewRecords: readonly IterKernelDispositionRecordV1[] = [],
 ): string => {
   // One kernel serves both members of an Option/undefined terminal pair, so
   // emit each distinct function exactly once.
@@ -443,6 +519,13 @@ export const renderIterKernelsModuleV1 = (
   for (const record of shipped) {
     const name = iterKernelFunctionNameV1(record.terminal, record.shape)
     if (!emitted.has(name)) emitted.set(name, record)
+  }
+
+  const shippedViews = viewRecords.filter((record) => record.disposition === 'shipped')
+  const emittedViews = new Map<string, IterKernelDispositionRecordV1>()
+  for (const record of shippedViews) {
+    const name = iterKernelFunctionNameV1(record.terminal, record.shape, 'typed-array')
+    if (!emittedViews.has(name)) emittedViews.set(name, record)
   }
 
   const usesOption = shipped.some((record) => record.shape.includes('filterMap'))
@@ -467,6 +550,49 @@ export const renderIterKernelsModuleV1 = (
   const entries = [...emitted.entries()]
     .map(([name, record]) => `[${iterKernelLookupKeyV1(record.terminal, record.shape)}, ${name}],`)
     .join('\n')
+
+  const viewKernels = [...emittedViews.values()]
+    .map((record) =>
+      renderIterKernelV1({
+        terminal: record.terminal,
+        shape: record.shape,
+        source: 'typed-array',
+      }),
+    )
+    .join('\n\n')
+
+  const viewEntries = [...emittedViews.entries()]
+    .map(([name, record]) => `[${iterKernelLookupKeyV1(record.terminal, record.shape)}, ${name}],`)
+    .join('\n')
+
+  const viewSection =
+    emittedViews.size === 0
+      ? ''
+      : `
+export type IterViewKernel = (
+  source: ArrayLike<unknown>,
+  steps: readonly IterKernelStep[],
+  a?: unknown,
+  b?: unknown,
+) => unknown
+
+${viewKernels}
+
+/**
+ * Separate from ARRAY_KERNELS on purpose. The bodies are identical, but one
+ * function that reads elements from both a plain Array and a view specialises
+ * for neither, which measured a 0.53 geomean on the Array rows.
+ */
+const VIEW_KERNELS = new Map<number, IterViewKernel>([
+${viewEntries}
+])
+
+export const iterViewKernel = (
+  shapeCode: number,
+  terminal: number,
+): IterViewKernel | undefined =>
+  shapeCode < 0 ? undefined : VIEW_KERNELS.get(shapeCode * 16 + terminal)
+`
 
   return `${MODULE_HEADER_V1}
 
@@ -525,40 +651,56 @@ export const iterArrayKernel = (
   terminal: number,
 ): IterArrayKernel | undefined =>
   shapeCode < 0 ? undefined : ARRAY_KERNELS.get(shapeCode * 16 + terminal)
-`
+${viewSection}`
 }
 
 // --- generator ---
 
 const FP_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
+const manifestDocument = (
+  protocol: string,
+  records: readonly IterKernelDispositionRecordV1[],
+): string =>
+  `${JSON.stringify(
+    {
+      protocol,
+      protocolVersion: 1,
+      terminals: ITER_KERNEL_TERMINALS_V1,
+      shapes: ITER_KERNEL_SHAPES_V1.map((shape) => iterKernelShapeIdV1(shape)),
+      expectedRows: ITER_KERNEL_TERMINALS_V1.length * ITER_KERNEL_SHAPES_V1.length,
+      shippedRows: records.filter((record) => record.disposition === 'shipped').length,
+      rows: records.map((record) => ({
+        kernelId: record.kernelId,
+        terminal: record.terminal,
+        shape: iterKernelShapeIdV1(record.shape),
+        shapeCode: record.shapeCode,
+        disposition: record.disposition,
+        reason: record.reason,
+      })),
+    },
+    null,
+    2,
+  )}\n`
+
 if (import.meta.main) {
   const records = iterKernelManifestV1()
-  writeFileSync(join(FP_ROOT, 'src', 'iter-kernels.ts'), renderIterKernelsModuleV1(records))
+  const viewRecords = iterKernelManifestV1('typed-array')
+  writeFileSync(
+    join(FP_ROOT, 'src', 'iter-kernels.ts'),
+    renderIterKernelsModuleV1(records, viewRecords),
+  )
   mkdirSync(join(FP_ROOT, 'codegen', 'generated'), { recursive: true })
   writeFileSync(
     join(FP_ROOT, 'codegen', 'generated', 'iter-kernel-manifest-v1.json'),
-    `${JSON.stringify(
-      {
-        protocol: 'stopcock.iter-kernel-manifest',
-        protocolVersion: 1,
-        terminals: ITER_KERNEL_TERMINALS_V1,
-        shapes: ITER_KERNEL_SHAPES_V1.map((shape) => iterKernelShapeIdV1(shape)),
-        expectedRows: ITER_KERNEL_TERMINALS_V1.length * ITER_KERNEL_SHAPES_V1.length,
-        shippedRows: records.filter((record) => record.disposition === 'shipped').length,
-        rows: records.map((record) => ({
-          kernelId: record.kernelId,
-          terminal: record.terminal,
-          shape: iterKernelShapeIdV1(record.shape),
-          shapeCode: record.shapeCode,
-          disposition: record.disposition,
-          reason: record.reason,
-        })),
-      },
-      null,
-      2,
-    )}\n`,
+    manifestDocument('stopcock.iter-kernel-manifest', records),
+  )
+  writeFileSync(
+    join(FP_ROOT, 'codegen', 'generated', 'iter-typed-array-kernel-manifest-v1.json'),
+    manifestDocument('stopcock.iter-typed-array-kernel-manifest', viewRecords),
   )
   const shipped = records.filter((record) => record.disposition === 'shipped').length
-  console.log(`  iter-kernels.ts: ${shipped} shipped of ${records.length} matrix rows`)
+  const shippedViews = viewRecords.filter((record) => record.disposition === 'shipped').length
+  console.log(`  iter-kernels.ts: ${shipped} shipped of ${records.length} Array matrix rows`)
+  console.log(`  iter-kernels.ts: ${shippedViews} shipped of ${viewRecords.length} view rows`)
 }
