@@ -46,15 +46,15 @@ pure-only rewrites without silently changing the current transform.
 
 ## Options
 
-| Option | Purpose |
-| --- | --- |
-| `include` | Files the plugin may transform. Defaults to JavaScript and TypeScript, including JSX/TSX. |
-| `exclude` | Files the plugin must ignore. Defaults to `node_modules`. |
-| `importSources` | Package roots that export `pipe`, `flow`, and `compile`. Defaults to `@stopcock/fp`. |
-| `arrayImportSources` | Exact package entries that export array operators. Derived as `${importSource}/array` by default. |
+| Option                 | Purpose                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `include`              | Files the plugin may transform. Defaults to JavaScript and TypeScript, including JSX/TSX.                                         |
+| `exclude`              | Files the plugin must ignore. Defaults to `node_modules`.                                                                         |
+| `importSources`        | Package roots that export `pipe`, `flow`, and `compile`. Defaults to `@stopcock/fp`.                                              |
+| `arrayImportSources`   | Exact package entries that export array operators. Derived as `${importSource}/array` by default.                                 |
 | `compileImportSources` | Specialist entries that export `compile` and `compilePure`. Derived as `${importSource}/compile` in addition to the package root. |
-| `assumePure` | Records the explicit `pure` semantic mode. It does not currently enable extra rewrites. |
-| `diagnostics` | `false`, `summary`, `verbose`, or `error`. Defaults to `false`. |
+| `assumePure`           | Records the explicit `pure` semantic mode. It does not currently enable extra rewrites.                                           |
+| `diagnostics`          | `false`, `summary`, `verbose`, or `error`. Defaults to `false`.                                                                   |
 
 `diagnostics: 'error'` fails the transform when a recognized pipeline cannot
 be lowered. Other modes leave unsupported sites unchanged; `verbose` reports
@@ -88,10 +88,7 @@ and ambiguous or shadowed imports remain runtime FP calls.
 ## Programmatic transform
 
 ```ts
-import {
-  callbackArity,
-  transformStopcockPipelines,
-} from '@stopcock/fp-compiler'
+import { callbackArity, transformStopcockPipelines } from '@stopcock/fp-compiler'
 
 const result = transformStopcockPipelines(source, 'example.ts', {
   diagnostics: 'error',
@@ -109,6 +106,43 @@ diagnostics identify every transformed or skipped pipeline.
 `callbackArity(name)` exposes the checked-in operator metadata used by the
 transform and returns `undefined` for an unknown or unsupported name. It is
 useful when writing a custom host adapter.
+
+## `stopcock check`
+
+The package ships a `stopcock` bin with one subcommand. It reads receipts your
+build already emitted and evidence manifests you hand it. It never compiles,
+profiles, or benchmarks your code, and it never loads a fusion runtime.
+
+```bash
+stopcock check \
+  --receipts build/receipts \
+  --evidence build/evidence \
+  --expectations build/expectations.json \
+  --policy unsupported \
+  --policy stale-evidence \
+  --json
+```
+
+| flag                    | meaning                                                  |
+| ----------------------- | -------------------------------------------------------- |
+| `--receipts <path>`     | receipt JSON file or directory, repeatable, required     |
+| `--evidence <path>`     | evidence manifest file or directory, repeatable          |
+| `--expectations <path>` | hashes the artifacts are expected to match               |
+| `--policy <id>`         | `unsupported`, `stale-evidence`, or `coverage-threshold` |
+| `--policy-file <path>`  | a project policy document                                |
+| `--coverage <n>/<d>`    | exact ratio required by `coverage-threshold`             |
+| `--json`                | deterministic JSON on stdout, prose on stderr            |
+
+At least one policy is required. Exit `0` means every requested policy passed,
+`1` means a checked policy failed, `2` means the arguments, schema, or
+artifacts were invalid. Missing evidence is never a pass.
+
+Each site renders six classes separately: declared capability, static
+decision, corpus evidence, runtime observation, qualified benchmark, and
+packed release evidence. A fallback never reads as transformed, a statically
+selected lowering never reads as executed, and a stale source, config,
+semantic-manifest, output, package, or runtime hash withdraws every claim in
+the classes it invalidates.
 
 ## Development contract
 
