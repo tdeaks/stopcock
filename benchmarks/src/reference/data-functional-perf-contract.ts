@@ -1,8 +1,7 @@
 import type { PerfEngine } from './perf-engine'
 import { minimumPortableBatchIterations } from './portable-perf-contract'
 
-export const EXPECTED_DATA_FUNCTIONAL_SUBJECT_ID =
-  'stopcock-data-functional-hotpaths-live-v1'
+export const EXPECTED_DATA_FUNCTIONAL_SUBJECT_ID = 'stopcock-data-functional-hotpaths-live-v1'
 
 export const EXPECTED_DATA_FUNCTIONAL_SUBJECT_FILES = Object.freeze([
   'packages/fp/src/validation.ts',
@@ -13,7 +12,7 @@ export const EXPECTED_DATA_FUNCTIONAL_SUBJECT_FILES = Object.freeze([
 ] as const)
 
 export const EXPECTED_DATA_FUNCTIONAL_SUBJECT_SHA256 =
-  '266ba9866b078f43aa250cb2fbb4afebe126e740c084432da10000480efeb7e3'
+  'd38ed18bad34366a47b7ef4d1a4b51fac1b6270d2454cfc5e2bca0021e62ef1d'
 
 export const EXPECTED_DATA_FUNCTIONAL_BASELINE = Object.freeze({
   id: 'stopcock-data-functional-frozen-before-v1',

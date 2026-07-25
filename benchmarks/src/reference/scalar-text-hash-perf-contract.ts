@@ -1,7 +1,6 @@
 import type { PerfEngine } from './perf-engine'
 
-export const EXPECTED_SCALAR_TEXT_HASH_SUBJECT_ID =
-  'stopcock-scalar-text-hash-hotpaths-live-v1'
+export const EXPECTED_SCALAR_TEXT_HASH_SUBJECT_ID = 'stopcock-scalar-text-hash-hotpaths-live-v1'
 
 export const EXPECTED_SCALAR_TEXT_HASH_SUBJECT_FILES = Object.freeze([
   'packages/fp/src/string.ts',
@@ -11,7 +10,7 @@ export const EXPECTED_SCALAR_TEXT_HASH_SUBJECT_FILES = Object.freeze([
 ] as const)
 
 export const EXPECTED_SCALAR_TEXT_HASH_SUBJECT_SHA256 =
-  '56128628feaacad9223f75bb4da2a4e88d7b52d67b5c935158a369370233ecd8'
+  '97297e6f910411db51371e11c0c4a4f7278a0ddf7df3290b224ebb52ee9a4a71'
 
 export const EXPECTED_SCALAR_TEXT_HASH_BASELINE = Object.freeze({
   id: 'stopcock-scalar-text-hash-frozen-before-v1',

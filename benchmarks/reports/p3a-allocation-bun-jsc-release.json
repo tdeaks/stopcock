@@ -1,0 +1,1359 @@
+{
+  "kind": "stopcock-p3a-allocation",
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-25T12:17:41.415Z",
+  "profileId": "local-macos-arm64",
+  "budget": "release",
+  "engine": {
+    "id": "bun-jsc",
+    "name": "Bun/JavaScriptCore",
+    "runtime": "bun",
+    "runtimeVersion": "1.3.14",
+    "nodeCompatibility": "24.3.0",
+    "platform": "darwin",
+    "architecture": "arm64"
+  },
+  "corpusId": "stopcock-p3a-allocation-corpus-v1",
+  "sessions": 3,
+  "sourceIdentity": "sha256:4235e6eb999354a42e8b7ffb8f92e20e242f6af370f89dbd6337205b2c388ada",
+  "workers": [
+    {
+      "kind": "throughput",
+      "entry": "allocation-perf-throughput-worker.ts",
+      "gcInstrumented": false,
+      "forcedCollection": false,
+      "pids": [
+        24138,
+        24141,
+        24143
+      ]
+    },
+    {
+      "kind": "memory",
+      "entry": "allocation-perf-memory-worker.ts",
+      "gcInstrumented": true,
+      "forcedCollection": true,
+      "pids": [
+        24140,
+        24142,
+        24148
+      ]
+    }
+  ],
+  "throughput": [
+    {
+      "targetId": "array.map",
+      "familyId": "array-direct",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        1.006753915448302,
+        1.0046765701584097,
+        1.008097101491698
+      ],
+      "medianRatio": 1.006753915448302,
+      "relativeSpread": 0.003397584335954721
+    },
+    {
+      "targetId": "array.filter",
+      "familyId": "array-direct",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "25000:1254191016",
+      "sessionMedianRatios": [
+        1.3636639508670223,
+        1.3320603597894054,
+        1.3212665460837458
+      ],
+      "medianRatio": 1.3320603597894054,
+      "relativeSpread": 0.031828441160113324
+    },
+    {
+      "targetId": "pipe.map-filter",
+      "familyId": "root-fusion",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        0.9550762716490104,
+        0.9689151405760285,
+        0.9699126495673831
+      ],
+      "medianRatio": 0.9689151405760285,
+      "relativeSpread": 0.01531236049170654
+    },
+    {
+      "targetId": "compile.map-filter",
+      "familyId": "compiled-pipeline",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        0.9718995549918813,
+        0.9704862799342338,
+        0.976521407865752
+      ],
+      "medianRatio": 0.9718995549918813,
+      "relativeSpread": 0.006209621046249676
+    },
+    {
+      "targetId": "iter.map-filter-toArray",
+      "familyId": "iter-terminal",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        0.9618659552649454,
+        0.9597745828234887,
+        0.9528977948735946
+      ],
+      "medianRatio": 0.9597745828234887,
+      "relativeSpread": 0.009344027808038098
+    },
+    {
+      "targetId": "typed-array.map",
+      "familyId": "typed-array",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        1.1663923908983032,
+        1.1730168682558704,
+        0.9401044921791513
+      ],
+      "medianRatio": 1.1663923908983032,
+      "relativeSpread": 0.1996861244073621
+    },
+    {
+      "targetId": "collector.array",
+      "familyId": "collector-transducer",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:1926942120",
+      "sessionMedianRatios": [
+        1.0110633016248656,
+        1.010376374702209,
+        0.9919489355526805
+      ],
+      "medianRatio": 1.010376374702209,
+      "relativeSpread": 0.018918065139655226
+    },
+    {
+      "targetId": "transducer.intoArray.map-filter",
+      "familyId": "collector-transducer",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        0.8136158555785316,
+        0.8246374860951151,
+        0.8165825306095578
+      ],
+      "medianRatio": 0.8165825306095578,
+      "relativeSpread": 0.013497264640667975
+    },
+    {
+      "targetId": "array.mapInto",
+      "familyId": "writable-target",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        1.0064136976794416,
+        1.0120589345574154,
+        1.0084521518227527
+      ],
+      "medianRatio": 1.0084521518227527,
+      "relativeSpread": 0.00559792238805795
+    },
+    {
+      "targetId": "array.filterInto",
+      "familyId": "writable-target",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "25000:1254191016",
+      "sessionMedianRatios": [
+        1.3445865783433306,
+        1.3483332089423303,
+        1.3324187759005743
+      ],
+      "medianRatio": 1.3445865783433306,
+      "relativeSpread": 0.011835930313512587
+    },
+    {
+      "targetId": "typed-array.mapInto",
+      "familyId": "writable-target",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        0.663205685086337,
+        0.7949590772854878,
+        0.842394539523547
+      ],
+      "medianRatio": 0.7949590772854878,
+      "relativeSpread": 0.22540638827482593
+    },
+    {
+      "targetId": "iter.toArrayInto",
+      "familyId": "writable-target",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        0.9503462647333509,
+        0.9461207357333916,
+        0.9280810002685904
+      ],
+      "medianRatio": 0.9461207357333916,
+      "relativeSpread": 0.02353321687585829
+    },
+    {
+      "targetId": "transducer.intoArrayInto",
+      "familyId": "writable-target",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:3853884240",
+      "sessionMedianRatios": [
+        0.7678276231390158,
+        0.7776965519837552,
+        0.7687668268781496
+      ],
+      "medianRatio": 0.7687668268781496,
+      "relativeSpread": 0.012837350025645268
+    },
+    {
+      "targetId": "collector.arrayInto",
+      "familyId": "writable-target",
+      "samplerId": "stopcock-interleaved-paired-microbatch-ab-ba-v1",
+      "samplerOrder": "AB/BA alternating by micro-batch pair and paired sample",
+      "checksum": "50000:1926942120",
+      "sessionMedianRatios": [
+        0.9488149352035463,
+        0.9368917774442034,
+        0.9354638523850964
+      ],
+      "medianRatio": 0.9368917774442034,
+      "relativeSpread": 0.01425040024886439
+    }
+  ],
+  "memory": [
+    {
+      "targetId": "array.map",
+      "familyId": "array-direct",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": false,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            12408113,
+            12408101,
+            12409305
+          ],
+          "median": 12408113,
+          "relativeSpread": 0.0000970332878174143
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            78921728,
+            79003648,
+            79118336
+          ],
+          "median": 79003648,
+          "relativeSpread": 0.002488593944421402
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 7.755070625
+    },
+    {
+      "targetId": "array.filter",
+      "familyId": "array-direct",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": false,
+      "checksum": "25000:1254191016",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            6393938,
+            6393938,
+            6393378
+          ],
+          "median": 6393938,
+          "relativeSpread": 0.0000875829574825405
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            86327296,
+            86474752,
+            86720512
+          ],
+          "median": 86474752,
+          "relativeSpread": 0.004547176960970065
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 3.99621125
+    },
+    {
+      "targetId": "pipe.map-filter",
+      "familyId": "root-fusion",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": false,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            14411418,
+            14411514,
+            14411514
+          ],
+          "median": 14411514,
+          "relativeSpread": 0.000006661340369929211
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            91045888,
+            91045888,
+            91095040
+          ],
+          "median": 91045888,
+          "relativeSpread": 0.0005398596364945115
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 9.00719625
+    },
+    {
+      "targetId": "compile.map-filter",
+      "familyId": "compiled-pipeline",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": false,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            14380848,
+            14380848,
+            14380848
+          ],
+          "median": 14380848,
+          "relativeSpread": 0
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            91160576,
+            91127808,
+            91193344
+          ],
+          "median": 91160576,
+          "relativeSpread": 0.0007189072609633358
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 8.98803
+    },
+    {
+      "targetId": "iter.map-filter-toArray",
+      "familyId": "iter-terminal",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": false,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            14411341,
+            14411597,
+            14412269
+          ],
+          "median": 14411597,
+          "relativeSpread": 0.00006439258605413404
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            91258880,
+            91226112,
+            91291648
+          ],
+          "median": 91258880,
+          "relativeSpread": 0.000718132854578097
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 9.007248125
+    },
+    {
+      "targetId": "typed-array.map",
+      "familyId": "typed-array",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": false,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            12408604,
+            12408604,
+            12408604
+          ],
+          "median": 12408604,
+          "relativeSpread": 0
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            105021440,
+            104660992,
+            104923136
+          ],
+          "median": 104923136,
+          "relativeSpread": 0.003435352904434728
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 7.7553775
+    },
+    {
+      "targetId": "collector.array",
+      "familyId": "collector-transducer",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": false,
+      "checksum": "50000:1926942120",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            14385269,
+            14385269,
+            14385269
+          ],
+          "median": 14385269,
+          "relativeSpread": 0
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            105431040,
+            105070592,
+            105316352
+          ],
+          "median": 105316352,
+          "relativeSpread": 0.003422526446795271
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 8.990793125
+    },
+    {
+      "targetId": "transducer.intoArray.map-filter",
+      "familyId": "collector-transducer",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": false,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            14393684,
+            14393716,
+            14393788
+          ],
+          "median": 14393716,
+          "relativeSpread": 0.000007225375295719327
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            129679360,
+            128417792,
+            129482752
+          ],
+          "median": 129482752,
+          "relativeSpread": 0.00974313551815766
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 8.9960725
+    },
+    {
+      "targetId": "array.mapInto",
+      "familyId": "writable-target",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": true,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            3272,
+            3272,
+            3272
+          ],
+          "median": 3272,
+          "relativeSpread": 0
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            130334720,
+            129105920,
+            130154496
+          ],
+          "median": 130154496,
+          "relativeSpread": 0.00944108761329305
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 0.002045
+    },
+    {
+      "targetId": "array.filterInto",
+      "familyId": "writable-target",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": true,
+      "checksum": "25000:1254191016",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            1966,
+            1966,
+            1966
+          ],
+          "median": 1966,
+          "relativeSpread": 0
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            130351104,
+            129122304,
+            130170880
+          ],
+          "median": 130170880,
+          "relativeSpread": 0.009439899307740718
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 0.00122875
+    },
+    {
+      "targetId": "typed-array.mapInto",
+      "familyId": "writable-target",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": true,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            2831,
+            2831,
+            2831
+          ],
+          "median": 2831,
+          "relativeSpread": 0
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            130809856,
+            129581056,
+            130744320
+          ],
+          "median": 130744320,
+          "relativeSpread": 0.009398496240601503
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 0.001769375
+    },
+    {
+      "targetId": "iter.toArrayInto",
+      "familyId": "writable-target",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": true,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            11264,
+            11264,
+            11264
+          ],
+          "median": 11264,
+          "relativeSpread": 0
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            131022848,
+            129826816,
+            130957312
+          ],
+          "median": 130957312,
+          "relativeSpread": 0.009132991367446516
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 0.00704
+    },
+    {
+      "targetId": "transducer.intoArrayInto",
+      "familyId": "writable-target",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": true,
+      "checksum": "50000:3853884240",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            10508,
+            10508,
+            10508
+          ],
+          "median": 10508,
+          "relativeSpread": 0
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            131301376,
+            130105344,
+            131203072
+          ],
+          "median": 131203072,
+          "relativeSpread": 0.009115884115884116
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 0.0065675
+    },
+    {
+      "targetId": "collector.arrayInto",
+      "familyId": "writable-target",
+      "elements": 50000,
+      "repeats": 32,
+      "reusesTarget": true,
+      "checksum": "50000:1926942120",
+      "metrics": [
+        {
+          "metric": "retainedHeap",
+          "unit": "bytes",
+          "required": true,
+          "collection": "Bun.gc(true) return value; heapUsed does not track live allocation on JSC",
+          "samples": [
+            4844,
+            4844,
+            4844
+          ],
+          "median": 4844,
+          "relativeSpread": 0
+        },
+        {
+          "metric": "peakRss",
+          "unit": "bytes",
+          "required": true,
+          "collection": "process.memoryUsage().rss",
+          "samples": [
+            132333568,
+            131334144,
+            132268032
+          ],
+          "median": 132268032,
+          "relativeSpread": 0.007556051034311904
+        },
+        {
+          "metric": "gcCount",
+          "unit": "count",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "gcPauseMs",
+          "unit": "milliseconds",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation",
+            "unsupported:bun-jsc exposes no GC observation"
+          ],
+          "median": "unsupported:bun-jsc exposes no GC observation",
+          "relativeSpread": "unsupported:bun-jsc exposes no GC observation"
+        },
+        {
+          "metric": "externalBufferBytes",
+          "unit": "bytes",
+          "required": false,
+          "collection": null,
+          "samples": [
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+            "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+          ],
+          "median": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap",
+          "relativeSpread": "unsupported:bun-jsc reports no separate array-buffer accounting; backing stores are counted in retained heap"
+        }
+      ],
+      "retainedHeapBytesPerElement": 0.0030275
+    }
+  ],
+  "startup": {
+    "entryId": "cold-import.fp-root",
+    "collection": "esbuild-bundled packages/fp/src/index.ts imported in a fresh process; retained heap via Bun.gc(true) or --expose-gc + heapUsed",
+    "bundleBytes": 223298,
+    "importNs": 4023667,
+    "retainedHeapBytes": 516156,
+    "samples": 7
+  },
+  "dispositions": [
+    {
+      "familyId": "array-direct",
+      "ownerStage": "P3B",
+      "disposition": "calibrated",
+      "reason": "3 sessions within 0.15 relative spread on every required metric"
+    },
+    {
+      "familyId": "root-fusion",
+      "ownerStage": "S10J",
+      "disposition": "calibrated",
+      "reason": "3 sessions within 0.15 relative spread on every required metric"
+    },
+    {
+      "familyId": "compiled-pipeline",
+      "ownerStage": "P3B",
+      "disposition": "calibrated",
+      "reason": "3 sessions within 0.15 relative spread on every required metric"
+    },
+    {
+      "familyId": "iter-terminal",
+      "ownerStage": "P1A/P1B",
+      "disposition": "calibrated",
+      "reason": "3 sessions within 0.15 relative spread on every required metric"
+    },
+    {
+      "familyId": "typed-array",
+      "ownerStage": "P2",
+      "disposition": "uncalibrated",
+      "reason": "throughput typed-array.map spread 0.200 over 0.15"
+    },
+    {
+      "familyId": "collector-transducer",
+      "ownerStage": "P3B",
+      "disposition": "calibrated",
+      "reason": "3 sessions within 0.15 relative spread on every required metric"
+    },
+    {
+      "familyId": "writable-target",
+      "ownerStage": "P3B",
+      "disposition": "uncalibrated",
+      "reason": "throughput typed-array.mapInto spread 0.225 over 0.15"
+    }
+  ]
+}
