@@ -477,6 +477,8 @@
         "benchmarks/**/*compiler*",
         "benchmarks/**/*receipt*",
         "benchmarks/**/*optimizer*",
+        "tooling/fix-declaration-specifiers.mjs",
+        "tooling/__tests__/fix-declaration-specifiers.test.mjs",
         "tooling/v2-pack-cohort.mjs",
         "tooling/__tests__/v2-pack-cohort.test.mjs",
         "artifacts/v2/dev/**",
