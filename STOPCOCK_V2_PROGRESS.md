@@ -2325,6 +2325,12 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   timing in S11.
   Date: 2026-07-26.
 
+## Current blockers
+
+There is no current blocker to S11R's deterministic source, package, or
+extracted-artifact work. New timing evidence remains unavailable until the
+current host requalifies, but timing is outside S11R.
+
 ## Historical S1B entry stop
 
 This section preserves the original S1B entry finding. At that point the live

@@ -462,6 +462,8 @@
         "packages/fp/src/__tests__/**",
         "packages/fp/package.json",
         "packages/fp/module-manifest.ts",
+        "packages/fp/README.md",
+        "packages/fp/MIGRATION.md",
         "packages/fp-optimizer/src/**/*abi*",
         "packages/fp-optimizer/src/**/*receipt*",
         "packages/fp-optimizer/src/__tests__/**",
