@@ -1,5 +1,29 @@
 import type { Timestamp, DateUnit } from './types'
 import { epochDays, epochDaysToCivil, MS_DAY, MS_HOUR, MS_MINUTE, MS_SECOND } from './core'
+import { add } from './arithmetic'
+
+/**
+ * Complete calendar periods between two instants, truncated toward zero.
+ *
+ * The calendar-boundary count on its own is not the answer: it reports one
+ * month between 31 January and 1 February, and one year between 31 December
+ * and 1 January, for gaps of a single day.
+ *
+ * Nor is comparing day-of-month, because month ends clamp. 31 January plus one
+ * month is 28 February, so a whole month really has elapsed by 28 February even
+ * though 28 is less than 31. Asking `add` settles both cases and keeps `diff`
+ * consistent with the arithmetic it is the inverse of: for a positive result
+ * `n`, `add(b, n, unit) <= a` holds by construction.
+ */
+const completePeriods = (a: Timestamp, b: Timestamp, unit: 'month' | 'year'): number => {
+  const ac = epochDaysToCivil(epochDays(a))
+  const bc = epochDaysToCivil(epochDays(b))
+  const whole =
+    unit === 'year' ? ac.year - bc.year : (ac.year - bc.year) * 12 + (ac.month - bc.month)
+  if (whole > 0 && (add(b, whole, unit) as number) > (a as number)) return whole - 1
+  if (whole < 0 && (add(b, whole, unit) as number) < (a as number)) return whole + 1
+  return whole
+}
 
 function _diff(a: number, b: number, unit: DateUnit): number {
   const delta = a - b
@@ -79,25 +103,16 @@ export const diffInMonths: {
   (a: Timestamp, b: Timestamp): number
   (b: Timestamp): (a: Timestamp) => number
 } = function diffInMonths(_p0: any, _p1: any) {
-  if (_p1 !== undefined) {
-    const ac = epochDaysToCivil(epochDays(_p0))
-    const bc = epochDaysToCivil(epochDays(_p1))
-    return (ac.year - bc.year) * 12 + (ac.month - bc.month)
-  }
+  if (_p1 !== undefined) return completePeriods(_p0, _p1, 'month')
   const b = _p0
-  return (a: any) => {
-    const ac = epochDaysToCivil(epochDays(a))
-    const bc = epochDaysToCivil(epochDays(b))
-    return (ac.year - bc.year) * 12 + (ac.month - bc.month)
-  }
+  return (a: any) => completePeriods(a, b, 'month')
 } as any
 
 export const diffInYears: {
   (a: Timestamp, b: Timestamp): number
   (b: Timestamp): (a: Timestamp) => number
 } = function diffInYears(_p0: any, _p1: any) {
-  if (_p1 !== undefined)
-    return epochDaysToCivil(epochDays(_p0)).year - epochDaysToCivil(epochDays(_p1)).year
+  if (_p1 !== undefined) return completePeriods(_p0, _p1, 'year')
   const b = _p0
-  return (a: any) => epochDaysToCivil(epochDays(a)).year - epochDaysToCivil(epochDays(b)).year
+  return (a: any) => completePeriods(a, b, 'year')
 } as any
