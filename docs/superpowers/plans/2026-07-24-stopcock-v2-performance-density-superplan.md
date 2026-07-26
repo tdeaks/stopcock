@@ -76,7 +76,9 @@ Stopcock 2.0 should provide:
 
 - direct utilities that tree-shake to hand-written-helper scale;
 - tiny, always-correct sequential root composition;
-- build-time fusion with effectively zero retained runtime engine;
+- build-time fusion with no retained runtime composition/execution engine,
+  while preserving source-observable operator construction where exact
+  JavaScript semantics require it;
 - deterministic compiler receipts and a packed `stopcock check` renderer that
   separates static decisions, observed runs, and release evidence;
 - an explicit compact CSP-safe fusion runtime;
@@ -187,7 +189,7 @@ flowchart TD
   D["@stopcock/fp specialist subpaths"] --> DA["Direct data-first / data-last operations"]
 
   C["@stopcock/fp-compiler"] --> CL["Build-time fused loops"]
-  CL --> CZ["No retained runtime engine when fully transformed"]
+  CL --> CZ["No retained composition/execution engine when fully transformed"]
   C --> CR["Versioned receipts and stopcock check"]
 
   F["@stopcock/fp/fusion"] --> FC["Compact exact CSP-safe runtime"]
@@ -209,14 +211,14 @@ flowchart TD
 
 ### Public tier contract
 
-| Tier              | Public entry                                                                                                   | Role                                                                |                                               Target consumer cost |
-| ----------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | -----------------------------------------------------------------: |
-| Sequential root   | `@stopcock/fp`                                                                                                 | Small synchronous fallback and ordinary composition                 |                            `pipe`/`flow` each at most 0.5 KiB gzip |
-| Direct specialist | `@stopcock/fp/*`                                                                                               | Direct and data-last operations without fusion-engine retention     |                            selected direct op at most 0.5 KiB gzip |
-| Compiler          | `@stopcock/fp-compiler`                                                                                        | Automatic fused output plus versioned receipts and `stopcock check` | common compiled consumer at most 1 KiB gzip, runtime engine absent |
-| Compact fusion    | `@stopcock/fp/fusion`                                                                                          | Explicit CSP-safe runtime fusion with a small kernel set            |                                    5.5 KiB interim, 5.0 KiB target |
-| Optimized fusion  | `@stopcock/fp/fusion/optimized`, or direct opt-in `@stopcock/fp-optimizer` only after accepted S10X extraction | Explicit maximum portable throughput                                |                                at most 12 KiB, expected 9.5–11 KiB |
-| Fusion debug      | `@stopcock/fp/fusion/debug`                                                                                    | Opt-in explanations and diagnostics                                 |               at most 3 KiB incremental gzip and absent by default |
+| Tier              | Public entry                                                                                                   | Role                                                                |                                                             Target consumer cost |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------: |
+| Sequential root   | `@stopcock/fp`                                                                                                 | Small synchronous fallback and ordinary composition                 |                                          `pipe`/`flow` each at most 0.5 KiB gzip |
+| Direct specialist | `@stopcock/fp/*`                                                                                               | Direct and data-last operations without fusion-engine retention     |                                          selected direct op at most 0.5 KiB gzip |
+| Compiler          | `@stopcock/fp-compiler`                                                                                        | Automatic fused output plus versioned receipts and `stopcock check` | common compiled consumer at most 1 KiB gzip, composition/execution engine absent |
+| Compact fusion    | `@stopcock/fp/fusion`                                                                                          | Explicit CSP-safe runtime fusion with a small kernel set            |                                                  5.5 KiB interim, 5.0 KiB target |
+| Optimized fusion  | `@stopcock/fp/fusion/optimized`, or direct opt-in `@stopcock/fp-optimizer` only after accepted S10X extraction | Explicit maximum portable throughput                                |                                              at most 12 KiB, expected 9.5–11 KiB |
+| Fusion debug      | `@stopcock/fp/fusion/debug`                                                                                    | Opt-in explanations and diagnostics                                 |                             at most 3 KiB incremental gzip and absent by default |
 
 ### Pinned 2.0 base API and conditional S10X mapping
 
@@ -478,6 +480,36 @@ These apply to every slice.
 - Mixed transformed/untransformed files retain exactly the imports needed by
   their remaining fallback sites.
 
+### Compiler runtime-elimination contract
+
+For a fully transformed compiler site, “runtime elimination” means that the
+consumer retains and invokes no runtime composition or execution engine:
+
+- no root sequential dispatcher;
+- no runtime `compile`, compact-fusion, optimized-fusion, or optimizer
+  executor;
+- no planner, interpreter, runtime Plan IR, shape cache, generated runner bank,
+  or runtime pipeline dispatcher; and
+- no imported Stopcock operation may execute the transformed pipeline in place
+  of compiler-emitted statements or terminal code.
+
+Exact JavaScript semantics still require every original operator expression,
+its arguments, property access, factory call, and returned callable to be
+evaluated exactly once at the original semantic point. The minimal direct
+operator-construction leaves and their private provenance support are therefore
+permitted when they are observably required. They are not execution engines and
+must not be invoked to run the transformed pipeline. A construction leaf may be
+removed only under a separately proven semantic mode whose contract permits
+that exact observable effect to disappear; `compilePure` alone does not grant
+such permission.
+
+The compiler host gate is graph-based and fail closed. It uses an explicit
+allowlist of audited construction leaves plus a denylist for every
+composition/planning/execution module, and it separately proves from transformed
+source and executed output that compiler-emitted code—not an imported runtime
+operator—produces the result. An adversarial retained-operator fixture must
+prove why construction remains observable.
+
 ### Provenance and caches
 
 - Public tag-shaped properties never authorize a kernel or provide trusted
@@ -546,13 +578,22 @@ not create proof. Keep these versioned records separate:
 - **`ReleaseEvidenceRefV1`:** typed references to independently retained
   semantic, size, benchmark, package, or provenance artifacts.
 
-Every static receipt records schema/site identity, repo-relative source span and
-source hash, source specifier/export, compiler/config/semantic-manifest hashes,
+Every static receipt records schema/site identity, a normalized project-relative
+source locator or deterministic hashed external locator, source span and source
+hash, source specifier/export, compiler/config/semantic-manifest hashes,
 ordered semantic identities and modes, segment and boundary decisions, applied
 or rejected lowering, exact fallback tier, stable reason codes, and emitted
 code/source-map hashes when applicable. Identical inputs produce byte-identical
 static receipts; clocks, absolute machine paths, random IDs, and runtime
 observations are forbidden.
+
+An external locator is required whenever a host ID is outside the configured
+receipt root, virtual, or otherwise cannot be represented as a non-empty
+project-relative path. It is
+`external/sha256-<64 lowercase hex>`, derived from a versioned,
+domain-separated hash of the normalized complete host ID. Receipts never expose
+the raw external ID or an absolute path. Two different external IDs remain
+distinct even when their source bytes and spans are identical.
 
 Runtime profiles are separately keyed by receipt, plan, output artifact, and
 runtime hashes. They may contain aggregate sizes, selectivity, consumed-item
@@ -615,7 +656,7 @@ build.
 | Sequential common pipeline               | at most 1.5 KiB gzip                                                                                                                                                                                                    |
 | Direct `map`                             | at most 512 gzip bytes in every required bundler                                                                                                                                                                        |
 | Two unrelated helpers                    | at most 512 gzip bytes in every required bundler                                                                                                                                                                        |
-| Compiled common pipeline                 | at most 1 KiB in every supported host and no retained runtime engine                                                                                                                                                    |
+| Compiled common pipeline                 | at most 1 KiB in every supported host and no retained runtime composition/execution engine; audited source-observable construction leaves are permitted only by the contract below                                      |
 | Compiler execution                       | existing corpus geomean at least `0.90x` hand loop; no Bun row below `0.80x`; no Node row below `0.70x`                                                                                                                 |
 | Compact fusion                           | at most 5.5 KiB interim, 5.0 KiB target; size-first floor is geomean at least `0.75x` frozen current portable runtime and no common row below `0.60x`; claims remain limited to performance proven by the same artifact |
 | Optimized fusion                         | explicit-only closure at most 12 KiB; existing portable policies retained; candidate geomean at least `1.00x` frozen current engine                                                                                     |
@@ -686,7 +727,10 @@ flowchart TD
   XDEC -->|"yes"| S10J["S10J Optimizer topology join"]
   XDEC -->|"no"| S10X["S10X External optimizer boundary"]
   S10X --> S10J
-  S10J --> S11["S11 Compiler ceiling"]
+  S2 --> S11R["S11R Compiler prerequisite re-entry"]
+  S7 --> S11R
+  S10J --> S11R
+  S11R --> S11["S11 Compiler ceiling"]
 
   S2 --> P1A["P1A Array Iter kernels"]
   S1C --> P1A
@@ -1887,7 +1931,8 @@ S9, after the physical production/debug split is in scope.
 - Preserve type-only, side-effect-only, alias, namespace, mixed, and comment
   semantics.
 - Emit one `CompilerReceiptV1` per discovered site containing:
-  - schema/site identity and repo-relative source span/source hash;
+  - schema/site identity, normalized project-relative source locator or
+    deterministic hashed external locator, source span, and source hash;
   - source specifier/export and compiler/config/semantic-manifest hashes;
   - ordered semantic IDs, revisions, modes, segments, and boundaries;
   - `transformed`, `skipped`, or `fallback` decision;
@@ -1951,10 +1996,11 @@ S9, after the physical production/debug split is in scope.
 ### Validation
 
 - Fully transformed common consumers are at most 1 KiB in every host and retain
-  no runtime engine.
+  no runtime composition/execution engine under the explicit global contract.
 - `compiler.collect.common`, `compiler.reduce.common`, `compiler.deep`, and
   `compiler.option-terminal` each execute their independent oracle, remain at
-  most 1 KiB gzip, and retain no runtime engine in every supported host.
+  most 1 KiB gzip, and retain no runtime composition/execution engine in every
+  supported host.
 - `helpers.two-unrelated` remains at most 512 gzip bytes in esbuild, Rollup,
   Rolldown, and Webpack.
 - Mixed sites retain exactly the imports required by fallback sites.
@@ -2555,13 +2601,155 @@ final pre-S12 inventory.
 
 ---
 
+## S11R — Re-enter compiler prerequisites and extracted-topology qualification
+
+S11R is a corrective prerequisite stage deliberately added on 2026-07-26 after
+adversarial S11 review proved that the previously passed S2, S7, and S10X
+records did not own all evidence their downstream gates require. It does not
+erase those historical checkpoints or retroactively call them green. It owns
+the bounded repair and fresh qualification needed to make S11's entry true.
+
+### Entry state
+
+- S2, S7, S10X, and S10J have historical checkpoints.
+- The selected topology is the direct opt-in `@stopcock/fp-optimizer` package.
+- An uncheckpointed compiler candidate exposed stale emitter/schema identity,
+  forgeable receipt-core identity, an absolute external-path leak, incomplete
+  Rspack packaging, and a missing post-extraction S7 matrix.
+- The current five-host packed-compiler smoke test content-addresses only the
+  compiler tarball and copies FP workspace `dist`; it is not qualification.
+- S11 timing remains unavailable until the physical host requalifies.
+
+### Deliverable
+
+- S2 protocol output binds the compiler emitter/lowering ABI and owns the
+  complete receipt schema needed by the selected compiler.
+- `CompilerReceiptV1` uses a recomputed deterministic whole-core hash, exact
+  source specifier/export/span identity, visible parser/fallback records, and
+  normalized project-relative or hashed external source locators.
+- A static compiler Plan IR and mapping boundary capable of preserving
+  construction order, source tier, exact/pure mode, boundaries, terminals,
+  residual receivers, and lowering identity without copying runtime loop
+  bodies.
+- Real Rspack package/export/lockfile support beside Vite, Rollup, esbuild, and
+  Webpack.
+- One immutable content-addressed development cohort containing the selected
+  packed FP, compiler, and optimizer artifacts.
+- A complete post-extraction replay of the S7 matrix against only those
+  extracted artifacts.
+- Packed ordinary, hoisted, isolated, duplicate-FP/shared-optimizer, and
+  duplicate-FP/separate-optimizer layout evidence.
+- A graph-based runtime-composition-engine gate matching the global contract,
+  including adversarial proof that observable construction leaves remain
+  exact and do not execute the transformed pipeline.
+
+### Work
+
+- Regenerate every S2-owned compiler/receipt projection from its authoritative
+  definition; never hand-edit a generated view.
+- Hash external host IDs with the versioned
+  `stopcock.receipt.external-source.v1` domain and never emit their raw or
+  absolute path.
+- Make parser failures and zero-recognized-identity sites visible without
+  inventing semantic authority.
+- Bind receipts and qualification records to FP, compiler, optimizer,
+  semantic-manifest, runner-bank, emitted-code, source-map, and packed-tarball
+  hashes as applicable.
+- Build and checkpoint source/test repairs before invoking the clean-worktree
+  cohort packer. Then produce a fresh 21-public-package content-addressed
+  development manifest; no pre-extraction 20-package manifest or copied
+  workspace distribution is admissible.
+- From the extracted tarballs, run Vite, Rollup, esbuild, Webpack, and Rspack
+  over:
+  - every named compiler common consumer;
+  - mixed transformed/unsupported sites with tier-specific fallback;
+  - import pruning;
+  - callback and pipeline source maps;
+  - strict discovered/transformed/fallback coverage;
+  - deterministic receipt emission; and
+  - the packed `stopcock check` executable in a clean consumer.
+- Run the separately required Rolldown `helpers.two-unrelated` consumer row.
+- Exercise ordinary, hoisted, isolated, and duplicate install layouts with
+  deliberate ABI/protocol/semantic/bank/mode/layout mismatches; no mismatch may
+  invoke a specialized runner or exchange private provenance.
+- Keep all performance timing out of S11R. Deterministic benchmark-policy
+  validation may prove the later gate machinery, but it is not measured S11
+  evidence.
+
+### Allowed changes
+
+- authoritative S2 compiler/receipt protocol generation and the exact generated
+  projections it owns
+- `packages/fp-compiler/**`, its package metadata, host adapters, tests,
+  fixtures, documentation, and public-change changeset
+- focused FP and optimizer ABI/receipt/install-layout tests and implementation
+  seams required by the extracted matrix
+- compiler differential, deterministic policy, host, size, and artifact
+  qualification fixtures
+- the lockfile only for declared compiler-host dependencies
+- immutable development-cohort and compiler qualification evidence
+- no root API change, runtime tier redesign, optimizer bank admission,
+  performance threshold change, RC/stable mutation, or Synth publication
+
+### Validation
+
+- Two consecutive protocol generations are byte-identical; source, generated,
+  compiler, and debug schema/lowering hashes agree.
+- Absolute paths, raw external IDs, clocks, random IDs, and input discovery
+  order cannot perturb or leak into receipts. Distinct external IDs remain
+  distinct; malformed external locators fail schema validation.
+- Mutating any deterministic receipt-core field without recomputing its ID is
+  rejected by both library and packed CLI consumers.
+- Every named S7 compiler consumer executes its independent oracle, stays
+  within its per-host ceiling, and passes the runtime-composition-engine graph
+  gate from the exact extracted artifacts.
+- Mixed sites preserve only required fallback imports; strict mode rejects the
+  intentional unsupported site while default mode executes and reports the
+  correct source-selected fallback tier.
+- Host source maps resolve both generated pipeline failures and callback
+  failures to their original locations.
+- Repeated identical packed builds emit byte-identical sorted receipts bound to
+  the selected FP/compiler/optimizer and emitted artifact hashes.
+- The packed CLI consumes those emitted receipts, emits deterministic JSON,
+  rejects missing/duplicate/stale/invalid inputs with the documented exit code,
+  and imports no production fusion runtime merely to render them.
+- FP-only, FP-plus-optimizer, all duplicate/hoisted/isolated layouts, package
+  graph, README/LICENSE/declarations, and separate/combined footprint evidence
+  pass.
+- The canonical S2 and S7 validations are replayed, followed by fresh
+  independent `v2_verifier` audits for both critical boundaries.
+
+### Working-product invariant
+
+Every unsupported compiler site retains its exact source-selected synchronous
+fallback. FP remains complete without the optimizer, FP has no optimizer
+dependency or peer, public tags grant no authority, and the compiler candidate
+does not rely on copied workspace distribution bytes or pre-extraction
+evidence.
+
+### Rollback
+
+Return to the last proven tier-specific fallback/compiler artifact and keep S11
+blocked. Never restore the forgeable receipt ID, absolute path, missing parser
+record, or pre-extraction evidence merely to preserve a historical gate label.
+
+### Exit gate
+
+S11 remains blocked until S11R has a clean checkpoint, the exact
+content-addressed extracted artifacts own every required matrix row, both fresh
+critical-boundary audits pass, and no implementation or evidence path is
+outside the recorded S11R scope.
+
+---
+
 ## S11 — Push compiler output to its residual ceiling
 
 ### Entry state
 
-- S7 compiler correctness, coverage, hosts, and fallback are complete.
+- S11R has freshly requalified S2/S7/S10X compiler integrity and the complete
+  extracted-artifact matrix.
 - S10J’s selected topology and S10 canonical runtime/compiler facts are
-  available.
+  available through the S11R-bound identities.
 
 ### Deliverable
 
@@ -2570,7 +2758,8 @@ final pre-S12 inventory.
 - Safe statement hoisting.
 - Reusable callback binding and direct terminal tails.
 - Pure-mode rewrites with exact eligibility.
-- Complete runtime elimination for supported sites.
+- Complete runtime composition/execution-engine elimination for supported sites
+  under the global exact-construction contract.
 
 ### Work
 
@@ -2590,8 +2779,8 @@ final pre-S12 inventory.
 
 ### Allowed changes
 
-- `packages/fp-compiler/src/transform.ts`, `inline.ts`, `codegen.ts`, `ops.ts`,
-  and focused tests
+- `packages/fp-compiler/src/transform.ts`, `inline.ts`, `codegen.ts`,
+  `plan-ir.ts`, `mapped-code.ts`, `ops.ts`, and focused tests
 - generated compiler fact snapshots through S2 generation
 - compiler benchmark fixtures and packed host snapshots
 - no runtime tier implementation, root API, runtime candidate loop sharing,
@@ -2603,7 +2792,8 @@ final pre-S12 inventory.
 - No Bun row is below `0.80x`; no Node row below `0.70x`.
 - Changed expression-position cases improve by at least 10% or are not landed.
 - Common compiled pipelines target at least `0.90x` hand loop.
-- Common compiled consumer remains at most 1 KiB and retains no runtime engine.
+- Common compiled consumer remains at most 1 KiB and retains no runtime
+  composition/execution engine under the global contract.
 - Evaluation order, TDZ, `this`, `arguments`, `await`, `try/finally`, source
   maps, canonical `none`, and packed hosts pass.
 - A stale semantic revision/hash or lowering ABI fails closed to the
@@ -3677,6 +3867,7 @@ created without rewriting the completed train.
 | Root narrowing and version 2 migration                           | S8                                          |
 | Compact metadata, debug split, compact specialization budget     | S9                                          |
 | Portable fusion-runner descriptors and final optimizer topology  | S10 plus conditional S10X and S10J          |
+| Compiler prerequisite repair and extracted-topology replay       | S11R                                        |
 | Compiler expression/codegen performance                          | S11                                         |
 | Array Iter and typed-array Iter admission                        | P1A plus P1B                                |
 | Typed arrays                                                     | P2                                          |
@@ -3710,6 +3901,8 @@ created without rewriting the completed train.
 - Do not prune declarations before public tier/type boundaries settle.
 - Do not extract an optimizer package without the versioned runner/provenance
   protocol and packed duplicate-version tests.
+- Do not start or resume S11 from historical pre-extraction S7 evidence; S11R
+  must bind the complete repeated matrix to the selected extracted artifacts.
 - Do not create `packages/compute` during the coordinated 2.0 train unless this
   plan first revises the dynamic cohort inventory/version policy. The default
   sequence starts Compute 1.0 only after S14 has both published stable and
@@ -4030,8 +4223,9 @@ The superplan is complete only when:
 - [ ] Private `@stopcock/synth` remains unpublished and compatibility-green.
 - [ ] Root `pipe`/`flow` are tiny sequential primitives with no fusion graph.
 - [ ] Direct operations meet consumer-size and runtime floors.
-- [ ] Compiler output retains no runtime engine for fully transformed sites and
-      has correct tier-preserving fallback.
+- [ ] Compiler output retains no runtime composition/execution engine for fully
+      transformed sites, preserves exact observable construction, and has
+      correct tier-preserving fallback.
 - [ ] Compact fusion meets its byte budget and is described according to the
       performance actually proven.
 - [ ] Optimized fusion is explicit, isolated, and retains the maximum portable

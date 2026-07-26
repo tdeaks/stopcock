@@ -13,10 +13,10 @@ Programme status: IN_PROGRESS
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
-Current canonical stage: S11 (blocked), P3B (blocked)
-Current slice: COMPILER_RESIDUAL
-Last verified commit: e51c7a0
-Last controller run: 2026-07-25
+Current canonical stage: S11R
+Current slice: PROTOCOL_RECEIPT_AND_EXTRACTED_ARTIFACT_REENTRY
+Last verified commit: 73cc41386a1000936e4c05d7cddde239b9949698
+Last controller run: 2026-07-26
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
 workflow has been installed. It changes only after the user explicitly asks to
@@ -67,19 +67,20 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S7    | GATE_PASSED | Receipt emission, `stopcock check` CLI and renderer, import pruning, callback and source-map hardening, canonical Option terminals, lane split, and the topology-neutral package gate at `9301314`                                                                                                                                                                                            |
 | S8    | GATE_PASSED | Root `pipe`/`flow` sequential at `55ca6a1`; root surface narrowed to the migration map, every size ceiling met with no planner retained. Non-publishable integration state, as the stage requires                                                                                                                                                                                             |
 | S9    | GATE_PASSED | Compact fusion at `90c3265`: 2,874 gzip bytes against the 5.5 KiB hard gate, no debug surface, no name registry, and agreement with every other tier on results, callback order, and early-exit counts                                                                                                                                                                                        |
-| S10   | GATE_PASSED | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                    |
-| S10X  | GATE_PASSED | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                  |
-| S10J  | GATE_PASSED | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                   |
-| S11   | NOT_STARTED | —                                                                                                                                                                                                                                                                                                                                                                                             |
+| S10   | GATE_PASSED | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                  |
+| S10X  | GATE_PASSED | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                |
+| S10J  | GATE_PASSED | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                  |
+| S11R  | IN_PROGRESS | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11                                                                                                                                                                                               |
+| S11   | NOT_STARTED | Static Plan IR, tier-preserving codegen, expression/source-map corpus, pure map-to-length rewrite, exact construction semantics, deterministic receipts, and five-host smoke coverage exist in the sealed candidate based at `73cc413`; S11 cannot start until S11R passes                                                                                                                    |
 | P1A   | GATE_PASSED | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                       |
 | P1B   | GATE_PASSED | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                             |
 | P2    | GATE_PASSED | Canonical-view inspection seam merged; every candidate strategy measured and stopped, so typed-array behaviour is unchanged by design                                                                                                                                                                                                                                                         |
 | P3A   | GATE_PASSED | Allocation and memory evidence infrastructure merged at `9bde654`; seven families calibrated on the release lane, three uncalibrated on the canary and reported rather than tuned                                                                                                                                                                                                             |
 | P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                                |
 | P4    | GATE_PASSED | Compiled object read paths, guarded plain-data write tier, and lazy `Map.getOrElse` merged at `908f5f6`; the Record narrow-path candidate stopped on measurement and one row deferred to S4                                                                                                                                                                                                   |
-| DISP  | BLOCKED     | Manifest, schema, and fail-closed validator at `f435dd6`: 14 candidates, 6 shipped, 7 stopped, 1 unresolved. `deferred` is not an allowed status; the one `unresolved` row is P3B's allocation candidate and it fails the gate by design                                                                                                                                                                                                                                                                                                                                                               |
-| S12P  | BLOCKED     | Gate at `02b79a6`: all 45 public subpaths import and execute from real tarballs, including the optimized pipe across the package boundary. `@stopcock/fp` is 131,017 B against its 100,000 B stable ceiling, so S12 is stopped                                                                                                                                                                                                                                                                                                                                                                                             |
-| S12   | STOPPED_BY_PLAN | S12P's rule is that an over-ceiling pack stops S12 and returns to the owning slice. Not executed, deliberately                                                                                                                                                                                                                                                                                                                                                                                             |
+| DISP  | NOT_STARTED | Preflight manifest/schema work exists at `f435dd6`, but its unresolved P3B row means the canonical stage has not started or passed                                                                                                                                                                                                                                                            |
+| S12P  | NOT_STARTED | A preflight tarball probe at `02b79a6` imported 45/45 public subpaths and measured FP at 131,017 B, but it did not build S12P's required prototype and is not a stage verdict                                                                                                                                                                                                                 |
+| S12   | NOT_STARTED | Depends on a passed S12P exact prototype; no S12 implementation has started                                                                                                                                                                                                                                                                                                                   |
 | S13   | NOT_STARTED | External RC publication remains user-authorized                                                                                                                                                                                                                                                                                                                                               |
 | S14   | NOT_STARTED | Stable acceptance and publication remain user-authorized                                                                                                                                                                                                                                                                                                                                      |
 
@@ -288,6 +289,10 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 - [x] (2026-07-25) Landed S7 receipt emission at `1810394`, so the `stopcock
 check` CLI finally has something producing what it reads, and proved the
       two halves end to end.
+- [x] (2026-07-26) The user explicitly authorized clearing the compiler
+      blocker. A deliberate outer control-plane amendment introduced S11R so
+      the sealed candidate can repair and freshly requalify S2, S7, and S10X
+      evidence before S11 timing resumes.
 
 ## Evidence log
 
@@ -2310,18 +2315,29 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   authority, and fabricated configuration would not satisfy the gate.
   Date: 2026-07-25.
 
-## Current blockers
+- Decision: Insert corrective stage S11R and resume the compiler work through
+  it rather than widening S11 informally or claiming historical S2/S7/S10X
+  evidence covers the extracted topology.
+  Rationale: Independent review proved the current candidate spans protocol,
+  receipt, package-host, and extracted-install authority owned by earlier
+  stages. S11R gives those repairs one bounded scope, requires the complete
+  content-addressed matrix and fresh critical audits, and leaves qualified
+  timing in S11.
+  Date: 2026-07-26.
 
-S1B is blocked before implementation. The live GitHub repository reports zero
-self-hosted runners; hosted CI is explicitly canary-only; and no accountable
-infrastructure owner, provisioning runbook, dedicated machine identity, or
-qualified Linux x64/macOS arm64 profile is recorded. External mutation
-authorization remains `NONE`, so the programme cannot provision or register
-those machines autonomously.
+## Historical S1B entry stop
 
-This blocks S1C, S3B, and every later timing- or memory-dependent promotion
-lane. It does not invalidate the independently complete S1A, S2, or S3A
-checkpoints.
+This section preserves the original S1B entry finding. At that point the live
+GitHub repository reported zero self-hosted runners; hosted CI was canary-only;
+and no accountable infrastructure owner, provisioning runbook, dedicated
+machine identity, or qualified Linux x64/macOS arm64 profile was recorded.
+External mutation authorization was `NONE`, so the programme could not
+provision or register those machines autonomously.
+
+It is not the current stage state: S1B, S1C, and S3B are all `GATE_PASSED` in
+the authoritative stage table. The present machine's later loss of timing
+qualification is recorded separately below and prevents new timing evidence;
+it does not reopen those completed stages or block S11R's deterministic work.
 
 ## Regression found while closing out: an unenforced gate
 
@@ -2338,22 +2354,20 @@ stashed side referenced `distinctKernelCount`, which predates it.
 The stash is still in the stash list, untouched. Do not pop it: it is an
 obsolete variant of this same file.
 
-## The eight remaining local stages
+## Remaining local stages after the S11R amendment
 
 Named here so completion is checkable rather than a matter of recollection.
 S13 and S14 are excluded: both are external publication and remain
 user-authorized, with `External mutation authorization: NONE`.
 
-| #   | Stage | Status      |
-| --- | ----- | ----------- |
-| 1   | S10   | GATE_PASSED |
-| 2   | S10X  | GATE_PASSED (conditional; fired on S10J's verdict) |
-| 3   | S10J  | GATE_PASSED |
-| 4   | S11   | IN_PROGRESS |
-| 5   | P3B   | NOT_STARTED |
-| 6   | DISP  | BUILT, BLOCKED (validator correctly refuses to freeze while P3B is unresolved) |
-| 7   | S12P  | BUILT, VERDICT RECORDED (45/45 subpaths run from tarballs; size over ceiling) |
-| 8   | S12   | STOPPED BY S12P, per S12P's own rule |
+| #   | Stage | Status                                             |
+| --- | ----- | -------------------------------------------------- |
+| 1   | S11R  | IN_PROGRESS                                        |
+| 2   | S11   | NOT_STARTED                                        |
+| 3   | P3B   | NOT_STARTED                                        |
+| 4   | DISP  | NOT_STARTED; preflight validator remains available |
+| 5   | S12P  | NOT_STARTED; earlier pack result is preflight only |
+| 6   | S12   | NOT_STARTED                                        |
 
 ## Blocker: the host has fallen out of perf qualification
 
@@ -2400,7 +2414,7 @@ Nothing here is worked around. No floor was moved, no row excepted, no digest
 repinned to make a red gate green. The P3B candidate stays reverted because it
 has no valid supporting measurement, not because it was shown to lose.
 
-## S12P verdict, and what it does and does not establish
+## Earlier S12P preflight, and what it did not establish
 
 Packed both packages as npm would, installed them together into a throwaway
 consumer, and imported and executed every public subpath from the tarballs.
@@ -2418,28 +2432,25 @@ and 332 KB of declarations uncompressed, no source maps, no stray source in
 `dist`, README plus CHANGELOG only 14 KB. Reaching the ceiling needs roughly a
 24% cut.
 
-**What this does not establish.** S12P is specified to measure a prototype with
+**What this did not establish.** S12P is specified to measure a prototype with
 the S12 rules already applied, including the inference-safe declaration
-factoring representation. That prototype has not been built, so 131,017 B is an
-**upper bound on the S12P number, not the S12P number**, and the over-ceiling
-verdict is provisional in that direction only — factoring can lower it, nothing
-here can raise it.
-
-S12 is stopped rather than attempted, which is S12P's own rule: an over-ceiling
-pack returns to the owning slice to drop the lowest benefit-per-byte optional
-candidate, or to S10/XDEC to change topology. A late budget waiver is
-explicitly not one of the outcomes, and none has been taken.
+factoring representation. That prototype had not been built, so 131,017 B was
+an **upper bound on a possible S12P number, not an S12P gate result**. The
+observation remains useful preflight evidence only. S12P and S12 are both
+`NOT_STARTED`; neither stage is stopped, passed, or otherwise adjudicated by
+this earlier pack.
 
 ## Exact next action
 
-Requalify the host before any further timing work: leave the machine idle until
-`perf-profile-gate` reports `ok: true`, then re-run `portable-perf-gate` and
-`compiler-perf-sessions-gate` to establish which of this session's timing
-findings survive. Only then re-measure the P3B allocation candidate and re-test
-the S11 compiler row.
+Complete S11R's protocol, receipt, runtime-composition-engine, packed-cohort,
+and extracted-topology work and pass fresh S2 and S7 audits. S11 remains
+`NOT_STARTED` until that corrective prerequisite is green.
 
-The non-timing stages — DISP, S12P, and S12 — do not depend on host
-qualification and can proceed meanwhile.
+Do not perform further timing work until `perf-profile-gate` reports `ok: true`.
+After the host requalifies, re-run `portable-perf-gate` and
+`compiler-perf-sessions-gate` before producing any S11 or P3B timing verdict.
+DISP, S12P, and S12 remain future `NOT_STARTED` stages; their earlier probes do
+not bypass S11R or establish a gate result.
 
 ### S10X outcome
 
@@ -2466,15 +2477,15 @@ Two consequences worth carrying forward rather than discovering later:
   harness bugs, now fixed. Worth assuming other suites have the same shape of
   problem until checked.
 
-### Still open from S10X
+### S10X residue now owned by S11R
 
 The spec's full extracted-topology matrix is not complete. Done: package,
 ABI, negotiation, cohort join, compiler specifier recognition, FP-only
 completeness, boundary tests. Not done: the S7 host matrix rerun against
 content-addressed extracted artifacts, duplicate-install and hoisting layout
 tests, cross-package receipts naming both package hashes, and the codemod and
-migration-doc updates. S12P owns re-running package qualification; the S7
-rerun should happen before DISP freezes dispositions.
+migration-doc updates. S11R owns re-running that qualification before S11 or
+DISP may begin.
 
 ### S10 residue carried forward
 
@@ -2621,3 +2632,138 @@ repository, no accountable provisioning owner is recorded, and the only
 checked-in profile is explicitly interim. The programme is durably blocked at
 that boundary until real capacity and authority are supplied; no external
 runner, GitHub release, registry, package, or publication state was changed.
+
+## S11 compiler residual stopping point — 2026-07-26
+
+S11 implementation started from worktree HEAD
+`73cc41386a1000936e4c05d7cddde239b9949698`. The current uncheckpointed tree
+contains a coherent compiler candidate:
+
+- `StaticCompilerPlanV1` is the authority for ordered construction captures,
+  generated S2 operator facts, source tier, exact/pure mode, boundaries,
+  terminals, residual receivers, segments, and lowering identity.
+- Root `@stopcock/fp` sites lower as sequential stages. Explicit
+  `@stopcock/fp/fusion`, `@stopcock/fp/compile`, and
+  `@stopcock/fp-optimizer` sites retain their compact or optimized fused
+  layouts. Unsupported sites visibly retain the tier selected by their source
+  import.
+- Every source operator expression is evaluated exactly once, including in
+  pure mode. The pure `map ... map -> length` rewrite removes eligible
+  per-element callback execution but does not erase factory calls, caches,
+  provenance, inherited setters, argument evaluation, or thrown errors.
+- The expression corpus covers statement and expression positions, nested
+  sites, binding hygiene, TDZ-sensitive positions, `this`, `arguments`,
+  receiver semantics, source maps, direct `eval`, and lexical `Array`
+  exclusion.
+- Compiler receipts now identify the exact module/export/source span and use a
+  recomputed SHA-256 projection of the complete deterministic receipt core.
+  Parser failures are visible and fail closed in `diagnostics: 'error'`.
+- Vite, Rollup, esbuild, Webpack, and Rspack build and execute the exact common
+  consumer. The minified closure stays at or below 1 KiB while the host module
+  graph excludes root sequential, compile, fusion, and optimizer execution
+  engines. Required exact operator-construction leaves remain visible.
+- A five-host smoke probe passes from the SHA-256-addressed extraction of the
+  real `@stopcock/fp-compiler` tarball. This is not the canonical S10X
+  extracted-artifact matrix: the probe copies the workspace FP `dist` rather
+  than consuming a content-addressed packed FP artifact, and it does not yet
+  repeat the required mixed transformed/untransformed, pruning, source-map,
+  strict-coverage, deterministic-receipt, packed-CLI, or
+  duplicate-install/hoisting cases. It is supporting implementation evidence,
+  not S7 requalification or an S11 entry-gate pass.
+
+Validation on this exact moving-tree candidate:
+
+- `packages/fp-compiler: bun run check:release`: 16 files, 393 assertions,
+  all passed.
+- deterministic compiler benchmark/differential and policy tests:
+  4 files, 82 tests, all passed in the independent sealed replay.
+- generated protocol type-check: passed.
+- generated debug/compiler receipt-schema parity:
+  25 tests, all passed after the authoritative fixture gained the required
+  source identity and span.
+- focused receipt/ops/plugin validation: 4 files, 33 tests, all passed.
+- protocol regeneration completed with operator manifest
+  `sha256:4f5b9fcf6af2846e0de2f43147199146a2726b2b0fb3ff3e8af1825c2c29e5a3`
+  and receipt schema
+  `sha256:5beb48ec29c220e0c00632fd243218521d698b754f852daf6e9264ddd25c5cd8`.
+- No timing command was run. The host remains unqualified, so none of S11's
+  `0.90x`, per-row, or changed-context `+10%` thresholds has evidence.
+- `packages/fp: bun run codegen:check` still stops on the unchanged
+  `packages/fp/codegen/compact-facts.ts` import of `../src/registry`; both the
+  failing source and checker are byte-identical to HEAD. This baseline failure
+  is reported, not absorbed into S11.
+- The independent S11 verifier audited sealed digest
+  `sha256:82a507b089bb7ec31abc66b6b27a407097323d1f83f34576b94aa0822e4ca0be`
+  across 59 dirty paths. It confirmed the deterministic validation above and
+  returned `BLOCKED` on the false S10X entry gate, rejected scope, unresolved
+  literal runtime-elimination wording, missing qualified timing, and portable
+  receipt-path defect recorded below.
+
+### Blocking architectural and control-plane facts
+
+The implementation uncovered defects in already-passed prerequisites rather
+than only S11 work:
+
+- S10X explicitly leaves S11 blocked until extracted artifacts own the complete
+  repeated S7 matrix. The current packed candidate content-addresses only the
+  compiler tarball and supplies only the five-host common-consumer smoke case;
+  it therefore does not satisfy that prerequisite.
+- S7 promised Rspack and packed-host coverage but did not ship a Rspack package
+  entry or lockfile dependency.
+- S7's receipt identity hashed only a small site locator rather than the
+  canonical receipt core, parser failures could disappear, and receipts did
+  not bind the exact public source module/export/span.
+- S7's portable-path helper still preserves an absolute source path when the
+  source is outside the configured root. That makes otherwise identical
+  receipts machine-location-dependent and must fail closed or canonicalize to
+  a deterministic non-absolute identity.
+- S2's generated compiler projection did not bind the emitter ABI, and the
+  authoritative receipt schema lacked the new fail-closed fields.
+
+Those repairs are required for S11's own exit gate, but the current S11 scope
+does not permit the package, Rspack, lockfile, S2 generator, schema, receipt,
+plugin, or new Plan-IR module paths. The existing S7 scope also excludes
+`bun.lock`, `packages/fp-compiler/vite.config.ts`, and the authoritative S2
+generator outputs. The checkpoint scope checker therefore rejects this tree
+under S11, S7, and S2 exactly as designed.
+
+There is also a wording conflict that cannot be resolved by deleting observable
+work: S11 requires every operator expression to execute exactly once and also
+asks for “complete runtime elimination.” Exact first-party factory calls can
+expose cache identity, private provenance, inherited property setters, thrown
+errors, and callable returned closures. The implemented and tested
+interpretation removes every execution dispatcher/planner while retaining
+those construction leaves. Treating “complete runtime elimination” as removal
+of the factory calls would violate the exactness invariant; treating `_op` or
+an operator name as proof of an execution engine would be a false-positive
+gate. The verifier's independent transformed esbuild probe was 625 B gzip but
+still contained `filterMap`, `_op`, provenance, and executable data-last
+operator loops. The candidate therefore does not prove the literal
+no-runtime-engine wording; the protected specification must define whether
+source-observable construction/runtime leaves are permitted.
+
+The protected canonical plan and scope policy may not be edited by a controller
+iteration. The user explicitly authorized clearing this blocker on 2026-07-26,
+so an outer control-plane amendment created corrective stage S11R with these
+requirements:
+
+1. creates a bounded S2/S7 prerequisite re-entry for the exact repair paths and
+   portable receipt-path rule, and requires fresh S2 and S7 independent audits;
+2. requires the complete S10X content-addressed extracted-artifact matrix,
+   including packed FP/compiler inputs, all five hosts, mixed sites, pruning,
+   source maps, strict coverage, deterministic receipts, packed CLI, and
+   duplicate-install/hoisting cases, before S11 entry;
+3. adds the new Plan IR/source-map modules to S11's explicit scope; and
+4. states that exact runtime elimination removes dispatch/planning/execution
+   engines but preserves source-observable operator construction.
+
+After the setup commit, replay this candidate under S11R, repair the portable
+receipt locator and runtime-composition-engine gate, checkpoint the validated
+source/test slice, produce the clean 21-package content-addressed cohort, and
+run the complete extracted matrix plus fresh S2/S7 audits. Only a passed S11R
+may start S11 timing, and timing may run only after the host requalifies. No
+threshold, semantic invariant, or receipt check has been deliberately
+weakened. The host marker rejection was replaced by a module-topology allowlist
+and is explicitly not accepted here as proof until S11R's adversarial
+construction and emitted-execution checks pass. No external release state was
+changed.
