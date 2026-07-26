@@ -224,11 +224,11 @@ flowchart TD
 
 | Specifier                       | Required public surface                                                                                                    | Fallback/compatibility meaning                                                                                                                                                                      |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@stopcock/fp/fusion`           | `pipeFused`, `flowFused`, `compile`, `compilePure`                                                                         | compact explicit fusion after S9; before S9 it is clearly labelled a non-published compatibility alias to optimized fusion                                                                          |
-| `@stopcock/fp/fusion/optimized` | `pipeFused`, `flowFused`, `compile`, `compilePure`                                                                         | maximum-throughput same-package implementation when S10X is skipped; removed before the first RC if S10X selects the direct opt-in package                                                          |
-| `@stopcock/fp-optimizer`        | conditional `pipeFused`, `flowFused`, `compile`, `compilePure`                                                             | direct opt-in maximum-throughput package only after S10X; never a dependency of `@stopcock/fp`                                                                                                      |
-| `@stopcock/fp/fusion/debug`     | `explain`, `explainPure`, `explainRunner`, `getOptimizerStats`, `resetOptimizerStats`, plus their intentional public types | debug/diagnostic code, absent from production tier closures unless explicitly imported                                                                                                              |
-| `@stopcock/fp/compile`          | current `compile`, `compilePure`, explanation/statistics compatibility surface during the documented window                | deprecated compatibility facade to optimized fusion in the same-package topology; to compact fusion after S10X extraction, with a codemod to direct `@stopcock/fp-optimizer` for maximum throughput |
+| `@stopcock/fp/fusion`           | `pipe`, `fusedPipe`, `flow`, `fusedFlow`, `compile`, and `Runner`                                                           | compact explicit fusion after S9; before S9 it is clearly labelled a non-published compatibility alias to optimized fusion                                                                          |
+| `@stopcock/fp/fusion/optimized` | `pipe`, `fusedPipe`, `flow`, `fusedFlow`, `compile`, `compilePure`, `explainRunner`, optimizer statistics, and their public types | maximum-throughput same-package implementation when S10X is skipped; removed before the first RC if S10X selects the direct opt-in package                                                          |
+| `@stopcock/fp-optimizer`        | after extraction, the optimized surface plus ABI/bank identity, compatibility, and selection-trace exports                  | direct opt-in maximum-throughput package only after S10X; engine-bound diagnostics move with the engine and it is never a dependency of `@stopcock/fp`                                               |
+| `@stopcock/fp/fusion/debug`     | `explain`, `explainPure`, `PureRewrite`, and `PipelineExplanation`                                                          | static FP-owned diagnostics remain absent from production tier closures unless explicitly imported; engine-bound diagnostics live with the selected optimized engine                                |
+| `@stopcock/fp/compile`          | `compile`, `compilePure`, and `Runner`                                                                                      | deprecated compatibility facade to optimized fusion in the same-package topology; to compact fusion after S10X extraction, with a codemod to direct `@stopcock/fp-optimizer` for maximum throughput |
 | `@stopcock/fp/dual`             | public generic `dual` and its existing public types                                                                        | callable compatibility API; caller-supplied tags never grant trusted provenance                                                                                                                     |
 
 Compiler recognition, binding analysis, dead-import pruning, and fallback are
@@ -2469,6 +2469,10 @@ For the external-package branch:
   topology;
 - point deprecated `@stopcock/fp/compile` compatibility at compact fusion in
   the extracted topology so an FP-only install remains complete;
+- keep static `explain`/`explainPure` in `@stopcock/fp/fusion/debug`, but move
+  engine-bound `explainRunner` and optimizer statistics to
+  `@stopcock/fp-optimizer`; FP cannot forward those APIs without creating the
+  dependency edge this branch forbids;
 - prove root/direct/compact consumers neither import nor bundle the optimizer.
 
 For the stopped branch, remove losing fusion-runner descriptors one at a time,
