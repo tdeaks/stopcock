@@ -1,6 +1,11 @@
 export interface PublicModule {
   readonly subpath: string
   readonly entry: string
+  /**
+   * Declaration basename under `dist`, when the public subpath is nested but
+   * TypeScript emits the source entry at a flat path.
+   */
+  readonly typesOutput?: string
 }
 
 /**
@@ -45,7 +50,11 @@ export const PUBLIC_MODULES = [
   { subpath: './compile', entry: 'src/compile.ts' },
   { subpath: './abi', entry: 'src/abi.ts' },
   { subpath: './fusion', entry: 'src/fusion.ts' },
-  { subpath: './fusion/debug', entry: 'src/fusion-debug.ts' },
+  {
+    subpath: './fusion/debug',
+    entry: 'src/fusion-debug.ts',
+    typesOutput: 'fusion-debug',
+  },
   { subpath: './optic', entry: 'src/optic.ts' },
   { subpath: './match', entry: 'src/match.ts' },
   { subpath: './transducer', entry: 'src/transducer.ts' },

@@ -8,10 +8,12 @@ const packagePath = resolve(root, 'package.json')
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8')) as Record<string, unknown>
 
 const exportsMap: Record<string, unknown> = {}
-for (const { subpath } of PUBLIC_MODULES) {
+for (const module of PUBLIC_MODULES) {
+  const { subpath } = module
+  const typesOutput = 'typesOutput' in module ? module.typesOutput : undefined
   const output = subpath === '.' ? 'index' : subpath.slice(2)
   exportsMap[subpath] = {
-    types: `./dist/${output}.d.ts`,
+    types: `./dist/${typesOutput ?? output}.d.ts`,
     import: `./dist/${output}.js`,
   }
 }

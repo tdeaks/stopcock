@@ -1,15 +1,16 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises'
-import { extname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const declarationExtension = /\.d\.(?:c|m)?ts$/u
+const explicitRuntimeExtension = /\.(?:[cm]?js|json)$/u
 
 const withJavaScriptExtension = (specifier) => {
   if (!specifier.startsWith('./') && !specifier.startsWith('../')) {
     return specifier
   }
 
-  return extname(specifier) === '' ? `${specifier}.js` : specifier
+  return explicitRuntimeExtension.test(specifier) ? specifier : `${specifier}.js`
 }
 
 export const rewriteDeclarationSpecifiers = (source) =>

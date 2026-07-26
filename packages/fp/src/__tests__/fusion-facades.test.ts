@@ -145,6 +145,10 @@ describe('public manifest', () => {
     const subpaths = PUBLIC_MODULES.map((module) => module.subpath)
     expect(subpaths).toContain('./fusion')
     expect(subpaths).toContain('./fusion/debug')
+    expect(PUBLIC_MODULES.find((module) => module.subpath === './fusion/debug')).toMatchObject({
+      entry: 'src/fusion-debug.ts',
+      typesOutput: 'fusion-debug',
+    })
     // `./fusion/optimized` was removed by S10X rather than left as a shim.
     expect(subpaths).not.toContain('./fusion/optimized')
   })

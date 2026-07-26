@@ -23,12 +23,14 @@ const firstActiveName = pipe(
 )
 ```
 
-The root deliberately contains only composition, compilation, and the core
-Option/Result constructors and guards. Import specialist APIs from subpaths:
+The root deliberately contains only sequential composition and the core
+Option/Result constructors and guards. Import compilation, diagnostics, and
+specialist APIs from subpaths:
 
 ```ts
-import { pipe, flow, compile, compilePure, explain, some, ok } from '@stopcock/fp'
-import { explainPure } from '@stopcock/fp/compile'
+import { pipe, flow, some, ok } from '@stopcock/fp'
+import { compile, compilePure } from '@stopcock/fp/compile'
+import { explain, explainPure } from '@stopcock/fp/fusion/debug'
 import * as A from '@stopcock/fp/array'
 import * as Iter from '@stopcock/fp/iter'
 import * as R from '@stopcock/fp/result'
@@ -113,7 +115,7 @@ const explanation = explain(
 
 `compilePure` can apply opt-in rewrites such as stable top-k for
 `sort -> take` and unused-map elision before `length`. `explainPure`, imported
-from `@stopcock/fp/compile`, reports those rewrites before you choose pure
+from `@stopcock/fp/fusion/debug`, reports those rewrites before you choose pure
 semantics.
 
 For build-time source specialization, use `@stopcock/fp-compiler`.

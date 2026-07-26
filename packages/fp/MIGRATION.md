@@ -18,8 +18,14 @@ The root is intentionally slim. Replace namespace bundles with subpaths:
 + import * as Obj from '@stopcock/fp/object'
 ```
 
-The root still exports `pipe`, `flow`, `dual`, `compile`, `compilePure`,
-`explain`, Option constructors/guards, and Result constructors/guards.
+The root exports `pipe`, `flow`, Option constructors/guards, and Result
+constructors/guards. Import the moved APIs from the subpaths that own them:
+
+```ts
+import { dual } from '@stopcock/fp/dual'
+import { compile, compilePure } from '@stopcock/fp/compile'
+import { explain, explainPure } from '@stopcock/fp/fusion/debug'
+```
 
 ## Stream became Iter
 
@@ -37,14 +43,15 @@ Use `@stopcock/async/async-iter` for asynchronous sources.
 ## Runtime JIT was removed
 
 `compileJit`, JIT loaders, vector tiers, and fusion-mode controls no longer
-exist. `pipe`, `flow`, and `compile` always use portable prebuilt code.
+exist. Root `pipe` and `flow` are sequential; `@stopcock/fp/compile` uses
+portable prebuilt compact fusion.
 
 | 1.x | 2.0 |
 | --- | --- |
-| `explainPipeline(...steps)` | `explain(...steps)` or `explainPure(...steps)` |
+| `explainPipeline(...steps)` | `explain(...steps)` or `explainPure(...steps)` from `@stopcock/fp/fusion/debug` |
 | `setFusionMode(...)` | removed; there is one portable runtime |
 | `compileJit(...)` | use `@stopcock/fp-compiler` at build time |
-| tier/JIT statistics | `getOptimizerStats()` from `@stopcock/fp/compile` |
+| tier/JIT statistics | `getOptimizerStats()` from `@stopcock/fp-optimizer` |
 
 The diagnostic result is versioned and reports
 `runtimeCodeGeneration: false`.

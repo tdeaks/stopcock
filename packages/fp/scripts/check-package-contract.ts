@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { access, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -34,6 +35,156 @@ const publicDeclarationPaths = PUBLIC_MODULES.map(({ subpath }) => {
 const isPackageDeclaration = (path: string): boolean =>
   resolve(path).startsWith(`${declarationRoot}/`) && /\.d\.[cm]?ts$/u.test(path)
 
+interface DeclarationReference {
+  readonly kind: 'module' | 'reference'
+  readonly specifier: string
+}
+
+const declarationModuleSpecifiers = (source: string): readonly DeclarationReference[] => {
+  const scanner = createScanner(true, undefined, source)
+  const references: DeclarationReference[] = []
+  let previousToken: SyntaxKind | undefined
+  let tokenBeforePrevious: SyntaxKind | undefined
+
+  for (let token = scanner.scan(); token !== SyntaxKind.EndOfFile; token = scanner.scan()) {
+    if (
+      token === SyntaxKind.StringLiteral &&
+      (previousToken === SyntaxKind.FromKeyword ||
+        previousToken === SyntaxKind.ImportKeyword ||
+        previousToken === SyntaxKind.ModuleKeyword ||
+        (previousToken === SyntaxKind.OpenParenToken &&
+          (tokenBeforePrevious === SyntaxKind.ImportKeyword ||
+            tokenBeforePrevious === SyntaxKind.RequireKeyword)))
+    ) {
+      references.push({ kind: 'module', specifier: scanner.getTokenValue() })
+    }
+    tokenBeforePrevious = previousToken
+    previousToken = token
+  }
+
+  for (const match of source.matchAll(
+    /^\s*\/\/\/\s*<reference\s+path\s*=\s*['"](?<specifier>[^'"]+)['"]/gmu,
+  )) {
+    if (match.groups?.specifier) {
+      references.push({ kind: 'reference', specifier: match.groups.specifier })
+    }
+  }
+
+  return references.filter(
+    (reference, index) =>
+      references.findIndex(
+        (candidate) =>
+          candidate.kind === reference.kind && candidate.specifier === reference.specifier,
+      ) === index,
+  )
+}
+
+const declarationDependencyPath = (declarationPath: string, specifier: string): string => {
+  const declarationSpecifier = /\.d\.[cm]?ts$/u.test(specifier)
+    ? specifier
+    : specifier.endsWith('.js')
+      ? `${specifier.slice(0, -3)}.d.ts`
+      : specifier.endsWith('.mjs')
+        ? `${specifier.slice(0, -4)}.d.mts`
+        : specifier.endsWith('.cjs')
+          ? `${specifier.slice(0, -4)}.d.cts`
+          : `${specifier}.d.ts`
+  return resolve(dirname(declarationPath), declarationSpecifier)
+}
+
+type DeclarationReferenceResolution =
+  | { readonly status: 'external' }
+  | { readonly status: 'leaked' }
+  | { readonly path: string; readonly status: 'dependency' }
+
+const resolveDeclarationReference = (
+  declarationPath: string,
+  reference: DeclarationReference,
+): DeclarationReferenceResolution => {
+  const { kind, specifier } = reference
+  const isLeaked =
+    specifier.startsWith('/') ||
+    specifier.startsWith('file:') ||
+    /^[A-Za-z]:[\\/]/u.test(specifier) ||
+    specifier.includes('\\') ||
+    specifier.includes('/src/') ||
+    specifier.includes('node_modules') ||
+    (kind === 'module' && /\.[cm]?tsx?$/u.test(specifier))
+  if (isLeaked) return { status: 'leaked' }
+  if (!specifier.startsWith('.')) return { status: 'external' }
+
+  const path = declarationDependencyPath(declarationPath, specifier)
+  return isPackageDeclaration(path) ? { path, status: 'dependency' } : { status: 'leaked' }
+}
+
+if (process.argv.includes('--self-test-declaration-graph')) {
+  const fixturePath = resolve(declarationRoot, 'internal/declaration-contract-fixture.d.ts')
+  const fixtureSource = `import sideEffect from '../safe.js'
+import '../side-effect.js'
+import legacy = require('../safe-legacy.cjs')
+export { nested } from './nested.js'
+type Dynamic = typeof import('./dynamic.js')
+declare module './augmentation.js' {}
+/// <reference path="../safe-reference.d.ts" />
+/// <reference path="../safe-reference.d.mts" />
+/// <reference path="../safe-reference.d.cts" />
+/// <reference path="../../outside-reference.d.ts" />
+`
+  assert.deepEqual(declarationModuleSpecifiers(fixtureSource), [
+    { kind: 'module', specifier: '../safe.js' },
+    { kind: 'module', specifier: '../side-effect.js' },
+    { kind: 'module', specifier: '../safe-legacy.cjs' },
+    { kind: 'module', specifier: './nested.js' },
+    { kind: 'module', specifier: './dynamic.js' },
+    { kind: 'module', specifier: './augmentation.js' },
+    { kind: 'reference', specifier: '../safe-reference.d.ts' },
+    { kind: 'reference', specifier: '../safe-reference.d.mts' },
+    { kind: 'reference', specifier: '../safe-reference.d.cts' },
+    { kind: 'reference', specifier: '../../outside-reference.d.ts' },
+  ])
+  assert.equal(
+    isPackageDeclaration(declarationDependencyPath(fixturePath, '../safe.js')),
+    true,
+  )
+  assert.equal(
+    isPackageDeclaration(declarationDependencyPath(fixturePath, '../safe-legacy.cjs')),
+    true,
+  )
+  for (const specifier of [
+    '../safe-reference.d.ts',
+    '../safe-reference.d.mts',
+    '../safe-reference.d.cts',
+  ]) {
+    assert.deepEqual(
+      resolveDeclarationReference(fixturePath, { kind: 'reference', specifier }),
+      {
+        path: declarationDependencyPath(fixturePath, specifier),
+        status: 'dependency',
+      },
+    )
+    assert.deepEqual(
+      resolveDeclarationReference(fixturePath, { kind: 'module', specifier }),
+      { status: 'leaked' },
+    )
+  }
+  assert.deepEqual(
+    resolveDeclarationReference(fixturePath, {
+      kind: 'module',
+      specifier: '../../outside.js',
+    }),
+    { status: 'leaked' },
+  )
+  assert.deepEqual(
+    resolveDeclarationReference(fixturePath, {
+      kind: 'reference',
+      specifier: '../../outside-reference.d.ts',
+    }),
+    { status: 'leaked' },
+  )
+  console.log('Declaration graph scanner and resolved containment self-test passed')
+  process.exit(0)
+}
+
 const declarationSources = new Map<string, string>()
 const leakedDeclarationPaths: string[] = []
 const unresolvedDeclarationPaths: string[] = []
@@ -56,38 +207,16 @@ while (pendingDeclarationPaths.length > 0) {
   }
   declarationSources.set(declarationPath, source)
 
-  const moduleSpecifierPattern = /(?:\bfrom\s+|\bimport\s*\(\s*)['"](?<specifier>[^'"]+)['"]/gu
-  for (const match of source.matchAll(moduleSpecifierPattern)) {
-    const specifier = match.groups?.specifier
-    if (!specifier) continue
-    const isLeaked =
-      specifier.startsWith('/') ||
-      specifier.startsWith('../') ||
-      specifier.startsWith('file:') ||
-      /^[A-Za-z]:[\\/]/u.test(specifier) ||
-      specifier.includes('\\') ||
-      specifier.includes('/src/') ||
-      specifier.includes('node_modules') ||
-      /\.tsx?$/u.test(specifier)
-    if (isLeaked) {
+  for (const reference of declarationModuleSpecifiers(source)) {
+    const resolution = resolveDeclarationReference(declarationPath, reference)
+    if (resolution.status === 'leaked') {
+      const { specifier } = reference
       leakedDeclarationPaths.push(`${declarationPath} -> ${specifier}`)
       continue
     }
-    if (!specifier.startsWith('.')) continue
+    if (resolution.status === 'external') continue
 
-    const declarationSpecifier = specifier.endsWith('.js')
-      ? `${specifier.slice(0, -3)}.d.ts`
-      : specifier.endsWith('.mjs')
-        ? `${specifier.slice(0, -4)}.d.mts`
-        : specifier.endsWith('.cjs')
-          ? `${specifier.slice(0, -4)}.d.cts`
-          : `${specifier}.d.ts`
-    const dependencyPath = resolve(dirname(declarationPath), declarationSpecifier)
-    if (!isPackageDeclaration(dependencyPath)) {
-      leakedDeclarationPaths.push(`${declarationPath} -> ${specifier}`)
-      continue
-    }
-    pendingDeclarationPaths.push(dependencyPath)
+    pendingDeclarationPaths.push(resolution.path)
   }
 }
 if (unresolvedDeclarationPaths.length > 0) {
@@ -136,11 +265,7 @@ const rootExport = packageJson.exports['.']
 if (typeof rootExport === 'string') throw new Error('Root export must expose types and import')
 const rootModule = await import(pathToFileURL(resolve(packageRoot, rootExport.import)).href)
 const expectedRootKeys = [
-  'compile',
-  'compilePure',
-  'dual',
   'err',
-  'explain',
   'flow',
   'isErr',
   'isNone',

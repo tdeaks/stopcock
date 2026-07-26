@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S11R
-Current slice: OPTIMIZER_ABI_TOPOLOGY_AND_PACKED_COHORT
-Last verified commit: afc1614b2c989747683c05294ee9ca565738af80
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-26
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -70,7 +70,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S10   | GATE_PASSED        | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                                              |
 | S10X  | GATE_PASSED        | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                                            |
 | S10J  | GATE_PASSED        | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                                              |
-| S11R  | IN_PROGRESS | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. |
+| S11R  | CHECKPOINT_PENDING | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. |
 | S11   | NOT_STARTED        | Static Plan IR, tier-preserving codegen, expression/source-map corpus, pure map-to-length rewrite, exact construction semantics, deterministic receipts, and five-host smoke coverage exist in the sealed candidate based at `73cc413`; S11 cannot start until S11R passes                                                                                                                                                |
 | P1A   | GATE_PASSED        | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                                                   |
 | P1B   | GATE_PASSED        | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                                                         |
@@ -297,6 +297,11 @@ check` CLI finally has something producing what it reads, and proved the
       external receipt identity and the runtime-composition-engine gate, and
       completed the deterministic source/test slice required before a clean
       cohort pack.
+- [x] (2026-07-26) Repaired the FP packed-package contract before cohort
+      creation: nested runtime/flat declaration exports, declaration-graph
+      containment, dotted generated declaration rewriting, root-surface
+      assertions, and consumer documentation now agree across clean FP and
+      optimizer builds.
 
 ## Evidence log
 
@@ -1886,6 +1891,34 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   - no timing command ran. The packed FP/compiler/optimizer cohort, topology
     mismatch layouts, named extracted consumer matrix, and fresh S2/S7 audits
     remain for the next S11R slices.
+- S11R FP packed-package-contract checkpoint evidence:
+  - `@stopcock/fp/fusion/debug` now binds its nested runtime target
+    `dist/fusion/debug.js` to TypeScript's actual flat
+    `dist/fusion-debug.d.ts` output through one authoritative module manifest;
+  - the declaration graph scans static, side-effect, dynamic, import-equals,
+    `require`, module-augmentation, and triple-slash reference forms. It
+    permits contained parent traversal, preserves `.d.ts`/`.d.mts`/`.d.cts`
+    references, rejects source-module extensions, and fails closed when the
+    resolved declaration escapes `dist`;
+  - the shared declaration rewriter treats dotted basenames such as
+    `facts.generated` and `bank-identity.generated` as extensionless while
+    preserving `.js`, `.mjs`, `.cjs`, and `.json`. Its two focused tests and
+    idempotence replay passed;
+  - a fresh FP build and packed contract verified 44 public modules with
+    Bundler, NodeNext, and runtime consumers. The declaration safety/facade
+    suite passed 17 tests; script and source type checks passed;
+  - a fresh optimizer build and source check passed, and its declaration now
+    imports `bank-identity.generated.js`;
+  - the independent S11R packaging audit passed sealed moving-tree digest
+    `sha256:044685208216f6a516dc941c374cc86afee34bb1c3d55e6d283f34d8ead34932`;
+  - the broader FP type-test project still exposes two historical S10X debts:
+    compact `compile` has lost endpoint inference, and a boundary type fixture
+    imports moved types from the wrong facade. More importantly,
+    `compilePure` currently aliases exact `compactCompile` while
+    `explainPure` advertises rewrites. These predate this packaging slice but
+    must be repaired before the final S11R cohort is created;
+  - no timing command ran. This is a package-contract checkpoint, not an S11R
+    exit-gate verdict.
 
 ## Surprises and discoveries
 
@@ -2054,6 +2087,23 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   failure is retained as a warning for the required duplicate-install matrix:
   topology mismatch must fail closed rather than masquerade as optimized
   semantics.
+- The first clean cohort-pack attempt exposed three independent FP package
+  defects in sequence: the nested `fusion/debug` runtime entry had a flat
+  declaration output, the contract checker rejected valid contained parent
+  imports before resolving them, and the shared declaration rewriter mistook
+  dotted generated basenames for explicit runtime extensions.
+- Adversarial declaration review found that regular-expression traversal
+  missed side-effect/import-equals/reference forms. A token scanner plus
+  kind-aware reference resolver now covers them and distinguishes legitimate
+  declaration references from forbidden source-module specifiers.
+- Reconciling package documentation exposed a stale protected API table. The
+  accepted S10X topology keeps static explanations in FP and moves
+  engine-bound runner/statistics diagnostics with the direct optimizer; setup
+  commit `b6b9bc4` records that exact one-way surface.
+- The same review proved the current FP-only `compilePure` compatibility
+  export is only an alias of exact compact compilation even though
+  `explainPure` advertises pure rewrites. This is a pre-existing semantic
+  blocker, not something a clean package contract can bless.
 
 ## Decision log
 
@@ -2386,11 +2436,35 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   wrong; invoking them to execute the transformed pipeline is equally wrong.
   Date: 2026-07-26.
 
+- Decision: Represent public runtime and declaration output paths separately
+  in the FP module manifest when the build tools emit different layouts.
+  Rationale: `fusion/debug.js` is a deliberate nested runtime subpath while
+  TypeScript emits `fusion-debug.d.ts` from its flat source entry. Inventing or
+  copying a declaration file would create two authorities.
+  Date: 2026-07-26.
+
+- Decision: Keep static diagnostics in FP and engine-bound diagnostics in the
+  direct optimizer after S10X extraction.
+  Rationale: Forwarding `explainRunner` or optimizer statistics through FP
+  would recreate the forbidden dependency/cycle and pull optimizer code into
+  consumers that requested static explanations only.
+  Date: 2026-07-26.
+
+- Decision: Do not create the final S11R development cohort while FP's
+  `compilePure` compatibility facade silently executes exact compact semantics.
+  Rationale: A content-addressed cohort makes the selected bytes immutable;
+  freezing a known violation of the global pure-mode invariant would turn a
+  local repair into invalid extracted evidence.
+  Date: 2026-07-26.
+
 ## Current blockers
 
-There is no current blocker to S11R's deterministic source, package, or
-extracted-artifact work. New timing evidence remains unavailable until the
-current host requalifies, but timing is outside S11R.
+There is no external blocker to S11R's deterministic work. Before the final
+development cohort can be created, FP's compact `compilePure` path must execute
+and report its promised pure rewrites rather than alias exact compilation, and
+the associated endpoint/boundary type-test debts must be reconciled. New
+timing evidence remains unavailable until the current host requalifies, but
+timing is outside S11R.
 
 ### Historical S1B entry stop
 
@@ -2509,11 +2583,13 @@ this earlier pack.
 
 ## Exact next action
 
-Checkpoint this validated compiler source/test slice. From the resulting clean
-worktree, join and pack the 21-public-package development cohort, then build
-the packed FP/compiler/optimizer fixture and run the named extracted-host and
-duplicate-layout matrix. S11 remains `NOT_STARTED` until the complete S11R
-qualification and fresh S2/S7 audits are green.
+Checkpoint this validated FP packed-package-contract slice. From the resulting
+clean worktree, repair compact `compilePure` semantics and endpoint/boundary
+types under an independently audited exact scope, then checkpoint again. Only
+after that repair is clean may the controller pack the 21-public-package
+development cohort and run the named extracted-host and duplicate-layout
+matrix. S11 remains `NOT_STARTED` until the complete S11R qualification and
+fresh S2/S7 audits are green.
 
 Do not perform further timing work until `perf-profile-gate` reports `ok: true`.
 After the host requalifies, re-run `portable-perf-gate` and

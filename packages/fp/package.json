@@ -158,7 +158,7 @@
       "import": "./dist/fusion.js"
     },
     "./fusion/debug": {
-      "types": "./dist/fusion/debug.d.ts",
+      "types": "./dist/fusion-debug.d.ts",
       "import": "./dist/fusion/debug.js"
     },
     "./optic": {
