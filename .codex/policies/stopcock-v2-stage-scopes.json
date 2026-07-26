@@ -458,6 +458,8 @@
         "packages/fp/codegen/generated/operator-manifest-v1.json",
         "packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts",
         "packages/fp/src/abi.ts",
+        "packages/fp/src/compile.ts",
+        "packages/fp/src/internal/compact-pure-runtime.ts",
         "packages/fp/src/**/*receipt*",
         "packages/fp/src/__tests__/**",
         "packages/fp/package.json",
