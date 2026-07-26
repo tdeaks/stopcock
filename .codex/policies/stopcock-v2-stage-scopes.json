@@ -451,6 +451,7 @@
       "dynamicRule": "none",
       "patterns": [
         "packages/fp-compiler/**",
+        "packages/fp/codegen/compact-facts.ts",
         "packages/fp/codegen/generate.ts",
         "packages/fp/codegen/protocol/generate-protocol.ts",
         "packages/fp/codegen/protocol/receipt-schema-v1.ts",
@@ -459,6 +460,7 @@
         "packages/fp/codegen/generated/operator-evidence-v1.json",
         "packages/fp/codegen/generated/operator-manifest-v1.json",
         "packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts",
+        "packages/fp/src/internal/abi-identity.generated.ts",
         "packages/fp/src/abi.ts",
         "packages/fp/src/array.ts",
         "packages/fp/src/compile.ts",
@@ -470,6 +472,7 @@
         "packages/fp/package.json",
         "packages/fp/module-manifest.ts",
         "packages/fp/scripts/check-package-contract.ts",
+        "packages/fp/scripts/check-codegen-reproducibility.ts",
         "packages/fp/scripts/sync-module-manifest.ts",
         "packages/fp/README.md",
         "packages/fp/MIGRATION.md",
