@@ -1,7 +1,7 @@
 {
   "kind": "stopcock.compiler-receipt",
   "schemaVersion": 1,
-  "receiptId": "sha256:0c022ed22569c22ff78125c3885c83fe559df17954fa23124a7a67e85b6d9c38",
+  "receiptId": "sha256:163875f5c14c7768bbcaedb3163aba289800f2ecff39c5f370bdf99294e21663",
   "sourcePath": "src/opaque.ts",
   "sourceHash": "sha256:9521bfb26c414dca07035b4aee66f991b69e55f6b1bed4d046a64f34ddfba685",
   "siteFingerprint": "sha256:072b4830e8af38aa5e52fe40c1f6173ee1830c2bc032e85b8e07b9caf211199a",
@@ -17,12 +17,24 @@
     }
   ],
   "semanticMode": "exact",
-  "segmentKinds": ["opaque"],
+  "segmentKinds": [
+    "opaque"
+  ],
   "disposition": "fallback",
   "loweringHash": null,
   "fallbackTier": "sequential",
-  "reasonCodes": ["opaque-callback"],
+  "reasonCodes": [
+    "opaque-callback"
+  ],
   "emittedCodeHash": null,
   "sourceMapHash": null,
-  "evidenceRefs": []
+  "evidenceRefs": [],
+  "sourceSpecifier": "@stopcock/fp",
+  "sourceExport": "pipe",
+  "sourceSpan": {
+    "startLine": 1,
+    "startColumn": 0,
+    "endLine": 1,
+    "endColumn": 80
+  }
 }

@@ -28,11 +28,12 @@ export default defineConfig({
 ```
 
 Equivalent named adapters are exported from
-`@stopcock/fp-compiler/rollup`, `/esbuild`, and `/webpack`. The root
+`@stopcock/fp-compiler/rollup`, `/esbuild`, `/webpack`, and `/rspack`. The root
 `stopcockFp` Unplugin instance remains available when one configuration must
 target several hosts: it exposes `.vite(...)`, `.rollup(...)`,
-`.esbuild(...)`, and `.webpack(...)`. The release suite builds and executes a
-real fixture through all four adapters.
+`.esbuild(...)`, `.webpack(...)`, and `.rspack(...)`. The release suite builds
+and executes a real fixture through all five adapters, then repeats that matrix
+from the SHA-256-addressed extraction of the packed compiler tarball.
 
 For release builds, `diagnostics: 'summary'` prints fused and skipped pipeline
 counts plus the static coverage percentage. Use `diagnostics: 'error'` to make
@@ -41,8 +42,9 @@ failure.
 
 The transform understands namespace, named, aliased, and custom wrapper-package
 imports. Lexically shadowed bindings are left untouched. Exact semantics are
-the default; `assumePure: true` records an explicit pure contract for future
-pure-only rewrites without silently changing the current transform.
+the default. `assumePure: true` permits only documented pure execution
+rewrites; it still evaluates source expressions and official operator
+factories exactly once.
 
 ## Options
 
@@ -53,7 +55,7 @@ pure-only rewrites without silently changing the current transform.
 | `importSources`        | Package roots that export `pipe`, `flow`, and `compile`. Defaults to `@stopcock/fp`.                                              |
 | `arrayImportSources`   | Exact package entries that export array operators. Derived as `${importSource}/array` by default.                                 |
 | `compileImportSources` | Specialist entries that export `compile` and `compilePure`. Derived as `${importSource}/compile` in addition to the package root. |
-| `assumePure`           | Records the explicit `pure` semantic mode. It does not currently enable extra rewrites.                                           |
+| `assumePure`           | Enables proven pure execution rewrites. Source and operator construction remain observable and exactly-once.                     |
 | `diagnostics`          | `false`, `summary`, `verbose`, or `error`. Defaults to `false`.                                                                   |
 
 `diagnostics: 'error'` fails the transform when a recognized pipeline cannot
@@ -77,41 +79,38 @@ order, lexical bindings, thrown errors, the canonical `Option.none` singleton,
 runner-construction timing, reusable reducer seeds, and array semantics for
 accepted sites.
 
-### What fusing changes
+### Tier-preserving lowering
 
-Compiling a pipeline fuses it, and fusing is observable if your callbacks have
-side effects. The result is always the same. How many times your callbacks run,
-and in what order, is not:
+The compiler preserves the execution tier selected by the public import:
 
-```ts
-pipe([1, 2, 3], map(log), filter(big))
-// runtime  (root pipe, sequential): log 1, log 2, log 3, then the filters
-// compiled (fused):                 log 1, filter, log 2, filter, log 3, filter
+| Source                         | Recognized facade exports                                      | Compiled layout / fallback |
+| ------------------------------ | -------------------------------------------------------------- | -------------------------- |
+| `@stopcock/fp`                 | `pipe`, `flow`                                                 | sequential stages          |
+| `@stopcock/fp/compile`         | `compile`, `compilePure`                                       | compact fusion             |
+| `@stopcock/fp/fusion`          | `pipe`, `fusedPipe`, `flow`, `fusedFlow`, `compile`            | compact fusion             |
+| `@stopcock/fp-optimizer`       | `pipe`, `fusedPipe`, `flow`, `fusedFlow`, `compile`, `compilePure` | optimized fusion        |
+| configured wrapper source      | configured facade exports                                      | declared tier or visible compiler fallback |
 
-pipe([1, 2, 3, 4], map(log), find((x) => x === 2))
-// runtime  (root pipe, sequential): log runs 4 times
-// compiled (fused):                 log runs 2 times, then stops
-```
+Root `pipe` therefore keeps stage-by-stage callback order and materialization.
+Explicit fusion and optimizer imports keep their interleaved/early-exit
+semantics. An unsafe or unsupported site stays on the same runtime tier instead
+of silently falling back to a different implementation.
 
-Root `pipe` is sequential at runtime and documents that. This plugin lowers the
-same call into a fused loop, so enabling it changes the above. That is the point
-of the plugin — it is the same thing `@stopcock/fp/fusion` and
-`@stopcock/fp-optimizer` do, obtained by adding a build step instead of changing
-an import — but it means a pipeline whose callbacks log, count, or mutate can
-behave differently with the plugin on.
+Every accepted site is first represented as a versioned static Plan IR whose
+ordered captures, generated S2 operator facts, boundaries, terminal, semantic
+mode, and source tier are authoritative for emission. Operator expressions are
+evaluated exactly once at their original construction point, including in pure
+mode; caches, provenance, inherited setters, and thrown errors are not erased.
+The generated execution loop does not retain a root dispatcher, compiler,
+fusion planner, or optimizer engine. Exact construction leaves may remain
+because their observable JavaScript behavior is part of the source program.
 
-Pure callbacks are unaffected. If yours are not pure and you depend on
-stage-by-stage order, keep those pipelines out of the compiler (an unsupported
-operator or a dynamic step leaves the site as a runtime call), or write them as
-explicit loops. `compile` and `compilePure` can be lowered from either the root
-or `/compile` entry, including a single static step. A single-step `flow`
-remains untouched because the runtime deliberately returns the original
-function identity. `compilePure` shapes with the runtime's bounded top-k or
-callback-elision rewrite remain portable until those pure-only rewrites have
-equivalent AOT templates, avoiding a silent performance regression. The
-compiler does not silently materialize generic
-iterables. Dynamic step factories, spread arguments, unsupported operators,
-and ambiguous or shadowed imports remain runtime FP calls.
+`compilePure` and `assumePure: true` may remove per-element work only for a
+proven rewrite. This release includes `map ... map -> length` callback
+elision. The bounded `sort -> take` top-k shape remains on the runtime until an
+equivalent AOT lowering exists. Dynamic step factories, spread arguments,
+unsupported operators, direct `eval`, ambiguous imports, and unsafe expression
+contexts remain visible runtime calls.
 
 ## Programmatic transform
 
@@ -128,8 +127,10 @@ console.log(callbackArity('map')) // 1
 ```
 
 Unsupported or semantically unsafe sites remain ordinary FP calls unless
-`diagnostics: 'error'` requests a fail-closed build. Source maps and per-site
-diagnostics identify every transformed or skipped pipeline.
+`diagnostics: 'error'` requests a fail-closed build. Parser failures in files
+that contain configured Stopcock imports also fail closed in error mode.
+Source maps and per-site diagnostics identify every transformed or skipped
+pipeline.
 
 `callbackArity(name)` exposes the checked-in operator metadata used by the
 transform and returns `undefined` for an unknown or unsupported name. It is
@@ -171,6 +172,12 @@ packed release evidence. A fallback never reads as transformed, a statically
 selected lowering never reads as executed, and a stale source, config,
 semantic-manifest, output, package, or runtime hash withdraws every claim in
 the classes it invalidates.
+
+Each compiler receipt records the exact source module/export, ordered source
+span, selected fallback tier/lowering, generated semantic identities, emitted
+code and source-map hashes, and a deterministic SHA-256 of the complete receipt
+core excluding the hash itself. `stopcock check` recomputes that projection and
+rejects tampered or duplicate receipts.
 
 ## Development contract
 

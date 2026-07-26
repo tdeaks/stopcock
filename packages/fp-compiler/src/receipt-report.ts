@@ -4,6 +4,7 @@
 // The `.js` specifier is deliberate: the generated module's dotted basename
 // looks like it already carries an extension, so the declaration-specifier
 // rewriter leaves it alone and NodeNext consumers need it spelled out here.
+import { createHash } from 'node:crypto'
 import {
   RECEIPT_SCHEMA_V1,
   RECEIPT_SCHEMA_V1_HASH,
@@ -16,6 +17,40 @@ import {
   type ReleaseEvidenceRefV1,
   type RuntimeProfileV1,
 } from './receipt-schema.generated.js'
+
+/*
+ * Keep `stopcock check` a standalone packed executable: importing the
+ * transform-side receipt emitter would pull Babel and the compiler into the
+ * CLI, while importing its shared helper would force a relative runtime
+ * chunk. This verifier projection intentionally mirrors receipt-core.ts and
+ * is guarded by the tamper corpus plus packed-CLI no-relative-import test.
+ */
+function checkedCompilerReceiptCoreHash(receipt: CompilerReceiptV1): string {
+  const core: Omit<CompilerReceiptV1, 'receiptId'> = {
+    kind: receipt.kind,
+    schemaVersion: receipt.schemaVersion,
+    sourcePath: receipt.sourcePath,
+    sourceHash: receipt.sourceHash,
+    sourceSpecifier: receipt.sourceSpecifier,
+    sourceExport: receipt.sourceExport,
+    sourceSpan: receipt.sourceSpan,
+    siteFingerprint: receipt.siteFingerprint,
+    compilerHash: receipt.compilerHash,
+    configHash: receipt.configHash,
+    semanticManifestHash: receipt.semanticManifestHash,
+    semanticIds: receipt.semanticIds,
+    semanticMode: receipt.semanticMode,
+    segmentKinds: receipt.segmentKinds,
+    disposition: receipt.disposition,
+    loweringHash: receipt.loweringHash,
+    fallbackTier: receipt.fallbackTier,
+    reasonCodes: receipt.reasonCodes,
+    emittedCodeHash: receipt.emittedCodeHash,
+    sourceMapHash: receipt.sourceMapHash,
+    evidenceRefs: receipt.evidenceRefs,
+  }
+  return `sha256:${createHash('sha256').update(JSON.stringify(core)).digest('hex')}`
+}
 
 export type EvidenceClassV1 =
   | 'declared-capability'
@@ -219,12 +254,15 @@ function staleHashClasses(
 }
 
 function renderDeclaredCapability(receipt: CompilerReceiptV1): readonly string[] {
-  const semantics = receipt.semanticIds
-    .map((identity) => `${identity.semanticId}@${identity.semanticRevision}/${identity.mode}`)
-    .join(', ')
+  const semantics =
+    receipt.semanticIds.length === 0
+      ? 'no generated operator semantic identities'
+      : receipt.semanticIds
+          .map((identity) => `${identity.semanticId}@${identity.semanticRevision}/${identity.mode}`)
+          .join(', ')
   const segments = receipt.segmentKinds.length === 0 ? 'none' : receipt.segmentKinds.join(', ')
   return [
-    `the site declares semantics ${semantics} in ${receipt.semanticMode} mode`,
+    `the site declares ${semantics} in ${receipt.semanticMode} mode`,
     `declared segment kinds: ${segments}`,
     'a declaration states what the compiler was asked to preserve, not what it produced',
   ]
@@ -425,12 +463,17 @@ function evaluatePolicy(
   input: RenderInputV1,
 ): PolicyResultV1 {
   const findings: string[] = []
+  const isFullyStatic = (site: RenderedSiteV1): boolean =>
+    site.disposition === 'transformed' && !site.reasonCodes.includes('opaque-callback')
 
   if (policy === 'unsupported') {
     for (const site of sites) {
-      if (site.disposition !== 'transformed') {
+      if (!isFullyStatic(site)) {
         findings.push(
-          `${site.sourcePath} (${short(site.receiptId)}) is ${site.disposition} at tier ${site.fallbackTier}`,
+          site.disposition === 'transformed' &&
+            site.reasonCodes.includes('opaque-callback')
+            ? `${site.sourcePath} (${short(site.receiptId)}) is partially transformed with an opaque callback`
+            : `${site.sourcePath} (${short(site.receiptId)}) is ${site.disposition} at tier ${site.fallbackTier}`,
         )
       }
     }
@@ -482,7 +525,7 @@ function evaluatePolicy(
         findings: ['no coverage threshold was supplied'],
       }
     }
-    const transformed = sites.filter((site) => site.disposition === 'transformed').length
+    const transformed = sites.filter(isFullyStatic).length
     if (transformed * threshold.denominator < threshold.numerator * sites.length) {
       findings.push(
         `coverage ${transformed}/${sites.length} is below the required ${threshold.numerator}/${threshold.denominator}`,
@@ -512,7 +555,7 @@ function evaluatePolicy(
     }
   }
   if (policy.minCoverageNumerator !== undefined && policy.minCoverageDenominator !== undefined) {
-    const transformed = sites.filter((site) => site.disposition === 'transformed').length
+    const transformed = sites.filter(isFullyStatic).length
     if (transformed * policy.minCoverageDenominator < policy.minCoverageNumerator * sites.length) {
       findings.push(
         `coverage ${transformed}/${sites.length} is below the required ${policy.minCoverageNumerator}/${policy.minCoverageDenominator}`,
@@ -638,6 +681,13 @@ export function collectRecordsV1(
         continue
       }
       const record: ReceiptRecordV1 = result.value
+      if (
+        record.kind === 'stopcock.compiler-receipt' &&
+        checkedCompilerReceiptCoreHash(record) !== record.receiptId
+      ) {
+        errors.push(`${where}: receiptId does not match the deterministic compiler receipt core`)
+        continue
+      }
       const id =
         record.kind === 'stopcock.runtime-profile'
           ? record.profileId

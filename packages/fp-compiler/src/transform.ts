@@ -11,18 +11,37 @@ import {
   TERMINAL_OPS,
   bindingSlots,
   callbackArity,
+  compilerOperatorFact,
   isBareOp,
   isRegistryOpName,
 } from './ops'
 import {
+  createStaticCompilerPlan,
   DEFAULT_OPTION_NONE_LOCAL,
-  generateFusedBody,
-  generateFusedLoop,
-  generateFusedRunner,
-  generateFusedTailBody,
+  generateStaticPlanBody,
+  generateStaticPlanRunner,
+  generateStaticPlanTailBody,
   type Step,
 } from './codegen'
+import {
+  concatMappedCode,
+  renderFilePatches,
+  sourceCode,
+  type FilePatch,
+  type MappedCode,
+} from './mapped-code'
+import {
+  segmentKindsForOperatorFacts,
+  type OpaqueReceiverAbi,
+  type StaticCompilerPlanV1,
+} from './plan-ir'
+import {
+  COMPILER_EMITTER_ABI_V1_HASH,
+  OPERATOR_SEMANTIC_FACTS_V1_HASH,
+} from './ops-table'
+import type { ReceiptReasonCodeV1 } from './receipt-schema.generated'
 import type {
+  CompilerFallbackTier,
   CompilerSemantics,
   DiagnosticSite,
   StopcockCompilerOptions,
@@ -42,7 +61,14 @@ const traverse: typeof _traverse =
  * would have silently stopped compiling exactly the pipelines whose authors
  * cared most about speed.
  */
-const DEFAULT_IMPORT_SOURCES = ['@stopcock/fp', '@stopcock/fp-optimizer', '@stopcock/fp/fusion']
+const DEFAULT_IMPORT_SOURCES = ['@stopcock/fp', '@stopcock/fp/fusion', '@stopcock/fp-optimizer']
+const DEFAULT_ARRAY_IMPORT_SOURCES = ['@stopcock/fp/array']
+const DEFAULT_COMPILE_IMPORT_SOURCES = [
+  '@stopcock/fp/compile',
+  '@stopcock/fp/fusion',
+  '@stopcock/fp-optimizer',
+]
+const OPTION_IMPORT_SOURCE = '@stopcock/fp'
 const OPTION_TERMINALS = new Set(['find', 'findIndex', 'findMap', 'head', 'last', 'min', 'max'])
 const PURE_SORT_OPS = new Set(['sort', 'sortBy', 'sortAsc', 'sortDesc'])
 
@@ -51,11 +77,68 @@ interface Bindings {
   readonly flowLocals: Set<string>
   readonly compileLocals: Set<string>
   readonly compilePureLocals: Set<string>
-  readonly rootNamespaceLocals: Set<string>
-  readonly compileNamespaceLocals: Set<string>
+  /** Namespace local -> facade exports that the exact source really exposes. */
+  readonly facadeNamespaceExports: Map<string, ReadonlySet<FacadeExport>>
   readonly arrayNamespaceLocals: Set<string>
   /** Local identifier -> canonical @stopcock/fp/array export name. */
   readonly arrayOpLocals: Map<string, string>
+  /** Imported pipe/flow/compile binding or namespace -> exact module source. */
+  readonly sourceByLocal: Map<string, string>
+  /** Named imported facade binding -> exact public export before local aliasing. */
+  readonly exportByLocal: Map<string, FacadeExport>
+}
+
+type FacadeExport =
+  | 'pipe'
+  | 'fusedPipe'
+  | 'flow'
+  | 'fusedFlow'
+  | 'compile'
+  | 'compilePure'
+
+const FIRST_PARTY_FACADE_EXPORTS = new Map<string, ReadonlySet<FacadeExport>>([
+  ['@stopcock/fp', new Set<FacadeExport>(['pipe', 'flow'])],
+  ['@stopcock/fp/compile', new Set<FacadeExport>(['compile', 'compilePure'])],
+  [
+    '@stopcock/fp/fusion',
+    new Set<FacadeExport>(['pipe', 'fusedPipe', 'flow', 'fusedFlow', 'compile']),
+  ],
+  [
+    '@stopcock/fp-optimizer',
+    new Set<FacadeExport>([
+      'pipe',
+      'fusedPipe',
+      'flow',
+      'fusedFlow',
+      'compile',
+      'compilePure',
+    ]),
+  ],
+])
+
+function facadeExportsFor(
+  source: string,
+  isRootSource: boolean,
+  isCompileSource: boolean,
+): ReadonlySet<FacadeExport> {
+  const firstParty = FIRST_PARTY_FACADE_EXPORTS.get(source)
+  if (firstParty !== undefined) return firstParty
+
+  /*
+   * Unknown sources exist only because the caller configured them. Their two
+   * explicit source lists are the capability declaration; no unconfigured
+   * spelling is inferred.
+   */
+  const exports = new Set<FacadeExport>()
+  if (isRootSource) {
+    exports.add('pipe')
+    exports.add('flow')
+  }
+  if (isCompileSource) {
+    exports.add('compile')
+    exports.add('compilePure')
+  }
+  return exports
 }
 
 function arraySourcesFor(
@@ -70,15 +153,23 @@ function compileSourcesFor(
   importSources: readonly string[],
   configured: readonly string[] | undefined,
 ): readonly string[] {
-  const specialistSources =
-    configured ?? importSources.map((source) => `${source.replace(/\/+$/, '')}/compile`)
-  return [...new Set([...importSources, ...specialistSources])]
+  if (configured) return configured
+  return [
+    ...new Set([
+      ...importSources,
+      ...importSources.map((source) => `${source.replace(/\/+$/, '')}/compile`),
+    ]),
+  ]
 }
 
-function uniqueLocal(source: string, preferred: string): string {
+function uniqueLocal(program: t.Program, preferred: string): string {
+  const names = new Set<string>()
+  t.traverseFast(program, (node) => {
+    if (t.isIdentifier(node)) names.add(node.name)
+  })
   let candidate = preferred
   let suffix = 2
-  while (new RegExp(`\\b${candidate}\\b`, 'u').test(source)) {
+  while (names.has(candidate)) {
     candidate = `${preferred}_${suffix}`
     suffix++
   }
@@ -93,6 +184,14 @@ function arrayConstructorForScope(scope: Scope): string | undefined {
   return scope.getBinding('Array') === undefined ? 'Array' : undefined
 }
 
+function lexicalArrayExclusion(scope: Scope): string | undefined {
+  if (scope.getBinding('Array') === undefined) return undefined
+  return (
+    'static lowering declines a visible lexical Array binding because the ' +
+    'runtime operator resolves the module realm Array constructor'
+  )
+}
+
 function globalUndefinedIsUnbound(scope: Scope): boolean {
   return scope.getBinding('undefined') === undefined
 }
@@ -100,11 +199,6 @@ function globalUndefinedIsUnbound(scope: Scope): boolean {
 function hasConstantLocalSource(source: t.Expression, scope: Scope): boolean {
   if (!t.isIdentifier(source)) return false
   const binding = scope.getBinding(source.name)
-  // A parameter is already evaluated when its function is entered, so using
-  // it directly cannot reorder a source read past callback construction. A
-  // constant outer `let`/`const` can still be in its TDZ when this function is
-  // called; retain the source alias there so the original error/effect order
-  // is preserved.
   return binding?.kind === 'param' && binding.constant
 }
 
@@ -115,17 +209,83 @@ function canSpliceTailStatements(code: string, returnParent: NodePath | null): b
   return returnParent?.isBlockStatement() === true && !GENERATED_TAIL_LOCAL.test(code)
 }
 
-function activeRootSource(program: t.Program, importSources: readonly string[]): string {
-  for (const statement of program.body) {
-    if (
-      t.isImportDeclaration(statement) &&
-      importSources.includes(statement.source.value) &&
-      statement.importKind !== 'type'
-    ) {
-      return statement.source.value
+function generatedBodyCollision(
+  generated: string,
+  originalCall: t.CallExpression,
+  scope: Scope,
+): string | undefined {
+  const compilerLocals = new Set<string>()
+  const declarations = /\b(?:const|let|var)\s+(_[A-Za-z0-9_$]*)/gu
+  for (const match of generated.matchAll(declarations)) compilerLocals.add(match[1])
+  const arrowParameters = /\(\s*(_[A-Za-z0-9_$]*)\s*\)\s*=>/gu
+  for (const match of generated.matchAll(arrowParameters)) compilerLocals.add(match[1])
+  const originalIdentifiers = new Set<string>()
+  t.traverseFast(originalCall, (node) => {
+    if (t.isIdentifier(node)) originalIdentifiers.add(node.name)
+  })
+  for (const name of compilerLocals) {
+    if (scope.hasBinding(name) || originalIdentifiers.has(name)) {
+      return name
     }
   }
-  return importSources[0] ?? '@stopcock/fp'
+  return undefined
+}
+
+function generatedOuterLabel(path: NodePath<t.CallExpression>): string {
+  const activeLabels = new Set<string>()
+  let parent: NodePath | null = path.parentPath
+  while (parent !== null) {
+    if (parent.isLabeledStatement()) activeLabels.add(parent.node.label.name)
+    parent = parent.parentPath
+  }
+  let candidate = '_outer'
+  let suffix = 0
+  while (activeLabels.has(candidate)) candidate = `_outer${++suffix}`
+  return candidate
+}
+
+function containsOuterAwaitOrYield(node: t.Node | null | undefined): boolean {
+  if (node == null) return false
+  if (t.isAwaitExpression(node) || t.isYieldExpression(node)) return true
+  // Function bodies own their await/yield grammar. Computed method keys do
+  // not: they execute while the enclosing object/class expression is built.
+  if (t.isFunction(node)) {
+    if (
+      (t.isObjectMethod(node) || t.isClassMethod(node) || t.isClassPrivateMethod(node)) &&
+      node.computed &&
+      containsOuterAwaitOrYield(node.key)
+    ) {
+      return true
+    }
+    return false
+  }
+  // Do not skip a class wholesale. `extends`, computed keys, decorators and
+  // static initialization execute in the enclosing context; recursive
+  // function handling above still excludes method bodies.
+  for (const key of t.VISITOR_KEYS[node.type] ?? []) {
+    const value = (node as unknown as Record<string, unknown>)[key]
+    if (Array.isArray(value)) {
+      if (
+        value.some(
+          (item) =>
+            item !== null &&
+            typeof item === 'object' &&
+            'type' in item &&
+            containsOuterAwaitOrYield(item as t.Node),
+        )
+      ) {
+        return true
+      }
+    } else if (
+      value !== null &&
+      typeof value === 'object' &&
+      'type' in value &&
+      containsOuterAwaitOrYield(value as t.Node)
+    ) {
+      return true
+    }
+  }
+  return false
 }
 
 function usesOptionTerminal(steps: readonly Step[]): boolean {
@@ -136,15 +296,6 @@ function retainedPortablePureRewrite(steps: readonly Step[]): string | undefined
   for (let index = 0; index < steps.length - 1; index++) {
     if (PURE_SORT_OPS.has(steps[index].name) && steps[index + 1].name === 'take') {
       return 'sort followed by take uses the runtime bounded top-k rewrite'
-    }
-  }
-
-  for (let index = 1; index < steps.length; index++) {
-    if (steps[index].name !== 'length') continue
-    let cursor = index - 1
-    while (cursor >= 0 && steps[cursor].name === 'map') cursor--
-    if (cursor < index - 1 && (cursor < 0 || BOUNDARY_OPS.has(steps[cursor].name))) {
-      return 'map followed by length uses the runtime callback-elision rewrite'
     }
   }
   return undefined
@@ -161,10 +312,11 @@ function collectBindings(
     flowLocals: new Set(),
     compileLocals: new Set(),
     compilePureLocals: new Set(),
-    rootNamespaceLocals: new Set(),
-    compileNamespaceLocals: new Set(),
+    facadeNamespaceExports: new Map(),
     arrayNamespaceLocals: new Set(),
     arrayOpLocals: new Map(),
+    sourceByLocal: new Map(),
+    exportByLocal: new Map(),
   }
   for (const stmt of program.body) {
     if (!t.isImportDeclaration(stmt)) continue
@@ -174,28 +326,54 @@ function collectBindings(
     const isArraySource = arrayImportSources.includes(stmt.source.value)
     const isCompileSource = compileImportSources.includes(stmt.source.value)
     if (!isRootSource && !isArraySource && !isCompileSource) continue
+    const facadeExports = facadeExportsFor(
+      stmt.source.value,
+      isRootSource,
+      isCompileSource,
+    )
 
     for (const spec of stmt.specifiers) {
       if (t.isImportNamespaceSpecifier(spec)) {
-        if (isRootSource) bindings.rootNamespaceLocals.add(spec.local.name)
-        if (isCompileSource) bindings.compileNamespaceLocals.add(spec.local.name)
+        if (facadeExports.size > 0) {
+          bindings.facadeNamespaceExports.set(spec.local.name, facadeExports)
+        }
         if (isArraySource) bindings.arrayNamespaceLocals.add(spec.local.name)
+        if (facadeExports.size > 0) {
+          bindings.sourceByLocal.set(spec.local.name, stmt.source.value)
+        }
         continue
       }
       if (!t.isImportSpecifier(spec) || spec.importKind === 'type') continue
       const imported = t.isIdentifier(spec.imported) ? spec.imported.name : spec.imported.value
-      if (isRootSource || isCompileSource) {
-        if (imported === 'pipe') bindings.pipeLocals.add(spec.local.name)
-        else if (imported === 'flow') bindings.flowLocals.add(spec.local.name)
+      if (facadeExports.has(imported as FacadeExport)) {
+        if (imported === 'pipe' || imported === 'fusedPipe') {
+          bindings.pipeLocals.add(spec.local.name)
+        } else if (imported === 'flow' || imported === 'fusedFlow') {
+          bindings.flowLocals.add(spec.local.name)
+        }
         else if (imported === 'compile') bindings.compileLocals.add(spec.local.name)
         else if (imported === 'compilePure') {
           bindings.compilePureLocals.add(spec.local.name)
         }
+        bindings.sourceByLocal.set(spec.local.name, stmt.source.value)
+        bindings.exportByLocal.set(spec.local.name, imported as FacadeExport)
       }
       if (isArraySource) bindings.arrayOpLocals.set(spec.local.name, imported)
     }
   }
   return bindings
+}
+
+function isVisibleNamespaceExport(
+  name: string,
+  exported: FacadeExport,
+  bindings: Bindings,
+  scope: Scope,
+): boolean {
+  return (
+    bindings.facadeNamespaceExports.get(name)?.has(exported) === true &&
+    scope.getBinding(name)?.kind === 'module'
+  )
 }
 
 function isVisibleModuleBinding(
@@ -216,9 +394,14 @@ function isPipeCallee(node: t.CallExpression['callee'], bindings: Bindings, scop
     !node.computed &&
     t.isIdentifier(node.object) &&
     t.isIdentifier(node.property) &&
-    node.property.name === 'pipe'
+    (node.property.name === 'pipe' || node.property.name === 'fusedPipe')
   ) {
-    return isVisibleModuleBinding(node.object.name, bindings.rootNamespaceLocals, scope)
+    return isVisibleNamespaceExport(
+      node.object.name,
+      node.property.name as 'pipe' | 'fusedPipe',
+      bindings,
+      scope,
+    )
   }
   return false
 }
@@ -243,14 +426,184 @@ function isDeferredCallee(
     t.isIdentifier(node.property)
   ) {
     if (
-      !isVisibleModuleBinding(node.object.name, bindings.rootNamespaceLocals, scope) &&
-      !isVisibleModuleBinding(node.object.name, bindings.compileNamespaceLocals, scope)
-    ) {
-      return undefined
+      (node.property.name === 'flow' || node.property.name === 'fusedFlow') &&
+      isVisibleNamespaceExport(
+        node.object.name,
+        node.property.name as 'flow' | 'fusedFlow',
+        bindings,
+        scope,
+      )
+    ) return 'flow'
+    if (
+      node.property.name === 'compile' &&
+      isVisibleNamespaceExport(node.object.name, 'compile', bindings, scope)
+    ) return 'compile'
+    if (
+      node.property.name === 'compilePure' &&
+      isVisibleNamespaceExport(node.object.name, 'compilePure', bindings, scope)
+    ) return 'compilePure'
+  }
+  return undefined
+}
+
+function sourceForCallee(
+  node: t.CallExpression['callee'],
+  bindings: Bindings,
+): string | undefined {
+  if (t.isIdentifier(node)) return bindings.sourceByLocal.get(node.name)
+  if (t.isMemberExpression(node) && t.isIdentifier(node.object)) {
+    return bindings.sourceByLocal.get(node.object.name)
+  }
+  return undefined
+}
+
+function exportForCallee(
+  node: t.CallExpression['callee'],
+  bindings: Bindings,
+): string | undefined {
+  if (t.isIdentifier(node)) return bindings.exportByLocal.get(node.name)
+  if (
+    t.isMemberExpression(node) &&
+    !node.computed &&
+    t.isIdentifier(node.object) &&
+    t.isIdentifier(node.property) &&
+    bindings.facadeNamespaceExports
+      .get(node.object.name)
+      ?.has(node.property.name as FacadeExport) === true
+  ) {
+    return node.property.name
+  }
+  return undefined
+}
+
+function sourceIdentityForCallee(
+  node: t.CallExpression['callee'],
+  bindings: Bindings,
+): Pick<DiagnosticSite, 'sourceSpecifier' | 'sourceExport'> {
+  return {
+    sourceSpecifier: sourceForCallee(node, bindings),
+    sourceExport: exportForCallee(node, bindings),
+  }
+}
+
+function fallbackTierFor(
+  kind: 'pipe' | 'flow' | 'compile' | 'compilePure',
+  node: t.CallExpression['callee'],
+  bindings: Bindings,
+  configured: StopcockCompilerOptions['fallbackTiers'],
+): CompilerFallbackTier {
+  const source = sourceForCallee(node, bindings)
+  if (source !== undefined && configured?.[source] !== undefined) {
+    return configured[source]
+  }
+  if (source === '@stopcock/fp-optimizer') {
+    return 'optimized'
+  }
+  if (
+    source === '@stopcock/fp/fusion' ||
+    source === '@stopcock/fp/compile'
+  ) {
+    return 'compact'
+  }
+  if (source === '@stopcock/fp' && kind !== 'compile' && kind !== 'compilePure') {
+    return 'sequential'
+  }
+  // A configured wrapper can expose any implementation. Until it declares a
+  // stronger tier contract, retain the compiler schema's conservative tier.
+  return 'compiler'
+}
+
+function fallbackTierForRawSource(
+  code: string,
+  candidates: ReadonlySet<string>,
+  configured: StopcockCompilerOptions['fallbackTiers'],
+): CompilerFallbackTier {
+  const importSource =
+    [...code.matchAll(/\b(?:from\s*)?['"]([^'"]+)['"]/gu)]
+      .map((match) => match[1])
+      .find((source) => candidates.has(source))
+  if (importSource === undefined) return 'compiler'
+  if (configured?.[importSource] !== undefined) return configured[importSource]
+  if (importSource === '@stopcock/fp-optimizer') return 'optimized'
+  if (
+    importSource === '@stopcock/fp/fusion' ||
+    importSource === '@stopcock/fp/compile'
+  ) return 'compact'
+  if (importSource === '@stopcock/fp') return 'sequential'
+  return 'compiler'
+}
+
+function isProvenReceiverInsensitive(node: t.Expression, scope: Scope): boolean {
+  if (t.isArrowFunctionExpression(node)) return true
+  if (!t.isIdentifier(node)) return false
+  const binding = scope.getBinding(node.name)
+  if (binding === undefined || !binding.constant || binding.constantViolations.length > 0) {
+    return false
+  }
+  if (!binding.path.isVariableDeclarator()) return false
+  return t.isArrowFunctionExpression(binding.path.node.init)
+}
+
+function opaqueReceiverFor(
+  callee: t.CallExpression['callee'],
+  residual: t.Expression,
+  bindings: Bindings,
+  scope: Scope,
+): { readonly receiver?: OpaqueReceiverAbi; readonly reason?: string } {
+  // An arrow's lexical receiver is invariant under property/bare/call
+  // invocation, so every facade can lower it without reproducing an internal
+  // receiver object.
+  if (isProvenReceiverInsensitive(residual, scope)) {
+    return { receiver: 'receiver-insensitive' }
+  }
+  const source = sourceForCallee(callee, bindings)
+  if (source === '@stopcock/fp') {
+    // Root sequential pipe invokes through its real rest-step array. The plan
+    // retains every actual step value and reconstructs that exact vector.
+    return { receiver: 'step-vector' }
+  }
+  return {
+    reason:
+      'opaque receiver ABI is path-dependent for this facade; only a proven arrow or root sequential step vector is safe',
+  }
+}
+
+function containsUnshadowedDirectEval(ast: t.File): boolean {
+  let found = false
+  traverse(ast, {
+    CallExpression(path) {
+      if (
+        t.isIdentifier(path.node.callee, { name: 'eval' }) &&
+        path.scope.getBinding('eval') === undefined
+      ) {
+        found = true
+        path.stop()
+      }
+    },
+  })
+  return found
+}
+
+function staleCompilerSelection(
+  options: StopcockCompilerOptions,
+): { readonly reason: string; readonly reasonCode: ReceiptReasonCodeV1 } | undefined {
+  if (
+    options.expectedSemanticManifestHash !== undefined &&
+    options.expectedSemanticManifestHash !== OPERATOR_SEMANTIC_FACTS_V1_HASH
+  ) {
+    return {
+      reason: `stale semantic manifest: expected ${options.expectedSemanticManifestHash}, compiler has ${OPERATOR_SEMANTIC_FACTS_V1_HASH}`,
+      reasonCode: 'stale-semantic-hash',
     }
-    if (node.property.name === 'flow') return 'flow'
-    if (node.property.name === 'compile') return 'compile'
-    if (node.property.name === 'compilePure') return 'compilePure'
+  }
+  if (
+    options.expectedLoweringAbiHash !== undefined &&
+    options.expectedLoweringAbiHash !== COMPILER_EMITTER_ABI_V1_HASH
+  ) {
+    return {
+      reason: `stale lowering ABI: expected ${options.expectedLoweringAbiHash}, compiler has ${COMPILER_EMITTER_ABI_V1_HASH}`,
+      reasonCode: 'stale-lowering-hash',
+    }
   }
   return undefined
 }
@@ -302,6 +655,8 @@ function analyzeSteps(call: t.CallExpression): Analysis {
 
 interface StepAnalysis {
   readonly ok: boolean
+  /** A syntactically present, unresolved unary step rather than a malformed known op. */
+  readonly opaque?: boolean
   readonly reason?: string
   readonly name?: string
   readonly args: readonly t.Expression[]
@@ -327,11 +682,21 @@ function analyzeStep(stepNode: t.Node, bindings: Bindings, scope: Scope): StepAn
     opName = resolveStepOpName(stepNode, bindings, scope)
     invoked = false
   } else {
-    return { ok: false, args: [], reason: 'step is not an imported array op reference' }
+    return {
+      ok: false,
+      opaque: true,
+      args: [],
+      reason: 'unrecognized step (not an imported array op)',
+    }
   }
 
   if (opName === undefined) {
-    return { ok: false, args: [], reason: 'unrecognized step (not an imported array op)' }
+    return {
+      ok: false,
+      opaque: true,
+      args: [],
+      reason: 'unrecognized step (not an imported array op)',
+    }
   }
   if (!SUPPORTED_OP_NAMES.has(opName)) {
     const reason = isRegistryOpName(opName)
@@ -378,6 +743,8 @@ function analyzeStep(stepNode: t.Node, bindings: Bindings, scope: Scope): StepAn
 interface StepsResult {
   readonly ok: boolean
   readonly steps?: Step[]
+  /** One final opaque unary step executed after the compiled static prefix. */
+  readonly residual?: t.Expression
   readonly reason?: string
   /**
    * Operators recognised before the collector gave up. A rejected site that
@@ -392,21 +759,65 @@ function collectSteps(
   stepNodes: readonly t.Expression[],
   bindings: Bindings,
   scope: Scope,
+  allowFinalResidual = false,
 ): StepsResult {
   const steps: Step[] = []
+  let terminalName: string | undefined
   for (let i = 0; i < stepNodes.length; i++) {
     const check = analyzeStep(stepNodes[i], bindings, scope)
     const recognised = steps.map((step) => step.name)
-    if (!check.ok) return { ok: false, reason: check.reason, partialNames: recognised }
-    const opName = check.name!
-    if (i < stepNodes.length - 1 && (TERMINAL_OPS.has(opName) || FINAL_BOUNDARY_OPS.has(opName))) {
+    if (!check.ok) {
+      const recognisedIncludingRejected =
+        check.name === undefined ? recognised : [...recognised, check.name]
+      if (
+        allowFinalResidual &&
+        check.opaque === true &&
+        i === stepNodes.length - 1 &&
+        steps.length > 0
+      ) {
+        if (steps.some((step) => BOUNDARY_OPS.has(step.name) || step.name === 'reduce')) {
+          return {
+            ok: false,
+            reason:
+              'prefix residual lowering does not yet admit materialization boundaries or reduce',
+            partialNames: recognised,
+          }
+        }
+        return { ok: true, steps, residual: stepNodes[i] }
+      }
       return {
         ok: false,
-        reason: `${opName}: terminal op must be the last step`,
+        reason: check.reason,
+        partialNames: recognisedIncludingRejected,
+      }
+    }
+    if (terminalName !== undefined) {
+      return {
+        ok: false,
+        reason: `${terminalName}: terminal op must be the last step`,
+        partialNames: [...recognised, check.name!],
+      }
+    }
+    const opName = check.name!
+    const fact = compilerOperatorFact(opName)
+    if (fact === undefined) {
+      return {
+        ok: false,
+        reason: `${opName}: generated compiler fact is unavailable`,
         partialNames: [...recognised, opName],
       }
     }
-    steps.push({ name: opName, node: stepNodes[i], args: check.args })
+    steps.push({ name: opName, node: stepNodes[i], args: check.args, fact })
+    if (TERMINAL_OPS.has(opName) || FINAL_BOUNDARY_OPS.has(opName)) {
+      terminalName = opName
+      if (!allowFinalResidual && i < stepNodes.length - 1) {
+        return {
+          ok: false,
+          reason: `${opName}: terminal op must be the last step`,
+          partialNames: [...recognised, opName],
+        }
+      }
+    }
   }
   return { ok: true, steps }
 }
@@ -427,10 +838,20 @@ function tryTransformDeferred(
   scope: Scope,
   code: string,
   optionNoneLocal: string,
+  semantics: CompilerSemantics,
+  sourceTier: CompilerFallbackTier,
+  staleSelection:
+    | { readonly reason: string; readonly reasonCode: ReceiptReasonCodeV1 }
+    | undefined,
+  directEval: boolean,
+  outerLabel: string,
 ): {
-  readonly code?: string
+  readonly emitted?: MappedCode
+  readonly plan?: StaticCompilerPlanV1
   readonly steps?: number
   readonly reason?: string
+  readonly opNames?: readonly string[]
+  readonly reasonCodes?: readonly ReceiptReasonCodeV1[]
   readonly needsOptionImport?: boolean
 } {
   if (call.arguments.some((a) => t.isSpreadElement(a))) {
@@ -444,26 +865,79 @@ function tryTransformDeferred(
   }
   const collected = collectSteps(stepNodes, bindings, scope)
   if (!collected.ok) {
-    return { reason: `deferred to a later compiler wave: ${collected.reason}` }
+    return {
+      reason: `deferred to a later compiler wave: ${collected.reason}`,
+      opNames: collected.partialNames,
+    }
   }
   const steps = collected.steps!
+  if (staleSelection !== undefined) {
+    return {
+      reason: staleSelection.reason,
+      reasonCodes: [staleSelection.reasonCode],
+      opNames: steps.map((step) => step.name),
+    }
+  }
+  if (directEval) {
+    return {
+      reason:
+        'static lowering declines unshadowed direct eval because generated lexical bindings would change its observable scope',
+      reasonCodes: ['strict-scope-exclusion'],
+      opNames: steps.map((step) => step.name),
+    }
+  }
   if (kind === 'compilePure') {
     const retainedRewrite = retainedPortablePureRewrite(steps)
     if (retainedRewrite) {
       return {
         reason: `retained portable compilePure optimization: ${retainedRewrite}`,
+        opNames: steps.map((step) => step.name),
       }
     }
   }
+  if (stepNodes.some((step) => containsOuterAwaitOrYield(step))) {
+    return {
+      reason:
+        'deferred constructor wrapper cannot move an outer await or yield out of its owning function',
+      opNames: steps.map((step) => step.name),
+    }
+  }
+  const arrayExclusion = lexicalArrayExclusion(scope)
+  if (arrayExclusion !== undefined) {
+    return {
+      reason: arrayExclusion,
+      reasonCodes: ['strict-scope-exclusion'],
+      opNames: steps.map((step) => step.name),
+    }
+  }
+  const plan = createStaticCompilerPlan({
+    siteKind: kind,
+    mode: kind === 'compilePure' ? 'pure' : semantics,
+    sourceTier,
+    call,
+    steps,
+  })
+  const emitted = generateStaticPlanRunner(
+    code,
+    plan,
+    optionNoneLocal,
+    arrayConstructorForScope(scope),
+    globalUndefinedIsUnbound(scope),
+    outerLabel,
+  )
+  const collision = generatedBodyCollision(emitted.code, call, scope)
+  if (collision !== undefined) {
+    return {
+      reason: `static runner lowering declined because generated local ${collision} is not hygienic in this scope`,
+      reasonCodes: ['strict-scope-exclusion'],
+      opNames: steps.map((step) => step.name),
+    }
+  }
   return {
-    code: generateFusedRunner(
-      code,
-      steps,
-      optionNoneLocal,
-      arrayConstructorForScope(scope),
-      globalUndefinedIsUnbound(scope),
-    ),
+    emitted,
+    plan,
     steps: steps.length,
+    opNames: steps.map((step) => step.name),
     needsOptionImport: usesOptionTerminal(steps),
   }
 }
@@ -474,10 +948,19 @@ export function transformStopcockPipelines(
   options: StopcockCompilerOptions = {},
 ): TransformResult {
   const importSources = options.importSources ?? DEFAULT_IMPORT_SOURCES
-  const arrayImportSources = arraySourcesFor(importSources, options.arrayImportSources)
-  const compileImportSources = compileSourcesFor(importSources, options.compileImportSources)
+  const arrayImportSources =
+    options.arrayImportSources ??
+    (options.importSources === undefined
+      ? DEFAULT_ARRAY_IMPORT_SOURCES
+      : arraySourcesFor(importSources, undefined))
+  const compileImportSources =
+    options.compileImportSources ??
+    (options.importSources === undefined
+      ? DEFAULT_COMPILE_IMPORT_SOURCES
+      : compileSourcesFor(importSources, undefined))
   const diagnosticsLevel = options.diagnostics ?? false
   const semantics: CompilerSemantics = options.assumePure === true ? 'pure' : 'exact'
+  const staleSelection = staleCompilerSelection(options)
   const candidateSources = new Set([
     ...importSources,
     ...arrayImportSources,
@@ -497,8 +980,42 @@ export function transformStopcockPipelines(
       sourceType: 'module',
       plugins: ['typescript', ...(id.endsWith('x') ? (['jsx'] as const) : [])],
     })
-  } catch {
-    return { code, map: null, semantics, diagnostics: [] }
+  } catch (error) {
+    const reason = `candidate source could not be parsed: ${
+      error instanceof Error ? error.message : String(error)
+    }`
+    if (diagnosticsLevel === 'error') {
+      throw new Error(`fp-compiler: ${reason}`)
+    }
+    return {
+      code,
+      map: null,
+      semantics,
+      diagnostics:
+        diagnosticsLevel === false
+          ? []
+          : [
+              {
+                id,
+                line: 0,
+                column: 0,
+                endLine: 0,
+                endColumn: 0,
+                transformed: false,
+                steps: 0,
+                semantics,
+                reason,
+                opNames: [],
+                segmentKinds: [],
+                reasonCodes: ['compiler-defect'],
+                fallbackTier: fallbackTierForRawSource(
+                  code,
+                  candidateSources,
+                  options.fallbackTiers,
+                ),
+              },
+            ],
+    }
   }
 
   const bindings = collectBindings(
@@ -509,16 +1026,64 @@ export function transformStopcockPipelines(
   )
   const hasAnyBinding =
     bindings.pipeLocals.size > 0 ||
-    bindings.rootNamespaceLocals.size > 0 ||
+    bindings.facadeNamespaceExports.size > 0 ||
     bindings.flowLocals.size > 0 ||
     bindings.compileLocals.size > 0 ||
-    bindings.compilePureLocals.size > 0 ||
-    bindings.compileNamespaceLocals.size > 0
+    bindings.compilePureLocals.size > 0
   if (!hasAnyBinding) {
     return { code, map: null, semantics, diagnostics: [] }
   }
 
+  /*
+   * Direct eval is a file-level exclusion, not merely a property of the
+   * candidate call. Static lowering can splice `var` bindings into an existing
+   * function/program environment, add an Option import, and prune runtime
+   * imports. An eval elsewhere in the file can observe every one of those
+   * changes by a dynamically constructed name. Keeping the exclusion at the
+   * whole parsed module is deliberately conservative and makes all emit lanes
+   * and later import edits share one auditable scope rule.
+   */
+  const hasUnshadowedDirectEval = containsUnshadowedDirectEval(ast)
+
   const magicString = new MagicString(code)
+  const filePatches: FilePatch[] = []
+  const overwriteMapped = (
+    start: number,
+    end: number,
+    mapped: MappedCode | string,
+    anchor = start,
+  ): void => {
+    const replacement =
+      typeof mapped === 'string' ? { code: mapped, sourceFragments: [] } : mapped
+    magicString.overwrite(start, end, replacement.code)
+    filePatches.push({
+      start,
+      end,
+      anchor,
+      code: replacement.code,
+      sourceFragments: replacement.sourceFragments,
+    })
+  }
+  const removeMapped = (start: number, end: number): void => {
+    magicString.remove(start, end)
+    filePatches.push({
+      start,
+      end,
+      anchor: start,
+      code: '',
+      sourceFragments: [],
+    })
+  }
+  const insertMapped = (index: number, text: string): void => {
+    magicString.appendLeft(index, text)
+    filePatches.push({
+      start: index,
+      end: index,
+      anchor: index,
+      code: text,
+      sourceFragments: [],
+    })
+  }
   // Ranges the transform replaced. A reference inside one of these no longer
   // exists in the output, which is what makes import pruning safe to decide.
   const replacedRanges: ReplacedRange[] = []
@@ -527,7 +1092,7 @@ export function transformStopcockPipelines(
     replacedRanges.push({ start, end })
   }
   const diagnostics: DiagnosticSite[] = []
-  const optionNoneLocal = uniqueLocal(code, DEFAULT_OPTION_NONE_LOCAL)
+  const optionNoneLocal = uniqueLocal(ast.program, DEFAULT_OPTION_NONE_LOCAL)
   let changed = false
   let needsOptionImport = false
 
@@ -539,6 +1104,13 @@ export function transformStopcockPipelines(
       const deferred = isDeferredCallee(callee, bindings, path.scope)
       if (deferred) {
         const call = path.node
+        const sourceIdentity = sourceIdentityForCallee(callee, bindings)
+        const fallbackTier = fallbackTierFor(
+          deferred,
+          callee,
+          bindings,
+          options.fallbackTiers,
+        )
         const result = tryTransformDeferred(
           deferred,
           call,
@@ -546,14 +1118,35 @@ export function transformStopcockPipelines(
           path.scope,
           code,
           optionNoneLocal,
+          semantics,
+          fallbackTier,
+          staleSelection,
+          hasUnshadowedDirectEval,
+          generatedOuterLabel(path),
         )
-        if (result.code) {
+        if (result.emitted && result.plan) {
           recordReplaced(call.start!, call.end!)
-          magicString.overwrite(call.start!, call.end!, result.code)
+          overwriteMapped(call.start!, call.end!, result.emitted, call.start!)
           changed = true
           needsOptionImport ||= result.needsOptionImport === true
           if (diagnosticsLevel !== false) {
-            diagnostics.push(site(call, id, true, result.steps!, semantics))
+            diagnostics.push(
+              site(
+                call,
+                id,
+                true,
+                result.steps!,
+                result.plan.mode,
+                undefined,
+                result.opNames,
+                {
+                  ...sourceIdentity,
+                  segmentKinds: result.plan.segmentKinds,
+                  loweringId: result.plan.loweringId,
+                  operatorFacts: result.plan.operatorFacts,
+                },
+              ),
+            )
           }
           path.skip()
           return
@@ -565,8 +1158,21 @@ export function transformStopcockPipelines(
               id,
               false,
               call.arguments.length,
-              semantics,
+              deferred === 'compilePure' ? 'pure' : semantics,
               `${deferred}(): ${result.reason}`,
+              result.opNames,
+              {
+                ...sourceIdentity,
+                fallbackTier,
+                reasonCodes: result.reasonCodes,
+                operatorFacts:
+                  result.opNames === undefined
+                    ? undefined
+                    : result.opNames.flatMap((name) => {
+                        const fact = compilerOperatorFact(name)
+                        return fact === undefined ? [] : [fact]
+                      }),
+              },
             ),
           )
         }
@@ -581,11 +1187,27 @@ export function transformStopcockPipelines(
       if (!isPipeCallee(callee, bindings, path.scope)) return
 
       const call = path.node
+      const sourceIdentity = sourceIdentityForCallee(callee, bindings)
+      const fallbackTier = fallbackTierFor(
+        'pipe',
+        callee,
+        bindings,
+        options.fallbackTiers,
+      )
       const structural = analyzeSteps(call)
       if (!structural.ok) {
         if (structural.reason !== 'no steps' && diagnosticsLevel !== false) {
           diagnostics.push(
-            site(call, id, false, call.arguments.length - 1, semantics, structural.reason),
+            site(
+              call,
+              id,
+              false,
+              call.arguments.length - 1,
+              semantics,
+              structural.reason,
+              undefined,
+              { ...sourceIdentity, fallbackTier },
+            ),
           )
           if (diagnosticsLevel === 'error') {
             throw new Error(
@@ -598,10 +1220,13 @@ export function transformStopcockPipelines(
 
       const sourceNode = call.arguments[0] as t.Expression
       const stepNodes = call.arguments.slice(1) as t.Expression[]
-      const collected = collectSteps(stepNodes, bindings, path.scope)
+      const collected = collectSteps(stepNodes, bindings, path.scope, true)
 
       if (!collected.ok) {
         if (diagnosticsLevel !== false) {
+          const hasOnlyOpaqueStep =
+            (collected.partialNames?.length ?? 0) === 0 &&
+            collected.reason?.includes('unrecognized step') === true
           diagnostics.push(
             site(
               call,
@@ -611,6 +1236,16 @@ export function transformStopcockPipelines(
               semantics,
               collected.reason,
               collected.steps?.map((step) => step.name) ?? collected.partialNames,
+              {
+                ...sourceIdentity,
+                fallbackTier,
+                ...(hasOnlyOpaqueStep
+                  ? {
+                      segmentKinds: ['opaque'] as const,
+                      reasonCodes: ['opaque-callback'] as const,
+                    }
+                  : {}),
+              },
             ),
           )
           if (diagnosticsLevel === 'error') {
@@ -622,7 +1257,209 @@ export function transformStopcockPipelines(
         return
       }
       const steps = collected.steps!
-      needsOptionImport ||= usesOptionTerminal(steps)
+      const residual = collected.residual
+      let hasNestedManagedSite = false
+      path.traverse({
+        CallExpression(nestedPath) {
+          const nestedCallee = nestedPath.node.callee
+          if (
+            isPipeCallee(nestedCallee, bindings, nestedPath.scope) ||
+            isDeferredCallee(nestedCallee, bindings, nestedPath.scope) !== undefined
+          ) {
+            hasNestedManagedSite = true
+            nestedPath.skip()
+          }
+        },
+      })
+      if (hasNestedManagedSite) {
+        const reason =
+          'nested managed pipeline requires its own ordered lowering before the containing site can be compiled'
+        if (diagnosticsLevel !== false) {
+          const facts = steps.map((step) => step.fact)
+          diagnostics.push(
+            site(
+              call,
+              id,
+              false,
+              stepNodes.length,
+              semantics,
+              reason,
+              steps.map((step) => step.name),
+              {
+                ...sourceIdentity,
+                segmentKinds: [
+                  ...segmentKindsForOperatorFacts(
+                    facts,
+                    fallbackTier === 'sequential'
+                      ? 'sequential-stages'
+                      : 'fused-streams',
+                  ),
+                  ...(residual === undefined ? [] : (['opaque'] as const)),
+                ],
+                reasonCodes: [
+                  'unsupported-layout',
+                  ...(residual === undefined ? [] : (['opaque-callback'] as const)),
+                ],
+                fallbackTier,
+                operatorFacts: facts,
+              },
+            ),
+          )
+        }
+        if (diagnosticsLevel === 'error') {
+          throw new Error(
+            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${reason}`,
+          )
+        }
+        /*
+         * Do not skip this path: Babel must continue into the nested site so
+         * it can be transformed and reported independently. The containing
+         * runtime call remains visible as a tier-specific fallback.
+         */
+        return
+      }
+      if (staleSelection !== undefined) {
+        if (diagnosticsLevel !== false) {
+          diagnostics.push(
+            site(
+              call,
+              id,
+              false,
+              stepNodes.length,
+              semantics,
+              staleSelection.reason,
+              steps.map((step) => step.name),
+              {
+                ...sourceIdentity,
+                reasonCodes: [staleSelection.reasonCode],
+                fallbackTier,
+                operatorFacts: steps.map((step) => step.fact),
+              },
+            ),
+          )
+        }
+        if (diagnosticsLevel === 'error') {
+          throw new Error(
+            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${staleSelection.reason}`,
+          )
+        }
+        return
+      }
+      if (hasUnshadowedDirectEval) {
+        const reason =
+          'static lowering declines unshadowed direct eval because generated lexical bindings would change its observable scope'
+        const reasonCodes: ReceiptReasonCodeV1[] = ['strict-scope-exclusion']
+        if (residual !== undefined) reasonCodes.push('opaque-callback')
+        if (diagnosticsLevel !== false) {
+          diagnostics.push(
+            site(
+              call,
+              id,
+              false,
+              stepNodes.length,
+              semantics,
+              reason,
+              steps.map((step) => step.name),
+              {
+                ...sourceIdentity,
+                reasonCodes,
+                fallbackTier,
+                operatorFacts: steps.map((step) => step.fact),
+              },
+            ),
+          )
+        }
+        if (diagnosticsLevel === 'error') {
+          throw new Error(
+            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${reason}`,
+          )
+        }
+        return
+      }
+      const arrayExclusion = lexicalArrayExclusion(path.scope)
+      if (arrayExclusion !== undefined) {
+        const reasonCodes: ReceiptReasonCodeV1[] = ['strict-scope-exclusion']
+        if (residual !== undefined) reasonCodes.push('opaque-callback')
+        if (diagnosticsLevel !== false) {
+          diagnostics.push(
+            site(
+              call,
+              id,
+              false,
+              stepNodes.length,
+              semantics,
+              arrayExclusion,
+              steps.map((step) => step.name),
+              {
+                ...sourceIdentity,
+                reasonCodes,
+                fallbackTier,
+                operatorFacts: steps.map((step) => step.fact),
+              },
+            ),
+          )
+        }
+        if (diagnosticsLevel === 'error') {
+          throw new Error(
+            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${arrayExclusion}`,
+          )
+        }
+        return
+      }
+      let opaqueReceiver: OpaqueReceiverAbi | undefined
+      if (residual !== undefined) {
+        const receiver = opaqueReceiverFor(callee, residual, bindings, path.scope)
+        if (receiver.receiver === undefined) {
+          if (diagnosticsLevel !== false) {
+            diagnostics.push(
+              site(
+                call,
+                id,
+                false,
+                stepNodes.length,
+                semantics,
+                receiver.reason,
+                steps.map((step) => step.name),
+                {
+                  ...sourceIdentity,
+                  segmentKinds: [
+                    ...steps.map((step) =>
+                      step.fact.compilerPipelineRole === 'boundary' ? 'boundary' : 'stream',
+                    ),
+                    'opaque',
+                  ],
+                  reasonCodes: ['opaque-callback', 'unsupported-layout'],
+                  fallbackTier,
+                  operatorFacts: steps.map((step) => step.fact),
+                },
+              ),
+            )
+          }
+          if (diagnosticsLevel === 'error') {
+            throw new Error(
+              `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${receiver.reason}`,
+            )
+          }
+          return
+        }
+        opaqueReceiver = receiver.receiver
+      }
+      const planParent = path.parentPath
+      const plan = createStaticCompilerPlan({
+        siteKind: 'pipe',
+        mode: semantics,
+        sourceTier: fallbackTier,
+        call,
+        source: sourceNode,
+        steps,
+        sourceAlreadyEvaluated: hasConstantLocalSource(sourceNode, path.scope),
+        ...(residual === undefined
+          ? {}
+          : {
+              residual,
+              opaqueReceiver: opaqueReceiver!,
+            }),
+      })
 
       // Splicing the loop's statements directly into an already-existing
       // function body (instead of through the generic IIFE fallback) keeps
@@ -632,8 +1469,7 @@ export function transformStopcockPipelines(
       // where the call owns a complete statement/tail position: an arrow's
       // expression body, the sole argument of a return statement, a lone
       // declaration initializer, or a discarded expression statement.
-      const sourceText = code.slice(sourceNode.start!, sourceNode.end!)
-      const parent = path.parentPath
+      const parent = planParent
       const arrayConstructorExpression = arrayConstructorForScope(path.scope)
       const hasGlobalUndefined = globalUndefinedIsUnbound(path.scope)
       // The statement that actually sits in a Program or BlockStatement body.
@@ -654,6 +1490,100 @@ export function transformStopcockPipelines(
               declarationPath.parentPath?.isExportDefaultDeclaration()
             ? declarationPath.parentPath
             : declarationPath
+      const statementSafeHost =
+        (hostPath !== undefined &&
+          (hostPath.parentPath?.isBlockStatement() || hostPath.parentPath?.isProgram())) ||
+        (parent?.isExpressionStatement() &&
+          parent.node.expression === call &&
+          (parent.parentPath?.isBlockStatement() || parent.parentPath?.isProgram())) ||
+        (parent?.isArrowFunctionExpression() && parent.node.body === call) ||
+        (parent?.isReturnStatement() && parent.node.argument === call)
+
+      if (residual !== undefined && !statementSafeHost) {
+        const reason =
+          'prefix residual lowering requires a declaration, expression statement, arrow body, or return host'
+        if (diagnosticsLevel !== false) {
+          diagnostics.push(
+            site(
+              call,
+              id,
+              false,
+              stepNodes.length,
+              semantics,
+              reason,
+              steps.map((step) => step.name),
+              {
+                ...sourceIdentity,
+                segmentKinds: plan.segmentKinds,
+                reasonCodes: ['host-restriction', 'opaque-callback'],
+                fallbackTier,
+              },
+            ),
+          )
+        }
+        if (diagnosticsLevel === 'error') {
+          throw new Error(
+            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${reason}`,
+          )
+        }
+        return
+      }
+
+      const plannedBody = generateStaticPlanBody(
+        code,
+        plan,
+        optionNoneLocal,
+        arrayConstructorExpression,
+        hasGlobalUndefined,
+        generatedOuterLabel(path),
+      )
+      const collision = generatedBodyCollision(
+        plannedBody.stmts,
+        call,
+        path.scope,
+      )
+      if (collision !== undefined) {
+        const reason = `static lowering declined because generated local ${collision} is not hygienic in this scope`
+        const reasonCodes: ReceiptReasonCodeV1[] = ['strict-scope-exclusion']
+        if (residual !== undefined) reasonCodes.push('opaque-callback')
+        if (diagnosticsLevel !== false) {
+          diagnostics.push(
+            site(
+              call,
+              id,
+              false,
+              stepNodes.length,
+              semantics,
+              reason,
+              steps.map((step) => step.name),
+              {
+                ...sourceIdentity,
+                segmentKinds: plan.segmentKinds,
+                reasonCodes,
+                fallbackTier,
+                operatorFacts: plan.operatorFacts,
+              },
+            ),
+          )
+        }
+        if (diagnosticsLevel === 'error') {
+          throw new Error(
+            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${reason}`,
+          )
+        }
+        return
+      }
+      const generateBody = () => plannedBody
+      const hygienicTailBody = (candidate: MappedCode | undefined): MappedCode | undefined =>
+        candidate !== undefined &&
+        generatedBodyCollision(
+          candidate.code,
+          call,
+          path.scope,
+        ) === undefined
+          ? candidate
+          : undefined
+
       if (
         hostPath !== undefined &&
         (hostPath.parentPath?.isBlockStatement() || hostPath.parentPath?.isProgram())
@@ -669,22 +1599,19 @@ export function transformStopcockPipelines(
         // excluding it meant the most ordinary shape in a module always paid
         // for a wrapper call.
         const declaration = hostPath.node
-        const { stmts, resultVar } = generateFusedBody(
-          code,
-          sourceText,
-          steps,
-          optionNoneLocal,
-          undefined,
-          arrayConstructorExpression,
-          hasGlobalUndefined,
-        )
-        const prefix = code.slice(declaration.start!, call.start!)
-        const suffix = code.slice(call.end!, declaration.end!)
+        const body = generateBody()
         recordReplaced(call.start!, call.end!)
-        magicString.overwrite(
+        overwriteMapped(
           declaration.start!,
           declaration.end!,
-          `${stmts}\n${prefix}${resultVar}${suffix}`,
+          concatMappedCode([
+            { code: body.stmts, sourceFragments: body.sourceFragments },
+            '\n',
+            sourceCode(code, declaration.start!, call.start!),
+            body.resultVar,
+            sourceCode(code, call.end!, declaration.end!),
+          ]),
+          call.start!,
         )
       } else if (
         parent?.isExpressionStatement() &&
@@ -693,88 +1620,136 @@ export function transformStopcockPipelines(
       ) {
         // The result is discarded, so the fused statements can replace the
         // expression statement without a wrapper call.
-        const { stmts } = generateFusedBody(
-          code,
-          sourceText,
-          steps,
-          optionNoneLocal,
-          undefined,
-          arrayConstructorExpression,
-          hasGlobalUndefined,
-        )
+        const body = generateBody()
         recordReplaced(parent.node.start!, parent.node.end!)
-        magicString.overwrite(parent.node.start!, parent.node.end!, `{\n${stmts}\n}`)
-      } else if (parent?.isArrowFunctionExpression() && parent.node.body === call) {
-        const tailBody = generateFusedTailBody(
-          code,
-          sourceText,
-          steps,
-          optionNoneLocal,
-          undefined,
-          arrayConstructorExpression,
-          hasConstantLocalSource(sourceNode, path.scope),
+        overwriteMapped(
+          parent.node.start!,
+          parent.node.end!,
+          concatMappedCode([
+            '{\n',
+            { code: body.stmts, sourceFragments: body.sourceFragments },
+            '\n}',
+          ]),
+          call.start!,
         )
+      } else if (parent?.isArrowFunctionExpression() && parent.node.body === call) {
+        const tailBody =
+          residual === undefined
+            ? hygienicTailBody(
+                generateStaticPlanTailBody(
+                  code,
+                  plan,
+                  optionNoneLocal,
+                  arrayConstructorExpression,
+                ),
+              )
+            : undefined
         if (tailBody !== undefined) {
           recordReplaced(call.start!, call.end!)
-          magicString.overwrite(call.start!, call.end!, `{\n${tailBody}\n}`)
-        } else {
-          const { stmts, resultVar } = generateFusedBody(
-            code,
-            sourceText,
-            steps,
-            optionNoneLocal,
-            undefined,
-            arrayConstructorExpression,
-            hasGlobalUndefined,
+          overwriteMapped(
+            call.start!,
+            call.end!,
+            concatMappedCode(['{\n', tailBody, '\n}']),
+            call.start!,
           )
+        } else {
+          const body = generateBody()
           recordReplaced(call.start!, call.end!)
-          magicString.overwrite(call.start!, call.end!, `{\n${stmts}\nreturn ${resultVar};\n}`)
+          overwriteMapped(
+            call.start!,
+            call.end!,
+            concatMappedCode([
+              '{\n',
+              { code: body.stmts, sourceFragments: body.sourceFragments },
+              `\nreturn ${body.resultVar};\n}`,
+            ]),
+            call.start!,
+          )
         }
       } else if (parent?.isReturnStatement() && parent.node.argument === call) {
-        const tailBody = generateFusedTailBody(
-          code,
-          sourceText,
-          steps,
-          optionNoneLocal,
-          undefined,
-          arrayConstructorExpression,
-          hasConstantLocalSource(sourceNode, path.scope),
-        )
+        const tailBody =
+          residual === undefined
+            ? hygienicTailBody(
+                generateStaticPlanTailBody(
+                  code,
+                  plan,
+                  optionNoneLocal,
+                  arrayConstructorExpression,
+                ),
+              )
+            : undefined
         const returnStart = parent.node.start!
         const returnEnd = parent.node.end!
         if (tailBody !== undefined) {
           const needsHygieneBlock =
-            tailBody.includes('\n') && !canSpliceTailStatements(code, parent.parentPath)
-          magicString.overwrite(
+            tailBody.code.includes('\n') && !canSpliceTailStatements(code, parent.parentPath)
+          recordReplaced(returnStart, returnEnd)
+          overwriteMapped(
             returnStart,
             returnEnd,
-            needsHygieneBlock ? `{\n${tailBody}\n}` : tailBody,
+            needsHygieneBlock
+              ? concatMappedCode(['{\n', tailBody, '\n}'])
+              : tailBody,
+            call.start!,
           )
         } else {
-          const { stmts, resultVar } = generateFusedBody(
-            code,
-            sourceText,
-            steps,
-            optionNoneLocal,
-            undefined,
-            arrayConstructorExpression,
-            hasGlobalUndefined,
-          )
+          const body = generateBody()
           recordReplaced(returnStart, returnEnd)
-          magicString.overwrite(returnStart, returnEnd, `{\n${stmts}\nreturn ${resultVar};\n}`)
+          overwriteMapped(
+            returnStart,
+            returnEnd,
+            concatMappedCode([
+              '{\n',
+              { code: body.stmts, sourceFragments: body.sourceFragments },
+              `\nreturn ${body.resultVar};\n}`,
+            ]),
+            call.start!,
+          )
         }
       } else {
-        const generated = generateFusedLoop(
-          code,
-          sourceText,
-          steps,
-          optionNoneLocal,
-          arrayConstructorExpression,
-          hasGlobalUndefined,
-        )
+        if (
+          containsOuterAwaitOrYield(sourceNode) ||
+          stepNodes.some((step) => containsOuterAwaitOrYield(step))
+        ) {
+          const reason =
+            'expression wrapper cannot move an outer await or yield out of its owning function'
+          if (diagnosticsLevel !== false) {
+            diagnostics.push(
+              site(
+                call,
+                id,
+                false,
+                stepNodes.length,
+                semantics,
+                reason,
+                steps.map((step) => step.name),
+                {
+                  ...sourceIdentity,
+                  segmentKinds: plan.segmentKinds,
+                  reasonCodes: ['host-restriction'],
+                  fallbackTier,
+                  operatorFacts: plan.operatorFacts,
+                },
+              ),
+            )
+          }
+          if (diagnosticsLevel === 'error') {
+            throw new Error(
+              `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${reason}`,
+            )
+          }
+          return
+        }
+        const body = generateBody()
+        const generated = concatMappedCode([
+          '(() => {\n',
+          { code: body.stmts, sourceFragments: body.sourceFragments },
+          `\nreturn ${body.resultVar};\n})()`,
+        ])
         recordReplaced(call.start!, call.end!)
-        magicString.overwrite(call.start!, call.end!, generated)
+        overwriteMapped(call.start!, call.end!, generated, call.start!)
       }
+      needsOptionImport ||= usesOptionTerminal(steps)
       changed = true
       if (diagnosticsLevel !== false) {
         diagnostics.push(
@@ -782,10 +1757,17 @@ export function transformStopcockPipelines(
             call,
             id,
             true,
-            steps.length,
+            stepNodes.length,
             semantics,
-            undefined,
+            residual === undefined ? undefined : 'compiled static prefix with one opaque unary tail',
             steps.map((step) => step.name),
+            {
+              ...sourceIdentity,
+              segmentKinds: plan.segmentKinds,
+              loweringId: plan.loweringId,
+              reasonCodes: residual === undefined ? [] : ['opaque-callback'],
+              operatorFacts: plan.operatorFacts,
+            },
           ),
         )
       }
@@ -802,31 +1784,74 @@ export function transformStopcockPipelines(
     }
   }
 
-  // Only after every site is decided: a reference that a fallback site still
-  // needs must never be pruned because a sibling site fused.
+  // Only after every site is decided, inspect the program we will actually
+  // emit. Position-based liveness over the input is insufficient: callback,
+  // boundary, and residual expressions are re-emitted from inside a replaced
+  // call range and therefore remain live even though their original positions
+  // do not.
   if (replacedRanges.length > 0) {
-    const references: { name: string; position: number }[] = []
-    traverse(ast, {
-      Identifier(path) {
-        if (!path.isReferencedIdentifier()) return
-        if (path.node.start == null) return
-        references.push({ name: path.node.name, position: path.node.start })
-      },
-    })
     const prunableSources = new Set([
       ...importSources,
       ...arrayImportSources,
       ...compileImportSources,
     ])
-    const edits = planImportPrune({
-      imports: collectPrunableImports(ast.program, prunableSources),
-      references,
-      replaced: replacedRanges,
-      code,
-    })
-    for (const edit of edits) {
-      if (edit.kind === 'declaration') magicString.remove(edit.start, edit.end)
-      else magicString.remove(edit.start, edit.end)
+    let edits: ReturnType<typeof planImportPrune> = []
+    try {
+      const emitted = magicString.toString()
+      const emittedAst = parse(emitted, {
+        sourceType: 'module',
+        plugins: ['typescript', ...(id.endsWith('x') ? (['jsx'] as const) : [])],
+      })
+      const references: { name: string; position: number }[] = []
+      traverse(emittedAst, {
+        Identifier(referencePath) {
+          if (!referencePath.isReferencedIdentifier()) return
+          if (referencePath.node.start == null) return
+          references.push({
+            name: referencePath.node.name,
+            position: referencePath.node.start,
+          })
+        },
+        JSXIdentifier(referencePath) {
+          const parent = referencePath.parent
+          const isRootMember =
+            t.isJSXMemberExpression(parent) && parent.object === referencePath.node
+          const isElementName =
+            (t.isJSXOpeningElement(parent) || t.isJSXClosingElement(parent)) &&
+            parent.name === referencePath.node
+          if (!isRootMember && !isElementName) return
+          if (referencePath.node.start == null) return
+          references.push({
+            name: referencePath.node.name,
+            position: referencePath.node.start,
+          })
+        },
+      })
+      edits = planImportPrune({
+        imports: collectPrunableImports(ast.program, prunableSources),
+        references,
+        // Every reference came from the emitted program, so none needs to be
+        // discounted by an input replacement range.
+        replaced: [],
+        code,
+      })
+    } catch {
+      // Fail closed. Retaining a now-unused import costs bytes; deleting a live
+      // one changes the program. A malformed provisional output must not make
+      // import pruning guess.
+      edits = []
+    }
+    const removalRanges: Array<{ start: number; end: number }> = []
+    for (const edit of [...edits].sort((left, right) => left.start - right.start)) {
+      const previous = removalRanges[removalRanges.length - 1]
+      if (previous !== undefined && edit.start <= previous.end) {
+        previous.end = Math.max(previous.end, edit.end)
+      } else {
+        removalRanges.push({ start: edit.start, end: edit.end })
+      }
+    }
+    for (const removal of removalRanges) {
+      removeMapped(removal.start, removal.end)
     }
     prunedSpecifiers = edits.length
   }
@@ -834,15 +1859,18 @@ export function transformStopcockPipelines(
   if (needsOptionImport) {
     const imports = ast.program.body.filter(t.isImportDeclaration)
     const lastImport = imports[imports.length - 1]
-    const source = activeRootSource(ast.program, importSources)
-    const declaration = `\nimport { none as ${optionNoneLocal} } from ${JSON.stringify(source)}`
-    if (lastImport?.end != null) magicString.appendLeft(lastImport.end, declaration)
-    else magicString.prepend(`${declaration.slice(1)}\n`)
+    const declaration = `\nimport { none as ${optionNoneLocal} } from ${JSON.stringify(OPTION_IMPORT_SOURCE)}`
+    if (lastImport?.end != null) insertMapped(lastImport.end, declaration)
+    else insertMapped(0, `${declaration.slice(1)}\n`)
   }
 
+  const rendered = renderFilePatches(code, id, filePatches)
+  if (rendered.code !== magicString.toString()) {
+    throw new Error('fp-compiler: mapped file renderer diverged from provisional output')
+  }
   return {
-    code: magicString.toString(),
-    map: magicString.generateMap({ source: id, includeContent: true, hires: true }),
+    code: rendered.code,
+    map: rendered.map,
     semantics,
     diagnostics: diagnosticsLevel === false ? [] : diagnostics,
   }
@@ -856,16 +1884,29 @@ function site(
   semantics: CompilerSemantics,
   reason?: string,
   opNames?: readonly string[],
+  metadata: Pick<
+    DiagnosticSite,
+    | 'segmentKinds'
+    | 'loweringId'
+    | 'operatorFacts'
+    | 'reasonCodes'
+    | 'fallbackTier'
+    | 'sourceSpecifier'
+    | 'sourceExport'
+  > = {},
 ): DiagnosticSite {
   return {
     id,
     line: node.loc?.start.line ?? 0,
     column: node.loc?.start.column ?? 0,
+    endLine: node.loc?.end.line ?? 0,
+    endColumn: node.loc?.end.column ?? 0,
     transformed,
     steps,
     semantics,
     reason,
     opNames,
+    ...metadata,
   }
 }
 

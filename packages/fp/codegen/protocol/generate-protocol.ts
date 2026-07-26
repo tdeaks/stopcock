@@ -115,6 +115,36 @@ function semanticFactsInputV1(): object {
 
 export const OPERATOR_SEMANTIC_FACTS_V1_HASH = hashCanonical(semanticFactsInputV1())
 
+const COMPILER_EMITTER_SOURCE_PATHS_V1 = [
+  'packages/fp-compiler/src/codegen.ts',
+  'packages/fp-compiler/src/inline.ts',
+  'packages/fp-compiler/src/mapped-code.ts',
+  'packages/fp-compiler/src/ops.ts',
+  'packages/fp-compiler/src/plan-ir.ts',
+  'packages/fp-compiler/src/prune-imports.ts',
+  'packages/fp-compiler/src/receipt-core.ts',
+  'packages/fp-compiler/src/transform.ts',
+] as const
+
+/**
+ * Build-time compiler ABI projection. Receipts previously authenticated only
+ * the generated operator table, so a codegen/evaluation-order change could
+ * reuse evidence for different emitted machinery. This descriptor makes every
+ * emitter source byte, plus the capture/receiver/map contracts, part of the
+ * generated fact consumed by the compiler.
+ */
+export const COMPILER_EMITTER_ABI_V1_HASH = hashCanonical({
+  protocol: 'stopcock.compiler-emitter-abi',
+  protocolVersion: 1,
+  captureAbi: 'ordered-source-bindings-before-execution/v1',
+  receiverAbi: 'facade-specific-fail-closed/v1',
+  sourceMapAbi: 'source-backed-fragments/v1',
+  sources: COMPILER_EMITTER_SOURCE_PATHS_V1.map((path) => ({
+    path,
+    hash: sourceHash(path),
+  })),
+})
+
 function semanticManifestInputV1(): object {
   return {
     protocol: 'stopcock.operator-manifest',
@@ -591,6 +621,8 @@ interface CompilerTableEntryV1 {
   readonly fullMaterialization: boolean
   readonly domainTransition: boolean
   readonly loweringId: string
+  readonly loweringRevision: number
+  readonly loweringAbiVersion: 1
   readonly loweringHash: string
   readonly runnerId: string
   readonly compilerPipelineRole: 'element' | 'terminal' | 'boundary'
@@ -620,6 +652,8 @@ function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
         fullMaterialization: record.semantic.termination.fullMaterialization,
         domainTransition: record.semantic.termination.domainTransition,
         loweringId: lowering.loweringId,
+        loweringRevision: lowering.loweringRevision,
+        loweringAbiVersion: lowering.loweringAbiVersion,
         loweringHash: lowering.loweringHash,
         runnerId: lowering.runnerId,
         compilerPipelineRole: lowering.compilerPipelineRole,
@@ -643,6 +677,10 @@ export function renderCompilerOpsTableV1(): string {
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
 // The compiler consumes a data-only projection; it never imports FP runtime modules.
 // Semantic facts hash: ${OPERATOR_SEMANTIC_FACTS_V1_HASH}
+// Compiler emitter ABI hash: ${COMPILER_EMITTER_ABI_V1_HASH}
+
+export const OPERATOR_SEMANTIC_FACTS_V1_HASH = ${JSON.stringify(OPERATOR_SEMANTIC_FACTS_V1_HASH)}
+export const COMPILER_EMITTER_ABI_V1_HASH = ${JSON.stringify(COMPILER_EMITTER_ABI_V1_HASH)}
 
 export interface OpsTableEntry {
   readonly name: string
@@ -664,6 +702,8 @@ export interface OpsTableEntry {
   readonly fullMaterialization: boolean
   readonly domainTransition: boolean
   readonly loweringId: string
+  readonly loweringRevision: number
+  readonly loweringAbiVersion: 1
   readonly loweringHash: string
   readonly runnerId: string
   readonly compilerPipelineRole: 'element' | 'terminal' | 'boundary'

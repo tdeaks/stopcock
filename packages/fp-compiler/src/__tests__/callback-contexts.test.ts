@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import { transformStopcockPipelines } from '../transform'
 
 const FP = '@stopcock/fp'
+const FP_FUSION = '@stopcock/fp/fusion'
 const ARRAY = '@stopcock/fp/array'
 
 /**
@@ -34,26 +35,39 @@ const decodeSegments = (mappings: string): number[][][] =>
     })
   })
 
+const originalPositionFor = (
+  map: { mappings: string },
+  generatedLine: number,
+  generatedColumn: number,
+): { readonly line: number; readonly column: number } | undefined => {
+  const lines = decodeSegments(map.mappings)
+  let sourceLine = 0
+  let sourceColumn = 0
+  let best: { readonly line: number; readonly column: number } | undefined
+  for (let line = 0; line < lines.length; line++) {
+    let generatedColumnCursor = 0
+    for (const segment of lines[line]) {
+      generatedColumnCursor += segment[0]
+      if (segment.length >= 4) {
+        sourceLine += segment[2]
+        sourceColumn += segment[3]
+      }
+      if (line !== generatedLine) continue
+      if (generatedColumnCursor <= generatedColumn) {
+        best = { line: sourceLine + 1, column: sourceColumn }
+      }
+    }
+  }
+  return best
+}
+
 /** Original 1-based line for a generated 0-based line and column. */
 const originalLineFor = (
   map: { mappings: string },
   generatedLine: number,
   generatedColumn: number,
-): number | undefined => {
-  const lines = decodeSegments(map.mappings)
-  let sourceLine = 0
-  let best: number | undefined
-  for (let line = 0; line < lines.length; line++) {
-    let generatedColumnCursor = 0
-    for (const segment of lines[line]) {
-      generatedColumnCursor += segment[0]
-      if (segment.length >= 4) sourceLine += segment[2]
-      if (line !== generatedLine) continue
-      if (generatedColumnCursor <= generatedColumn) best = sourceLine + 1
-    }
-  }
-  return best
-}
+): number | undefined =>
+  originalPositionFor(map, generatedLine, generatedColumn)?.line
 
 const run = (source: string) =>
   transformStopcockPipelines(source, '/repo/src/a.ts', { diagnostics: 'summary' })
@@ -158,6 +172,20 @@ export const r = [out, seen]
 `),
     ).toEqual([
       [4, 6],
+      ['m1', 'm2', 'm3', 'f2', 'f4', 'f6'],
+    ])
+  })
+
+  it('retains interleaved scheduling for the explicit fusion facade', async () => {
+    expect(
+      await execute(`import { pipe } from '${FP_FUSION}'
+import { filter, map } from '${ARRAY}'
+const seen = []
+const out = pipe([1, 2, 3], map((x) => { seen.push('m' + x); return x * 2 }), filter((x) => { seen.push('f' + x); return x > 2 }))
+export const r = [out, seen]
+`),
+    ).toEqual([
+      [4, 6],
       ['m1', 'f2', 'm2', 'f4', 'm3', 'f6'],
     ])
   })
@@ -191,15 +219,64 @@ export const r = pipe([1, 2, 3], map(boom), filter((x) => x > 2))
     expect(originalLineFor(out.map as never, generated, lines[generated].indexOf('_cb0'))).toBe(6)
   })
 
-  it('still produces a map when imports were pruned', () => {
+  it('still produces a map when the pipeline import is pruned but the factory remains', () => {
     const out = run(`import { pipe } from '${FP}'
 import { map } from '${ARRAY}'
 export const r = pipe([1, 2], map((x) => x * 2))
 `)
-    expect(out.code).not.toContain(ARRAY)
+    expect(out.code).not.toContain('import { pipe }')
+    expect(out.code).toContain(ARRAY)
     expect(out.map).not.toBeNull()
     const lines = out.code.split('\n')
     const body = lines.findIndex((line) => line.includes('* 2'))
     expect(originalLineFor(out.map as never, body, lines[body].indexOf('* 2'))).toBe(3)
+  })
+
+  it('maps opaque capture scaffolding to the call and copied tokens to their expression', () => {
+    const residualSource = `import { pipe } from '${FP}'
+import { map } from '${ARRAY}'
+const makeTail = () => (xs) => xs.join(':')
+export const r = pipe(
+  [1, 2],
+  map((x) => x * 2),
+  makeTail(),
+)
+`
+    const out = run(residualSource)
+    expect(out.map).not.toBeNull()
+    const lines = out.code.split('\n')
+    const captureLine = lines.findIndex((line) => line.includes('_c2 ='))
+    expect(captureLine).toBeGreaterThanOrEqual(0)
+    expect(
+      originalLineFor(
+        out.map as never,
+        captureLine,
+        lines[captureLine].indexOf('_c2'),
+      ),
+    ).toBe(4)
+    expect(
+      originalLineFor(
+        out.map as never,
+        captureLine,
+        lines[captureLine].indexOf('makeTail'),
+      ),
+    ).toBe(7)
+  })
+
+  it('maps a direct tail source token to the exact source argument column', () => {
+    const tailSource = `import { pipe } from '${FP}'
+import { some } from '${ARRAY}'
+export const run = (items) => pipe(items, some((x) => x > 1))
+`
+    const out = run(tailSource)
+    expect(out.map).not.toBeNull()
+    const lines = out.code.split('\n')
+    const generatedLine = lines.findIndex((line) => line.includes('_len0 = items.length'))
+    const generatedColumn = lines[generatedLine].indexOf('items')
+    const sourceLine = tailSource.split('\n')[2]
+    const expectedColumn = sourceLine.lastIndexOf('items')
+    expect(
+      originalPositionFor(out.map as never, generatedLine, generatedColumn),
+    ).toEqual({ line: 3, column: expectedColumn })
   })
 })

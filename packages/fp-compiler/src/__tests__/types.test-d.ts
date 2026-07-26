@@ -1,5 +1,7 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import {
+  COMPILER_EMITTER_ABI_V1_HASH,
+  OPERATOR_SEMANTIC_FACTS_V1_HASH,
   callbackArity,
   stopcockFp,
   transformStopcockPipelines,
@@ -10,6 +12,7 @@ import {
 } from '../index'
 import { stopcockFp as esbuildStopcockFp } from '../esbuild'
 import { stopcockFp as rollupStopcockFp } from '../rollup'
+import { stopcockFp as rspackStopcockFp } from '../rspack'
 import { stopcockFp as viteStopcockFp } from '../vite'
 import { stopcockFp as webpackStopcockFp } from '../webpack'
 
@@ -20,6 +23,11 @@ describe('public compiler types', () => {
       importSources: ['@stopcock/fp'],
       arrayImportSources: ['@stopcock/fp/array'],
       compileImportSources: ['@stopcock/fp/compile'],
+      fallbackTiers: {
+        '@stopcock/fp': 'sequential',
+      },
+      expectedSemanticManifestHash: OPERATOR_SEMANTIC_FACTS_V1_HASH,
+      expectedLoweringAbiHash: COMPILER_EMITTER_ABI_V1_HASH,
       diagnostics: 'verbose',
     } satisfies StopcockCompilerOptions
     const result = transformStopcockPipelines('', 'fixture.ts', options)
@@ -28,12 +36,16 @@ describe('public compiler types', () => {
     expectTypeOf(result.semantics).toEqualTypeOf<CompilerSemantics>()
     expectTypeOf(result.diagnostics).toEqualTypeOf<readonly DiagnosticSite[]>()
     expectTypeOf(stopcockFp.vite(options)).toBeObject()
+    expectTypeOf(stopcockFp.rspack(options)).toBeObject()
     expectTypeOf(viteStopcockFp(options)).toBeObject()
     expectTypeOf(rollupStopcockFp(options)).toBeObject()
     expectTypeOf(esbuildStopcockFp(options)).toBeObject()
+    expectTypeOf(rspackStopcockFp(options)).toBeObject()
     expectTypeOf(webpackStopcockFp(options)).toBeObject()
     expectTypeOf(callbackArity('map')).toEqualTypeOf<
       0 | 1 | 2 | undefined
     >()
+    expectTypeOf(OPERATOR_SEMANTIC_FACTS_V1_HASH).toEqualTypeOf<string>()
+    expectTypeOf(COMPILER_EMITTER_ABI_V1_HASH).toEqualTypeOf<string>()
   })
 })

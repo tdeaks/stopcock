@@ -3,7 +3,7 @@
 // Source: packages/fp/codegen/protocol/receipt-schema-v1.ts
 
 export const RECEIPT_SCHEMA_V1_HASH =
-  'sha256:d6b4843e9e8fc645a985eda698b94ed48c05c9370d17bfcc89b68e0895169d6e' as const
+  'sha256:9bb0669aa1519ed6e78a9862c2c182e33850ebac502efec9eb91ff58a2775a85' as const
 export const RECEIPT_SCHEMA_V1 = {
   protocol: 'stopcock.receipt-schema',
   schemaVersion: 1,
@@ -76,8 +76,11 @@ export const RECEIPT_SCHEMA_V1 = {
     unknownFields: 'reject',
     hashes: 'sha256-lowercase-hex-64',
     identifiers: 'stable-namespaced-id',
+    compilerSemanticIdentities:
+      'ordered-generated-identities-may-be-empty-for-unidentified-fallback',
+    compilerReceiptId: 'sha256-of-complete-deterministic-core-excluding-receipt-id',
     numericObservations: 'finite-non-negative',
-    sourcePaths: 'normalized-repository-relative',
+    sourcePaths: 'normalized-project-relative-or-hashed-external-locator',
     expectedJoinKey: 'must-exist-and-match',
     privacyValues: 'always-false',
   },
@@ -88,6 +91,9 @@ export const RECEIPT_SCHEMA_V1 = {
       'receiptId',
       'sourcePath',
       'sourceHash',
+      'sourceSpecifier',
+      'sourceExport',
+      'sourceSpan',
       'siteFingerprint',
       'compilerHash',
       'configHash',
@@ -167,6 +173,14 @@ export interface CompilerReceiptV1 {
   readonly receiptId: string
   readonly sourcePath: string
   readonly sourceHash: string
+  readonly sourceSpecifier: string | null
+  readonly sourceExport: string | null
+  readonly sourceSpan: {
+    readonly startLine: number
+    readonly startColumn: number
+    readonly endLine: number
+    readonly endColumn: number
+  } | null
   readonly siteFingerprint: string
   readonly compilerHash: string
   readonly configHash: string
@@ -304,9 +318,11 @@ const enumArray = (
   }
 }
 
-const semanticIdentities = (value: unknown, errors: string[]): void => {
-  if (!Array.isArray(value) || value.length === 0) {
-    errors.push('semanticIds must be a non-empty array')
+const semanticIdentities = (value: unknown, errors: string[], allowEmpty = false): void => {
+  if (!Array.isArray(value) || (!allowEmpty && value.length === 0)) {
+    errors.push(
+      allowEmpty ? 'semanticIds must be an array' : 'semanticIds must be a non-empty array',
+    )
     return
   }
   value.forEach((item, index) => {
@@ -343,6 +359,10 @@ const validateCompiler = (value: Record<string, unknown>, errors: string[]): voi
   exactKeys(value, RECEIPT_SCHEMA_V1.recordKeys.compiler, 'compiler receipt', errors)
   commonVersion(value, errors)
   commonReceiptId(value, 'receiptId', errors)
+  const malformedExternalLocator =
+    typeof value.sourcePath === 'string' &&
+    value.sourcePath.startsWith('external/') &&
+    !/^external\/sha256-[0-9a-f]{64}$/u.test(value.sourcePath)
   if (
     typeof value.sourcePath !== 'string' ||
     value.sourcePath.length === 0 ||
@@ -350,9 +370,12 @@ const validateCompiler = (value: Record<string, unknown>, errors: string[]): voi
     /^[a-zA-Z]:[\\/]/u.test(value.sourcePath) ||
     value.sourcePath.includes('\\') ||
     value.sourcePath.includes('//') ||
-    /(?:^|\/)\.{1,2}(?:\/|$)/u.test(value.sourcePath)
+    /(?:^|\/)\.{1,2}(?:\/|$)/u.test(value.sourcePath) ||
+    malformedExternalLocator
   ) {
-    errors.push('sourcePath must be normalized and repo-relative')
+    errors.push(
+      'sourcePath must be normalized project-relative or an exact hashed external locator',
+    )
   }
   for (const key of [
     'sourceHash',
@@ -363,7 +386,50 @@ const validateCompiler = (value: Record<string, unknown>, errors: string[]): voi
   ] as const) {
     if (!hasHash(value[key])) errors.push(`${key} must be a sha256 hash`)
   }
-  semanticIdentities(value.semanticIds, errors)
+  const sourceSpecifierValid =
+    value.sourceSpecifier === null ||
+    (typeof value.sourceSpecifier === 'string' && value.sourceSpecifier.length > 0)
+  if (!sourceSpecifierValid) {
+    errors.push('sourceSpecifier must be null or a non-empty module specifier')
+  }
+  const sourceExportValid = value.sourceExport === null || hasId(value.sourceExport)
+  if (!sourceExportValid) {
+    errors.push('sourceExport must be null or a stable exported identifier')
+  }
+  if (value.sourceSpan === null) {
+    if (value.sourceSpecifier !== null || value.sourceExport !== null) {
+      errors.push('a missing sourceSpan requires null sourceSpecifier and sourceExport')
+    }
+  } else if (!isRecord(value.sourceSpan)) {
+    errors.push('sourceSpan must be null or an object')
+  } else {
+    exactKeys(
+      value.sourceSpan,
+      ['startLine', 'startColumn', 'endLine', 'endColumn'],
+      'sourceSpan',
+      errors,
+    )
+    const { startLine, startColumn, endLine, endColumn } = value.sourceSpan
+    if (
+      !Number.isSafeInteger(startLine) ||
+      (startLine as number) < 1 ||
+      !Number.isSafeInteger(startColumn) ||
+      (startColumn as number) < 0 ||
+      !Number.isSafeInteger(endLine) ||
+      (endLine as number) < 1 ||
+      !Number.isSafeInteger(endColumn) ||
+      (endColumn as number) < 0 ||
+      (endLine as number) < (startLine as number) ||
+      ((endLine as number) === (startLine as number) &&
+        (endColumn as number) < (startColumn as number))
+    ) {
+      errors.push('sourceSpan must be an ordered one-based line and zero-based column range')
+    }
+    if (value.sourceSpecifier === null || value.sourceExport === null) {
+      errors.push('a discovered sourceSpan requires sourceSpecifier and sourceExport')
+    }
+  }
+  semanticIdentities(value.semanticIds, errors, true)
   if (!RECEIPT_SCHEMA_V1.semanticModes.includes(value.semanticMode as never)) {
     errors.push('semanticMode is invalid')
   }

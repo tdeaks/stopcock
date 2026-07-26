@@ -12,13 +12,11 @@ import { SUPPORTED_OP_NAMES } from '../../../packages/fp-compiler/src/ops'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import * as A from '../../../packages/fp/src/array'
 import { none } from '../../../packages/fp/src/option'
-// Root `pipe` from source, because that is what the synthesized fixture
-// imports and therefore what an untransformed site would actually call. It has
-// been sequential since S8, so injecting the optimizer's fused pipe here
-// misrepresented the fallback tier. Importing it from the optimizer package
-// also pulled FP's built dist into this process, which measurably changed how
-// the small-n rows tier.
-import { pipe } from '../../../packages/fp/src/pipe'
+// The performance frontier is explicitly the optimizer tier. Root sequential
+// semantics have their own exactness corpus; benchmarking root source against
+// a fused hand-loop denominator would either reward a semantic substitution or
+// penalize the stage barriers that root deliberately promises.
+import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
 import type { CallbackSpec } from './binding-specs'
 import {
   COMPILER_PERF_POLICIES,
@@ -233,7 +231,7 @@ const synthesizeSource = (steps: readonly SerializedStep[]): string => {
     renderedSteps.length === 0
       ? 'return input;'
       : `return pipe(input, ${renderedSteps.join(', ')});`
-  return `import { pipe } from '@stopcock/fp'\nimport * as A from '@stopcock/fp/array'\nfunction __run(input) {\n${body}\n}\nexport { __run };`
+  return `import { pipe } from '@stopcock/fp-optimizer'\nimport * as A from '@stopcock/fp/array'\nfunction __run(input) {\n${body}\n}\nexport { __run };`
 }
 
 export const compileTransformedCompilerPerfSource = (

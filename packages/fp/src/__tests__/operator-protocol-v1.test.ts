@@ -698,6 +698,14 @@ describe('ReceiptSchemaV1 generated view parity', () => {
     receiptId: hash,
     sourcePath: 'src/example.ts',
     sourceHash: hash,
+    sourceSpecifier: '@stopcock/fp',
+    sourceExport: 'pipe',
+    sourceSpan: {
+      startLine: 1,
+      startColumn: 0,
+      endLine: 1,
+      endColumn: 42,
+    },
     siteFingerprint: hash,
     compilerHash: hash,
     configHash: hash,
@@ -782,6 +790,7 @@ describe('ReceiptSchemaV1 generated view parity', () => {
       evidenceRef,
       { ...evidenceRef, status: 'stale' },
       { ...evidenceRef, status: 'unavailable' },
+      { ...compilerReceipt, sourcePath: `external/sha256-${'a'.repeat(64)}` },
     ]) {
       expect(validateDebugReceipt(fixture)).toEqual(validateCompilerReceipt(fixture))
       expect(validateDebugReceipt(fixture).ok).toBe(true)
@@ -795,6 +804,8 @@ describe('ReceiptSchemaV1 generated view parity', () => {
       { ...compilerReceipt, reasonCodes: ['made-up-reason'] },
       { ...compilerReceipt, sourceHash: 'not-a-hash' },
       { ...compilerReceipt, sourcePath: '../outside.ts' },
+      { ...compilerReceipt, sourcePath: 'external/foo.ts' },
+      { ...compilerReceipt, sourcePath: 'external/sha256-not-a-hash' },
       { ...evidenceRef, status: 'verified' },
       {
         ...runtimeProfile,

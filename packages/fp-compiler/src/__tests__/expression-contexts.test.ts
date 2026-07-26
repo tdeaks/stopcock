@@ -29,7 +29,7 @@ const fixture = (name: string, body: string): Fixture => ({
   imports: IMPORTS,
   locals: LOCALS,
   body,
-  expectTransformed: false,
+  expectTransformed: true,
 })
 
 /** Contexts where the result is a value and nothing else is observable. */
@@ -72,9 +72,33 @@ const VALUE_CONTEXTS: readonly (readonly [string, string])[] = [
 describe('compiled pipelines preserve meaning in every expression context', () => {
   it.each(VALUE_CONTEXTS)('%s', (name, body) => {
     const result = runFixture(fixture(name.replace(/\W+/gu, '-'), body))
+    expect(result.map).not.toBeNull()
     expect(result.original.error).toBeUndefined()
     expect(result.compiled.error).toBeUndefined()
     expect(result.compiled.value).toEqual(result.original.value)
+  })
+
+  it('reports a nested source pipeline separately instead of hiding it in an outer rewrite', () => {
+    const source = `${IMPORTS}
+export const result = pipe(
+  pipe([1,2,3], map((x) => x * 2)),
+  filter((x) => x > 2),
+)
+`
+    const transformed = transformStopcockPipelines(source, 'nested-pipe.ts', {
+      diagnostics: 'verbose',
+    })
+
+    expect(transformed.code).not.toBe(source)
+    expect(transformed.diagnostics).toHaveLength(2)
+    expect(transformed.diagnostics[0]).toMatchObject({
+      transformed: false,
+      fallbackTier: 'sequential',
+      reasonCodes: ['unsupported-layout'],
+    })
+    expect(transformed.diagnostics[0].reason).toContain('nested managed pipeline')
+    expect(transformed.diagnostics[1]).toMatchObject({ transformed: true })
+    expect(transformed.code).toContain('pipe(')
   })
 })
 
@@ -118,47 +142,154 @@ describe('compiled pipelines preserve evaluation order and short-circuiting', ()
   it.each(ORDER_CONTEXTS)('%s', (name, body) => {
     const makeExtra = () => ({ log: [] as unknown[] })
     const result = runFixture(fixture(name.replace(/\W+/gu, '-'), body), makeExtra)
+    expect(result.map).not.toBeNull()
     expect(result.original.error).toBeUndefined()
     expect(result.compiled.error).toBeUndefined()
     expect(result.compiled.value).toEqual(result.original.value)
   })
 })
 
-/**
- * A recorded divergence, not a passing guarantee.
- *
- * S8 made root `pipe` sequential and says so: "callbacks run stage by stage
- * rather than interleaved per element". The compiler lowers that same call into
- * a fused loop, so with the plugin enabled the callbacks interleave and an
- * early-exit terminal stops calling upstream ones.
- *
- * The values agree. What differs is the number of callback invocations and
- * their order, which is observable for any effectful callback — so whether a
- * program is correct can depend on whether the build plugin is on.
- *
- * These tests pin the current behaviour so the difference is measured rather
- * than assumed. They are not an endorsement of it.
- */
-describe('KNOWN DIVERGENCE: compiling root pipe changes callback order and count', () => {
+describe('expression wrappers preserve lexical function state', () => {
+  it.each([
+    [
+      'this in a call argument',
+      `const id = (value) => value
+       const object = {
+         values: [1,2],
+         run() { return id(pipe(this.values, map((x) => x + 1))) }
+       }
+       return object.run()`,
+    ],
+    [
+      'arguments in a call argument',
+      `const id = (value) => value
+       function outer() { return id(pipe(arguments[0], map((x) => x + 1))) }
+       return outer([1,2])`,
+    ],
+    [
+      'new.target in a call argument',
+      `const id = (value) => value
+       function Construct(values) {
+         return id(pipe(new.target === Construct ? values : [], map((x) => x + 1)))
+       }
+       return new Construct([1,2])`,
+    ],
+    [
+      'super in a call argument',
+      `const id = (value) => value
+       class Base { values() { return [1,2] } }
+       class Child extends Base {
+         run() { return id(pipe(super.values(), map((x) => x + 1))) }
+       }
+       return new Child().run()`,
+    ],
+    [
+      'an arrow callback capturing this in a call argument',
+      `const id = (value) => value
+       const object = {
+         factor: 3,
+         run() { return id(pipe([1,2], map((x) => x * this.factor))) }
+       }
+       return object.run()`,
+    ],
+  ] as const)('%s', (_name, body) => {
+    const result = runFixture(fixture('lexical-expression-wrapper', body))
+    expect(result.transformed).toBe(true)
+    expect(result.map).not.toBeNull()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+
+  it.each([
+    [
+      'await',
+      `async function run() {
+         const id = (value) => value
+         return id(pipe(await Promise.resolve([1,2]), map(Number)))
+       }`,
+    ],
+    [
+      'yield',
+      `function* run() {
+         const id = (value) => value
+         return id(pipe(yield [1,2], map(Number)))
+       }`,
+    ],
+  ] as const)('declines outer %s inside a generated expression wrapper', (_name, body) => {
+    const source = `${IMPORTS}
+${body}
+`
+    const result = transformStopcockPipelines(source, 'outer-suspension.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0].reason).toContain('outer await or yield')
+  })
+
+  it('keeps direct await in its owning async function', () => {
+    const source = `${IMPORTS}
+async function run() {
+  return pipe(await Promise.resolve([1,2]), map(Number))
+}
+`
+    const result = transformStopcockPipelines(source, 'direct-await.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).not.toBe(source)
+    expect(result.diagnostics[0].transformed).toBe(true)
+  })
+
+  it.each([
+    [
+      'class extends expression',
+      `async function run() {
+         const id = (value) => value
+         return id(pipe(
+           [1],
+           map(class extends (await Promise.resolve(class {})) {}),
+         ))
+       }`,
+    ],
+    [
+      'computed class method key',
+      `async function run() {
+         const id = (value) => value
+         return id(pipe(
+           [1],
+           map(class { [await Promise.resolve('method')]() {} }),
+         ))
+       }`,
+    ],
+  ] as const)('declines outer await in a %s', (_name, body) => {
+    const source = `${IMPORTS}
+${body}
+`
+    const result = transformStopcockPipelines(source, 'class-outer-await.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0].reason).toContain('outer await or yield')
+  })
+})
+
+describe('compiling root pipe preserves sequential callback order and count', () => {
   const run = (body: string) =>
     runFixture(fixture('divergence', body), () => ({ log: [] as unknown[] }))
 
-  it('interleaves callbacks that the sequential runtime runs stage by stage', () => {
+  it('runs callbacks stage by stage', () => {
     const result = run(
       `const r = pipe([1,2,3], map((x) => { log.push('m' + x); return x * 2 }), filter((x) => { log.push('f' + x); return x > 2 })); return [r, log.join(',')]`,
     )
-    expect((result.original.value as unknown[])[0]).toEqual((result.compiled.value as unknown[])[0])
-    expect((result.original.value as unknown[])[1]).toBe('m1,m2,m3,f2,f4,f6')
-    expect((result.compiled.value as unknown[])[1]).toBe('m1,f2,m2,f4,m3,f6')
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3,f2,f4,f6')
   })
 
-  it('skips upstream callbacks on early exit that the runtime still runs', () => {
+  it('completes the upstream stage before an early-exit terminal', () => {
     const result = run(
       `const r = pipe([1,2,3,4], map((x) => { log.push('m' + x); return x }), find((x) => x === 2)); return [String(r && r.value), log.join(',')]`,
     )
-    expect((result.original.value as unknown[])[0]).toEqual((result.compiled.value as unknown[])[0])
-    expect((result.original.value as unknown[])[1]).toBe('m1,m2,m3,m4')
-    expect((result.compiled.value as unknown[])[1]).toBe('m1,m2')
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3,m4')
   })
 })
 

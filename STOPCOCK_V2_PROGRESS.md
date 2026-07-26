@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S11R
-Current slice: PROTOCOL_RECEIPT_AND_EXTRACTED_ARTIFACT_REENTRY
-Last verified commit: 73cc41386a1000936e4c05d7cddde239b9949698
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-26
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -49,40 +49,40 @@ controller never performs that external mutation itself.
 Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 `GATE_PASSED`, `STOPPED_BY_PLAN`, and `BLOCKED`.
 
-| Stage | Status      | Verified commit or evidence                                                                                                                                                                                                                                                                                                                                                                   |
-| ----- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S0    | GATE_PASSED | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                                |
-| S0R   | GATE_PASSED | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready        |
-| S0B   | GATE_PASSED | Aligned 20-package public plus private Synth `2.0.0-next.0` cohort at `551852a06c1c22a2241fb9e3c75815524fdbc9fb`; no-write alignment replay, immutable 20-tarball development artifact `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`, exact packed checks, 117-export Bun/Node/type consumer, private Synth compatibility, and independent exit validation passed |
-| S1A   | GATE_PASSED | Cross-bundler packed consumer, behavior, size, identity, topology, and lower-bound package evidence checkpoint `81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`; independent consumer and topology audits passed                                                                                                                                                                                    |
-| S1B   | GATE_PASSED | Local scope only at `0c207b9`; checked-in profile registry, fail-closed host resolution, and repeated no-change qualification. The user descoped self-hosted runner provisioning, so `perf-linux-x64` stays recorded as unprovisioned and hosted CI matches no profile                                                                                                                        |
-| S1C   | GATE_PASSED | Frozen lane contract, fail-closed manifest validation, and three-session release manifests for both engines at `cfa0669`; identity-bound raw samples, memory capability matrix, and the pre-approved compact floor recorded before any compact implementation                                                                                                                                 |
-| S2    | GATE_PASSED | Acyclic canonical semantic/lowering/evidence/receipt generation checkpoint `cad86c15ae64b90a86675bbca96f6bea362d25ff`; complete clean gates and independent `v2_verifier` audit passed                                                                                                                                                                                                        |
-| S3A   | GATE_PASSED | Package-wide fail-closed initializer-purity checkpoint `6ced74a4574123a36284d2baaca9cf7f4f449436`; exact packed/local four-bundler size and behavior evidence, two-run reproducibility, full clean release gates, and independent audit passed                                                                                                                                                |
-| S3B   | GATE_PASSED | Independent `dualUntagged2/3/4` plus bounded fallback at `f6a62be`; Option, Result, and every other untagged consumer no longer retain the opcode table; enforced size rows met with one recorded deferral for fusible `string.trim`                                                                                                                                                          |
-| S4    | GATE_PASSED | One measured direct-leaf codegen policy entry at `393bb06`; map generated instead of hand-written, cache confined to construction, every history within 3% of a hand-written loop on the release lane                                                                                                                                                                                         |
-| S5A   | GATE_PASSED | Module-private provenance table at `e0becf5`; public tag fields keep existing and authorize nothing, full valid-opcode forgery corpus passes, no public registrar ships                                                                                                                                                                                                                       |
-| S5B   | GATE_PASSED | Weak callback-keyed operator cache at `706d5ad`; the strong one-entry slot is gone, `map(f) === map(f)` holds while `f` is live, and all seven optional candidates are recorded as measured stops                                                                                                                                                                                             |
-| S6    | GATE_PASSED | Engine-owned fusion module plus three additive entries at `547de0d`; facades bind to the engine, not to root, and a direct-only consumer retains neither engine nor debug                                                                                                                                                                                                                     |
-| S7    | GATE_PASSED | Receipt emission, `stopcock check` CLI and renderer, import pruning, callback and source-map hardening, canonical Option terminals, lane split, and the topology-neutral package gate at `9301314`                                                                                                                                                                                            |
-| S8    | GATE_PASSED | Root `pipe`/`flow` sequential at `55ca6a1`; root surface narrowed to the migration map, every size ceiling met with no planner retained. Non-publishable integration state, as the stage requires                                                                                                                                                                                             |
-| S9    | GATE_PASSED | Compact fusion at `90c3265`: 2,874 gzip bytes against the 5.5 KiB hard gate, no debug surface, no name registry, and agreement with every other tier on results, callback order, and early-exit counts                                                                                                                                                                                        |
-| S10   | GATE_PASSED | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                  |
-| S10X  | GATE_PASSED | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                |
-| S10J  | GATE_PASSED | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                  |
-| S11R  | IN_PROGRESS | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11                                                                                                                                                                                               |
-| S11   | NOT_STARTED | Static Plan IR, tier-preserving codegen, expression/source-map corpus, pure map-to-length rewrite, exact construction semantics, deterministic receipts, and five-host smoke coverage exist in the sealed candidate based at `73cc413`; S11 cannot start until S11R passes                                                                                                                    |
-| P1A   | GATE_PASSED | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                       |
-| P1B   | GATE_PASSED | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                             |
-| P2    | GATE_PASSED | Canonical-view inspection seam merged; every candidate strategy measured and stopped, so typed-array behaviour is unchanged by design                                                                                                                                                                                                                                                         |
-| P3A   | GATE_PASSED | Allocation and memory evidence infrastructure merged at `9bde654`; seven families calibrated on the release lane, three uncalibrated on the canary and reported rather than tuned                                                                                                                                                                                                             |
-| P3B   | NOT_STARTED | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                                |
-| P4    | GATE_PASSED | Compiled object read paths, guarded plain-data write tier, and lazy `Map.getOrElse` merged at `908f5f6`; the Record narrow-path candidate stopped on measurement and one row deferred to S4                                                                                                                                                                                                   |
-| DISP  | NOT_STARTED | Preflight manifest/schema work exists at `f435dd6`, but its unresolved P3B row means the canonical stage has not started or passed                                                                                                                                                                                                                                                            |
-| S12P  | NOT_STARTED | A preflight tarball probe at `02b79a6` imported 45/45 public subpaths and measured FP at 131,017 B, but it did not build S12P's required prototype and is not a stage verdict                                                                                                                                                                                                                 |
-| S12   | NOT_STARTED | Depends on a passed S12P exact prototype; no S12 implementation has started                                                                                                                                                                                                                                                                                                                   |
-| S13   | NOT_STARTED | External RC publication remains user-authorized                                                                                                                                                                                                                                                                                                                                               |
-| S14   | NOT_STARTED | Stable acceptance and publication remain user-authorized                                                                                                                                                                                                                                                                                                                                      |
+| Stage | Status             | Verified commit or evidence                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S0    | GATE_PASSED        | Contracts checkpoint `dcf054568bc71f031b5a4b43ec152bf09a00866c`; package-cohort readiness inventory validated with three explicit S0R blockers                                                                                                                                                                                                                                                                            |
+| S0R   | GATE_PASSED        | Conditional stage; shared readiness-transition test added to every frozen package-remediation target; Async ready; Date/Diff remain; Date remediation passed with truthful length-dispatched overloads and packed consumers; only Diff remains; Diff remediation passed source, type, build, package, packed-consumer, and independent validation; all 21 library workspaces are ready                                    |
+| S0B   | GATE_PASSED        | Aligned 20-package public plus private Synth `2.0.0-next.0` cohort at `551852a06c1c22a2241fb9e3c75815524fdbc9fb`; no-write alignment replay, immutable 20-tarball development artifact `sha256:88526ab370fc4a9cc7227bbca34490320e906939b528f5da7606eecd6f70e0d8`, exact packed checks, 117-export Bun/Node/type consumer, private Synth compatibility, and independent exit validation passed                             |
+| S1A   | GATE_PASSED        | Cross-bundler packed consumer, behavior, size, identity, topology, and lower-bound package evidence checkpoint `81ae2c3b0acf8d3dbc2ae5ecbc1d7703fde688d0`; independent consumer and topology audits passed                                                                                                                                                                                                                |
+| S1B   | GATE_PASSED        | Local scope only at `0c207b9`; checked-in profile registry, fail-closed host resolution, and repeated no-change qualification. The user descoped self-hosted runner provisioning, so `perf-linux-x64` stays recorded as unprovisioned and hosted CI matches no profile                                                                                                                                                    |
+| S1C   | GATE_PASSED        | Frozen lane contract, fail-closed manifest validation, and three-session release manifests for both engines at `cfa0669`; identity-bound raw samples, memory capability matrix, and the pre-approved compact floor recorded before any compact implementation                                                                                                                                                             |
+| S2    | GATE_PASSED        | Acyclic canonical semantic/lowering/evidence/receipt generation checkpoint `cad86c15ae64b90a86675bbca96f6bea362d25ff`; complete clean gates and independent `v2_verifier` audit passed                                                                                                                                                                                                                                    |
+| S3A   | GATE_PASSED        | Package-wide fail-closed initializer-purity checkpoint `6ced74a4574123a36284d2baaca9cf7f4f449436`; exact packed/local four-bundler size and behavior evidence, two-run reproducibility, full clean release gates, and independent audit passed                                                                                                                                                                            |
+| S3B   | GATE_PASSED        | Independent `dualUntagged2/3/4` plus bounded fallback at `f6a62be`; Option, Result, and every other untagged consumer no longer retain the opcode table; enforced size rows met with one recorded deferral for fusible `string.trim`                                                                                                                                                                                      |
+| S4    | GATE_PASSED        | One measured direct-leaf codegen policy entry at `393bb06`; map generated instead of hand-written, cache confined to construction, every history within 3% of a hand-written loop on the release lane                                                                                                                                                                                                                     |
+| S5A   | GATE_PASSED        | Module-private provenance table at `e0becf5`; public tag fields keep existing and authorize nothing, full valid-opcode forgery corpus passes, no public registrar ships                                                                                                                                                                                                                                                   |
+| S5B   | GATE_PASSED        | Weak callback-keyed operator cache at `706d5ad`; the strong one-entry slot is gone, `map(f) === map(f)` holds while `f` is live, and all seven optional candidates are recorded as measured stops                                                                                                                                                                                                                         |
+| S6    | GATE_PASSED        | Engine-owned fusion module plus three additive entries at `547de0d`; facades bind to the engine, not to root, and a direct-only consumer retains neither engine nor debug                                                                                                                                                                                                                                                 |
+| S7    | GATE_PASSED        | Receipt emission, `stopcock check` CLI and renderer, import pruning, callback and source-map hardening, canonical Option terminals, lane split, and the topology-neutral package gate at `9301314`                                                                                                                                                                                                                        |
+| S8    | GATE_PASSED        | Root `pipe`/`flow` sequential at `55ca6a1`; root surface narrowed to the migration map, every size ceiling met with no planner retained. Non-publishable integration state, as the stage requires                                                                                                                                                                                                                         |
+| S9    | GATE_PASSED        | Compact fusion at `90c3265`: 2,874 gzip bytes against the 5.5 KiB hard gate, no debug surface, no name registry, and agreement with every other tier on results, callback order, and early-exit counts                                                                                                                                                                                                                    |
+| S10   | GATE_PASSED        | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                                              |
+| S10X  | GATE_PASSED        | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                                            |
+| S10J  | GATE_PASSED        | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                                              |
+| S11R  | CHECKPOINT_PENDING | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. |
+| S11   | NOT_STARTED        | Static Plan IR, tier-preserving codegen, expression/source-map corpus, pure map-to-length rewrite, exact construction semantics, deterministic receipts, and five-host smoke coverage exist in the sealed candidate based at `73cc413`; S11 cannot start until S11R passes                                                                                                                                                |
+| P1A   | GATE_PASSED        | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                                                   |
+| P1B   | GATE_PASSED        | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                                                         |
+| P2    | GATE_PASSED        | Canonical-view inspection seam merged; every candidate strategy measured and stopped, so typed-array behaviour is unchanged by design                                                                                                                                                                                                                                                                                     |
+| P3A   | GATE_PASSED        | Allocation and memory evidence infrastructure merged at `9bde654`; seven families calibrated on the release lane, three uncalibrated on the canary and reported rather than tuned                                                                                                                                                                                                                                         |
+| P3B   | NOT_STARTED        | Measured allocation strategies                                                                                                                                                                                                                                                                                                                                                                                            |
+| P4    | GATE_PASSED        | Compiled object read paths, guarded plain-data write tier, and lazy `Map.getOrElse` merged at `908f5f6`; the Record narrow-path candidate stopped on measurement and one row deferred to S4                                                                                                                                                                                                                               |
+| DISP  | NOT_STARTED        | Preflight manifest/schema work exists at `f435dd6`, but its unresolved P3B row means the canonical stage has not started or passed                                                                                                                                                                                                                                                                                        |
+| S12P  | NOT_STARTED        | A preflight tarball probe at `02b79a6` imported 45/45 public subpaths and measured FP at 131,017 B, but it did not build S12P's required prototype and is not a stage verdict                                                                                                                                                                                                                                             |
+| S12   | NOT_STARTED        | Depends on a passed S12P exact prototype; no S12 implementation has started                                                                                                                                                                                                                                                                                                                                               |
+| S13   | NOT_STARTED        | External RC publication remains user-authorized                                                                                                                                                                                                                                                                                                                                                                           |
+| S14   | NOT_STARTED        | Stable acceptance and publication remain user-authorized                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## Progress
 
@@ -293,6 +293,10 @@ check` CLI finally has something producing what it reads, and proved the
       blocker. A deliberate outer control-plane amendment introduced S11R so
       the sealed candidate can repair and freshly requalify S2, S7, and S10X
       evidence before S11 timing resumes.
+- [x] (2026-07-26) Replayed the sealed compiler candidate under S11R, repaired
+      external receipt identity and the runtime-composition-engine gate, and
+      completed the deterministic source/test slice required before a clean
+      cohort pack.
 
 ## Evidence log
 
@@ -1847,6 +1851,41 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
     runner identity, power/thermal profile, provisioning runbook, profile
     validator, or repeated noise qualification. S1B therefore failed its entry
     gate before any implementation or external mutation.
+- S11R compiler source/test checkpoint evidence:
+  - the static compiler uses an explicit Plan IR with construction captures,
+    source-tier layout, exact/pure mode, residual ABI, segment topology,
+    lowering identity, and mapped source fragments; supported sites lower
+    without retaining a runtime composition or execution engine;
+  - every official operator expression is still evaluated exactly once.
+    Five real hosts reject root, compile, fusion, compact-runtime, planner, and
+    optimizer modules, admit only an audited construction-leaf closure, remove
+    the facade invocation, and execute generated loops. An inherited `_op`
+    setter can retain and later call the constructed operator with identical
+    original/compiled behavior;
+  - external source IDs now emit
+    `external/sha256-<64 lowercase hex>` from the versioned
+    `stopcock.receipt.external-source.v1` domain. Raw machine paths never enter
+    receipt JSON; distinct external IDs remain distinct; malformed or reserved
+    external locators fail both generated validators;
+  - two consecutive protocol generations emitted operator manifest
+    `sha256:149af8c82b015b37265d13425b375e8a184afeeab1990122604658bb84f9c141`
+    and receipt schema
+    `sha256:9bb0669aa1519ed6e78a9862c2c182e33850ebac502efec9eb91ff58a2775a85`;
+  - `packages/fp-compiler` release validation passed 16 files and 401 tests,
+    including real packed compiler and five-host smoke cases, with source and
+    public type checks green;
+  - compiler differential and deterministic performance-policy validation
+    passed 3 files and 64 tests. The optimizer-tier differential now uses one
+    FP package instance, so it does not silently substitute duplicate-instance
+    fallback semantics for the selected optimized tier;
+  - FP codegen types, source types, and generated debug/compiler schema parity
+    passed, including 25 protocol tests. `codegen:repro` still stops before
+    generation on `codegen/compact-facts.ts` importing `../src/registry`; that
+    source is byte-identical to this slice's starting HEAD and remains a
+    reported baseline failure rather than absorbed work;
+  - no timing command ran. The packed FP/compiler/optimizer cohort, topology
+    mismatch layouts, named extracted consumer matrix, and fresh S2/S7 audits
+    remain for the next S11R slices.
 
 ## Surprises and discoveries
 
@@ -2008,6 +2047,13 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   repository has no self-hosted runner registered, and no repository artifact
   identifies an accountable owner who can provision and qualify either
   required profile.
+- A deterministic compiler differential initially reported five callback-count
+  mismatches because its transformed source selected the optimizer tier while
+  its runtime oracle constructed operators from a different FP module
+  instance. Using the selected package instance made all 35 rows pass. The
+  failure is retained as a warning for the required duplicate-install matrix:
+  topology mismatch must fail closed rather than masquerade as optimized
+  semantics.
 
 ## Decision log
 
@@ -2325,13 +2371,28 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   timing in S11.
   Date: 2026-07-26.
 
+- Decision: Encode non-project receipt sources as opaque, domain-separated
+  hashes and reserve the `external/` namespace for that exact locator form.
+  Rationale: Preserving a raw host ID leaks machine paths and makes receipt,
+  site, and evidence identity depend on checkout location; basename or content
+  alone would also collide distinct external sources.
+  Date: 2026-07-26.
+
+- Decision: Define compiler runtime elimination as removal of composition and
+  execution machinery while retaining exactly observable operator
+  construction leaves.
+  Rationale: Public factory calls can expose inherited setters, cache identity,
+  provenance, throws, and callable closures. Erasing them is semantically
+  wrong; invoking them to execute the transformed pipeline is equally wrong.
+  Date: 2026-07-26.
+
 ## Current blockers
 
 There is no current blocker to S11R's deterministic source, package, or
 extracted-artifact work. New timing evidence remains unavailable until the
 current host requalifies, but timing is outside S11R.
 
-## Historical S1B entry stop
+### Historical S1B entry stop
 
 This section preserves the original S1B entry finding. At that point the live
 GitHub repository reported zero self-hosted runners; hosted CI was canary-only;
@@ -2448,9 +2509,11 @@ this earlier pack.
 
 ## Exact next action
 
-Complete S11R's protocol, receipt, runtime-composition-engine, packed-cohort,
-and extracted-topology work and pass fresh S2 and S7 audits. S11 remains
-`NOT_STARTED` until that corrective prerequisite is green.
+Checkpoint this validated compiler source/test slice. From the resulting clean
+worktree, join and pack the 21-public-package development cohort, then build
+the packed FP/compiler/optimizer fixture and run the named extracted-host and
+duplicate-layout matrix. S11 remains `NOT_STARTED` until the complete S11R
+qualification and fresh S2/S7 audits are green.
 
 Do not perform further timing work until `perf-profile-gate` reports `ok: true`.
 After the host requalifies, re-run `portable-perf-gate` and

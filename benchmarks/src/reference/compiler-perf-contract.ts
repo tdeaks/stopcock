@@ -10,8 +10,12 @@ export const EXPECTED_COMPILER_SUBJECT_ID = 'stopcock-fp-compiler-static-transfo
 
 export const EXPECTED_COMPILER_IMPLEMENTATION_FILES = Object.freeze([
   'packages/fp-compiler/src/codegen.ts',
+  'packages/fp-compiler/src/inline.ts',
+  'packages/fp-compiler/src/mapped-code.ts',
   'packages/fp-compiler/src/ops-table.ts',
   'packages/fp-compiler/src/ops.ts',
+  'packages/fp-compiler/src/plan-ir.ts',
+  'packages/fp-compiler/src/prune-imports.ts',
   'packages/fp-compiler/src/transform.ts',
 ] as const)
 

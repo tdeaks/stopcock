@@ -2,7 +2,7 @@
   {
     "kind": "stopcock.compiler-receipt",
     "schemaVersion": 1,
-    "receiptId": "sha256:2ae736fe01baf2aa2fb2f5aa969a775ac895d2d4d57f18d073e038eb46bd5c72",
+    "receiptId": "sha256:423221b1dc936e35d4a250ccbfc22fa0e0b911b5999ec63981e1a0f3c4d9f068",
     "sourcePath": "src/report.ts",
     "sourceHash": "sha256:2c24915e914bc7f7fbb398cb2b86fe894078e2a8497dee3bfad6804406a5d6b5",
     "siteFingerprint": "sha256:1f8bdd8e0fa188b581d0ce3ca193ad38c87c8020890e1e91e057bc48a71f0674",
@@ -24,7 +24,9 @@
       }
     ],
     "semanticMode": "exact",
-    "segmentKinds": ["stream"],
+    "segmentKinds": [
+      "stream"
+    ],
     "disposition": "transformed",
     "loweringHash": "sha256:05cc6adaffe43677bfc63cbf73862df6546459a759b3f0d8c0b84596e5fdc145",
     "fallbackTier": "none",
@@ -34,13 +36,21 @@
     "evidenceRefs": [
       "sha256:46ece0a9a199a853d3e1af4e7287b9a6b5fa308a456f21ab83f62513baca7715",
       "sha256:606ee51e1ab5abd3a9aa7c1fc740dbc46fcba8ab4e5ae2b49a551bfe4fe3fdfc"
-    ]
+    ],
+    "sourceSpecifier": "@stopcock/fp",
+    "sourceExport": "pipe",
+    "sourceSpan": {
+      "startLine": 1,
+      "startColumn": 0,
+      "endLine": 1,
+      "endColumn": 80
+    }
   },
   {
     "kind": "stopcock.compiler-receipt",
     "schemaVersion": 1,
-    "receiptId": "sha256:2ae736fe01baf2aa2fb2f5aa969a775ac895d2d4d57f18d073e038eb46bd5c72",
-    "sourcePath": "src/other.ts",
+    "receiptId": "sha256:423221b1dc936e35d4a250ccbfc22fa0e0b911b5999ec63981e1a0f3c4d9f068",
+    "sourcePath": "src/report.ts",
     "sourceHash": "sha256:2c24915e914bc7f7fbb398cb2b86fe894078e2a8497dee3bfad6804406a5d6b5",
     "siteFingerprint": "sha256:1f8bdd8e0fa188b581d0ce3ca193ad38c87c8020890e1e91e057bc48a71f0674",
     "compilerHash": "sha256:8a2ed10fdf3456c2be73eaab15ba1dc45f4719484dd4b3677b33adfdfee082bb",
@@ -61,7 +71,9 @@
       }
     ],
     "semanticMode": "exact",
-    "segmentKinds": ["stream"],
+    "segmentKinds": [
+      "stream"
+    ],
     "disposition": "transformed",
     "loweringHash": "sha256:05cc6adaffe43677bfc63cbf73862df6546459a759b3f0d8c0b84596e5fdc145",
     "fallbackTier": "none",
@@ -71,6 +83,14 @@
     "evidenceRefs": [
       "sha256:46ece0a9a199a853d3e1af4e7287b9a6b5fa308a456f21ab83f62513baca7715",
       "sha256:606ee51e1ab5abd3a9aa7c1fc740dbc46fcba8ab4e5ae2b49a551bfe4fe3fdfc"
-    ]
+    ],
+    "sourceSpecifier": "@stopcock/fp",
+    "sourceExport": "pipe",
+    "sourceSpan": {
+      "startLine": 1,
+      "startColumn": 0,
+      "endLine": 1,
+      "endColumn": 80
+    }
   }
 ]

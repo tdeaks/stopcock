@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { OPERATOR_DEFINITION_RECORDS_V1 } from '../../../fp/codegen/protocol/operator-definitions'
 import {
+  COMPILER_EMITTER_ABI_V1_HASH as LIVE_COMPILER_EMITTER_ABI_V1_HASH,
   OPERATOR_SEMANTIC_FACTS_V1_HASH,
   RETAINED_COMPILER_OPERATION_CORPUS_V1,
 } from '../../../fp/codegen/protocol/generate-protocol'
@@ -14,6 +15,7 @@ import {
 import { EXPECTED_COMPILER_OPERATION_CORPUS } from '../../../../benchmarks/src/reference/compiler-operation-perf-contract'
 import {
   BOUNDARY_OP_NAMES,
+  COMPILER_EMITTER_ABI_V1_HASH,
   ELEMENT_OP_NAMES,
   FINAL_BOUNDARY_OP_NAMES,
   OPS_TABLE,
@@ -39,6 +41,8 @@ describe('ops-table snapshot', () => {
           fullMaterialization: record.semantic.termination.fullMaterialization,
           domainTransition: record.semantic.termination.domainTransition,
           loweringId: lowering.loweringId,
+          loweringRevision: lowering.loweringRevision,
+          loweringAbiVersion: lowering.loweringAbiVersion,
           loweringHash: lowering.loweringHash,
           runnerId: lowering.runnerId,
           compilerPipelineRole: lowering.compilerPipelineRole,
@@ -54,7 +58,11 @@ describe('ops-table snapshot', () => {
       'utf8',
     )
     expect(generatedSource).toContain(`// Semantic facts hash: ${OPERATOR_SEMANTIC_FACTS_V1_HASH}`)
+    expect(generatedSource).toContain(
+      `// Compiler emitter ABI hash: ${LIVE_COMPILER_EMITTER_ABI_V1_HASH}`,
+    )
     expect(generatedSource).not.toContain('OPERATOR_MANIFEST_HASH')
+    expect(COMPILER_EMITTER_ABI_V1_HASH).toBe(LIVE_COMPILER_EMITTER_ABI_V1_HASH)
   })
 
   it('derives compiler classifications from accepted lowerings', () => {

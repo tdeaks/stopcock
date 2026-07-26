@@ -184,7 +184,7 @@ const synthesizeOperationSource = (item: CompilerOperationCorpusCase): string =>
       ? `let __observation = 0;\nconst value = ${pipeline};\nreturn { value, observation: __observation };`
       : `return ${pipeline};`
   return [
-    "import { pipe } from '@stopcock/fp'",
+    "import { pipe } from '@stopcock/fp-optimizer'",
     "import * as A from '@stopcock/fp/array'",
     'function __run(input) {',
     body,

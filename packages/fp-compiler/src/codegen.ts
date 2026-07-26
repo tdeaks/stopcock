@@ -1,14 +1,60 @@
 import * as t from '@babel/types'
-import { BOUNDARY_OPS, TERMINAL_OPS, bindingSlots } from './ops'
-import { planInline, renderDirectInline, renderDirectInlineExpression } from './inline'
+import {
+  BOUNDARY_OPS,
+  TERMINAL_OPS,
+} from './ops'
+import {
+  planInline,
+  renderDirectInlineExpressionMapped,
+  renderDirectInlineMapped,
+} from './inline'
+import {
+  FULL_ARRAY_LOWERING_ID,
+  FULL_RUNNER_LOWERING_ID,
+  PREFIX_RESIDUAL_RECEIVER_INSENSITIVE_LOWERING_ID,
+  PREFIX_RESIDUAL_STEP_VECTOR_LOWERING_ID,
+  createStaticCompilerPlan,
+  operatorStepsOf,
+  type PlanCapture,
+  type PlanSegment,
+  type PlanValueRef,
+  type StaticCompilerPlanV1,
+  type Step,
+} from './plan-ir'
+import {
+  SourceFragmentTracker,
+  concatMappedCode,
+  type GeneratedSourceFragment,
+  type MappedCode,
+} from './mapped-code'
 
-export interface Step {
-  readonly name: string
-  readonly node: t.Expression
-  readonly args: readonly t.Expression[]
+export {
+  FULL_ARRAY_LOWERING_ID,
+  FULL_RUNNER_LOWERING_ID,
+  PREFIX_RESIDUAL_RECEIVER_INSENSITIVE_LOWERING_ID,
+  PREFIX_RESIDUAL_STEP_VECTOR_LOWERING_ID,
+  createStaticCompilerPlan,
 }
+export type { StaticCompilerPlanV1, Step }
 
 type ExpressionRenderer = (node: t.Expression) => string
+type SourceRangeRenderer = (start: number, end: number) => string
+
+const renderMappedInline = (
+  rendered: ReturnType<typeof renderDirectInlineMapped>,
+  renderSource: SourceRangeRenderer,
+): string | undefined => {
+  if (rendered === undefined) return undefined
+  let tagged = ''
+  let cursor = 0
+  for (const fragment of rendered.sourceFragments) {
+    tagged += rendered.text.slice(cursor, fragment.generatedStart)
+    tagged += renderSource(fragment.sourceStart, fragment.sourceEnd)
+    cursor = fragment.generatedEnd
+  }
+  tagged += rendered.text.slice(cursor)
+  return tagged
+}
 
 // Inlined arrow callbacks are emitted as a block scoped to that step: the
 // params become `const` bindings aliasing the already-computed input values,
@@ -25,15 +71,21 @@ function emitCallback(
   inputVars: readonly string[],
   inlineCallbacks: boolean,
   renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
   use: (expr: string) => string[],
 ): string[] {
-  const direct = inlineCallbacks ? renderDirectInline(argNode, code, inputVars) : undefined
+  const direct = inlineCallbacks
+    ? renderMappedInline(
+        renderDirectInlineMapped(argNode, code, inputVars),
+        renderSource,
+      )
+    : undefined
   if (direct !== undefined) return use(`(${direct})`)
 
   const plan = inlineCallbacks ? planInline(argNode) : undefined
   if (plan) {
     const decls = plan.params.map((p, i) => `const ${p} = ${inputVars[i]};`)
-    const bodyText = code.slice(plan.bodyStart, plan.bodyEnd)
+    const bodyText = renderSource(plan.bodyStart, plan.bodyEnd)
     return ['{', ...decls, ...use(`(${bodyText})`), '}']
   }
   preLines.push(`var ${tempName} = (${renderExpression(argNode)});`)
@@ -43,6 +95,12 @@ function emitCallback(
 export interface FusedBody {
   readonly stmts: string
   readonly resultVar: string
+  /** User expressions captured before any generated loop executes. */
+  readonly prelude: string
+  /** Generated execution statements, after every capture has completed. */
+  readonly execution: string
+  readonly segmentKinds: readonly ('stream' | 'boundary' | 'opaque')[]
+  readonly sourceFragments: readonly GeneratedSourceFragment[]
 }
 
 export const DEFAULT_OPTION_NONE_LOCAL = '__stopcock_fp_none'
@@ -87,12 +145,6 @@ interface BoundarySegment {
 }
 
 type Segment = ElementSegment | BoundarySegment
-
-interface LiteralFlatMapPlan {
-  readonly callback: t.ArrowFunctionExpression
-  readonly params: readonly string[]
-  readonly elements: readonly t.Expression[]
-}
 
 interface PresentConditionalPlan {
   readonly callback: t.ArrowFunctionExpression
@@ -165,102 +217,6 @@ function planPresentConditional(
   return undefined
 }
 
-/**
- * A materializing flatMap whose inline callback returns a fixed-width array
- * does not need to allocate that short-lived array for every source item.
- * Keep this deliberately narrow: downstream element steps need the generic
- * nested-loop shape so early termination still happens at the right point.
- */
-function planLiteralFlatMap(
-  seg: ElementSegment,
-  inlineCallbacks: boolean,
-): LiteralFlatMapPlan | undefined {
-  if (!inlineCallbacks || seg.terminal || seg.steps.length !== 1) return undefined
-  const [{ step }] = seg.steps
-  if (step.name !== 'flatMap') return undefined
-  const callback = step.args[0]
-  const inline = planInline(callback)
-  if (!inline || !t.isArrowFunctionExpression(callback) || !t.isArrayExpression(callback.body)) {
-    return undefined
-  }
-  const elements: t.Expression[] = []
-  for (const element of callback.body.elements) {
-    // Spreads have observable iterator semantics. Holes are uncommon and
-    // remain on the generic path rather than giving the specialization a
-    // subtly different representation.
-    if (element == null || t.isSpreadElement(element)) return undefined
-    elements.push(element)
-  }
-  return { callback, params: inline.params, elements }
-}
-
-function planLiteralMapFlatten(
-  element: ElementSegment,
-  boundary: BoundarySegment,
-  inlineCallbacks: boolean,
-): LiteralFlatMapPlan | undefined {
-  if (
-    !inlineCallbacks ||
-    element.terminal ||
-    element.steps.length !== 1 ||
-    element.steps[0].step.name !== 'map' ||
-    boundary.step.step.name !== 'flatten'
-  ) {
-    return undefined
-  }
-  const callback = element.steps[0].step.args[0]
-  const inline = planInline(callback)
-  if (!inline || !t.isArrowFunctionExpression(callback) || !t.isArrayExpression(callback.body)) {
-    return undefined
-  }
-  const elements: t.Expression[] = []
-  for (const item of callback.body.elements) {
-    if (item == null || t.isSpreadElement(item)) return undefined
-    elements.push(item)
-  }
-  return { callback, params: inline.params, elements }
-}
-
-function emitLiteralArrayExpansion(
-  plan: LiteralFlatMapPlan,
-  index: number,
-  curData: string,
-  nextData: string,
-  code: string,
-  arrayConstructorExpression: string | undefined,
-): string[] {
-  const width = plan.elements.length
-  const sourceLength = `_fmLen${index}`
-  const directElements = plan.elements.map((element) =>
-    renderDirectInlineExpression(plan.callback, element, code, ['_v0']),
-  )
-  const useDirectElements = directElements.every(
-    (element): element is string => element !== undefined,
-  )
-  const parameterLines = plan.params.map(
-    (param, paramIndex) => `const ${param} = ${paramIndex === 0 ? `${curData}[_i]` : 'undefined'};`,
-  )
-  const writeLines = plan.elements.map(
-    (element, elementIndex) =>
-      `${nextData}[_i * ${width} + ${elementIndex}] = (${
-        useDirectElements ? directElements[elementIndex] : code.slice(element.start!, element.end!)
-      });`,
-  )
-  const allocation =
-    arrayConstructorExpression === undefined
-      ? [`var ${nextData} = [];`, `${nextData}.length = ${sourceLength} * ${width};`]
-      : [`var ${nextData} = new ${arrayConstructorExpression}(${sourceLength} * ${width});`]
-  return [
-    `var ${sourceLength} = ${curData}.length;`,
-    ...allocation,
-    `_outer: for (var _i = 0; _i < ${sourceLength}; _i++) {`,
-    ...(useDirectElements ? [`var _v0 = ${curData}[_i];`] : ['{', ...parameterLines]),
-    ...writeLines,
-    ...(useDirectElements ? [] : ['}']),
-    '}',
-  ]
-}
-
 // Splits a pipeline's steps into alternating element-wise and boundary
 // segments. A boundary op flushes the element-wise segment before it and
 // starts a new one; a terminal (validated by the caller to only ever appear
@@ -299,6 +255,91 @@ function segmentSteps(steps: readonly Step[]): readonly Segment[] {
 }
 
 /**
+ * Converts the authoritative Plan IR segments into emitter segments. This is
+ * intentionally validation, not a second segmentation policy: source tier,
+ * semantic mode, and barriers were already decided by `createStaticCompilerPlan`.
+ */
+function segmentsFromPlan(plan: StaticCompilerPlanV1): readonly Segment[] {
+  const stepsByIndex = new Map<number, Step>()
+  for (const step of plan.steps) {
+    if (step.kind !== 'operator') continue
+    stepsByIndex.set(step.index, {
+      name: step.fact.name,
+      node: step.node,
+      args: step.args,
+      fact: step.fact,
+    })
+  }
+
+  const indexedSteps = (segment: PlanSegment): readonly IndexedStep[] => {
+    const out: IndexedStep[] = []
+    for (let index = segment.start; index < segment.start + segment.length; index++) {
+      const step = stepsByIndex.get(index)
+      if (step === undefined) {
+        throw new Error(
+          `fp-compiler: ${segment.kind} plan segment references non-operator step ${index}`,
+        )
+      }
+      out.push({ index, step })
+    }
+    return out
+  }
+
+  const segments: Segment[] = []
+  for (const planned of plan.segments) {
+    if (planned.kind === 'opaque') continue
+    if (planned.length <= 0) {
+      throw new Error('fp-compiler: static plan contains an empty segment')
+    }
+    const indexed = indexedSteps(planned)
+    if (planned.kind === 'boundary') {
+      if (indexed.length !== 1 || indexed[0].step.fact.compilerPipelineRole !== 'boundary') {
+        throw new Error('fp-compiler: boundary plan segment does not contain one boundary fact')
+      }
+      segments.push({ kind: 'boundary', step: indexed[0] })
+      continue
+    }
+
+    const elements: IndexedStep[] = []
+    let terminal: IndexedStep | undefined
+    for (const item of indexed) {
+      const role = item.step.fact.compilerPipelineRole
+      if (role === 'boundary') {
+        throw new Error('fp-compiler: stream plan segment contains a boundary fact')
+      }
+      if (role === 'terminal') {
+        if (terminal !== undefined || item.index !== planned.terminalIndex) {
+          throw new Error('fp-compiler: stream plan terminal metadata is inconsistent')
+        }
+        terminal = item
+      } else {
+        if (terminal !== undefined) {
+          throw new Error('fp-compiler: stream plan contains an operator after its terminal')
+        }
+        elements.push(item)
+      }
+    }
+    if (
+      (terminal === undefined) !==
+      (planned.terminalIndex === undefined)
+    ) {
+      throw new Error('fp-compiler: stream plan terminal is missing')
+    }
+    segments.push({
+      kind: 'element',
+      steps: elements,
+      ...(terminal === undefined ? {} : { terminal }),
+    })
+  }
+  return segments
+}
+
+export const segmentKindsForSteps = (
+  steps: readonly Step[],
+): readonly ('stream' | 'boundary')[] =>
+  segmentSteps(steps).map((segment) => (segment.kind === 'boundary' ? 'boundary' : 'stream'))
+
+/**
  * Single-step collectors can retain the runtime operation's exact
  * cardinality-aware representation. The generic fuser deliberately grows an
  * output with push because filters and expanding stages do not know their
@@ -313,8 +354,10 @@ function emitSingleStepCollector(
   preLines: string[],
   inlineCallbacks: boolean,
   renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
   arrayConstructorExpression: string | undefined,
   globalUndefinedIsUnbound: boolean,
+  sequentialStage: boolean,
 ): string[] | undefined {
   if (seg.terminal || seg.steps.length !== 1) return undefined
   const { index, step } = seg.steps[0]
@@ -331,6 +374,7 @@ function emitSingleStepCollector(
         ['_v0'],
         inlineCallbacks,
         renderExpression,
+        renderSource,
         (expr) => [`${nextData}[_i] = ${expr};`],
       )
       const allocation =
@@ -350,12 +394,14 @@ function emitSingleStepCollector(
     case 'mapWhile': {
       const conditional = planPresentConditional(args[0], globalUndefinedIsUnbound)
       if (!conditional) return undefined
-      const test = renderDirectInlineExpression(conditional.callback, conditional.test, code, [
-        '_v0',
-      ])
-      const value = renderDirectInlineExpression(conditional.callback, conditional.value, code, [
-        '_v0',
-      ])
+      const test = renderMappedInline(
+        renderDirectInlineExpressionMapped(conditional.callback, conditional.test, code, ['_v0']),
+        renderSource,
+      )
+      const value = renderMappedInline(
+        renderDirectInlineExpressionMapped(conditional.callback, conditional.value, code, ['_v0']),
+        renderSource,
+      )
       if (test === undefined || value === undefined) return undefined
       const passes = conditional.valueWhenTestPasses ? `(${test})` : `!(${test})`
       const body =
@@ -372,8 +418,11 @@ function emitSingleStepCollector(
       ]
     }
     case 'take': {
-      const count = `_n${index}`
-      preLines.push(`var ${count} = (${renderExpression(args[0])});`)
+      const renderedCount = renderExpression(args[0])
+      const count = /^[A-Za-z_$][\w$]*$/u.test(renderedCount)
+        ? renderedCount
+        : `_n${index}`
+      if (count !== renderedCount) preLines.push(`var ${count} = (${renderedCount});`)
       return [
         `var ${length} = ${curData}.length;`,
         `var ${nextData};`,
@@ -385,8 +434,11 @@ function emitSingleStepCollector(
       ]
     }
     case 'drop': {
-      const count = `_n${index}`
-      preLines.push(`var ${count} = (${renderExpression(args[0])});`)
+      const renderedCount = renderExpression(args[0])
+      const count = /^[A-Za-z_$][\w$]*$/u.test(renderedCount)
+        ? renderedCount
+        : `_n${index}`
+      if (count !== renderedCount) preLines.push(`var ${count} = (${renderedCount});`)
       return [
         `var ${length} = ${curData}.length;`,
         `var ${nextData};`,
@@ -408,7 +460,34 @@ function emitSingleStepCollector(
         ['_v0'],
         inlineCallbacks,
         renderExpression,
+        renderSource,
         (expr) => [`if (!${expr}) { ${nextData} = ${curData}.slice(_i); break; }`],
+      )
+      return [
+        `var ${nextData} = [];`,
+        `var ${length} = ${curData}.length;`,
+        `for (var _i = 0; _i < ${length}; _i++) {`,
+        `var _v0 = ${curData}[_i];`,
+        ...callbackLines,
+        '}',
+      ]
+    }
+    case 'reject':
+    case 'takeWhile': {
+      if (!sequentialStage) return undefined
+      const callbackLines = emitCallback(
+        args[0],
+        code,
+        `_cb${index}`,
+        preLines,
+        ['_v0'],
+        inlineCallbacks,
+        renderExpression,
+        renderSource,
+        (expr) =>
+          step.name === 'reject'
+            ? [`if (!${expr}) { ${nextData}.push(${curData}[_i]); }`]
+            : [`if (!${expr}) break;`, `${nextData}.push(${curData}[_i]);`],
       )
       return [
         `var ${nextData} = [];`,
@@ -424,6 +503,33 @@ function emitSingleStepCollector(
   }
 }
 
+function emitSequentialPropertyTerminal(
+  seg: ElementSegment,
+  curData: string,
+  nextData: string,
+  optionNoneLocal: string,
+): string[] | undefined {
+  if (seg.steps.length !== 0 || seg.terminal === undefined) {
+    return undefined
+  }
+  switch (seg.terminal.step.name) {
+    case 'head':
+      return [
+        `var ${nextData} = ${curData}.length === 0 ? ${optionNoneLocal} : { _tag: 1, value: ${curData}[0] };`,
+      ]
+    case 'last':
+      return [
+        `var ${nextData} = ${curData}.length === 0 ? ${optionNoneLocal} : { _tag: 1, value: ${curData}[${curData}.length - 1] };`,
+      ]
+    case 'length':
+      return [`var ${nextData} = ${curData}.length;`]
+    case 'isEmpty':
+      return [`var ${nextData} = ${curData}.length === 0;`]
+    default:
+      return undefined
+  }
+}
+
 function emitElementSegment(
   seg: ElementSegment,
   curData: string,
@@ -433,21 +539,19 @@ function emitElementSegment(
   optionNoneLocal: string,
   inlineCallbacks: boolean,
   renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
   arrayConstructorExpression: string | undefined,
   globalUndefinedIsUnbound: boolean,
+  outerLabel: string,
+  sequentialStage: boolean,
 ): string[] {
-  const literalFlatMap = planLiteralFlatMap(seg, inlineCallbacks)
-  if (literalFlatMap) {
-    const [{ index }] = seg.steps
-    return emitLiteralArrayExpansion(
-      literalFlatMap,
-      index,
-      curData,
-      nextData,
-      code,
-      arrayConstructorExpression,
-    )
-  }
+  const propertyTerminal = emitSequentialPropertyTerminal(
+    seg,
+    curData,
+    nextData,
+    optionNoneLocal,
+  )
+  if (propertyTerminal !== undefined) return propertyTerminal
 
   const singleStepCollector = emitSingleStepCollector(
     seg,
@@ -457,8 +561,10 @@ function emitElementSegment(
     preLines,
     inlineCallbacks,
     renderExpression,
+    renderSource,
     arrayConstructorExpression,
     globalUndefinedIsUnbound,
+    sequentialStage,
   )
   if (singleStepCollector) return singleStepCollector
 
@@ -482,6 +588,7 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [`var ${nextVar} = ${expr};`],
         )
         bodyLines.push(...lines)
@@ -496,6 +603,7 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [`if (!${expr}) { continue; }`],
         )
         bodyLines.push(...lines)
@@ -511,6 +619,7 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [`if (${expr}) { continue; }`],
         )
         bodyLines.push(...lines)
@@ -526,6 +635,7 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [`var _m${index} = ${expr};`, `if (_m${index} == null) { continue; }`],
         )
         bodyLines.push(...lines)
@@ -541,7 +651,11 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
-          (expr) => [`var _mw${index} = ${expr};`, `if (_mw${index} == null) { break _outer; }`],
+          renderSource,
+          (expr) => [
+            `var _mw${index} = ${expr};`,
+            `if (_mw${index} == null) { break ${outerLabel}; }`,
+          ],
         )
         bodyLines.push(...lines)
         bodyLines.push(`var ${nextVar} = _mw${index};`)
@@ -556,13 +670,14 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [`var _fm${index} = ${expr};`],
         )
         bodyLines.push(...lines)
         // Nested loop over the inner array, spliced into the tail position of
         // the outer per-item body: everything downstream of this step (more
         // element ops, the sink) executes once per inner item, nested inside
-        // this for. break _outer (labeled on the top-level loop, see
+        // this for. The generated break label (on the top-level loop, see
         // generateFusedBody) is what lets take/takeWhile/find/etc downstream
         // of a flatMap exit both loops at once; plain continue still only
         // needs to skip the innermost (inner) loop, which is correct here too.
@@ -577,7 +692,7 @@ function emitElementSegment(
         const nTemp = `_n${index}`
         preLines.push(`var ${nTemp} = (${renderExpression(args[0])});`)
         stateLines.push(`var _take${index} = 0;`)
-        bodyLines.push(`if (_take${index} >= ${nTemp}) break _outer;`)
+        bodyLines.push(`if (_take${index} >= ${nTemp}) break ${outerLabel};`)
         bodyLines.push(`_take${index}++;`)
         bodyLines.push(`var ${nextVar} = ${curVar};`)
         break
@@ -591,7 +706,8 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
-          (expr) => [`if (${expr}) { break _outer; }`],
+          renderSource,
+          (expr) => [`if (${expr}) { break ${outerLabel}; }`],
         )
         bodyLines.push(...lines)
         bodyLines.push(`var ${nextVar} = ${curVar};`)
@@ -614,7 +730,8 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
-          (expr) => [`if (!${expr}) break _outer;`],
+          renderSource,
+          (expr) => [`if (!${expr}) break ${outerLabel};`],
         )
         bodyLines.push(...lines)
         bodyLines.push(`var ${nextVar} = ${curVar};`)
@@ -630,6 +747,7 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [`if (_dw${index}) { if (${expr}) { continue; } _dw${index} = false; }`],
         )
         bodyLines.push(...lines)
@@ -664,6 +782,7 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [`if (${expr}) { ${nextData}++; }`],
         )
         bodyLines.push(...lines)
@@ -671,21 +790,29 @@ function emitElementSegment(
       }
       case 'reduce': {
         const [fnArg, initArg] = args
-        preLines.push(`var ${nextData} = (${renderExpression(initArg)});`)
         const direct = inlineCallbacks
-          ? renderDirectInline(fnArg, code, [nextData, curVar])
+          ? renderMappedInline(
+              renderDirectInlineMapped(fnArg, code, [nextData, curVar]),
+              renderSource,
+            )
           : undefined
         if (direct !== undefined) {
+          preLines.push(`var ${nextData} = (${renderExpression(initArg)});`)
           bodyLines.push(`${nextData} = (${direct});`)
           break
         }
         const plan = inlineCallbacks ? planInline(fnArg) : undefined
         if (plan) {
+          preLines.push(`var ${nextData} = (${renderExpression(initArg)});`)
           const decls = plan.params.map((p, i) => `const ${p} = ${i === 0 ? nextData : curVar};`)
-          const bodyText = code.slice(plan.bodyStart, plan.bodyEnd)
+          const bodyText = renderSource(plan.bodyStart, plan.bodyEnd)
           bodyLines.push('{', ...decls, `${nextData} = (${bodyText});`, '}')
         } else {
+          // `reduce(callback, seed)` evaluates callback before seed. A dynamic
+          // callback expression must be captured in that order even though
+          // both values are consumed later by the generated loop.
           preLines.push(`var _cbT${index} = (${renderExpression(fnArg)});`)
+          preLines.push(`var ${nextData} = (${renderExpression(initArg)});`)
           bodyLines.push(`${nextData} = _cbT${index}(${nextData}, ${curVar});`)
         }
         break
@@ -699,6 +826,7 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [`${expr};`],
         )
         bodyLines.push(...lines)
@@ -715,7 +843,10 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
-          (expr) => [`if (${expr}) { ${nextData} = { _tag: 1, value: ${curVar} }; break _outer; }`],
+          renderSource,
+          (expr) => [
+            `if (${expr}) { ${nextData} = { _tag: 1, value: ${curVar} }; break ${outerLabel}; }`,
+          ],
         )
         bodyLines.push(...lines)
         break
@@ -731,8 +862,9 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [
-            `if (${expr}) { ${nextData} = { _tag: 1, value: _pos${index} }; break _outer; }`,
+            `if (${expr}) { ${nextData} = { _tag: 1, value: _pos${index} }; break ${outerLabel}; }`,
             `_pos${index}++;`,
           ],
         )
@@ -743,19 +875,28 @@ function emitElementSegment(
         preLines.push(`var ${nextData} = ${optionNoneLocal};`)
         const conditional = planPresentConditional(args[0], globalUndefinedIsUnbound)
         if (conditional) {
-          const test = renderDirectInlineExpression(conditional.callback, conditional.test, code, [
-            curVar,
-          ])
-          const value = renderDirectInlineExpression(
-            conditional.callback,
-            conditional.value,
-            code,
-            [curVar],
+          const test = renderMappedInline(
+            renderDirectInlineExpressionMapped(
+              conditional.callback,
+              conditional.test,
+              code,
+              [curVar],
+            ),
+            renderSource,
+          )
+          const value = renderMappedInline(
+            renderDirectInlineExpressionMapped(
+              conditional.callback,
+              conditional.value,
+              code,
+              [curVar],
+            ),
+            renderSource,
           )
           if (test !== undefined && value !== undefined) {
             const passes = conditional.valueWhenTestPasses ? `(${test})` : `!(${test})`
             bodyLines.push(
-              `if (${passes}) { ${nextData} = { _tag: 1, value: (${value}) }; break _outer; }`,
+              `if (${passes}) { ${nextData} = { _tag: 1, value: (${value}) }; break ${outerLabel}; }`,
             )
             break
           }
@@ -768,9 +909,10 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
+          renderSource,
           (expr) => [
             `var _fmv${index} = ${expr};`,
-            `if (_fmv${index} != null) { ${nextData} = { _tag: 1, value: _fmv${index} }; break _outer; }`,
+            `if (_fmv${index} != null) { ${nextData} = { _tag: 1, value: _fmv${index} }; break ${outerLabel}; }`,
           ],
         )
         bodyLines.push(...lines)
@@ -786,7 +928,8 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
-          (expr) => [`if (!${expr}) { ${nextData} = false; break _outer; }`],
+          renderSource,
+          (expr) => [`if (!${expr}) { ${nextData} = false; break ${outerLabel}; }`],
         )
         bodyLines.push(...lines)
         break
@@ -801,7 +944,8 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
-          (expr) => [`if (${expr}) { ${nextData} = true; break _outer; }`],
+          renderSource,
+          (expr) => [`if (${expr}) { ${nextData} = true; break ${outerLabel}; }`],
         )
         bodyLines.push(...lines)
         break
@@ -816,7 +960,8 @@ function emitElementSegment(
           [curVar],
           inlineCallbacks,
           renderExpression,
-          (expr) => [`if (${expr}) { ${nextData} = false; break _outer; }`],
+          renderSource,
+          (expr) => [`if (${expr}) { ${nextData} = false; break ${outerLabel}; }`],
         )
         bodyLines.push(...lines)
         break
@@ -867,7 +1012,7 @@ function emitElementSegment(
   stateLines.unshift(`var ${loopLength} = ${curData}.length;`)
   return [
     stateLines.join('\n'),
-    `_outer: for (var _i = 0; _i < ${loopLength}; _i++) {`,
+    `${outerLabel}: for (var _i = 0; _i < ${loopLength}; _i++) {`,
     bodyLines.join('\n'),
     ...closeBraces,
     '}',
@@ -922,19 +1067,21 @@ function emitBoundarySegment(
  * time-boxed warmup (as opposed to a long-running server) can leave the
  * loop stuck on a lower tier and miss loop vectorization entirely.
  */
-export function generateFusedBody(
+function generateSegmentedBodyInternal(
   code: string,
-  sourceText: string,
   steps: readonly Step[],
-  optionNoneLocal = DEFAULT_OPTION_NONE_LOCAL,
-  renderExpression: ExpressionRenderer = (node) => code.slice(node.start!, node.end!),
-  arrayConstructorExpression?: string,
-  globalUndefinedIsUnbound = false,
-): FusedBody {
-  const preLines: string[] = [`var _src = (${sourceText});`]
+  segments: readonly Segment[],
+  allowCrossSegmentFolding: boolean,
+  preLines: string[],
+  optionNoneLocal: string,
+  renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
+  arrayConstructorExpression: string | undefined,
+  globalUndefinedIsUnbound: boolean,
+  outerLabel: string,
+): Omit<FusedBody, 'sourceFragments'> {
   const blockLines: string[] = []
 
-  const segments = segmentSteps(steps)
   // Splicing many callback bodies into one nested loop creates a large,
   // heavily scoped function that crosses optimiser cliffs in JavaScriptCore
   // and some V8 tiers. Beyond this small bound, hoisted callbacks give the
@@ -948,26 +1095,6 @@ export function generateFusedBody(
 
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const seg = segments[segmentIndex]
-    const following = segments[segmentIndex + 1]
-    if (seg.kind === 'element' && following?.kind === 'boundary') {
-      const mapFlatten = planLiteralMapFlatten(seg, following, inlineCallbacks)
-      if (mapFlatten) {
-        const nextData = `_d${counter++}`
-        blockLines.push(
-          ...emitLiteralArrayExpansion(
-            mapFlatten,
-            seg.steps[0].index,
-            curData,
-            nextData,
-            code,
-            arrayConstructorExpression,
-          ),
-        )
-        curData = nextData
-        segmentIndex++
-        continue
-      }
-    }
 
     const nextData = `_d${counter++}`
     if (seg.kind === 'boundary') {
@@ -985,16 +1112,316 @@ export function generateFusedBody(
           optionNoneLocal,
           inlineCallbacks,
           renderExpression,
+          renderSource,
           arrayConstructorExpression,
           globalUndefinedIsUnbound,
+          outerLabel,
+          !allowCrossSegmentFolding,
         ),
       )
     }
     curData = nextData
   }
 
-  const stmts = [preLines.join('\n'), blockLines.join('\n')].join('\n')
-  return { stmts, resultVar: curData }
+  const prelude = preLines.join('\n')
+  const execution = blockLines.join('\n')
+  const stmts = [prelude, execution].join('\n')
+  return {
+    stmts,
+    resultVar: curData,
+    prelude,
+    execution,
+    segmentKinds: segments.map((segment) =>
+      segment.kind === 'boundary' ? 'boundary' : 'stream',
+    ),
+  }
+}
+
+export function generateFusedBody(
+  code: string,
+  sourceText: string,
+  steps: readonly Step[],
+  optionNoneLocal = DEFAULT_OPTION_NONE_LOCAL,
+  renderExpression?: ExpressionRenderer,
+  arrayConstructorExpression?: string,
+  globalUndefinedIsUnbound = false,
+  outerLabel = '_outer',
+): FusedBody {
+  const tracker = new SourceFragmentTracker(code)
+  const renderSource: SourceRangeRenderer = (start, end) => tracker.source(start, end)
+  const renderedExpression: ExpressionRenderer =
+    renderExpression ?? ((node) => tracker.node(node))
+  const body = generateSegmentedBodyInternal(
+    code,
+    steps,
+    segmentSteps(steps),
+    true,
+    [`var _src = (${sourceText});`],
+    optionNoneLocal,
+    renderedExpression,
+    renderSource,
+    arrayConstructorExpression,
+    globalUndefinedIsUnbound,
+    outerLabel,
+  )
+  const mappedStatements = tracker.finish(body.stmts)
+  const mappedPrelude = tracker.finish(body.prelude)
+  const mappedExecution = tracker.finish(body.execution)
+  return {
+    ...body,
+    stmts: mappedStatements.code,
+    prelude: mappedPrelude.code,
+    execution: mappedExecution.code,
+    sourceFragments: mappedStatements.sourceFragments,
+  }
+}
+
+const captureLocal = (
+  capture: PlanCapture,
+  sourceCaptureId: number | undefined,
+): string => (capture.id === sourceCaptureId ? '_src' : capture.local)
+
+const valueRefText = (
+  ref: PlanValueRef,
+  captures: ReadonlyMap<number, PlanCapture>,
+  sourceCaptureId: number | undefined,
+): string | undefined => {
+  if (ref.kind === 'inline') return undefined
+  const capture = captures.get(ref.captureId)
+  if (capture === undefined) {
+    throw new Error(`fp-compiler: static plan references missing capture ${ref.captureId}`)
+  }
+  return captureLocal(capture, sourceCaptureId)
+}
+
+const captureExpression = (
+  capture: PlanCapture,
+  plan: StaticCompilerPlanV1,
+  captures: ReadonlyMap<number, PlanCapture>,
+  sourceCaptureId: number | undefined,
+  tracker: SourceFragmentTracker,
+): string => {
+  if (capture.kind !== 'whole-step' || capture.stepIndex === undefined) {
+    return tracker.node(capture.node)
+  }
+  const step = plan.steps.find(
+    (candidate) => candidate.index === capture.stepIndex,
+  )
+  if (
+    step === undefined ||
+    step.kind !== 'operator' ||
+    !t.isCallExpression(step.node)
+  ) {
+    return tracker.node(capture.node)
+  }
+  let rendered = ''
+  let cursor = step.node.start!
+  step.bindings.forEach((binding, index) => {
+    const argument = step.args[index]
+    rendered += tracker.source(cursor, argument.start!)
+    if (binding.kind === 'inline') {
+      rendered += tracker.source(binding.source.start, binding.source.end)
+    } else {
+      const bindingCapture = captures.get(binding.captureId)
+      if (bindingCapture === undefined || bindingCapture.kind !== 'binding') {
+        throw new Error('fp-compiler: whole-step plan references a missing binding capture')
+      }
+      const local = captureLocal(bindingCapture, sourceCaptureId)
+      /*
+       * Keep argument capture inside the official operator call. JavaScript
+       * resolves a call's callee before evaluating its arguments; splitting
+       * the argument into an earlier statement would observe a different live
+       * module binding if that argument mutates it.
+       */
+      rendered += `(${local} = (${tracker.node(bindingCapture.node)}))`
+    }
+    cursor = argument.end!
+  })
+  rendered += tracker.source(cursor, step.node.end!)
+  return rendered
+}
+
+const constructionLinesForPlan = (
+  plan: StaticCompilerPlanV1,
+  captures: ReadonlyMap<number, PlanCapture>,
+  sourceCaptureId: number | undefined,
+  tracker: SourceFragmentTracker,
+): readonly string[] => {
+  const assignedInsideWholeStep = new Set<number>()
+  const retainedWholeSteps = new Set<number>()
+  const capturedWholeStepIndexes = new Set(
+    plan.captures.flatMap((capture) =>
+      capture.kind === 'whole-step' && capture.stepIndex !== undefined
+        ? [capture.stepIndex]
+        : [],
+    ),
+  )
+  const stepVectorRetained = plan.steps.some(
+    (step) => step.kind === 'opaque' && step.receiver === 'step-vector',
+  )
+  for (const step of plan.steps) {
+    if (step.kind !== 'operator') continue
+    if (stepVectorRetained || step.fact.compilerPipelineRole === 'boundary') {
+      retainedWholeSteps.add(step.index)
+    }
+    for (const binding of step.bindings) {
+      if (
+        binding.kind === 'capture' &&
+        capturedWholeStepIndexes.has(step.index)
+      ) {
+        assignedInsideWholeStep.add(binding.captureId)
+      }
+    }
+  }
+
+  return [...plan.captures]
+    .sort((left, right) => left.evaluationOrder - right.evaluationOrder)
+    .map((capture) => {
+      const local = captureLocal(capture, sourceCaptureId)
+      if (capture.kind === 'binding' && assignedInsideWholeStep.has(capture.id)) {
+        return `var ${local};`
+      }
+      if (
+        capture.kind === 'whole-step' &&
+        capture.stepIndex !== undefined &&
+        !retainedWholeSteps.has(capture.stepIndex)
+      ) {
+        return `${captureExpression(
+          capture,
+          plan,
+          captures,
+          sourceCaptureId,
+          tracker,
+        )};`
+      }
+      return `var ${local} = (${captureExpression(
+        capture,
+        plan,
+        captures,
+        sourceCaptureId,
+        tracker,
+      )});`
+    })
+}
+
+/**
+ * Authoritative immediate-pipe lowering. The Plan IR owns capture order,
+ * semantic segments, facade tier, opaque receiver ABI, and lowering identity;
+ * emitters consume it rather than independently rediscovering those facts.
+ */
+export function generateStaticPlanBody(
+  code: string,
+  plan: StaticCompilerPlanV1,
+  optionNoneLocal = DEFAULT_OPTION_NONE_LOCAL,
+  arrayConstructorExpression?: string,
+  globalUndefinedIsUnbound = false,
+  outerLabel = '_outer',
+): FusedBody {
+  if (plan.siteKind !== 'pipe' || plan.result !== 'value' || plan.source === undefined) {
+    throw new Error('fp-compiler: immediate body requested for a deferred static plan')
+  }
+  const tracker = new SourceFragmentTracker(code)
+  const renderSource: SourceRangeRenderer = (start, end) => tracker.source(start, end)
+  const captures = new Map(plan.captures.map((capture) => [capture.id, capture]))
+  const sourceCaptureId = plan.source.kind === 'capture' ? plan.source.captureId : undefined
+
+  const renderByNode = new Map<t.Expression, string>()
+  for (const step of plan.steps) {
+    if (step.kind === 'operator') {
+      step.bindings.forEach((binding, index) => {
+        const rendered = valueRefText(binding, captures, sourceCaptureId)
+        if (rendered !== undefined) renderByNode.set(step.args[index], rendered)
+      })
+      const whole = plan.captures.find(
+        (capture) => capture.kind === 'whole-step' && capture.stepIndex === step.index,
+      )
+      if (whole !== undefined) {
+        renderByNode.set(step.node, captureLocal(whole, sourceCaptureId))
+      }
+    }
+  }
+  const renderExpression: ExpressionRenderer = (node) =>
+    renderByNode.get(node) ?? tracker.node(node)
+
+  const preLines: string[] = []
+  if (plan.source.kind === 'inline') {
+    preLines.push(`var _src = (${tracker.source(plan.source.source.start, plan.source.source.end)});`)
+  }
+  preLines.push(...constructionLinesForPlan(plan, captures, sourceCaptureId, tracker))
+
+  const opaque = plan.steps.find((step) => step.kind === 'opaque')
+  let stepVector: string | undefined
+  if (opaque?.receiver === 'step-vector') {
+    const stepLocals = plan.steps.map((step) => {
+      const capture = plan.captures.find(
+        (candidate) =>
+          candidate.stepIndex === step.index &&
+          (candidate.kind === 'whole-step' || candidate.kind === 'opaque'),
+      )
+      if (capture === undefined) {
+        throw new Error('fp-compiler: step-vector plan did not retain every step value')
+      }
+      return captureLocal(capture, sourceCaptureId)
+    })
+    stepVector = '_stepVector'
+    // The runtime's rest-array is created after every call argument evaluates
+    // and before any step runs. Keep that boundary ahead of emitter state.
+    preLines.push(`var ${stepVector} = [${stepLocals.join(', ')}];`)
+  }
+
+  const operatorSteps = operatorStepsOf(plan)
+  const knownBody = generateSegmentedBodyInternal(
+    code,
+    operatorSteps,
+    segmentsFromPlan(plan),
+    plan.executionLayout === 'fused-streams',
+    preLines,
+    optionNoneLocal,
+    renderExpression,
+    renderSource,
+    arrayConstructorExpression,
+    globalUndefinedIsUnbound,
+    outerLabel,
+  )
+
+  let taggedStatements = knownBody.stmts
+  let taggedExecution = knownBody.execution
+  let resultVar = knownBody.resultVar
+  if (opaque !== undefined) {
+    const opaqueLocal = valueRefText(opaque.fn, captures, sourceCaptureId)
+    if (opaqueLocal === undefined) {
+      throw new Error('fp-compiler: opaque function is not captured')
+    }
+    const opaqueResult = `_d${plan.segments.length}`
+    let invocation: string
+    if (opaque.receiver === 'step-vector') {
+      if (stepVector === undefined) {
+        throw new Error('fp-compiler: step-vector receiver was not constructed')
+      }
+      invocation = `var ${opaqueResult} = ${stepVector}[${opaque.index}](${knownBody.resultVar});`
+      taggedStatements = `${knownBody.stmts}\n${invocation}`
+      taggedExecution = `${knownBody.execution}\n${invocation}`
+    } else {
+      invocation = `var ${opaqueResult} = ${opaqueLocal}(${knownBody.resultVar});`
+      taggedStatements = `${knownBody.stmts}\n${invocation}`
+      taggedExecution = `${knownBody.execution}\n${invocation}`
+    }
+    resultVar = opaqueResult
+  }
+
+  const mappedStatements = tracker.finish(taggedStatements)
+  const mappedPrelude = tracker.finish(
+    taggedStatements.slice(0, taggedStatements.length - taggedExecution.length - 1),
+  )
+  const mappedExecution = tracker.finish(taggedExecution)
+  return {
+    stmts: mappedStatements.code,
+    resultVar,
+    prelude: mappedPrelude.code,
+    execution: mappedExecution.code,
+    segmentKinds: plan.segmentKinds,
+    sourceFragments: mappedStatements.sourceFragments,
+  }
 }
 
 /**
@@ -1009,15 +1436,23 @@ export function generateFusedTailBody(
   steps: readonly Step[],
   optionNoneLocal = DEFAULT_OPTION_NONE_LOCAL,
   renderExpression: ExpressionRenderer = (node) => code.slice(node.start!, node.end!),
+  renderSource: SourceRangeRenderer = (start, end) => code.slice(start, end),
   arrayConstructorExpression?: string,
   directSourceIdentifier = false,
+  mappedSourceText = sourceText,
 ): string | undefined {
   if (steps.length !== 1) return undefined
   const step = steps[0]
   const sourceIsIdentifier = /^[A-Za-z_$][\w$]*$/u.test(sourceText)
-  const loopSource = directSourceIdentifier && sourceIsIdentifier ? sourceText : '_src'
-  const sourcePrelude = loopSource === '_src' ? [`const _src = (${sourceText});`] : []
-  const sourceAccess = /^[A-Za-z_$][\w$]*$/u.test(sourceText) ? sourceText : `(${sourceText})`
+  const loopSource =
+    directSourceIdentifier && sourceIsIdentifier ? mappedSourceText : '_src'
+  const sourcePrelude =
+    directSourceIdentifier && sourceIsIdentifier
+      ? []
+      : [`const _src = (${mappedSourceText});`]
+  const sourceAccess = sourceIsIdentifier
+    ? mappedSourceText
+    : `(${mappedSourceText})`
   if (step.name === 'length') {
     return `return ${sourceAccess}.length;`
   }
@@ -1037,6 +1472,7 @@ export function generateFusedTailBody(
       ['_reduceAcc0', `${loopSource}[_i]`],
       true,
       renderExpression,
+      renderSource,
       (expr) => [`_reduceAcc0 = ${expr};`],
     )
     preLines.push(`let _reduceAcc0 = (${renderExpression(step.args[1])});`)
@@ -1072,6 +1508,7 @@ export function generateFusedTailBody(
       ['_scanAcc0', `${loopSource}[_i]`],
       true,
       renderExpression,
+      renderSource,
       (expr) => [`_scanAcc0 = ${expr};`],
     )
     preLines.push(`let _scanAcc0 = (${renderExpression(step.args[1])});`)
@@ -1101,6 +1538,7 @@ export function generateFusedTailBody(
       ['_v0'],
       true,
       renderExpression,
+      renderSource,
       (expr) => [`if (${expr}) break;`],
     )
     return [
@@ -1136,7 +1574,10 @@ export function generateFusedTailBody(
     }
     return [`if (!${expression}) return false;`]
   }
-  const direct = renderDirectInline(step.args[0], code, [`${loopSource}[_i]`])
+  const direct = renderMappedInline(
+    renderDirectInlineMapped(step.args[0], code, [`${loopSource}[_i]`]),
+    renderSource,
+  )
   const matchLines =
     direct === undefined
       ? emitCallback(
@@ -1147,6 +1588,7 @@ export function generateFusedTailBody(
           ['_v0'],
           true,
           renderExpression,
+          renderSource,
           renderMatch,
         )
       : renderMatch(`(${direct})`)
@@ -1162,56 +1604,129 @@ export function generateFusedTailBody(
   ].join('\n')
 }
 
-/**
- * Generates a reusable runner while preserving the construction-time
- * evaluation semantics of flow()/compile(). Each original tagged step is
- * created exactly once, left-to-right, and its captured binding slots feed
- * the generated loop on every invocation.
- */
-export function generateFusedRunner(
+export function generateStaticPlanTailBody(
   code: string,
-  steps: readonly Step[],
+  plan: StaticCompilerPlanV1,
+  optionNoneLocal = DEFAULT_OPTION_NONE_LOCAL,
+  arrayConstructorExpression?: string,
+): MappedCode | undefined {
+  if (
+    plan.siteKind !== 'pipe' ||
+    plan.source === undefined ||
+    plan.steps.some((step) => step.kind === 'opaque')
+  ) {
+    return undefined
+  }
+  const tracker = new SourceFragmentTracker(code)
+  const renderSource: SourceRangeRenderer = (start, end) => tracker.source(start, end)
+  const captures = new Map(plan.captures.map((capture) => [capture.id, capture]))
+  const sourceCaptureId = plan.source.kind === 'capture' ? plan.source.captureId : undefined
+  const renderByNode = new Map<t.Expression, string>()
+  for (const step of plan.steps) {
+    if (step.kind !== 'operator') continue
+    step.bindings.forEach((binding, index) => {
+      const rendered = valueRefText(binding, captures, sourceCaptureId)
+      if (rendered !== undefined) renderByNode.set(step.args[index], rendered)
+    })
+    const whole = plan.captures.find(
+      (capture) => capture.kind === 'whole-step' && capture.stepIndex === step.index,
+    )
+    if (whole !== undefined) renderByNode.set(step.node, captureLocal(whole, sourceCaptureId))
+  }
+  const renderExpression: ExpressionRenderer = (node) =>
+    renderByNode.get(node) ?? tracker.node(node)
+  const captureLines = constructionLinesForPlan(
+    plan,
+    captures,
+    sourceCaptureId,
+    tracker,
+  )
+  const tail = generateFusedTailBody(
+    code,
+    plan.source.kind === 'inline'
+      ? code.slice(plan.source.source.start, plan.source.source.end)
+      : '_src',
+    operatorStepsOf(plan),
+    optionNoneLocal,
+    renderExpression,
+    renderSource,
+    arrayConstructorExpression,
+    true,
+    plan.source.kind === 'inline'
+      ? tracker.source(plan.source.source.start, plan.source.source.end)
+      : '_src',
+  )
+  if (tail === undefined) return undefined
+  return tracker.finish([...captureLines, tail].join('\n'))
+}
+
+/**
+ * Generates a reusable runner from the same ordered Plan IR used by pipe.
+ * Construction-time binding expressions live outside the runner; generated
+ * loop state lives inside it. The lexical arrow IIFE preserves enclosing
+ * this/arguments/super/new.target while the transform rejects outer
+ * await/yield before selecting this host.
+ */
+export function generateStaticPlanRunner(
+  code: string,
+  plan: StaticCompilerPlanV1,
   optionNoneLocal = DEFAULT_OPTION_NONE_LOCAL,
   arrayConstructorExpression?: string,
   globalUndefinedIsUnbound = false,
-): string {
-  const captures = new Map<t.Expression, string>()
-  const captureLines: string[] = []
-
-  steps.forEach((step, index) => {
-    const stepLocal = `_step${index}`
-    captureLines.push(`var ${stepLocal} = (${code.slice(step.node.start!, step.node.end!)});`)
-    captures.set(step.node, stepLocal)
-
-    const slots = bindingSlots(step.name)
-    if (!slots || slots.length !== step.args.length) {
-      throw new Error(`fp-compiler: missing binding metadata for ${step.name}`)
-    }
-    step.args.forEach((arg, argIndex) => {
-      captures.set(arg, `${stepLocal}._${slots[argIndex]}`)
+  outerLabel = '_outer',
+): MappedCode {
+  if (plan.siteKind === 'pipe' || plan.result !== 'runner' || plan.source !== undefined) {
+    throw new Error('fp-compiler: deferred runner requested for an immediate static plan')
+  }
+  if (plan.steps.some((step) => step.kind === 'opaque')) {
+    throw new Error('fp-compiler: deferred opaque runners are not selected in this wave')
+  }
+  const tracker = new SourceFragmentTracker(code)
+  const renderSource: SourceRangeRenderer = (start, end) => tracker.source(start, end)
+  const captures = new Map(plan.captures.map((capture) => [capture.id, capture]))
+  const renderByNode = new Map<t.Expression, string>()
+  for (const step of plan.steps) {
+    if (step.kind !== 'operator') continue
+    step.bindings.forEach((binding, index) => {
+      const rendered = valueRefText(binding, captures, undefined)
+      if (rendered !== undefined) renderByNode.set(step.args[index], rendered)
     })
-  })
-
+    const whole = plan.captures.find(
+      (capture) => capture.kind === 'whole-step' && capture.stepIndex === step.index,
+    )
+    if (whole !== undefined) renderByNode.set(step.node, whole.local)
+  }
   const renderExpression: ExpressionRenderer = (node) =>
-    captures.get(node) ?? code.slice(node.start!, node.end!)
-  const { stmts, resultVar } = generateFusedBody(
+    renderByNode.get(node) ?? tracker.node(node)
+  const constructionLines = constructionLinesForPlan(
+    plan,
+    captures,
+    undefined,
+    tracker,
+  )
+  const body = generateSegmentedBodyInternal(
     code,
-    '_in',
-    steps,
+    operatorStepsOf(plan),
+    segmentsFromPlan(plan),
+    plan.executionLayout === 'fused-streams',
+    ['var _src = (_in);'],
     optionNoneLocal,
     renderExpression,
+    renderSource,
     arrayConstructorExpression,
     globalUndefinedIsUnbound,
+    outerLabel,
   )
-  return [
-    '(function () {',
-    captureLines.join('\n'),
+  const tagged = [
+    '(() => {',
+    constructionLines.join('\n'),
     'return (_in) => {',
-    stmts,
-    `return ${resultVar};`,
+    body.stmts,
+    `return ${body.resultVar};`,
     '};',
     '})()',
   ].join('\n')
+  return tracker.finish(tagged)
 }
 
 /**
@@ -1227,8 +1742,9 @@ export function generateFusedLoop(
   optionNoneLocal = DEFAULT_OPTION_NONE_LOCAL,
   arrayConstructorExpression?: string,
   globalUndefinedIsUnbound = false,
-): string {
-  const { stmts, resultVar } = generateFusedBody(
+  outerLabel = '_outer',
+): MappedCode {
+  const body = generateFusedBody(
     code,
     sourceText,
     steps,
@@ -1236,6 +1752,14 @@ export function generateFusedLoop(
     undefined,
     arrayConstructorExpression,
     globalUndefinedIsUnbound,
+    outerLabel,
   )
-  return ['(function () {', stmts, `return ${resultVar};`, '})()'].join('\n')
+  // An arrow wrapper preserves the enclosing lexical `this`, `arguments`,
+  // `super`, and `new.target`. An ordinary-function IIFE silently changed all
+  // four when a pipeline appeared inside a larger expression.
+  return concatMappedCode([
+    '(() => {\n',
+    { code: body.stmts, sourceFragments: body.sourceFragments },
+    `\nreturn ${body.resultVar};\n})()`,
+  ])
 }

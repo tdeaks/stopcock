@@ -4,7 +4,7 @@ import { flow, none, pipe } from '@stopcock/fp'
 import { compile, compilePure } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
 import { transformStopcockPipelines } from '../transform'
-import type { StopcockCompilerOptions } from '../types'
+import type { StopcockCompilerOptions, TransformResult } from '../types'
 
 const ROOT_RUNTIME = { pipe, flow, compile, compilePure }
 const RUNTIME: Record<string, unknown> = {
@@ -61,6 +61,7 @@ function runWrapped(
 export interface CompareResult {
   readonly transformed: boolean
   readonly reason?: string
+  readonly map: TransformResult['map']
   readonly original: RunResult
   readonly compiled: RunResult
 }
@@ -93,6 +94,13 @@ export function runFixture(
   })
   const transformed = result.code !== probe.fullSource
   const site = result.diagnostics[result.diagnostics.length - 1]
+  if (transformed !== fixture.expectTransformed) {
+    throw new Error(
+      `${fixture.name}: expected transformed=${fixture.expectTransformed}, received ${transformed}${
+        site?.reason === undefined ? '' : ` (${site.reason})`
+      }`,
+    )
+  }
 
   const originalExtra = makeExtra()
   const originalBuilt = build(originalExtra)
@@ -112,5 +120,5 @@ export function runFixture(
   const compiledParamNames = build(compiledExtra).paramNames
   const compiled = runWrapped(compiledSource, compiledParamNames, compiledValues)
 
-  return { transformed, reason: site?.reason, original, compiled }
+  return { transformed, reason: site?.reason, map: result.map, original, compiled }
 }

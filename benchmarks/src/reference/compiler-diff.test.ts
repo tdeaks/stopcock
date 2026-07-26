@@ -24,8 +24,8 @@ import { describe, expect, it } from 'vite-plus/test'
 import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
 import { compile } from '../../../packages/fp-optimizer/src/compile'
 import { flow } from '../../../packages/fp-optimizer/src/fusion-flow'
-import * as A from '../../../packages/fp/src/array'
-import { none } from '../../../packages/fp/src/option'
+import * as A from '@stopcock/fp/array'
+import { none } from '@stopcock/fp/option'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import { compileEmittedPipeline, type EmitterBinding, type PipelineDesc } from './emitter'
 
@@ -44,7 +44,7 @@ interface Fixture {
 }
 
 function probeSource(source: string): string {
-  return `import { pipe } from '@stopcock/fp'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+  return `import { pipe } from '@stopcock/fp-optimizer'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
 }
 
 function run(source: string, input: readonly number[], log: number[]): unknown {
@@ -57,29 +57,14 @@ function run(source: string, input: readonly number[], log: number[]): unknown {
 function runTransformed(source: string, input: readonly number[], log: number[]): unknown {
   const wrapped = probeSource(source)
   const result = transformStopcockPipelines(wrapped, 'fixture.ts', { diagnostics: false })
-  const noneAlias = result.code.match(
-    /import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u,
-  )?.[1]
+  const noneAlias = result.code.match(/import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u)?.[1]
   const stripped = result.code
     .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
     .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gm, '')
   const call = `${stripped}\nreturn __fixture(input, track);`
   // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-  const fn = new Function(
-    'input',
-    'track',
-    'pipe',
-    'A',
-    ...(noneAlias ? [noneAlias] : []),
-    call,
-  )
-  return fn(
-    input.slice(),
-    (x: number) => log.push(x),
-    pipe,
-    A,
-    ...(noneAlias ? [none] : []),
-  )
+  const fn = new Function('input', 'track', 'pipe', 'A', ...(noneAlias ? [noneAlias] : []), call)
+  return fn(input.slice(), (x: number) => log.push(x), pipe, A, ...(noneAlias ? [none] : []))
 }
 
 const fixtures: Fixture[] = [
@@ -202,7 +187,10 @@ describe('W0a: emitter output diffs clean against fp-compiler (compiler-supporte
       const transformedLog: number[] = []
       const probe = probeSource(fixture.source)
       const result = transformStopcockPipelines(probe, `${fixture.name}.ts`, { diagnostics: false })
-      expect(result.code, `${fixture.name}: expected the compiler to transform this pipeline`).not.toBe(probe)
+      expect(
+        result.code,
+        `${fixture.name}: expected the compiler to transform this pipeline`,
+      ).not.toBe(probe)
       const transformedValue = runTransformed(fixture.source, input, transformedLog)
 
       const emittedLog: number[] = []
@@ -210,7 +198,13 @@ describe('W0a: emitter output diffs clean against fp-compiler (compiler-supporte
       const trackedBindings = fixture.bindings.map((b, i) => {
         if (i !== trackedIndex || typeof b.fn !== 'function') return b
         const raw = b.fn as (...args: unknown[]) => unknown
-        return { ...b, fn: (...args: unknown[]) => (emittedLog.push(args[args.length - 1] as number), raw(...args)) }
+        return {
+          ...b,
+          fn: (...args: unknown[]) => (
+            emittedLog.push(args[args.length - 1] as number),
+            raw(...args)
+          ),
+        }
       })
       const emittedValue = compileEmittedPipeline(fixture.desc)(input.slice(), trackedBindings)
 
@@ -240,7 +234,11 @@ const boundaryFixtures: Fixture[] = [
       A.take(5),
     );`,
     desc: { steps: [{ kind: 'flatMap' }, { kind: 'filter' }, { kind: 'take' }] },
-    bindings: [{ fn: (x: number) => [x, x + 1, x + 2] }, { fn: (x: number) => x % 2 === 0 }, { fn: 5 }],
+    bindings: [
+      { fn: (x: number) => [x, x + 1, x + 2] },
+      { fn: (x: number) => x % 2 === 0 },
+      { fn: 5 },
+    ],
   },
   {
     name: 'flatMap -> find (break through both loops)',
@@ -308,7 +306,10 @@ describe('W6: flatMap and boundary ops diff clean against fp-compiler', () => {
       const transformedLog: number[] = []
       const probe = probeSource(fixture.source)
       const result = transformStopcockPipelines(probe, `${fixture.name}.ts`, { diagnostics: false })
-      expect(result.code, `${fixture.name}: expected the compiler to transform this pipeline`).not.toBe(probe)
+      expect(
+        result.code,
+        `${fixture.name}: expected the compiler to transform this pipeline`,
+      ).not.toBe(probe)
       const transformedValue = runTransformed(fixture.source, input, transformedLog)
 
       const emittedLog: number[] = []
@@ -316,7 +317,13 @@ describe('W6: flatMap and boundary ops diff clean against fp-compiler', () => {
       const trackedBindings = fixture.bindings.map((b, i) => {
         if (i !== trackedIndex || typeof b.fn !== 'function') return b
         const raw = b.fn as (...args: unknown[]) => unknown
-        return { ...b, fn: (...args: unknown[]) => (emittedLog.push(args[args.length - 1] as number), raw(...args)) }
+        return {
+          ...b,
+          fn: (...args: unknown[]) => (
+            emittedLog.push(args[args.length - 1] as number),
+            raw(...args)
+          ),
+        }
       })
       const emittedValue = compileEmittedPipeline(fixture.desc)(input.slice(), trackedBindings)
 
@@ -337,7 +344,7 @@ describe('W6: flatMap and boundary ops diff clean against fp-compiler', () => {
 // `(input, bindings) => data`).
 
 function probeSourceDeferred(source: string): string {
-  return `import { compile, flow } from '@stopcock/fp'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+  return `import { compile, flow } from '@stopcock/fp-optimizer'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
 }
 
 function runDeferred(source: string, input: readonly number[], log: number[]): unknown {
@@ -350,9 +357,7 @@ function runDeferred(source: string, input: readonly number[], log: number[]): u
 function runTransformedDeferred(source: string, input: readonly number[], log: number[]): unknown {
   const wrapped = probeSourceDeferred(source)
   const result = transformStopcockPipelines(wrapped, 'fixture.ts', { diagnostics: false })
-  const noneAlias = result.code.match(
-    /import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u,
-  )?.[1]
+  const noneAlias = result.code.match(/import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u)?.[1]
   const stripped = result.code
     .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
     .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gm, '')
@@ -411,7 +416,10 @@ describe('W6: flow()/compile() with >= 2 steps diff clean against fp-compiler', 
       const transformedLog: number[] = []
       const probe = probeSourceDeferred(fixture.source)
       const result = transformStopcockPipelines(probe, `${fixture.name}.ts`, { diagnostics: false })
-      expect(result.code, `${fixture.name}: expected the compiler to transform this flow()/compile() call`).not.toBe(probe)
+      expect(
+        result.code,
+        `${fixture.name}: expected the compiler to transform this flow()/compile() call`,
+      ).not.toBe(probe)
       const transformedValue = runTransformedDeferred(fixture.source, input, transformedLog)
 
       const emittedLog: number[] = []
@@ -419,13 +427,21 @@ describe('W6: flow()/compile() with >= 2 steps diff clean against fp-compiler', 
       const trackedBindings = fixture.bindings.map((b, i) => {
         if (i !== trackedIndex || typeof b.fn !== 'function') return b
         const raw = b.fn as (...args: unknown[]) => unknown
-        return { ...b, fn: (...args: unknown[]) => (emittedLog.push(args[args.length - 1] as number), raw(...args)) }
+        return {
+          ...b,
+          fn: (...args: unknown[]) => (
+            emittedLog.push(args[args.length - 1] as number),
+            raw(...args)
+          ),
+        }
       })
       // compileEmittedPipeline models one call of the pipeline; the "reused
       // runner" fixture calls run(input) twice, so run the emitted pipeline
       // twice too and shape the result the same way the source does.
       const runEmitted = () => compileEmittedPipeline(fixture.desc)(input.slice(), trackedBindings)
-      const emittedValue = fixture.name.includes('reused') ? [runEmitted(), runEmitted()] : runEmitted()
+      const emittedValue = fixture.name.includes('reused')
+        ? [runEmitted(), runEmitted()]
+        : runEmitted()
 
       expect(transformedValue).toEqual(originalValue)
       expect(emittedValue).toEqual(originalValue)
@@ -471,8 +487,12 @@ describe('W6: expanded compiler coverage and clean unsupported diagnostics', () 
   })
 
   it('compile() with a single step is transformed', () => {
-    const source = probeSourceDeferred(`const run = compile(A.map((x) => x * 2)); return run(input);`)
-    const result = transformStopcockPipelines(source, 'compile-single.ts', { diagnostics: 'verbose' })
+    const source = probeSourceDeferred(
+      `const run = compile(A.map((x) => x * 2)); return run(input);`,
+    )
+    const result = transformStopcockPipelines(source, 'compile-single.ts', {
+      diagnostics: 'verbose',
+    })
     expect(result.code).not.toBe(source)
     expect(result.diagnostics[0].transformed).toBe(true)
   })

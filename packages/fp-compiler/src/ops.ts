@@ -7,6 +7,7 @@ import {
   FINAL_BOUNDARY_OP_NAMES,
   OPS_TABLE,
   TERMINAL_OP_NAMES,
+  type OpsTableEntry,
 } from './ops-table'
 
 export type ElementOpName = (typeof ELEMENT_OP_NAMES)[number]
@@ -17,6 +18,32 @@ export const ELEMENT_OPS: ReadonlySet<string> = new Set(ELEMENT_OP_NAMES)
 export const TERMINAL_OPS: ReadonlySet<string> = new Set(TERMINAL_OP_NAMES)
 export const BOUNDARY_OPS: ReadonlySet<string> = new Set(BOUNDARY_OP_NAMES)
 export const FINAL_BOUNDARY_OPS: ReadonlySet<string> = new Set(FINAL_BOUNDARY_OP_NAMES)
+
+export type CompilerOperatorFact = Pick<
+  OpsTableEntry,
+  | 'name'
+  | 'bindings'
+  | 'semanticId'
+  | 'semanticRevision'
+  | 'semanticHash'
+  | 'inputDomain'
+  | 'outputDomain'
+  | 'cardinality'
+  | 'loweringId'
+  | 'loweringRevision'
+  | 'loweringAbiVersion'
+  | 'loweringHash'
+  | 'compilerPipelineRole'
+>
+
+const operatorFacts = new Map(
+  OPS_TABLE.map((entry) => [entry.name, entry satisfies CompilerOperatorFact] as const),
+)
+
+/** Hash-pinned S2 semantic/lowering fact for a statically resolved operator. */
+export function compilerOperatorFact(name: string): CompilerOperatorFact | undefined {
+  return operatorFacts.get(name)
+}
 
 /** Ops this wave's fuser can lower, keyed by name for source-level lookup. */
 export const SUPPORTED_OP_NAMES: ReadonlySet<string> = new Set([

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { parse } from '@babel/parser'
 import { none } from '@stopcock/fp'
+import { buildCompilerReceipt } from '../receipt-emit'
 import { transformStopcockPipelines } from '../transform'
 import { type Fixture, runFixture } from './harness'
 
@@ -34,6 +36,41 @@ describe('transformStopcockPipelines: semantic fixture corpus', () => {
     expectTransformed: true,
   })
 
+  expectSame('map preserves reassignment of its callback parameter', {
+    name: 'map-parameter-assignment',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `return pipe([1, 2], A.map((x) => (x += 1)));`,
+    expectTransformed: true,
+  })
+
+  expectSame('some preserves update of its callback parameter', {
+    name: 'some-parameter-update',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `return pipe([1, 2], A.some((x) => ++x > 2));`,
+    expectTransformed: true,
+  })
+
+  expectSame('tail substitution preserves a bare callback-parameter receiver', {
+    name: 'some-parameter-call-receiver',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const f = function () { 'use strict'; return this === undefined };
+      return pipe([f], A.some((x) => x()));
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('reduce preserves reassignment of both callback parameters', {
+    name: 'reduce-parameter-assignment',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `return pipe([1, 2, 3], A.reduce((acc, x) => ((acc += x), (x += 10), acc), 0));`,
+    expectTransformed: true,
+  })
+
   it('preallocates a single map and writes directly by index', () => {
     const source = `
 ${STD_IMPORTS}
@@ -62,7 +99,7 @@ export const run = (input) => pipe(input, A.map((x) => x * 3 + 1))
     expectTransformed: true,
   })
 
-  expectSame('map allocation falls back for a lexical Array binding', {
+  expectSame('map lowering declines a lexical Array binding', {
     name: 'map-shadowed-array',
     imports: STD_IMPORTS,
     locals: { pipe: 'pipe', A: 'A' },
@@ -72,7 +109,8 @@ export const run = (input) => pipe(input, A.map((x) => x * 3 + 1))
       };
       return pipe([1, 2, 3], A.map((x) => x + 1));
     `,
-    expectTransformed: true,
+    expectTransformed: false,
+    reasonIncludes: 'lexical Array',
   })
 
   expectSame('filter', {
@@ -88,6 +126,23 @@ export const run = (input) => pipe(input, A.map((x) => x * 3 + 1))
     imports: STD_IMPORTS,
     locals: { pipe: 'pipe', A: 'A' },
     body: `return pipe([1, 2, 3, 4, 5], A.reject((x) => x % 2 === 0));`,
+    expectTransformed: true,
+  })
+
+  expectSame('reject preserves getter read order and cardinality', {
+    name: 'reject-getter-cardinality',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      let reads = 0;
+      const source = [];
+      Object.defineProperty(source, 0, {
+        configurable: true,
+        get() { return ++reads },
+      });
+      source.length = 1;
+      return [pipe(source, A.reject(() => false)), reads];
+    `,
     expectTransformed: true,
   })
 
@@ -108,7 +163,9 @@ export const run = (input) =>
     const result = transformStopcockPipelines(source, 'filter-map-direct.ts')
     expect(result.code).toContain('_d0.push((_v0 * 2 + 1));')
     expect(result.code).not.toContain('var _m0')
-    expect(result.code).not.toContain('?')
+    // The official factory call remains observable; only the generated loop
+    // specializes the conditional away.
+    expect(result.code.match(/\?/gu)).toHaveLength(1)
   })
 
   expectSame('filterMap respects a lexical undefined binding', {
@@ -196,6 +253,54 @@ export const run = (input) =>
     expectTransformed: true,
   })
 
+  it.each([
+    ['head', 'A.head', 1],
+    ['last', 'A.last', 1],
+    ['length', 'A.length', 0],
+    ['isEmpty', 'A.isEmpty', 0],
+  ] as const)(
+    'the %s terminal preserves indexed getter reads',
+    (_name, terminal, expectedReads) => {
+      const result = runFixture({
+        name: `terminal-getter-${_name}`,
+        imports: STD_IMPORTS,
+        locals: { pipe: 'pipe', A: 'A' },
+        body: `
+        let reads = 0;
+        const source = [];
+        for (let index = 0; index < 3; index++) {
+          Object.defineProperty(source, index, {
+            configurable: true,
+            get() { reads++; return index + 1 },
+          });
+        }
+        const value = pipe(source, ${terminal});
+        return [value, reads];
+      `,
+        expectTransformed: true,
+      })
+      expect(result.compiled.value).toEqual(result.original.value)
+      expect((result.compiled.value as readonly unknown[])[1]).toBe(expectedReads)
+    },
+  )
+
+  expectSame('takeWhile preserves getter read order and cardinality', {
+    name: 'take-while-getter-cardinality',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      let reads = 0;
+      const source = [];
+      Object.defineProperty(source, 0, {
+        configurable: true,
+        get() { return ++reads },
+      });
+      source.length = 1;
+      return [pipe(source, A.takeWhile(() => true)), reads];
+    `,
+    expectTransformed: true,
+  })
+
   it('emits an exact-capacity direct tail-position scan loop', () => {
     const source = `
 ${STD_IMPORTS}
@@ -209,7 +314,7 @@ export function run(input) {
     expect(result.code).toContain('_scanOut0[_i + 1] = _scanAcc0;')
     expect(result.code).toContain('return _scanOut0;')
     expect(result.code).not.toContain('_boundary0')
-    expect(result.code).not.toContain('A.scan(')
+    expect(result.code).toContain('A.scan(')
     expect(result.code).not.toContain('(function ()')
   })
 
@@ -239,7 +344,7 @@ export function run(input) {
     expectTransformed: true,
   })
 
-  expectSame('direct scan ignores a lexical Array binding', {
+  expectSame('direct scan declines a lexical Array binding', {
     name: 'scan-shadowed-array',
     imports: STD_IMPORTS,
     locals: { pipe: 'pipe', A: 'A' },
@@ -249,7 +354,8 @@ export function run(input) {
       }
       return pipe([1, 2, 3], A.scan((acc, x) => acc + x, 0))
     `,
-    expectTransformed: true,
+    expectTransformed: false,
+    reasonIncludes: 'lexical Array',
   })
 
   it('emits a direct tail-position sum loop', () => {
@@ -522,7 +628,7 @@ export const run = (input) =>
     const result = transformStopcockPipelines(source, 'find-map-direct.ts')
     expect(result.code).toContain('value: (_v0 * 2 + 1) }; break _outer;')
     expect(result.code).not.toContain('var _fmv0')
-    expect(result.code).not.toContain('?')
+    expect(result.code.match(/\?/gu)).toHaveLength(1)
   })
 
   expectSame('none true (no element matches)', {
@@ -553,18 +659,16 @@ export const run = (input) =>
     expectTransformed: true,
   })
 
-  it('direct-writes a fixed-width literal flatMap without per-item arrays', () => {
+  it('retains the literal flatMap allocation and evaluation barrier in exact mode', () => {
     const source = `
 ${STD_IMPORTS}
 export const run = (input) => pipe(input, A.flatMap((x) => [x, x + 1]))
 `
     const result = transformStopcockPipelines(source, 'flat-map-literal.ts')
-    expect(result.code).toContain('var _fmLen0 = _src.length;')
-    expect(result.code).toContain('var _d0 = new Array(_fmLen0 * 2);')
-    expect(result.code).toContain('_d0[_i * 2 + 0] = (_v0);')
-    expect(result.code).toContain('_d0[_i * 2 + 1] = (_v0 + 1);')
-    expect(result.code).not.toContain('var _fm0 =')
-    expect(result.code).not.toContain('_d0.push(')
+    expect(result.code).toContain('var _d0 = [];')
+    expect(result.code).toContain('var _fm0 = ([_v0, _v0 + 1]);')
+    expect(result.code).toContain('_rlen0 = _fm0.length')
+    expect(result.code).toContain('_d0.push(_v1);')
   })
 
   expectSame(
@@ -587,6 +691,54 @@ export const run = (input) => pipe(input, A.flatMap((x) => [x, x + 1]))
     },
     () => ({ log: [] }),
   )
+
+  expectSame('literal flatMap evaluates the whole result before output setters', {
+    name: 'flatMap-literal-prototype-setter-order',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      let log = 0;
+      Object.defineProperty(Array.prototype, '0', {
+        configurable: true,
+        set() { log = log * 10 + 3; },
+      });
+      try {
+        const out = pipe(
+          [1],
+          A.flatMap((x) => [
+            (log = log * 10 + 1, x),
+            (log = log * 10 + 2, x),
+          ]),
+        );
+        return { log, length: out.length, ownZero: Object.hasOwn(out, 0) };
+      } finally {
+        delete Array.prototype[0];
+      }
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('literal flatMap retains literal output allocation semantics', {
+    name: 'flatMap-literal-global-array',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const NativeArray = globalThis.Array;
+      function CustomArray(length) {
+        const out = new NativeArray(length);
+        out.marker = 888;
+        return out;
+      }
+      try {
+        globalThis.Array = CustomArray;
+        const out = pipe([1, 2], A.flatMap((x) => [x, x]));
+        return { marker: out.marker ?? 0, values: [...out] };
+      } finally {
+        globalThis.Array = NativeArray;
+      }
+    `,
+    expectTransformed: true,
+  })
 
   it('keeps dynamic flatMap callbacks on the generic nested-loop path', () => {
     const source = `
@@ -625,7 +777,7 @@ export const run = (input) =>
     expect(result.code).toContain('if (!((_v0 < 10))) break;')
     expect(result.code).toContain('_d0.push((_v0 * 2 + 1));')
     expect(result.code).not.toContain('var _mw0')
-    expect(result.code).not.toContain('?')
+    expect(result.code.match(/\?/gu)).toHaveLength(1)
   })
 
   expectSame('takeUntil fuses and excludes the matching element', {
@@ -660,7 +812,7 @@ export function run() {
 }
 `
     const result = transformStopcockPipelines(source, 'tail-outer-binding.ts')
-    expect(result.code).toContain('const _src = (values);')
+    expect(result.code).toContain('var _src = (values);')
     expect(result.code).toContain('_src[_i]')
   })
 
@@ -771,18 +923,31 @@ export function run() {
     expectTransformed: true,
   })
 
-  it('fuses a fixed-width literal map directly through flatten', () => {
+  it('keeps a root map and flatten in separate sequential stages', () => {
     const source = `
 ${STD_IMPORTS}
 export const run = (input) =>
   pipe(input, A.map((x) => [x, x + 1]), A.flatten)
 `
     const result = transformStopcockPipelines(source, 'map-flatten.ts')
-    expect(result.code).toContain('var _d0 = new Array(_fmLen0 * 2);')
-    expect(result.code).toContain('_d0[_i * 2 + 0] = (_v0);')
-    expect(result.code).toContain('_d0[_i * 2 + 1] = (_v0 + 1);')
-    expect(result.code).not.toContain('_boundary1')
-    expect(result.code).not.toContain('var _d1')
+    expect(result.code).toContain('var _d0 = new Array(_len0);')
+    expect(result.code).toContain('_d0[_i] = ([_v0, _v0 + 1]);')
+    expect(result.code).toContain('var _boundary1')
+    expect(result.code).toContain('var _d1 = _boundary1(_d0);')
+  })
+
+  it('retains the exact map-to-flatten allocation boundary on the fusion facade', () => {
+    const source = `
+import { pipe } from '@stopcock/fp/fusion'
+import * as A from '@stopcock/fp/array'
+export const run = (input) =>
+  pipe(input, A.map((x) => [x, x + 1]), A.flatten)
+`
+    const result = transformStopcockPipelines(source, 'fusion-map-flatten.ts')
+    expect(result.code).toContain('var _d0 = new Array(_len0);')
+    expect(result.code).toContain('_d0[_i] = ([_v0, _v0 + 1]);')
+    expect(result.code).toContain('var _boundary1')
+    expect(result.code).toContain('var _d1 = _boundary1(_d0);')
   })
 
   for (const [name, terminal] of [
@@ -827,7 +992,9 @@ function __run(input) {
 }
 `
     const result = transformStopcockPipelines(source, 'is-empty-return-shape.ts')
-    expect(result.code).toContain('function __run(input) {\n  return input.length === 0;\n}')
+    expect(result.code).toMatch(
+      /function __run\(input\) \{\n\s+A\.isEmpty;\nreturn input\.length === 0;\n\}/u,
+    )
     expect(result.code).not.toContain('{\n{\nreturn')
   })
 
@@ -846,7 +1013,8 @@ const out = pipe([1, 2, 3], A.length, A.map((x) => x + 1))
 
   expectSame('compile() with 2 steps fuses into a runner', {
     name: 'compile-2-steps',
-    imports: `import { pipe, compile, flow } from '@stopcock/fp'
+    imports: `import { pipe, flow } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'`,
     locals: { pipe: 'pipe', A: 'A', compile: 'compile', flow: 'flow' },
     body: `
@@ -858,7 +1026,8 @@ import * as A from '@stopcock/fp/array'`,
 
   expectSame('flow() with 3 steps fuses into a runner', {
     name: 'flow-3-steps',
-    imports: `import { pipe, compile, flow } from '@stopcock/fp'
+    imports: `import { pipe, flow } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'`,
     locals: { pipe: 'pipe', A: 'A', compile: 'compile', flow: 'flow' },
     body: `
@@ -868,9 +1037,69 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
+  expectSame('flow runners preserve lexical this, arguments, super, and new.target', {
+    name: 'flow-lexical-construction-context',
+    imports: `import { flow } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'`,
+    locals: { flow: 'flow', A: 'A' },
+    body: `
+      const owner = {
+        factor: 3,
+        make(multiplier) {
+          const byThis = flow(A.map((x) => x * this.factor), A.filter(Boolean));
+          const byArguments = flow(A.map((x) => x * arguments[0]), A.filter(Boolean));
+          return [byThis([1, 2]), byArguments([1, 2])];
+        },
+      };
+      class Base { get factor() { return 4; } }
+      class Child extends Base {
+        make() {
+          const run = flow(A.map((x) => x * super.factor), A.filter(Boolean));
+          return run([1, 2]);
+        }
+      }
+      function Factory() {
+        const run = flow(
+          A.map((x) => new.target === Factory ? x + 5 : x),
+          A.filter(Boolean),
+        );
+        this.value = run([1, 2]);
+      }
+      return [owner.make(5), new Child().make(), new Factory().value];
+    `,
+    expectTransformed: true,
+  })
+
+  it('emits complete deferred-runner plan evidence into receipts', () => {
+    const source = `import { flow } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+export const run = flow(A.map(Number), A.filter(Boolean), A.sum)
+`
+    const result = transformStopcockPipelines(source, '/repo/src/runner.ts', {
+      diagnostics: 'verbose',
+    })
+    const receipt = buildCompilerReceipt(result.diagnostics[0], source, {
+      root: '/repo',
+      configHash: `sha256:${'2'.repeat(64)}`,
+      emittedCode: result.code,
+      sourceMap: JSON.stringify(result.map),
+    })
+    expect(receipt).toMatchObject({
+      disposition: 'transformed',
+      segmentKinds: ['stream', 'stream', 'stream'],
+      semanticMode: 'exact',
+    })
+    expect(receipt?.semanticIds.map((identity) => identity.semanticId)).toEqual([
+      '@stopcock/fp/array/map',
+      '@stopcock/fp/array/filter',
+      '@stopcock/fp/array/sum',
+    ])
+    expect(receipt?.loweringHash).toMatch(/^sha256:[a-f0-9]{64}$/u)
+  })
+
   expectSame('compile() captures factories and bound values once', {
     name: 'compile-construction-timing',
-    imports: `import { compile } from '@stopcock/fp'
+    imports: `import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'`,
     locals: { compile: 'compile', A: 'A' },
     body: `
@@ -891,6 +1120,126 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
+  expectSame('fully static lowering still executes each official operator factory once', {
+    name: 'full-static-factory-observability',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      let writes = 0;
+      const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
+      Object.defineProperty(Function.prototype, '_op', {
+        configurable: true,
+        set(value) {
+          writes++;
+          Object.defineProperty(this, '_op', {
+            configurable: true,
+            writable: true,
+            value,
+          });
+        },
+      });
+      try {
+        const result = pipe(
+          [1, 2, 3],
+          A.map((x) => x + 1),
+          A.filter((x) => x > 2),
+        );
+        return [result, writes];
+      } finally {
+        if (previous === undefined) delete Function.prototype._op;
+        else Object.defineProperty(Function.prototype, '_op', previous);
+      }
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('fully static lowering preserves a throwing inherited factory setter', {
+    name: 'full-static-factory-throw',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
+      Object.defineProperty(Function.prototype, '_op', {
+        configurable: true,
+        set() { throw new Error('factory tag rejected') },
+      });
+      try {
+        return pipe([1, 2], A.map((x) => x + 1));
+      } finally {
+        if (previous === undefined) delete Function.prototype._op;
+        else Object.defineProperty(Function.prototype, '_op', previous);
+      }
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('fully static lowering preserves and never executes a retained operator leaf', {
+    name: 'full-static-retained-operator-leaf',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      let retained;
+      const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
+      Object.defineProperty(Function.prototype, '_op', {
+        configurable: true,
+        set(value) {
+          retained = this;
+          Object.defineProperty(this, '_op', {
+            configurable: true,
+            writable: true,
+            value,
+          });
+        },
+      });
+      try {
+        const compiledResult = pipe([1, 2, 3], A.map((x) => x + 1));
+        const retainedResult = retained([10, 20]);
+        return [compiledResult, retainedResult];
+      } finally {
+        if (previous === undefined) delete Function.prototype._op;
+        else Object.defineProperty(Function.prototype, '_op', previous);
+      }
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('boundary lowering never trusts later mutations of public binding fields', {
+    name: 'boundary-public-binding-forgery',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      let constructed;
+      const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
+      Object.defineProperty(Function.prototype, '_op', {
+        configurable: true,
+        set(value) {
+          constructed = this;
+          Object.defineProperty(this, '_op', {
+            configurable: true,
+            writable: true,
+            value,
+          });
+        },
+      });
+      try {
+        const makePredicate = () => {
+          constructed._fn = () => 1000;
+          constructed._a1 = 1000;
+          return Boolean;
+        };
+        return pipe(
+          [1, 2],
+          A.scan((acc, value) => acc + value, 0),
+          A.filter(makePredicate()),
+        );
+      } finally {
+        if (previous === undefined) delete Function.prototype._op;
+        else Object.defineProperty(Function.prototype, '_op', previous);
+      }
+    `,
+    expectTransformed: true,
+  })
+
   expectSame('compilePure from the specialist entry fuses', {
     name: 'compile-pure-specialist',
     imports: `import { compilePure } from '@stopcock/fp/compile'
@@ -903,22 +1252,71 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
-  it('retains compilePure runtime rewrites until equivalent AOT templates exist', () => {
-    for (const [name, steps] of [
-      ['top-k', 'A.sort, A.take(2)'],
-      ['map-length', 'A.map((x) => x + 1), A.length'],
-    ] as const) {
-      const source = `
+  expectSame('compilePure preserves operator construction while eliding map execution', {
+    name: 'compile-pure-construction-observable',
+    imports: `import { compilePure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compilePure: 'compilePure', A: 'A' },
+    body: `
+      let writes = 0;
+      const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
+      Object.defineProperty(Function.prototype, '_op', {
+        configurable: true,
+        set(value) {
+          writes++;
+          Object.defineProperty(this, '_op', {
+            configurable: true,
+            writable: true,
+            value,
+          });
+        },
+      });
+      try {
+        const run = compilePure(
+          A.map((x) => x + 1),
+          A.length,
+        );
+        return [run([1, 2, 3]), writes];
+      } finally {
+        if (previous === undefined) delete Function.prototype._op;
+        else Object.defineProperty(Function.prototype, '_op', previous);
+      }
+    `,
+    expectTransformed: true,
+  })
+
+  it('retains the compilePure top-k runtime rewrite until an equivalent AOT template exists', () => {
+    const source = `
 import { compilePure } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
-const run = compilePure(${steps})
+const run = compilePure(A.sort, A.take(2))
 `
-      const result = transformStopcockPipelines(source, `compile-pure-${name}.ts`, {
-        diagnostics: 'verbose',
-      })
-      expect(result.code).toBe(source)
-      expect(result.diagnostics[0].reason).toContain('retained portable compilePure optimization')
-    }
+    const result = transformStopcockPipelines(source, 'compile-pure-top-k.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0].reason).toContain('retained portable compilePure optimization')
+  })
+
+  it('AOT-elides pure map callbacks whose values are consumed only by length', () => {
+    const source = `
+import { compilePure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'
+const run = compilePure(A.map((x) => x + 1), A.length)
+export const out = run([1, 2, 3])
+`
+    const result = transformStopcockPipelines(source, 'compile-pure-map-length.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.diagnostics[0]).toMatchObject({
+      transformed: true,
+      semantics: 'pure',
+      opNames: ['map', 'length'],
+    })
+    expect(result.code).toContain('var _d0 = _src.length;')
+    expect(result.code).toContain('A.map')
+    expect(result.code).toContain('x + 1')
+    expect(result.code).not.toContain('for (')
   })
 
   expectSame('map + filter + sum', {
@@ -1074,6 +1472,69 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
+  it.each([
+    [
+      'named fusedPipe',
+      `import { fusedPipe } from '@stopcock/fp/fusion'
+import * as A from '@stopcock/fp/array'
+export const out = fusedPipe([1, 2], A.map((x) => x + 1))`,
+    ],
+    [
+      'namespace fusedPipe',
+      `import * as FP from '@stopcock/fp/fusion'
+import * as A from '@stopcock/fp/array'
+export const out = FP.fusedPipe([1, 2], A.map((x) => x + 1))`,
+    ],
+    [
+      'named fusedFlow',
+      `import { fusedFlow } from '@stopcock/fp-optimizer'
+import * as A from '@stopcock/fp/array'
+export const run = fusedFlow(A.map((x) => x + 1), A.filter((x) => x > 1))`,
+    ],
+    [
+      'namespace fusedFlow',
+      `import * as FP from '@stopcock/fp-optimizer'
+import * as A from '@stopcock/fp/array'
+export const run = FP.fusedFlow(A.map((x) => x + 1), A.filter((x) => x > 1))`,
+    ],
+  ])('recognizes the public fusion alias surface: %s', (_name, source) => {
+    const result = transformStopcockPipelines(source, 'fusion-alias.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).not.toBe(source)
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0].transformed).toBe(true)
+  })
+
+  it('declines a lexical Array binding instead of changing realm allocation', () => {
+    const source = `import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+export function run() {
+  const NativeArray = globalThis.Array
+  function CustomArray(length) {
+    const out = new NativeArray(length)
+    out.marker = 777
+    return out
+  }
+  const Array = class LocalArray {}
+  try {
+    globalThis.Array = CustomArray
+    return pipe([1, 2], A.map((x) => x))
+  } finally {
+    globalThis.Array = NativeArray
+  }
+}`
+    const result = transformStopcockPipelines(source, 'lexical-array.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0]).toMatchObject({
+      transformed: false,
+      reasonCodes: ['strict-scope-exclusion'],
+    })
+    expect(result.diagnostics[0].reason).toContain('lexical Array')
+  })
+
   expectSame('named array operator imports and aliases', {
     name: 'named-array-imports',
     imports: `import { pipe } from '@stopcock/fp'
@@ -1199,13 +1660,166 @@ import * as A from '@stopcock/fp/array'
 
   it('compile() with one static step is transformed', () => {
     const source = `
-import { compile } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
       const run = compile(A.map((x) => x * 2));
     `
     const result = transformStopcockPipelines(source, 'compile.ts', { diagnostics: 'verbose' })
     expect(result.code).not.toBe(source)
     expect(result.diagnostics[0].transformed).toBe(true)
+  })
+
+  it.each([
+    ['source expression', `const out = pipe(eval('_d0'), A.map((x) => x));`],
+    ['inlined callback', `const out = pipe([1], A.map((x) => eval('_d0')));`],
+  ])('declines unshadowed direct eval in a %s', (_name, body) => {
+    const source = `
+import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+${body}
+`
+    const result = transformStopcockPipelines(source, 'direct-eval.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0]).toMatchObject({
+      transformed: false,
+      reasonCodes: ['strict-scope-exclusion'],
+    })
+    expect(result.diagnostics[0].reason).toContain('direct eval')
+  })
+
+  it.each([
+    [
+      'before a pipeline in the same function',
+      `export function run() {
+  const observed = eval('typeof _src')
+  return [observed, pipe([1], A.map((x) => x))]
+}`,
+    ],
+    [
+      'after a pipeline in the same function',
+      `export function run() {
+  const out = pipe([1], A.map((x) => x))
+  return [out, eval('typeof _src')]
+}`,
+    ],
+    [
+      'inside a closure elsewhere in the module',
+      `const inspect = () => eval('typeof _src')
+export const out = pipe([1], A.map((x) => x))
+export { inspect }`,
+    ],
+  ])('declines every transform when direct eval appears %s', (_name, body) => {
+    const source = `import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+${body}
+`
+    const result = transformStopcockPipelines(source, 'file-direct-eval.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]).toMatchObject({
+      transformed: false,
+      reasonCodes: ['strict-scope-exclusion'],
+    })
+  })
+
+  it('still transforms when the only eval call is indirect', () => {
+    const source = `import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+globalThis.eval('typeof _src')
+export const out = pipe([1], A.map((x) => x))
+`
+    const result = transformStopcockPipelines(source, 'indirect-eval.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).not.toBe(source)
+    expect(result.diagnostics[0].transformed).toBe(true)
+  })
+
+  it.each([
+    [
+      '_src declaration',
+      `const _src = 'user'
+export const out = pipe([1], A.map((x) => x))`,
+    ],
+    [
+      '_d0 callback capture',
+      `const _d0 = 10
+export const out = pipe([1], A.map((x) => x + _d0))`,
+    ],
+    [
+      '_c0 tail capture',
+      `const _c0 = 10
+const makePredicate = () => (x) => x > _c0
+export function run(input) { return pipe(input, A.some(makePredicate())) }`,
+    ],
+  ])('declines a non-hygienic generated-local collision: %s', (_name, body) => {
+    const source = `import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+${body}
+`
+    const result = transformStopcockPipelines(source, 'local-collision.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0]).toMatchObject({
+      transformed: false,
+      reasonCodes: ['strict-scope-exclusion'],
+    })
+    expect(result.diagnostics[0].reason).toContain('not hygienic')
+  })
+
+  expectSame('a colliding tail-only local falls back to the hygienic general emitter', {
+    name: 'tail-only-local-collision',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const _reduceAcc0 = 100;
+      const run = (items) =>
+        pipe(items, A.reduce((acc, value) => acc + value + _reduceAcc0, 0));
+      return run([1, 2]);
+    `,
+    expectTransformed: true,
+  })
+
+  it('selects a fresh loop label when an escaped outer label is active', () => {
+    const source = `import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+export function run() {
+  \\u005fouter: {
+    const out = pipe([1,2], A.map((x) => x), A.some((x) => x > 1))
+    break \\u005fouter
+  }
+}
+`
+    const result = transformStopcockPipelines(source, 'escaped-label.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.diagnostics[0].transformed).toBe(true)
+    expect(result.code).toContain('_outer1:')
+    expect(() =>
+      parse(result.code, { sourceType: 'module', plugins: ['typescript'] }),
+    ).not.toThrow()
+  })
+
+  it('detects an escaped spelling of a generated identifier', () => {
+    const source = `import { pipe } from '@stopcock/fp'
+import * as A from '@stopcock/fp/array'
+const \\u005fsrc = 10
+export const out = pipe([1], A.map((x) => x + \\u005fsrc))
+`
+    const result = transformStopcockPipelines(source, 'escaped-identifier.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0]).toMatchObject({
+      transformed: false,
+      reasonCodes: ['strict-scope-exclusion'],
+    })
+    expect(result.diagnostics[0].reason).toContain('_src')
   })
 
   it('flow() is left untransformed and noted as deferred', () => {
@@ -1255,7 +1869,7 @@ import * as A from '@stopcock/fp/array'
 
   it('compile() with a single step is transformed without changing flow() identity semantics', () => {
     const source = `
-import { compile } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
       const run = compile(A.map((x) => x * 2));
       const out = run([1, 2, 3]);
@@ -1281,7 +1895,7 @@ import * as A from '@stopcock/fp/array'
 
   it('compile() with spread arguments stays deferred', () => {
     const source = `
-import { compile } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
       const steps = [A.map((x) => x * 2), A.filter((x) => x > 0)];
       const run = compile(...steps);
@@ -1361,6 +1975,28 @@ import * as A from '@stopcock/fp/array'
 })
 
 describe('transformStopcockPipelines: diagnostics', () => {
+  it('keeps a parser-failed candidate visible and fails closed in error mode', () => {
+    const source = `import { pipe } from '@stopcock/fp'
+export const result = pipe([1, 2],`
+    const verbose = transformStopcockPipelines(source, 'parse-failure.ts', {
+      diagnostics: 'verbose',
+    })
+
+    expect(verbose.code).toBe(source)
+    expect(verbose.diagnostics[0]).toMatchObject({
+      transformed: false,
+      fallbackTier: 'sequential',
+      reasonCodes: ['compiler-defect'],
+      opNames: [],
+    })
+    expect(verbose.diagnostics[0].reason).toContain('could not be parsed')
+    expect(() =>
+      transformStopcockPipelines(source, 'parse-failure.ts', {
+        diagnostics: 'error',
+      }),
+    ).toThrow('could not be parsed')
+  })
+
   it('diagnostics: false returns no diagnostics', () => {
     const source = `
 import { pipe } from '@stopcock/fp'
@@ -1384,7 +2020,7 @@ import * as A from '@stopcock/fp/array'
 
   it('diagnostics: "error" also fails deferred compile/flow sites', () => {
     const source = `
-import { compile } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
 const steps = [A.map((x) => x * 2)]
 const run = compile(...steps)
@@ -1418,7 +2054,7 @@ import * as A from '@stopcock/fp/array'
 
   it('does not emit hidden generic-iterable materialization', () => {
     const source = `
-import { compile } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
       const run = compile(A.map((x) => x * 2), A.sum);
     `
@@ -1448,24 +2084,24 @@ describe('dead import pruning', () => {
   const run = (source: string) =>
     transformStopcockPipelines(source, '/repo/src/a.ts', { diagnostics: 'summary' }).code
 
-  it('removes imports a fused site consumed entirely', () => {
+  it('removes the consumed facade import while retaining observable factories', () => {
     const out = run(`import { pipe } from '@stopcock/fp'
 import { filter, map } from '@stopcock/fp/array'
 export const r = pipe([1,2,3], map((x) => x * 2), filter((x) => x > 2))
 `)
-    expect(out).not.toContain('@stopcock/fp/array')
+    expect(out).toContain('@stopcock/fp/array')
     expect(out).not.toContain("from '@stopcock/fp'")
   })
 
-  it('retains exactly what a fallback site still needs', () => {
+  it('retains every factory used by full and prefix-residual sites', () => {
     const out = run(`import { pipe } from '@stopcock/fp'
 import { filter, map } from '@stopcock/fp/array'
 export const a = pipe([1,2,3], map((x) => x * 2), filter((x) => x > 2))
 export const b = pipe([1,2,3], map((x) => x * 2), (xs) => xs)
 `)
-    expect(out).toContain("import { map } from '@stopcock/fp/array'")
-    expect(out).toContain("import { pipe } from '@stopcock/fp'")
-    expect(out).not.toContain('filter')
+    expect(out).toContain('@stopcock/fp/array')
+    expect(out).not.toContain("from '@stopcock/fp'")
+    expect(out).toContain('filter')
   })
 
   it('leaves a type-only import alone', () => {
@@ -1499,8 +2135,38 @@ export const other = m((x) => x + 1)
   it('leaves a file with nothing transformed untouched', () => {
     const source = `import { pipe } from '@stopcock/fp'
 import { map } from '@stopcock/fp/array'
-export const r = pipe([1,2,3], map((x) => x * 2), (xs) => xs)
+export const r = pipe([1,2,3], (xs) => xs, map((x) => x * 2))
 `
     expect(run(source)).toBe(source)
+  })
+
+  it.each([
+    [
+      'compile from the root facade',
+      `import { compile } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+export const run = compile(map(Number))
+`,
+    ],
+    [
+      'operators from a nonexistent fusion subpath',
+      `import { pipe } from '@stopcock/fp/fusion'
+import { map } from '@stopcock/fp/fusion/array'
+export const result = pipe([1,2,3], map(Number))
+`,
+    ],
+    [
+      'operators from a nonexistent optimizer subpath',
+      `import { pipe } from '@stopcock/fp-optimizer'
+import { map } from '@stopcock/fp-optimizer/array'
+export const result = pipe([1,2,3], map(Number))
+`,
+    ],
+  ])('never turns an invalid public import into working output: %s', (_name, source) => {
+    const result = transformStopcockPipelines(source, '/repo/src/invalid-surface.ts', {
+      diagnostics: 'summary',
+    })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics.every((site) => site.transformed === false)).toBe(true)
   })
 })

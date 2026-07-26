@@ -12,18 +12,53 @@
  */
 import { createHash } from 'node:crypto'
 import { relative, sep } from 'node:path'
-import { OPS_TABLE } from './ops-table.js'
+import {
+  FULL_ARRAY_LOWERING_ID,
+  FULL_RUNNER_LOWERING_ID,
+  PREFIX_RESIDUAL_RECEIVER_INSENSITIVE_LOWERING_ID,
+  PREFIX_RESIDUAL_STEP_VECTOR_LOWERING_ID,
+} from './codegen.js'
+import {
+  COMPILER_EMITTER_ABI_V1_HASH,
+  OPERATOR_SEMANTIC_FACTS_V1_HASH,
+  OPS_TABLE,
+} from './ops-table.js'
+import { segmentKindsForOperatorFacts } from './plan-ir.js'
+import { compilerReceiptCoreHash } from './receipt-core.js'
 import type { CompilerReceiptV1, ReceiptReasonCodeV1 } from './receipt-schema.generated.js'
-import type { CompilerSemantics, DiagnosticSite } from './types.js'
+import type { DiagnosticSite } from './types.js'
 
-const sha256 = (value: string): string =>
-  `sha256:${createHash('sha256').update(value).digest('hex')}`
+export {
+  compilerReceiptCore,
+  compilerReceiptCoreHash,
+  type CompilerReceiptCoreV1,
+} from './receipt-core.js'
 
-/** Repo-relative and POSIX-separated, so a receipt does not carry a machine. */
-export const toPortablePath = (id: string, root: string): string => {
+const sha256Hex = (value: string): string => createHash('sha256').update(value).digest('hex')
+
+const sha256 = (value: string): string => `sha256:${sha256Hex(value)}`
+
+const EXTERNAL_SOURCE_LOCATOR_DOMAIN = 'stopcock.receipt.external-source.v1\0'
+
+/**
+ * Project-relative when the host ID belongs to the configured root; otherwise
+ * an opaque, deterministic locator. Raw external IDs must never enter a
+ * receipt because they commonly contain machine-specific absolute paths.
+ */
+export const toReceiptSourcePath = (id: string, root: string): string => {
   const relativePath = relative(root, id)
-  const portable = relativePath.split(sep).join('/')
-  return portable.startsWith('..') || portable.length === 0 ? id.split(sep).join('/') : portable
+  const portable = relativePath.split(sep).join('/').replaceAll('\\', '/')
+  const isProjectRelative =
+    portable.length > 0 &&
+    portable !== '..' &&
+    !portable.startsWith('../') &&
+    !portable.startsWith('/') &&
+    !/^[a-zA-Z]:\//u.test(portable)
+
+  if (isProjectRelative) return portable
+
+  const normalizedId = id.split(sep).join('/').replaceAll('\\', '/')
+  return `external/sha256-${sha256Hex(`${EXTERNAL_SOURCE_LOCATOR_DOMAIN}${normalizedId}`)}`
 }
 
 const opByName = new Map(OPS_TABLE.map((entry) => [entry.name, entry]))
@@ -33,19 +68,28 @@ const opByName = new Map(OPS_TABLE.map((entry) => [entry.name, entry]))
  * the compiler can decide, so it belongs in the hash that invalidates receipts.
  */
 export const COMPILER_HASH = sha256(
-  JSON.stringify(
-    OPS_TABLE.map((entry) => [
+  JSON.stringify({
+    operators: OPS_TABLE.map((entry) => [
       entry.name,
       entry.semanticId,
       entry.semanticRevision,
       entry.semanticHash,
+      entry.loweringId,
+      entry.loweringRevision,
+      entry.loweringAbiVersion,
+      entry.loweringHash,
     ]),
-  ),
+    compilerLowerings: [
+      FULL_ARRAY_LOWERING_ID,
+      FULL_RUNNER_LOWERING_ID,
+      PREFIX_RESIDUAL_RECEIVER_INSENSITIVE_LOWERING_ID,
+      PREFIX_RESIDUAL_STEP_VECTOR_LOWERING_ID,
+    ],
+    compilerEmitterAbiHash: COMPILER_EMITTER_ABI_V1_HASH,
+  }),
 )
 
-export const SEMANTIC_MANIFEST_HASH = sha256(
-  JSON.stringify(OPS_TABLE.map((entry) => [entry.semanticId, entry.semanticHash])),
-)
+export const SEMANTIC_MANIFEST_HASH = OPERATOR_SEMANTIC_FACTS_V1_HASH
 
 /**
  * Free-text reasons are for humans. A receipt carries a code from the frozen
@@ -74,68 +118,123 @@ export const reasonCodeFor = (reason: string | undefined): ReceiptReasonCodeV1 =
 export interface ReceiptContext {
   readonly root: string
   readonly configHash: string
-  readonly semantics: CompilerSemantics
   readonly emittedCode: string | null
   readonly sourceMap: string | null
 }
 
 /**
- * Sites whose operators could not be identified produce no semantic identities
- * and therefore no receipt: the schema requires at least one, and inventing an
- * identity for an unrecognised call would be exactly the caller-supplied
- * descriptor the provenance rules forbid. Those sites are counted, not
- * described.
+ * A discovered site always produces a receipt. When no generated operator can
+ * be identified, `semanticIds` is honestly empty rather than populated with a
+ * caller-derived or synthetic identity; the fallback tier and reason code
+ * still make the unsupported site visible to `stopcock check`.
  */
 export const buildCompilerReceipt = (
   site: DiagnosticSite,
   source: string,
   context: ReceiptContext,
-): CompilerReceiptV1 | undefined => {
+): CompilerReceiptV1 => {
   const opNames = site.opNames ?? []
-  const identities = opNames
-    .map((name) => opByName.get(name))
-    .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined)
-    .map((entry) => ({
-      semanticId: entry.semanticId,
-      semanticRevision: entry.semanticRevision,
-      semanticHash: entry.semanticHash,
-      mode: context.semantics,
-    }))
-  if (identities.length === 0) return undefined
-
-  const sourcePath = toPortablePath(site.id, context.root)
+  const facts =
+    site.operatorFacts ??
+    opNames
+      .map((name) => opByName.get(name))
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined)
+  const identities = facts.map((entry) => ({
+    semanticId: entry.semanticId,
+    semanticRevision: entry.semanticRevision,
+    semanticHash: entry.semanticHash,
+    mode: site.semantics,
+  }))
+  const sourcePath = toReceiptSourcePath(site.id, context.root)
   const sourceHash = sha256(source)
+  const sourceSpan =
+    site.line > 0 && site.endLine > 0
+      ? {
+          startLine: site.line,
+          startColumn: site.column,
+          endLine: site.endLine,
+          endColumn: site.endColumn,
+        }
+      : null
+  const sourceSpecifier = sourceSpan === null ? null : (site.sourceSpecifier ?? null)
+  const sourceExport = sourceSpan === null ? null : (site.sourceExport ?? null)
   // Position plus shape, so moving a site in a file changes its identity but
   // reformatting an unrelated part of the file does not move every receipt.
-  const siteFingerprint = sha256(`${sourcePath}:${site.line}:${site.column}:${opNames.join(',')}`)
-
-  return {
-    kind: 'stopcock.compiler-receipt',
-    schemaVersion: 1,
-    // The schema requires a hash. The site's readable position lives in the
-    // fingerprint inputs rather than in this id.
-    receiptId: sha256(
-      `${sourcePath}#${site.line}:${site.column}|${context.configHash}|${COMPILER_HASH}`,
-    ),
+  const siteFingerprint = sha256(
+    JSON.stringify({
+      sourcePath,
+      sourceSpecifier,
+      sourceExport,
+      sourceSpan,
+      semanticIds: facts.map((fact) => fact.semanticId),
+    }),
+  )
+  const segmentKinds =
+    site.segmentKinds ??
+    (facts.length === 0
+      ? []
+      : segmentKindsForOperatorFacts(
+          facts,
+          site.fallbackTier === 'sequential' ? 'sequential-stages' : 'fused-streams',
+        ))
+  const loweringHash =
+    site.transformed && site.loweringId !== undefined
+      ? sha256(
+          JSON.stringify({
+            loweringId: site.loweringId,
+            semantics: site.semantics,
+            compilerEmitterAbiHash: COMPILER_EMITTER_ABI_V1_HASH,
+            operatorLowerings: facts.map((entry) => [
+              entry.loweringId,
+              entry.loweringRevision,
+              entry.loweringAbiVersion,
+              entry.loweringHash,
+            ]),
+            segmentKinds,
+          }),
+        )
+      : null
+  const disposition: CompilerReceiptV1['disposition'] = site.transformed
+    ? 'transformed'
+    : site.fallbackTier !== undefined
+      ? 'fallback'
+      : 'skipped'
+  const fallbackTier: CompilerReceiptV1['fallbackTier'] = site.transformed
+    ? 'none'
+    : (site.fallbackTier ?? 'compiler')
+  const reasonCodes = site.reasonCodes ?? (site.transformed ? [] : [reasonCodeFor(site.reason)])
+  const emittedCodeHash =
+    site.transformed && context.emittedCode !== null ? sha256(context.emittedCode) : null
+  const sourceMapHash =
+    site.transformed && context.sourceMap !== null ? sha256(context.sourceMap) : null
+  const receiptCore = {
+    kind: 'stopcock.compiler-receipt' as const,
+    schemaVersion: 1 as const,
     sourcePath,
     sourceHash,
+    sourceSpecifier,
+    sourceExport,
+    sourceSpan,
     siteFingerprint,
     compilerHash: COMPILER_HASH,
     configHash: context.configHash,
     semanticManifestHash: SEMANTIC_MANIFEST_HASH,
     semanticIds: identities,
-    semanticMode: context.semantics,
-    segmentKinds: identities.map(() => 'stream' as const),
-    disposition: site.transformed ? 'transformed' : 'skipped',
-    loweringHash: null,
-    // A skipped site keeps running the runtime it always ran.
-    fallbackTier: site.transformed ? 'none' : 'compiler',
-    reasonCodes: site.transformed ? [] : [reasonCodeFor(site.reason)],
-    emittedCodeHash:
-      site.transformed && context.emittedCode !== null ? sha256(context.emittedCode) : null,
-    sourceMapHash:
-      site.transformed && context.sourceMap !== null ? sha256(context.sourceMap) : null,
-    evidenceRefs: [],
+    semanticMode: site.semantics,
+    segmentKinds,
+    disposition,
+    loweringHash,
+    fallbackTier,
+    reasonCodes,
+    emittedCodeHash,
+    sourceMapHash,
+    evidenceRefs: [] as readonly string[],
+  }
+
+  return {
+    ...receiptCore,
+    /** Hash of the complete deterministic core, excluding only this field. */
+    receiptId: compilerReceiptCoreHash(receiptCore),
   }
 }
 
@@ -149,6 +248,13 @@ export const serializeReceipts = (receipts: readonly CompilerReceiptV1[]): strin
       receiptId: 0,
       sourcePath: 0,
       sourceHash: 0,
+      sourceSpecifier: 0,
+      sourceExport: 0,
+      sourceSpan: 0,
+      startLine: 0,
+      startColumn: 0,
+      endLine: 0,
+      endColumn: 0,
       siteFingerprint: 0,
       compilerHash: 0,
       configHash: 0,

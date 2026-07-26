@@ -7,6 +7,7 @@ const pack = libraryPack({
   rollup: 'src/rollup.ts',
   esbuild: 'src/esbuild.ts',
   webpack: 'src/webpack.ts',
+  rspack: 'src/rspack.ts',
 })
 
 // The `stopcock` bin is a real entry rather than a re-export facade: it has to
