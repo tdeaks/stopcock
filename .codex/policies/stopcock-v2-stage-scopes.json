@@ -462,6 +462,7 @@
         "packages/fp/src/__tests__/**",
         "packages/fp/package.json",
         "packages/fp/module-manifest.ts",
+        "packages/fp/scripts/check-package-contract.ts",
         "packages/fp/scripts/sync-module-manifest.ts",
         "packages/fp/README.md",
         "packages/fp/MIGRATION.md",
