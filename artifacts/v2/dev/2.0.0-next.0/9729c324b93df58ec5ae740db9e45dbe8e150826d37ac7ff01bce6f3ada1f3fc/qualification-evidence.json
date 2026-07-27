@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "kind": "stopcock-s11r-qualification-evidence-v1",
+  "cohort": {
+    "contentHash": "sha256:9729c324b93df58ec5ae740db9e45dbe8e150826d37ac7ff01bce6f3ada1f3fc",
+    "target": "2.0.0-next.0",
+    "mode": "dev",
+    "publicCount": 21
+  },
+  "evidence": [
+    {
+      "path": "qualification-a/combined.json",
+      "sha256": "sha256:55e85fcebd91d7fe91ff897d31864326bed2e6d593bdda080e6624d901dee86e",
+      "bytes": 2097
+    },
+    {
+      "path": "qualification-a/combined.hosts.json",
+      "sha256": "sha256:e44e4b059a0fd9e8b92fa79c8fd7911810d66cec9c202cf7a473f78eabdd3177",
+      "bytes": 226476
+    },
+    {
+      "path": "qualification-a/combined.layouts.json",
+      "sha256": "sha256:82a94a0206565eaeb17aec3f5906d5d46943a8f1289d1f674339a1163504c4fd",
+      "bytes": 648383
+    },
+    {
+      "path": "qualification-b/combined.json",
+      "sha256": "sha256:55e85fcebd91d7fe91ff897d31864326bed2e6d593bdda080e6624d901dee86e",
+      "bytes": 2097
+    },
+    {
+      "path": "qualification-b/combined.hosts.json",
+      "sha256": "sha256:e44e4b059a0fd9e8b92fa79c8fd7911810d66cec9c202cf7a473f78eabdd3177",
+      "bytes": 226476
+    },
+    {
+      "path": "qualification-b/combined.layouts.json",
+      "sha256": "sha256:82a94a0206565eaeb17aec3f5906d5d46943a8f1289d1f674339a1163504c4fd",
+      "bytes": 648383
+    }
+  ],
+  "qualifier": [
+    {
+      "path": "s11r-extracted-layouts.mjs",
+      "sha256": "sha256:7804cddf81d3558628627f8c346f9eb1fdddab6ccc8c22483618b5f348a7b664",
+      "bytes": 63226
+    },
+    {
+      "path": "s11r-extracted-matrix.mjs",
+      "sha256": "sha256:70f2f37a095cad5f3b5c00b06b26ad3b2f1cdfec3b05014576de23d7f8aa19ad",
+      "bytes": 114844
+    },
+    {
+      "path": "s11r-qualify.mjs",
+      "sha256": "sha256:1a0347f3159cfb6d5a3d72a074d947912402cfab755253090e6e909389ee95f6",
+      "bytes": 4735
+    }
+  ],
+  "tools": {
+    "node": "v24.18.0",
+    "qualification": null
+  },
+  "qualificationIdentity": "sha256:75d17e8d8d0befb0032e76f1a2f3fde4c75b3ddfdfba9c94a22dc7c152a31c80"
+}
