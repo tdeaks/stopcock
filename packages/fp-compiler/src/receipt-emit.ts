@@ -11,7 +11,9 @@
  * source, or an absolute path.
  */
 import { createHash } from 'node:crypto'
-import { relative, sep } from 'node:path'
+import { realpathSync, statSync } from 'node:fs'
+import { isAbsolute, relative, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   FULL_ARRAY_LOWERING_ID,
   FULL_RUNNER_LOWERING_ID,
@@ -40,24 +42,49 @@ const sha256 = (value: string): string => `sha256:${sha256Hex(value)}`
 
 const EXTERNAL_SOURCE_LOCATOR_DOMAIN = 'stopcock.receipt.external-source.v1\0'
 
+const portableProjectPath = (root: string, source: string): string | undefined => {
+  const path = relative(root, source).split(sep).join('/').replaceAll('\\', '/')
+  return path.length > 0 &&
+    path !== '..' &&
+    !path.startsWith('../') &&
+    !path.startsWith('/') &&
+    !/^[a-zA-Z]:\//u.test(path)
+    ? path
+    : undefined
+}
+
+const physicalHostPath = (id: string): string | undefined => {
+  if (/[\0?#]/u.test(id)) return undefined
+  if (isAbsolute(id)) return id
+  if (!id.startsWith('file:')) return undefined
+  try {
+    return fileURLToPath(id)
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Project-relative when the host ID belongs to the configured root; otherwise
  * an opaque, deterministic locator. Raw external IDs must never enter a
  * receipt because they commonly contain machine-specific absolute paths.
  */
 export const toReceiptSourcePath = (id: string, root: string): string => {
-  const relativePath = relative(root, id)
-  const portable = relativePath.split(sep).join('/').replaceAll('\\', '/')
-  const isProjectRelative =
-    portable.length > 0 &&
-    portable !== '..' &&
-    !portable.startsWith('../') &&
-    !portable.startsWith('/') &&
-    !/^[a-zA-Z]:\//u.test(portable)
-
-  if (isProjectRelative) return portable
-
   const normalizedId = id.split(sep).join('/').replaceAll('\\', '/')
+  const physicalId = physicalHostPath(id)
+  if (physicalId !== undefined) {
+    try {
+      const physicalRoot = realpathSync(root)
+      const physicalSource = realpathSync(physicalId)
+      if (statSync(physicalRoot).isDirectory() && statSync(physicalSource).isFile()) {
+        const projectPath = portableProjectPath(physicalRoot, physicalSource)
+        if (projectPath !== undefined) return projectPath
+      }
+    } catch {
+      // Missing roots and in-memory IDs are external identities. Hash the
+      // original complete host ID below; never leak or silently truncate it.
+    }
+  }
   return `external/sha256-${sha256Hex(`${EXTERNAL_SOURCE_LOCATOR_DOMAIN}${normalizedId}`)}`
 }
 

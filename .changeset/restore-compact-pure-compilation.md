@@ -49,3 +49,8 @@ The compiler's default source filter now includes standard ESM/CommonJS
 JavaScript and TypeScript module extensions. Extracted qualification attributes
 runtime retention only to modules that contribute to emitted host chunks,
 rather than every module observed before tree-shaking.
+
+Receipt source paths now use physical containment for existing regular files,
+so system and symlink aliases of the configured project root produce the same
+project-relative identity. Virtual, queried, missing, non-file, and escaping
+host IDs remain opaque domain-separated external locators.

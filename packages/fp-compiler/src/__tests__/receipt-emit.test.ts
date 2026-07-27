@@ -1,3 +1,7 @@
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
 import {
   buildCompilerReceipt,
@@ -12,8 +16,11 @@ import { validateReceiptV1 } from '../receipt-schema.generated'
 import { transformStopcockPipelines } from '../transform'
 import type { DiagnosticSite } from '../types'
 
+const RECEIPT_TEST_ROOT = fileURLToPath(new URL('../../', import.meta.url))
+const RECEIPT_TEST_SOURCE = fileURLToPath(import.meta.url)
+
 const CONTEXT: ReceiptContext = {
-  root: '/repo',
+  root: RECEIPT_TEST_ROOT,
   configHash: `sha256:${'0'.repeat(64)}`,
   emittedCode: 'emitted',
   sourceMap: '{"version":3}',
@@ -28,7 +35,7 @@ const ARTIFACT_CONTEXT = {
 } as const
 
 const siteOf = (overrides: Partial<DiagnosticSite> = {}): DiagnosticSite => ({
-  id: '/repo/src/app.ts',
+  id: RECEIPT_TEST_SOURCE,
   line: 12,
   column: 4,
   endLine: 12,
@@ -52,8 +59,61 @@ describe('receipt emission', () => {
 
   it('carries no absolute path', () => {
     const receipt = buildCompilerReceipt(siteOf(), 'source', CONTEXT)
-    expect(receipt?.sourcePath).toBe('src/app.ts')
-    expect(JSON.stringify(receipt)).not.toContain('/repo')
+    expect(receipt?.sourcePath).toBe('src/__tests__/receipt-emit.test.ts')
+    expect(JSON.stringify(receipt)).not.toContain(RECEIPT_TEST_ROOT)
+  })
+
+  it('uses physical containment without admitting virtual or escaping sources', async () => {
+    const scratch = await mkdtemp(join(tmpdir(), 'stopcock-receipt-path-'))
+    try {
+      const project = join(scratch, 'project')
+      const source = join(project, 'src', 'app.ts')
+      const alias = join(scratch, 'project-alias')
+      const outside = join(scratch, 'outside.ts')
+      await mkdir(join(project, 'src'), { recursive: true })
+      await writeFile(source, 'export const value = 1\n')
+      await writeFile(outside, 'export const value = 2\n')
+      await symlink(project, alias, process.platform === 'win32' ? 'junction' : 'dir')
+
+      const physicalSource = await realpath(source)
+      expect(toReceiptSourcePath(physicalSource, alias)).toBe('src/app.ts')
+      expect(toReceiptSourcePath(join(alias, 'src', 'app.ts'), project)).toBe('src/app.ts')
+      expect(toReceiptSourcePath(pathToFileURL(source).href, alias)).toBe('src/app.ts')
+
+      const escape = join(project, 'src', 'escape.ts')
+      const outsideAlias = join(scratch, 'outside-alias.ts')
+      await symlink(outside, escape, 'file')
+      await symlink(outside, outsideAlias, 'file')
+      const escaped = toReceiptSourcePath(escape, project)
+      const directOutside = toReceiptSourcePath(outside, project)
+      const aliasedOutside = toReceiptSourcePath(outsideAlias, project)
+      for (const locator of [escaped, directOutside, aliasedOutside]) {
+        expect(locator).toMatch(/^external\/sha256-[0-9a-f]{64}$/u)
+      }
+      expect(escaped).not.toBe(directOutside)
+      expect(aliasedOutside).not.toBe(directOutside)
+
+      const externalIds = [
+        join(project, 'src'),
+        join(project, 'src', 'missing.ts'),
+        `${source}?raw`,
+        `${pathToFileURL(source).href}?raw`,
+        '\0virtual:stopcock-receipt',
+      ]
+      for (const id of externalIds) {
+        const first = toReceiptSourcePath(id, project)
+        expect(first).toMatch(/^external\/sha256-[0-9a-f]{64}$/u)
+        expect(toReceiptSourcePath(id, project)).toBe(first)
+      }
+      expect(toReceiptSourcePath(`${source}?raw`, project)).not.toBe(
+        toReceiptSourcePath(source, project),
+      )
+      expect(toReceiptSourcePath('C:\\outside\\x.ts', project)).toBe(
+        toReceiptSourcePath('C:/outside/x.ts', project),
+      )
+    } finally {
+      await rm(scratch, { recursive: true, force: true })
+    }
   })
 
   it('is byte-identical across runs for identical inputs', () => {

@@ -187,6 +187,12 @@ code and source-map hashes, and a deterministic SHA-256 of the complete receipt
 core excluding the hash itself. `stopcock check` recomputes that projection and
 rejects tampered or duplicate receipts.
 
+An existing regular source is project-relative only when its physical path is
+contained by the physical receipt root. This keeps system and symlink aliases
+stable without admitting a symlink escape. Virtual, queried, missing, non-file,
+and outside-root host IDs are recorded as opaque domain-separated hashes; raw
+machine paths never enter receipt JSON.
+
 ## Development contract
 
 The compiler snapshots public array operator metadata so its published
