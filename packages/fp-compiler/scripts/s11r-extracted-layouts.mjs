@@ -286,7 +286,8 @@ function installPackage(nodeModules, record, tarball, label, roots) {
   const destination = packageInstallPath(nodeModules, record.name)
   mkdirSync(dirname(destination), { recursive: true })
   unpackTarball(tarball, destination, record.name)
-  roots.push({ label, root: destination })
+  // Locators are compared physically, so the install roots must be too.
+  roots.push({ label, root: realpathSync(destination) })
   return destination
 }
 
