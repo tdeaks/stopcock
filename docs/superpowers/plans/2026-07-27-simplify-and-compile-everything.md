@@ -329,24 +329,24 @@ rows compare before/after). Differential corpus green. Expected delta:
 
 Objective: keyed chains fuse like array chains.
 
-- [ ] New loop scaffolds in codegen: `for (const _k in _src)` with an
+- [x] New loop scaffolds in codegen: `for (const _k in _src)` with an
       own-property guard matching runtime semantics exactly (check what
       `record.ts` does today: `Object.hasOwn` or `in`; the emitted guard
       must match, this is a correctness seam, add corpus cases with
       prototype pollution and symbol keys); `for (const [_k, _v] of
       _src)` for Map/Set.
-- [ ] Facts and templates for ~40 ops: Record `map`, `mapWithKey`,
+- [x] Facts and templates for ~40 ops: Record `map`, `mapWithKey`,
       `filter`, `filterMap`, `mapKeys`, `partition`, `keys`, `values`,
       `toEntries`, `fromEntries`; Map/Set equivalents; Object `pick`,
       `omit`, `mapValues`.
-- [ ] `pick`/`omit` with a statically known key array compile to object
+- [x] `pick`/`omit` with a statically known key array compile to object
       literals: `pipe(o, Obj.pick(['a','b']))` emits
       `{a: _src.a, b: _src.b}`. Non-static key arrays bail to runtime
       (diagnostic reason: `dynamic-keys`).
-- [ ] String chains are expression composition, no loops:
+- [x] String chains are expression composition, no loops:
       `pipe(s, S.trim, S.toLowerCase, S.split('/'))` emits
       `s.trim().toLowerCase().split('/')`.
-- [ ] Cross-domain boundaries: `keys`/`values`/`toEntries` bridge dict to
+- [x] Cross-domain boundaries: `keys`/`values`/`toEntries` bridge dict to
       array segments; `fromEntries` bridges back. Reuse the boundary
       segment machinery from Phase 2, no new concepts.
 
@@ -502,6 +502,17 @@ Append one line per phase: `Phase N landed at <commit>`.
 Phase 0 landed at 1b4f1cc (0.1), e33c55a (0.2+0.4), 305c182 (0.3+0.5+0.6).
 Phase 1 landed at 287409e (1.1+1.2), 56917e3 (1.3), 784cda2 (1.4).
 Phase 2 landed at 094b029.
+Phase 3 landed at 50be26a.
+Phase 3 notes: 36 compiler-only ops (record 9, map 13, set 11, object 3).
+Record scaffold inlines the Reflect.ownKeys + propertyIsEnumerable snapshot;
+SYMBOL KEYS ARE VISITED (the corpus line above saying excluded was wrong
+about record.ts; corpus asserts reality). dictIsEmpty template fixed to
+match record.ts#isEmpty (Object.keys missed symbols). pick/omit unroll on
+static keys with the null-proto/skip-absent/dangerous-key-throw semantics;
+dynamic keys fall back to the correct boundary call instead of a hard
+'dynamic-keys' bail (reason code exists, never set). String chains keep one
+var per step (2.5x measured win; plan's perf escape hatch). Suite 2946
+tests green; record chains 1.2-1.9x, pick 3.6x, string chain 2.5x.
 Phase 2 notes: 19 ops (toNull is really toNullable; no get terminal exists;
 zip/getOrElse collisions avoided via canonical optionMap/resultMap names).
 Compiler-only rows: opcodes.ts and registry.ts byte-identical. dualUntagged
