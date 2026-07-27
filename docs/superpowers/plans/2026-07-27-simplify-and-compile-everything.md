@@ -209,10 +209,10 @@ emit: { kind: 'sink',
 emit: { kind: 'boundary' } // existing whole-array call, unchanged
 ```
 
-- [ ] Define the `OpEmit` type in `codegen/protocol/operator-v1.ts`.
+- [x] Define the `OpEmit` type in `codegen/protocol/operator-v1.ts`.
       `withIndex` variants set `indexed: true` on the base op instead of
       duplicating templates.
-- [ ] Port the 140 currently supported ops. Mechanical; the emitted text
+- [x] Port the 140 currently supported ops. Mechanical; the emitted text
       must match what `emitElementSegment` produces today. Where today's
       hand-written emission has a measured special case, keep it in a
       small `overrides` map in `codegen.ts` keyed by op name; expectation
@@ -220,38 +220,38 @@ emit: { kind: 'boundary' } // existing whole-array call, unchanged
 
 ### 1.2 Generator rewrite
 
-- [ ] `generate-protocol.ts` emits three files only: `opcodes.ts`,
+- [x] `generate-protocol.ts` emits three files only: `opcodes.ts`,
       `registry.ts` (slimmed columns), `ops-table.ts` (facts plus
       serialized emit templates).
-- [ ] Fold `codegen/purity.ts` output into a `pure: boolean` flag on each
+- [x] Fold `codegen/purity.ts` output into a `pure: boolean` flag on each
       definition; its checker becomes one test
       (`codegen/purity.test.ts` stays, asserting flags match analysis).
-- [ ] The coverage rule (invariant 4) lands here as a generator-time
+- [x] The coverage rule (invariant 4) lands here as a generator-time
       error: an op with neither `emit` nor `fusible: false` fails the
       build.
 
 ### 1.3 Codegen consumes templates
 
-- [ ] `codegen.ts`: `emitElementSegment` (541 lines of per-op switch
+- [x] `codegen.ts`: `emitElementSegment` (541 lines of per-op switch
       today) becomes scaffold-plus-splice: per-domain loop header, per-op
       template insertion, existing take/drop/early-exit bookkeeping
       unchanged. Target roughly 200 lines.
-- [ ] `emitCallback`/`inline.ts` unchanged: templates receive a `cb`
+- [x] `emitCallback`/`inline.ts` unchanged: templates receive a `cb`
       handle whose `.call(...)` renders either the inlined body or a
       temp invocation.
-- [ ] Source maps: templates carry no positions; operator spans map to
+- [x] Source maps: templates carry no positions; operator spans map to
       the whole spliced fragment exactly as hand-written emission does
       today. `mapped-code.ts` unchanged.
 
 ### 1.4 The 26 stragglers
 
-- [ ] Add expr templates for: `add`, `subtract`, `multiply`, `divide`,
+- [x] Add expr templates for: `add`, `subtract`, `multiply`, `divide`,
       `inc`, `dec`, `negate`, `trim`, `trimStart`, `trimEnd`,
       `toLowerCase`, `toUpperCase`, `split`, `strLength`, `strIsEmpty`,
       `keys`, `values`, `dictIsEmpty`, `sortInline`, and the guards
       (`isArray`, `isBoolean`, `isFunction`, `isNil`, `isNumber`,
       `isObject`, `isString`). All are `expr` or `boundary` kind.
-- [ ] Corpus: chains with a scalar op mid-pipeline
+- [x] Corpus: chains with a scalar op mid-pipeline
       (`A.map -> N.inc -> A.filter`, `A.map -> S.trim -> A.reject`) must
       compile as ONE fused loop. Assert via diagnostics (`1 site
       compiled`) and via output identity.
@@ -500,6 +500,15 @@ land green gets reverted, not patched forward on a broken base.
 Append one line per phase: `Phase N landed at <commit>`.
 
 Phase 0 landed at 1b4f1cc (0.1), e33c55a (0.2+0.4), 305c182 (0.3+0.5+0.6).
+Phase 1 landed at 287409e (1.1+1.2), 56917e3 (1.3), 784cda2 (1.4).
+Phase 1 notes: purity fold skipped (purity.ts governs @__PURE__ annotation
+policy per module, not per-op semantics; left as is). Overrides map has one
+member: findMap (AST fast path inspects the raw arrow). keys/values/
+sortInline are boundary templates calling the real exports (symbol-aware
+enumerableKeys and comparator sort cannot be one-liners without divergence);
+sortInline has no public export, pre-existing gap. Emission proven
+byte-identical across a 58-case corpus before/after the 1.3 splice rewrite.
+All 166 ops compile; geomean 1.436 -> 1.497 across the phase.
 Notes: D1 deferred (packages stay @stopcock/*; cohort tooling deleted, not
 replaced). D2 done. optional-dispositions-gate deleted with its ledger (p3b
 stage machinery). perf-profile-gate kept: allocation and competitor gates
