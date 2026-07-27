@@ -7,15 +7,15 @@ import {
 export const EXPECTED_COMPILER_OPERATION_CORPUS = Object.freeze({
   id: COMPILER_OPERATION_CORPUS_ID,
   version: COMPILER_OPERATION_CORPUS_VERSION,
-  totalCaseCount: 133,
-  sha256: '612e1521619552bebeddaf7df1ce0f95bf365ea65995d0dc93dbe6bc824ea399',
-  caseNamesSha256: 'd3f2c0ed3c7c853bb80568f89db21bd6af45ac50dabb11d99a8684dd78c015a3',
-  targetOpsSha256: '26164867ed86440f1797e308cc6fab1de88b7035bc29c78be8968ee8fe895fe3',
-  opcodesSha256: 'e95a705fe4ad61dc65e9089494876a3ed3cca8b9e4e79a8616a5b918f470ac7a',
+  totalCaseCount: 136,
+  sha256: '8413c83ade62d77ea6f7d1551b34620613d5791e28bb83621cf6ce4c614d4c3e',
+  caseNamesSha256: 'd6492f16e5ef42f4ec6c64a4db5c0ee70f3d69cb8a7d25c92c023ed402ee3c00',
+  targetOpsSha256: '7f90160f8eaff8080ef75a37e95442d7ebce50bfcd7d6edfe65939febdcb3aa6',
+  opcodesSha256: '7a1d935f72e3944b7276f582380e90d72efe66200431eb8ad8780e06ef0bb562',
   categoryCounts: Object.freeze({
-    element: 5,
+    element: 7,
     stateful: 7,
-    terminal: 16,
+    terminal: 17,
     materializer: 105,
   }),
 })
@@ -36,7 +36,7 @@ export const EXPECTED_COMPILER_OPERATION_OPTIMIZER_CANARY_OPS = Object.freeze([
   'length',
 ] as const satisfies readonly CompilerSupportedOpName[])
 
-export const EXPECTED_COMPILER_OPERATION_PERFORMANCE_COUNT = 131
+export const EXPECTED_COMPILER_OPERATION_PERFORMANCE_COUNT = 134
 
 export const isCompilerOperationOptimizerCanary = (targetOp: string): boolean =>
   (EXPECTED_COMPILER_OPERATION_OPTIMIZER_CANARY_OPS as readonly string[]).includes(targetOp)
@@ -64,6 +64,7 @@ export const EXPECTED_COMPILER_OPERATION_CASE_NAMES = Object.freeze([
   'operation/every',
   'operation/filter',
   'operation/filterMap',
+  'operation/filterWithIndex',
   'operation/find',
   'operation/findIndex',
   'operation/findIndexOrUndefined',
@@ -77,6 +78,7 @@ export const EXPECTED_COMPILER_OPERATION_CASE_NAMES = Object.freeze([
   'operation/flatMap',
   'operation/flatten',
   'operation/forEach',
+  'operation/forEachWithIndex',
   'operation/groupBy',
   'operation/groupByProp',
   'operation/groupWith',
@@ -107,6 +109,7 @@ export const EXPECTED_COMPILER_OPERATION_CASE_NAMES = Object.freeze([
   'operation/mapAccumRight',
   'operation/mapToObj',
   'operation/mapWhile',
+  'operation/mapWithIndex',
   'operation/max',
   'operation/maxNonEmpty',
   'operation/maxOrUndefined',

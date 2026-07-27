@@ -5,16 +5,16 @@ export const OPTIMIZER_ABI_EXPECTATIONS = Object.freeze({
   fpIdentity: {
     abiVersion: 2,
     protocolVersion: 1,
-    semanticManifestHash: 'sha256:441d47bffb18ff8e7a54e3a019894be54fc99bfa997bb869c996fc043290840e',
-    runnerSchemaHash: 'sha256:0f7a47998987627ddd50346821d3410d331bda4caf4602766830c3e6085815da',
-    bindingSchemaHash: 'sha256:80406d1cacaafe86e219e9660873aefc5c28f5ba685b2057b3cd4782395be2ad',
+    semanticManifestHash: 'sha256:0b48775000341240de174d6569a3e84e9dde0541786ad0f49a07b0211ae9e101',
+    runnerSchemaHash: 'sha256:03158c42510e23061e684c17882786601118febe591928880a82ccd04724de78',
+    bindingSchemaHash: 'sha256:6ed47648cd92da8dbbba0abeea45b8627162c3c73a15ccf91ae58a2296053f54',
     consumeSchemaHash: 'sha256:cf46d686b27a13745198f01cb58a8db86df0ad49f34b0d548034f8958be4e303',
-    executionContractHash: 'sha256:495b1f5a76c7d197ca180db4abe19ff4862be53f2c92889da833864bf24c7dfa',
+    executionContractHash: 'sha256:c831e8f0d0d4f84bfa53697ccd1e755d32a8af7e2c1145703aa75b98dc3db43d',
   },
   optimizerBank: {
     schemaVersion: 1,
     bankHash: 'sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4',
-    semanticManifestHash: 'sha256:441d47bffb18ff8e7a54e3a019894be54fc99bfa997bb869c996fc043290840e',
+    semanticManifestHash: 'sha256:0b48775000341240de174d6569a3e84e9dde0541786ad0f49a07b0211ae9e101',
     runnerCount: 233,
   },
 } as const)

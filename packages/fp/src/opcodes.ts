@@ -161,6 +161,9 @@ export const OP_ONLY = 171
 export const OP_MERGE_ALL = 172
 export const OP_TRANSPOSE = 173
 export const OP_UNNEST = 174
+export const OP_MAP_WITH_INDEX = 175
+export const OP_FILTER_WITH_INDEX = 176
+export const OP_FOR_EACH_WITH_INDEX = 177
 
 export const OP_NON_FUSEABLE = 0
 
@@ -323,6 +326,9 @@ export const OP_CODES: Record<string, number> = {
   mergeAll: OP_MERGE_ALL,
   transpose: OP_TRANSPOSE,
   unnest: OP_UNNEST,
+  mapWithIndex: OP_MAP_WITH_INDEX,
+  filterWithIndex: OP_FILTER_WITH_INDEX,
+  forEachWithIndex: OP_FOR_EACH_WITH_INDEX,
 }
 
 export const isFuseableOp = (op: number): boolean =>
@@ -331,13 +337,15 @@ export const isFuseableOp = (op: number): boolean =>
   op === OP_MAP_WHILE ||
   op === OP_REJECT ||
   op === OP_TAKE_UNTIL ||
-  op === OP_SCAN
+  op === OP_SCAN ||
+  (op >= OP_MAP_WITH_INDEX && op <= OP_FILTER_WITH_INDEX)
 
 export const isTerminalOp = (op: number): boolean =>
   (op >= OP_REDUCE && op <= OP_FIND_INDEX) ||
   op === OP_NONE ||
   op === OP_COUNT ||
-  op === OP_FIND_MAP
+  op === OP_FIND_MAP ||
+  op === OP_FOR_EACH_WITH_INDEX
 
 export const isAccessorOp = (op: number): boolean =>
   (op >= OP_HEAD && op <= OP_MAX) || op === OP_WITHOUT

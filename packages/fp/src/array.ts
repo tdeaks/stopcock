@@ -379,7 +379,9 @@ export const mapWithIndex: {
     for (let i = 0; i < len; i++) out[i] = f(arr[i], i)
     return out
     }
-    return _dl
+    _dl._op = 175
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 175, _a0)
   }
   const arr = _arg0, f = _arg1
   const len = arr.length,
@@ -437,7 +439,9 @@ export const filterWithIndex: {
     }
     return out
     }
-    return _dl
+    _dl._op = 176
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 176, _a0)
   }
   const arr = _arg0, pred = _arg1
   const out: any[] = []
@@ -1068,7 +1072,9 @@ export const forEachWithIndex: {
       const arr = data, f = _a0
       for (let i = 0, len = arr.length; i < len; i++) f(arr[i], i)
     }
-    return _dl
+    _dl._op = 177
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 177, _a0)
   }
   const arr = _arg0, f = _arg1
   for (let i = 0, len = arr.length; i < len; i++) f(arr[i], i)

@@ -1,16 +1,16 @@
 // GENERATED FILE -- do not edit by hand.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
 // The compiler consumes a data-only projection; it never imports FP runtime modules.
-// Semantic facts hash: sha256:0570f758adabdbeb373d382ac48a7c678c2f2e5143c44bc4d2dd94c3c1cda41c
-// Complete semantic manifest hash: sha256:441d47bffb18ff8e7a54e3a019894be54fc99bfa997bb869c996fc043290840e
-// Compiler emitter ABI hash: sha256:3a534d7f3fe6c9f253f4ed423ab782d5ec07e65aecd3524b3a03ef95ce6c637d
+// Semantic facts hash: sha256:1abc9a3665729dab1f19a1c3851035af5d251816e652fad32ace0514d38cd7d4
+// Complete semantic manifest hash: sha256:0b48775000341240de174d6569a3e84e9dde0541786ad0f49a07b0211ae9e101
+// Compiler emitter ABI hash: sha256:4d9e3f9cac89510166136373c4fcb9a744759284869685848f45e73e2a91f83c
 
 export const OPERATOR_SEMANTIC_FACTS_V1_HASH =
-  'sha256:0570f758adabdbeb373d382ac48a7c678c2f2e5143c44bc4d2dd94c3c1cda41c'
+  'sha256:1abc9a3665729dab1f19a1c3851035af5d251816e652fad32ace0514d38cd7d4'
 export const OPERATOR_MANIFEST_V1_HASH =
-  'sha256:441d47bffb18ff8e7a54e3a019894be54fc99bfa997bb869c996fc043290840e'
+  'sha256:0b48775000341240de174d6569a3e84e9dde0541786ad0f49a07b0211ae9e101'
 export const COMPILER_EMITTER_ABI_V1_HASH =
-  'sha256:3a534d7f3fe6c9f253f4ed423ab782d5ec07e65aecd3524b3a03ef95ce6c637d'
+  'sha256:4d9e3f9cac89510166136373c4fcb9a744759284869685848f45e73e2a91f83c'
 
 export interface OpsTableEntry {
   readonly name: string
@@ -45,9 +45,11 @@ export const ELEMENT_OP_NAMES = [
   'dropWhile',
   'filter',
   'filterMap',
+  'filterWithIndex',
   'flatMap',
   'map',
   'mapWhile',
+  'mapWithIndex',
   'reject',
   'take',
   'takeUntil',
@@ -60,6 +62,7 @@ export const TERMINAL_OP_NAMES = [
   'findIndex',
   'findMap',
   'forEach',
+  'forEachWithIndex',
   'head',
   'isEmpty',
   'last',
@@ -690,6 +693,27 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     compilerFinalBoundary: false,
   },
   {
+    name: 'filterWithIndex',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/array/filterWithIndex',
+    semanticRevision: 1,
+    semanticHash: 'sha256:4fa1d8f8fb12b17437bf50d8665aced9a92f16e960a307310496ddf4afe92d0a',
+    inputDomain: 'array',
+    outputDomain: 'array',
+    cardinality: 'filtering',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/array/filterWithIndex/lowering/compiler-aot',
+    loweringRevision: 1,
+    loweringAbiVersion: 1,
+    loweringHash: 'sha256:049cc0cbe5f633fafad8199014648187e33e66a8e2309b5e8214db8d9bee4041',
+    runnerId: '@stopcock/fp-compiler/runner/element/filterWithIndex/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+  },
+  {
     name: 'find',
     callbackArity: 1,
     bindings: ['fn'],
@@ -959,6 +983,27 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     loweringAbiVersion: 1,
     loweringHash: 'sha256:e06939feb956be84428f72ed0eb9d45d53a613a39c6bb56261e9cc0cac339b92',
     runnerId: '@stopcock/fp-compiler/runner/terminal/forEach/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+  },
+  {
+    name: 'forEachWithIndex',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/array/forEachWithIndex',
+    semanticRevision: 1,
+    semanticHash: 'sha256:b103220a1cfd79b1d2f4653d46ef7889363ac049c459337c412238e5ee57fc3d',
+    inputDomain: 'array',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: true,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/array/forEachWithIndex/lowering/compiler-aot',
+    loweringRevision: 1,
+    loweringAbiVersion: 1,
+    loweringHash: 'sha256:082ac40a09fb68a12ae1a8896c171dea8abb586330935d180df67662bc103eb0',
+    runnerId: '@stopcock/fp-compiler/runner/terminal/forEachWithIndex/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
   },
@@ -1589,6 +1634,27 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     loweringAbiVersion: 1,
     loweringHash: 'sha256:13e15dfa0903f2afe05b49ce2e30d6b12706ea89c4452248d2aa0a04edfbc984',
     runnerId: '@stopcock/fp-compiler/runner/element/mapWhile/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+  },
+  {
+    name: 'mapWithIndex',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/array/mapWithIndex',
+    semanticRevision: 1,
+    semanticHash: 'sha256:b938f522a0f3dc4713e9332a6685534653019ced16bb448d2af5286100e8644d',
+    inputDomain: 'array',
+    outputDomain: 'array',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/array/mapWithIndex/lowering/compiler-aot',
+    loweringRevision: 1,
+    loweringAbiVersion: 1,
+    loweringHash: 'sha256:ed0a40eb976fa77cbb00248b20e7ca535dbb65af39d55ea8024a02184e635895',
+    runnerId: '@stopcock/fp-compiler/runner/element/mapWithIndex/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
   },

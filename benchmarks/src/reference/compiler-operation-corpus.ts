@@ -112,6 +112,9 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     operationCase('filterMap', 'element', [
       'A.filterMap((x) => x % 3 === 1 ? x * 2 + 1 : undefined)',
     ]),
+    operationCase('filterWithIndex', 'element', [
+      "A.filterWithIndex((x, i) => (x + i) % 3 === 1)",
+    ]),
     operationCase('find', 'terminal', [
       'A.find((x) => x === input[input.length - 1])',
     ]),
@@ -149,6 +152,9 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     ]),
     operationCase('forEach', 'terminal', [
       'A.forEach((x) => (__observation += x))',
+    ]),
+    operationCase('forEachWithIndex', 'terminal', [
+      "A.forEachWithIndex((x, i) => (__observation += x + i))",
     ]),
     operationCase('groupBy', 'materializer', [
       "A.groupBy((x) => String(x % 8))",
@@ -226,6 +232,9 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     ]),
     operationCase('mapWhile', 'stateful', [
       'A.mapWhile((x) => Math.abs(x) < 450 ? x * 2 + 1 : undefined)',
+    ]),
+    operationCase('mapWithIndex', 'element', [
+      "A.mapWithIndex((x, i) => x * 3 + i)",
     ]),
     operationCase('max', 'terminal', ['A.max']),
     operationCase('maxNonEmpty', 'materializer', [

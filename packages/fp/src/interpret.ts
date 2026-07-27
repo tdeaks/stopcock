@@ -11,6 +11,7 @@ import {
   OP_DROP_WHILE,
   OP_EVERY,
   OP_FILTER,
+  OP_FILTER_WITH_INDEX,
   OP_FILTER_MAP,
   OP_FIND,
   OP_FIND_INDEX,
@@ -18,6 +19,7 @@ import {
   OP_FLAT_MAP,
   OP_FLATTEN,
   OP_FOR_EACH,
+  OP_FOR_EACH_WITH_INDEX,
   OP_GUARD_IS_ARRAY,
   OP_GUARD_IS_BOOLEAN,
   OP_GUARD_IS_FUNCTION,
@@ -33,6 +35,7 @@ import {
   OP_LENGTH,
   OP_MAP,
   OP_MAP_WHILE,
+  OP_MAP_WITH_INDEX,
   OP_MATH_ADD,
   OP_MATH_DEC,
   OP_MATH_DIVIDE,
@@ -281,6 +284,10 @@ function runStreamSegment(
   const takeCount = new Array<number>(streamLen).fill(0)
   const dropCount = new Array<number>(streamLen).fill(0)
   const dropWhileActive = new Array<boolean>(streamLen).fill(true)
+  // Per-stage element counter. The index an indexed callback sees is its
+  // position in that stage's own input, which is not `i` once anything
+  // upstream has filtered or expanded.
+  const stageIndex = new Array<number>(streamLen).fill(0)
   const scanAcc = new Array<unknown>(streamLen)
   for (let s = 0; s < streamLen; s++) {
     if (codes[start + s] === OP_SCAN) scanAcc[s] = bindings[start + s].a1
@@ -298,6 +305,9 @@ function runStreamSegment(
         return
       case OP_FOR_EACH:
         fn(value)
+        return
+      case OP_FOR_EACH_WITH_INDEX:
+        ;(fn as (v: unknown, i: number) => unknown)(value, state.index++)
         return
       case OP_EVERY:
         if (!fn(value)) {
@@ -358,6 +368,14 @@ function runStreamSegment(
     switch (op) {
       case OP_MAP:
         processFrom(s + 1, (b.fn as (v: unknown) => unknown)(value))
+        return
+      case OP_MAP_WITH_INDEX:
+        processFrom(s + 1, (b.fn as (v: unknown, i: number) => unknown)(value, stageIndex[s]++))
+        return
+      case OP_FILTER_WITH_INDEX:
+        if ((b.fn as (v: unknown, i: number) => boolean)(value, stageIndex[s]++)) {
+          processFrom(s + 1, value)
+        }
         return
       case OP_FILTER:
         if ((b.fn as (v: unknown) => boolean)(value)) processFrom(s + 1, value)
@@ -466,6 +484,7 @@ function runStreamSegment(
     case OP_REDUCE:
       return state.acc
     case OP_FOR_EACH:
+    case OP_FOR_EACH_WITH_INDEX:
       return undefined
     case OP_EVERY:
       return state.every

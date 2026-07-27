@@ -1414,3 +1414,27 @@ describe('materialising boundaries the optimizer has no kernel for', () => {
     expect((make() as (v: unknown) => unknown)(input)).toEqual(expected)
   })
 })
+
+describe('indexed stages fuse with a per-stage index', () => {
+  // The index is the element's position in the stage's own input, so a
+  // filtered stage renumbers from zero rather than reusing the source index.
+  it('renumbers a filtered stage', () => {
+    const run = compile(
+      A.filter((x: number) => x % 2 === 0),
+      A.mapWithIndex((x: number, i: number) => x * 10 + i),
+    ) as (v: unknown) => unknown
+    expect(run([1, 2, 3, 4, 5, 6])).toEqual([20, 41, 62])
+  })
+
+  it('runs forEachWithIndex once per surviving element, in order', () => {
+    const seen: string[] = []
+    const run = compile(
+      A.filter((x: number) => x > 1),
+      A.forEachWithIndex((x: number, i: number) => {
+        seen.push(`${x}@${i}`)
+      }),
+    ) as (v: unknown) => unknown
+    run([1, 2, 3])
+    expect(seen).toEqual(['2@0', '3@1'])
+  })
+})

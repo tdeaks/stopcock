@@ -907,3 +907,101 @@ describe('bare accessor operators keep their runtime meaning', () => {
     expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3')
   })
 })
+
+/**
+ * The indexed operators are the only ones this wave fuses into the running
+ * loop rather than calling at a boundary, and the index they pass is the one
+ * thing that can silently go wrong: it is the element's position in *this*
+ * stage's input, which stops matching the source index the moment anything
+ * upstream filters, drops, or expands.
+ */
+const INDEXED_IMPORTS = `import { pipe } from '@stopcock/fp'
+import { map, filter, drop, take, flatMap, sum, mapWithIndex, filterWithIndex, forEachWithIndex } from '@stopcock/fp/array'`
+
+const INDEXED_LOCALS = Object.fromEntries(
+  ['pipe', 'map', 'filter', 'drop', 'take', 'flatMap', 'sum', 'mapWithIndex', 'filterWithIndex', 'forEachWithIndex'].map(
+    (name) => [name, name],
+  ),
+)
+
+const indexedFixture = (name: string, body: string): Fixture => ({
+  name,
+  imports: INDEXED_IMPORTS,
+  locals: INDEXED_LOCALS,
+  body,
+  expectTransformed: true,
+})
+
+const INDEXED_VALUES: readonly (readonly [string, string])[] = [
+  ['mapWithIndex alone', `return pipe(${SRC}, mapWithIndex((x, i) => x * 10 + i))`],
+  ['filterWithIndex alone', `return pipe(${SRC}, filterWithIndex((x, i) => i % 2 === 0))`],
+  ['mapWithIndex after map', `return pipe(${SRC}, map((x) => x + 1), mapWithIndex((x, i) => x * 10 + i))`],
+  // The cases that break a naive `_i`: the stage no longer sees every source
+  // position, so its index has to be its own count.
+  ['mapWithIndex after filter', `return pipe(${SRC}, filter((x) => x > 2), mapWithIndex((x, i) => x * 10 + i))`],
+  ['filterWithIndex after filter', `return pipe(${SRC}, filter((x) => x > 2), filterWithIndex((x, i) => i % 2 === 0))`],
+  ['mapWithIndex after drop', `return pipe(${SRC}, drop(3), mapWithIndex((x, i) => x * 10 + i))`],
+  ['mapWithIndex after flatMap', `return pipe(${SRC}, flatMap((x) => [x, x]), mapWithIndex((x, i) => x * 10 + i))`],
+  ['two indexed stages', `return pipe(${SRC}, mapWithIndex((x, i) => x + i), filterWithIndex((x, i) => i % 3 !== 0))`],
+  ['indexed stage before a terminal', `return pipe(${SRC}, mapWithIndex((x, i) => x + i), sum)`],
+  ['indexed stage before an early exit', `return pipe(${SRC}, mapWithIndex((x, i) => x + i), take(3))`],
+  ['callback ignoring the index', `return pipe(${SRC}, mapWithIndex((x) => x * 2))`],
+  ['empty source', `return pipe([], mapWithIndex((x, i) => x + i))`],
+]
+
+describe('indexed operators fuse into the loop with the right index', () => {
+  it.each(INDEXED_VALUES)('%s', (name, body) => {
+    const result = runFixture(indexedFixture(name.replace(/\W+/gu, '-'), body))
+    expect(result.map).not.toBeNull()
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+
+  it('numbers a filtered stage from zero, not from the source position', () => {
+    const result = runFixture(
+      indexedFixture(
+        'indexed-after-filter',
+        `const r = pipe([1,2,3,4], filter((x) => x % 2 === 0), mapWithIndex((x, i) => { log.push(x + ':' + i); return i })); return [r, log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('2:0,4:1')
+  })
+
+  it('increments the index once per element even when the body reads it twice', () => {
+    const result = runFixture(
+      indexedFixture(
+        'index-read-twice',
+        `return pipe([10,20,30], mapWithIndex((x, i) => x + i * 100 + i))`,
+      ),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect(result.compiled.value).toEqual([10, 121, 232])
+  })
+
+  it('runs forEachWithIndex once per element in order', () => {
+    const result = runFixture(
+      indexedFixture(
+        'for-each-with-index',
+        `const r = pipe([5,6,7], filter((x) => x > 5), forEachWithIndex((x, i) => { log.push(x + '@' + i) })); return [r, log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('6@0,7@1')
+  })
+
+  it('counts the whole stage under root pipe, which does not fuse into the terminal', () => {
+    const result = runFixture(
+      indexedFixture(
+        'indexed-early-exit',
+        `const r = pipe([1,2,3,4,5], mapWithIndex((x, i) => { log.push(i); return x }), take(2)); return [r, log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('0,1,2,3,4')
+  })
+})

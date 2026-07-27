@@ -10,6 +10,7 @@ import {
   OP_DROP_WHILE,
   OP_EVERY,
   OP_FILTER,
+  OP_FILTER_WITH_INDEX,
   OP_FILTER_MAP,
   OP_FIND,
   OP_FIND_INDEX,
@@ -17,6 +18,7 @@ import {
   OP_FLAT_MAP,
   OP_FLATTEN,
   OP_FOR_EACH,
+  OP_FOR_EACH_WITH_INDEX,
   OP_HEAD,
   OP_INIT,
   OP_IS_EMPTY,
@@ -25,6 +27,7 @@ import {
   OP_LENGTH,
   OP_MAP,
   OP_MAP_WHILE,
+  OP_MAP_WITH_INDEX,
   OP_MATH_ADD,
   OP_MATH_DEC,
   OP_MATH_DIVIDE,
@@ -405,6 +408,12 @@ interface StreamState {
   readonly takeCount: number[]
   readonly dropCount: number[]
   readonly dropWhileActive: boolean[]
+  /**
+   * Per-stage element counter. An indexed callback sees its position in that
+   * stage's own input, which stops matching the source index as soon as
+   * anything upstream filters or expands.
+   */
+  readonly stageIndex: number[]
   readonly scanAcc: unknown[]
 }
 
@@ -436,6 +445,8 @@ interface StageMachine {
   readonly hasTake: boolean
   readonly hasDrop: boolean
   readonly hasDropWhile: boolean
+  /** True when any stage passes an index to its callback. */
+  readonly hasIndexed: boolean
   /** Positions of array-domain OP_SCAN stages, descending. Empty when none. */
   readonly scanArrayPositions: readonly number[]
   /** Advances one element through stages [s..streamLen). Returns true when
@@ -464,6 +475,7 @@ function buildStageMachine(
   let hasTake = false
   let hasDrop = false
   let hasDropWhile = false
+  let hasIndexed = false
   const scanArrayPositions: number[] = []
   for (let s = 0; s < streamLen; s++) {
     const op = codes[start + s]
@@ -472,6 +484,7 @@ function buildStageMachine(
     else if (op === OP_DROP) hasDrop = true
     else if (op === OP_DROP_WHILE) hasDropWhile = true
     else if (op === OP_SCAN) scanArrayPositions.unshift(s)
+    else if (op === OP_MAP_WITH_INDEX || op === OP_FILTER_WITH_INDEX) hasIndexed = true
   }
 
   // Returns true when the whole element loop should stop (early exit).
@@ -491,6 +504,9 @@ function buildStageMachine(
         return false
       case OP_FOR_EACH:
         fn(value)
+        return false
+      case OP_FOR_EACH_WITH_INDEX:
+        ;(fn as (v: unknown, i: number) => unknown)(value, state.index++)
         return false
       case OP_EVERY:
         if (!fn(value)) {
@@ -560,6 +576,14 @@ function buildStageMachine(
       switch (op) {
         case OP_MAP:
           value = (fn as (v: unknown) => unknown)(value)
+          s++
+          continue
+        case OP_MAP_WITH_INDEX:
+          value = (fn as (v: unknown, i: number) => unknown)(value, state.stageIndex[s]++)
+          s++
+          continue
+        case OP_FILTER_WITH_INDEX:
+          if (!(fn as (v: unknown, i: number) => boolean)(value, state.stageIndex[s]++)) return false
           s++
           continue
         case OP_FILTER:
@@ -636,7 +660,7 @@ function buildStageMachine(
     }
   }
 
-  return { ops, hasTake, hasDrop, hasDropWhile, scanArrayPositions, advance }
+  return { ops, hasTake, hasDrop, hasDropWhile, hasIndexed, scanArrayPositions, advance }
 }
 
 /**
@@ -665,6 +689,7 @@ function finishSink(hasSink: boolean, lastOp: OpCode, state: StreamState): unkno
     case OP_REDUCE:
       return state.acc
     case OP_FOR_EACH:
+    case OP_FOR_EACH_WITH_INDEX:
       return undefined
     case OP_EVERY:
       return state.every
@@ -715,6 +740,7 @@ function makeStreamState(
     dropWhileActive: machine.hasDropWhile
       ? new Array<boolean>(streamLen).fill(true)
       : EMPTY_BOOLEANS,
+    stageIndex: machine.hasIndexed ? new Array<number>(streamLen).fill(0) : EMPTY_NUMBERS,
     scanAcc,
   }
 }

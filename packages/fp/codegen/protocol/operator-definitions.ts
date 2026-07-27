@@ -150,6 +150,15 @@ const REVERSE_REDUCER_CALLBACK = {
   evaluationPoint: 'during-element-consumption',
 } as const satisfies CallbackContractV1
 
+const INDEXED_VALUE_CALLBACK = {
+  arity: 2,
+  arguments: ['value', 'index'],
+  index: 'passed-as-second-argument',
+  count: 'once-per-consumed-value',
+  order: 'left-to-right',
+  evaluationPoint: 'during-element-consumption',
+} as const satisfies CallbackContractV1
+
 const COMPARATOR_CALLBACK = {
   arity: 2,
   arguments: ['left', 'right'],
@@ -3221,6 +3230,63 @@ const LEGACY_ROWS = [
     true,
     'boundary',
   ),
+  op(
+    175,
+    'mapWithIndex',
+    'array',
+    'array',
+    'array',
+    'one-to-one',
+    2,
+    ['fn'],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    176,
+    'filterWithIndex',
+    'array',
+    'array',
+    'array',
+    'filtering',
+    2,
+    ['fn'],
+    false,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'element',
+  ),
+  op(
+    177,
+    'forEachWithIndex',
+    'array',
+    'array',
+    'scalar',
+    'sink',
+    2,
+    ['fn'],
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    true,
+    true,
+    'terminal',
+  ),
 ] as const satisfies readonly LegacyRowV1[]
 
 function opcodeConstantFor(row: LegacyRowV1): string {
@@ -3313,8 +3379,16 @@ const RIGHT_TO_LEFT_CALLBACK_NAMES: ReadonlySet<string> = new Set([
   'takeLastWhile',
 ])
 
+/** Operators whose callback takes the element's position as a second argument. */
+const INDEXED_CALLBACK_NAMES: ReadonlySet<string> = new Set([
+  'filterWithIndex',
+  'forEachWithIndex',
+  'mapWithIndex',
+])
+
 function callbackContract(row: LegacyRowV1): CallbackContractV1 {
   if (row.name === 'sortBy' || row.name === 'sortInline') return COMPARATOR_CALLBACK
+  if (INDEXED_CALLBACK_NAMES.has(row.name)) return INDEXED_VALUE_CALLBACK
   if (row.callbackArity === 0) return NO_CALLBACK
   if (RIGHT_TO_LEFT_CALLBACK_NAMES.has(row.name)) {
     return row.callbackArity === 1 ? REVERSE_VALUE_CALLBACK : REVERSE_REDUCER_CALLBACK

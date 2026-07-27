@@ -37,8 +37,8 @@ export interface BindingDefinitionV1 {
 
 export interface CallbackContractV1 {
   readonly arity: 0 | 1 | 2
-  readonly arguments: readonly ('value' | 'accumulator' | 'left' | 'right')[]
-  readonly index: 'not-passed'
+  readonly arguments: readonly ('value' | 'index' | 'accumulator' | 'left' | 'right')[]
+  readonly index: 'not-passed' | 'passed-as-second-argument'
   readonly count: 'once-per-consumed-value' | 'once-per-stable-merge-comparison' | 'not-applicable'
   readonly order: 'left-to-right' | 'right-to-left' | 'stable-merge-sort-order'
   readonly evaluationPoint:
@@ -480,12 +480,16 @@ function assertCallback(value: unknown): asserts value is CallbackContractV1 {
   }
   assertStringArray(value.arguments, 'callback.arguments')
   for (const argument of value.arguments) {
-    assertEnum(argument, ['value', 'accumulator', 'left', 'right'], 'callback.arguments item')
+    assertEnum(
+      argument,
+      ['value', 'index', 'accumulator', 'left', 'right'],
+      'callback.arguments item',
+    )
   }
   if (value.arguments.length !== value.arity) {
     fail('callback.arguments length must equal callback.arity')
   }
-  assertEnum(value.index, ['not-passed'], 'callback.index')
+  assertEnum(value.index, ['not-passed', 'passed-as-second-argument'], 'callback.index')
   assertEnum(
     value.count,
     ['once-per-consumed-value', 'once-per-stable-merge-comparison', 'not-applicable'],
@@ -503,6 +507,10 @@ function assertCallback(value: unknown): asserts value is CallbackContractV1 {
   )
   const comparator =
     value.arity === 2 && value.arguments[0] === 'left' && value.arguments[1] === 'right'
+  const indexed = value.arguments[1] === 'index'
+  if (indexed !== (value.index === 'passed-as-second-argument')) {
+    fail('callback.index contradicts callback.arguments')
+  }
   if (
     (value.arity === 0 &&
       (value.count !== 'not-applicable' || value.evaluationPoint !== 'not-applicable')) ||

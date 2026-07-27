@@ -2,7 +2,7 @@
 // Compatibility runtime projection of the canonical definition-only operator protocol.
 // Legacy callback/capability fields preserve 1.x bytes and never authorize a semantic or backend.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
-// Semantic facts hash: sha256:0570f758adabdbeb373d382ac48a7c678c2f2e5143c44bc4d2dd94c3c1cda41c
+// Semantic facts hash: sha256:1abc9a3665729dab1f19a1c3851035af5d251816e652fad32ace0514d38cd7d4
 import * as OpCodes from './opcodes'
 import { OP_CODES, OP_NON_FUSEABLE } from './opcodes'
 
@@ -1558,6 +1558,36 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'materializer',
         callbackArity: 0,
         bindings: [],
+      }),
+      meta({
+        op: OpCodes.OP_MAP_WITH_INDEX,
+        name: 'mapWithIndex',
+        inputDomain: 'array',
+        outputDomain: 'array',
+        cardinality: 'one-to-one',
+        callbackArity: 2,
+        bindings: ['fn'],
+        constructorPreserving: true,
+      }),
+      meta({
+        op: OpCodes.OP_FILTER_WITH_INDEX,
+        name: 'filterWithIndex',
+        inputDomain: 'array',
+        outputDomain: 'array',
+        cardinality: 'filtering',
+        callbackArity: 2,
+        bindings: ['fn'],
+        constructorPreserving: true,
+      }),
+      meta({
+        op: OpCodes.OP_FOR_EACH_WITH_INDEX,
+        name: 'forEachWithIndex',
+        inputDomain: 'array',
+        outputDomain: 'scalar',
+        cardinality: 'sink',
+        callbackArity: 2,
+        bindings: ['fn'],
+        pureLowering: false,
       }),
     ] satisfies readonly OpMeta[]
   ).map((entry) => [entry.op, entry]),

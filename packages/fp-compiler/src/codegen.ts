@@ -98,6 +98,9 @@ export const DEFAULT_OPTION_NONE_LOCAL = '__stopcock_fp_none'
 const INLINE_CALLBACK_LIMIT = 3
 const CALLBACK_OPS = new Set([
   'map',
+  'mapWithIndex',
+  'filterWithIndex',
+  'forEachWithIndex',
   'filter',
   'reject',
   'filterMap',
@@ -382,6 +385,31 @@ function emitSingleStepCollector(
         '}',
       ]
     }
+    case 'mapWithIndex': {
+      const callbackLines = emitCallback(
+        args[0],
+        code,
+        `_cb${index}`,
+        preLines,
+        ['_v0', '_i'],
+        inlineCallbacks,
+        renderExpression,
+        renderSource,
+        (expr) => [`${nextData}[_i] = ${expr};`],
+      )
+      const allocation =
+        arrayConstructorExpression === undefined
+          ? [`var ${nextData} = [];`, `${nextData}.length = ${length};`]
+          : [`var ${nextData} = new ${arrayConstructorExpression}(${length});`]
+      return [
+        `var ${length} = ${curData}.length;`,
+        ...allocation,
+        `for (var _i = 0; _i < ${length}; _i++) {`,
+        `var _v0 = ${curData}[_i];`,
+        ...callbackLines,
+        '}',
+      ]
+    }
     case 'filterMap':
     case 'mapWhile': {
       const conditional = planPresentConditional(args[0], globalUndefinedIsUnbound)
@@ -578,6 +606,35 @@ function emitElementSegment(
           (expr) => [`var ${nextVar} = ${expr};`],
         )
         bodyLines.push(...lines)
+        break
+      }
+      case 'mapWithIndex':
+      case 'filterWithIndex': {
+        // The callback's index is its position in this stage's own input, so
+        // it counts elements reaching the stage rather than reusing `_i`:
+        // anything upstream that filters or expands has already broken that
+        // correspondence. Snapshotting it into a local keeps the increment to
+        // once per element even when an inlined body mentions the index twice.
+        const counter = `_ix${index}`
+        const position = `_ixv${index}`
+        stateLines.push(`var ${counter} = 0;`)
+        bodyLines.push(`var ${position} = ${counter}++;`)
+        const lines = emitCallback(
+          args[0],
+          code,
+          `_cb${index}`,
+          preLines,
+          [curVar, position],
+          inlineCallbacks,
+          renderExpression,
+          renderSource,
+          (expr) =>
+            step.name === 'mapWithIndex'
+              ? [`var ${nextVar} = ${expr};`]
+              : [`if (!${expr}) { continue; }`],
+        )
+        bodyLines.push(...lines)
+        if (step.name === 'filterWithIndex') bodyLines.push(`var ${nextVar} = ${curVar};`)
         break
       }
       case 'filter': {
@@ -811,6 +868,26 @@ function emitElementSegment(
           preLines.push(`var ${nextData} = (${renderExpression(initArg)});`)
           bodyLines.push(`${nextData} = _cbT${index}(${nextData}, ${curVar});`)
         }
+        break
+      }
+      case 'forEachWithIndex': {
+        const counter = `_ixT${index}`
+        const position = `_ixvT${index}`
+        stateLines.push(`var ${counter} = 0;`)
+        bodyLines.push(`var ${position} = ${counter}++;`)
+        const lines = emitCallback(
+          args[0],
+          code,
+          `_cbT${index}`,
+          preLines,
+          [curVar, position],
+          inlineCallbacks,
+          renderExpression,
+          renderSource,
+          (expr) => [`${expr};`],
+        )
+        bodyLines.push(...lines)
+        preLines.push(`var ${nextData} = undefined;`)
         break
       }
       case 'forEach': {
