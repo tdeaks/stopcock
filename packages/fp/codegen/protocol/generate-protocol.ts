@@ -12,6 +12,7 @@ import {
   assertRuntimeEncodingCatalogueV1,
   runtimeRecordsInOpcodeOrderV1,
   type OperatorDefinitionRecordV1,
+  type RuntimeBackedOperatorDefinitionRecordV1,
 } from './operator-definitions'
 import {
   assertOperatorCatalogueV1,
@@ -674,10 +675,10 @@ const LEGACY_TAG_LOOKUP_ORDER_V1 = [
 ] as const
 
 function recordsInNamedOrderV1(
-  records: readonly OperatorDefinitionRecordV1[],
+  records: readonly RuntimeBackedOperatorDefinitionRecordV1[],
   names: readonly string[],
   label: string,
-): readonly OperatorDefinitionRecordV1[] {
+): readonly RuntimeBackedOperatorDefinitionRecordV1[] {
   const byName = new Map(records.map((record) => [record.legacyRuntime.name, record]))
   if (
     byName.size !== records.length ||
@@ -694,13 +695,15 @@ function recordsInNamedOrderV1(
 }
 
 function symbolicRangePredicateV1(
-  records: readonly OperatorDefinitionRecordV1[],
+  records: readonly RuntimeBackedOperatorDefinitionRecordV1[],
   forcedSingletonNames: ReadonlySet<string> = new Set(),
 ): string {
   const sorted = [...records].sort(
     (left, right) => left.legacyRuntime.opcode - right.legacyRuntime.opcode,
   )
-  const ranges: Array<readonly [OperatorDefinitionRecordV1, OperatorDefinitionRecordV1]> = []
+  const ranges: Array<
+    readonly [RuntimeBackedOperatorDefinitionRecordV1, RuntimeBackedOperatorDefinitionRecordV1]
+  > = []
   for (const record of sorted) {
     const last = ranges[ranges.length - 1]
     if (
@@ -723,7 +726,7 @@ function symbolicRangePredicateV1(
     .join(' ||\n  ')
 }
 
-function renderOpcodesV1(records: readonly OperatorDefinitionRecordV1[]): string {
+function renderOpcodesV1(records: readonly RuntimeBackedOperatorDefinitionRecordV1[]): string {
   const ordered = recordsInNamedOrderV1(
     records,
     LEGACY_RUNTIME_RECORD_ORDER_V1,
@@ -800,7 +803,7 @@ export const isFuseableOrTerminal = (op: number): boolean =>
 `
 }
 
-function renderRegistryEntryV1(record: OperatorDefinitionRecordV1): string {
+function renderRegistryEntryV1(record: RuntimeBackedOperatorDefinitionRecordV1): string {
   const runtime = record.legacyRuntime
   const optional: string[] = []
   if (runtime.earlyTermination) optional.push('earlyTermination: true,')
@@ -827,7 +830,7 @@ function renderRegistryEntryV1(record: OperatorDefinitionRecordV1): string {
       })`
 }
 
-function renderRegistryV1(records: readonly OperatorDefinitionRecordV1[]): string {
+function renderRegistryV1(records: readonly RuntimeBackedOperatorDefinitionRecordV1[]): string {
   const ordered = recordsInNamedOrderV1(records, LEGACY_RUNTIME_RECORD_ORDER_V1, 'runtime registry')
   return `// GENERATED FILE -- do not edit by hand.
 // Compatibility runtime projection of the canonical definition-only operator protocol.
@@ -1012,8 +1015,10 @@ function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
         // enforces it), and identical to `publicName` for every public array
         // export already in this table. The compiler's own transform.ts
         // resolves a user's written import name back to this canonical name
-        // before ever consulting the table.
-        name: record.legacyRuntime.name,
+        // before ever consulting the table. `compilerName` is that same
+        // disambiguated name for a compiler-only row too (option/result),
+        // which has no `legacyRuntime` to read it from.
+        name: record.compilerName,
         callbackArity: record.semantic.callback.arity,
         bindings: record.semantic.bindings.map(({ slot }) => slot),
         semanticId: record.semantic.semanticId,
@@ -1122,6 +1127,22 @@ export interface ElementEmitCtx {
   readonly cb: CallbackHandle
 }
 
+/** Everything an Option/Result template needs: persistent \`_ok\`/\`_v\`/\`_err\`
+ * locals mutated straight-line across every step of one compiled run, no
+ * loop. \`err\` is \`''\` for an Option-only run. \`next\` is only populated for
+ * a \`'terminal'\`-role step. */
+export interface OptionEmitCtx {
+  readonly index: number
+  readonly ok: string
+  readonly v: string
+  readonly err: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly optionNone: string
+  readonly cb: CallbackHandle
+}
+
 export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
 
 export type OpEmit =
@@ -1129,6 +1150,10 @@ export type OpEmit =
       readonly kind: OpEmitKind
       readonly indexed?: true
       readonly render: (ctx: ElementEmitCtx) => EmitFragment
+    }
+  | {
+      readonly kind: 'optionStep'
+      readonly render: (ctx: OptionEmitCtx) => EmitFragment
     }
   | { readonly kind: 'boundary' }
 
@@ -1138,8 +1163,8 @@ export interface OpsTableEntry {
   readonly bindings: readonly ('fn' | 'a1' | 'a2')[]
   readonly semanticId: string
   readonly semanticRevision: number
-  readonly inputDomain: 'array' | 'scalar' | 'iterable'
-  readonly outputDomain: 'array' | 'scalar' | 'iterable'
+  readonly inputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result'
+  readonly outputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result'
   readonly cardinality:
     | 'one-to-one'
     | 'filtering'

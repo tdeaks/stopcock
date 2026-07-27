@@ -1,4 +1,4 @@
-import { dual } from './dual-internal'
+import { dual } from './dual-untagged'
 import { none, some, type Option } from './option'
 import type {
   IsPathConstructible,

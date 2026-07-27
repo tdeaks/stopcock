@@ -29,7 +29,6 @@ export interface PureInitializerSourceSiteV1 {
     | 'registered-dual-iife'
     | 'registered-unary'
     | 'dual'
-    | 'dual-untagged'
     | 'typed-array'
     | 'freeze'
 }
@@ -91,6 +90,59 @@ export const MANUAL_PURE_DUAL_INITIALIZERS_V1 = Object.freeze({
     'mapInto',
     'filterInto',
     'shuffleWith',
+  ]),
+  // Phase 2 (compiler: option/result domains): dual-internal.ts is gone;
+  // option.ts and result.ts call `dual` from `./dual-untagged` now (same
+  // untagged dispatchers, moved so `dual-internal.ts` could go), same call
+  // shape as every other untagged module below, so they belong on this
+  // allowlist rather than a separate one.
+  option: Object.freeze([
+    'fromPredicate',
+    'map',
+    'flatMap',
+    'orElse',
+    'orElseWith',
+    'and',
+    'zip',
+    'zipWith',
+    'contains',
+    'exists',
+    'mapNullable',
+    'filter',
+    'getOrElse',
+    'getWithDefault',
+    'match',
+    'tap',
+    'as',
+    'ap',
+    'traverse',
+    'partitionMap',
+    'toResult',
+  ]),
+  result: Object.freeze([
+    'fromPredicate',
+    'map',
+    'mapErr',
+    'mapBoth',
+    'flatMap',
+    'orElse',
+    'and',
+    'zip',
+    'zipWith',
+    'ap',
+    'filterOrElse',
+    'contains',
+    'exists',
+    'getOrElse',
+    'getOrThrow',
+    'match',
+    'traverse',
+    'traverseValidation',
+    'optional',
+    'nullable',
+    'tap',
+    'tapErr',
+    'as',
   ]),
   object: Object.freeze([
     'pick',
@@ -166,59 +218,6 @@ export const MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1 = Object.freeze({
   string: Object.freeze(['split']),
 } as const)
 
-// S3B moved Option and Result onto the independent untagged duals, so their
-// initializers no longer read the opcode table and are reviewed separately.
-export const MANUAL_PURE_UNTAGGED_DUAL_INITIALIZERS_V1 = Object.freeze({
-  option: Object.freeze([
-    'fromPredicate',
-    'map',
-    'flatMap',
-    'orElse',
-    'orElseWith',
-    'and',
-    'zip',
-    'zipWith',
-    'contains',
-    'exists',
-    'mapNullable',
-    'filter',
-    'getOrElse',
-    'getWithDefault',
-    'match',
-    'tap',
-    'as',
-    'ap',
-    'traverse',
-    'partitionMap',
-    'toResult',
-  ]),
-  result: Object.freeze([
-    'fromPredicate',
-    'map',
-    'mapErr',
-    'mapBoth',
-    'flatMap',
-    'orElse',
-    'and',
-    'zip',
-    'zipWith',
-    'ap',
-    'filterOrElse',
-    'contains',
-    'exists',
-    'getOrElse',
-    'getOrThrow',
-    'match',
-    'traverse',
-    'traverseValidation',
-    'optional',
-    'nullable',
-    'tap',
-    'tapErr',
-    'as',
-  ]),
-} as const)
-
 /**
  * A typed-array literal built from constants. Dropping it when compact fusion
  * is unreachable cannot change behaviour, and it is the fact table's whole
@@ -254,9 +253,6 @@ const PURE_INITIALIZER_SOURCE_SITES_V1 = Object.freeze([
   ),
   ...Object.entries(MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1).flatMap(([module, names]) =>
     names.map((name) => Object.freeze({ module, name, callKind: 'registered-dual-iife' as const })),
-  ),
-  ...Object.entries(MANUAL_PURE_UNTAGGED_DUAL_INITIALIZERS_V1).flatMap(([module, names]) =>
-    names.map((name) => Object.freeze({ module, name, callKind: 'dual-untagged' as const })),
   ),
   ...Object.entries(MANUAL_PURE_TYPED_ARRAY_INITIALIZERS_V1).flatMap(([module, names]) =>
     names.map((name) => Object.freeze({ module, name, callKind: 'typed-array' as const })),
@@ -307,11 +303,9 @@ export function validatePureInitializerSourcePolicyV1(
             ? /^\s*taggedUnary\(\s*\([^)]*\)\s*=>/u
             : site.callKind === 'dual'
               ? /^\s*dual\(/u
-              : site.callKind === 'dual-untagged'
-                ? /^\s*dualUntagged[234]\(/u
-                : site.callKind === 'typed-array'
-                  ? /^\s*Uint8Array\.from\(\[/u
-                  : /^\s*Object\.freeze\(\{\s*_tag:\s*0\s*\}\)/u
+              : site.callKind === 'typed-array'
+                ? /^\s*Uint8Array\.from\(\[/u
+                : /^\s*Object\.freeze\(\{\s*_tag:\s*0\s*\}\)/u
       if (!shape.test(afterMarker)) {
         throw new Error(`pure initializer ${key} changed its reviewed ${site.callKind} shape`)
       }

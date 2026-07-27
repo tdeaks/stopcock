@@ -68,6 +68,54 @@ const DEFAULT_SCALAR_IMPORT_SOURCES = [
 const OPTION_IMPORT_SOURCE = '@stopcock/fp'
 const OPTION_TERMINALS = new Set(['find', 'findIndex', 'findMap', 'head', 'last', 'min', 'max'])
 /**
+ * Option/Result operator sources (phase 2). Not a `StopcockCompilerOptions`
+ * field for the same reason `DEFAULT_SCALAR_IMPORT_SOURCES` isn't: no new
+ * config surface for this pass, these two are always on.
+ */
+const DEFAULT_OPTION_RESULT_IMPORT_SOURCE = {
+  option: '@stopcock/fp/option',
+  result: '@stopcock/fp/result',
+} as const
+/**
+ * `O.map`/`R.map`, `O.getOrElse`/`R.getOrElse`, `O.match`/`R.match`, and
+ * `O.fromPredicate`/`R.fromPredicate` collide by public export name across
+ * the option and result domains -- and `zip`/`map`/`getOrElse` also collide
+ * with existing array canonical names. Every option/result op therefore
+ * mints its own compiler-table name (see `OPTION_RESULT_ROWS` in
+ * `packages/fp/codegen/protocol/operator-definitions.ts`, the source of
+ * truth for this mapping), resolved here the same way
+ * `SCALAR_EXPORT_ALIASES` resolves `strLength`/`isEmpty`.
+ */
+const OPTION_EXPORT_ALIASES: ReadonlyMap<string, string> = new Map([
+  ['map', 'optionMap'],
+  ['flatMap', 'optionFlatMap'],
+  ['filter', 'optionFilter'],
+  ['getOrElse', 'optionGetOrElse'],
+  ['orElse', 'optionOrElse'],
+  ['match', 'optionMatch'],
+  ['fromNullable', 'optionFromNullable'],
+  ['fromPredicate', 'optionFromPredicate'],
+  ['toUndefined', 'optionToUndefined'],
+  ['toNullable', 'optionToNullable'],
+  ['tap', 'optionTap'],
+  ['zip', 'optionZip'],
+])
+const RESULT_EXPORT_ALIASES: ReadonlyMap<string, string> = new Map([
+  ['map', 'resultMap'],
+  ['mapErr', 'resultMapErr'],
+  ['flatMap', 'resultFlatMap'],
+  ['getOrElse', 'resultGetOrElse'],
+  ['match', 'resultMatch'],
+  ['fromThrowable', 'resultFromThrowable'],
+  ['toOption', 'resultToOption'],
+])
+
+function canonicalOptionResultOpName(source: string, name: string): string {
+  if (source === DEFAULT_OPTION_RESULT_IMPORT_SOURCE.option) return OPTION_EXPORT_ALIASES.get(name) ?? name
+  if (source === DEFAULT_OPTION_RESULT_IMPORT_SOURCE.result) return RESULT_EXPORT_ALIASES.get(name) ?? name
+  return name
+}
+/**
  * A scalar op's real module export sometimes differs from the registry's
  * canonical compiler name: `strLength`/`strIsEmpty` publish as `length`/
  * `isEmpty` from `@stopcock/fp/string` (the canonical spellings are taken by
@@ -109,6 +157,13 @@ interface Bindings {
   /** Local identifier -> canonical scalar export name, already resolved
    * through `canonicalScalarOpName` at collection time. */
   readonly scalarOpLocals: Map<string, string>
+  /** Namespace local -> exact option/result source, needed to resolve
+   * `O.map`/`R.map`-style property access through
+   * `canonicalOptionResultOpName`. */
+  readonly optionResultNamespaceLocals: Map<string, string>
+  /** Local identifier -> canonical option/result export name, already
+   * resolved through `canonicalOptionResultOpName` at collection time. */
+  readonly optionResultOpLocals: Map<string, string>
   /** Imported pipe/flow/compile binding or namespace -> exact module source. */
   readonly sourceByLocal: Map<string, string>
   /** Named imported facade binding -> exact public export before local aliasing. */
@@ -326,6 +381,23 @@ function usesOptionTerminal(steps: readonly Step[]): boolean {
   return steps.some((step) => OPTION_TERMINALS.has(step.name))
 }
 
+/**
+ * True whenever a compiled option/result segment might reference the
+ * imported `none` singleton: every Option op that isn't a terminal
+ * (getOrElse/toUndefined/toNullable/match) can end a run whose final
+ * materialization needs it for the not-ok branch, and `R.toOption` builds it
+ * directly. Result-only ops (`map`/`mapErr`/`flatMap`/`getOrElse`/`match`/
+ * `fromThrowable`) never do -- Result's not-ok side is a real `Err` object,
+ * never the shared singleton. Conservative by design: an op counted here
+ * that happens to end in a terminal costs one unused import, never a missing
+ * one.
+ */
+function usesOptionOrResultSingleton(steps: readonly Step[]): boolean {
+  return steps.some(
+    (step) => step.fact.inputDomain === 'option' || step.fact.outputDomain === 'option',
+  )
+}
+
 function staticallyProducesPrimitiveNumber(node: t.Expression): boolean {
   if (t.isNumericLiteral(node)) return true
   if (!t.isUnaryExpression(node)) return false
@@ -358,6 +430,10 @@ function collectBindings(
   arrayImportSources: readonly string[],
   compileImportSources: readonly string[],
   scalarImportSources: readonly string[] = DEFAULT_SCALAR_IMPORT_SOURCES,
+  optionResultImportSources: readonly string[] = [
+    DEFAULT_OPTION_RESULT_IMPORT_SOURCE.option,
+    DEFAULT_OPTION_RESULT_IMPORT_SOURCE.result,
+  ],
 ): Bindings {
   const bindings: Bindings = {
     pipeLocals: new Set(),
@@ -369,6 +445,8 @@ function collectBindings(
     arrayOpLocals: new Map(),
     scalarNamespaceLocals: new Map(),
     scalarOpLocals: new Map(),
+    optionResultNamespaceLocals: new Map(),
+    optionResultOpLocals: new Map(),
     sourceByLocal: new Map(),
     exportByLocal: new Map(),
   }
@@ -380,7 +458,16 @@ function collectBindings(
     const isArraySource = arrayImportSources.includes(stmt.source.value)
     const isCompileSource = compileImportSources.includes(stmt.source.value)
     const isScalarSource = scalarImportSources.includes(stmt.source.value)
-    if (!isRootSource && !isArraySource && !isCompileSource && !isScalarSource) continue
+    const isOptionResultSource = optionResultImportSources.includes(stmt.source.value)
+    if (
+      !isRootSource &&
+      !isArraySource &&
+      !isCompileSource &&
+      !isScalarSource &&
+      !isOptionResultSource
+    ) {
+      continue
+    }
     const facadeExports = facadeExportsFor(
       stmt.source.value,
       isRootSource,
@@ -394,6 +481,9 @@ function collectBindings(
         }
         if (isArraySource) bindings.arrayNamespaceLocals.add(spec.local.name)
         if (isScalarSource) bindings.scalarNamespaceLocals.set(spec.local.name, stmt.source.value)
+        if (isOptionResultSource) {
+          bindings.optionResultNamespaceLocals.set(spec.local.name, stmt.source.value)
+        }
         if (facadeExports.size > 0) {
           bindings.sourceByLocal.set(spec.local.name, stmt.source.value)
         }
@@ -419,6 +509,12 @@ function collectBindings(
         bindings.scalarOpLocals.set(
           spec.local.name,
           canonicalScalarOpName(stmt.source.value, imported),
+        )
+      }
+      if (isOptionResultSource) {
+        bindings.optionResultOpLocals.set(
+          spec.local.name,
+          canonicalOptionResultOpName(stmt.source.value, imported),
         )
       }
     }
@@ -655,6 +751,9 @@ function resolveStepOpName(
     if (isVisibleModuleBinding(callee.name, bindings.scalarOpLocals, scope)) {
       return bindings.scalarOpLocals.get(callee.name)
     }
+    if (isVisibleModuleBinding(callee.name, bindings.optionResultOpLocals, scope)) {
+      return bindings.optionResultOpLocals.get(callee.name)
+    }
     return undefined
   }
   if (!t.isMemberExpression(callee) || callee.computed) return undefined
@@ -670,6 +769,8 @@ function resolveStepOpName(
   if (t.isIdentifier(object) && scope.getBinding(object.name)?.kind === 'module') {
     const scalarSource = bindings.scalarNamespaceLocals.get(object.name)
     if (scalarSource !== undefined) return canonicalScalarOpName(scalarSource, opName)
+    const optionResultSource = bindings.optionResultNamespaceLocals.get(object.name)
+    if (optionResultSource !== undefined) return canonicalOptionResultOpName(optionResultSource, opName)
   }
   return undefined
 }
@@ -796,6 +897,17 @@ interface StepsResult {
 }
 
 /** Validates and collects a flat step list, enforcing that a terminal op (if any) is last. */
+/** Lookahead for the array-terminal-to-option boundary fusion case: does the
+ * next step consume an Option (not construct one -- `fromNullable`/
+ * `fromPredicate` have `inputDomain: 'scalar'`, they wouldn't make sense
+ * right after an array terminal and are left to bail normally)? */
+function isOptionDomainStep(node: t.Expression, bindings: Bindings, scope: Scope): boolean {
+  const check = analyzeStep(node, bindings, scope)
+  if (!check.ok || check.name === undefined) return false
+  const fact = compilerOperatorFact(check.name)
+  return fact !== undefined && fact.inputDomain === 'option'
+}
+
 function collectSteps(
   stepNodes: readonly t.Expression[],
   bindings: Bindings,
@@ -850,12 +962,26 @@ function collectSteps(
     }
     steps.push({ name: opName, node: stepNodes[i], args: check.args, fact })
     if (TERMINAL_OPS.has(opName) || FINAL_BOUNDARY_OPS.has(opName)) {
-      terminalName = opName
-      if (!allowFinalResidual && i < stepNodes.length - 1) {
-        return {
-          ok: false,
-          reason: `${opName}: terminal op must be the last step`,
-          partialNames: [...recognised, opName],
+      const hasMoreSteps = i < stepNodes.length - 1
+      // An array Option-terminal (head/find/findIndex/findMap/last/min/max)
+      // followed by an Option-domain step is not "more work after a
+      // terminal" in the old sense: it flows the produced Option straight
+      // into a following option segment (phase 2 boundary fusion) -- one
+      // fused loop, the option block running straight-line right after it.
+      // Every other terminal, including the option/result domain's own
+      // getOrElse/match/toUndefined/toNullable/toOption, still must be last.
+      const flowsIntoOption =
+        OPTION_TERMINALS.has(opName) &&
+        hasMoreSteps &&
+        isOptionDomainStep(stepNodes[i + 1], bindings, scope)
+      if (!flowsIntoOption) {
+        terminalName = opName
+        if (!allowFinalResidual && hasMoreSteps) {
+          return {
+            ok: false,
+            reason: `${opName}: terminal op must be the last step`,
+            partialNames: [...recognised, opName],
+          }
         }
       }
     }
@@ -969,7 +1095,7 @@ function tryTransformDeferred(
     plan,
     steps: steps.length,
     opNames: steps.map((step) => step.name),
-    needsOptionImport: usesOptionTerminal(steps),
+    needsOptionImport: usesOptionTerminal(steps) || usesOptionOrResultSingleton(steps),
   }
 }
 
@@ -996,6 +1122,8 @@ export function transformStopcockPipelines(
     ...arrayImportSources,
     ...compileImportSources,
     ...DEFAULT_SCALAR_IMPORT_SOURCES,
+    DEFAULT_OPTION_RESULT_IMPORT_SOURCE.option,
+    DEFAULT_OPTION_RESULT_IMPORT_SOURCE.result,
   ])
 
   // The host plugin sees every included JS/TS file. Most application files
@@ -1783,7 +1911,7 @@ export function transformStopcockPipelines(
         recordReplaced(call.start!, call.end!)
         overwriteMapped(call.start!, call.end!, generated, call.start!)
       }
-      needsOptionImport ||= usesOptionTerminal(steps)
+      needsOptionImport ||= usesOptionTerminal(steps) || usesOptionOrResultSingleton(steps)
       changed = true
       if (diagnosticsLevel !== false) {
         diagnostics.push(

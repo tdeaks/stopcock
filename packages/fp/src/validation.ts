@@ -1,4 +1,4 @@
-import { dual } from './dual-internal'
+import { dual } from './dual-untagged'
 import type { Predicate, Refinement } from './guard'
 import { err, ok, type Result } from './result'
 

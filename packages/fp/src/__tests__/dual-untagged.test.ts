@@ -1,16 +1,20 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
-import { dual } from '../dual'
-import { dual as internalDual, dualUntagged2, dualUntagged3, dualUntagged4 } from '../dual-internal'
+import { dual as taggedDual } from '../dual'
+import { dual, dualUntagged2, dualUntagged3, dualUntagged4 } from '../dual-untagged'
 import * as O from '../option'
 import * as R from '../result'
 
-describe('untagged internal duals', () => {
+// dual-internal.ts is gone; the untagged dispatchers moved to dual-untagged.ts
+// (still independent of ./dual and ./opcodes -- see that file's header). Every
+// untagged module (option.ts, result.ts, array-extra.ts, iter.ts, number.ts,
+// object.ts, schema.ts, validation.ts) imports `dual` from there.
+describe('untagged dispatchers (dual-untagged.ts)', () => {
   const body2 = (data: number, a: number) => data + a
   const body3 = (data: number, a: number, b: number) => data + a + b
   const body4 = (data: number, a: number, b: number, c: number) => data + a + b + c
 
-  it('matches the untagged public dual on both call forms', () => {
-    const publicOp = dual(2, body2) as (...args: number[]) => never
+  it('matches the tagless public dual on both call forms', () => {
+    const publicOp = taggedDual(2, body2) as (...args: number[]) => never
     const internalOp = dualUntagged2<typeof body2, (...args: number[]) => never>(body2)
     expect(internalOp(1, 2)).toBe(publicOp(1, 2))
     expect((internalOp(2) as unknown as (data: number) => number)(1)).toBe(
@@ -61,8 +65,8 @@ describe('untagged internal duals', () => {
     expect(spy).toHaveBeenCalledTimes(2)
   })
 
-  it('dispatches the arity-generic form for unmigrated modules', () => {
-    const operation = internalDual(3, body3) as (...args: number[]) => never
+  it('dispatches the arity-generic form for a not-yet-migrated module', () => {
+    const operation = dual(3, body3) as (...args: number[]) => never
     expect(operation(1, 2, 3)).toBe(6)
     expect((operation(2, 3) as unknown as (data: number) => number)(1)).toBe(6)
   })

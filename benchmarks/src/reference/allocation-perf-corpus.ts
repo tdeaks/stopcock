@@ -16,10 +16,12 @@ import * as A from '../../../packages/fp/src/array'
 import * as AX from '../../../packages/fp/src/array-extra'
 import * as C from '../../../packages/fp/src/collector'
 import * as Iter from '../../../packages/fp/src/iter'
+import * as O from '../../../packages/fp/src/option'
 import * as T from '../../../packages/fp/src/transducer'
 import * as TA from '../../../packages/fp/src/typed-array'
 import { compile } from '../../../packages/fp/src/compile'
 import { pipe } from '../../../packages/fp/src/fusion'
+import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import type { AllocationFamilyId } from './allocation-perf-contract'
 
 export const CORPUS_ID = 'stopcock-p3a-allocation-corpus-v1'
@@ -99,6 +101,58 @@ const mapFilterReference = (): number[] => {
   return out
 }
 
+/**
+ * A compiled Option chain (fromNullable/map/filter/getOrElse), applied to
+ * every element. `transformStopcockPipelines` runs once here, at corpus
+ * load, over a source string shaped exactly like a real call site
+ * (`packages/fp-compiler/src/__tests__` and `benchmarks/src/reference/
+ * compiler-diff.test.ts` use the same new-Function-from-transformed-text
+ * pattern): the memory and throughput workers then measure the real
+ * generated code, not a hand-written stand-in for it. Phase 2's lowering
+ * (`_ok`/`_v` locals) never constructs a Some/None object for this chain --
+ * `fromNullable` only reads `!= null`, `getOrElse` reads `_ok`/`_v` directly
+ * -- so this target is the allocation gate's honesty check on that claim.
+ */
+const compiledOptionChain: (x: number) => number = (() => {
+  const source = `
+import { pipe } from '@stopcock/fp'
+import * as O from '@stopcock/fp/option'
+function runOptionChain(x) {
+  return pipe(
+    x,
+    O.fromNullable,
+    O.map((v) => v * 2),
+    O.filter((v) => v % 3 !== 0),
+    O.getOrElse(() => -1),
+  );
+}
+export { runOptionChain };
+`
+  const result = transformStopcockPipelines(source, 'allocation-option-chain.ts', {
+    diagnostics: 'error',
+  })
+  if (result.code === source) {
+    throw new Error('allocation corpus: expected the compiler to transform the Option chain')
+  }
+  const noneAlias = result.code.match(/import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u)?.[1]
+  const stripped = result.code
+    .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gmu, '')
+    .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gmu, '')
+  const body = `${stripped}\nreturn runOptionChain;`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const factory = new Function('O', ...(noneAlias ? [noneAlias] : []), body) as (
+    optionModule: typeof O,
+    ...rest: unknown[]
+  ) => (x: number) => number
+  return factory(O, ...(noneAlias ? [O.none] : []))
+})()
+
+const optionChainReference = (x: number): number => {
+  if (x == null) return -1
+  const doubled = x * 2
+  return doubled % 3 !== 0 ? doubled : -1
+}
+
 export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
   {
     id: 'array.map',
@@ -139,6 +193,24 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
     description: 'A pipeline compiled once and executed per call.',
     subject: () => compiledMapFilter(input),
     reference: mapFilterReference,
+  },
+  {
+    id: 'option.compiled-chain',
+    familyId: 'compiled-option',
+    elements: SIZE,
+    reusesTarget: false,
+    description:
+      'A compiled Option chain (fromNullable/map/filter/getOrElse) applied per element; only the output array should allocate.',
+    subject: () => {
+      const out = new Array<number>(input.length)
+      for (let i = 0; i < input.length; i++) out[i] = compiledOptionChain(input[i])
+      return out
+    },
+    reference: () => {
+      const out = new Array<number>(input.length)
+      for (let i = 0; i < input.length; i++) out[i] = optionChainReference(input[i])
+      return out
+    },
   },
   {
     id: 'iter.map-filter-toArray',

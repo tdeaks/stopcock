@@ -123,6 +123,18 @@ export const EXPECTED_COMPILER_SUPPORTED_OP_NAMES = Object.freeze([
   'nthOrUndefined',
   'only',
   'onlyOrUndefined',
+  'optionFilter',
+  'optionFlatMap',
+  'optionFromNullable',
+  'optionFromPredicate',
+  'optionGetOrElse',
+  'optionMap',
+  'optionMatch',
+  'optionOrElse',
+  'optionTap',
+  'optionToNullable',
+  'optionToUndefined',
+  'optionZip',
   'partition',
   'pluck',
   'prepend',
@@ -132,6 +144,13 @@ export const EXPECTED_COMPILER_SUPPORTED_OP_NAMES = Object.freeze([
   'reduceWhile',
   'reject',
   'remove',
+  'resultFlatMap',
+  'resultFromThrowable',
+  'resultGetOrElse',
+  'resultMap',
+  'resultMapErr',
+  'resultMatch',
+  'resultToOption',
   'reverse',
   'sample',
   'scan',
@@ -194,7 +213,7 @@ export const EXPECTED_COMPILER_SUPPORTED_OP_NAMES = Object.freeze([
 ] as const)
 
 export const EXPECTED_COMPILER_SUPPORTED_OPS_SHA256 =
-  'ead571e7f1b695df08e2eaa04c46696744b5552a16bdcb1bbd21585f3a14e8cc'
+  'f0263fc51e42b93678428bdcfd7dcd88dcea6445cff3165e026fd56d5bc52116'
 
 /**
  * The compiler currently claims all 44 portable-corpus cases. Keeping the

@@ -1,10 +1,15 @@
 /**
  * Untagged internal duals.
  *
- * These are deliberately independent of `./dual` and `./opcodes`. A non-fusible
- * operation has no opcode and never will, so routing it through the public
- * tagged dispatcher only makes every consumer bundle retain the opcode table
- * and the fusion-shaped wrappers.
+ * Deliberately independent of `./dual` and `./opcodes`, in a separate module
+ * from both: a non-fusible operation has no opcode and never will, so
+ * routing it through the public tagged dispatcher -- or merely sharing a
+ * source file with it -- makes every consumer bundle retain the opcode
+ * table and the fusion-shaped wrappers even when tree-shaking otherwise
+ * removes the unused tagged path. `benchmarks/src/reference/
+ * s3b-untagged-size-gate.ts` and `packages/fp-compiler/src/__tests__/
+ * hosts.test.ts`'s construction-module allowlist both measure exactly this
+ * separation; a file merge that reads as a harmless rename regresses both.
  *
  * `arguments.length` dispatch, partial application, `this`, error, identity,
  * and allocation behavior match the untagged branches of the public `dual`.
@@ -65,7 +70,7 @@ interface InternalDual {
 }
 
 /**
- * Arity-dispatched form for modules that have not been migrated to a fixed
+ * Arity-dispatched form for a module that has not been migrated to a fixed
  * arity yet. A migrated module calls its exact `dualUntagged*` directly so its
  * bundle retains only that one wrapper.
  */

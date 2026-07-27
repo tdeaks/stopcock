@@ -1,6 +1,6 @@
 import * as t from '@babel/types'
 import { BOUNDARY_OPS, TERMINAL_OPS, callbackArity, opEmitFor } from './ops'
-import type { CallbackHandle, ElementEmitCtx, EmitFragment, OpEmit } from './ops-table'
+import type { CallbackHandle, ElementEmitCtx, EmitFragment, OpEmit, OptionEmitCtx } from './ops-table'
 import { planInline, renderDirectInlineExpressionMapped, renderDirectInlineMapped } from './inline'
 import {
   FULL_ARRAY_LOWERING_ID,
@@ -90,7 +90,7 @@ export interface FusedBody {
   readonly prelude: string
   /** Generated execution statements, after every capture has completed. */
   readonly execution: string
-  readonly segmentKinds: readonly ('stream' | 'boundary' | 'opaque')[]
+  readonly segmentKinds: readonly ('stream' | 'boundary' | 'opaque' | 'option')[]
   readonly sourceFragments: readonly GeneratedSourceFragment[]
 }
 
@@ -138,7 +138,18 @@ interface BoundarySegment {
   readonly step: IndexedStep
 }
 
-type Segment = ElementSegment | BoundarySegment
+/**
+ * A run of consecutive Option/Result-domain steps (phase 2): straight-line
+ * over persistent `_ok`/`_v`/`_err` locals, no loop. A step whose
+ * `compilerPipelineRole` is `'terminal'` (getOrElse/match/toUndefined/
+ * toNullable/toOption), if present, is always the last one and ends the run.
+ */
+interface OptionSegment {
+  readonly kind: 'option'
+  readonly steps: readonly IndexedStep[]
+}
+
+type Segment = ElementSegment | BoundarySegment | OptionSegment
 
 interface PresentConditionalPlan {
   readonly callback: t.ArrowFunctionExpression
@@ -298,6 +309,21 @@ function segmentsFromPlan(plan: StaticCompilerPlanV1): readonly Segment[] {
         throw new Error('fp-compiler: boundary plan segment does not contain one boundary fact')
       }
       segments.push({ kind: 'boundary', step: indexed[0] })
+      continue
+    }
+
+    if (planned.kind === 'option') {
+      let sawTerminal = false
+      for (const item of indexed) {
+        if (sawTerminal) {
+          throw new Error('fp-compiler: option plan segment contains a step after its terminal')
+        }
+        if (item.step.fact.compilerPipelineRole === 'boundary') {
+          throw new Error('fp-compiler: option plan segment contains a boundary fact')
+        }
+        if (item.step.fact.compilerPipelineRole === 'terminal') sawTerminal = true
+      }
+      segments.push({ kind: 'option', steps: indexed })
       continue
     }
 
@@ -589,11 +615,11 @@ function makeCallbackHandle(
   }
 }
 
-type ElementOpEmit = Exclude<OpEmit, { kind: 'boundary' }>
+type ElementOpEmit = Exclude<OpEmit, { kind: 'boundary' } | { kind: 'optionStep' }>
 
 function requireElementEmit(name: string): ElementOpEmit {
   const emit = opEmitFor(name)
-  if (!emit || emit.kind === 'boundary') {
+  if (!emit || emit.kind === 'boundary' || emit.kind === 'optionStep') {
     throw new Error(`fp-compiler: unhandled element op ${name}`)
   }
   return emit
@@ -825,6 +851,214 @@ function emitElementSegment(
   ]
 }
 
+// -- Phase 2: Option and Result -----------------------------------------
+//
+// An option/result segment is straight-line: no loop, no per-step variable
+// renaming. `_ok`/`_v`(/`_err`) are declared once and mutated in place by
+// every step's template (see the templates in operator-definitions.ts),
+// exactly like the plan's own worked example
+// (`pipe(x, O.fromNullable, O.map(f), O.filter(p), O.getOrElse(0))`).
+//
+// Identity is tracked separately from the templates, here, because it is a
+// whole-run property no single op's template can see: `okRef`/`errRef`
+// record what the *whole* Some/Ok or None/Err object would be if the chain
+// ended right after the most recent step, so the final materialization can
+// return the caller's own object instead of allocating a new one when
+// nothing has actually changed it.
+
+type RefUpdateKind = 'unchanged' | 'invalidate' | 'fresh'
+interface RefUpdate {
+  readonly kind: RefUpdateKind
+  readonly prefix?: string
+}
+const UNCHANGED_REF: RefUpdate = { kind: 'unchanged' }
+const INVALIDATE_REF: RefUpdate = { kind: 'invalidate' }
+const freshRef = (prefix: string): RefUpdate => ({ kind: 'fresh', prefix })
+
+interface RefState {
+  readonly valid: boolean
+  readonly expr: string
+}
+const INVALID_REF: RefState = { valid: false, expr: '' }
+
+/**
+ * Per-op identity transition, keyed by the canonical compiler name. Absent
+ * for a terminal op (getOrElse/match/toUndefined/toNullable/toOption): those
+ * end the run and compute their own output directly from `_ok`/`_v`/`_err`,
+ * never from `okRef`/`errRef`.
+ *
+ * `optionFlatMap`/`resultFlatMap` land on one deterministic source when they
+ * succeed (the callback's own returned Option/Result is the only way to
+ * reach "ok" after them), so `ok` is always a fresh, valid reference. The two
+ * cases whose *failure* channel is reachable two different ways
+ * (`resultFlatMap`'s `err` -- pass-through-already-Err, or new-Err-from-
+ * callback; `optionOrElse`'s `ok` -- pass-through-already-Some, or
+ * fallback-now-Some) are deliberately conservative and always invalidate: a
+ * correct, occasionally-one-allocation-more choice, not a soundness gap.
+ */
+const OPTION_REF_RULES: Readonly<
+  Record<string, { readonly ok: RefUpdate; readonly err?: RefUpdate }>
+> = {
+  optionFromNullable: { ok: INVALIDATE_REF },
+  optionFromPredicate: { ok: INVALIDATE_REF },
+  optionMap: { ok: INVALIDATE_REF },
+  optionFlatMap: { ok: freshRef('_t') },
+  optionFilter: { ok: UNCHANGED_REF },
+  optionOrElse: { ok: INVALIDATE_REF },
+  optionTap: { ok: UNCHANGED_REF },
+  optionZip: { ok: INVALIDATE_REF },
+  resultMap: { ok: INVALIDATE_REF, err: UNCHANGED_REF },
+  resultMapErr: { ok: UNCHANGED_REF, err: INVALIDATE_REF },
+  resultFlatMap: { ok: freshRef('_t'), err: INVALIDATE_REF },
+  resultFromThrowable: { ok: INVALIDATE_REF, err: INVALIDATE_REF },
+}
+
+function applyRefUpdate(pre: RefState, update: RefUpdate | undefined, index: number): RefState {
+  if (update === undefined || update.kind === 'unchanged') return pre
+  if (update.kind === 'invalidate') return INVALID_REF
+  return { valid: true, expr: `${update.prefix}${index}` }
+}
+
+type OptionOpEmit = Extract<OpEmit, { kind: 'optionStep' }>
+
+function requireOptionEmit(name: string): OptionOpEmit {
+  const emit = opEmitFor(name)
+  if (!emit || emit.kind !== 'optionStep') {
+    throw new Error(`fp-compiler: unhandled option op ${name}`)
+  }
+  return emit
+}
+
+function optionElementCtx(
+  step: Step,
+  index: number,
+  ok: string,
+  v: string,
+  err: string,
+  next: string,
+  code: string,
+  inlineCallbacks: boolean,
+  renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
+  optionNoneLocal: string,
+): OptionEmitCtx {
+  const arity = callbackArity(step.name) ?? 0
+  const hasCallback = arity > 0
+  const restStart = hasCallback ? 1 : 0
+  const a1Node = step.args[restStart]
+  const a2Node = step.args[restStart + 1]
+  const cb = hasCallback
+    ? makeCallbackHandle(
+        step.args[0],
+        `_cb${index}`,
+        code,
+        inlineCallbacks,
+        renderExpression,
+        renderSource,
+      )
+    : NO_CALLBACK_HANDLE
+  return {
+    index,
+    ok,
+    v,
+    err,
+    next,
+    a1: a1Node ? `(${renderExpression(a1Node)})` : '',
+    a2: a2Node ? `(${renderExpression(a2Node)})` : '',
+    optionNone: optionNoneLocal,
+    cb,
+  }
+}
+
+function emitOptionSegment(
+  seg: OptionSegment,
+  curData: string,
+  nextData: string,
+  code: string,
+  preLines: string[],
+  optionNoneLocal: string,
+  inlineCallbacks: boolean,
+  renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
+): string[] {
+  const bodyLines: string[] = []
+  const startIndex = seg.steps[0].index
+  const firstFact = seg.steps[0].step.fact
+  const isResult = seg.steps.some(
+    ({ step }) => step.fact.inputDomain === 'result' || step.fact.outputDomain === 'result',
+  )
+  const isConstructorStart = firstFact.inputDomain === 'scalar'
+  const ok = `_ok${startIndex}`
+  const v = `_v${startIndex}`
+  const err = isResult ? `_err${startIndex}` : ''
+
+  bodyLines.push(`var ${v} = ${curData};`)
+  let okRef: RefState
+  let errRef: RefState = INVALID_REF
+  if (isConstructorStart) {
+    // A constructor (fromNullable/fromPredicate/fromThrowable) computes
+    // `_ok`(/`_v`/`_err`) itself from the raw incoming value; it declares no
+    // wrapper object of its own, so there is nothing to reuse at the end.
+    bodyLines.push(`var ${ok};`)
+    if (isResult) bodyLines.push(`var ${err};`)
+    okRef = INVALID_REF
+  } else {
+    // The run starts from an already-built Option/Result (either the pipe's
+    // own source, or a preceding array segment's Option-producing terminal --
+    // head/find/... -- flowing straight into this one). Reading `._tag`/
+    // `.value`/`.error` is a cheap property access, not an allocation.
+    bodyLines.push(`var ${ok} = ${v}._tag === 1;`)
+    if (isResult) {
+      bodyLines.push(`var ${err};`)
+      bodyLines.push(`if (${ok}) { ${v} = ${v}.value; } else { ${err} = ${v}.error; }`)
+    } else {
+      bodyLines.push(`if (${ok}) { ${v} = ${v}.value; }`)
+    }
+    okRef = { valid: true, expr: curData }
+    errRef = isResult ? { valid: true, expr: curData } : INVALID_REF
+  }
+
+  let endsInTerminal = false
+  seg.steps.forEach(({ index, step }) => {
+    const emit = requireOptionEmit(step.name)
+    const isTerminal = step.fact.compilerPipelineRole === 'terminal'
+    endsInTerminal = isTerminal
+    const ctx = optionElementCtx(
+      step,
+      index,
+      ok,
+      v,
+      err,
+      isTerminal ? nextData : '',
+      code,
+      inlineCallbacks,
+      renderExpression,
+      renderSource,
+      optionNoneLocal,
+    )
+    const fragment = emit.render(ctx)
+    preLines.push(...(fragment.pre ?? []))
+    bodyLines.push(...(fragment.state ?? []), ...fragment.body, ...(fragment.close ?? []))
+    if (!isTerminal) {
+      const rule = OPTION_REF_RULES[step.name]
+      okRef = applyRefUpdate(okRef, rule?.ok, index)
+      if (isResult) errRef = applyRefUpdate(errRef, rule?.err, index)
+    }
+  })
+
+  if (!endsInTerminal) {
+    const okExpr = okRef.valid ? okRef.expr : `{ _tag: 1, value: ${v} }`
+    const notOkExpr = isResult
+      ? errRef.valid
+        ? errRef.expr
+        : `{ _tag: 0, error: ${err} }`
+      : optionNoneLocal
+    bodyLines.push(`var ${nextData} = ${ok} ? (${okExpr}) : (${notOkExpr});`)
+  }
+
+  return bodyLines
+}
+
 // Boundary operator expressions are hoisted with the other pipe arguments.
 // Calling the real operator preserves its stable sorting kernel, callback
 // trace, and property-access/evaluation semantics instead of reimplementing
@@ -914,7 +1148,7 @@ function emitBoundarySegment(
 // contribute to a loop body, here running once between two array segments
 // (or standing alone, for an all-scalar pipe with no array step at all).
 function emitInlineBoundaryStep(
-  emit: Exclude<OpEmit, { kind: 'boundary' }>,
+  emit: Exclude<OpEmit, { kind: 'boundary' } | { kind: 'optionStep' }>,
   step: Step,
   index: number,
   curData: string,
@@ -1025,7 +1259,11 @@ function generateSegmentedBodyInternal(
           : undefined
       if (pureMapLengthTerminalIndexes.has(seg.step.index)) {
         blockLines.push(...emitPureMapLengthBoundary(seg.step.index, curData, nextData))
-      } else if (inlineEmit !== undefined && inlineEmit.kind !== 'boundary') {
+      } else if (
+        inlineEmit !== undefined &&
+        inlineEmit.kind !== 'boundary' &&
+        inlineEmit.kind !== 'optionStep'
+      ) {
         blockLines.push(
           ...emitInlineBoundaryStep(
             inlineEmit,
@@ -1053,6 +1291,20 @@ function generateSegmentedBodyInternal(
           ),
         )
       }
+    } else if (seg.kind === 'option') {
+      blockLines.push(
+        ...emitOptionSegment(
+          seg,
+          curData,
+          nextData,
+          code,
+          preLines,
+          optionNoneLocal,
+          inlineCallbacks,
+          renderExpression,
+          renderSource,
+        ),
+      )
     } else if (
       seg.steps.length === 0 &&
       seg.terminal !== undefined &&
@@ -1089,7 +1341,9 @@ function generateSegmentedBodyInternal(
     resultVar: curData,
     prelude,
     execution,
-    segmentKinds: segments.map((segment) => (segment.kind === 'boundary' ? 'boundary' : 'stream')),
+    segmentKinds: segments.map((segment) =>
+      segment.kind === 'boundary' || segment.kind === 'option' ? segment.kind : 'stream',
+    ),
   }
 }
 

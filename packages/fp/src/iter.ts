@@ -1,4 +1,4 @@
-import { dual } from './dual-internal'
+import { dual } from './dual-untagged'
 import {
   ITER_DROP,
   ITER_DROP_WHILE,

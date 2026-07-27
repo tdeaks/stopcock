@@ -1,4 +1,4 @@
-import { dualUntagged2, dualUntagged3 } from './dual-internal'
+import { dual } from './dual-untagged'
 import type { Predicate, Refinement } from './guard'
 import { none, some, type Option } from './option'
 
@@ -25,7 +25,7 @@ export const fromPredicate: {
     onFalse: (value: A) => E,
   ): <C extends A>(value: C) => Result<B & C, E>
   <A, E>(predicate: Predicate<A>, onFalse: (value: A) => E): <B extends A>(value: B) => Result<B, E>
-} = /* @__PURE__ */ dualUntagged3(
+} = /* @__PURE__ */ dual(3,
   <A, E>(value: A, predicate: Predicate<A>, onFalse: (value: A) => E): Result<A, E> =>
     predicate(value) ? ok(value) : err(onFalse(value)),
 )
@@ -35,7 +35,7 @@ export const map: {
   <A, B>(
     f: (value: A) => B,
   ): <Current extends Result<A, unknown>>(result: Current) => Result<B, ResultError<Current>>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, B>(result: Result<A, E>, f: (value: A) => B): Result<B, E> =>
     result._tag === 1 ? ok(f(result.value)) : result,
 )
@@ -45,7 +45,7 @@ export const mapErr: {
   <E, F>(
     f: (error: E) => F,
   ): <Current extends Result<unknown, E>>(result: Current) => Result<ResultValue<Current>, F>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, F>(result: Result<A, E>, f: (error: E) => F): Result<A, F> =>
     isErr(result) ? err(f(result.error)) : result,
 )
@@ -59,7 +59,7 @@ export const mapBoth: {
     readonly ok: (value: A) => B
     readonly err: (error: E) => F
   }): (result: Result<A, E>) => Result<B, F>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, B, F>(
     result: Result<A, E>,
     handlers: { readonly ok: (value: A) => B; readonly err: (error: E) => F },
@@ -77,7 +77,7 @@ export const flatMap: {
   ): <Current extends Result<A, unknown>>(
     result: Current,
   ) => Result<ResultValue<ReturnType<Fn>>, ResultError<Current> | ResultError<ReturnType<Fn>>>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, B, F>(result: Result<A, E>, f: (value: A) => Result<B, F>): Result<B, E | F> =>
     isOk(result) ? f(result.value) : result,
 )
@@ -90,7 +90,7 @@ export const flatten = <A, E, F>(result: Result<Result<A, F>, E>): Result<A, E |
 export const orElse: {
   <A, E, B, F>(result: Result<A, E>, onErr: (error: E) => Result<B, F>): Result<A | B, F>
   <E, B, F>(onErr: (error: E) => Result<B, F>): <A>(result: Result<A, E>) => Result<A | B, F>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, B, F>(result: Result<A, E>, onErr: (error: E) => Result<B, F>): Result<A | B, F> =>
     isOk(result) ? result : onErr(result.error),
 )
@@ -98,7 +98,7 @@ export const orElse: {
 export const and: {
   <A, E, B, F>(result: Result<A, E>, next: Result<B, F>): Result<B, E | F>
   <B, F>(next: Result<B, F>): <A, E>(result: Result<A, E>) => Result<B, E | F>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, B, F>(result: Result<A, E>, next: Result<B, F>): Result<B, E | F> =>
     isOk(result) ? next : result,
 )
@@ -106,7 +106,7 @@ export const and: {
 export const zip: {
   <A, E, B, F>(result: Result<A, E>, that: Result<B, F>): Result<readonly [A, B], E | F>
   <B, F>(that: Result<B, F>): <A, E>(result: Result<A, E>) => Result<readonly [A, B], E | F>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, B, F>(result: Result<A, E>, that: Result<B, F>): Result<readonly [A, B], E | F> =>
     isErr(result) ? result : isErr(that) ? that : ok([result.value, that.value] as const),
 )
@@ -121,7 +121,7 @@ export const zipWith: {
     that: Result<B, F>,
     f: (left: A, right: B) => C,
   ): <E>(result: Result<A, E>) => Result<C, E | F>
-} = /* @__PURE__ */ dualUntagged3(
+} = /* @__PURE__ */ dual(3,
   <A, E, B, F, C>(
     result: Result<A, E>,
     that: Result<B, F>,
@@ -133,7 +133,7 @@ export const zipWith: {
 export const ap: {
   <A, E, B, F>(result: Result<A, E>, fn: Result<(value: A) => B, F>): Result<B, E | F>
   <A, B, F>(fn: Result<(value: A) => B, F>): <E>(result: Result<A, E>) => Result<B, E | F>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, B, F>(result: Result<A, E>, fn: Result<(value: A) => B, F>): Result<B, E | F> =>
     isErr(result) ? result : isErr(fn) ? fn : ok(fn.value(result.value)),
 )
@@ -164,7 +164,7 @@ export const filterOrElse: {
     predicate: Predicate<A>,
     onFalse: (value: A) => F,
   ): <B extends A, E>(result: Result<B, E>) => Result<B, E | F>
-} = /* @__PURE__ */ dualUntagged3(
+} = /* @__PURE__ */ dual(3,
   <A, E, F>(
     result: Result<A, E>,
     predicate: Predicate<A>,
@@ -181,7 +181,7 @@ const sameValueZero = (left: unknown, right: unknown): boolean =>
 export const contains: {
   <A, E>(result: Result<A, E>, value: A): boolean
   <A>(value: A): <E>(result: Result<A, E>) => boolean
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E>(result: Result<A, E>, value: A): boolean =>
     isOk(result) && sameValueZero(result.value, value),
 )
@@ -195,7 +195,7 @@ export const containsWith =
 export const exists: {
   <A, E>(result: Result<A, E>, predicate: Predicate<A>): boolean
   <A>(predicate: Predicate<A>): <E>(result: Result<A, E>) => boolean
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E>(result: Result<A, E>, predicate: Predicate<A>): boolean =>
     isOk(result) && predicate(result.value),
 )
@@ -203,14 +203,14 @@ export const exists: {
 export const getOrElse: {
   <A, E, B>(result: Result<A, E>, onErr: (error: E) => B): A | B
   <E, B>(onErr: (error: E) => B): <A>(result: Result<A, E>) => A | B
-} = /* @__PURE__ */ dualUntagged2(<A, E, B>(result: Result<A, E>, onErr: (error: E) => B): A | B =>
+} = /* @__PURE__ */ dual(2, <A, E, B>(result: Result<A, E>, onErr: (error: E) => B): A | B =>
   isOk(result) ? result.value : onErr(result.error),
 )
 
 export const getOrThrow: {
   <A, E>(result: Result<A, E>, onErr: (error: E) => unknown): A
   <E>(onErr: (error: E) => unknown): <A>(result: Result<A, E>) => A
-} = /* @__PURE__ */ dualUntagged2(<A, E>(result: Result<A, E>, onErr: (error: E) => unknown): A => {
+} = /* @__PURE__ */ dual(2, <A, E>(result: Result<A, E>, onErr: (error: E) => unknown): A => {
   if (isOk(result)) return result.value
   throw onErr(result.error)
 })
@@ -223,7 +223,7 @@ export interface Matchers<A, E, B, C = B> {
 export const match: {
   <A, E, B, C>(result: Result<A, E>, matchers: Matchers<A, E, B, C>): B | C
   <A, E, B, C>(matchers: Matchers<A, E, B, C>): (result: Result<A, E>) => B | C
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, B, C>(result: Result<A, E>, matchers: Matchers<A, E, B, C>): B | C =>
     isOk(result) ? matchers.ok(result.value) : matchers.err(result.error),
 )
@@ -313,7 +313,7 @@ export function struct<const T extends Readonly<Record<PropertyKey, Result<unkno
 export const traverse: {
   <A, B, E>(values: readonly A[], f: (value: A, index: number) => Result<B, E>): Result<B[], E>
   <A, B, E>(f: (value: A, index: number) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, B, E>(values: readonly A[], f: (value: A, index: number) => Result<B, E>): Result<B[], E> => {
     const output: B[] = []
     for (let index = 0; index < values.length; index++) {
@@ -363,7 +363,7 @@ export const traverseValidation: {
   <A, B, E>(
     f: (value: A, index: number) => Result<B, E>,
   ): (values: readonly A[]) => Result<B[], NonEmptyArray<E>>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, B, E>(
     values: readonly A[],
     f: (value: A, index: number) => Result<B, E>,
@@ -374,7 +374,7 @@ export const traverseValidation: {
 export const optional: {
   <A, B, E>(value: A | undefined, decode: (value: A) => Result<B, E>): Result<B | undefined, E>
   <A, B, E>(decode: (value: A) => Result<B, E>): (value: A | undefined) => Result<B | undefined, E>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, B, E>(value: A | undefined, decode: (value: A) => Result<B, E>): Result<B | undefined, E> =>
     value === undefined ? ok(undefined) : decode(value),
 )
@@ -382,7 +382,7 @@ export const optional: {
 export const nullable: {
   <A, B, E>(value: A | null, decode: (value: A) => Result<B, E>): Result<B | null, E>
   <A, B, E>(decode: (value: A) => Result<B, E>): (value: A | null) => Result<B | null, E>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, B, E>(value: A | null, decode: (value: A) => Result<B, E>): Result<B | null, E> =>
     value === null ? ok(null) : decode(value),
 )
@@ -396,7 +396,7 @@ export const toOption = <A, E>(result: Result<A, E>): Option<A> =>
 export const tap: {
   <A, E>(result: Result<A, E>, f: (value: A) => void): Result<A, E>
   <A>(f: (value: A) => void): <E>(result: Result<A, E>) => Result<A, E>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E>(result: Result<A, E>, f: (value: A) => void): Result<A, E> => {
     if (isOk(result)) f(result.value)
     return result
@@ -406,7 +406,7 @@ export const tap: {
 export const tapErr: {
   <A, E>(result: Result<A, E>, f: (error: E) => void): Result<A, E>
   <E>(f: (error: E) => void): <A>(result: Result<A, E>) => Result<A, E>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E>(result: Result<A, E>, f: (error: E) => void): Result<A, E> => {
     if (isErr(result)) f(result.error)
     return result
@@ -416,7 +416,7 @@ export const tapErr: {
 export const as: {
   <A, E, B>(result: Result<A, E>, value: B): Result<B, E>
   <B>(value: B): <A, E>(result: Result<A, E>) => Result<B, E>
-} = /* @__PURE__ */ dualUntagged2(
+} = /* @__PURE__ */ dual(2,
   <A, E, B>(result: Result<A, E>, value: B): Result<B, E> => (isOk(result) ? ok(value) : result),
 )
 

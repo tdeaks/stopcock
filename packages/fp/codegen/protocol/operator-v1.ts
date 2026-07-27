@@ -8,8 +8,13 @@ export const RUNNER_DESCRIPTOR_PROTOCOL_V1 = 'stopcock.fusion-runner' as const
 export const RUNNER_DESCRIPTOR_PROTOCOL_VERSION_V1 = 1 as const
 
 export type SemanticModeV1 = 'exact' | 'pure'
-export type LogicalDomainV1 = 'array' | 'scalar' | 'iterable'
-export type PhysicalLayoutV1 = 'js-array-dense' | 'js-array-sparse-as-undefined' | 'js-scalar'
+export type LogicalDomainV1 = 'array' | 'scalar' | 'iterable' | 'option' | 'result'
+export type PhysicalLayoutV1 =
+  | 'js-array-dense'
+  | 'js-array-sparse-as-undefined'
+  | 'js-scalar'
+  | 'js-option'
+  | 'js-result'
 export type CardinalityV1 =
   | 'one-to-one'
   | 'filtering'
@@ -702,8 +707,12 @@ export function defineOperatorV1(input: OperatorSemanticInputV1): OperatorSemant
   assertPackageQualifiedSemanticId(input.semanticId, 'semanticId')
   assertInteger(input.semanticRevision, 'semanticRevision')
   assertString(input.publicName, 'publicName')
-  assertEnum(input.inputDomain, ['array', 'scalar', 'iterable'], 'inputDomain')
-  assertEnum(input.outputDomain, ['array', 'scalar', 'iterable'], 'outputDomain')
+  assertEnum(input.inputDomain, ['array', 'scalar', 'iterable', 'option', 'result'], 'inputDomain')
+  assertEnum(
+    input.outputDomain,
+    ['array', 'scalar', 'iterable', 'option', 'result'],
+    'outputDomain',
+  )
   assertStringArray(input.acceptedLayouts, 'acceptedLayouts', {
     nonEmpty: true,
     unique: true,
@@ -711,7 +720,13 @@ export function defineOperatorV1(input: OperatorSemanticInputV1): OperatorSemant
   input.acceptedLayouts.forEach((layout, index) =>
     assertEnum(
       layout,
-      ['js-array-dense', 'js-array-sparse-as-undefined', 'js-scalar'],
+      [
+        'js-array-dense',
+        'js-array-sparse-as-undefined',
+        'js-scalar',
+        'js-option',
+        'js-result',
+      ],
       `acceptedLayouts[${index}]`,
     ),
   )
@@ -784,7 +799,13 @@ export function defineLoweringV1(input: OperatorLoweringInputV1): OperatorLoweri
   input.acceptedLayouts.forEach((layout, index) =>
     assertEnum(
       layout,
-      ['js-array-dense', 'js-array-sparse-as-undefined', 'js-scalar'],
+      [
+        'js-array-dense',
+        'js-array-sparse-as-undefined',
+        'js-scalar',
+        'js-option',
+        'js-result',
+      ],
       `lowering.acceptedLayouts[${index}]`,
     ),
   )
@@ -1159,16 +1180,40 @@ export interface ElementEmitCtx {
 
 export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
 
-/** The six emission kinds from the phase 1 plan. `expr`/`filter`/`expand`/
- * `stateful` cover element (loop-body) ops; `sink` covers terminals; a
- * `boundary` op has no template at all, it stays a whole-array call emitted
- * by `emitBoundarySegment`. `indexed` marks the `withIndex` sibling of a
- * base op (map/mapWithIndex, filter/filterWithIndex, forEach/
- * forEachWithIndex) reusing the same `render` function. */
+/** Everything an Option/Result template needs, as plain strings over the
+ * segment's persistent locals -- no loop, no per-step variable renaming.
+ * `ok`/`v`/`err` are mutated in place across every step of the run (`err` is
+ * `''` for an Option-only run, since None carries no payload); `next` is only
+ * populated for a step whose `compilerPipelineRole` is `'terminal'`, naming
+ * the segment's output variable exactly like `ElementEmitCtx.next` does. */
+export interface OptionEmitCtx {
+  readonly index: number
+  readonly ok: string
+  readonly v: string
+  readonly err: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly optionNone: string
+  readonly cb: CallbackHandle
+}
+
+/** The seven emission kinds. `expr`/`filter`/`expand`/`stateful` cover
+ * element (loop-body) ops; `sink` covers terminals; `optionStep` covers the
+ * Option/Result domains (phase 2), a straight-line statement over persistent
+ * `_ok`/`_v`/`_err` locals rather than a loop body; a `boundary` op has no
+ * template at all, it stays a whole-array call emitted by
+ * `emitBoundarySegment`. `indexed` marks the `withIndex` sibling of a base op
+ * (map/mapWithIndex, filter/filterWithIndex, forEach/forEachWithIndex)
+ * reusing the same `render` function. */
 export type OpEmit =
   | {
       readonly kind: OpEmitKind
       readonly indexed?: true
       readonly render: (ctx: ElementEmitCtx) => EmitFragment
+    }
+  | {
+      readonly kind: 'optionStep'
+      readonly render: (ctx: OptionEmitCtx) => EmitFragment
     }
   | { readonly kind: 'boundary' }

@@ -37,6 +37,22 @@ export interface ElementEmitCtx {
   readonly cb: CallbackHandle
 }
 
+/** Everything an Option/Result template needs: persistent `_ok`/`_v`/`_err`
+ * locals mutated straight-line across every step of one compiled run, no
+ * loop. `err` is `''` for an Option-only run. `next` is only populated for
+ * a `'terminal'`-role step. */
+export interface OptionEmitCtx {
+  readonly index: number
+  readonly ok: string
+  readonly v: string
+  readonly err: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly optionNone: string
+  readonly cb: CallbackHandle
+}
+
 export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
 
 export type OpEmit =
@@ -44,6 +60,10 @@ export type OpEmit =
       readonly kind: OpEmitKind
       readonly indexed?: true
       readonly render: (ctx: ElementEmitCtx) => EmitFragment
+    }
+  | {
+      readonly kind: 'optionStep'
+      readonly render: (ctx: OptionEmitCtx) => EmitFragment
     }
   | { readonly kind: 'boundary' }
 
@@ -53,8 +73,8 @@ export interface OpsTableEntry {
   readonly bindings: readonly ('fn' | 'a1' | 'a2')[]
   readonly semanticId: string
   readonly semanticRevision: number
-  readonly inputDomain: 'array' | 'scalar' | 'iterable'
-  readonly outputDomain: 'array' | 'scalar' | 'iterable'
+  readonly inputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result'
+  readonly outputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result'
   readonly cardinality:
     | 'one-to-one'
     | 'filtering'
@@ -87,6 +107,18 @@ export const ELEMENT_OP_NAMES = [
   'take',
   'takeUntil',
   'takeWhile',
+  'optionFilter',
+  'optionFlatMap',
+  'optionFromNullable',
+  'optionFromPredicate',
+  'optionMap',
+  'optionOrElse',
+  'optionTap',
+  'optionZip',
+  'resultFlatMap',
+  'resultFromThrowable',
+  'resultMap',
+  'resultMapErr',
 ] as const
 export const TERMINAL_OP_NAMES = [
   'count',
@@ -106,6 +138,13 @@ export const TERMINAL_OP_NAMES = [
   'reduce',
   'some',
   'sum',
+  'optionGetOrElse',
+  'optionMatch',
+  'optionToNullable',
+  'optionToUndefined',
+  'resultGetOrElse',
+  'resultMatch',
+  'resultToOption',
 ] as const
 export const BOUNDARY_OP_NAMES = [
   'adjust',
@@ -1230,7 +1269,9 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
       kind: 'sink',
       render: (ctx) => ({
         pre: [`var ${ctx.next} = ${ctx.optionNone};`],
-        body: [`if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; }`],
+        body: [
+          `if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; break ${ctx.outerLabel}; }`,
+        ],
       }),
     },
   },
@@ -3605,6 +3646,512 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
     emit: { kind: 'boundary' },
+  },
+  {
+    name: 'optionFilter',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/option/filter',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'option',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/option/filter/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/optionFilter/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [`if (!(${expr})) { ${ctx.ok} = false; }`])
+        return { pre: cb.pre, body: [`if (${ctx.ok}) {`, ...cb.body, '}'] }
+      },
+    },
+  },
+  {
+    name: 'optionFlatMap',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/option/flatMap',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'option',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/option/flatMap/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/optionFlatMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const t = `_t${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v], (expr) => [`var ${t} = ${expr};`])
+        return {
+          pre: cb.pre,
+          body: [
+            `if (${ctx.ok}) {`,
+            ...cb.body,
+            `${ctx.ok} = ${t}._tag === 1;`,
+            `if (${ctx.ok}) { ${ctx.v} = ${t}.value; }`,
+            '}',
+          ],
+        }
+      },
+    },
+  },
+  {
+    name: 'optionFromNullable',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/option/fromNullable',
+    semanticRevision: 1,
+    inputDomain: 'scalar',
+    outputDomain: 'option',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/option/fromNullable/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/optionFromNullable/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => ({ body: [`${ctx.ok} = (${ctx.v} != null);`] }),
+    },
+  },
+  {
+    name: 'optionFromPredicate',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/option/fromPredicate',
+    semanticRevision: 1,
+    inputDomain: 'scalar',
+    outputDomain: 'option',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/option/fromPredicate/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/optionFromPredicate/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [`${ctx.ok} = (${expr});`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'optionGetOrElse',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/option/getOrElse',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/option/getOrElse/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/optionGetOrElse/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => ({
+        body: [`var ${ctx.next} = ${ctx.ok} ? ${ctx.v} : (${ctx.a1})();`],
+      }),
+    },
+  },
+  {
+    name: 'optionMap',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/option/map',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'option',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/option/map/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/optionMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [`${ctx.v} = ${expr};`])
+        return { pre: cb.pre, body: [`if (${ctx.ok}) {`, ...cb.body, '}'] }
+      },
+    },
+  },
+  {
+    name: 'optionMatch',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/option/match',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/option/match/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/optionMatch/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => ({
+        body: [`var ${ctx.next} = ${ctx.ok} ? (${ctx.a1}).some(${ctx.v}) : (${ctx.a1}).none();`],
+      }),
+    },
+  },
+  {
+    name: 'optionOrElse',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/option/orElse',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'option',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/option/orElse/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/optionOrElse/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const f = `_f${ctx.index}`
+        return {
+          body: [
+            `if (!${ctx.ok}) {`,
+            `var ${f} = ${ctx.a1};`,
+            `${ctx.ok} = ${f}._tag === 1;`,
+            `if (${ctx.ok}) { ${ctx.v} = ${f}.value; }`,
+            '}',
+          ],
+        }
+      },
+    },
+  },
+  {
+    name: 'optionTap',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/option/tap',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'option',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/option/tap/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/optionTap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [`${expr};`])
+        return { pre: cb.pre, body: [`if (${ctx.ok}) {`, ...cb.body, '}'] }
+      },
+    },
+  },
+  {
+    name: 'optionToNullable',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/option/toNullable',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/option/toNullable/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/optionToNullable/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.ok} ? ${ctx.v} : null;`] }),
+    },
+  },
+  {
+    name: 'optionToUndefined',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/option/toUndefined',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/option/toUndefined/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/optionToUndefined/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.ok} ? ${ctx.v} : undefined;`] }),
+    },
+  },
+  {
+    name: 'optionZip',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/option/zip',
+    semanticRevision: 1,
+    inputDomain: 'option',
+    outputDomain: 'option',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/option/zip/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/optionZip/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const z = `_z${ctx.index}`
+        return {
+          body: [
+            `if (${ctx.ok}) {`,
+            `var ${z} = ${ctx.a1};`,
+            `${ctx.ok} = ${z}._tag === 1;`,
+            `if (${ctx.ok}) { ${ctx.v} = [${ctx.v}, ${z}.value]; }`,
+            '}',
+          ],
+        }
+      },
+    },
+  },
+  {
+    name: 'resultFlatMap',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/result/flatMap',
+    semanticRevision: 1,
+    inputDomain: 'result',
+    outputDomain: 'result',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/result/flatMap/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/resultFlatMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const t = `_t${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v], (expr) => [`var ${t} = ${expr};`])
+        return {
+          pre: cb.pre,
+          body: [
+            `if (${ctx.ok}) {`,
+            ...cb.body,
+            `${ctx.ok} = ${t}._tag === 1;`,
+            `if (${ctx.ok}) { ${ctx.v} = ${t}.value; } else { ${ctx.err} = ${t}.error; }`,
+            '}',
+          ],
+        }
+      },
+    },
+  },
+  {
+    name: 'resultFromThrowable',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/result/fromThrowable',
+    semanticRevision: 1,
+    inputDomain: 'scalar',
+    outputDomain: 'result',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/result/fromThrowable/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/resultFromThrowable/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const e = `_e${ctx.index}`
+        return {
+          body: [
+            `try { ${ctx.v} = (${ctx.v})(); ${ctx.ok} = true; } catch (${e}) { ${ctx.err} = ${e}; ${ctx.ok} = false; }`,
+          ],
+        }
+      },
+    },
+  },
+  {
+    name: 'resultGetOrElse',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/result/getOrElse',
+    semanticRevision: 1,
+    inputDomain: 'result',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/result/getOrElse/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/resultGetOrElse/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.err], (expr) => [
+          `var ${ctx.next} = ${ctx.ok} ? ${ctx.v} : (${expr});`,
+        ])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'resultMap',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/result/map',
+    semanticRevision: 1,
+    inputDomain: 'result',
+    outputDomain: 'result',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/result/map/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/resultMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [`${ctx.v} = ${expr};`])
+        return { pre: cb.pre, body: [`if (${ctx.ok}) {`, ...cb.body, '}'] }
+      },
+    },
+  },
+  {
+    name: 'resultMapErr',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/result/mapErr',
+    semanticRevision: 1,
+    inputDomain: 'result',
+    outputDomain: 'result',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/result/mapErr/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/resultMapErr/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.err], (expr) => [`${ctx.err} = ${expr};`])
+        return { pre: cb.pre, body: [`if (!${ctx.ok}) {`, ...cb.body, '}'] }
+      },
+    },
+  },
+  {
+    name: 'resultMatch',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/result/match',
+    semanticRevision: 1,
+    inputDomain: 'result',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/result/match/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/resultMatch/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => ({
+        body: [
+          `var ${ctx.next} = ${ctx.ok} ? (${ctx.a1}).ok(${ctx.v}) : (${ctx.a1}).err(${ctx.err});`,
+        ],
+      }),
+    },
+  },
+  {
+    name: 'resultToOption',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/result/toOption',
+    semanticRevision: 1,
+    inputDomain: 'result',
+    outputDomain: 'option',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/result/toOption/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/resultToOption/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'optionStep',
+      render: (ctx) => ({
+        body: [`var ${ctx.next} = ${ctx.ok} ? { _tag: 1, value: ${ctx.v} } : ${ctx.optionNone};`],
+      }),
+    },
   },
   {
     name: 'strIsEmpty',

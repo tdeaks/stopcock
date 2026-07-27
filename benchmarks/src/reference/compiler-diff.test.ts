@@ -26,6 +26,8 @@ import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
 import * as N from '@stopcock/fp/math'
 import * as S from '@stopcock/fp/string'
+import * as O from '@stopcock/fp/option'
+import * as R from '@stopcock/fp/result'
 import { none } from '@stopcock/fp/option'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import { compileEmittedPipeline, type EmitterBinding, type PipelineDesc } from './emitter'
@@ -644,5 +646,308 @@ describe('phase 1.4: scalar op mid-pipeline compiles as one site', () => {
     const transformedValue = runTransformedScalar(source, INPUT, [])
     expect(transformedValue).toEqual(originalValue)
     expect(transformedValue).toBe(-8)
+  })
+})
+
+// --- phase 2: the option and result domains -------------------------------
+//
+// Option lowers to `(_ok, _v)`, Result to `(_ok, _v, _err)`: persistent
+// locals mutated straight-line across every step, no loop. `pipe` here is
+// `@stopcock/fp/fusion`'s (the fused tier), same as every other fixture in
+// this file. `none` is the one frozen singleton the runtime ever builds
+// (`packages/fp/src/option.ts`); a compiled site importing it needs the
+// same aliasing dance `runTransformed` already does above.
+
+function probeSourceOptionResult(source: string): string {
+  return `import { pipe } from '@stopcock/fp/fusion'\nimport * as A from '@stopcock/fp/array'\nimport * as O from '@stopcock/fp/option'\nimport * as R from '@stopcock/fp/result'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+}
+
+function runOptionResult(source: string, input: unknown, log: unknown[]): unknown {
+  const full = `function __fixture(input, track, pipe, A, O, R) {\n${source}\n}\nreturn __fixture(input, track, pipe, A, O, R);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function('input', 'track', 'pipe', 'A', 'O', 'R', full)
+  return fn(input, (x: unknown) => log.push(x), pipe, A, O, R)
+}
+
+function runTransformedOptionResult(source: string, input: unknown, log: unknown[]): unknown {
+  const wrapped = probeSourceOptionResult(source)
+  const result = transformStopcockPipelines(wrapped, 'fixture.ts', { diagnostics: false })
+  const noneAlias = result.code.match(/import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u)?.[1]
+  const stripped = result.code
+    .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+    .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gm, '')
+  const call = `${stripped}\nreturn __fixture(input, track);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function(
+    'input',
+    'track',
+    'pipe',
+    'A',
+    'O',
+    'R',
+    ...(noneAlias ? [noneAlias] : []),
+    call,
+  )
+  return fn(input, (x: unknown) => log.push(x), pipe, A, O, R, ...(noneAlias ? [none] : []))
+}
+
+/** Runs one fixture both ways and asserts the compiler actually fused it. */
+function expectCompiledMatch(name: string, source: string, input: unknown): void {
+  const originalLog: unknown[] = []
+  const originalValue = runOptionResult(source, input, originalLog)
+
+  const probe = probeSourceOptionResult(source)
+  const result = transformStopcockPipelines(probe, `${name}.ts`, { diagnostics: 'verbose' })
+  expect(result.code, `${name}: expected the compiler to transform this pipeline`).not.toBe(probe)
+  expect(result.diagnostics[0]?.transformed, `${name}: expected a compiled site`).toBe(true)
+
+  const transformedLog: unknown[] = []
+  const transformedValue = runTransformedOptionResult(source, input, transformedLog)
+
+  expect(transformedValue, name).toEqual(originalValue)
+  expect(transformedLog.length, `${name}: callback invocation count`).toBe(originalLog.length)
+}
+
+describe('phase 2: Option ops compile, agreeing with the real runtime', () => {
+  it.each([
+    ['map: Some', `return pipe(O.some(5), O.map((x) => (track(x), x * 2)));`],
+    ['map: None', `return pipe(O.none, O.map((x) => (track(x), x * 2)));`],
+    [
+      'flatMap: Some -> Some',
+      `return pipe(O.some(5), O.flatMap((x) => (track(x), O.some(x + 1))));`,
+    ],
+    ['flatMap: Some -> None', `return pipe(O.some(5), O.flatMap((x) => (track(x), O.none)));`],
+    ['flatMap: None (callback not called)', `return pipe(O.none, O.flatMap((x) => (track(x), O.some(x))));`],
+    ['filter: Some passes', `return pipe(O.some(4), O.filter((x) => (track(x), x % 2 === 0)));`],
+    ['filter: Some fails', `return pipe(O.some(3), O.filter((x) => (track(x), x % 2 === 0)));`],
+    ['filter: None (callback not called)', `return pipe(O.none, O.filter((x) => (track(x), true)));`],
+    ['getOrElse: Some', `return pipe(O.some(9), O.getOrElse(() => (track(0), -1)));`],
+    ['getOrElse: None calls onNone once', `return pipe(O.none, O.getOrElse(() => (track(0), -1)));`],
+    ['orElse: Some unaffected', `return pipe(O.some(1), O.orElse(O.some(99)));`],
+    ['orElse: None takes fallback', `return pipe(O.none, O.orElse(O.some(99)));`],
+    ['orElse: None, fallback also None', `return pipe(O.none, O.orElse(O.none));`],
+    [
+      'match: Some branch',
+      `return pipe(O.some(5), O.match({ none: () => (track(0), 'n'), some: (x) => (track(x), 'y:' + x) }));`,
+    ],
+    [
+      'match: None branch',
+      `return pipe(O.none, O.match({ none: () => (track(0), 'n'), some: (x) => (track(x), 'y:' + x) }));`,
+    ],
+    ['toUndefined: Some', `return pipe(O.some(5), O.toUndefined);`],
+    ['toUndefined: None', `return pipe(O.none, O.toUndefined);`],
+    ['toNullable: Some', `return pipe(O.some(5), O.toNullable);`],
+    ['toNullable: None', `return pipe(O.none, O.toNullable);`],
+    ['zip: both Some', `return pipe(O.some(1), O.zip(O.some(2)));`],
+    ['zip: left None', `return pipe(O.none, O.zip(O.some(2)));`],
+    ['zip: right None', `return pipe(O.some(1), O.zip(O.none));`],
+    ['fromNullable: null', `return pipe(null, O.fromNullable, O.getOrElse(() => 'fallback'));`],
+    [
+      'fromNullable: undefined',
+      `return pipe(undefined, O.fromNullable, O.getOrElse(() => 'fallback'));`,
+    ],
+    ['fromNullable: 0 is present', `return pipe(0, O.fromNullable, O.getOrElse(() => 'fallback'));`],
+    [
+      "fromNullable: '' is present",
+      `return pipe('', O.fromNullable, O.getOrElse(() => 'fallback'));`,
+    ],
+    [
+      'fromNullable: NaN is present',
+      `return pipe(NaN, O.fromNullable, O.getOrElse(() => 'fallback'));`,
+    ],
+    [
+      'fromPredicate: passes',
+      `return pipe(4, O.fromPredicate((x) => x % 2 === 0), O.getOrElse(() => -1));`,
+    ],
+    [
+      'fromPredicate: fails',
+      `return pipe(3, O.fromPredicate((x) => x % 2 === 0), O.getOrElse(() => -1));`,
+    ],
+  ])('%s', (name, source) => {
+    expectCompiledMatch(name, source, undefined)
+  })
+
+  it('tap fires exactly once and only when present (callback-order case)', () => {
+    const order: string[] = []
+    const source = `
+      const before = O.some(5);
+      const after = pipe(before, O.tap((x) => { track('tap:' + x); }), O.map((x) => (track('map:' + x), x * 2)));
+      return after;
+    `
+    expectCompiledMatch('tap: Some fires once, before map', source, undefined)
+
+    // The order matters, not just the count: tap must run before the
+    // following map, and not at all when the option is None. `map` tracks
+    // its input (5), not its output (10).
+    const someLog: string[] = []
+    runTransformedOptionResult(source, undefined, someLog)
+    expect(someLog).toEqual(['tap:5', 'map:5'])
+
+    const noneSource = `
+      const before = O.none;
+      return pipe(before, O.tap((x) => { track('tap:' + x); }), O.map((x) => (track('map:' + x), x * 2)));
+    `
+    const noneLog: unknown[] = []
+    runTransformedOptionResult(noneSource, undefined, noneLog)
+    expect(noneLog).toEqual([])
+    void order
+  })
+
+  it('None results are the canonical singleton, not a fresh copy', () => {
+    const source = `return pipe(5, O.fromPredicate((x) => x > 100)) === O.none;`
+    const original = runOptionResult(source, undefined, [])
+    expect(original).toBe(true)
+
+    const probe = probeSourceOptionResult(source)
+    const result = transformStopcockPipelines(probe, 'none-singleton.ts', { diagnostics: false })
+    expect(result.code).not.toBe(probe)
+    const transformed = runTransformedOptionResult(source, undefined, [])
+    expect(transformed).toBe(true)
+  })
+
+  it('two separate compiled sites agree the singleton is identical', () => {
+    const source = `
+      const a = pipe(1, O.fromPredicate((x) => x > 100));
+      const b = pipe(2, O.fromPredicate((x) => x > 100));
+      return a === b;
+    `
+    expect(runOptionResult(source, undefined, [])).toBe(true)
+    expect(runTransformedOptionResult(source, undefined, [])).toBe(true)
+  })
+})
+
+describe('phase 2: Result ops compile, agreeing with the real runtime', () => {
+  it.each([
+    ['map: Ok', `return pipe(R.ok(5), R.map((x) => (track(x), x * 2)));`],
+    ['map: Err unaffected', `return pipe(R.err('boom'), R.map((x) => (track(x), x * 2)));`],
+    ['mapErr: Err', `return pipe(R.err('boom'), R.mapErr((e) => (track(e), e + '!')));`],
+    ['mapErr: Ok unaffected', `return pipe(R.ok(5), R.mapErr((e) => (track(e), e + '!')));`],
+    [
+      'flatMap: Ok -> Ok',
+      `return pipe(R.ok(5), R.flatMap((x) => (track(x), R.ok(x + 1))));`,
+    ],
+    [
+      'flatMap: Ok -> Err',
+      `return pipe(R.ok(5), R.flatMap((x) => (track(x), R.err('bad'))));`,
+    ],
+    [
+      'flatMap: Err short-circuits (callback not called)',
+      `return pipe(R.err('boom'), R.flatMap((x) => (track(x), R.ok(x))));`,
+    ],
+    ['getOrElse: Ok', `return pipe(R.ok(5), R.getOrElse((e) => (track(e), -1)));`],
+    [
+      'getOrElse: Err calls onErr with the error',
+      `return pipe(R.err('boom'), R.getOrElse((e) => (track(e), -1)));`,
+    ],
+    [
+      'match: Ok branch',
+      `return pipe(R.ok(5), R.match({ err: (e) => (track(e), 'e:' + e), ok: (x) => (track(x), 'o:' + x) }));`,
+    ],
+    [
+      'match: Err branch',
+      `return pipe(R.err('boom'), R.match({ err: (e) => (track(e), 'e:' + e), ok: (x) => (track(x), 'o:' + x) }));`,
+    ],
+    ['toOption: Ok', `return pipe(R.ok(5), R.toOption);`],
+    ['toOption: Err', `return pipe(R.err('boom'), R.toOption);`],
+    [
+      'fromThrowable: success',
+      `return pipe(() => (track(0), 42), R.fromThrowable, R.getOrElse(() => -1));`,
+    ],
+    [
+      'fromThrowable: throws',
+      `return pipe(() => { track(0); throw new Error('bad'); }, R.fromThrowable, R.getOrElse((e) => e.message));`,
+    ],
+  ])('%s', (name, source) => {
+    expectCompiledMatch(name, source, undefined)
+  })
+
+  it('R.map on Err returns the exact same reference (identity pin)', () => {
+    const source = `
+      const failure = R.err('boom');
+      return pipe(failure, R.map((x) => x * 2)) === failure;
+    `
+    const original = runOptionResult(source, undefined, [])
+    expect(original).toBe(true)
+
+    const transformed = runTransformedOptionResult(source, undefined, [])
+    expect(transformed).toBe(true)
+  })
+
+  it('R.mapErr on Ok returns the exact same reference', () => {
+    const source = `
+      const success = R.ok(5);
+      return pipe(success, R.mapErr((e) => e + '!')) === success;
+    `
+    expect(runOptionResult(source, undefined, [])).toBe(true)
+    expect(runTransformedOptionResult(source, undefined, [])).toBe(true)
+  })
+
+  it('R.toOption(Err) is the canonical None singleton', () => {
+    const source = `return pipe(R.err('boom'), R.toOption) === O.none;`
+    expect(runOptionResult(source, undefined, [])).toBe(true)
+    expect(runTransformedOptionResult(source, undefined, [])).toBe(true)
+  })
+})
+
+// --- phase 2: array-to-option boundary fusion -----------------------------
+//
+// A stream segment ending in an Option-producing array terminal
+// (find/findIndex/findMap/head/last/min/max) flows straight into a
+// following option segment: one fused loop, early exit, then the option
+// block runs straight-line. This is the corpus's honesty check that the
+// early exit actually happens: A.filter's predicate must not be called for
+// elements after A.head's first match, even though A.head and O.map/
+// O.getOrElse are now three separate steps in one pipe() call compiled as a
+// single site.
+
+describe('phase 2: A.filter -> A.head -> O.map -> O.getOrElse fuses as one site', () => {
+  const source = `return pipe(
+    input,
+    A.filter((x) => (track('filter:' + x), x > 0)),
+    A.head,
+    O.map((x) => (track('map:' + x), x * 2)),
+    O.getOrElse(() => -1),
+  );`
+
+  it('agrees with the real runtime on value (not callback count: the compiled site early-exits, the interpreted fusion tier does not fuse head at all)', () => {
+    const input = [-2, -1, 5, 6, 7]
+    const originalValue = runOptionResult(source, input, [])
+
+    const probe = probeSourceOptionResult(source)
+    const result = transformStopcockPipelines(probe, 'array-to-option-fusion.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.code).not.toBe(probe)
+    expect(result.diagnostics[0]?.transformed).toBe(true)
+
+    const transformedValue = runTransformedOptionResult(source, input, [])
+    expect(transformedValue).toEqual(originalValue)
+  })
+
+  it('exits the source loop at the first match: A.filter is not called past it', () => {
+    const log: string[] = []
+    const value = runTransformedOptionResult(source, [-2, -1, 5, 6, 7], log)
+    expect(value).toBe(10)
+    // filter runs for every element up to and including the first match (5,
+    // at index 2); head then breaks the loop, so 6 and 7 are never filtered
+    // and O.map runs exactly once.
+    expect(log).toEqual(['filter:-2', 'filter:-1', 'filter:5', 'map:5'])
+  })
+
+  it('returns the fallback when nothing matches', () => {
+    const log: string[] = []
+    const value = runTransformedOptionResult(source, [-2, -1, -5], log)
+    expect(value).toBe(-1)
+    expect(log).toEqual(['filter:-2', 'filter:-1', 'filter:-5'])
+  })
+
+  it('the compiled site reports exactly one array segment and one option segment', () => {
+    const probe = probeSourceOptionResult(source)
+    const result = transformStopcockPipelines(probe, 'array-to-option.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0].transformed).toBe(true)
+    expect(result.diagnostics[0].segmentKinds).toEqual(['stream', 'option'])
   })
 })

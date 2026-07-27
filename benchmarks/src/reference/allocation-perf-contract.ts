@@ -23,6 +23,7 @@ export type AllocationFamilyId =
   | 'array-direct'
   | 'root-fusion'
   | 'compiled-pipeline'
+  | 'compiled-option'
   | 'iter-terminal'
   | 'typed-array'
   | 'collector-transducer'
@@ -50,6 +51,12 @@ export const ALLOCATION_FAMILIES: readonly AllocationFamily[] = Object.freeze([
     id: 'compiled-pipeline',
     ownerStage: 'P3B',
     description: 'compile() pipelines executed against an array source.',
+  }),
+  Object.freeze({
+    id: 'compiled-option',
+    ownerStage: 'P3B',
+    description:
+      'A compiled Option chain (fromNullable/map/filter/getOrElse) applied per element. Lowers to `_ok`/`_v` locals: no Some/None object should exist mid-chain.',
   }),
   Object.freeze({
     id: 'iter-terminal',

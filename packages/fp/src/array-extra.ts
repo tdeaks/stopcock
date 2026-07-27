@@ -1,4 +1,4 @@
-import { dual } from './dual-internal'
+import { dual } from './dual-untagged'
 import { isNone, isSome, none, some, type Option } from './option'
 import { isErr, ok, type Result } from './result'
 

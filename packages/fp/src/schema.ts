@@ -1,4 +1,4 @@
-import { dual } from './dual-internal'
+import { dual } from './dual-untagged'
 import { err, isErr, ok, type Result } from './result'
 
 export interface StandardTypedV1<Input = unknown, Output = Input> {

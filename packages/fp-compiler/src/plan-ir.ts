@@ -152,6 +152,25 @@ const hasSourceTierMaterializerTerminal = (
   (sourceTier === 'sequential' || sourceTier === 'compact') &&
   (fact.name === 'sum' || fact.name === 'min' || fact.name === 'max')
 
+/**
+ * True for a fact belonging to the option/result domains (phase 2): either
+ * it consumes an already-built Option/Result (`map`, `flatMap`, `getOrElse`,
+ * ...), or it is a raw-value constructor feeding one (`fromNullable`,
+ * `fromPredicate`, `fromThrowable`). Distinguishing this from `'array'`/
+ * `'scalar'` here is what routes a run of these ops into a straight-line
+ * `'option'` segment instead of the array-loop `'stream'` scaffold.
+ */
+const isOptionDomain = (
+  domain: CompilerOperatorFact['inputDomain'] | CompilerOperatorFact['outputDomain'],
+): boolean => domain === 'option' || domain === 'result'
+
+const isOptionFact = (fact: CompilerOperatorFact): boolean =>
+  isOptionDomain(fact.inputDomain) ||
+  (fact.inputDomain === 'scalar' && isOptionDomain(fact.outputDomain))
+
+const nonBoundaryKind = (fact: CompilerOperatorFact): 'stream' | 'option' =>
+  isOptionFact(fact) ? 'option' : 'stream'
+
 export const segmentKindsForOperatorFacts = (
   facts: readonly CompilerOperatorFact[],
   executionLayout: PlanExecutionLayout,
@@ -162,26 +181,27 @@ export const segmentKindsForOperatorFacts = (
       fact.compilerPipelineRole === 'boundary' ||
       hasSourceTierMaterializerTerminal(fact, sourceTier)
         ? 'boundary'
-        : 'stream',
+        : nonBoundaryKind(fact),
     )
   }
 
   const kinds: CompilerSegmentKind[] = []
-  let streamOpen = false
+  let openKind: 'stream' | 'option' | undefined
   for (const fact of facts) {
     if (
       fact.compilerPipelineRole === 'boundary' ||
       hasSourceTierMaterializerTerminal(fact, sourceTier)
     ) {
-      streamOpen = false
+      openKind = undefined
       kinds.push('boundary')
       continue
     }
-    if (!streamOpen) {
-      kinds.push('stream')
-      streamOpen = true
+    const kind = nonBoundaryKind(fact)
+    if (openKind !== kind) {
+      kinds.push(kind)
+      openKind = kind
     }
-    if (fact.compilerPipelineRole === 'terminal') streamOpen = false
+    if (fact.compilerPipelineRole === 'terminal') openKind = undefined
   }
   return kinds
 }
@@ -192,6 +212,7 @@ const segmentPlan = (
   sourceTier: CompilerFallbackTier,
 ): readonly PlanSegment[] => {
   const segments: PlanSegment[] = []
+  let streamKind: 'stream' | 'option' | undefined
   let streamStart = -1
   let streamLength = 0
   let streamInput: CompilerOperatorFact['inputDomain'] | 'unknown' = 'unknown'
@@ -201,13 +222,14 @@ const segmentPlan = (
   const flushStream = (): void => {
     if (streamLength === 0) return
     segments.push({
-      kind: 'stream',
+      kind: streamKind!,
       start: streamStart,
       length: streamLength,
       inputDomain: streamInput,
       outputDomain: streamOutput,
       ...(terminalIndex === undefined ? {} : { terminalIndex }),
     })
+    streamKind = undefined
     streamStart = -1
     streamLength = 0
     streamInput = 'unknown'
@@ -240,10 +262,11 @@ const segmentPlan = (
       })
       continue
     }
+    const kind = nonBoundaryKind(step.fact)
     if (executionLayout === 'sequential-stages') {
       flushStream()
       segments.push({
-        kind: 'stream',
+        kind,
         start: step.index,
         length: 1,
         inputDomain: step.fact.inputDomain,
@@ -252,7 +275,9 @@ const segmentPlan = (
       })
       continue
     }
+    if (streamLength > 0 && streamKind !== kind) flushStream()
     if (streamLength === 0) {
+      streamKind = kind
       streamStart = step.index
       streamInput = step.fact.inputDomain
     }

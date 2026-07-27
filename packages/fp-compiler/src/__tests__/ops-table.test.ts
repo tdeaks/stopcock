@@ -25,9 +25,9 @@ describe('ops-table snapshot', () => {
       .map((record) => {
         const lowering = record.lowerings.find((candidate) => candidate.targetTier === 'compiler')!
         return {
-          // `legacyRuntime.name`, not `semantic.publicName`: see the comment
-          // on this same field in `generate-protocol.ts#compilerEntriesV1`.
-          name: record.legacyRuntime.name,
+          // `compilerName`, not `semantic.publicName`: see the comment on
+          // this same field in `generate-protocol.ts#compilerEntriesV1`.
+          name: record.compilerName,
           callbackArity: record.semantic.callback.arity,
           bindings: record.semantic.bindings.map(({ slot }) => slot),
           semanticId: record.semantic.semanticId,
@@ -63,8 +63,9 @@ describe('ops-table snapshot', () => {
       OPS_TABLE.every((entry) => entry.emit.kind === 'boundary' || typeof entry.emit.render === 'function'),
     ).toBe(true)
     // 140 public array exports plus the phase 1.4 stragglers: 7 math, 8
-    // string, 3 object, 7 guard, 1 array (sortInline) = 26.
-    expect(OPS_TABLE).toHaveLength(166)
+    // string, 3 object, 7 guard, 1 array (sortInline) = 26, plus phase 2's
+    // 12 option ops and 7 result ops = 19.
+    expect(OPS_TABLE).toHaveLength(185)
   })
 
   it('derives compiler classifications from accepted lowerings', () => {
@@ -80,14 +81,14 @@ describe('ops-table snapshot', () => {
 
   it('keeps canonical comparator arity authoritative over legacy runtime metadata', () => {
     const definition = OPERATOR_DEFINITION_RECORDS_V1.find(
-      (record) => record.legacyRuntime.name === 'sortBy',
+      (record) => record.legacyRuntime?.name === 'sortBy',
     )!
     const compilerEntry = OPS_TABLE.find((entry) => entry.name === 'sortBy')!
 
     expect(definition.semantic.callback.arity).toBe(2)
     expect(compilerEntry.callbackArity).toBe(2)
-    expect(definition.legacyRuntime.callbackArity).toBe(1)
-    expect(definition.legacyRuntime.callbackArityDisposition).toBe(
+    expect(definition.legacyRuntime!.callbackArity).toBe(1)
+    expect(definition.legacyRuntime!.callbackArityDisposition).toBe(
       'legacy-comparator-metadata-preserved',
     )
   })
@@ -109,7 +110,7 @@ describe('ops-table snapshot', () => {
     // table.
     const publicArrayExportNames = new Set(
       OPERATOR_DEFINITION_RECORDS_V1.filter((record) => record.publicArrayExport).map(
-        (record) => record.legacyRuntime.name,
+        (record) => record.legacyRuntime!.name,
       ),
     )
     const arrayEntries = OPS_TABLE.filter((entry) => publicArrayExportNames.has(entry.name))
@@ -129,7 +130,9 @@ describe('ops-table snapshot', () => {
   it('does not treat a numeric opcode as semantic identity or authority', () => {
     for (const entry of OPS_TABLE) {
       expect(entry).not.toHaveProperty('opcode')
-      expect(entry.semanticId).toMatch(/^@stopcock\/fp\/(?:array|string|object|math|guard)\//u)
+      expect(entry.semanticId).toMatch(
+        /^@stopcock\/fp\/(?:array|string|object|math|guard|option|result)\//u,
+      )
     }
   })
 })

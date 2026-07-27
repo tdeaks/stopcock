@@ -12,7 +12,7 @@ export const EXPECTED_THIRD_WAVE_SUBJECT_FILES = Object.freeze([
 ] as const)
 
 export const EXPECTED_THIRD_WAVE_SUBJECT_SHA256 =
-  'f6e2740aedebf4e496c2b0f2743695bfbfd05d47f2a0f10c154b7dd0be7e53c9'
+  '3a0ca14dd7f657879442816c004a214883756721545830f9f0863724e17a2e97'
 
 export const EXPECTED_THIRD_WAVE_BASELINE = Object.freeze({
   id: 'stopcock-third-wave-frozen-before-v1',

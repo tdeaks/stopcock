@@ -23,7 +23,14 @@ import {
   type UnsupportedCapabilitiesV1,
 } from './operator-v1'
 
-export type OperatorNamespaceV1 = 'array' | 'string' | 'object' | 'math' | 'guard'
+export type OperatorNamespaceV1 =
+  | 'array'
+  | 'string'
+  | 'object'
+  | 'math'
+  | 'guard'
+  | 'option'
+  | 'result'
 
 export const COMPILER_OPERATION_CORPUS_ID_V1 =
   'stopcock-fp-compiler-operation-complete-w0-v1' as const
@@ -56,7 +63,21 @@ export interface LegacyRuntimeFactV1 {
 export interface OperatorDefinitionRecordV1 {
   readonly semantic: OperatorSemanticV1
   readonly lowerings: readonly OperatorLoweringV1[]
-  readonly legacyRuntime: LegacyRuntimeFactV1
+  /**
+   * Absent for a compiler-only row (the option/result domains, phase 2):
+   * those never had a 1.x runtime encoding and must not mint one. `opcodes.ts`
+   * and `registry.ts` are generated only from records that have this field;
+   * `compilerName` below is the name every record projects into `ops-table.ts`.
+   */
+  readonly legacyRuntime?: LegacyRuntimeFactV1
+  /**
+   * The flat, disambiguated name this op occupies in the one shared
+   * `ops-table.ts` namespace. Equal to `legacyRuntime.name` for every
+   * runtime-backed op; a compiler-only row mints its own (`optionMap`,
+   * `resultMap`, ...) because `map`/`flatMap`/`getOrElse`/`match`/
+   * `fromPredicate` collide across the option, result, and array domains.
+   */
+  readonly compilerName: string
   readonly namespace: OperatorNamespaceV1
   readonly publicArrayExport: boolean
   readonly compilerPipelineRole: CompilerPipelineRoleV1
@@ -109,6 +130,8 @@ const ARRAY_LAYOUTS = [
 ] as const satisfies readonly PhysicalLayoutV1[]
 
 const SCALAR_LAYOUTS = ['js-scalar'] as const satisfies readonly PhysicalLayoutV1[]
+const OPTION_LAYOUTS = ['js-option'] as const satisfies readonly PhysicalLayoutV1[]
+const RESULT_LAYOUTS = ['js-result'] as const satisfies readonly PhysicalLayoutV1[]
 
 const NO_CALLBACK = {
   arity: 0,
@@ -465,7 +488,16 @@ const ELEMENT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
     kind: 'sink',
     render: (ctx) => ({
       pre: [`var ${ctx.next} = ${ctx.optionNone};`],
-      body: [`if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; }`],
+      // Phase 2: fused behind a preceding array segment, `head` used to
+      // scan every remaining element after finding the first (its own
+      // one-step fast path in `emitSequentialPropertyTerminal` never hit
+      // this template at all). Breaking here matches `find`/`some`/`every`
+      // and is what the array-to-option boundary fusion corpus pins: the
+      // fused loop must not keep calling an upstream predicate past the
+      // first match.
+      body: [
+        `if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; break ${ctx.outerLabel}; }`,
+      ],
     }),
   },
   last: {
@@ -635,6 +667,392 @@ function emitDeclarationFor(row: LegacyRowV1): { readonly emit?: OpEmit; readonl
     `operator definitions v1: ${row.name} has compilerPipelineRole ${row.compilerPipelineRole} but no emit template`,
   )
 }
+
+// -- Phase 2: Option and Result compiled emission ---------------------------
+//
+// Option is `(ok, v)`, Result is `(ok, v, err)`: persistent locals threaded
+// straight-line through every step of one compiled run, no loop scaffold, no
+// per-step renaming (contrast the array element templates above, which mint
+// a fresh `_v{n+1}` per step because they live inside a shared loop body).
+// `ctx.err` is `''` and unused for an Option-only run. A step whose
+// `compilerPipelineRole` is `'terminal'` (getOrElse/match/toUndefined/
+// toNullable/toOption) assigns `ctx.next` directly instead of mutating
+// `ctx.v`/`ctx.ok`, exactly like an array terminal assigns `ctx.next` inside
+// `emitElementSegment`'s loop. These templates are spliced into `ops-table.ts`
+// as literal source the same way `ELEMENT_EMIT_TEMPLATES` are: a template
+// body may reference only its own `ctx` parameter.
+const OPTION_RESULT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
+  optionMap: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`${ctx.v} = ${expr};`])
+      return { pre: cb.pre, body: [`if (${ctx.ok}) {`, ...cb.body, '}'] }
+    },
+  },
+  optionFlatMap: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const t = `_t${ctx.index}`
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`var ${t} = ${expr};`])
+      return {
+        pre: cb.pre,
+        body: [
+          `if (${ctx.ok}) {`,
+          ...cb.body,
+          `${ctx.ok} = ${t}._tag === 1;`,
+          `if (${ctx.ok}) { ${ctx.v} = ${t}.value; }`,
+          '}',
+        ],
+      }
+    },
+  },
+  optionFilter: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`if (!(${expr})) { ${ctx.ok} = false; }`])
+      return { pre: cb.pre, body: [`if (${ctx.ok}) {`, ...cb.body, '}'] }
+    },
+  },
+  optionGetOrElse: {
+    kind: 'optionStep',
+    render: (ctx) => ({
+      body: [`var ${ctx.next} = ${ctx.ok} ? ${ctx.v} : (${ctx.a1})();`],
+    }),
+  },
+  optionOrElse: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const f = `_f${ctx.index}`
+      return {
+        body: [
+          `if (!${ctx.ok}) {`,
+          `var ${f} = ${ctx.a1};`,
+          `${ctx.ok} = ${f}._tag === 1;`,
+          `if (${ctx.ok}) { ${ctx.v} = ${f}.value; }`,
+          '}',
+        ],
+      }
+    },
+  },
+  optionMatch: {
+    kind: 'optionStep',
+    render: (ctx) => ({
+      body: [`var ${ctx.next} = ${ctx.ok} ? (${ctx.a1}).some(${ctx.v}) : (${ctx.a1}).none();`],
+    }),
+  },
+  // No `var` on `ctx.ok`/`ctx.err` here: a constructor is the first step of
+  // its run, and the segment scaffold (`emitOptionSegment` in codegen.ts)
+  // already declared `_ok`/`_v`(/`_err`) before splicing this template, the
+  // same way `resultFromThrowable` below assumes it.
+  optionFromNullable: {
+    kind: 'optionStep',
+    render: (ctx) => ({ body: [`${ctx.ok} = (${ctx.v} != null);`] }),
+  },
+  optionFromPredicate: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`${ctx.ok} = (${expr});`])
+      return { pre: cb.pre, body: cb.body }
+    },
+  },
+  optionToUndefined: {
+    kind: 'optionStep',
+    render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.ok} ? ${ctx.v} : undefined;`] }),
+  },
+  optionToNullable: {
+    kind: 'optionStep',
+    render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.ok} ? ${ctx.v} : null;`] }),
+  },
+  optionTap: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`${expr};`])
+      return { pre: cb.pre, body: [`if (${ctx.ok}) {`, ...cb.body, '}'] }
+    },
+  },
+  optionZip: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const z = `_z${ctx.index}`
+      return {
+        body: [
+          `if (${ctx.ok}) {`,
+          `var ${z} = ${ctx.a1};`,
+          `${ctx.ok} = ${z}._tag === 1;`,
+          `if (${ctx.ok}) { ${ctx.v} = [${ctx.v}, ${z}.value]; }`,
+          '}',
+        ],
+      }
+    },
+  },
+  resultMap: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`${ctx.v} = ${expr};`])
+      return { pre: cb.pre, body: [`if (${ctx.ok}) {`, ...cb.body, '}'] }
+    },
+  },
+  resultMapErr: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.err], (expr) => [`${ctx.err} = ${expr};`])
+      return { pre: cb.pre, body: [`if (!${ctx.ok}) {`, ...cb.body, '}'] }
+    },
+  },
+  resultFlatMap: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const t = `_t${ctx.index}`
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`var ${t} = ${expr};`])
+      return {
+        pre: cb.pre,
+        body: [
+          `if (${ctx.ok}) {`,
+          ...cb.body,
+          `${ctx.ok} = ${t}._tag === 1;`,
+          `if (${ctx.ok}) { ${ctx.v} = ${t}.value; } else { ${ctx.err} = ${t}.error; }`,
+          '}',
+        ],
+      }
+    },
+  },
+  resultGetOrElse: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.err], (expr) => [
+        `var ${ctx.next} = ${ctx.ok} ? ${ctx.v} : (${expr});`,
+      ])
+      return { pre: cb.pre, body: cb.body }
+    },
+  },
+  resultMatch: {
+    kind: 'optionStep',
+    render: (ctx) => ({
+      body: [`var ${ctx.next} = ${ctx.ok} ? (${ctx.a1}).ok(${ctx.v}) : (${ctx.a1}).err(${ctx.err});`],
+    }),
+  },
+  resultFromThrowable: {
+    kind: 'optionStep',
+    render: (ctx) => {
+      const e = `_e${ctx.index}`
+      return {
+        body: [
+          `try { ${ctx.v} = (${ctx.v})(); ${ctx.ok} = true; } catch (${e}) { ${ctx.err} = ${e}; ${ctx.ok} = false; }`,
+        ],
+      }
+    },
+  },
+  resultToOption: {
+    kind: 'optionStep',
+    render: (ctx) => ({
+      body: [`var ${ctx.next} = ${ctx.ok} ? { _tag: 1, value: ${ctx.v} } : ${ctx.optionNone};`],
+    }),
+  },
+}
+
+interface OptionResultRowV1 {
+  readonly compilerName: string
+  readonly publicName: string
+  readonly namespace: 'option' | 'result'
+  readonly inputDomain: LogicalDomainV1
+  readonly outputDomain: LogicalDomainV1
+  readonly bindings: readonly BindingSlotV1[]
+  readonly callback: CallbackContractV1
+  readonly compilerPipelineRole: 'element' | 'terminal'
+}
+
+const OPTION_RESULT_ROWS: readonly OptionResultRowV1[] = [
+  {
+    compilerName: 'optionMap',
+    publicName: 'map',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'option',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'optionFlatMap',
+    publicName: 'flatMap',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'option',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'optionFilter',
+    publicName: 'filter',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'option',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'optionGetOrElse',
+    publicName: 'getOrElse',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'scalar',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+  },
+  {
+    compilerName: 'optionOrElse',
+    publicName: 'orElse',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'option',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'optionMatch',
+    publicName: 'match',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'scalar',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+  },
+  {
+    compilerName: 'optionFromNullable',
+    publicName: 'fromNullable',
+    namespace: 'option',
+    inputDomain: 'scalar',
+    outputDomain: 'option',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'optionFromPredicate',
+    publicName: 'fromPredicate',
+    namespace: 'option',
+    inputDomain: 'scalar',
+    outputDomain: 'option',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'optionToUndefined',
+    publicName: 'toUndefined',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'scalar',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+  },
+  {
+    compilerName: 'optionToNullable',
+    publicName: 'toNullable',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'scalar',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+  },
+  {
+    compilerName: 'optionTap',
+    publicName: 'tap',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'option',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'optionZip',
+    publicName: 'zip',
+    namespace: 'option',
+    inputDomain: 'option',
+    outputDomain: 'option',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'resultMap',
+    publicName: 'map',
+    namespace: 'result',
+    inputDomain: 'result',
+    outputDomain: 'result',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'resultMapErr',
+    publicName: 'mapErr',
+    namespace: 'result',
+    inputDomain: 'result',
+    outputDomain: 'result',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'resultFlatMap',
+    publicName: 'flatMap',
+    namespace: 'result',
+    inputDomain: 'result',
+    outputDomain: 'result',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'resultGetOrElse',
+    publicName: 'getOrElse',
+    namespace: 'result',
+    inputDomain: 'result',
+    outputDomain: 'scalar',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'terminal',
+  },
+  {
+    compilerName: 'resultMatch',
+    publicName: 'match',
+    namespace: 'result',
+    inputDomain: 'result',
+    outputDomain: 'scalar',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+  },
+  {
+    compilerName: 'resultFromThrowable',
+    publicName: 'fromThrowable',
+    namespace: 'result',
+    inputDomain: 'scalar',
+    outputDomain: 'result',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'element',
+  },
+  {
+    compilerName: 'resultToOption',
+    publicName: 'toOption',
+    namespace: 'result',
+    inputDomain: 'result',
+    outputDomain: 'option',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+  },
+] as const satisfies readonly OptionResultRowV1[]
 
 const LEGACY_ROWS = [
   op(
@@ -4099,6 +4517,7 @@ function createRecord(row: LegacyRowV1): OperatorDefinitionRecordV1 {
       workerEligible: row.previousWorkerDeclaration,
       isMaterializationBoundary: row.cardinality === 'sink' || row.cardinality === 'materializer',
     },
+    compilerName: row.name,
     namespace: row.namespace,
     publicArrayExport: row.publicArrayExport,
     compilerPipelineRole: compilerRole,
@@ -4116,14 +4535,148 @@ function createRecord(row: LegacyRowV1): OperatorDefinitionRecordV1 {
   }
 }
 
+/**
+ * Builds a compiler-only `OperatorDefinitionRecordV1` for the option/result
+ * domains (phase 2): a semantic identity and exactly one lowering (compiler
+ * tier, aot backend), no `legacyRuntime` at all. `generateProtocolViewsV1`
+ * only reads `legacyRuntime` to build `opcodes.ts`/`registry.ts`, so leaving
+ * it absent is what keeps these ops out of both files -- they run today as
+ * plain function calls through `pipe` (already correct) until a compiled
+ * site recognizes them via `ops-table.ts`.
+ */
+function createCompilerOnlyRecord(row: OptionResultRowV1): OperatorDefinitionRecordV1 {
+  const cardinality: CardinalityV1 = row.compilerPipelineRole === 'terminal' ? 'sink' : 'one-to-one'
+  const semanticId = `@stopcock/fp/${row.namespace}/${row.publicName}`
+  const termination = {
+    earlyTermination: false,
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: row.inputDomain !== row.outputDomain,
+  } as const
+  const result = resultOwnership(row.outputDomain)
+  const ownership: OwnershipContractV1 = {
+    input: 'borrowed-readonly',
+    result,
+    aliasing: result === 'fresh' ? 'none' : 'borrowed-element-only',
+    detachment: 'forbidden',
+    resultStorage: ['js-scalar'],
+    scratchStorage: ['none'],
+    allocationScopes: ['none'],
+  }
+  const bindings: BindingDefinitionV1[] = row.bindings.map((slot) => ({
+    slot,
+    role: slot === 'fn' ? 'callback' : 'constant',
+    required: true,
+  }))
+  const outputShapeFunction =
+    row.outputDomain === 'option'
+      ? '@stopcock/fp/shape/option-v1'
+      : row.outputDomain === 'result'
+        ? '@stopcock/fp/shape/result-v1'
+        : '@stopcock/fp/shape/scalar-v1'
+  const semantic = defineOperatorV1({
+    protocol: OPERATOR_PROTOCOL_V1,
+    protocolVersion: OPERATOR_PROTOCOL_VERSION_V1,
+    semanticId,
+    semanticRevision: 1,
+    publicName: row.publicName,
+    inputDomain: row.inputDomain,
+    outputDomain: row.outputDomain,
+    acceptedLayouts: row.namespace === 'option' ? OPTION_LAYOUTS : RESULT_LAYOUTS,
+    cardinality,
+    outputShapeFunction,
+    bindings,
+    callback: row.callback,
+    evaluation: {
+      exact: 'observable-order-and-count',
+      pure: 'unsupported',
+      effects: row.callback.arity > 0 ? 'callback-effects-observable' : 'built-in-effects-only',
+      determinism: 'deterministic-except-user-code',
+      sourceMutationVisibility: 'scalar-value',
+      thrownErrorIdentity: 'preserved',
+      thrownErrorTiming: 'original-evaluation-point',
+    },
+    termination,
+    ownership,
+    capabilities: UNSUPPORTED_CAPABILITIES,
+    diagnosticTag: {
+      opcodeField: '_op',
+      bindingFields: bindings.map(({ slot }) => `_${slot}` as const),
+      authority: 'diagnostic-only',
+    },
+    links: {
+      referenceImplementationId: `@stopcock/fp/reference/${row.namespace}/${row.publicName}/v1`,
+      lawIds: [`@stopcock/fp/law/${row.namespace}/${row.publicName}/v1`],
+      differentialCorpusIds: [COMPILER_OPERATION_CORPUS_ID_V1],
+    },
+  })
+  const identity = semanticIdentity(semantic)
+  const loweringOwnership = {
+    result: ownership.result,
+    aliasing: ownership.aliasing,
+    resultStorage: ownership.resultStorage,
+    scratchStorage: ownership.scratchStorage,
+    allocationScopes: ownership.allocationScopes,
+  }
+  const compilerLowering = defineLoweringV1({
+    protocol: LOWERING_PROTOCOL_V1,
+    protocolVersion: LOWERING_PROTOCOL_VERSION_V1,
+    loweringId: `${semanticId}/lowering/compiler-aot`,
+    loweringRevision: 1,
+    loweringAbiVersion: 1,
+    semantic: identity,
+    targetTier: 'compiler',
+    targetBackend: 'aot',
+    acceptedSemanticModes: ['exact'],
+    acceptedLayouts: row.namespace === 'option' ? OPTION_LAYOUTS : RESULT_LAYOUTS,
+    cardinality,
+    outputShapeFunction: semantic.outputShapeFunction,
+    termination,
+    ownership: loweringOwnership,
+    capability: {
+      predicateId: '@stopcock/fp-compiler/capability/static-pipeline-v1',
+      rejectionCodes: [
+        '@stopcock/reason/unsupported-binding-form',
+        '@stopcock/reason/opaque-callback',
+        '@stopcock/reason/semantic-mode-mismatch',
+      ],
+    },
+    runnerId: `@stopcock/fp-compiler/runner/${row.compilerPipelineRole}/${row.compilerName}/v1`,
+    exactFallback: identity,
+    compilerPipelineRole: row.compilerPipelineRole,
+    compilerFinalBoundary: false,
+  })
+  return {
+    semantic,
+    lowerings: [compilerLowering],
+    compilerName: row.compilerName,
+    namespace: row.namespace,
+    publicArrayExport: false,
+    compilerPipelineRole: row.compilerPipelineRole,
+    compilerFinalBoundary: false,
+    emit: OPTION_RESULT_EMIT_TEMPLATES[row.compilerName],
+    fusible: true,
+    contradictionDisposition: 'legacy-classification-retained',
+    previousCapabilityDeclarations: {
+      simd: false,
+      worker: false,
+      disposition: 'unsupported-without-owned-implementation-and-corpus',
+    },
+  }
+}
+
 function freezeDefinitionRecordV1(record: OperatorDefinitionRecordV1): OperatorDefinitionRecordV1 {
   return Object.freeze({
     ...record,
     lowerings: Object.freeze([...record.lowerings]),
-    legacyRuntime: Object.freeze({
-      ...record.legacyRuntime,
-      bindings: Object.freeze([...record.legacyRuntime.bindings]),
-    }),
+    ...(record.legacyRuntime === undefined
+      ? {}
+      : {
+          legacyRuntime: Object.freeze({
+            ...record.legacyRuntime,
+            bindings: Object.freeze([...record.legacyRuntime.bindings]),
+          }),
+        }),
     previousCapabilityDeclarations: Object.freeze({
       ...record.previousCapabilityDeclarations,
     }),
@@ -4131,7 +4684,7 @@ function freezeDefinitionRecordV1(record: OperatorDefinitionRecordV1): OperatorD
 }
 
 export const OPERATOR_DEFINITION_RECORDS_V1: readonly OperatorDefinitionRecordV1[] = Object.freeze(
-  LEGACY_ROWS.map(createRecord)
+  [...LEGACY_ROWS.map(createRecord), ...OPTION_RESULT_ROWS.map(createCompilerOnlyRecord)]
     .map(freezeDefinitionRecordV1)
     .sort((left, right) => {
       const byId = left.semantic.semanticId.localeCompare(right.semantic.semanticId)
@@ -4152,6 +4705,10 @@ export function assertRuntimeEncodingCatalogueV1(
     previousCapabilityDeclarations,
     publicArrayExport,
   } of records) {
+    // A compiler-only record (option/result) never had a 1.x runtime
+    // encoding and mints no opcode/registry row at all -- see the comment on
+    // `OperatorDefinitionRecordV1.legacyRuntime`.
+    if (legacyRuntime === undefined) continue
     if (!Number.isSafeInteger(legacyRuntime.opcode) || legacyRuntime.opcode < 1) {
       throw new Error(`operator definitions v1: invalid opcode ${legacyRuntime.opcode}`)
     }
@@ -4259,7 +4816,7 @@ assertOperatorCatalogueV1(
 )
 
 const RUNTIME_RECORDS_BY_NAME = new Map(
-  OPERATOR_DEFINITION_RECORDS_V1.map((record) => [record.legacyRuntime.name, record]),
+  OPERATOR_DEFINITION_RECORDS_V1.map((record) => [record.compilerName, record]),
 )
 
 export function requireOperatorDefinitionByNameV1(name: string): OperatorDefinitionRecordV1 {
@@ -4270,7 +4827,7 @@ export function requireOperatorDefinitionByNameV1(name: string): OperatorDefinit
 
 export function runtimeOpcodeByNameV1(name: string): number {
   const record = requireOperatorDefinitionByNameV1(name)
-  if (record.legacyRuntime.tagName === null) {
+  if (record.legacyRuntime === undefined || record.legacyRuntime.tagName === null) {
     throw new Error(`operator definitions v1: ${name} has no public tag encoding`)
   }
   return record.legacyRuntime.opcode
@@ -4278,13 +4835,24 @@ export function runtimeOpcodeByNameV1(name: string): number {
 
 export function findRuntimeOpcodeByNameV1(name: string): number | undefined {
   const record = RUNTIME_RECORDS_BY_NAME.get(name)
-  return record?.legacyRuntime.tagName === null ? undefined : record?.legacyRuntime.opcode
+  if (record?.legacyRuntime === undefined || record.legacyRuntime.tagName === null) return undefined
+  return record.legacyRuntime.opcode
 }
 
-export function runtimeRecordsInOpcodeOrderV1(): readonly OperatorDefinitionRecordV1[] {
+/** Only the runtime-encoded records (those with `legacyRuntime`): a
+ * compiler-only row (option/result) has no opcode to sort by and must never
+ * reach `opcodes.ts`/`registry.ts` generation. */
+/** A definition record guaranteed to carry `legacyRuntime` -- every record
+ * that reaches `opcodes.ts`/`registry.ts` generation. */
+export type RuntimeBackedOperatorDefinitionRecordV1 = OperatorDefinitionRecordV1 & {
+  readonly legacyRuntime: LegacyRuntimeFactV1
+}
+
+export function runtimeRecordsInOpcodeOrderV1(): readonly RuntimeBackedOperatorDefinitionRecordV1[] {
   return Object.freeze(
-    [...OPERATOR_DEFINITION_RECORDS_V1].sort(
-      (left, right) => left.legacyRuntime.opcode - right.legacyRuntime.opcode,
-    ),
+    OPERATOR_DEFINITION_RECORDS_V1.filter(
+      (record): record is RuntimeBackedOperatorDefinitionRecordV1 =>
+        record.legacyRuntime !== undefined,
+    ).sort((left, right) => left.legacyRuntime.opcode - right.legacyRuntime.opcode),
   )
 }
