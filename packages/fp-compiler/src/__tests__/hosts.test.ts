@@ -111,6 +111,19 @@ async function assertWebpackLikeCallbackSourceMap(
 
   const code = await readFile(output, 'utf8')
   const map = JSON.parse(await readFile(`${output}.map`, 'utf8'))
+  expect(map.sources).toEqual(
+    expect.arrayContaining([
+      expect.stringMatching(/\/provenance-[A-Za-z0-9_-]+\.js$/u),
+      expect.stringMatching(/\/source-map-callback\.mjs$/u),
+    ]),
+  )
+  expect(
+    map.sources.filter((source: string) =>
+      /^webpack:\/\/[^/]*\/(?:provenance-[A-Za-z0-9_-]+\.js|source-map-callback\.mjs)$/u.test(
+        source,
+      ),
+    ),
+  ).toEqual([])
   const lines = code.split('\n')
   const generatedLine = lines.findIndex((line) => line.includes('throw new Error'))
   const generatedColumn = lines[generatedLine]?.indexOf('throw new Error') ?? -1

@@ -39,9 +39,9 @@ const hasDynamicUse = (rule: unknown): rule is RuleWithDynamicUse =>
 /**
  * Unplugin 3.3's Webpack-family transform loaders discard a transform map when
  * no earlier loader supplied one. Seed an exact identity map immediately
- * before that loader, so its existing composition branch returns the compiler
- * map. Keeping the workaround in our adapter also protects installed
- * consumers; a workspace-only dependency patch would not.
+ * before that loader, then restore the transformed map's physical source
+ * identity afterwards. Keeping the workaround in our adapter also protects
+ * installed consumers; a workspace-only dependency patch would not.
  */
 export const preserveWebpackLikeSourceMaps = <Options, Plugin>(
   adapter: (options?: Options) => Plugin,
@@ -71,7 +71,17 @@ export const preserveWebpackLikeSourceMaps = <Options, Plugin>(
             throw new Error(`fp-compiler: ${host} transform rule returned a non-array loader set`)
           }
           if (selected.length === 0) return selected
-          return [...selected, { loader: SOURCE_MAP_SEED_LOADER }]
+          return [
+            {
+              loader: SOURCE_MAP_SEED_LOADER,
+              options: { phase: 'finalize' },
+            },
+            ...selected,
+            {
+              loader: SOURCE_MAP_SEED_LOADER,
+              options: { phase: 'seed' },
+            },
+          ]
         }
       },
     } as Plugin
