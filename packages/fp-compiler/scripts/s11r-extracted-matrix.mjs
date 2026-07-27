@@ -727,35 +727,51 @@ const normalizeModule = (topology, id) => {
     .replaceAll('\0', '')
     .replace(/^.*[|!]/u, '')
     .split('?')[0]
-  const absolute = resolve(clean)
-  for (const name of STOPCOCK) {
-    const marker = `/node_modules/${name}/`
-    const offset = clean.indexOf(marker)
-    if (offset !== -1) {
-      const actual = existsSync(absolute) ? realpathSync(absolute) : absolute
-      const expectedRoot = topology.packages.get(name)
-      assert(
-        actual === expectedRoot || actual.startsWith(`${expectedRoot}${sep}`),
-        `Stopcock module resolved outside selected extraction: ${clean}`,
+  let pathIdentity = clean
+  if (clean.startsWith('file:')) {
+    try {
+      pathIdentity = posix(fileURLToPath(clean))
+    } catch (error) {
+      fail(
+        `invalid file module identity ${clean}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       )
-      return `${name}/${clean.slice(offset + marker.length)}`
     }
   }
-  if (absolute === topology.consumer || absolute.startsWith(`${topology.consumer}${sep}`)) {
-    return `consumer/${posix(relative(topology.consumer, absolute))}`
+  const absolute = resolve(pathIdentity)
+  const physicalAbsolute = existsSync(absolute) ? realpathSync(absolute) : absolute
+  for (const name of STOPCOCK) {
+    const marker = `/node_modules/${name}/`
+    const offset = pathIdentity.indexOf(marker)
+    if (offset !== -1) {
+      const expectedRoot = realpathSync(topology.packages.get(name))
+      assert(
+        physicalAbsolute === expectedRoot || physicalAbsolute.startsWith(`${expectedRoot}${sep}`),
+        `Stopcock module resolved outside selected extraction: ${clean}`,
+      )
+      return `${name}/${posix(relative(expectedRoot, physicalAbsolute))}`
+    }
+  }
+  const consumerRoot = realpathSync(topology.consumer)
+  if (physicalAbsolute === consumerRoot || physicalAbsolute.startsWith(`${consumerRoot}${sep}`)) {
+    return `consumer/${posix(relative(consumerRoot, physicalAbsolute))}`
   }
   for (const [name, packageRoot] of topology.packages) {
-    if (absolute === packageRoot || absolute.startsWith(`${packageRoot}${sep}`)) {
-      return `${name}/${posix(relative(packageRoot, absolute))}`
+    const physicalRoot = realpathSync(packageRoot)
+    if (physicalAbsolute === physicalRoot || physicalAbsolute.startsWith(`${physicalRoot}${sep}`)) {
+      return `${name}/${posix(relative(physicalRoot, physicalAbsolute))}`
     }
   }
   // An unresolved Stopcock-looking identifier is never benign: normalising it
   // would hide a compiler/FP escape from the graph evidence.  Likewise a
   // workspace path cannot be relabelled as an external host virtual module.
-  assert(!/stopcock/iu.test(clean), `unknown Stopcock module identity ${clean}`)
-  if (clean.startsWith('/') || /^[A-Za-z]:\//u.test(clean)) {
+  assert(!/stopcock/iu.test(pathIdentity), `unknown Stopcock module identity ${clean}`)
+  if (pathIdentity.startsWith('/') || /^[A-Za-z]:\//u.test(pathIdentity)) {
+    const repositoryRoot = realpathSync(REPOSITORY_ROOT)
     assert(
-      !absolute.startsWith(`${REPOSITORY_ROOT}${sep}`) && absolute !== REPOSITORY_ROOT,
+      !physicalAbsolute.startsWith(`${repositoryRoot}${sep}`) &&
+        physicalAbsolute !== repositoryRoot,
       `unknown module identity points into repository ${clean}`,
     )
   }
@@ -763,13 +779,13 @@ const normalizeModule = (topology, id) => {
   // (or a scratch-directory-specific hash).  The basename is intentionally
   // bounded and Stopcock has already been rejected above.
   const label =
-    basename(posix(clean))
+    basename(posix(pathIdentity))
       .replace(/[^A-Za-z0-9._-]/gu, '_')
       .slice(0, 96) || 'virtual'
   return `external/${label}`
 }
 
-const canonicalGraph = (topology, moduleIds) =>
+export const canonicalGraph = (topology, moduleIds) =>
   [...new Set(moduleIds.map((id) => normalizeModule(topology, id)))].sort(compare)
 
 export const validateConstructionLeafSource = (source, label = 'construction leaf') => {

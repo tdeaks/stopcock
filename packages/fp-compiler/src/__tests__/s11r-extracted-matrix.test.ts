@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const script = new URL('../../scripts/s11r-extracted-matrix.mjs', import.meta.url)
@@ -177,6 +178,67 @@ describe('S11R extracted matrix manifest boundary', () => {
           dependencyName: 'missing-optional-helper',
         }),
       )
+    } finally {
+      await rm(scratch, { recursive: true, force: true })
+    }
+  })
+
+  it('canonicalizes a physical extracted module across a symlinked temp-root alias', async () => {
+    const { canonicalGraph } = await import(script.href)
+    const scratch = await mkdtemp(join(tmpdir(), 'stopcock-s11r-module-identity-'))
+    try {
+      const consumer = join(scratch, 'consumer')
+      const fp = join(scratch, 'extracted', 'fp')
+      const module = join(fp, 'dist', 'number-generated.js')
+      await mkdir(consumer, { recursive: true })
+      await mkdir(join(fp, 'dist'), { recursive: true })
+      await writeFile(module, 'export {}\n')
+      expect(
+        canonicalGraph(
+          {
+            consumer,
+            packages: new Map([['@stopcock/fp', fp]]),
+          },
+          [await realpath(module)],
+        ),
+      ).toEqual(['@stopcock/fp/dist/number-generated.js'])
+      const foreign = join(scratch, 'foreign', 'stopcock-runtime.js')
+      await mkdir(join(scratch, 'foreign'), { recursive: true })
+      await writeFile(foreign, 'export {}\n')
+      expect(() =>
+        canonicalGraph(
+          {
+            consumer,
+            packages: new Map([['@stopcock/fp', fp]]),
+          },
+          [foreign],
+        ),
+      ).toThrow(/unknown Stopcock module identity/u)
+    } finally {
+      await rm(scratch, { recursive: true, force: true })
+    }
+  })
+
+  it('decodes file URLs before rejecting a symlink-aliased workspace module', async () => {
+    const { canonicalGraph } = await import(script.href)
+    const scratch = await mkdtemp(join(tmpdir(), 'graph-uri-'))
+    try {
+      const consumer = join(scratch, 'consumer')
+      const fp = join(scratch, 'fp')
+      await mkdir(consumer)
+      await mkdir(fp)
+      const workspaceManifest = fileURLToPath(new URL('../../../../package.json', import.meta.url))
+      const alias = join(scratch, 'workspace-package.json')
+      await symlink(workspaceManifest, alias)
+      expect(() =>
+        canonicalGraph(
+          {
+            consumer,
+            packages: new Map([['@stopcock/fp', fp]]),
+          },
+          [pathToFileURL(alias).href],
+        ),
+      ).toThrow(/points into repository/u)
     } finally {
       await rm(scratch, { recursive: true, force: true })
     }

@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S11R
-Current slice: PACKED_COHORT_AND_EXTRACTED_MATRIX
-Last verified commit: 1565bd67333b688850aef9a9abf305e5e51fd0f3
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-26
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -70,7 +70,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S10   | GATE_PASSED        | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                                              |
 | S10X  | GATE_PASSED        | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                                            |
 | S10J  | GATE_PASSED        | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                                              |
-| S11R  | IN_PROGRESS | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. The independently audited compact-pure/compiler source-and-test slice now passes with sealed digest `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`; checkpoint application is pending. The optimizer ABI, compiler artifact-context receipts, and complete extracted-host/layout qualification harness are source-valid; this new source checkpoint is pending before a fresh cohort is packed. The first real cohort replay exposed and now has a focused repair for export-hidden transitive package manifests; checkpoint application is pending before repacking. The second replay copied the isolated closure and exposed a false plugin-shape smoke assertion; its focused harness repair is checkpoint-pending before repacking. The third replay exposed that the generated compiler receipt validator shipped only a declaration; a private packed runtime-entry repair is checkpoint-pending. |
+| S11R  | CHECKPOINT_PENDING | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. The independently audited compact-pure/compiler source-and-test slice now passes with sealed digest `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`; checkpoint application is pending. The optimizer ABI, compiler artifact-context receipts, and complete extracted-host/layout qualification harness are source-valid; this new source checkpoint is pending before a fresh cohort is packed. The first real cohort replay exposed and now has a focused repair for export-hidden transitive package manifests; checkpoint application is pending before repacking. The second replay copied the isolated closure and exposed a false plugin-shape smoke assertion; its focused harness repair is checkpoint-pending before repacking. The third replay exposed that the generated compiler receipt validator shipped only a declaration; a private packed runtime-entry repair is checkpoint-pending. The fourth replay reached real host graph auditing and exposed a macOS physical-path alias mismatch; its fail-closed canonicalization repair is checkpoint-pending. |
 | S11   | NOT_STARTED        | Static Plan IR, tier-preserving codegen, expression/source-map corpus, pure map-to-length rewrite, exact construction semantics, deterministic receipts, and five-host smoke coverage exist in the sealed candidate based at `73cc413`; S11 cannot start until S11R passes                                                                                                                                                |
 | P1A   | GATE_PASSED        | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                                                   |
 | P1B   | GATE_PASSED        | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                                                         |
@@ -2065,6 +2065,29 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
     exposes both the schema hash and validator. Diff integrity passes;
   - the source-bound cohort became stale and was moved recoverably to
     `/tmp/stopcock-s11r-stale-cohort.F6H06U/e9669301b79865d023e1c7fc2a66a30a26deec0209e34c3eb329634c32d025f3`.
+    No timing command ran and no extracted qualification result is claimed.
+- S11R extracted graph physical-path repair evidence:
+  - fresh cohort
+    `sha256:316f9554becc3583663673ca908f676ea4aa0ad78609ea7ff04cad945c619e3f`
+    passed the 21-package packed checker with compiler tarball
+    `sha256:259dd74833c2c23a3a37bb2d7e1bf3b485234ade4c4fbc9e2eb036fdf4d0639d`.
+    The host matrix loaded the compiler, validator, and dependency closure and
+    reached its real module-graph audit;
+  - a host reported an extracted FP chunk through macOS's physical
+    `/private/var` path while the selected topology retained the equivalent
+    `/var` path. The graph rejected the alias before classifying the verified
+    package root;
+  - graph identities now compare real paths for the module, selected package,
+    consumer, and repository roots. A `node_modules` identity is derived from
+    the physical selected-root-relative path rather than an untrusted raw
+    suffix. File URLs are decoded before those checks and malformed file
+    identities fail. Prefix checks retain path separators, foreign
+    Stopcock-looking modules still fail, and repository modules cannot be
+    relabelled external even through a symlink alias;
+  - compiler source types, script syntax, all eight focused S11R boundary
+    tests, and diff integrity pass. An independent physical-containment audit
+    returned `PASS`. The stale source-bound cohort was moved recoverably to
+    `/tmp/stopcock-s11r-stale-cohort.7HC0D0/316f9554becc3583663673ca908f676ea4aa0ad78609ea7ff04cad945c619e3f`.
     No timing command ran and no extracted qualification result is claimed.
 
 ## Surprises and discoveries
