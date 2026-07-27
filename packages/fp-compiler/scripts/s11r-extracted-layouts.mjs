@@ -1063,10 +1063,8 @@ function mutateInstalledIdentity(fpRoot, property, oldValue, digit) {
   const generated = source.slice(generatedStart, generatedEnd)
   const symbol = GENERATED_ABI_IDENTITY_SYMBOLS[property]
   assert(typeof symbol === 'string', `FP ABI identity property is not generated: ${property}`)
-  const generatedField = new RegExp(
-    `const\\s+${symbol}\\s*=\\s*${sourceLiteral(oldValue).replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}(?=\\s*;)`,
-    'gu',
-  )
+  const escaped = sourceLiteral(oldValue).replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  const generatedField = new RegExp(`(const\\s+${symbol}\\s*=\\s*)${escaped}(?=\\s*;)`, 'gu')
   assert(
     [...generated.matchAll(generatedField)].length === 1,
     `generated FP ABI identity region must contain exactly one ${symbol} field`,
@@ -1079,13 +1077,35 @@ function mutateInstalledIdentity(fpRoot, property, oldValue, digit) {
     'FP bundle has no concrete ABI identity object',
   )
   const identity = source.slice(identityStart, identityEnd + '\n});'.length)
-  const output = `${source.slice(0, identityStart)}${replaceUniqueProperty(
-    identity,
-    property,
-    oldValue,
-    replacementLiteral(oldValue, digit),
-    'FP concrete ABI identity object',
-  )}${source.slice(identityEnd + '\n});'.length)}`
+  // The bundler inlines the numeric identities but keeps the hash identities as
+  // references to their generated constants. Mutate whichever spelling this
+  // build actually emitted; either way one installed byte range changes.
+  const property_ = property.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  const inlined = new RegExp(`${property_}\\s*:\\s*${escaped}(?=\\s*[,}])`, 'u').test(identity)
+  let output
+  let spelling
+  if (inlined) {
+    spelling = 'concrete-literal'
+    output = `${source.slice(0, identityStart)}${replaceUniqueProperty(
+      identity,
+      property,
+      oldValue,
+      replacementLiteral(oldValue, digit),
+      'FP concrete ABI identity object',
+    )}${source.slice(identityEnd + '\n});'.length)}`
+  } else {
+    assert(
+      new RegExp(`${property_}\\s*:\\s*${symbol}(?=\\s*[,}])`, 'u').test(identity),
+      `FP concrete ABI identity object neither inlines nor references ${property}`,
+    )
+    spelling = 'generated-constant'
+    const replacement = generated.replace(
+      generatedField,
+      (_match, prefix) => `${prefix}${replacementLiteral(oldValue, digit)}`,
+    )
+    assert(replacement !== generated, `${symbol} mutation made no source change`)
+    output = `${source.slice(0, generatedStart)}${replacement}${source.slice(generatedEnd)}`
+  }
   writeFileSync(path, output)
   const after = readFileSync(path)
   assert(!before.equals(after), `${property} identity mutation made no byte change`)
@@ -1093,6 +1113,7 @@ function mutateInstalledIdentity(fpRoot, property, oldValue, digit) {
     package: 'fp',
     target: 'fp-generated-abi-identity-field',
     property,
+    spelling,
     replacements: 1,
     beforeSha256: sha256(before),
     afterSha256: sha256(after),
