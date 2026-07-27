@@ -7,6 +7,7 @@ import {
   FINAL_BOUNDARY_OP_NAMES,
   OPS_TABLE,
   TERMINAL_OP_NAMES,
+  type OpEmit,
   type OpsTableEntry,
 } from './ops-table'
 
@@ -40,6 +41,13 @@ const operatorFacts = new Map(
 /** Generated semantic/lowering fact for a statically resolved operator. */
 export function compilerOperatorFact(name: string): CompilerOperatorFact | undefined {
   return operatorFacts.get(name)
+}
+
+const emitByName = new Map(OPS_TABLE.map((entry) => [entry.name, entry.emit]))
+
+/** The compiled emission template for a statically resolved operator. */
+export function opEmitFor(name: string): OpEmit | undefined {
+  return emitByName.get(name)
 }
 
 /** Ops this wave's fuser can lower, keyed by name for source-level lookup. */

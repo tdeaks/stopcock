@@ -1,5 +1,6 @@
 import * as t from '@babel/types'
-import { BOUNDARY_OPS, TERMINAL_OPS } from './ops'
+import { BOUNDARY_OPS, TERMINAL_OPS, callbackArity, opEmitFor } from './ops'
+import type { CallbackHandle, ElementEmitCtx, EmitFragment, OpEmit } from './ops-table'
 import { planInline, renderDirectInlineExpressionMapped, renderDirectInlineMapped } from './inline'
 import {
   FULL_ARRAY_LOWERING_ID,
@@ -549,6 +550,180 @@ function emitSequentialPropertyTerminal(
   }
 }
 
+const NO_CALLBACK_HANDLE: CallbackHandle = {
+  emit: () => {
+    throw new Error('fp-compiler: op has no callback slot')
+  },
+}
+
+// Wraps `emitCallback` behind the `CallbackHandle` contract a template calls
+// through `ctx.cb.emit(...)`. `emitCallback` would otherwise push a
+// hoisted-temp declaration straight onto the shared `preLines` array; here
+// it comes back as `pre` data instead, so a template decides where it lands
+// relative to its own `pre` lines (see the comment on `CallbackHandle` in
+// operator-v1.ts).
+function makeCallbackHandle(
+  argNode: t.Expression,
+  tempName: string,
+  code: string,
+  inlineCallbacks: boolean,
+  renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
+): CallbackHandle {
+  return {
+    emit: (inputVars, use) => {
+      const pre: string[] = []
+      const body = emitCallback(
+        argNode,
+        code,
+        tempName,
+        pre,
+        inputVars,
+        inlineCallbacks,
+        renderExpression,
+        renderSource,
+        use as (expr: string) => string[],
+      )
+      return { pre, body }
+    },
+  }
+}
+
+type ElementOpEmit = Exclude<OpEmit, { kind: 'boundary' }>
+
+function requireElementEmit(name: string): ElementOpEmit {
+  const emit = opEmitFor(name)
+  if (!emit || emit.kind === 'boundary') {
+    throw new Error(`fp-compiler: unhandled element op ${name}`)
+  }
+  return emit
+}
+
+/**
+ * Builds the per-step template context. Bound arguments beyond a real
+ * callback (arity > 0 puts it at args[0]) are rendered to text up front, so
+ * templates never see an AST node. `isTerminal` picks the counter/position/
+ * temp naming a `withIndex` op uses -- `_ix`/`_ixv`/`_cb` for an element
+ * step, `_ixT`/`_ixvT`/`_cbT` for the terminal -- matching the hand-written
+ * emitter's names exactly.
+ */
+function elementCtx(
+  step: Step,
+  index: number,
+  curVar: string,
+  next: string,
+  isTerminal: boolean,
+  code: string,
+  stateLines: string[],
+  bodyLines: string[],
+  inlineCallbacks: boolean,
+  renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
+  sequentialStage: boolean,
+  outerLabel: string,
+  optionNoneLocal: string,
+): ElementEmitCtx {
+  const emit = requireElementEmit(step.name)
+  const arity = callbackArity(step.name) ?? 0
+  const hasCallback = arity > 0
+  const restStart = hasCallback ? 1 : 0
+  const a1Node = step.args[restStart]
+  const a2Node = step.args[restStart + 1]
+  const tSuffix = isTerminal ? 'T' : ''
+  const cb = hasCallback
+    ? makeCallbackHandle(
+        step.args[0],
+        `_cb${tSuffix}${index}`,
+        code,
+        inlineCallbacks,
+        renderExpression,
+        renderSource,
+      )
+    : NO_CALLBACK_HANDLE
+  const indexed = !!emit.indexed
+  const position = indexed ? `_ixv${tSuffix}${index}` : ''
+  if (indexed) {
+    stateLines.push(`var _ix${tSuffix}${index} = 0;`)
+    bodyLines.push(`var ${position} = _ix${tSuffix}${index}++;`)
+  }
+  return {
+    index,
+    v: curVar,
+    next,
+    a1: a1Node ? `(${renderExpression(a1Node)})` : '',
+    a2: a2Node ? `(${renderExpression(a2Node)})` : '',
+    indexed,
+    position,
+    outerLabel,
+    sequential: sequentialStage,
+    optionNone: optionNoneLocal,
+    cb,
+  }
+}
+
+// The one emission a template kind cannot express: `findMap`'s AST fast
+// path recognizes a `x != null ? x : undefined`-shaped callback and inlines
+// its test/value expressions directly, skipping the callback call entirely.
+// That needs `planPresentConditional` over the raw arrow function, which a
+// serializable template has no access to. Falls back to the ops-table
+// template (the slow path) when the shape doesn't match.
+type ElementOverride = (
+  ctx: ElementEmitCtx,
+  args: readonly t.Expression[],
+  code: string,
+  renderSource: SourceRangeRenderer,
+  globalUndefinedIsUnbound: boolean,
+) => EmitFragment | undefined
+
+const ELEMENT_EMIT_OVERRIDES: Readonly<Record<string, ElementOverride>> = {
+  findMap: (ctx, args, code, renderSource, globalUndefinedIsUnbound) => {
+    const conditional = planPresentConditional(args[0], globalUndefinedIsUnbound)
+    if (!conditional) return undefined
+    const test = renderMappedInline(
+      renderDirectInlineExpressionMapped(conditional.callback, conditional.test, code, [ctx.v]),
+      renderSource,
+    )
+    const value = renderMappedInline(
+      renderDirectInlineExpressionMapped(conditional.callback, conditional.value, code, [ctx.v]),
+      renderSource,
+    )
+    if (test === undefined || value === undefined) return undefined
+    const passes = conditional.valueWhenTestPasses ? `(${test})` : `!(${test})`
+    return {
+      pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+      body: [
+        `if (${passes}) { ${ctx.next} = { _tag: 1, value: (${value}) }; break ${ctx.outerLabel}; }`,
+      ],
+    }
+  },
+}
+
+function emitStep(
+  step: Step,
+  ctx: ElementEmitCtx,
+  code: string,
+  renderSource: SourceRangeRenderer,
+  globalUndefinedIsUnbound: boolean,
+): EmitFragment {
+  return (
+    ELEMENT_EMIT_OVERRIDES[step.name]?.(ctx, step.args, code, renderSource, globalUndefinedIsUnbound) ??
+    requireElementEmit(step.name).render(ctx)
+  )
+}
+
+function splice(
+  fragment: EmitFragment,
+  preLines: string[],
+  stateLines: string[],
+  bodyLines: string[],
+  closeBraces: string[],
+): void {
+  preLines.push(...(fragment.pre ?? []))
+  stateLines.push(...(fragment.state ?? []))
+  bodyLines.push(...fragment.body)
+  closeBraces.push(...(fragment.close ?? []))
+}
+
 function emitElementSegment(
   seg: ElementSegment,
   curData: string,
@@ -591,225 +766,24 @@ function emitElementSegment(
 
   seg.steps.forEach(({ index, step }) => {
     const nextVar = `_v${index + 1}`
-    const args = step.args
-    switch (step.name) {
-      case 'map': {
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`var ${nextVar} = ${expr};`],
-        )
-        bodyLines.push(...lines)
-        break
-      }
-      case 'mapWithIndex':
-      case 'filterWithIndex': {
-        // The callback's index is its position in this stage's own input, so
-        // it counts elements reaching the stage rather than reusing `_i`:
-        // anything upstream that filters or expands has already broken that
-        // correspondence. Snapshotting it into a local keeps the increment to
-        // once per element even when an inlined body mentions the index twice.
-        const counter = `_ix${index}`
-        const position = `_ixv${index}`
-        stateLines.push(`var ${counter} = 0;`)
-        bodyLines.push(`var ${position} = ${counter}++;`)
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar, position],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) =>
-            step.name === 'mapWithIndex'
-              ? [`var ${nextVar} = ${expr};`]
-              : [`if (!${expr}) { continue; }`],
-        )
-        bodyLines.push(...lines)
-        if (step.name === 'filterWithIndex') bodyLines.push(`var ${nextVar} = ${curVar};`)
-        break
-      }
-      case 'filter': {
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`if (!${expr}) { continue; }`],
-        )
-        bodyLines.push(...lines)
-        bodyLines.push(`var ${nextVar} = ${curVar};`)
-        break
-      }
-      case 'reject': {
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`if (${expr}) { continue; }`],
-        )
-        bodyLines.push(...lines)
-        bodyLines.push(`var ${nextVar} = ${curVar};`)
-        break
-      }
-      case 'filterMap': {
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`var _m${index} = ${expr};`, `if (_m${index} == null) { continue; }`],
-        )
-        bodyLines.push(...lines)
-        bodyLines.push(`var ${nextVar} = _m${index};`)
-        break
-      }
-      case 'mapWhile': {
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [
-            `var _mw${index} = ${expr};`,
-            `if (_mw${index} == null) { break ${outerLabel}; }`,
-          ],
-        )
-        bodyLines.push(...lines)
-        bodyLines.push(`var ${nextVar} = _mw${index};`)
-        break
-      }
-      case 'flatMap': {
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`var _fm${index} = ${expr};`],
-        )
-        bodyLines.push(...lines)
-        // Nested loop over the inner array, spliced into the tail position of
-        // the outer per-item body: everything downstream of this step (more
-        // element ops, the sink) executes once per inner item, nested inside
-        // this for. The generated break label (on the top-level loop, see
-        // generateFusedBody) is what lets take/takeWhile/find/etc downstream
-        // of a flatMap exit both loops at once; plain continue still only
-        // needs to skip the innermost (inner) loop, which is correct here too.
-        bodyLines.push(
-          `for (var _j${index} = 0, _rlen${index} = _fm${index}.length; _j${index} < _rlen${index}; _j${index}++) {`,
-        )
-        bodyLines.push(`var ${nextVar} = _fm${index}[_j${index}];`)
-        closeBraces.push('}')
-        break
-      }
-      case 'take': {
-        const nTemp = `_n${index}`
-        preLines.push(`var ${nTemp} = (${renderExpression(args[0])});`)
-        if (!sequentialStage) {
-          stateLines.push(
-            `${nTemp} = ${nTemp} > 0 ? (${nTemp} === 1 / 0 ? ${nTemp} : ${nTemp} - ${nTemp} % 1) : 0;`,
-          )
-        }
-        stateLines.push(`var _take${index} = 0;`)
-        bodyLines.push(`if (_take${index} >= ${nTemp}) break ${outerLabel};`)
-        bodyLines.push(`_take${index}++;`)
-        bodyLines.push(`var ${nextVar} = ${curVar};`)
-        break
-      }
-      case 'takeUntil': {
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`if (${expr}) { break ${outerLabel}; }`],
-        )
-        bodyLines.push(...lines)
-        bodyLines.push(`var ${nextVar} = ${curVar};`)
-        break
-      }
-      case 'drop': {
-        const nTemp = `_n${index}`
-        preLines.push(`var ${nTemp} = (${renderExpression(args[0])});`)
-        if (!sequentialStage) {
-          stateLines.push(
-            `${nTemp} = ${nTemp} > 0 ? (${nTemp} === 1 / 0 ? ${nTemp} : ${nTemp} - ${nTemp} % 1) : 0;`,
-          )
-        }
-        stateLines.push(`var _drop${index} = 0;`)
-        bodyLines.push(`if (_drop${index} < ${nTemp}) { _drop${index}++; continue; }`)
-        bodyLines.push(`var ${nextVar} = ${curVar};`)
-        break
-      }
-      case 'takeWhile': {
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`if (!${expr}) break ${outerLabel};`],
-        )
-        bodyLines.push(...lines)
-        bodyLines.push(`var ${nextVar} = ${curVar};`)
-        break
-      }
-      case 'dropWhile': {
-        stateLines.push(`var _dw${index} = true;`)
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cb${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`if (_dw${index}) { if (${expr}) { continue; } _dw${index} = false; }`],
-        )
-        bodyLines.push(...lines)
-        bodyLines.push(`var ${nextVar} = ${curVar};`)
-        break
-      }
-      default:
-        throw new Error(`fp-compiler: unhandled element op ${step.name}`)
-    }
+    const ctx = elementCtx(
+      step,
+      index,
+      curVar,
+      nextVar,
+      false,
+      code,
+      stateLines,
+      bodyLines,
+      inlineCallbacks,
+      renderExpression,
+      renderSource,
+      sequentialStage,
+      outerLabel,
+      optionNoneLocal,
+    )
+    const fragment = emitStep(step, ctx, code, renderSource, globalUndefinedIsUnbound)
+    splice(fragment, preLines, stateLines, bodyLines, closeBraces)
     curVar = nextVar
   })
 
@@ -819,259 +793,24 @@ function emitElementSegment(
     bodyLines.push(`${nextData}.push(${curVar});`)
   } else {
     const { index, step } = terminal
-    const args = step.args
-    switch (step.name) {
-      case 'sum':
-        preLines.push(`var ${nextData} = 0;`)
-        bodyLines.push(`${nextData} += ${curVar};`)
-        break
-      case 'count': {
-        preLines.push(`var ${nextData} = 0;`)
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cbT${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`if (${expr}) { ${nextData}++; }`],
-        )
-        bodyLines.push(...lines)
-        break
-      }
-      case 'reduce': {
-        const [fnArg, initArg] = args
-        const direct = inlineCallbacks
-          ? renderMappedInline(
-              renderDirectInlineMapped(fnArg, code, [nextData, curVar]),
-              renderSource,
-            )
-          : undefined
-        if (direct !== undefined) {
-          preLines.push(`var ${nextData} = (${renderExpression(initArg)});`)
-          bodyLines.push(`${nextData} = (${direct});`)
-          break
-        }
-        const plan = inlineCallbacks ? planInline(fnArg) : undefined
-        if (plan) {
-          preLines.push(`var ${nextData} = (${renderExpression(initArg)});`)
-          const decls = plan.params.map((p, i) => `const ${p} = ${i === 0 ? nextData : curVar};`)
-          const bodyText = renderSource(plan.bodyStart, plan.bodyEnd)
-          bodyLines.push('{', ...decls, `${nextData} = (${bodyText});`, '}')
-        } else {
-          // `reduce(callback, seed)` evaluates callback before seed. A dynamic
-          // callback expression must be captured in that order even though
-          // both values are consumed later by the generated loop.
-          preLines.push(`var _cbT${index} = (${renderExpression(fnArg)});`)
-          preLines.push(`var ${nextData} = (${renderExpression(initArg)});`)
-          bodyLines.push(`${nextData} = _cbT${index}(${nextData}, ${curVar});`)
-        }
-        break
-      }
-      case 'forEachWithIndex': {
-        const counter = `_ixT${index}`
-        const position = `_ixvT${index}`
-        stateLines.push(`var ${counter} = 0;`)
-        bodyLines.push(`var ${position} = ${counter}++;`)
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cbT${index}`,
-          preLines,
-          [curVar, position],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`${expr};`],
-        )
-        bodyLines.push(...lines)
-        preLines.push(`var ${nextData} = undefined;`)
-        break
-      }
-      case 'forEach': {
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cbT${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`${expr};`],
-        )
-        bodyLines.push(...lines)
-        preLines.push(`var ${nextData} = undefined;`)
-        break
-      }
-      case 'find': {
-        preLines.push(`var ${nextData} = ${optionNoneLocal};`)
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cbT${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [
-            `if (${expr}) { ${nextData} = { _tag: 1, value: ${curVar} }; break ${outerLabel}; }`,
-          ],
-        )
-        bodyLines.push(...lines)
-        break
-      }
-      case 'findIndex': {
-        preLines.push(`var ${nextData} = ${optionNoneLocal};`)
-        stateLines.push(`var _pos${index} = 0;`)
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cbT${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [
-            `if (${expr}) { ${nextData} = { _tag: 1, value: _pos${index} }; break ${outerLabel}; }`,
-            `_pos${index}++;`,
-          ],
-        )
-        bodyLines.push(...lines)
-        break
-      }
-      case 'findMap': {
-        preLines.push(`var ${nextData} = ${optionNoneLocal};`)
-        const conditional = planPresentConditional(args[0], globalUndefinedIsUnbound)
-        if (conditional) {
-          const test = renderMappedInline(
-            renderDirectInlineExpressionMapped(conditional.callback, conditional.test, code, [
-              curVar,
-            ]),
-            renderSource,
-          )
-          const value = renderMappedInline(
-            renderDirectInlineExpressionMapped(conditional.callback, conditional.value, code, [
-              curVar,
-            ]),
-            renderSource,
-          )
-          if (test !== undefined && value !== undefined) {
-            const passes = conditional.valueWhenTestPasses ? `(${test})` : `!(${test})`
-            bodyLines.push(
-              `if (${passes}) { ${nextData} = { _tag: 1, value: (${value}) }; break ${outerLabel}; }`,
-            )
-            break
-          }
-        }
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cbT${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [
-            `var _fmv${index} = ${expr};`,
-            `if (_fmv${index} != null) { ${nextData} = { _tag: 1, value: _fmv${index} }; break ${outerLabel}; }`,
-          ],
-        )
-        bodyLines.push(...lines)
-        break
-      }
-      case 'every': {
-        preLines.push(`var ${nextData} = true;`)
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cbT${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`if (!${expr}) { ${nextData} = false; break ${outerLabel}; }`],
-        )
-        bodyLines.push(...lines)
-        break
-      }
-      case 'some': {
-        preLines.push(`var ${nextData} = false;`)
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cbT${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`if (${expr}) { ${nextData} = true; break ${outerLabel}; }`],
-        )
-        bodyLines.push(...lines)
-        break
-      }
-      case 'none': {
-        preLines.push(`var ${nextData} = true;`)
-        const lines = emitCallback(
-          args[0],
-          code,
-          `_cbT${index}`,
-          preLines,
-          [curVar],
-          inlineCallbacks,
-          renderExpression,
-          renderSource,
-          (expr) => [`if (${expr}) { ${nextData} = false; break ${outerLabel}; }`],
-        )
-        bodyLines.push(...lines)
-        break
-      }
-      case 'head': {
-        preLines.push(`var ${nextData} = ${optionNoneLocal};`)
-        bodyLines.push(
-          `if (${nextData}._tag === 0) { ${nextData} = { _tag: 1, value: ${curVar} }; }`,
-        )
-        break
-      }
-      case 'last': {
-        preLines.push(`var ${nextData} = ${optionNoneLocal};`)
-        bodyLines.push(
-          `if (${nextData}._tag === 0) { ${nextData} = { _tag: 1, value: ${curVar} }; } else { ${nextData}.value = ${curVar}; }`,
-        )
-        break
-      }
-      case 'length':
-        preLines.push(`var ${nextData} = 0;`)
-        bodyLines.push(`${nextData}++;`)
-        break
-      case 'isEmpty':
-        preLines.push(`var ${nextData} = true;`)
-        bodyLines.push(`${nextData} = false;`)
-        break
-      case 'min': {
-        preLines.push(`var ${nextData} = ${optionNoneLocal};`)
-        bodyLines.push(
-          `if (${nextData}._tag === 0) { ${nextData} = { _tag: 1, value: ${curVar} }; } else if (${curVar} < ${nextData}.value) { ${nextData}.value = ${curVar}; }`,
-        )
-        break
-      }
-      case 'max': {
-        preLines.push(`var ${nextData} = ${optionNoneLocal};`)
-        bodyLines.push(
-          `if (${nextData}._tag === 0) { ${nextData} = { _tag: 1, value: ${curVar} }; } else if (${curVar} > ${nextData}.value) { ${nextData}.value = ${curVar}; }`,
-        )
-        break
-      }
-      default:
-        throw new Error(`fp-compiler: unhandled terminal op ${step.name}`)
-    }
+    const ctx = elementCtx(
+      step,
+      index,
+      curVar,
+      nextData,
+      true,
+      code,
+      stateLines,
+      bodyLines,
+      inlineCallbacks,
+      renderExpression,
+      renderSource,
+      sequentialStage,
+      outerLabel,
+      optionNoneLocal,
+    )
+    const fragment = emitStep(step, ctx, code, renderSource, globalUndefinedIsUnbound)
+    splice(fragment, preLines, stateLines, bodyLines, closeBraces)
   }
 
   const loopIndex = seg.steps[0]?.index ?? seg.terminal!.index
