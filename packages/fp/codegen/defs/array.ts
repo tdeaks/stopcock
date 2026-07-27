@@ -467,7 +467,9 @@ export const takeSortedBy: {
   }
   // Extract first k and sort them
   return mergeSortBy(work.slice(0, k), cmp)
-})
+},
+  { op: 'takeSortedBy' },
+)
 
 export const uniq: <A>(arr: readonly A[]) => A[] = dual(
   1,
@@ -1231,7 +1233,9 @@ export const concat: {
   <A>(b: readonly A[]): (a: readonly A[]) => A[]
 } = dual(2, (a: any, b: any) => {
   return a.concat(b)
-})
+},
+  { op: 'concat' },
+)
 
 export const nthOrUndefined: {
   <A>(arr: readonly A[], index: number): A | undefined
@@ -1239,7 +1243,9 @@ export const nthOrUndefined: {
 } = dual(2, (arr: any, n: any) => {
   var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? undefined : arr[i]
-})
+},
+  { op: 'nthOrUndefined' },
+)
 
 export const nth: {
   <A>(arr: readonly A[], index: number): Option<A>
@@ -1257,7 +1263,9 @@ export const indexOfOrUndefined: {
 } = dual(2, (arr: any, val: any) => {
   var i = arr.indexOf(val)
   return i === -1 ? undefined : i
-})
+},
+  { op: 'indexOfOrUndefined' },
+)
 
 export const indexOf: {
   <A>(arr: readonly A[], value: A): Option<number>
@@ -1275,7 +1283,9 @@ export const lastIndexOfOrUndefined: {
 } = dual(2, (arr: any, val: any) => {
   var i = arr.lastIndexOf(val)
   return i === -1 ? undefined : i
-})
+},
+  { op: 'lastIndexOfOrUndefined' },
+)
 
 export const lastIndexOf: {
   <A>(arr: readonly A[], value: A): Option<number>
@@ -1297,7 +1307,9 @@ export const findLastOrUndefined: {
     if (pred(arr[i])) return arr[i]
   }
   return undefined
-})
+},
+  { op: 'findLastOrUndefined' },
+)
 
 export const findLast: {
   <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): Option<B>
@@ -1321,7 +1333,9 @@ export const findLastIndexOrUndefined: {
     if (pred(arr[i])) return i
   }
   return undefined
-})
+},
+  { op: 'findLastIndexOrUndefined' },
+)
 
 export const findLastIndex: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
@@ -1603,7 +1617,9 @@ export const dropRepeatsBy: {
     }
   }
   return result
-})
+},
+  { op: 'dropRepeatsBy' },
+)
 
 export const dropRepeatsWith: {
   <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[]
@@ -1621,7 +1637,9 @@ export const dropRepeatsWith: {
     }
   }
   return result
-})
+},
+  { op: 'dropRepeatsWith' },
+)
 
 export const dropLast: {
   <A>(arr: readonly A[], n: number): A[]
@@ -1837,7 +1855,9 @@ export const indexBy: {
     dict[f(x)] = x
   }
   return dict
-})
+},
+  { op: 'indexBy' },
+)
 
 export const collectBy: {
   <A>(arr: readonly A[], f: (a: A) => string): A[][]
@@ -1868,7 +1888,9 @@ export const collectBy: {
     }
   }
   return out
-})
+},
+  { op: 'collectBy' },
+)
 
 export const sample: {
   <A>(arr: readonly A[], n: number): A[]
@@ -1899,7 +1921,9 @@ export const meanByOrUndefined: {
     acc = acc + f(arr[i])
   }
   return acc / len
-})
+},
+  { op: 'meanByOrUndefined' },
+)
 
 export const meanBy: {
   <A>(arr: readonly A[], f: (a: A) => number): Option<number>
@@ -1914,7 +1938,9 @@ export const meanBy: {
 export const meanByNonEmpty: {
   <A>(arr: readonly [A, ...A[]], f: (a: A) => number): number
   <A>(f: (a: A) => number): (arr: readonly [A, ...A[]]) => number
-} = dual(2, (arr: any, f: any) => meanByOrUndefined(arr, f) as number)
+} = dual(2, (arr: any, f: any) => meanByOrUndefined(arr, f) as number,
+  { op: 'meanByNonEmpty' },
+)
 
 export const sumBy: {
   <A>(arr: readonly A[], f: (a: A) => number): number
@@ -1941,7 +1967,9 @@ export const mapToObj: {
     dict[match[0]] = match[1]
   }
   return dict
-})
+},
+  { op: 'mapToObj' },
+)
 
 export const zipObj: {
   <A>(keys: readonly string[], values: readonly A[]): Dict<A>
@@ -1955,14 +1983,18 @@ export const zipObj: {
     dict[keys[i]] = values[i]
   }
   return dict
-})
+},
+  { op: 'zipObj' },
+)
 
 export const groupByProp: {
   <A>(arr: readonly A[], prop: string): Dict<A[]>
   (prop: string): <A>(arr: readonly A[]) => Dict<A[]>
 } = dual(2, (arr: any, prop: any) => {
   return groupByPropRaw(arr, prop)
-})
+},
+  { op: 'groupByProp' },
+)
 
 export const arrayStartsWith: {
   <A>(arr: readonly A[], prefix: readonly A[]): boolean
@@ -2038,7 +2070,9 @@ export const withoutBy: {
     }
   }
   return result
-})
+},
+  { op: 'withoutBy' },
+)
 
 export const slice: {
   <A>(arr: readonly A[], start: number, end: number): A[]
@@ -2056,7 +2090,9 @@ export const slice: {
     out[i] = arr[(s + i) | 0]
   }
   return out
-})
+},
+  { op: 'slice' },
+)
 
 export const swap: {
   <A>(arr: readonly A[], i: number, j: number): A[]
@@ -2070,7 +2106,9 @@ export const swap: {
   out[i] = arr[j]
   out[j] = arr[i]
   return out
-})
+},
+  { op: 'swap' },
+)
 
 export const insertAll: {
   <A>(arr: readonly A[], index: number, values: readonly A[]): A[]
@@ -2090,7 +2128,9 @@ export const insertAll: {
     out[(i$2 + vLen) | 0] = arr[i$2]
   }
   return out
-})
+},
+  { op: 'insertAll' },
+)
 
 export const unionBy: {
   <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
@@ -2115,7 +2155,9 @@ export const unionBy: {
     }
   }
   return result
-})
+},
+  { op: 'unionBy' },
+)
 
 export const unionWith: {
   <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
@@ -2143,7 +2185,9 @@ export const unionWith: {
     addIfNew(b[i$1])
   }
   return result
-})
+},
+  { op: 'unionWith' },
+)
 
 export const intersectionBy: {
   <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
@@ -2164,7 +2208,9 @@ export const intersectionBy: {
     }
   }
   return result
-})
+},
+  { op: 'intersectionBy' },
+)
 
 export const differenceBy: {
   <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
@@ -2185,7 +2231,9 @@ export const differenceBy: {
     }
   }
   return result
-})
+},
+  { op: 'differenceBy' },
+)
 
 export const differenceWith: {
   <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
@@ -2207,7 +2255,9 @@ export const differenceWith: {
     }
   }
   return result
-})
+},
+  { op: 'differenceWith' },
+)
 
 export const symmetricDifferenceBy: {
   <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
@@ -2240,7 +2290,9 @@ export const symmetricDifferenceBy: {
     }
   }
   return result
-})
+},
+  { op: 'symmetricDifferenceBy' },
+)
 
 export const symmetricDifferenceWith: {
   <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
@@ -2276,7 +2328,9 @@ export const symmetricDifferenceWith: {
     }
   }
   return result
-})
+},
+  { op: 'symmetricDifferenceWith' },
+)
 
 export const sortedIndexBy: {
   <A>(arr: readonly A[], value: A, f: (a: A) => number): number
@@ -2294,7 +2348,9 @@ export const sortedIndexBy: {
     }
   }
   return lo
-})
+},
+  { op: 'sortedIndexBy' },
+)
 
 export const sortedIndexWith: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): number
@@ -2311,7 +2367,9 @@ export const sortedIndexWith: {
     }
   }
   return lo
-})
+},
+  { op: 'sortedIndexWith' },
+)
 
 export const sortedLastIndexBy: {
   <A>(arr: readonly A[], value: A, f: (a: A) => number): number
@@ -2329,7 +2387,9 @@ export const sortedLastIndexBy: {
     }
   }
   return lo
-})
+},
+  { op: 'sortedLastIndexBy' },
+)
 
 export const mapAccum: {
   <A, B, C>(arr: readonly A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
@@ -2344,7 +2404,9 @@ export const mapAccum: {
     out[i] = match[1]
   }
   return [acc, out]
-})
+},
+  { op: 'mapAccum' },
+)
 
 export const mapAccumRight: {
   <A, B, C>(arr: readonly A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
@@ -2360,7 +2422,9 @@ export const mapAccumRight: {
     out[j] = match[1]
   }
   return [acc, out]
-})
+},
+  { op: 'mapAccumRight' },
+)
 
 // Arity 4
 export const reduceBy: {
@@ -2379,7 +2443,9 @@ export const reduceBy: {
     dict[key] = reducer(acc, x)
   }
   return dict
-})
+},
+  { op: 'reduceBy' },
+)
 
 export const reduceWhile: {
   <A, B>(arr: readonly A[], pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B): B
@@ -2423,4 +2489,6 @@ export const splice: {
     out[(((s + itemsLen) | 0) + ((((i$2 - s) | 0) - dc) | 0)) | 0] = arr[i$2]
   }
   return out
-})
+},
+  { op: 'splice' },
+)

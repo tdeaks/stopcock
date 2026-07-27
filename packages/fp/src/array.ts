@@ -689,7 +689,10 @@ export const takeSortedBy: {
   // Extract first k and sort them
   return mergeSortBy(work.slice(0, k), cmp)
     }
-    return _dl
+    _dl._op = 151
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 151, _a0, _a1)
   }
   const arr = _arg0, k = _arg1, cmp = _arg2
   var n = arr.length
@@ -2043,7 +2046,9 @@ export const concat: {
       const a = data, b = _a0
       return a.concat(b)
     }
-    return _dl
+    _dl._op = 128
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 128, _a0)
   }
   const a = _arg0, b = _arg1
   return a.concat(b)
@@ -2061,7 +2066,9 @@ export const nthOrUndefined: {
       var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? undefined : arr[i]
     }
-    return _dl
+    _dl._op = 155
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 155, _a0)
   }
   const arr = _arg0, n = _arg1
   var i = n < 0 ? arr.length + n : n
@@ -2101,7 +2108,9 @@ export const indexOfOrUndefined: {
       var i = arr.indexOf(val)
   return i === -1 ? undefined : i
     }
-    return _dl
+    _dl._op = 156
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 156, _a0)
   }
   const arr = _arg0, val = _arg1
   var i = arr.indexOf(val)
@@ -2141,7 +2150,9 @@ export const lastIndexOfOrUndefined: {
       var i = arr.lastIndexOf(val)
   return i === -1 ? undefined : i
     }
-    return _dl
+    _dl._op = 157
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 157, _a0)
   }
   const arr = _arg0, val = _arg1
   var i = arr.lastIndexOf(val)
@@ -2185,7 +2196,9 @@ export const findLastOrUndefined: {
   }
   return undefined
     }
-    return _dl
+    _dl._op = 158
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 158, _a0)
   }
   const arr = _arg0, pred = _arg1
   for (var i = arr.length - 1; i >= 0; i--) {
@@ -2235,7 +2248,9 @@ export const findLastIndexOrUndefined: {
   }
   return undefined
     }
-    return _dl
+    _dl._op = 159
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 159, _a0)
   }
   const arr = _arg0, pred = _arg1
   for (var i = arr.length - 1; i >= 0; i--) {
@@ -2561,7 +2576,9 @@ export const dropRepeatsBy: {
   }
   return result
     }
-    return _dl
+    _dl._op = 131
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 131, _a0)
   }
   const arr = _arg0, f = _arg1
   const len = arr.length
@@ -2602,7 +2619,9 @@ export const dropRepeatsWith: {
   }
   return result
     }
-    return _dl
+    _dl._op = 132
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 132, _a0)
   }
   const arr = _arg0, eq = _arg1
   let len = arr.length
@@ -3054,7 +3073,9 @@ export const indexBy: {
   }
   return dict
     }
-    return _dl
+    _dl._op = 129
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 129, _a0)
   }
   const arr = _arg0, f = _arg1
   let len = arr.length
@@ -3101,7 +3122,9 @@ export const collectBy: {
   }
   return out
     }
-    return _dl
+    _dl._op = 130
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 130, _a0)
   }
   const arr = _arg0, f = _arg1
   let len = arr.length
@@ -3186,7 +3209,9 @@ export const meanByOrUndefined: {
   }
   return acc / len
     }
-    return _dl
+    _dl._op = 160
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 160, _a0)
   }
   const arr = _arg0, f = _arg1
   let len = arr.length
@@ -3232,7 +3257,9 @@ export const meanByNonEmpty: {
       const arr = data, f = _a0
       return meanByOrUndefined(arr, f) as number
     }
-    return _dl
+    _dl._op = 161
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 161, _a0)
   }
   const arr = _arg0, f = _arg1
   return meanByOrUndefined(arr, f) as number
@@ -3284,7 +3311,9 @@ export const mapToObj: {
   }
   return dict
     }
-    return _dl
+    _dl._op = 133
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 133, _a0)
   }
   const arr = _arg0, f = _arg1
   let len = arr.length
@@ -3314,7 +3343,9 @@ export const zipObj: {
   }
   return dict
     }
-    return _dl
+    _dl._op = 134
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 134, _a0)
   }
   const keys = _arg0, values = _arg1
   let lenK = keys.length
@@ -3338,7 +3369,9 @@ export const groupByProp: {
       const arr = data, prop = _a0
       return groupByPropRaw(arr, prop)
     }
-    return _dl
+    _dl._op = 135
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 135, _a0)
   }
   const arr = _arg0, prop = _arg1
   return groupByPropRaw(arr, prop)
@@ -3453,7 +3486,10 @@ export const withoutBy: {
   }
   return result
     }
-    return _dl
+    _dl._op = 147
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 147, _a0, _a1)
   }
   const arr = _arg0, values = _arg1, f = _arg2
   let exclude = new Set()
@@ -3492,7 +3528,10 @@ export const slice: {
   }
   return out
     }
-    return _dl
+    _dl._op = 136
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 136, _a0, _a1)
   }
   const arr = _arg0, start = _arg1, end_ = _arg2
   let len = arr.length
@@ -3527,7 +3566,10 @@ export const swap: {
   out[j] = arr[i]
   return out
     }
-    return _dl
+    _dl._op = 137
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 137, _a0, _a1)
   }
   const arr = _arg0, i = _arg1, j = _arg2
   let len = arr.length
@@ -3564,7 +3606,10 @@ export const insertAll: {
   }
   return out
     }
-    return _dl
+    _dl._op = 138
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 138, _a0, _a1)
   }
   const arr = _arg0, index = _arg1, values = _arg2
   let len = arr.length
@@ -3612,7 +3657,10 @@ export const unionBy: {
   }
   return result
     }
-    return _dl
+    _dl._op = 140
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 140, _a0, _a1)
   }
   const a = _arg0, b = _arg1, f = _arg2
   let seen = new Set()
@@ -3668,7 +3716,10 @@ export const unionWith: {
   }
   return result
     }
-    return _dl
+    _dl._op = 141
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 141, _a0, _a1)
   }
   const a = _arg0, b = _arg1, eq = _arg2
   let result: any[] = []
@@ -3720,7 +3771,10 @@ export const intersectionBy: {
   }
   return result
     }
-    return _dl
+    _dl._op = 142
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 142, _a0, _a1)
   }
   const a = _arg0, b = _arg1, f = _arg2
   let setB = new Set()
@@ -3765,7 +3819,10 @@ export const differenceBy: {
   }
   return result
     }
-    return _dl
+    _dl._op = 143
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 143, _a0, _a1)
   }
   const a = _arg0, b = _arg1, f = _arg2
   let setB = new Set()
@@ -3811,7 +3868,10 @@ export const differenceWith: {
   }
   return result
     }
-    return _dl
+    _dl._op = 144
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 144, _a0, _a1)
   }
   const a = _arg0, b = _arg1, eq = _arg2
   let result = []
@@ -3869,7 +3929,10 @@ export const symmetricDifferenceBy: {
   }
   return result
     }
-    return _dl
+    _dl._op = 145
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 145, _a0, _a1)
   }
   const a = _arg0, b = _arg1, f = _arg2
   let setA = new Set()
@@ -3941,7 +4004,10 @@ export const symmetricDifferenceWith: {
   }
   return result
     }
-    return _dl
+    _dl._op = 146
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 146, _a0, _a1)
   }
   const a = _arg0, b = _arg1, eq = _arg2
   let result = []
@@ -3998,7 +4064,10 @@ export const sortedIndexBy: {
   }
   return lo
     }
-    return _dl
+    _dl._op = 152
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 152, _a0, _a1)
   }
   const arr = _arg0, value = _arg1, f = _arg2
   let target = f(value)
@@ -4036,7 +4105,9 @@ export const sortedIndexWith: {
   }
   return lo
     }
-    return _dl
+    _dl._op = 153
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 153, _a0)
   }
   const arr = _arg0, pred = _arg1
   let lo = 0
@@ -4074,7 +4145,10 @@ export const sortedLastIndexBy: {
   }
   return lo
     }
-    return _dl
+    _dl._op = 154
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 154, _a0, _a1)
   }
   const arr = _arg0, value = _arg1, f = _arg2
   let target = f(value)
@@ -4110,7 +4184,10 @@ export const mapAccum: {
   }
   return [acc, out]
     }
-    return _dl
+    _dl._op = 148
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 148, _a0, _a1)
   }
   const arr = _arg0, f = _arg1, init = _arg2
   let len = arr.length
@@ -4144,7 +4221,10 @@ export const mapAccumRight: {
   }
   return [acc, out]
     }
-    return _dl
+    _dl._op = 149
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 149, _a0, _a1)
   }
   const arr = _arg0, f = _arg1, init = _arg2
   let len = arr.length
@@ -4182,7 +4262,11 @@ export const reduceBy: {
   }
   return dict
     }
-    return _dl
+    _dl._op = 150
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    _dl._a2 = _a2
+    return registerTrustedOperator(_dl, 150, _a0, _a1, _a2)
   }
   const arr = _arg0, keyFn = _arg1, reducer = _arg2, init = _arg3
   const dict: Record<string, any> = {}
@@ -4268,7 +4352,11 @@ export const splice: {
   }
   return out
     }
-    return _dl
+    _dl._op = 139
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    _dl._a2 = _a2
+    return registerTrustedOperator(_dl, 139, _a0, _a1, _a2)
   }
   const arr = _arg0, start = _arg1, deleteCount = _arg2, items = _arg3
   let len = arr.length

@@ -70,7 +70,7 @@ let clock = 0
 // steps (pipe's direct run2-run5 arities, i.e. every argc<=6 call) pack the
 // opcodes into a single number in a Map<number, ...> -- no string
 // allocation on the hot path. Opcodes are small positive integers (see
-// opcodes.ts; OP_CODES tops out well under NUM_KEY_BASE), so packing them as
+// opcodes.ts; OP_CODES tops out under NUM_KEY_BASE), so packing them as
 // base-NUM_KEY_BASE digits is collision-free: each digit occupies its own
 // place value and is always in [1, NUM_KEY_BASE), so no digit can borrow
 // into a neighboring position, and since every packed opcode is >=1 a
@@ -78,7 +78,7 @@ let clock = 0
 // occupies (see the opcodes.test.ts range assertion). Longer sequences
 // (argc>6 varargs form) fall back to the original comma-joined string key.
 const FRONT_CACHE_LIMIT = 256
-export const NUM_KEY_BASE = 128
+export const NUM_KEY_BASE = 256
 export const NUM_KEY_MAX_LEN = 5
 const frontCacheNum = new Map<number, ShapeEntry>()
 const frontCacheStr = new Map<string, ShapeEntry>()

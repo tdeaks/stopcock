@@ -114,6 +114,40 @@ import {
   OP_TAKE_LAST,
   OP_TAKE_LAST_WHILE,
   OP_UNIQ_WITH,
+  OP_COLLECT_BY,
+  OP_CONCAT,
+  OP_DIFFERENCE_BY,
+  OP_DIFFERENCE_WITH,
+  OP_DROP_REPEATS_BY,
+  OP_DROP_REPEATS_WITH,
+  OP_FIND_LAST_INDEX_OR_UNDEFINED,
+  OP_FIND_LAST_OR_UNDEFINED,
+  OP_GROUP_BY_PROP,
+  OP_INDEX_BY,
+  OP_INDEX_OF_OR_UNDEFINED,
+  OP_INSERT_ALL,
+  OP_INTERSECTION_BY,
+  OP_LAST_INDEX_OF_OR_UNDEFINED,
+  OP_MAP_ACCUM,
+  OP_MAP_ACCUM_RIGHT,
+  OP_MAP_TO_OBJ,
+  OP_MEAN_BY_NON_EMPTY,
+  OP_MEAN_BY_OR_UNDEFINED,
+  OP_NTH_OR_UNDEFINED,
+  OP_REDUCE_BY,
+  OP_SLICE,
+  OP_SORTED_INDEX_BY,
+  OP_SORTED_INDEX_WITH,
+  OP_SORTED_LAST_INDEX_BY,
+  OP_SPLICE,
+  OP_SWAP,
+  OP_SYMMETRIC_DIFFERENCE_BY,
+  OP_SYMMETRIC_DIFFERENCE_WITH,
+  OP_TAKE_SORTED_BY,
+  OP_UNION_BY,
+  OP_UNION_WITH,
+  OP_WITHOUT_BY,
+  OP_ZIP_OBJ,
 } from './opcodes'
 import type { OpCode } from './registry'
 // Cardinality comes from the compact fact table rather than the registry.
@@ -171,6 +205,40 @@ import {
   takeLast,
   takeLastWhile,
   uniqWith,
+  collectBy,
+  concat,
+  differenceBy,
+  differenceWith,
+  dropRepeatsBy,
+  dropRepeatsWith,
+  findLastIndexOrUndefined,
+  findLastOrUndefined,
+  groupByProp,
+  indexBy,
+  indexOfOrUndefined,
+  insertAll,
+  intersectionBy,
+  lastIndexOfOrUndefined,
+  mapAccum,
+  mapAccumRight,
+  mapToObj,
+  meanByNonEmpty,
+  meanByOrUndefined,
+  nthOrUndefined,
+  reduceBy,
+  slice,
+  sortedIndexBy,
+  sortedIndexWith,
+  sortedLastIndexBy,
+  splice,
+  swap,
+  symmetricDifferenceBy,
+  symmetricDifferenceWith,
+  takeSortedBy,
+  unionBy,
+  unionWith,
+  withoutBy,
+  zipObj,
 } from './array'
 import { mergeSortAsc, mergeSortBy, mergeSortDesc } from './sort-kernel'
 import { type BoundPlan, type SegmentShape, type StepBinding } from './plan'
@@ -328,6 +396,74 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
       return (reduceRight as any)(data, binding.fn, binding.a1)
     case OP_REDUCE_WHILE:
       return (reduceWhile as any)(data, binding.fn, binding.a1, binding.a2)
+    case OP_CONCAT:
+      return (concat as any)(data, binding.fn)
+    case OP_INDEX_BY:
+      return (indexBy as any)(data, binding.fn)
+    case OP_COLLECT_BY:
+      return (collectBy as any)(data, binding.fn)
+    case OP_DROP_REPEATS_BY:
+      return (dropRepeatsBy as any)(data, binding.fn)
+    case OP_DROP_REPEATS_WITH:
+      return (dropRepeatsWith as any)(data, binding.fn)
+    case OP_MAP_TO_OBJ:
+      return (mapToObj as any)(data, binding.fn)
+    case OP_ZIP_OBJ:
+      return (zipObj as any)(data, binding.fn)
+    case OP_GROUP_BY_PROP:
+      return (groupByProp as any)(data, binding.fn)
+    case OP_SORTED_INDEX_WITH:
+      return (sortedIndexWith as any)(data, binding.fn)
+    case OP_NTH_OR_UNDEFINED:
+      return (nthOrUndefined as any)(data, binding.fn)
+    case OP_INDEX_OF_OR_UNDEFINED:
+      return (indexOfOrUndefined as any)(data, binding.fn)
+    case OP_LAST_INDEX_OF_OR_UNDEFINED:
+      return (lastIndexOfOrUndefined as any)(data, binding.fn)
+    case OP_FIND_LAST_OR_UNDEFINED:
+      return (findLastOrUndefined as any)(data, binding.fn)
+    case OP_FIND_LAST_INDEX_OR_UNDEFINED:
+      return (findLastIndexOrUndefined as any)(data, binding.fn)
+    case OP_MEAN_BY_OR_UNDEFINED:
+      return (meanByOrUndefined as any)(data, binding.fn)
+    case OP_MEAN_BY_NON_EMPTY:
+      return (meanByNonEmpty as any)(data, binding.fn)
+    case OP_SLICE:
+      return (slice as any)(data, binding.fn, binding.a1)
+    case OP_SWAP:
+      return (swap as any)(data, binding.fn, binding.a1)
+    case OP_INSERT_ALL:
+      return (insertAll as any)(data, binding.fn, binding.a1)
+    case OP_UNION_BY:
+      return (unionBy as any)(data, binding.fn, binding.a1)
+    case OP_UNION_WITH:
+      return (unionWith as any)(data, binding.fn, binding.a1)
+    case OP_INTERSECTION_BY:
+      return (intersectionBy as any)(data, binding.fn, binding.a1)
+    case OP_DIFFERENCE_BY:
+      return (differenceBy as any)(data, binding.fn, binding.a1)
+    case OP_DIFFERENCE_WITH:
+      return (differenceWith as any)(data, binding.fn, binding.a1)
+    case OP_SYMMETRIC_DIFFERENCE_BY:
+      return (symmetricDifferenceBy as any)(data, binding.fn, binding.a1)
+    case OP_SYMMETRIC_DIFFERENCE_WITH:
+      return (symmetricDifferenceWith as any)(data, binding.fn, binding.a1)
+    case OP_WITHOUT_BY:
+      return (withoutBy as any)(data, binding.fn, binding.a1)
+    case OP_MAP_ACCUM:
+      return (mapAccum as any)(data, binding.fn, binding.a1)
+    case OP_MAP_ACCUM_RIGHT:
+      return (mapAccumRight as any)(data, binding.fn, binding.a1)
+    case OP_TAKE_SORTED_BY:
+      return (takeSortedBy as any)(data, binding.fn, binding.a1)
+    case OP_SORTED_INDEX_BY:
+      return (sortedIndexBy as any)(data, binding.fn, binding.a1)
+    case OP_SORTED_LAST_INDEX_BY:
+      return (sortedLastIndexBy as any)(data, binding.fn, binding.a1)
+    case OP_SPLICE:
+      return (splice as any)(data, binding.fn, binding.a1, binding.a2)
+    case OP_REDUCE_BY:
+      return (reduceBy as any)(data, binding.fn, binding.a1, binding.a2)
     default:
       return unsupportedOp(op)
   }

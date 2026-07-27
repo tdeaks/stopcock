@@ -114,6 +114,40 @@ export const OP_SPLIT_WHEN = 124
 export const OP_SPLIT_WHENEVER = 125
 export const OP_UNIQ_WITH = 126
 export const OP_GROUP_WITH = 127
+export const OP_CONCAT = 128
+export const OP_INDEX_BY = 129
+export const OP_COLLECT_BY = 130
+export const OP_DROP_REPEATS_BY = 131
+export const OP_DROP_REPEATS_WITH = 132
+export const OP_MAP_TO_OBJ = 133
+export const OP_ZIP_OBJ = 134
+export const OP_GROUP_BY_PROP = 135
+export const OP_SLICE = 136
+export const OP_SWAP = 137
+export const OP_INSERT_ALL = 138
+export const OP_SPLICE = 139
+export const OP_UNION_BY = 140
+export const OP_UNION_WITH = 141
+export const OP_INTERSECTION_BY = 142
+export const OP_DIFFERENCE_BY = 143
+export const OP_DIFFERENCE_WITH = 144
+export const OP_SYMMETRIC_DIFFERENCE_BY = 145
+export const OP_SYMMETRIC_DIFFERENCE_WITH = 146
+export const OP_WITHOUT_BY = 147
+export const OP_MAP_ACCUM = 148
+export const OP_MAP_ACCUM_RIGHT = 149
+export const OP_REDUCE_BY = 150
+export const OP_TAKE_SORTED_BY = 151
+export const OP_SORTED_INDEX_BY = 152
+export const OP_SORTED_INDEX_WITH = 153
+export const OP_SORTED_LAST_INDEX_BY = 154
+export const OP_NTH_OR_UNDEFINED = 155
+export const OP_INDEX_OF_OR_UNDEFINED = 156
+export const OP_LAST_INDEX_OF_OR_UNDEFINED = 157
+export const OP_FIND_LAST_OR_UNDEFINED = 158
+export const OP_FIND_LAST_INDEX_OR_UNDEFINED = 159
+export const OP_MEAN_BY_OR_UNDEFINED = 160
+export const OP_MEAN_BY_NON_EMPTY = 161
 
 export const OP_NON_FUSEABLE = 0
 
@@ -229,6 +263,40 @@ export const OP_CODES: Record<string, number> = {
   splitWhenever: OP_SPLIT_WHENEVER,
   uniqWith: OP_UNIQ_WITH,
   groupWith: OP_GROUP_WITH,
+  concat: OP_CONCAT,
+  indexBy: OP_INDEX_BY,
+  collectBy: OP_COLLECT_BY,
+  dropRepeatsBy: OP_DROP_REPEATS_BY,
+  dropRepeatsWith: OP_DROP_REPEATS_WITH,
+  mapToObj: OP_MAP_TO_OBJ,
+  zipObj: OP_ZIP_OBJ,
+  groupByProp: OP_GROUP_BY_PROP,
+  slice: OP_SLICE,
+  swap: OP_SWAP,
+  insertAll: OP_INSERT_ALL,
+  splice: OP_SPLICE,
+  unionBy: OP_UNION_BY,
+  unionWith: OP_UNION_WITH,
+  intersectionBy: OP_INTERSECTION_BY,
+  differenceBy: OP_DIFFERENCE_BY,
+  differenceWith: OP_DIFFERENCE_WITH,
+  symmetricDifferenceBy: OP_SYMMETRIC_DIFFERENCE_BY,
+  symmetricDifferenceWith: OP_SYMMETRIC_DIFFERENCE_WITH,
+  withoutBy: OP_WITHOUT_BY,
+  mapAccum: OP_MAP_ACCUM,
+  mapAccumRight: OP_MAP_ACCUM_RIGHT,
+  reduceBy: OP_REDUCE_BY,
+  takeSortedBy: OP_TAKE_SORTED_BY,
+  sortedIndexBy: OP_SORTED_INDEX_BY,
+  sortedIndexWith: OP_SORTED_INDEX_WITH,
+  sortedLastIndexBy: OP_SORTED_LAST_INDEX_BY,
+  nthOrUndefined: OP_NTH_OR_UNDEFINED,
+  indexOfOrUndefined: OP_INDEX_OF_OR_UNDEFINED,
+  lastIndexOfOrUndefined: OP_LAST_INDEX_OF_OR_UNDEFINED,
+  findLastOrUndefined: OP_FIND_LAST_OR_UNDEFINED,
+  findLastIndexOrUndefined: OP_FIND_LAST_INDEX_OR_UNDEFINED,
+  meanByOrUndefined: OP_MEAN_BY_OR_UNDEFINED,
+  meanByNonEmpty: OP_MEAN_BY_NON_EMPTY,
 }
 
 export const isFuseableOp = (op: number): boolean =>

@@ -678,3 +678,141 @@ describe('the remaining wave-two operators keep their runtime meaning', () => {
     expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3,m4,f1,f2')
   })
 })
+
+/**
+ * The keyed and positional families: the `By`/`With` set operations, the
+ * index/slice edits, the accumulating maps, and the dictionary builders.
+ * Same lowering as the rest -- one fused upstream loop, then the real
+ * operator -- and the same comparison against the uncompiled program.
+ */
+const KEYED_IMPORTS = `import { pipe } from '@stopcock/fp'\nimport { map, collectBy, concat, differenceBy, differenceWith, dropRepeatsBy, dropRepeatsWith, findLastIndexOrUndefined, findLastOrUndefined, groupByProp, indexBy, indexOfOrUndefined, insertAll, intersectionBy, lastIndexOfOrUndefined, mapAccum, mapAccumRight, mapToObj, meanByNonEmpty, meanByOrUndefined, nthOrUndefined, reduceBy, slice, sortedIndexBy, sortedIndexWith, sortedLastIndexBy, splice, swap, symmetricDifferenceBy, symmetricDifferenceWith, takeSortedBy, unionBy, unionWith, withoutBy, zipObj } from '@stopcock/fp/array'`
+
+const KEYED_LOCALS = Object.fromEntries(
+  [
+  'pipe', 'map',
+  'collectBy',
+  'concat',
+  'differenceBy',
+  'differenceWith',
+  'dropRepeatsBy',
+  'dropRepeatsWith',
+  'findLastIndexOrUndefined',
+  'findLastOrUndefined',
+  'groupByProp',
+  'indexBy',
+  'indexOfOrUndefined',
+  'insertAll',
+  'intersectionBy',
+  'lastIndexOfOrUndefined',
+  'mapAccum',
+  'mapAccumRight',
+  'mapToObj',
+  'meanByNonEmpty',
+  'meanByOrUndefined',
+  'nthOrUndefined',
+  'reduceBy',
+  'slice',
+  'sortedIndexBy',
+  'sortedIndexWith',
+  'sortedLastIndexBy',
+  'splice',
+  'swap',
+  'symmetricDifferenceBy',
+  'symmetricDifferenceWith',
+  'takeSortedBy',
+  'unionBy',
+  'unionWith',
+  'withoutBy',
+  'zipObj',
+].map((name) => [name, name]),
+)
+
+const keyedFixture = (name: string, body: string): Fixture => ({
+  name,
+  imports: KEYED_IMPORTS,
+  locals: KEYED_LOCALS,
+  body,
+  expectTransformed: true,
+})
+
+const KEYED_BOUNDARY_VALUES: readonly (readonly [string, string])[] = [
+  ['collectBy', `return pipe(${SRC}, map((x) => x + 1), collectBy((x) => String(x % 3)))`],
+  ['concat', `return pipe(${SRC}, map((x) => x + 1), concat([9,9]))`],
+  ['differenceBy', `return pipe(${SRC}, map((x) => x + 1), differenceBy([2], (x) => String(x)))`],
+  ['differenceWith', `return pipe(${SRC}, map((x) => x + 1), differenceWith([2], (a, b) => a === b))`],
+  ['dropRepeatsBy', `return pipe(${SRC}, map((x) => x + 1), dropRepeatsBy((x) => x % 3))`],
+  ['dropRepeatsWith', `return pipe(${SRC}, map((x) => x + 1), dropRepeatsWith((a, b) => a === b))`],
+  ['findLastIndexOrUndefined', `return pipe(${SRC}, map((x) => x + 1), findLastIndexOrUndefined((x) => x > 4))`],
+  ['findLastOrUndefined', `return pipe(${SRC}, map((x) => x + 1), findLastOrUndefined((x) => x > 4))`],
+  ['groupByProp', `return pipe(${SRC}, map((x) => ({ k: String(x % 3) })), groupByProp('k'))`],
+  ['indexBy', `return pipe(${SRC}, map((x) => x + 1), indexBy((x) => String(x % 3)))`],
+  ['indexOfOrUndefined', `return pipe(${SRC}, map((x) => x + 1), indexOfOrUndefined(5))`],
+  ['insertAll', `return pipe(${SRC}, map((x) => x + 1), insertAll(2, [8,8]))`],
+  ['intersectionBy', `return pipe(${SRC}, map((x) => x + 1), intersectionBy([2,5], (x) => String(x)))`],
+  ['lastIndexOfOrUndefined', `return pipe(${SRC}, map((x) => x + 1), lastIndexOfOrUndefined(2))`],
+  ['mapAccum', `return pipe(${SRC}, map((x) => x + 1), mapAccum((a, x) => [a + x, a], 0))`],
+  ['mapAccumRight', `return pipe(${SRC}, map((x) => x + 1), mapAccumRight((a, x) => [a + x, a], 0))`],
+  ['mapToObj', `return pipe(${SRC}, map((x) => x + 1), mapToObj((x) => [String(x), x]))`],
+  ['meanByNonEmpty', `return pipe(${SRC}, map((x) => x + 1), meanByNonEmpty((x) => x * 2))`],
+  ['meanByOrUndefined', `return pipe(${SRC}, map((x) => x + 1), meanByOrUndefined((x) => x * 2))`],
+  ['nthOrUndefined', `return pipe(${SRC}, map((x) => x + 1), nthOrUndefined(3))`],
+  ['reduceBy', `return pipe(${SRC}, map((x) => x + 1), reduceBy((x) => String(x % 3), (a, x) => a + x, 0))`],
+  ['slice', `return pipe(${SRC}, map((x) => x + 1), slice(2, 6))`],
+  ['sortedIndexBy', `return pipe(${SRC}, map((x) => x + 1), sortedIndexBy(5, (x) => x))`],
+  ['sortedIndexWith', `return pipe(${SRC}, map((x) => x + 1), sortedIndexWith((x) => x < 5))`],
+  ['sortedLastIndexBy', `return pipe(${SRC}, map((x) => x + 1), sortedLastIndexBy(5, (x) => x))`],
+  ['splice', `return pipe(${SRC}, map((x) => x + 1), splice(2, 2, [8,8]))`],
+  ['swap', `return pipe(${SRC}, map((x) => x + 1), swap(0, 4))`],
+  ['symmetricDifferenceBy', `return pipe(${SRC}, map((x) => x + 1), symmetricDifferenceBy([2], (x) => String(x)))`],
+  ['symmetricDifferenceWith', `return pipe(${SRC}, map((x) => x + 1), symmetricDifferenceWith([2], (a, b) => a === b))`],
+  ['takeSortedBy', `return pipe(${SRC}, map((x) => x + 1), takeSortedBy(3, (a, b) => a - b))`],
+  ['unionBy', `return pipe(${SRC}, map((x) => x + 1), unionBy([2,99], (x) => String(x)))`],
+  ['unionWith', `return pipe(${SRC}, map((x) => x + 1), unionWith([2,99], (a, b) => a === b))`],
+  ['withoutBy', `return pipe(${SRC}, map((x) => x + 1), withoutBy([2], (x) => String(x)))`],
+  ['zipObj', `return pipe(${SRC}, map((x) => String(x)), zipObj([1,2,3,4,5,6,7,8,9]))`],
+]
+
+describe('the keyed and positional operators keep their runtime meaning', () => {
+  it.each(KEYED_BOUNDARY_VALUES)('%s', (name, body) => {
+    const result = runFixture(keyedFixture(name, body))
+    expect(result.map).not.toBeNull()
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+
+  it('runs a keying callback once per element, after the upstream stage', () => {
+    const result = runFixture(
+      keyedFixture(
+        'keyed-boundary-order',
+        `const r = pipe([1,2,3], map((x) => { log.push('m' + x); return x }), indexBy((x) => { log.push('k' + x); return String(x) })); return [r, log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3,k1,k2,k3')
+  })
+
+  it('walks mapAccumRight backwards after the forward stage', () => {
+    const result = runFixture(
+      keyedFixture(
+        'map-accum-right-order',
+        `const r = pipe([1,2,3], map((x) => { log.push('m' + x); return x }), mapAccumRight((a, x) => { log.push('a' + x); return [a + x, a] }, 0)); return [r, log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3,a3,a2,a1')
+  })
+
+  it('stops reduceBy-style work at a throwing callback with the upstream log intact', () => {
+    const result = runFixture(
+      keyedFixture(
+        'keyed-boundary-throw',
+        `try { pipe([1,2,3], map((x) => { log.push('m' + x); return x }), indexBy((x) => { if (x === 2) throw new Error('k'); return String(x) })) } catch (e) { return [e.message, log.join(',')] }`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+})
