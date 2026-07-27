@@ -2397,6 +2397,26 @@ const runImportPruningMatrix = async (topology, root, validateReceiptV1, compile
   return rows.sort((left, right) => compare(left.host, right.host))
 }
 
+// NODE_DEBUG=esm writes to the same stderr as the CLI's own explanation, and that
+// explanation legitimately names semantic capability ids such as
+// @stopcock/fp/array/map@1/exact. Judge the import closure by the specifiers Node
+// recorded as loaded, never by the surrounding prose.
+export const cliEsmClosureSpecifiers = (stderr) => {
+  const specifiers = [
+    ...new Set([...stderr.matchAll(/^ESM \d+: Storing (\S+) \(/gmu)].map((match) => match[1])),
+  ].sort(compare)
+  assert(specifiers.length > 0, 'NODE_DEBUG=esm did not expose a CLI import closure')
+  for (const specifier of specifiers) {
+    assert(
+      !/@stopcock\/fp(?:\/|$)|@stopcock\/fp-optimizer|(?:^|[/\\])fusion(?:[./\\]|$)/iu.test(
+        specifier,
+      ),
+      `packed CLI ESM closure imports FP/optimizer/fusion runtime: ${specifier}`,
+    )
+  }
+  return specifiers
+}
+
 const runCli = (topology, qualificationRoot, receiptPaths) => {
   assert(receiptPaths.length > 0, 'packed CLI has no emitted receipt files to inspect')
   const invoke = (args, debugEsm = false) =>
@@ -2470,27 +2490,24 @@ const runCli = (topology, qualificationRoot, receiptPaths) => {
     })
   }
   const debug = expectStatus(invoke(passArgs, true), 0, 'packed CLI ESM import closure')
-  assert(
-    !/@stopcock\/fp(?:\/|$)|@stopcock\/fp-optimizer|(?:^|[/\\])fusion(?:[./\\]|$)/iu.test(
-      debug.stderr,
-    ),
-    `packed CLI ESM closure imports FP/optimizer/fusion runtime: ${debug.stderr}`,
-  )
   const compilerRoot = topology.packages.get('@stopcock/fp-compiler')
-  const closureModules = [...debug.stderr.matchAll(/file:\/\/\/[^\s'"\])},]+/gu)]
-    .map((match) => fileURLToPath(match[0]))
-    .filter((path, index, all) => all.indexOf(path) === index)
+  const closureSpecifiers = cliEsmClosureSpecifiers(debug.stderr)
+  const closureModules = closureSpecifiers
+    .filter((specifier) => specifier.startsWith('file://'))
+    .map((specifier) => fileURLToPath(specifier))
     .sort(compare)
-  assert(closureModules.length > 0, 'NODE_DEBUG=esm did not expose a CLI import closure')
+  assert(closureModules.length > 0, 'NODE_DEBUG=esm did not expose a CLI file module closure')
   for (const path of closureModules) {
     assert(
       path === compilerRoot || path.startsWith(`${compilerRoot}${sep}`),
       `packed CLI ESM closure escapes extracted compiler: ${path}`,
     )
   }
-  const normalizedDebug = debug.stderr
-    .replaceAll(posix(compilerRoot), '<compiler>')
-    .replaceAll(compilerRoot, '<compiler>')
+  const normalizedClosure = closureSpecifiers.map((specifier) =>
+    specifier.startsWith('file://')
+      ? `file://<compiler>/${canonicalPath(compilerRoot, fileURLToPath(specifier))}`
+      : specifier,
+  )
 
   const [receipt] = JSON.parse(readFileSync(receiptPath, 'utf8'))
   const duplicatePath = join(qualificationRoot, 'cli-duplicate.json')
@@ -2572,7 +2589,8 @@ const runCli = (topology, qualificationRoot, receiptPaths) => {
     stale: { status: stale.status, json: hash(Buffer.from(stale.stdout)) },
     semanticReports: allReports,
     esmClosure: {
-      debug: hash(Buffer.from(normalizedDebug)),
+      specifiers: normalizedClosure,
+      digest: hash(Buffer.from(stable(normalizedClosure))),
       modules: closureModules.map((path) => canonicalPath(compilerRoot, path)),
       fpRuntimeExcluded: true,
     },

@@ -110,6 +110,31 @@ describe('S11R extracted matrix manifest boundary', () => {
     ).toMatch(/^sha256:[a-f0-9]{64}$/u)
   })
 
+  it('judges the CLI import closure by loaded specifiers, not by rendered evidence prose', async () => {
+    const { cliEsmClosureSpecifiers } = await import(script.href)
+    const loaded = [
+      'ESM 41: Storing file:///tmp/extracted/fp-compiler/dist/cli.js (implicit type) in ModuleLoadMap',
+      'ESM 41: Storing node:crypto (implicit type) in ModuleLoadMap',
+      'ESM 41: Storing node:crypto (implicit type) in ModuleLoadMap',
+    ].join('\n')
+    const prose = [
+      'site sha256:8a3ab3de1529 src/observable-construction.mjs',
+      '    - the site declares @stopcock/fp/array/map@1/exact, @stopcock/fp/array/take@1/exact in exact mode',
+      '    - fusion evidence is unavailable',
+    ].join('\n')
+
+    expect(cliEsmClosureSpecifiers(`${loaded}\n${prose}\n`)).toEqual([
+      'file:///tmp/extracted/fp-compiler/dist/cli.js',
+      'node:crypto',
+    ])
+    expect(() => cliEsmClosureSpecifiers(prose)).toThrow(/did not expose a CLI import closure/u)
+    expect(() =>
+      cliEsmClosureSpecifiers(
+        `${loaded}\nESM 41: Storing file:///tmp/extracted/fp-compiler/node_modules/@stopcock/fp/dist/fusion.js (implicit type) in ModuleLoadMap\n`,
+      ),
+    ).toThrow(/imports FP\/optimizer\/fusion runtime/u)
+  })
+
   it('binds import pruning to retained engines instead of zero-byte facades', async () => {
     const { assertImportPruningGraph } = await import(script.href)
     const optionEngine = '@stopcock/fp/dist/option-B35NiKCI.js'
