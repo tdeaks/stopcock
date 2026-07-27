@@ -6,18 +6,12 @@ import {
   OP_LENGTH,
   OP_MAP,
   OP_REDUCE,
-  OP_SORT,
-  OP_SORT_ASC,
-  OP_SORT_BY,
-  OP_SORT_DESC,
-  OP_SORT_INLINE,
   OP_TAKE,
 } from '@stopcock/fp/abi'
 import { vetOperator } from '@stopcock/fp/abi'
 import { recordSelection } from './selection-trace'
 import {
   findElidableMapBeforeLength,
-  findSortThenTake,
   pureRewrites,
   type PureRewrite,
 } from '@stopcock/fp/abi'
@@ -301,32 +295,10 @@ export function __shapeEntryForSteps(
 
 
 
-function stableTopK(
-  data: readonly unknown[],
-  compare: (left: unknown, right: unknown) => number,
-  count: number,
-): unknown[] {
-  const limit = Math.max(0, Math.trunc(count))
-  if (limit === 0) return []
-  const output: unknown[] = []
-  for (let index = 0; index < data.length; index++) {
-    const value = data[index]
-    if (output.length === limit && compare(value, output[limit - 1]) >= 0) continue
-    let low = 0
-    let high = output.length
-    while (low < high) {
-      const middle = (low + high) >>> 1
-      if (compare(output[middle], value) <= 0) low = middle + 1
-      else high = middle
-    }
-    output.splice(low, 0, value)
-    if (output.length > limit) output.pop()
-  }
-  return output
-}
-
-function numericCompare(left: unknown, right: unknown): number {
-  return (left as number) - (right as number)
+function readDenseLength(data: readonly unknown[]): number {
+  const length = data.length
+  for (let index = 0; index < length; index++) void data[index]
+  return length
 }
 
 function buildPortable(
@@ -339,41 +311,6 @@ function buildPortable(
   readonly entry: ShapeEntry
 } {
   if (pure) {
-    const sortTake = findSortThenTake(shape.codes, shape.segments)
-    if (sortTake) {
-      const sortSegment = shape.segments[sortTake.sortSegment]
-      const takeSegment = shape.segments[sortTake.takeSegment]
-      const sortOp = shape.codes[sortSegment.startIndex]
-      const sortBinding = bindings[sortSegment.startIndex]
-      const takeBinding = bindings[takeSegment.startIndex]
-      const before = shape.segments
-        .slice(0, sortTake.sortSegment)
-        .map((segment) => lowerShape({ codes: shape.codes, segments: [segment] }))
-      const after = shape.segments
-        .slice(sortTake.takeSegment + 1)
-        .map((segment) => lowerShape({ codes: shape.codes, segments: [segment] }))
-      const portable = (input: unknown): unknown => {
-        let value = input
-        for (const run of before) value = run(value, bindings)
-        const compare =
-          sortOp === OP_SORT_BY || sortOp === OP_SORT_INLINE
-            ? (sortBinding.fn as (left: unknown, right: unknown) => number)
-            : sortOp === OP_SORT_DESC
-              ? (left: unknown, right: unknown) => numericCompare(right, left)
-              : numericCompare
-        value = stableTopK(value as readonly unknown[], compare, takeBinding.fn as number)
-        for (const run of after) value = run(value, bindings)
-        return value
-      }
-      const entry = shapeEntryFor(shape, 'pure', 'top-k', () => (input) => portable(input))
-      recordSelection('selected', 'shared', entry.shapeKey)
-      return {
-        run: bindEntryRunner(entry, bindings),
-        rewrites: pureRewrites(shape),
-        entry,
-      }
-    }
-
     const elidable = findElidableMapBeforeLength(shape.codes, shape.segments)
     if (elidable !== undefined) {
       const before = shape.segments
@@ -382,18 +319,18 @@ function buildPortable(
       const after = shape.segments
         .slice(elidable + 2)
         .map((segment) => lowerShape({ codes: shape.codes, segments: [segment] }))
-      const portable = (input: unknown): unknown => {
+      const portable: PortableRunner = (input, currentBindings): unknown => {
         let value = input
-        for (const run of before) value = run(value, bindings)
-        value = (value as readonly unknown[]).length
-        for (const run of after) value = run(value, bindings)
+        for (const run of before) value = run(value, currentBindings)
+        value = readDenseLength(value as readonly unknown[])
+        for (const run of after) value = run(value, currentBindings)
         return value
       }
       const entry = shapeEntryFor(
         shape,
         'pure',
         'elide-unused-map',
-        () => (input) => portable(input),
+        () => portable,
       )
       recordSelection('selected', 'shared', entry.shapeKey)
       return {

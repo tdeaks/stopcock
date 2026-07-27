@@ -70,7 +70,6 @@ const DEFAULT_COMPILE_IMPORT_SOURCES = [
 ]
 const OPTION_IMPORT_SOURCE = '@stopcock/fp'
 const OPTION_TERMINALS = new Set(['find', 'findIndex', 'findMap', 'head', 'last', 'min', 'max'])
-const PURE_SORT_OPS = new Set(['sort', 'sortBy', 'sortAsc', 'sortDesc'])
 
 interface Bindings {
   readonly pipeLocals: Set<string>
@@ -192,6 +191,28 @@ function lexicalArrayExclusion(scope: Scope): string | undefined {
   )
 }
 
+function plannedBoundaryIntrinsicExclusion(
+  scope: Scope,
+  steps: readonly Step[],
+  sourceTier: CompilerFallbackTier,
+  runtimeStepCount: number,
+): string | undefined {
+  if (
+    !(
+      sourceTier === 'compact' ||
+      (sourceTier === 'optimized' && runtimeStepCount > 1)
+    ) ||
+    !steps.some((step) => step.name === 'without') ||
+    scope.getBinding('Set') === undefined
+  ) {
+    return undefined
+  }
+  return (
+    'static lowering declines a visible lexical Set binding because the ' +
+    'source-tier without plan resolves the module realm Set constructor'
+  )
+}
+
 function globalUndefinedIsUnbound(scope: Scope): boolean {
   return scope.getBinding('undefined') === undefined
 }
@@ -292,13 +313,30 @@ function usesOptionTerminal(steps: readonly Step[]): boolean {
   return steps.some((step) => OPTION_TERMINALS.has(step.name))
 }
 
-function retainedPortablePureRewrite(steps: readonly Step[]): string | undefined {
-  for (let index = 0; index < steps.length - 1; index++) {
-    if (PURE_SORT_OPS.has(steps[index].name) && steps[index + 1].name === 'take') {
-      return 'sort followed by take uses the runtime bounded top-k rewrite'
-    }
+function staticallyProducesPrimitiveNumber(node: t.Expression): boolean {
+  if (t.isNumericLiteral(node)) return true
+  if (!t.isUnaryExpression(node)) return false
+  if (node.operator === '+') {
+    // Unary plus either throws during the already-observable operator
+    // construction or produces a primitive number.
+    return true
   }
-  return undefined
+  return node.operator === '-' && staticallyProducesPrimitiveNumber(node.argument)
+}
+
+function fusedNumericFallbackReason(
+  steps: readonly Step[],
+  sourceTier: CompilerFallbackTier,
+): string | undefined {
+  if (sourceTier === 'sequential') return undefined
+  const unsafeStep = steps.find(
+    (step) =>
+      (step.name === 'take' || step.name === 'drop') &&
+      (step.args[0] === undefined || !staticallyProducesPrimitiveNumber(step.args[0])),
+  )
+  return unsafeStep === undefined
+    ? undefined
+    : `${unsafeStep.name}: a fused stream requires a statically primitive-number count; coercible counts retain the source-selected runtime fallback`
 }
 
 function collectBindings(
@@ -871,6 +909,14 @@ function tryTransformDeferred(
     }
   }
   const steps = collected.steps!
+  const numericFallback = fusedNumericFallbackReason(steps, sourceTier)
+  if (numericFallback !== undefined) {
+    return {
+      reason: numericFallback,
+      reasonCodes: ['materialization-boundary'],
+      opNames: steps.map((step) => step.name),
+    }
+  }
   if (staleSelection !== undefined) {
     return {
       reason: staleSelection.reason,
@@ -886,15 +932,6 @@ function tryTransformDeferred(
       opNames: steps.map((step) => step.name),
     }
   }
-  if (kind === 'compilePure') {
-    const retainedRewrite = retainedPortablePureRewrite(steps)
-    if (retainedRewrite) {
-      return {
-        reason: `retained portable compilePure optimization: ${retainedRewrite}`,
-        opNames: steps.map((step) => step.name),
-      }
-    }
-  }
   if (stepNodes.some((step) => containsOuterAwaitOrYield(step))) {
     return {
       reason:
@@ -902,10 +939,12 @@ function tryTransformDeferred(
       opNames: steps.map((step) => step.name),
     }
   }
-  const arrayExclusion = lexicalArrayExclusion(scope)
-  if (arrayExclusion !== undefined) {
+  const intrinsicExclusion =
+    lexicalArrayExclusion(scope) ??
+    plannedBoundaryIntrinsicExclusion(scope, steps, sourceTier, stepNodes.length)
+  if (intrinsicExclusion !== undefined) {
     return {
-      reason: arrayExclusion,
+      reason: intrinsicExclusion,
       reasonCodes: ['strict-scope-exclusion'],
       opNames: steps.map((step) => step.name),
     }
@@ -1258,6 +1297,34 @@ export function transformStopcockPipelines(
       }
       const steps = collected.steps!
       const residual = collected.residual
+      const numericFallback = fusedNumericFallbackReason(steps, fallbackTier)
+      if (numericFallback !== undefined) {
+        if (diagnosticsLevel !== false) {
+          diagnostics.push(
+            site(
+              call,
+              id,
+              false,
+              stepNodes.length,
+              semantics,
+              numericFallback,
+              steps.map((step) => step.name),
+              {
+                ...sourceIdentity,
+                reasonCodes: ['materialization-boundary'],
+                fallbackTier,
+                operatorFacts: steps.map((step) => step.fact),
+              },
+            ),
+          )
+        }
+        if (diagnosticsLevel === 'error') {
+          throw new Error(
+            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${numericFallback}`,
+          )
+        }
+        return
+      }
       let hasNestedManagedSite = false
       path.traverse({
         CallExpression(nestedPath) {
@@ -1293,6 +1360,7 @@ export function transformStopcockPipelines(
                     fallbackTier === 'sequential'
                       ? 'sequential-stages'
                       : 'fused-streams',
+                    fallbackTier,
                   ),
                   ...(residual === undefined ? [] : (['opaque'] as const)),
                 ],
@@ -1376,8 +1444,15 @@ export function transformStopcockPipelines(
         }
         return
       }
-      const arrayExclusion = lexicalArrayExclusion(path.scope)
-      if (arrayExclusion !== undefined) {
+      const intrinsicExclusion =
+        lexicalArrayExclusion(path.scope) ??
+        plannedBoundaryIntrinsicExclusion(
+          path.scope,
+          steps,
+          fallbackTier,
+          stepNodes.length,
+        )
+      if (intrinsicExclusion !== undefined) {
         const reasonCodes: ReceiptReasonCodeV1[] = ['strict-scope-exclusion']
         if (residual !== undefined) reasonCodes.push('opaque-callback')
         if (diagnosticsLevel !== false) {
@@ -1388,7 +1463,7 @@ export function transformStopcockPipelines(
               false,
               stepNodes.length,
               semantics,
-              arrayExclusion,
+              intrinsicExclusion,
               steps.map((step) => step.name),
               {
                 ...sourceIdentity,
@@ -1401,7 +1476,7 @@ export function transformStopcockPipelines(
         }
         if (diagnosticsLevel === 'error') {
           throw new Error(
-            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${arrayExclusion}`,
+            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${intrinsicExclusion}`,
           )
         }
         return

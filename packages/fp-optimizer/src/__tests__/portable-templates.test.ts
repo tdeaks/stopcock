@@ -264,6 +264,12 @@ function runDifferential(name: string, opcodes: readonly number[]): void {
         actualErr = e
       }
 
+      if (oracleErr === undefined) {
+        // An exact take may terminate before the chosen throwing value is
+        // reached. The generated runner must make the same value unreachable.
+        expect(actualErr).toBeUndefined()
+        return
+      }
       expect(oracleErr).toBeInstanceOf(Boom)
       expect(actualErr).toBeInstanceOf(Boom)
       expect((actualErr as Boom).message).toEqual((oracleErr as Boom).message)

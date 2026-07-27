@@ -2,12 +2,12 @@
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
 // The compiler consumes a data-only projection; it never imports FP runtime modules.
 // Semantic facts hash: sha256:b8fc99c1023be40c96da6df4c393ed1a0f17c86d86c7d1d5546fd37ed10b5c16
-// Compiler emitter ABI hash: sha256:6e000d1b4d255f87e1b36f519bbe20d30958cf4c0a9347acec6b680999fdd857
+// Compiler emitter ABI hash: sha256:627e2fea01170610b5f2d23cb69dafc7571953106ced8e78aabd0b924b6f9aa8
 
 export const OPERATOR_SEMANTIC_FACTS_V1_HASH =
   'sha256:b8fc99c1023be40c96da6df4c393ed1a0f17c86d86c7d1d5546fd37ed10b5c16'
 export const COMPILER_EMITTER_ABI_V1_HASH =
-  'sha256:6e000d1b4d255f87e1b36f519bbe20d30958cf4c0a9347acec6b680999fdd857'
+  'sha256:627e2fea01170610b5f2d23cb69dafc7571953106ced8e78aabd0b924b6f9aa8'
 
 export interface OpsTableEntry {
   readonly name: string

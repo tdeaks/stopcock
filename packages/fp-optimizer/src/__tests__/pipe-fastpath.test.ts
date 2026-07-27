@@ -16,7 +16,11 @@ import * as M from '@stopcock/fp/math'
 import { buildPlan } from '../plan-bridge'
 import { interpret } from '@stopcock/fp/abi'
 import { getOptimizerStats, resetOptimizerStats } from '../compile'
-import { NUM_KEY_BASE, NUM_KEY_MAX_LEN } from '../fusion-engine'
+import {
+  NUM_KEY_BASE,
+  NUM_KEY_MAX_LEN,
+  __resetFusionCaches,
+} from '../fusion-engine'
 import { OP_CODES } from '@stopcock/fp/abi'
 
 const ITERATIONS = 25
@@ -328,6 +332,155 @@ describe('pipe() fast path: bail conditions stay correct', () => {
 
       expect(result).toEqual(expected)
     }
+  })
+})
+
+describe('pipe() fast path: take quota eligibility', () => {
+  const runObjectTake = (
+    execute: (source: number[], steps: readonly unknown[]) => unknown,
+  ): { readonly result: unknown; readonly events: string[] } => {
+    const events: string[] = []
+    const source = new Proxy([1, 2, 3], {
+      get(target, property, receiver) {
+        if (property === 'length') events.push('source:length')
+        if (typeof property === 'string' && /^\d+$/u.test(property)) {
+          events.push(`source:get:${property}`)
+        }
+        return Reflect.get(target, property, receiver)
+      },
+    })
+    const count = {
+      valueOf() {
+        events.push('count:valueOf')
+        return 2.75
+      },
+    }
+    const steps = [
+      A.map((value: number) => {
+        events.push(`first:${value}`)
+        return value + 1
+      }),
+      A.map((value: number) => {
+        events.push(`second:${value}`)
+        return value * 2
+      }),
+      A.take(count as unknown as number),
+    ] as const
+    return { result: execute(source, steps), events }
+  }
+
+  it('keeps an object count generic after the numeric opcode shape is warm', () => {
+    __resetFusionCaches()
+    pipe(
+      [1, 2, 3],
+      A.map((value: number) => value + 1),
+      A.map((value: number) => value * 2),
+      A.take(2),
+    )
+
+    const expected = runObjectTake((source, steps) => interpret(buildPlan(steps), source))
+    const actual = runObjectTake((source, steps) =>
+      pipe(source, ...(steps as [any, any, any])),
+    )
+
+    expect(actual).toEqual(expected)
+    expect(actual.events.filter((event) => event === 'count:valueOf')).toHaveLength(3)
+  })
+
+  it('does not poison the numeric opcode shape when an object count runs first', () => {
+    __resetFusionCaches()
+    runObjectTake((source, steps) => pipe(source, ...(steps as [any, any, any])))
+
+    const reads: string[] = []
+    const source = new Proxy([1, 2, 3, 4], {
+      get(target, property, receiver) {
+        if (typeof property === 'string' && /^\d+$/u.test(property)) reads.push(property)
+        return Reflect.get(target, property, receiver)
+      },
+    })
+    const result = pipe(
+      source,
+      A.map((value: number) => value + 1),
+      A.map((value: number) => value * 2),
+      A.take(2),
+    )
+
+    expect(result).toEqual([4, 6])
+    expect(reads).toEqual(['0', '1', '2'])
+  })
+
+  it('preserves a third-coercion error after a numeric front-cache hit', () => {
+    __resetFusionCaches()
+    pipe(
+      [1, 2, 3],
+      A.map((value: number) => value),
+      A.map((value: number) => value),
+      A.take(2),
+    )
+
+    const sentinel = new Error('third take coercion')
+    const events: string[] = []
+    let coercions = 0
+    const count = {
+      valueOf() {
+        events.push(`count:${++coercions}`)
+        if (coercions === 3) throw sentinel
+        return 2.75
+      },
+    }
+
+    expect(() =>
+      pipe(
+        [1, 2, 3],
+        A.map((value: number) => {
+          events.push(`first:${value}`)
+          return value
+        }),
+        A.map((value: number) => {
+          events.push(`second:${value}`)
+          return value
+        }),
+        A.take(count as unknown as number),
+      ),
+    ).toThrow(sentinel)
+    expect(events).toEqual([
+      'first:1',
+      'second:1',
+      'first:2',
+      'second:2',
+      'first:3',
+      'second:3',
+      'count:1',
+      'count:2',
+      'count:3',
+    ])
+  })
+
+  it('never reads the fifth step binding from mutable public metadata', () => {
+    __resetFusionCaches()
+    const identity = (value: number) => value
+    pipe(
+      [1, 2, 3],
+      A.map(identity),
+      A.map(identity),
+      A.map(identity),
+      A.map(identity),
+      A.take(2),
+    )
+
+    const take = A.take(2)
+    ;(take as unknown as { _fn: number })._fn = 0
+    expect(take([1, 2, 3])).toEqual([1, 2])
+    expect(
+      pipe(
+        [1, 2, 3],
+        A.map(identity),
+        A.map(identity),
+        A.map(identity),
+        A.map(identity),
+        take,
+      ),
+    ).toEqual([1, 2])
   })
 })
 

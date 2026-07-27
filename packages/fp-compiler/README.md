@@ -93,8 +93,15 @@ The compiler preserves the execution tier selected by the public import:
 
 Root `pipe` therefore keeps stage-by-stage callback order and materialization.
 Explicit fusion and optimizer imports keep their interleaved/early-exit
-semantics. An unsafe or unsupported site stays on the same runtime tier instead
-of silently falling back to a different implementation.
+semantics for eligible shapes. Root sequential `take` and `drop` stages retain
+their native stage-by-stage behavior, including dynamic and coercible counts.
+For compact or optimized fusion, the compiler lowers `take` and `drop` only
+when the count expression is statically known to produce a primitive number;
+the emitted loop applies the same one-time quota normalization as the runtime.
+Dynamic or coercible fused counts stay on the source-selected runtime fallback.
+`dropWhile` remains eligible in both layouts, and fused `take` keeps the
+established one-item lookahead at its lexical position. An unsafe or
+unsupported site never silently changes runtime tier.
 
 Every accepted site is first represented as a versioned static Plan IR whose
 ordered captures, generated S2 operator facts, boundaries, terminal, semantic
@@ -107,8 +114,9 @@ because their observable JavaScript behavior is part of the source program.
 
 `compilePure` and `assumePure: true` may remove per-element work only for a
 proven rewrite. This release includes `map ... map -> length` callback
-elision. The bounded `sort -> take` top-k shape remains on the runtime until an
-equivalent AOT lowering exists. Dynamic step factories, spread arguments,
+elision. `sort -> take` always performs the full sort boundary; the unsafe
+bounded top-k shortcut is not retained, and any following `take` uses the
+selected tier's ordinary semantics. Dynamic step factories, spread arguments,
 unsupported operators, direct `eval`, ambiguous imports, and unsafe expression
 contexts remain visible runtime calls.
 

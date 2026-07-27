@@ -20,6 +20,10 @@ import type { PlanShape, SegmentShape } from '../plan'
 import type { OpCode, OpDomain } from '../registry'
 
 export interface PureRewrite {
+  /**
+   * `top-k` remains in the published diagnostic union for source
+   * compatibility, but no current executor emits or authorizes it.
+   */
   readonly kind: 'top-k' | 'elide-unused-map'
   readonly description: string
 }
@@ -36,6 +40,12 @@ export function boundaryIndexes(shape: PlanShape): readonly number[] {
   return indexes
 }
 
+/**
+ * Describes the historical sort/take adjacency for compatibility tooling.
+ *
+ * @deprecated This is topology only. It does not prove that bounded top-k is
+ * semantically safe and is not consulted by any runtime or compiler selector.
+ */
 export function findSortThenTake(
   codes: readonly OpCode[],
   segments: readonly SegmentShape[],
@@ -83,14 +93,6 @@ export function findElidableMapBeforeLength(
 }
 
 export function pureRewrites(shape: PlanShape): readonly PureRewrite[] {
-  if (findSortThenTake(shape.codes, shape.segments)) {
-    return Object.freeze([
-      {
-        kind: 'top-k',
-        description: 'sort followed by take uses a bounded stable top-k',
-      } as const,
-    ])
-  }
   if (findElidableMapBeforeLength(shape.codes, shape.segments) !== undefined) {
     return Object.freeze([
       {

@@ -12,6 +12,8 @@ import {
 import { none as optionNone, some as optionSome, type Option } from './option'
 import { mergeSortBy, mergeSortAsc, mergeSortDesc } from './sort-kernel'
 
+const NON_FUSEABLE_OPCODE = 0
+
 // Structural equality (deep, arrays/dates/plain-objects), used where entries need
 // value comparison rather than reference identity
 function structEq(a: any, b: any): boolean {
@@ -495,25 +497,44 @@ export const uniqBy: {
 export const take: {
   <A>(arr: readonly A[], n: number): A[]
   (n: number): <A>(arr: readonly A[]) => A[]
-} = dual(
-  2,
-  (arr: any, n: any) => {
+} = function take(_arg0?: any, _arg1?: any) {
+  if (arguments.length >= 2) {
+    const arr = _arg0
+    const n = _arg1
     let len = arr.length
     if (n <= 0) {
       return []
     } else {
       return arr.slice(0, n > len ? len : n)
     }
-  },
-  { op: 'take' },
-)
+  }
+  const n = _arg0
+  const _dl: any = function (arr: any) {
+    let len = arr.length
+    if (n <= 0) {
+      return []
+    } else {
+      return arr.slice(0, n > len ? len : n)
+    }
+  }
+  // Coercible objects, symbols, and bigints can expose repeated native
+  // comparison/slice coercions. Only a primitive number is admitted to the
+  // streaming fusion contract; every other value keeps the real callable as
+  // an opaque stage.
+  _dl._op = 3
+  _dl._fn = n
+  if (typeof n !== 'number') return registerTrustedOperator(_dl, NON_FUSEABLE_OPCODE, n)
+  const fusedCount = n > 0 ? (n === 1 / 0 ? n : n - (n % 1)) : 0
+  return registerTrustedOperator(_dl, 3, fusedCount)
+} as any
 
 export const drop: {
   <A>(arr: readonly A[], n: number): A[]
   (n: number): <A>(arr: readonly A[]) => A[]
-} = dual(
-  2,
-  (arr: any, n: any) => {
+} = function drop(_arg0?: any, _arg1?: any) {
+  if (arguments.length >= 2) {
+    const arr = _arg0
+    const n = _arg1
     let len = arr.length
     if (n <= 0) {
       return arr.slice()
@@ -522,9 +543,24 @@ export const drop: {
     } else {
       return arr.slice(n)
     }
-  },
-  { op: 'drop' },
-)
+  }
+  const n = _arg0
+  const _dl: any = function (arr: any) {
+    let len = arr.length
+    if (n <= 0) {
+      return arr.slice()
+    } else if (n >= len) {
+      return []
+    } else {
+      return arr.slice(n)
+    }
+  }
+  _dl._op = 4
+  _dl._fn = n
+  if (typeof n !== 'number') return registerTrustedOperator(_dl, NON_FUSEABLE_OPCODE, n)
+  const fusedCount = n > 0 ? (n === 1 / 0 ? n : n - (n % 1)) : 0
+  return registerTrustedOperator(_dl, 4, fusedCount)
+} as any
 
 export const takeWhile: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): A[]

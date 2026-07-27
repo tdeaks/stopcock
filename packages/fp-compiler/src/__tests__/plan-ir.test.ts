@@ -53,7 +53,12 @@ const stepsFrom = (
   })
 
 const sourceText = (source: string, node: t.Node): string => {
-  if (node.start === null || node.start === undefined || node.end === null || node.end === undefined) {
+  if (
+    node.start === null ||
+    node.start === undefined ||
+    node.end === null ||
+    node.end === undefined
+  ) {
     throw new Error('expected parser source locations')
   }
   return source.slice(node.start, node.end)
@@ -61,7 +66,8 @@ const sourceText = (source: string, node: t.Node): string => {
 
 describe('StaticCompilerPlanV1', () => {
   it('captures the source before each non-inline operator binding', () => {
-    const source = 'pipe(makeSource(), A.map((value) => value + 1), A.take(makeLimit()), A.filter(makePredicate()))'
+    const source =
+      'pipe(makeSource(), A.map((value) => value + 1), A.take(makeLimit()), A.filter(makePredicate()))'
     const call = parsedCall(source)
     const plan = createStaticCompilerPlan({
       siteKind: 'pipe',
@@ -72,11 +78,13 @@ describe('StaticCompilerPlanV1', () => {
       steps: stepsFrom(call, ['map', 'take', 'filter']),
     })
 
-    expect(plan.captures.map(({ kind, evaluationOrder, node }) => ({
-      kind,
-      evaluationOrder,
-      source: sourceText(source, node),
-    }))).toEqual([
+    expect(
+      plan.captures.map(({ kind, evaluationOrder, node }) => ({
+        kind,
+        evaluationOrder,
+        source: sourceText(source, node),
+      })),
+    ).toEqual([
       { kind: 'source', evaluationOrder: 0, source: 'makeSource()' },
       { kind: 'whole-step', evaluationOrder: 1, source: 'A.map((value) => value + 1)' },
       { kind: 'binding', evaluationOrder: 2, source: 'makeLimit()' },
@@ -104,12 +112,14 @@ describe('StaticCompilerPlanV1', () => {
       opaqueReceiver: 'step-vector',
     })
 
-    expect(plan.captures.map(({ kind, stepIndex, evaluationOrder, node }) => ({
-      kind,
-      stepIndex,
-      evaluationOrder,
-      source: sourceText(source, node),
-    }))).toEqual([
+    expect(
+      plan.captures.map(({ kind, stepIndex, evaluationOrder, node }) => ({
+        kind,
+        stepIndex,
+        evaluationOrder,
+        source: sourceText(source, node),
+      })),
+    ).toEqual([
       { kind: 'source', stepIndex: undefined, evaluationOrder: 0, source: 'makeSource()' },
       { kind: 'binding', stepIndex: 0, evaluationOrder: 1, source: 'makeMapper()' },
       { kind: 'whole-step', stepIndex: 0, evaluationOrder: 2, source: 'A.map(makeMapper())' },
@@ -161,11 +171,13 @@ describe('StaticCompilerPlanV1', () => {
       loweringId: FULL_RUNNER_LOWERING_ID,
     })
     expect(exactPlan.source).toBeUndefined()
-    expect(exactPlan.captures.map(({ phase, kind, node }) => ({
-      phase,
-      kind,
-      source: sourceText(source, node),
-    }))).toEqual([
+    expect(
+      exactPlan.captures.map(({ phase, kind, node }) => ({
+        phase,
+        kind,
+        source: sourceText(source, node),
+      })),
+    ).toEqual([
       { phase: 'construction', kind: 'binding', source: 'makeMapper()' },
       { phase: 'construction', kind: 'whole-step', source: 'A.map(makeMapper())' },
       { phase: 'construction', kind: 'binding', source: 'makeLimit()' },
@@ -177,9 +189,7 @@ describe('StaticCompilerPlanV1', () => {
       mode: 'pure',
       operatorConstruction: 'observable',
     })
-    expect(
-      purePlan.captures.filter((capture) => capture.kind === 'whole-step'),
-    ).toHaveLength(2)
+    expect(purePlan.captures.filter((capture) => capture.kind === 'whole-step')).toHaveLength(2)
     expect(purePlan.mode).not.toBe(exactPlan.mode)
   })
 
@@ -216,6 +226,82 @@ describe('StaticCompilerPlanV1', () => {
     ])
   })
 
+  it('records map-to-length elision after a preceding boundary', () => {
+    const source = 'compilePure(A.reverse, A.map(makeMapper()), A.length)'
+    const call = parsedCall(source)
+    const plan = createStaticCompilerPlan({
+      siteKind: 'compilePure',
+      mode: 'pure',
+      sourceTier: 'compact',
+      call,
+      steps: stepsFrom(call, ['reverse', 'map', 'length'], 0),
+    })
+
+    expect(plan.pureRewrites).toEqual([
+      {
+        kind: 'elide-unused-map',
+        elidedStepIndexes: [1],
+        terminalIndex: 2,
+      },
+    ])
+    expect(plan.segments).toEqual([
+      {
+        kind: 'boundary',
+        start: 0,
+        length: 1,
+        inputDomain: 'array',
+        outputDomain: 'array',
+      },
+      {
+        kind: 'stream',
+        start: 2,
+        length: 1,
+        inputDomain: 'array',
+        outputDomain: 'scalar',
+        terminalIndex: 2,
+      },
+    ])
+  })
+
+  it('does not elide a trailing map when the same stream also filters', () => {
+    const source = 'compilePure(A.filter(Boolean), A.map(Number), A.length)'
+    const call = parsedCall(source)
+    const plan = createStaticCompilerPlan({
+      siteKind: 'compilePure',
+      mode: 'pure',
+      sourceTier: 'compact',
+      call,
+      steps: stepsFrom(call, ['filter', 'map', 'length'], 0),
+    })
+
+    expect(plan.pureRewrites).toEqual([])
+    expect(plan.segments).toHaveLength(1)
+    expect(plan.segments[0]).toMatchObject({
+      kind: 'stream',
+      start: 0,
+      length: 3,
+      terminalIndex: 2,
+    })
+  })
+
+  it('retains compact numeric materializers as source-tier boundaries', () => {
+    const source = 'compile(A.map(mapper), A.sum)'
+    const call = parsedCall(source)
+    const plan = createStaticCompilerPlan({
+      siteKind: 'compile',
+      mode: 'exact',
+      sourceTier: 'compact',
+      call,
+      steps: stepsFrom(call, ['map', 'sum'], 0),
+    })
+
+    expect(plan.segments).toMatchObject([
+      { kind: 'stream', start: 0, length: 1 },
+      { kind: 'boundary', start: 1, length: 1, sourceTierBoundary: true },
+    ])
+    expect(plan.segmentKinds).toEqual(['stream', 'boundary'])
+  })
+
   it('segments from generated operator facts, including boundaries and terminals', () => {
     const source = 'pipe(input, A.map(mapper), A.flatten, A.take(limit), A.sum)'
     const call = parsedCall(source)
@@ -226,7 +312,10 @@ describe('StaticCompilerPlanV1', () => {
       sourceTier: 'compiler',
       call,
       source: expressionAt(call, 0),
-      steps: stepsFrom(call, facts.map(({ name }) => name)),
+      steps: stepsFrom(
+        call,
+        facts.map(({ name }) => name),
+      ),
     })
 
     expect(facts.map(({ compilerPipelineRole }) => compilerPipelineRole)).toEqual([

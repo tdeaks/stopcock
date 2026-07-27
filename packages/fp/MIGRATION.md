@@ -56,6 +56,33 @@ portable prebuilt compact fusion.
 The diagnostic result is versioned and reports
 `runtimeCodeGeneration: false`.
 
+## Pure compilation is explicitly opt-in
+
+During the optimizer extraction, the deprecated `@stopcock/fp/compile`
+compatibility facade briefly routed both `compile` and `compilePure` through
+the exact compact executor. In 2.0, `compile` still preserves exact compact
+semantics, while `compilePure` again executes the rewrites reported by
+`explainPure`, including unused-map elision before `length`.
+
+The previously advertised bounded `sort -> take` rewrite has been retired
+fail-closed. It could not preserve changing-length Proxies or custom/frozen
+sort snapshots and thrown-error timing under the existing contract. Both
+compile modes now perform the full sort boundary before their normal
+tier-specific `take`.
+
+Compact and optimized fusion admit `take` and `drop` only when the supplied
+quota is a primitive number. A normalized integer quota is stored in the
+trusted private binding; non-number and coercible quotas execute through the
+real opaque callable after the upstream segment, preserving native `slice`,
+Array species, repeated coercions, and thrown-error timing. `dropWhile` remains
+fused, and fused `take` retains its established one-item lookahead. The
+build-time compiler lowers root sequential stages directly, but accepts
+`take`/`drop` in a fused source tier only when the count is statically known to
+produce a primitive number.
+
+Only use `compilePure` when the affected callbacks are pure. Use `compile` when
+an otherwise elidable callback is observable.
+
 ## Partial APIs are explicit
 
 Partial collection operations now prefer Option:

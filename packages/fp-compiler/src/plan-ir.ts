@@ -1,11 +1,7 @@
 import * as t from '@babel/types'
 import { planInline } from './inline'
 import type { CompilerOperatorFact } from './ops'
-import type {
-  CompilerFallbackTier,
-  CompilerSegmentKind,
-  CompilerSemantics,
-} from './types'
+import type { CompilerFallbackTier, CompilerSegmentKind, CompilerSemantics } from './types'
 import type { SourceSpan } from './mapped-code'
 
 export type CompilerSiteKind = 'pipe' | 'flow' | 'compile' | 'compilePure'
@@ -71,6 +67,8 @@ export interface PlanSegment {
   readonly inputDomain: CompilerOperatorFact['inputDomain'] | 'unknown'
   readonly outputDomain: CompilerOperatorFact['outputDomain'] | 'unknown'
   readonly terminalIndex?: number
+  /** Runtime-tier materializer whose compiler fact is otherwise a terminal. */
+  readonly sourceTierBoundary?: true
 }
 
 export interface PlanPureRewrite {
@@ -137,27 +135,44 @@ const INLINE_CALLBACK_OPS = new Set([
   'none',
 ])
 
-const spanOf = (node: { readonly start?: number | null; readonly end?: number | null }): SourceSpan => {
+const spanOf = (node: {
+  readonly start?: number | null
+  readonly end?: number | null
+}): SourceSpan => {
   if (node.start == null || node.end == null) {
     throw new Error('fp-compiler: static plan node has no source span')
   }
   return { start: node.start, end: node.end }
 }
 
+const hasSourceTierMaterializerTerminal = (
+  fact: CompilerOperatorFact,
+  sourceTier: CompilerFallbackTier,
+): boolean =>
+  (sourceTier === 'sequential' || sourceTier === 'compact') &&
+  (fact.name === 'sum' || fact.name === 'min' || fact.name === 'max')
+
 export const segmentKindsForOperatorFacts = (
   facts: readonly CompilerOperatorFact[],
   executionLayout: PlanExecutionLayout,
+  sourceTier: CompilerFallbackTier = 'compiler',
 ): readonly CompilerSegmentKind[] => {
   if (executionLayout === 'sequential-stages') {
     return facts.map((fact) =>
-      fact.compilerPipelineRole === 'boundary' ? 'boundary' : 'stream',
+      fact.compilerPipelineRole === 'boundary' ||
+      hasSourceTierMaterializerTerminal(fact, sourceTier)
+        ? 'boundary'
+        : 'stream',
     )
   }
 
   const kinds: CompilerSegmentKind[] = []
   let streamOpen = false
   for (const fact of facts) {
-    if (fact.compilerPipelineRole === 'boundary') {
+    if (
+      fact.compilerPipelineRole === 'boundary' ||
+      hasSourceTierMaterializerTerminal(fact, sourceTier)
+    ) {
       streamOpen = false
       kinds.push('boundary')
       continue
@@ -174,6 +189,7 @@ export const segmentKindsForOperatorFacts = (
 const segmentPlan = (
   steps: readonly PlanStep[],
   executionLayout: PlanExecutionLayout,
+  sourceTier: CompilerFallbackTier,
 ): readonly PlanSegment[] => {
   const segments: PlanSegment[] = []
   let streamStart = -1
@@ -211,7 +227,8 @@ const segmentPlan = (
       })
       continue
     }
-    if (step.fact.compilerPipelineRole === 'boundary') {
+    const sourceTierBoundary = hasSourceTierMaterializerTerminal(step.fact, sourceTier)
+    if (step.fact.compilerPipelineRole === 'boundary' || sourceTierBoundary) {
       flushStream()
       segments.push({
         kind: 'boundary',
@@ -219,6 +236,7 @@ const segmentPlan = (
         length: 1,
         inputDomain: step.fact.inputDomain,
         outputDomain: step.fact.outputDomain,
+        ...(sourceTierBoundary ? { sourceTierBoundary: true as const } : {}),
       })
       continue
     }
@@ -230,9 +248,7 @@ const segmentPlan = (
         length: 1,
         inputDomain: step.fact.inputDomain,
         outputDomain: step.fact.outputDomain,
-        ...(step.fact.compilerPipelineRole === 'terminal'
-          ? { terminalIndex: step.index }
-          : {}),
+        ...(step.fact.compilerPipelineRole === 'terminal' ? { terminalIndex: step.index } : {}),
       })
       continue
     }
@@ -251,6 +267,7 @@ const segmentPlan = (
   const expectedKinds = segmentKindsForOperatorFacts(
     steps.flatMap((step) => (step.kind === 'operator' ? [step.fact] : [])),
     executionLayout,
+    sourceTier,
   )
   const actualKinds = segments
     .filter((segment) => segment.kind !== 'opaque')
@@ -262,6 +279,41 @@ const segmentPlan = (
     throw new Error('fp-compiler: static plan segment topology diverged from generated facts')
   }
   return segments
+}
+
+const findPureMapLengthRewrite = (steps: readonly PlanStep[]): PlanPureRewrite | undefined => {
+  // Pure eligibility follows compact topology even though compiler facts
+  // model length as a terminal: since the previous real boundary, the
+  // complete element stream consumed by length must contain maps only.
+  for (let terminalPosition = 1; terminalPosition < steps.length; terminalPosition++) {
+    const terminalStep = steps[terminalPosition]
+    if (terminalStep.kind !== 'operator' || terminalStep.fact.name !== 'length') continue
+    let streamStart = terminalPosition
+    while (streamStart > 0) {
+      const previous = steps[streamStart - 1]
+      if (previous.kind !== 'operator' || previous.fact.compilerPipelineRole !== 'element') {
+        break
+      }
+      streamStart--
+    }
+    const elidedStepIndexes: number[] = []
+    for (let position = streamStart; position < terminalPosition; position++) {
+      const step = steps[position]
+      if (step.kind !== 'operator' || step.fact.name !== 'map') {
+        elidedStepIndexes.length = 0
+        break
+      }
+      elidedStepIndexes.push(step.index)
+    }
+    if (elidedStepIndexes.length > 0) {
+      return {
+        kind: 'elide-unused-map',
+        elidedStepIndexes,
+        terminalIndex: terminalStep.index,
+      }
+    }
+  }
+  return undefined
 }
 
 export interface StaticCompilerPlanInput {
@@ -277,13 +329,8 @@ export interface StaticCompilerPlanInput {
   readonly sourceAlreadyEvaluated?: boolean
 }
 
-export function createStaticCompilerPlan(
-  input: StaticCompilerPlanInput,
-): StaticCompilerPlanV1 {
-  if (
-    input.opaqueReceiver === 'step-vector' &&
-    input.sourceTier !== 'sequential'
-  ) {
+export function createStaticCompilerPlan(input: StaticCompilerPlanInput): StaticCompilerPlanV1 {
+  if (input.opaqueReceiver === 'step-vector' && input.sourceTier !== 'sequential') {
     throw new Error(
       'fp-compiler: step-vector receiver ABI is only valid for the sequential root tier',
     )
@@ -378,35 +425,18 @@ export function createStaticCompilerPlan(
   let executionSteps = planSteps
   let pureRewrites: readonly PlanPureRewrite[] = []
   /*
-   * Pure mode permits callback elision only where the entire value path is a
-   * sequence of maps consumed solely by length. Factory construction remains
-   * in `captures`, so argument/factory evaluation still happens once at runner
-   * construction; only per-element callback execution is removed.
+   * Factory construction remains in `captures`, so argument/factory
+   * evaluation still happens once at runner construction. Execution removes
+   * only a complete maps-only stream immediately consumed by length; prefix
+   * boundaries and a following residual remain in their original order.
    */
-  if (
-    input.mode === 'pure' &&
-    input.residual === undefined &&
-    planSteps.length >= 2 &&
-    planSteps.every(
-      (step, index) =>
-        step.kind === 'operator' &&
-        (index === planSteps.length - 1
-          ? step.fact.name === 'length'
-          : step.fact.name === 'map'),
-    )
-  ) {
-    const terminal = planSteps[planSteps.length - 1] as OperatorPlanStep
-    const elidedStepIndexes = planSteps.slice(0, -1).map((step) => step.index)
-    pureRewrites = [
-      {
-        kind: 'elide-unused-map',
-        elidedStepIndexes,
-        terminalIndex: terminal.index,
-      },
-    ]
-    executionSteps = [terminal]
+  const pureMapLength = input.mode === 'pure' ? findPureMapLengthRewrite(planSteps) : undefined
+  if (pureMapLength !== undefined) {
+    pureRewrites = [pureMapLength]
+    const elided = new Set(pureMapLength.elidedStepIndexes)
+    executionSteps = planSteps.filter((step) => !elided.has(step.index))
   }
-  const segments = segmentPlan(executionSteps, executionLayout)
+  const segments = segmentPlan(executionSteps, executionLayout, input.sourceTier)
   return {
     irVersion: 1,
     siteKind: input.siteKind,

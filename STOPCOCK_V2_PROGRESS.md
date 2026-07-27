@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S11R
-Current slice: FP_COMPACT_PURE_AND_PACKED_COHORT
-Last verified commit: 26c2f244fc36fa14334dff213364ca2a3c5ecc75
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-26
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -70,7 +70,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S10   | GATE_PASSED        | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                                              |
 | S10X  | GATE_PASSED        | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                                            |
 | S10J  | GATE_PASSED        | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                                              |
-| S11R  | IN_PROGRESS | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. |
+| S11R  | CHECKPOINT_PENDING | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. The independently audited compact-pure/compiler source-and-test slice now passes with sealed digest `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`; checkpoint application is pending. |
 | S11   | NOT_STARTED        | Static Plan IR, tier-preserving codegen, expression/source-map corpus, pure map-to-length rewrite, exact construction semantics, deterministic receipts, and five-host smoke coverage exist in the sealed candidate based at `73cc413`; S11 cannot start until S11R passes                                                                                                                                                |
 | P1A   | GATE_PASSED        | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                                                   |
 | P1B   | GATE_PASSED        | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                                                         |
@@ -302,6 +302,14 @@ check` CLI finally has something producing what it reads, and proved the
       containment, dotted generated declaration rewriting, root-surface
       assertions, and consumer documentation now agree across clean FP and
       optimizer builds.
+- [x] (2026-07-26) Restored distinct compact `compilePure` execution and
+      endpoint inference, retained only the proven map-to-length rewrite,
+      retired bounded top-k, repaired private quota/provenance authority, and
+      made AOT boundaries preserve their source-selected compact or optimized
+      runtime semantics.
+- [x] (2026-07-26) Replayed the stable source/test matrix and obtained an
+      independent bounded PASS over the exact 37-path slice. No timing,
+      cohort packing, registry, release, or publication action ran.
 
 ## Evidence log
 
@@ -1919,6 +1927,40 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
     must be repaired before the final S11R cohort is created;
   - no timing command ran. This is a package-contract checkpoint, not an S11R
     exit-gate verdict.
+- S11R compact-pure/compiler source-test checkpoint evidence:
+  - `@stopcock/fp/compile` now gives `compilePure` a distinct compact pure
+    executor. It elides callbacks only for a complete maps-only stream
+    immediately consumed by `length`, preserves dense source reads and
+    construction effects, and works after a preceding boundary;
+  - the unsafe top-k path is fully retired. Full sort materialization remains
+    authoritative before `take`;
+  - primitive-number `take` and `drop` quotas are normalized once in private
+    provenance. Non-number and coercible quotas remain authenticated opaque
+    callables, and the optimizer ABI's fifth slot re-authenticates the callable
+    instead of trusting mutable public `_fn`;
+  - tier-aware AOT preserves compact reverse read order, `init` endpoint,
+    sparse/species behavior for `flatten` and `without`, live-length
+    `sum`/`min`/`max`, and the optimized tier's distinct singleton versus
+    planned-boundary behavior. Frozen fused `take` lookahead remains intact;
+  - canonical semantic manifest
+    `sha256:149af8c82b015b37265d13425b375e8a184afeeab1990122604658bb84f9c141`,
+    optimizer bank
+    `sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4`,
+    compiler emitter
+    `sha256:627e2fea01170610b5f2d23cb69dafc7571953106ced8e78aabd0b924b6f9aa8`,
+    and codegen/build reproducibility
+    `sha256:965fb404b61ee5d2c7b0394fe96668c1ad953919980f9b6b6a85921a33268a7e`
+    agree across their generated and live consumers;
+  - the stable broad replay passed FP source/types/contract/script/codegen
+    checks and 1,233 tests plus 17 codegen invariants; optimizer source/build
+    and 1,774 tests; compiler source/types/build and 438 tests. ABI distribution
+    SHA-256 is
+    `0e8d26ab832e72c79f7c2df215fa3797a6d969b59cd1e1f3fe72af332c84a7c7`;
+  - the independent verifier repeated the sealed dirty-set digest
+    `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`,
+    exact S11R scope, workspace, focused semantic probes, and returned `PASS`;
+  - no timing command ran. This is the clean-source checkpoint prerequisite,
+    not the packed-cohort, extracted-matrix, fresh S2/S7, or S11R exit verdict.
 
 ## Surprises and discoveries
 
@@ -2104,6 +2146,20 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   export is only an alias of exact compact compilation even though
   `explainPure` advertises pure rewrites. This is a pre-existing semantic
   blocker, not something a clean package contract can bless.
+- The first attempted AOT repair used root sequential materialization as the
+  oracle for explicit fused tiers. Adversarial replay proved the frozen compact
+  interpreter and optimized runtime-plan topology are the actual
+  source-selected contracts, including fused `take`'s lexical one-item
+  lookahead.
+- Whole-plan map-to-length detection missed the valid
+  `boundary -> map -> length` case and produced a different residual input.
+  The final Plan IR selects the complete maps-only stream immediately before
+  `length`, not merely a whole-pipeline spelling.
+- Boundary-specific replay exposed observable differences hidden by ordinary
+  arrays: reverse read order, `init` endpoint coercion, sparse flatten/filter
+  behavior, and live numeric-materializer length reads. The final emitter
+  preserves those source-tier contracts rather than calling a superficially
+  equivalent public leaf.
 
 ## Decision log
 
@@ -2457,14 +2513,23 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   local repair into invalid extracted evidence.
   Date: 2026-07-26.
 
+- Decision: Preserve the existing tier split while admitting only statically
+  primitive numeric quotas to fused AOT, and retire bounded top-k rather than
+  weaken exact effects to keep it.
+  Rationale: Public tags and fields are diagnostic, not authority; coercible
+  quotas, sort snapshots, Proxy reads, species, and thrown-error timing remain
+  observable. Narrow private provenance plus source-tier boundaries is the
+  fastest sound base for later S11 specialization.
+  Date: 2026-07-26.
+
 ## Current blockers
 
-There is no external blocker to S11R's deterministic work. Before the final
-development cohort can be created, FP's compact `compilePure` path must execute
-and report its promised pure rewrites rather than alias exact compilation, and
-the associated endpoint/boundary type-test debts must be reconciled. New
-timing evidence remains unavailable until the current host requalifies, but
-timing is outside S11R.
+There is no external blocker to S11R's deterministic work. The compact-pure,
+endpoint, boundary, provenance, and AOT source-tier blockers are cleared in the
+pending checkpoint. The clean 21-public-package cohort, complete extracted
+host/layout matrix, and fresh independent S2/S7 audits remain. New timing
+evidence remains unavailable until the current host requalifies, but timing is
+outside S11R and is not part of those deterministic prerequisites.
 
 ### Historical S1B entry stop
 
@@ -2583,13 +2648,11 @@ this earlier pack.
 
 ## Exact next action
 
-Checkpoint this validated FP packed-package-contract slice. From the resulting
-clean worktree, repair compact `compilePure` semantics and endpoint/boundary
-types under an independently audited exact scope, then checkpoint again. Only
-after that repair is clean may the controller pack the 21-public-package
-development cohort and run the named extracted-host and duplicate-layout
-matrix. S11 remains `NOT_STARTED` until the complete S11R qualification and
-fresh S2/S7 audits are green.
+Checkpoint this independently validated compact-pure/compiler source-and-test
+slice. From the resulting clean worktree, pack the immutable 21-public-package
+development cohort, validate the exact extracted artifacts, run the complete
+named host and duplicate-layout matrix, and obtain fresh S2/S7 verifier audits.
+S11 remains `NOT_STARTED` until that complete S11R qualification is green.
 
 Do not perform further timing work until `perf-profile-gate` reports `ok: true`.
 After the host requalifies, re-run `portable-perf-gate` and

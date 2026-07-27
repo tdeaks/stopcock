@@ -10,7 +10,7 @@ import {
 } from '../internal/compact/facts.generated'
 import { buildCompactPlan } from '../internal/compact/plan'
 import * as A from '../array'
-import { OP_NON_FUSEABLE } from '../opcodes'
+import { OP_DROP, OP_DROP_WHILE, OP_NON_FUSEABLE, OP_TAKE } from '../opcodes'
 import { buildPlan } from '../plan'
 import { REGISTERED_OP_CODES, requireOpMeta } from '../registry'
 
@@ -80,5 +80,27 @@ describe('compact plan construction', () => {
     const plan = buildCompactPlan([(value: unknown) => value])
     expect(plan.shape.codes[0]).toBe(OP_NON_FUSEABLE)
     expect(typeof plan.bindings[0].opaqueFn).toBe('function')
+  })
+
+  it('admits primitive quotas and keeps coercible quotas opaque in both planners', () => {
+    for (const build of [buildPlan, buildCompactPlan]) {
+      for (const [step, op] of [
+        [A.take(2), OP_TAKE],
+        [A.drop(1), OP_DROP],
+        [A.dropWhile((value: number) => value < 2), OP_DROP_WHILE],
+      ] as const) {
+        const fused = build([step])
+        expect(fused.shape.codes).toEqual([op])
+        expect(fused.bindings[0].opaqueFn).toBeUndefined()
+      }
+      for (const step of [
+        A.take({ valueOf: () => 2 } as unknown as number),
+        A.drop({ valueOf: () => 1 } as unknown as number),
+      ]) {
+        const opaque = build([step])
+        expect(opaque.shape.codes).toEqual([OP_NON_FUSEABLE])
+        expect(opaque.bindings[0].opaqueFn).toBe(step)
+      }
+    }
   })
 })

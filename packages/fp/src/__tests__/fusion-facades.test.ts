@@ -95,6 +95,18 @@ describe('fusion debug facade', () => {
     expect(explanation.segments.length).toBeGreaterThan(0)
     expect(explanation.executor).toBe('portable')
   })
+
+  it('reports only currently authorized pure rewrites', () => {
+    expect(fusionDebug.explainPure(A.sort, A.take(2)).rewrites).toEqual([])
+    expect(
+      fusionDebug.explainPure(A.map((value: number) => value), A.length).rewrites,
+    ).toEqual([
+      {
+        kind: 'elide-unused-map',
+        description: 'map callbacks are elided when only downstream length observes the segment',
+      },
+    ])
+  })
 })
 
 describe('internal sequential core', () => {

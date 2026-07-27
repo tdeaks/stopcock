@@ -104,6 +104,12 @@ export const reasonCodeFor = (reason: string | undefined): ReceiptReasonCodeV1 =
     return 'unsupported-operator'
   }
   if (text.includes('spread arguments')) return 'unsupported-binding-form'
+  if (
+    text.includes('materialization boundary') ||
+    text.includes('statically primitive-number count')
+  ) {
+    return 'materialization-boundary'
+  }
   if (text.includes('arg count') || text.includes('requires arguments')) {
     return 'unsupported-binding-form'
   }

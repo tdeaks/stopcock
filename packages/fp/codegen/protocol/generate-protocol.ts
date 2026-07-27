@@ -67,6 +67,7 @@ function emitAfterCanonicalProtocolValidationV1<Result>(emit: () => Result): Res
 export const PROTOCOL_GENERATED_PATHS_V1 = [
   'packages/fp/src/opcodes.ts',
   'packages/fp/src/registry.ts',
+  'packages/fp/src/internal/abi-identity.generated.ts',
   'packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts',
   'packages/fp/codegen/generated/operator-manifest-v1.json',
   'packages/fp/codegen/generated/future-tier-manifest-v1.json',
@@ -78,6 +79,7 @@ export const PROTOCOL_GENERATED_PATHS_V1 = [
 const PROTOCOL_GENERATED_TYPESCRIPT_PATHS_V1 = [
   'packages/fp/src/opcodes.ts',
   'packages/fp/src/registry.ts',
+  'packages/fp/src/internal/abi-identity.generated.ts',
   'packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts',
   'packages/fp-compiler/src/ops-table.ts',
   'packages/fp-compiler/src/receipt-schema.generated.ts',
@@ -115,7 +117,7 @@ function semanticFactsInputV1(): object {
 
 export const OPERATOR_SEMANTIC_FACTS_V1_HASH = hashCanonical(semanticFactsInputV1())
 
-const COMPILER_EMITTER_SOURCE_PATHS_V1 = [
+export const COMPILER_EMITTER_SOURCE_PATHS_V1 = [
   'packages/fp-compiler/src/codegen.ts',
   'packages/fp-compiler/src/inline.ts',
   'packages/fp-compiler/src/mapped-code.ts',
@@ -164,6 +166,14 @@ function operatorManifestV1(): object {
     ...semanticManifestInputV1(),
     manifestHash: OPERATOR_MANIFEST_V1_HASH,
   }
+}
+
+function renderOptimizerAbiIdentityV1(): string {
+  return `// GENERATED FILE. Do not edit by hand — run \`bun run codegen\` to regenerate.
+
+/** Identity of the semantic manifest this build's opcodes are read against. */
+export const SEMANTIC_MANIFEST_HASH = '${OPERATOR_MANIFEST_V1_HASH}'
+`
 }
 
 // These lists preserve the observable serialization order of the 1.x runtime
@@ -729,7 +739,7 @@ export function formatGeneratedProtocolTypeScriptV1(
   paths: readonly string[] = PROTOCOL_GENERATED_TYPESCRIPT_PATHS_V1,
 ): void {
   if (process.env.STOPCOCK_CODEGEN_SKIP_FORMAT === '1') return
-  const result = spawnSync('vp', ['fmt', ...paths], {
+  const result = spawnSync('vp', ['fmt', '--write', ...paths], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
   })
@@ -841,6 +851,10 @@ export function generateProtocolViewsV1(
     const records = runtimeRecordsInOpcodeOrderV1()
     writeGenerated('packages/fp/src/opcodes.ts', renderOpcodesV1(records))
     writeGenerated('packages/fp/src/registry.ts', renderRegistryV1(records))
+    writeGenerated(
+      'packages/fp/src/internal/abi-identity.generated.ts',
+      renderOptimizerAbiIdentityV1(),
+    )
     writeGenerated(
       'packages/fp/codegen/generated/operator-manifest-v1.json',
       jsonFile(operatorManifestV1()),

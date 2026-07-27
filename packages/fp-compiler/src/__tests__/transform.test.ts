@@ -198,6 +198,14 @@ export const run = (input) =>
     expectTransformed: true,
   })
 
+  expectSame('sequential filter -> take preserves fractional slice coercion', {
+    name: 'filter-take-fractional',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `return pipe([1, 2, 3, 4], A.filter((x) => x > 0), A.take(2.75));`,
+    expectTransformed: true,
+  })
+
   expectSame('drop', {
     name: 'drop',
     imports: STD_IMPORTS,
@@ -891,6 +899,133 @@ export function run() {
     expectTransformed: true,
   })
 
+  expectSame('compact AOT reverse preserves the frozen forward source-read order', {
+    name: 'compact-reverse-source-read-order',
+    imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compile: 'compile', A: 'A' },
+    body: `
+      const reads = [];
+      const source = new Proxy([1, 2, 3], {
+        get(target, property, receiver) {
+          if (typeof property === 'string' && /^\\d+$/.test(property)) reads.push(property);
+          return Reflect.get(target, property, receiver);
+        },
+      });
+      return [compile(A.reverse)(source), reads];
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('compact AOT init preserves the frozen slice endpoint', {
+    name: 'compact-init-slice-endpoint',
+    imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compile: 'compile', A: 'A' },
+    body: `
+      const calls = [];
+      const source = new Proxy([], {
+        get(target, property, receiver) {
+          if (property === 'length') return 4294967297;
+          if (property === 'slice') {
+            return (...args) => {
+              calls.push(args);
+              return ['sliced'];
+            };
+          }
+          return Reflect.get(target, property, receiver);
+        },
+      });
+      return [compile(A.init)(source), calls];
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('compact AOT flatten preserves native sparse flattening', {
+    name: 'compact-flatten-sparse-inner',
+    imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compile: 'compile', A: 'A' },
+    body: `
+      const inner = Array(2);
+      inner[1] = 2;
+      const out = compile(A.flatten)([inner]);
+      return [out, out.length, 0 in out, 1 in out];
+    `,
+    expectTransformed: true,
+  })
+
+  it('uses optimizer plan boundaries only after the optimizer single-step shortcut', () => {
+    const singleton = transformStopcockPipelines(
+      `import { compile } from '@stopcock/fp-optimizer'
+import * as A from '@stopcock/fp/array'
+export const run = compile(A.flatten)
+`,
+      'optimizer-single-flatten.ts',
+    )
+    const planned = transformStopcockPipelines(
+      `import { compile } from '@stopcock/fp-optimizer'
+import * as A from '@stopcock/fp/array'
+export const run = compile(A.map((value) => value), A.flatten)
+`,
+      'optimizer-planned-flatten.ts',
+    )
+
+    expect(singleton.code).toContain('var _d0 = _boundary0(_src);')
+    expect(planned.code).toContain('var _d1 = _d0.flat();')
+    expect(planned.code).not.toContain('var _boundary1')
+  })
+
+  expectSame('compact AOT without preserves native sparse filter semantics', {
+    name: 'compact-without-sparse-source',
+    imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compile: 'compile', A: 'A' },
+    body: `
+      const source = Array(2);
+      source[1] = 2;
+      const out = compile(A.without([]))(source);
+      return [out, out.length, 0 in out, 1 in out];
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('compact AOT without declines a lexical Set binding', {
+    name: 'compact-without-lexical-set',
+    imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compile: 'compile', A: 'A' },
+    body: `
+      const Set = function PoisonedSet() {
+        throw new Error('must not resolve the caller lexical Set');
+      };
+      const run = compile(A.without([]));
+      return run([1, 2, 3]);
+    `,
+    expectTransformed: false,
+    reasonIncludes: 'lexical Set',
+  })
+
+  for (const operation of ['sum', 'min', 'max'] as const) {
+    expectSame(`compact AOT ${operation} preserves live materializer length reads`, {
+      name: `compact-${operation}-live-length`,
+      imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+      locals: { compile: 'compile', A: 'A' },
+      body: `
+        let lengthReads = 0;
+        const source = new Proxy([10, 20], {
+          get(target, property, receiver) {
+            if (property === 'length') return ++lengthReads === 1 ? 2 : 0;
+            return Reflect.get(target, property, receiver);
+          },
+        });
+        return [compile(A.${operation})(source), lengthReads];
+      `,
+      expectTransformed: true,
+    })
+  }
+
   expectSame('uniq boundary', {
     name: 'uniq-boundary',
     imports: STD_IMPORTS,
@@ -946,8 +1081,8 @@ export const run = (input) =>
     const result = transformStopcockPipelines(source, 'fusion-map-flatten.ts')
     expect(result.code).toContain('var _d0 = new Array(_len0);')
     expect(result.code).toContain('_d0[_i] = ([_v0, _v0 + 1]);')
-    expect(result.code).toContain('var _boundary1')
-    expect(result.code).toContain('var _d1 = _boundary1(_d0);')
+    expect(result.code).toContain('var _d1 = _d0.flat();')
+    expect(result.code).not.toContain('var _boundary1')
   })
 
   for (const [name, terminal] of [
@@ -1086,7 +1221,7 @@ export const run = flow(A.map(Number), A.filter(Boolean), A.sum)
     })
     expect(receipt).toMatchObject({
       disposition: 'transformed',
-      segmentKinds: ['stream', 'stream', 'stream'],
+      segmentKinds: ['stream', 'stream', 'boundary'],
       semanticMode: 'exact',
     })
     expect(receipt?.semanticIds.map((identity) => identity.semanticId)).toEqual([
@@ -1252,6 +1387,126 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
+  it('compiled take preserves one-item lookahead at its lexical position', () => {
+    const result = runFixture({
+      name: 'compile-take-lookahead',
+      imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+      locals: { compile: 'compile', A: 'A' },
+      body: `
+        const reads = [];
+        const calls = [];
+        const source = new Proxy([1, 2, 3], {
+          get(target, property, receiver) {
+            if (typeof property === 'string' && /^\\d+$/.test(property)) reads.push(property);
+            return Reflect.get(target, property, receiver);
+          },
+        });
+        const run = compile(
+          A.map((value) => { calls.push(value); return value; }),
+          A.take(1),
+          A.filter(() => false),
+        );
+        return [run(source), reads, calls];
+      `,
+      expectTransformed: true,
+    })
+    const expected = [[], ['0', '1'], [1, 2]]
+    expect(result.transformed).toBe(true)
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.original.value).toEqual(expected)
+    expect(result.compiled.value).toEqual(expected)
+  })
+
+  it('compiled take(0) preserves the frozen initial lookahead', () => {
+    const result = runFixture({
+      name: 'compile-take-zero-lookahead',
+      imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+      locals: { compile: 'compile', A: 'A' },
+      body: `
+        const reads = [];
+        const calls = [];
+        const source = new Proxy([1, 2, 3], {
+          get(target, property, receiver) {
+            if (typeof property === 'string' && /^\\d+$/.test(property)) reads.push(property);
+            return Reflect.get(target, property, receiver);
+          },
+        });
+        const run = compile(
+          A.map((value) => { calls.push(value); return value; }),
+          A.take(0),
+        );
+        return [run(source), reads, calls];
+      `,
+      expectTransformed: true,
+    })
+    const expected = [[], ['0'], [1]]
+    expect(result.transformed).toBe(true)
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.original.value).toEqual(expected)
+    expect(result.compiled.value).toEqual(expected)
+  })
+
+  it('compiled take inside flatMap preserves inner lookahead without advancing the outer source', () => {
+    const result = runFixture({
+      name: 'compile-flatmap-take-lookahead',
+      imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+      locals: { compile: 'compile', A: 'A' },
+      body: `
+        const innerReads = [];
+        const outerCalls = [];
+        const suffixCalls = [];
+        const inner = new Proxy([10, 20, 30], {
+          get(target, property, receiver) {
+            if (typeof property === 'string' && /^\\d+$/.test(property)) innerReads.push(property);
+            return Reflect.get(target, property, receiver);
+          },
+        });
+        const run = compile(
+          A.flatMap((value) => { outerCalls.push(value); return inner; }),
+          A.take(1),
+          A.filter((value) => { suffixCalls.push(value); return false; }),
+        );
+        return [run([1, 2, 3]), innerReads, outerCalls, suffixCalls];
+      `,
+      expectTransformed: true,
+    })
+    const expected = [[], ['0', '1'], [1], [10]]
+    expect(result.transformed).toBe(true)
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.original.value).toEqual(expected)
+    expect(result.compiled.value).toEqual(expected)
+  })
+
+  expectSame('compiled take completes final retained flatMap expansion before halting', {
+    name: 'compile-take-flatmap-suffix-completion',
+    imports: `import { compile } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compile: 'compile', A: 'A' },
+    body: `
+      const reads = [];
+      const suffixCalls = [];
+      const source = new Proxy([1, 2, 3], {
+        get(target, property, receiver) {
+          if (typeof property === 'string' && /^\\d+$/.test(property)) reads.push(property);
+          return Reflect.get(target, property, receiver);
+        },
+      });
+      const run = compile(
+        A.take(1),
+        A.flatMap((value) => [value, value + 10]),
+        A.map((value) => { suffixCalls.push(value); return value; }),
+      );
+      return [run(source), reads, suffixCalls];
+    `,
+    expectTransformed: true,
+  })
+
   expectSame('compilePure preserves operator construction while eliding map execution', {
     name: 'compile-pure-construction-observable',
     imports: `import { compilePure } from '@stopcock/fp/compile'
@@ -1285,17 +1540,130 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
-  it('retains the compilePure top-k runtime rewrite until an equivalent AOT template exists', () => {
+  it('compiles pure sort/take as an exact boundary followed by a fused stream', () => {
     const source = `
 import { compilePure } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
 const run = compilePure(A.sort, A.take(2))
 `
-    const result = transformStopcockPipelines(source, 'compile-pure-top-k.ts', {
+    const result = transformStopcockPipelines(source, 'compile-pure-sort-take.ts', {
       diagnostics: 'verbose',
     })
-    expect(result.code).toBe(source)
-    expect(result.diagnostics[0].reason).toContain('retained portable compilePure optimization')
+    expect(result.diagnostics[0]).toMatchObject({
+      transformed: true,
+      semantics: 'pure',
+      opNames: ['sort', 'take'],
+      segmentKinds: ['boundary', 'stream'],
+    })
+    expect(result.code).not.toBe(source)
+  })
+
+  expectSame('AOT compilePure sort/take preserves a changing-length snapshot', {
+    name: 'compile-pure-sort-take-changing-length',
+    imports: `import { compilePure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compilePure: 'compilePure', A: 'A' },
+    body: `
+      const events = [];
+      let lengthReads = 0;
+      const source = new Proxy([4, 3, 2, 1], {
+        get(target, property, receiver) {
+          if (property === 'length') {
+            const length = ++lengthReads === 1 ? 2 : 4;
+            events.push('length:' + length);
+            return length;
+          }
+          if (typeof property === 'string' && /^\\d+$/.test(property)) {
+            events.push('get:' + property);
+          }
+          return Reflect.get(target, property, receiver);
+        },
+        has(target, property) {
+          if (typeof property === 'string' && /^\\d+$/.test(property)) {
+            events.push('has:' + property);
+          }
+          return Reflect.has(target, property);
+        },
+      });
+      const run = compilePure(A.sort, A.take(2));
+      return [run(source), events];
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('AOT compilePure sort/take preserves final Array ownership', {
+    name: 'compile-pure-sort-take-array-owner',
+    imports: `import { compilePure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compilePure: 'compilePure', A: 'A' },
+    body: `
+      class Values extends Array {}
+      const run = compilePure(A.sort, A.take(2));
+      const result = run(new Values(3, 1, 2));
+      return [result instanceof Values, result];
+    `,
+    expectTransformed: true,
+  })
+
+  for (const [operation, countCases] of [
+    [
+      'take',
+      [
+        ['negative zero', '-0'],
+        ['fractional', '2.9'],
+        ['infinity', '+Number.POSITIVE_INFINITY'],
+        ['nan', '+(0 / 0)'],
+      ],
+    ],
+    [
+      'drop',
+      [
+        ['negative zero', '-0'],
+        ['fractional', '2.9'],
+        ['infinity', '+Number.POSITIVE_INFINITY'],
+        ['nan', '+(0 / 0)'],
+      ],
+    ],
+  ] as const) {
+    for (const [label, countExpression] of countCases) {
+      expectSame(`AOT fused ${operation} normalizes ${label}`, {
+        name: `compile-pure-${operation}-${label.replaceAll(' ', '-')}`,
+        imports: `import { compilePure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+        locals: { compilePure: 'compilePure', A: 'A' },
+        body: `
+          const run = compilePure(
+            A.map((value) => value * 2),
+            A.${operation}(${countExpression}),
+          );
+          return run([1, 2, 3, 4]);
+        `,
+        expectTransformed: true,
+      })
+    }
+  }
+
+  expectSame('AOT fused drop retains a coercible count on the compact runtime tier', {
+    name: 'compile-pure-object-drop-fallback',
+    imports: `import { compilePure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compilePure: 'compilePure', A: 'A' },
+    body: `
+      const events = [];
+      const count = {
+        valueOf() {
+          events.push('count:valueOf');
+          return 1.75;
+        },
+      };
+      const run = compilePure(
+        A.map((value) => { events.push('prefix:' + value); return value * 2; }),
+        A.drop(count),
+      );
+      return [run([1, 2, 3]), events];
+    `,
+    expectTransformed: false,
+    reasonIncludes: 'statically primitive-number count',
   })
 
   it('AOT-elides pure map callbacks whose values are consumed only by length', () => {
@@ -1313,10 +1681,81 @@ export const out = run([1, 2, 3])
       semantics: 'pure',
       opNames: ['map', 'length'],
     })
-    expect(result.code).toContain('var _d0 = _src.length;')
+    expect(result.code).toContain('var _pureLength1 = _src.length;')
+    expect(result.code).toContain('var _d0 = _pureLength1;')
     expect(result.code).toContain('A.map')
     expect(result.code).toContain('x + 1')
-    expect(result.code).not.toContain('for (')
+    expect(result.code).toContain('for (var _i = 0; _i < _pureLength1; _i++)')
+    expect(result.code).toContain('void _src[_i];')
+  })
+
+  expectSame('compilePure map-length elision preserves dense source reads', {
+    name: 'compile-pure-map-length-source-reads',
+    imports: `import { compilePure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+    locals: { compilePure: 'compilePure', A: 'A' },
+    body: `
+      const reads = [];
+      const source = new Proxy([1, 2, 3], {
+        get(target, property, receiver) {
+          if (typeof property === 'string' && /^\\d+$/.test(property)) reads.push(property);
+          return Reflect.get(target, property, receiver);
+        },
+      });
+      const run = compilePure(A.map((value) => value * 2), A.length);
+      return [run(source), reads];
+    `,
+    expectTransformed: true,
+  })
+
+  it('compilePure elides map-to-length after a preceding boundary', () => {
+    const result = runFixture({
+      name: 'compile-pure-boundary-map-length',
+      imports: `import { compilePure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+      locals: { compilePure: 'compilePure', A: 'A' },
+      body: `
+        const calls = [];
+        const run = compilePure(
+          A.reverse,
+          A.map((value) => { calls.push(value); return value * 2; }),
+          A.length,
+        );
+        return [run([1, 2, 3]), calls];
+      `,
+      expectTransformed: true,
+    })
+    const expected = [3, []]
+    expect(result.transformed).toBe(true)
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.original.value).toEqual(expected)
+    expect(result.compiled.value).toEqual(expected)
+  })
+
+  it('compilePure does not elide a map sharing a stream with filter', () => {
+    const result = runFixture({
+      name: 'compile-pure-filter-map-length',
+      imports: `import { compilePure } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`,
+      locals: { compilePure: 'compilePure', A: 'A' },
+      body: `
+        const calls = [];
+        const run = compilePure(
+          A.filter((value) => value > 1),
+          A.map((value) => { calls.push(value); return value * 2; }),
+          A.length,
+        );
+        return [run([1, 2, 3]), calls];
+      `,
+      expectTransformed: true,
+    })
+    const expected = [2, [2, 3]]
+    expect(result.transformed).toBe(true)
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.original.value).toEqual(expected)
+    expect(result.compiled.value).toEqual(expected)
   })
 
   expectSame('map + filter + sum', {
@@ -1406,7 +1845,7 @@ export const out = run([1, 2, 3])
   })
 
   expectSame(
-    'take(n) evaluates bound expression exactly once',
+    'root take(n) preserves its sequential source tier',
     {
       name: 'take-side-effect',
       imports: STD_IMPORTS,
@@ -1420,6 +1859,111 @@ export const out = run([1, 2, 3])
     },
     () => ({ log: [] }),
   )
+
+  expectSame(
+    'root take(+n) preserves its sequential source tier',
+    {
+      name: 'take-normalized-side-effect',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        function n() { log.push('n'); return '2'; }
+        const out = pipe([1, 2, 3, 4], A.take(+n()));
+        return { out, log };
+      `,
+      expectTransformed: true,
+    },
+    () => ({ log: [] }),
+  )
+
+  for (const facade of ['pipe', 'compile', 'compilePure'] as const) {
+    const imports =
+      facade === 'pipe'
+        ? STD_IMPORTS
+        : `import { ${facade} } from '@stopcock/fp/compile'
+import * as A from '@stopcock/fp/array'`
+    const execute =
+      facade === 'pipe'
+        ? `pipe(
+            source,
+            A.map((value) => {
+              events.push('prefix:' + value);
+              return value * 2;
+            }),
+            A.take(count),
+            A.map((value) => {
+              events.push('suffix:' + value);
+              return value + 1;
+            }),
+          )`
+        : `${facade}(
+            A.map((value) => {
+              events.push('prefix:' + value);
+              return value * 2;
+            }),
+            A.take(count),
+            A.map((value) => {
+              events.push('suffix:' + value);
+              return value + 1;
+            }),
+          )(source)`
+
+    expectSame(`${facade} retains effectful object take coercions on its source tier`, {
+      name: `${facade}-object-take-fallback`,
+      imports,
+      locals: { [facade]: facade, A: 'A' },
+      body: `
+        const events = [];
+        const source = new Proxy([1, 2, 3], {
+          get(target, property, receiver) {
+            if (property === 'length') events.push('source:length');
+            if (typeof property === 'string' && /^\\d+$/.test(property)) {
+              events.push('source:get:' + property);
+            }
+            return Reflect.get(target, property, receiver);
+          },
+        });
+        const count = {
+          valueOf() {
+            events.push('count:valueOf');
+            return 2.75;
+          },
+        };
+        return [${execute}, events];
+      `,
+      expectTransformed: facade === 'pipe',
+      reasonIncludes: facade === 'pipe' ? undefined : 'statically primitive-number count',
+    })
+  }
+
+  expectSame('third take coercion error remains at its source-tier evaluation point', {
+    name: 'take-third-coercion-fallback',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const events = [];
+      const sentinel = new Error('third take coercion');
+      let coercions = 0;
+      const count = {
+        valueOf() {
+          events.push('count:' + ++coercions);
+          if (coercions === 3) throw sentinel;
+          return 2.75;
+        },
+      };
+      try {
+        pipe(
+          [1, 2, 3],
+          A.map((value) => { events.push('prefix:' + value); return value; }),
+          A.take(count),
+        );
+      } catch (error) {
+        return [error === sentinel, events];
+      }
+      return [false, events];
+    `,
+    expectTransformed: true,
+  })
 
   expectSame(
     'drop(n) evaluates bound expression exactly once',

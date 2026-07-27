@@ -105,6 +105,24 @@ describe('receipt emission', () => {
     expect(JSON.stringify(receipt)).not.toContain('spread arguments')
   })
 
+  it('classifies a coercible fused quota as a materialization fallback', () => {
+    const receipt = buildCompilerReceipt(
+      siteOf({
+        transformed: false,
+        fallbackTier: 'compact',
+        reason:
+          'take: a fused stream requires a statically primitive-number count; coercible counts retain the source-selected runtime fallback',
+      }),
+      'source',
+      CONTEXT,
+    )
+    expect(receipt).toMatchObject({
+      disposition: 'fallback',
+      fallbackTier: 'compact',
+      reasonCodes: ['materialization-boundary'],
+    })
+  })
+
   it('never claims emitted code for a site it did not transform', () => {
     const receipt = buildCompilerReceipt(siteOf({ transformed: false }), 'source', CONTEXT)
     expect(receipt?.emittedCodeHash).toBeNull()

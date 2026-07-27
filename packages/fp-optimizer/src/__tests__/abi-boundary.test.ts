@@ -61,6 +61,21 @@ describe('the ABI does not leak authority', () => {
     )
   })
 
+  it('separates public diagnostics from private quota authority', () => {
+    const numeric = A.take(2)
+    expect((numeric as { _op?: number })._op).toBe(abi.OP_TAKE)
+    expect(vetOperator(numeric)).toMatchObject({ op: abi.OP_TAKE, fn: 2 })
+    expect(vetPipeline([numeric]).codes).toEqual([abi.OP_TAKE])
+
+    const coercible = A.take({ valueOf: () => 2 } as unknown as number)
+    expect((coercible as { _op?: number })._op).toBe(abi.OP_TAKE)
+    expect(vetOperator(coercible)).toMatchObject({ op: abi.OP_NON_FUSEABLE })
+    const plan = vetPipeline([coercible])
+    expect(plan.fullyTrusted).toBe(true)
+    expect(plan.codes).toEqual([abi.OP_NON_FUSEABLE])
+    expect(plan.bindings[0].opaqueFn).toBe(coercible)
+  })
+
   it('still executes a forged step, just never as a specialized runner', () => {
     const forged = Object.assign((xs: readonly number[]) => xs.map(double), { _op: 1, fn: double })
     expect(pipe([1, 2, 3], forged as never)).toEqual([2, 4, 6])

@@ -1,13 +1,6 @@
 import * as t from '@babel/types'
-import {
-  BOUNDARY_OPS,
-  TERMINAL_OPS,
-} from './ops'
-import {
-  planInline,
-  renderDirectInlineExpressionMapped,
-  renderDirectInlineMapped,
-} from './inline'
+import { BOUNDARY_OPS, TERMINAL_OPS } from './ops'
+import { planInline, renderDirectInlineExpressionMapped, renderDirectInlineMapped } from './inline'
 import {
   FULL_ARRAY_LOWERING_ID,
   FULL_RUNNER_LOWERING_ID,
@@ -75,10 +68,7 @@ function emitCallback(
   use: (expr: string) => string[],
 ): string[] {
   const direct = inlineCallbacks
-    ? renderMappedInline(
-        renderDirectInlineMapped(argNode, code, inputVars),
-        renderSource,
-      )
+    ? renderMappedInline(renderDirectInlineMapped(argNode, code, inputVars), renderSource)
     : undefined
   if (direct !== undefined) return use(`(${direct})`)
 
@@ -293,7 +283,14 @@ function segmentsFromPlan(plan: StaticCompilerPlanV1): readonly Segment[] {
     }
     const indexed = indexedSteps(planned)
     if (planned.kind === 'boundary') {
-      if (indexed.length !== 1 || indexed[0].step.fact.compilerPipelineRole !== 'boundary') {
+      if (
+        indexed.length !== 1 ||
+        (indexed[0].step.fact.compilerPipelineRole !== 'boundary' &&
+          !(
+            planned.sourceTierBoundary === true &&
+            indexed[0].step.fact.compilerPipelineRole === 'terminal'
+          ))
+      ) {
         throw new Error('fp-compiler: boundary plan segment does not contain one boundary fact')
       }
       segments.push({ kind: 'boundary', step: indexed[0] })
@@ -319,10 +316,7 @@ function segmentsFromPlan(plan: StaticCompilerPlanV1): readonly Segment[] {
         elements.push(item)
       }
     }
-    if (
-      (terminal === undefined) !==
-      (planned.terminalIndex === undefined)
-    ) {
+    if ((terminal === undefined) !== (planned.terminalIndex === undefined)) {
       throw new Error('fp-compiler: stream plan terminal is missing')
     }
     segments.push({
@@ -334,9 +328,7 @@ function segmentsFromPlan(plan: StaticCompilerPlanV1): readonly Segment[] {
   return segments
 }
 
-export const segmentKindsForSteps = (
-  steps: readonly Step[],
-): readonly ('stream' | 'boundary')[] =>
+export const segmentKindsForSteps = (steps: readonly Step[]): readonly ('stream' | 'boundary')[] =>
   segmentSteps(steps).map((segment) => (segment.kind === 'boundary' ? 'boundary' : 'stream'))
 
 /**
@@ -418,10 +410,9 @@ function emitSingleStepCollector(
       ]
     }
     case 'take': {
+      if (!sequentialStage) return undefined
       const renderedCount = renderExpression(args[0])
-      const count = /^[A-Za-z_$][\w$]*$/u.test(renderedCount)
-        ? renderedCount
-        : `_n${index}`
+      const count = /^[A-Za-z_$][\w$]*$/u.test(renderedCount) ? renderedCount : `_n${index}`
       if (count !== renderedCount) preLines.push(`var ${count} = (${renderedCount});`)
       return [
         `var ${length} = ${curData}.length;`,
@@ -434,10 +425,9 @@ function emitSingleStepCollector(
       ]
     }
     case 'drop': {
+      if (!sequentialStage) return undefined
       const renderedCount = renderExpression(args[0])
-      const count = /^[A-Za-z_$][\w$]*$/u.test(renderedCount)
-        ? renderedCount
-        : `_n${index}`
+      const count = /^[A-Za-z_$][\w$]*$/u.test(renderedCount) ? renderedCount : `_n${index}`
       if (count !== renderedCount) preLines.push(`var ${count} = (${renderedCount});`)
       return [
         `var ${length} = ${curData}.length;`,
@@ -452,6 +442,7 @@ function emitSingleStepCollector(
       ]
     }
     case 'dropWhile': {
+      if (!sequentialStage) return undefined
       const callbackLines = emitCallback(
         args[0],
         code,
@@ -545,12 +536,7 @@ function emitElementSegment(
   outerLabel: string,
   sequentialStage: boolean,
 ): string[] {
-  const propertyTerminal = emitSequentialPropertyTerminal(
-    seg,
-    curData,
-    nextData,
-    optionNoneLocal,
-  )
+  const propertyTerminal = emitSequentialPropertyTerminal(seg, curData, nextData, optionNoneLocal)
   if (propertyTerminal !== undefined) return propertyTerminal
 
   const singleStepCollector = emitSingleStepCollector(
@@ -691,6 +677,11 @@ function emitElementSegment(
       case 'take': {
         const nTemp = `_n${index}`
         preLines.push(`var ${nTemp} = (${renderExpression(args[0])});`)
+        if (!sequentialStage) {
+          stateLines.push(
+            `${nTemp} = ${nTemp} > 0 ? (${nTemp} === 1 / 0 ? ${nTemp} : ${nTemp} - ${nTemp} % 1) : 0;`,
+          )
+        }
         stateLines.push(`var _take${index} = 0;`)
         bodyLines.push(`if (_take${index} >= ${nTemp}) break ${outerLabel};`)
         bodyLines.push(`_take${index}++;`)
@@ -716,6 +707,11 @@ function emitElementSegment(
       case 'drop': {
         const nTemp = `_n${index}`
         preLines.push(`var ${nTemp} = (${renderExpression(args[0])});`)
+        if (!sequentialStage) {
+          stateLines.push(
+            `${nTemp} = ${nTemp} > 0 ? (${nTemp} === 1 / 0 ? ${nTemp} : ${nTemp} - ${nTemp} % 1) : 0;`,
+          )
+        }
         stateLines.push(`var _drop${index} = 0;`)
         bodyLines.push(`if (_drop${index} < ${nTemp}) { _drop${index}++; continue; }`)
         bodyLines.push(`var ${nextVar} = ${curVar};`)
@@ -876,21 +872,15 @@ function emitElementSegment(
         const conditional = planPresentConditional(args[0], globalUndefinedIsUnbound)
         if (conditional) {
           const test = renderMappedInline(
-            renderDirectInlineExpressionMapped(
-              conditional.callback,
-              conditional.test,
-              code,
-              [curVar],
-            ),
+            renderDirectInlineExpressionMapped(conditional.callback, conditional.test, code, [
+              curVar,
+            ]),
             renderSource,
           )
           const value = renderMappedInline(
-            renderDirectInlineExpressionMapped(
-              conditional.callback,
-              conditional.value,
-              code,
-              [curVar],
-            ),
+            renderDirectInlineExpressionMapped(conditional.callback, conditional.value, code, [
+              curVar,
+            ]),
             renderSource,
           )
           if (test !== undefined && value !== undefined) {
@@ -1030,8 +1020,13 @@ function emitBoundarySegment(
   code: string,
   preLines: string[],
   renderExpression: ExpressionRenderer,
+  sourceTier: StaticCompilerPlanV1['sourceTier'],
+  optionNoneLocal: string,
+  runtimeStepCount: number,
 ): string[] {
   const { step } = seg.step
+  const sourceTierUsesRuntimePlan =
+    sourceTier === 'compact' || (sourceTier === 'optimized' && runtimeStepCount > 1)
   // These bare terminals are validated imports with no construction-time
   // bindings. Lowering them to their defining property checks avoids a
   // function call on the tiny arrays where call overhead dominates.
@@ -1041,9 +1036,65 @@ function emitBoundarySegment(
   if (step.name === 'isEmpty') {
     return [`var ${nextData} = ${curData}.length === 0;`]
   }
+  /*
+   * Compact's frozen reference interpreter implements reverse as
+   * slice().reverse(). The public leaf prefers toReversed() when available,
+   * whose indexed source-read order is observably different for proxies.
+   * Keep root sequential and optimized/compiler tiers on their own public
+   * boundary, but reproduce the compact tier exactly here.
+   */
+  if (step.name === 'reverse' && sourceTier === 'compact') {
+    return [`var ${nextData} = ${curData}.slice().reverse();`]
+  }
+  if (step.name === 'init' && sourceTierUsesRuntimePlan) {
+    return [
+      `var ${nextData} = ${curData}.length <= 1 ? [] : ${curData}.slice(0, -1);`,
+    ]
+  }
+  if (step.name === 'flatten' && sourceTierUsesRuntimePlan) {
+    return [`var ${nextData} = ${curData}.flat();`]
+  }
+  if (step.name === 'without' && sourceTierUsesRuntimePlan) {
+    const excluded = `_withoutSet${seg.step.index}`
+    const value = `_withoutValue${seg.step.index}`
+    return [
+      `var ${excluded} = new Set(${renderExpression(step.args[0])});`,
+      `var ${nextData} = ${curData}.filter(function (${value}) { return !${excluded}.has(${value}); });`,
+    ]
+  }
+  const sourceTierMaterializer =
+    sourceTier === 'sequential' || sourceTier === 'compact'
+  if (step.name === 'sum' && sourceTierMaterializer) {
+    return [
+      `var ${nextData} = 0;`,
+      `for (var _i = 0; _i < ${curData}.length; _i++) {`,
+      `${nextData} += ${curData}[_i];`,
+      '}',
+    ]
+  }
+  if ((step.name === 'min' || step.name === 'max') && sourceTierMaterializer) {
+    const comparison = step.name === 'min' ? '<' : '>'
+    return [
+      `var ${nextData} = ${curData}.length === 0 ? ${optionNoneLocal} : { _tag: 1, value: ${curData}[0] };`,
+      `for (var _i = 1; _i < ${curData}.length; _i++) {`,
+      `if (${curData}[_i] ${comparison} ${nextData}.value) ${nextData}.value = ${curData}[_i];`,
+      '}',
+    ]
+  }
   const operator = `_boundary${seg.step.index}`
   preLines.push(`var ${operator} = (${renderExpression(step.node)});`)
   return [`var ${nextData} = ${operator}(${curData});`]
+}
+
+function emitPureMapLengthBoundary(stepIndex: number, curData: string, nextData: string): string[] {
+  const length = `_pureLength${stepIndex}`
+  return [
+    `var ${length} = ${curData}.length;`,
+    `for (var _i = 0; _i < ${length}; _i++) {`,
+    `void ${curData}[_i];`,
+    '}',
+    `var ${nextData} = ${length};`,
+  ]
 }
 
 /**
@@ -1079,6 +1130,9 @@ function generateSegmentedBodyInternal(
   arrayConstructorExpression: string | undefined,
   globalUndefinedIsUnbound: boolean,
   outerLabel: string,
+  pureMapLengthTerminalIndexes: ReadonlySet<number> = new Set(),
+  sourceTier: StaticCompilerPlanV1['sourceTier'] = 'compiler',
+  runtimeStepCount = steps.length,
 ): Omit<FusedBody, 'sourceFragments'> {
   const blockLines: string[] = []
 
@@ -1099,8 +1153,26 @@ function generateSegmentedBodyInternal(
     const nextData = `_d${counter++}`
     if (seg.kind === 'boundary') {
       blockLines.push(
-        ...emitBoundarySegment(seg, curData, nextData, code, preLines, renderExpression),
+        ...(pureMapLengthTerminalIndexes.has(seg.step.index)
+          ? emitPureMapLengthBoundary(seg.step.index, curData, nextData)
+          : emitBoundarySegment(
+              seg,
+              curData,
+              nextData,
+              code,
+              preLines,
+              renderExpression,
+              sourceTier,
+              optionNoneLocal,
+              runtimeStepCount,
+            )),
       )
+    } else if (
+      seg.steps.length === 0 &&
+      seg.terminal !== undefined &&
+      pureMapLengthTerminalIndexes.has(seg.terminal.index)
+    ) {
+      blockLines.push(...emitPureMapLengthBoundary(seg.terminal.index, curData, nextData))
     } else {
       blockLines.push(
         ...emitElementSegment(
@@ -1131,9 +1203,7 @@ function generateSegmentedBodyInternal(
     resultVar: curData,
     prelude,
     execution,
-    segmentKinds: segments.map((segment) =>
-      segment.kind === 'boundary' ? 'boundary' : 'stream',
-    ),
+    segmentKinds: segments.map((segment) => (segment.kind === 'boundary' ? 'boundary' : 'stream')),
   }
 }
 
@@ -1149,8 +1219,7 @@ export function generateFusedBody(
 ): FusedBody {
   const tracker = new SourceFragmentTracker(code)
   const renderSource: SourceRangeRenderer = (start, end) => tracker.source(start, end)
-  const renderedExpression: ExpressionRenderer =
-    renderExpression ?? ((node) => tracker.node(node))
+  const renderedExpression: ExpressionRenderer = renderExpression ?? ((node) => tracker.node(node))
   const body = generateSegmentedBodyInternal(
     code,
     steps,
@@ -1176,10 +1245,8 @@ export function generateFusedBody(
   }
 }
 
-const captureLocal = (
-  capture: PlanCapture,
-  sourceCaptureId: number | undefined,
-): string => (capture.id === sourceCaptureId ? '_src' : capture.local)
+const captureLocal = (capture: PlanCapture, sourceCaptureId: number | undefined): string =>
+  capture.id === sourceCaptureId ? '_src' : capture.local
 
 const valueRefText = (
   ref: PlanValueRef,
@@ -1204,14 +1271,8 @@ const captureExpression = (
   if (capture.kind !== 'whole-step' || capture.stepIndex === undefined) {
     return tracker.node(capture.node)
   }
-  const step = plan.steps.find(
-    (candidate) => candidate.index === capture.stepIndex,
-  )
-  if (
-    step === undefined ||
-    step.kind !== 'operator' ||
-    !t.isCallExpression(step.node)
-  ) {
+  const step = plan.steps.find((candidate) => candidate.index === capture.stepIndex)
+  if (step === undefined || step.kind !== 'operator' || !t.isCallExpression(step.node)) {
     return tracker.node(capture.node)
   }
   let rendered = ''
@@ -1251,9 +1312,7 @@ const constructionLinesForPlan = (
   const retainedWholeSteps = new Set<number>()
   const capturedWholeStepIndexes = new Set(
     plan.captures.flatMap((capture) =>
-      capture.kind === 'whole-step' && capture.stepIndex !== undefined
-        ? [capture.stepIndex]
-        : [],
+      capture.kind === 'whole-step' && capture.stepIndex !== undefined ? [capture.stepIndex] : [],
     ),
   )
   const stepVectorRetained = plan.steps.some(
@@ -1265,10 +1324,7 @@ const constructionLinesForPlan = (
       retainedWholeSteps.add(step.index)
     }
     for (const binding of step.bindings) {
-      if (
-        binding.kind === 'capture' &&
-        capturedWholeStepIndexes.has(step.index)
-      ) {
+      if (binding.kind === 'capture' && capturedWholeStepIndexes.has(step.index)) {
         assignedInsideWholeStep.add(binding.captureId)
       }
     }
@@ -1286,13 +1342,7 @@ const constructionLinesForPlan = (
         capture.stepIndex !== undefined &&
         !retainedWholeSteps.has(capture.stepIndex)
       ) {
-        return `${captureExpression(
-          capture,
-          plan,
-          captures,
-          sourceCaptureId,
-          tracker,
-        )};`
+        return `${captureExpression(capture, plan, captures, sourceCaptureId, tracker)};`
       }
       return `var ${local} = (${captureExpression(
         capture,
@@ -1345,7 +1395,9 @@ export function generateStaticPlanBody(
 
   const preLines: string[] = []
   if (plan.source.kind === 'inline') {
-    preLines.push(`var _src = (${tracker.source(plan.source.source.start, plan.source.source.end)});`)
+    preLines.push(
+      `var _src = (${tracker.source(plan.source.source.start, plan.source.source.end)});`,
+    )
   }
   preLines.push(...constructionLinesForPlan(plan, captures, sourceCaptureId, tracker))
 
@@ -1370,6 +1422,11 @@ export function generateStaticPlanBody(
   }
 
   const operatorSteps = operatorStepsOf(plan)
+  const pureMapLengthTerminalIndexes = new Set(
+    plan.pureRewrites
+      .filter((rewrite) => rewrite.kind === 'elide-unused-map')
+      .map((rewrite) => rewrite.terminalIndex),
+  )
   const knownBody = generateSegmentedBodyInternal(
     code,
     operatorSteps,
@@ -1382,6 +1439,9 @@ export function generateStaticPlanBody(
     arrayConstructorExpression,
     globalUndefinedIsUnbound,
     outerLabel,
+    pureMapLengthTerminalIndexes,
+    plan.sourceTier,
+    plan.steps.length,
   )
 
   let taggedStatements = knownBody.stmts
@@ -1444,15 +1504,10 @@ export function generateFusedTailBody(
   if (steps.length !== 1) return undefined
   const step = steps[0]
   const sourceIsIdentifier = /^[A-Za-z_$][\w$]*$/u.test(sourceText)
-  const loopSource =
-    directSourceIdentifier && sourceIsIdentifier ? mappedSourceText : '_src'
+  const loopSource = directSourceIdentifier && sourceIsIdentifier ? mappedSourceText : '_src'
   const sourcePrelude =
-    directSourceIdentifier && sourceIsIdentifier
-      ? []
-      : [`const _src = (${mappedSourceText});`]
-  const sourceAccess = sourceIsIdentifier
-    ? mappedSourceText
-    : `(${mappedSourceText})`
+    directSourceIdentifier && sourceIsIdentifier ? [] : [`const _src = (${mappedSourceText});`]
+  const sourceAccess = sourceIsIdentifier ? mappedSourceText : `(${mappedSourceText})`
   if (step.name === 'length') {
     return `return ${sourceAccess}.length;`
   }
@@ -1635,12 +1690,7 @@ export function generateStaticPlanTailBody(
   }
   const renderExpression: ExpressionRenderer = (node) =>
     renderByNode.get(node) ?? tracker.node(node)
-  const captureLines = constructionLinesForPlan(
-    plan,
-    captures,
-    sourceCaptureId,
-    tracker,
-  )
+  const captureLines = constructionLinesForPlan(plan, captures, sourceCaptureId, tracker)
   const tail = generateFusedTailBody(
     code,
     plan.source.kind === 'inline'
@@ -1698,11 +1748,11 @@ export function generateStaticPlanRunner(
   }
   const renderExpression: ExpressionRenderer = (node) =>
     renderByNode.get(node) ?? tracker.node(node)
-  const constructionLines = constructionLinesForPlan(
-    plan,
-    captures,
-    undefined,
-    tracker,
+  const constructionLines = constructionLinesForPlan(plan, captures, undefined, tracker)
+  const pureMapLengthTerminalIndexes = new Set(
+    plan.pureRewrites
+      .filter((rewrite) => rewrite.kind === 'elide-unused-map')
+      .map((rewrite) => rewrite.terminalIndex),
   )
   const body = generateSegmentedBodyInternal(
     code,
@@ -1716,6 +1766,9 @@ export function generateStaticPlanRunner(
     arrayConstructorExpression,
     globalUndefinedIsUnbound,
     outerLabel,
+    pureMapLengthTerminalIndexes,
+    plan.sourceTier,
+    plan.steps.length,
   )
   const tagged = [
     '(() => {',

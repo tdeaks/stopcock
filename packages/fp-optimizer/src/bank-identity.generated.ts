@@ -8,6 +8,6 @@ export interface OptimizerBankIdentityV1 {
 
 export const OPTIMIZER_BANK_IDENTITY: OptimizerBankIdentityV1 = Object.freeze({
   bankHash: 'sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4',
-  semanticManifestHash: 'sha256:3e5965cc012340e21667b4a1c07109a1637394e472f463e953198019f2dbcde5',
+  semanticManifestHash: 'sha256:149af8c82b015b37265d13425b375e8a184afeeab1990122604658bb84f9c141',
   runnerCount: 233,
 })

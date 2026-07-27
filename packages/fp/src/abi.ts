@@ -24,6 +24,7 @@
 import { SEMANTIC_MANIFEST_HASH } from './internal/abi-identity.generated'
 import { buildCompactPlan } from './internal/compact/plan'
 import { interpret } from './interpret'
+import { extractBinding as extractPlanBinding } from './plan'
 import type { BoundPlan, ConsumeMeta, PlanShape, SegmentShape, StepBinding } from './plan'
 import type { OpCode, OpDomain } from './registry'
 import { trustedOperatorEntry } from './internal/provenance'
@@ -158,6 +159,21 @@ export function vetOperator(step: unknown): VettedOperatorV1 | undefined {
   return trustedOperatorEntry(step)
 }
 
+/**
+ * Extracts call-local bindings without letting a callable's public metadata
+ * become execution authority. Optimizer fixed-arity paths normally pass the
+ * already-vetted private entry. The callable form exists for the fifth-slot
+ * compatibility path and is authenticated again before any binding is read.
+ */
+export function extractBinding(entry: VettedOperatorV1 | unknown): StepBinding {
+  if (typeof entry === 'function') {
+    const trusted = trustedOperatorEntry(entry)
+    return trusted === undefined ? {} : extractPlanBinding(trusted)
+  }
+  if (entry === null || typeof entry !== 'object') return {}
+  return extractPlanBinding(entry as VettedOperatorV1)
+}
+
 // Opcodes, semantic facts, shape analysis, and the boundary sort kernels are
 // protocol and pure algorithm, not policy. They are re-exported so the
 // optimizer reads the same facts FP enforces rather than keeping a second copy
@@ -179,7 +195,7 @@ export {
   type PureRewrite,
 } from './internal/plan-analysis'
 export { mergeSortAsc, mergeSortBy, mergeSortDesc } from './sort-kernel'
-export { extractBinding, planShapeKey } from './plan'
+export { planShapeKey } from './plan'
 // Cache control for cross-package differential tests. Not public API: the
 // public entries deliberately expose no cache handle.
 export { resetCompactCache } from './internal/compact-runtime'

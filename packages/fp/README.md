@@ -113,10 +113,22 @@ const explanation = explain(
 // explanation.runtimeCodeGeneration === false
 ```
 
-`compilePure` can apply opt-in rewrites such as stable top-k for
-`sort -> take` and unused-map elision before `length`. `explainPure`, imported
-from `@stopcock/fp/fusion/debug`, reports those rewrites before you choose pure
-semantics.
+Compact and optimized pipelines admit `take` and `drop` to streaming fusion
+only when their quota is already a primitive number. The trusted private
+binding stores its normalized integer value; the public `_fn` diagnostic still
+shows the original argument. `dropWhile` remains a fused streaming operator.
+Fused `take` preserves the established one-item lookahead at its lexical
+position. Object, symbol, bigint, and other coercible quotas fail closed to the
+real public callable after the upstream segment materializes, preserving
+native `slice`, Array species, repeated coercions, and thrown-error timing.
+
+`compilePure` can apply opt-in rewrites such as unused-map elision before
+`length`. `explainPure`, imported from `@stopcock/fp/fusion/debug`, reports the
+actual rewrites before you choose pure semantics. `sort -> take` deliberately
+performs the full sort boundary before the selected tier's ordinary `take`;
+the retired bounded top-k implementation could not preserve changing-length
+Proxies or custom snapshot mutation and errors without a stronger, explicit
+input contract.
 
 For build-time source specialization, use `@stopcock/fp-compiler`.
 
