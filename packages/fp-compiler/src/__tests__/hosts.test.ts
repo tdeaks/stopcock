@@ -146,7 +146,7 @@ async function assertWebpackLikeCallbackSourceMap(
  * names, so string markers cannot distinguish required construction semantics
  * from an execution engine. The host module graph can: the transformed fixture
  * may retain the Array construction leaf, but never root sequential, compile,
- * fusion, or optimizer entries.
+ * or fusion entries.
  */
 const CONSUMER_CEILING_BYTES = 1024
 const FORBIDDEN_COMPOSITION_ENGINE_MODULE_FRAGMENTS = [
@@ -157,7 +157,6 @@ const FORBIDDEN_COMPOSITION_ENGINE_MODULE_FRAGMENTS = [
   '/fp/dist/internal/compact/plan',
   '/fp/dist/internal/plan-',
   '/fp/dist/plan',
-  '/fp-optimizer/',
 ] as const
 
 const ALLOWED_CONSTRUCTION_MODULE_FRAGMENTS = [

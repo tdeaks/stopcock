@@ -1,15 +1,11 @@
 /**
  * Deprecated compatibility entry.
  *
- * The optimized engine that used to back this subpath now lives in
- * `@stopcock/fp-optimizer`. Rather than leave this specifier broken or make it
- * a hidden forwarder to a package that may not be installed, it resolves to
- * compact fusion: an FP-only install stays complete. `compile` preserves exact
- * callback order and counts; `compilePure` opts into the documented pure
- * rewrites reported by `explainPure`.
+ * Resolves to compact fusion: `compile` preserves exact callback order and
+ * counts; `compilePure` opts into the documented pure rewrites reported by
+ * `explainPure`.
  *
- * @deprecated Import `@stopcock/fp/fusion` for compact fusion, or install
- * `@stopcock/fp-optimizer` for the maximum-throughput tier.
+ * @deprecated Import `@stopcock/fp/fusion` for compact fusion.
  */
 import { compactCompile } from './internal/compact-runtime'
 import { compactCompilePure } from './internal/compact-pure-runtime'

@@ -82,7 +82,7 @@ describe('fusion debug facade', () => {
   })
 
   it('keeps engine-bound diagnostics out of this package entirely', () => {
-    // They moved to @stopcock/fp-optimizer with the engine that produces them.
+    // There is no specialized runner bank left to produce them.
     for (const name of ['explainRunner', 'getOptimizerStats', 'resetOptimizerStats']) {
       expect(Object.keys(fusionDebug)).not.toContain(name)
       expect(Object.keys(fusion)).not.toContain(name)

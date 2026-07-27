@@ -1099,11 +1099,9 @@ function emitBoundarySegment(
   renderExpression: ExpressionRenderer,
   sourceTier: StaticCompilerPlanV1['sourceTier'],
   optionNoneLocal: string,
-  runtimeStepCount: number,
 ): string[] {
   const { step } = seg.step
-  const sourceTierUsesRuntimePlan =
-    sourceTier === 'compact' || (sourceTier === 'optimized' && runtimeStepCount > 1)
+  const sourceTierUsesRuntimePlan = sourceTier === 'compact'
   // These bare terminals are validated imports with no construction-time
   // bindings. Lowering them to their defining property checks avoids a
   // function call on the tiny arrays where call overhead dominates.
@@ -1117,8 +1115,8 @@ function emitBoundarySegment(
    * Compact's frozen reference interpreter implements reverse as
    * slice().reverse(). The public leaf prefers toReversed() when available,
    * whose indexed source-read order is observably different for proxies.
-   * Keep root sequential and optimized/compiler tiers on their own public
-   * boundary, but reproduce the compact tier exactly here.
+   * Keep root sequential and compiler tiers on their own public boundary,
+   * but reproduce the compact tier exactly here.
    */
   if (step.name === 'reverse' && sourceTier === 'compact') {
     return [`var ${nextData} = ${curData}.slice().reverse();`]
@@ -1209,7 +1207,6 @@ function generateSegmentedBodyInternal(
   outerLabel: string,
   pureMapLengthTerminalIndexes: ReadonlySet<number> = new Set(),
   sourceTier: StaticCompilerPlanV1['sourceTier'] = 'compiler',
-  runtimeStepCount = steps.length,
 ): Omit<FusedBody, 'sourceFragments'> {
   const blockLines: string[] = []
 
@@ -1241,7 +1238,6 @@ function generateSegmentedBodyInternal(
               renderExpression,
               sourceTier,
               optionNoneLocal,
-              runtimeStepCount,
             )),
       )
     } else if (
@@ -1518,7 +1514,6 @@ export function generateStaticPlanBody(
     outerLabel,
     pureMapLengthTerminalIndexes,
     plan.sourceTier,
-    plan.steps.length,
   )
 
   let taggedStatements = knownBody.stmts
@@ -1845,7 +1840,6 @@ export function generateStaticPlanRunner(
     outerLabel,
     pureMapLengthTerminalIndexes,
     plan.sourceTier,
-    plan.steps.length,
   )
   const tagged = [
     '(() => {',

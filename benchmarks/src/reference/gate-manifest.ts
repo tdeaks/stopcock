@@ -57,11 +57,6 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'non-fusible flows keep the opcode table out of consumer bundles',
   }),
   Object.freeze({
-    script: 's12p-requalification-gate.ts',
-    kind: 'deterministic',
-    checks: 'every public subpath imports and runs from the packed tarballs, and the stable tarball ceiling',
-  }),
-  Object.freeze({
     script: 'optional-dispositions-gate.ts',
     kind: 'deterministic',
     checks: 'every optional candidate is shipped or stopped, exactly once, with a reason',
@@ -80,11 +75,6 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     script: 's10-prototype-pack-gate.ts',
     kind: 'deterministic',
     checks: 'the exact packed optimizer footprint and the S10J topology decision it implies',
-  }),
-  Object.freeze({
-    script: 's6-facade-gate.ts',
-    kind: 'deterministic',
-    checks: 'direct entries retain no engine and debug stays absent unless imported',
   }),
   Object.freeze({
     script: 'iter-array-kernel-gate.ts',

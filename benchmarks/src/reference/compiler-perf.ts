@@ -12,11 +12,12 @@ import { SUPPORTED_OP_NAMES } from '../../../packages/fp-compiler/src/ops'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import * as A from '../../../packages/fp/src/array'
 import { none } from '../../../packages/fp/src/option'
-// The performance frontier is explicitly the optimizer tier. Root sequential
-// semantics have their own exactness corpus; benchmarking root source against
-// a fused hand-loop denominator would either reward a semantic substitution or
-// penalize the stage barriers that root deliberately promises.
-import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
+// The performance frontier is explicitly the compact fusion tier. Root
+// sequential semantics have their own exactness corpus; benchmarking root
+// source against a fused hand-loop denominator would either reward a
+// semantic substitution or penalize the stage barriers that root
+// deliberately promises.
+import { pipe } from '../../../packages/fp/src/fusion'
 import type { CallbackSpec } from './binding-specs'
 import {
   COMPILER_PERF_POLICIES,
@@ -231,7 +232,7 @@ const synthesizeSource = (steps: readonly SerializedStep[]): string => {
     renderedSteps.length === 0
       ? 'return input;'
       : `return pipe(input, ${renderedSteps.join(', ')});`
-  return `import { pipe } from '@stopcock/fp-optimizer'\nimport * as A from '@stopcock/fp/array'\nfunction __run(input) {\n${body}\n}\nexport { __run };`
+  return `import { pipe } from '@stopcock/fp/fusion'\nimport * as A from '@stopcock/fp/array'\nfunction __run(input) {\n${body}\n}\nexport { __run };`
 }
 
 export const compileTransformedCompilerPerfSource = (

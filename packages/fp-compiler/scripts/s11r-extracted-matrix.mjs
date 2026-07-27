@@ -56,7 +56,7 @@ const COMMON_CONSUMERS = Object.freeze([
   'compiler.option-terminal',
 ])
 const HOSTS = Object.freeze(['vite', 'rollup', 'esbuild', 'webpack', 'rspack'])
-const STOPCOCK = Object.freeze(['@stopcock/fp', '@stopcock/fp-compiler', '@stopcock/fp-optimizer'])
+const STOPCOCK = Object.freeze(['@stopcock/fp', '@stopcock/fp-compiler'])
 const FORBIDDEN_ENGINE_MODULES = Object.freeze([
   '@stopcock/fp/dist/index.js',
   '@stopcock/fp/dist/compile',
@@ -65,12 +65,11 @@ const FORBIDDEN_ENGINE_MODULES = Object.freeze([
   '@stopcock/fp/dist/internal/compact/plan',
   '@stopcock/fp/dist/internal/plan-',
   '@stopcock/fp/dist/plan',
-  '@stopcock/fp-optimizer/',
 ])
 const CONSTRUCTION_LEAF_MODULE =
   /^@stopcock\/fp\/dist\/(?:array(?:-[A-Za-z0-9_-]+)?|number-[A-Za-z0-9_-]+|option-[A-Za-z0-9_-]+|provenance-[A-Za-z0-9_-]+|result-[A-Za-z0-9_-]+|sort-kernel-[A-Za-z0-9_-]+)\.js$/u
 const ENGINE_LOGIC_CONTENT =
-  /(?:compact-runtime|fusion-engine|runner-bank|vetPipeline|compilePipeline|executePipeline|createStaticPlan|fusedPipe|fusedFlow|@stopcock\/fp-optimizer)/u
+  /(?:compact-runtime|fusion-engine|runner-bank|vetPipeline|compilePipeline|executePipeline|createStaticPlan|fusedPipe|fusedFlow)/u
 const MINIFIER_OPTIONS = Object.freeze({
   ecma: 2022,
   module: true,
@@ -576,13 +575,6 @@ const extractedTopology = ({ manifest, manifestDirectory, records, scratch }) =>
   const compilerDependencyClosure = copyCompilerDependencyClosure(
     packages.get('@stopcock/fp-compiler'),
     manifest,
-  )
-  // Node resolves a symlinked package from its real extraction path.  Model a
-  // real peer installation beside the unpacked optimizer, never by falling
-  // back through this workspace's FP package.
-  link(
-    packages.get('@stopcock/fp'),
-    join(packages.get('@stopcock/fp-optimizer'), 'node_modules', '@stopcock', 'fp'),
   )
   const consumer = join(scratch, 'consumer')
   mkdirSync(consumer, { recursive: true })
@@ -1195,7 +1187,7 @@ const codeIdentity = async (code, map, topology, label = 'emitted output') => {
 }
 
 const stopcockExport = (topology, source) => {
-  const match = /^(@stopcock\/(?:fp|fp-optimizer|fp-compiler))(\/.*)?$/u.exec(source)
+  const match = /^(@stopcock\/(?:fp|fp-compiler))(\/.*)?$/u.exec(source)
   if (!match) return null
   const root = topology.packages.get(match[1])
   if (!root) return null
@@ -2023,7 +2015,6 @@ const MIXED_TIERS = Object.freeze([
     forbiddenExecution: Object.freeze([
       modulePrefix('@stopcock/fp/dist/compact-runtime-'),
       exactModule('@stopcock/fp/dist/compile.js'),
-      modulePrefix('@stopcock/fp-optimizer/dist/'),
     ]),
     optionalFacades: Object.freeze([exactModule('@stopcock/fp/dist/fusion.js')]),
   },
@@ -2038,7 +2029,6 @@ const MIXED_TIERS = Object.freeze([
     forbiddenExecution: Object.freeze([
       exactModule('@stopcock/fp/dist/index.js'),
       exactModule('@stopcock/fp/dist/compile.js'),
-      modulePrefix('@stopcock/fp-optimizer/dist/'),
     ]),
     optionalFacades: Object.freeze([exactModule('@stopcock/fp/dist/fusion.js')]),
   },
@@ -2050,22 +2040,8 @@ const MIXED_TIERS = Object.freeze([
     fallbackTier: 'compact',
     expectedTrace: FUSED_TRACE,
     requiredExecution: Object.freeze([modulePrefix('@stopcock/fp/dist/compact-runtime-')]),
-    forbiddenExecution: Object.freeze([
-      exactModule('@stopcock/fp/dist/index.js'),
-      modulePrefix('@stopcock/fp-optimizer/dist/'),
-    ]),
-    optionalFacades: Object.freeze([exactModule('@stopcock/fp/dist/compile.js')]),
-  },
-  {
-    id: 'optimized',
-    supportSource: '@stopcock/fp',
-    fallbackSource: '@stopcock/fp-optimizer',
-    fallbackExport: 'pipe',
-    fallbackTier: 'optimized',
-    expectedTrace: FUSED_TRACE,
-    requiredExecution: Object.freeze([exactModule('@stopcock/fp-optimizer/dist/index.js')]),
     forbiddenExecution: Object.freeze([exactModule('@stopcock/fp/dist/index.js')]),
-    optionalFacades: Object.freeze([]),
+    optionalFacades: Object.freeze([exactModule('@stopcock/fp/dist/compile.js')]),
   },
 ])
 
@@ -2425,10 +2401,6 @@ export const assertImportPruningGraph = (moduleGraph, host) => {
       `${host}/import-pruning retained the pruned root facade in emitted bytes`,
     )
   }
-  assert(
-    !moduleGraph.some((id) => id.startsWith('@stopcock/fp-optimizer/')),
-    `${host}/import-pruning introduced optimizer runtime`,
-  )
   return {
     siblingEngines,
     fallbackEngines,
@@ -2484,10 +2456,8 @@ export const cliEsmClosureSpecifiers = (stderr) => {
   assert(specifiers.length > 0, 'NODE_DEBUG=esm did not expose a CLI import closure')
   for (const specifier of specifiers) {
     assert(
-      !/@stopcock\/fp(?:\/|$)|@stopcock\/fp-optimizer|(?:^|[/\\])fusion(?:[./\\]|$)/iu.test(
-        specifier,
-      ),
-      `packed CLI ESM closure imports FP/optimizer/fusion runtime: ${specifier}`,
+      !/@stopcock\/fp(?:\/|$)|(?:^|[/\\])fusion(?:[./\\]|$)/iu.test(specifier),
+      `packed CLI ESM closure imports FP/fusion runtime: ${specifier}`,
     )
   }
   return specifiers
@@ -2679,50 +2649,6 @@ const runCli = (topology, qualificationRoot, receiptPaths) => {
   }
 }
 
-const compatibilityFailures = (topology) => {
-  const fp = topology.packages.get('@stopcock/fp')
-  const optimizer = topology.packages.get('@stopcock/fp-optimizer')
-  return Promise.all([
-    import(pathToFileURL(join(fp, 'dist', 'abi.js')).href),
-    import(pathToFileURL(join(optimizer, 'dist', 'index.js')).href),
-  ]).then(([abi, optimizerApi]) => {
-    const vetted = abi.vetPipeline([])
-    const base = {
-      fpIdentity: abi.OPTIMIZER_ABI_IDENTITY,
-      fpInstanceToken: vetted.instanceToken,
-      optimizerBank: optimizerApi.bankIdentity,
-      requestedMode: 'exact',
-      planMode: 'exact',
-      layout: 'dense-array',
-      fullyTrusted: true,
-      shape: { codes: [], segments: [], bindingCount: 0 },
-    }
-    assert(
-      optimizerApi.evaluateCompatibility(base).eligible,
-      'matching extracted ABI is unexpectedly ineligible',
-    )
-    const mutations = {
-      instance: { fpInstanceToken: {} },
-      abi: { fpIdentity: { ...base.fpIdentity, abiVersion: base.fpIdentity.abiVersion + 1 } },
-      protocol: {
-        fpIdentity: { ...base.fpIdentity, protocolVersion: base.fpIdentity.protocolVersion + 1 },
-      },
-      semantic: {
-        fpIdentity: { ...base.fpIdentity, semanticManifestHash: 'sha256:' + '0'.repeat(64) },
-      },
-      bank: { optimizerBank: { ...base.optimizerBank, bankHash: 'sha256:' + '0'.repeat(64) } },
-      mode: { requestedMode: 'pure' },
-      layout: { layout: 'foreign-layout' },
-    }
-    const failures = Object.entries(mutations).map(([kind, override]) => {
-      const result = optimizerApi.evaluateCompatibility({ ...base, ...override })
-      assert(!result.eligible, `${kind} mismatch remained optimizer-eligible`)
-      return { kind, reason: result.reason }
-    })
-    return failures.sort((left, right) => compare(left.kind, right.kind))
-  })
-}
-
 const assertNoHelperEngine = (graph, label) => {
   const forbidden = graph.filter((id) =>
     FORBIDDEN_ENGINE_MODULES.some((fragment) => id.includes(fragment)),
@@ -2875,22 +2801,12 @@ const buildMaterialization = async ({ manifest, manifestDirectory, records, scra
     compilerProtocol.OPERATOR_MANIFEST_V1_HASH !== compilerProtocol.OPERATOR_SEMANTIC_FACTS_V1_HASH,
     'compiler full manifest and semantic-facts identities are accidentally conflated',
   )
-  const fpAbi = await import(
-    pathToFileURL(join(topology.packages.get('@stopcock/fp'), 'dist', 'abi.js')).href
-  )
-  const optimizer = await import(
-    pathToFileURL(join(topology.packages.get('@stopcock/fp-optimizer'), 'dist', 'index.js')).href
-  )
-  assert(
-    fpAbi.OPTIMIZER_ABI_IDENTITY && typeof optimizer.bankIdentity?.bankHash === 'string',
-    'extracted ABI identities are absent',
-  )
   topology.artifactContext = Object.freeze({
     fpArtifactHash: records.get('@stopcock/fp').tarball.sha256,
     compilerArtifactHash: records.get('@stopcock/fp-compiler').tarball.sha256,
-    optimizerArtifactHash: records.get('@stopcock/fp-optimizer').tarball.sha256,
-    fpAbiHash: hash(Buffer.from(JSON.stringify(fpAbi.OPTIMIZER_ABI_IDENTITY))),
-    optimizerBankHash: optimizer.bankIdentity.bankHash,
+    optimizerArtifactHash: null,
+    fpAbiHash: records.get('@stopcock/fp').tarball.sha256,
+    optimizerBankHash: null,
   })
 
   const canonical = canonicalFixtures()
@@ -2934,7 +2850,6 @@ const buildMaterialization = async ({ manifest, manifestDirectory, records, scra
     `expected ${expectedReceiptFiles} extracted host receipt files, received ${receiptPaths.length}`,
   )
   const cli = runCli(topology, qualificationRoot, receiptPaths)
-  const mismatches = await compatibilityFailures(topology)
   const emittedReceipt = receiptPaths
     .flatMap((path) => JSON.parse(readFileSync(path, 'utf8')))
     .find((receipt) => receipt.disposition === 'transformed')
@@ -2950,14 +2865,6 @@ const buildMaterialization = async ({ manifest, manifestDirectory, records, scra
   assert(
     emittedReceipt.semanticManifestHash === compilerProtocol.OPERATOR_MANIFEST_V1_HASH,
     'receipt semantic hash does not match extracted compiler full manifest',
-  )
-  assert(
-    fpAbi.OPTIMIZER_ABI_IDENTITY.semanticManifestHash === emittedReceipt.semanticManifestHash,
-    'extracted FP ABI semantic hash differs from compiler receipt',
-  )
-  assert(
-    optimizer.bankIdentity?.semanticManifestHash === emittedReceipt.semanticManifestHash,
-    'extracted optimizer bank semantic hash differs from compiler receipt',
   )
   return {
     schemaVersion: 1,
@@ -2976,8 +2883,6 @@ const buildMaterialization = async ({ manifest, manifestDirectory, records, scra
       compilerSemanticFactsHash: compilerProtocol.OPERATOR_SEMANTIC_FACTS_V1_HASH,
       loweringHash: emittedReceipt.loweringHash,
       compilerEmitterAbiHash: compilerProtocol.COMPILER_EMITTER_ABI_V1_HASH,
-      fpAbi: fpAbi.OPTIMIZER_ABI_IDENTITY,
-      optimizerBank: optimizer.bankIdentity,
       artifactContext: topology.artifactContext,
     },
     common,
@@ -2987,7 +2892,6 @@ const buildMaterialization = async ({ manifest, manifestDirectory, records, scra
     importPruning,
     helpers,
     cli,
-    compatibilityMismatches: mismatches,
   }
 }
 

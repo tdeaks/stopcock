@@ -43,11 +43,6 @@ const GENERATED_PATHS = [
   'packages/fp/src/iter-kernels.ts',
   'packages/fp/src/internal/compact/facts.generated.ts',
   'packages/fp/codegen/generated/iter-kernel-manifest-v1.json',
-  'packages/fp-optimizer/src/portable-templates.ts',
-  'packages/fp-optimizer/codegen/generated/fusion-runner-bank-v1.json',
-  'packages/fp-optimizer/src/runner-keys.generated.ts',
-  'packages/fp-optimizer/src/bank-identity.generated.ts',
-  'packages/fp-optimizer/src/abi-expectations.generated.ts',
   'packages/fp/package.json',
 ] as const
 
@@ -192,7 +187,6 @@ function staticModuleSpecifiers(source: string): readonly string[] {
 
 const GENERATED_RUNTIME_SOURCE_ROOTS = Object.freeze([
   resolve(REPO_ROOT, 'packages/fp/src'),
-  resolve(REPO_ROOT, 'packages/fp-optimizer/src'),
   resolve(REPO_ROOT, 'packages/fp-compiler/src'),
 ])
 
@@ -205,8 +199,6 @@ function importsGeneratedRuntime(importer: string, specifier: string): boolean {
   if (
     specifier === '@stopcock/fp' ||
     specifier.startsWith('@stopcock/fp/') ||
-    specifier === '@stopcock/fp-optimizer' ||
-    specifier.startsWith('@stopcock/fp-optimizer/') ||
     specifier === '@stopcock/fp-compiler' ||
     specifier.startsWith('@stopcock/fp-compiler/')
   ) {
@@ -221,7 +213,7 @@ function importsGeneratedRuntime(importer: string, specifier: string): boolean {
   // Reject repository-shaped bare paths too. They are not normal Node package
   // specifiers, but build-tool aliases could otherwise turn one into a
   // generator-to-runtime edge that the clean-input replay silently accepts.
-  return /^(?:packages\/)?(?:fp|fp-optimizer|fp-compiler)\/src(?:\/|$)/u.test(specifier)
+  return /^(?:packages\/)?(?:fp|fp-compiler)\/src(?:\/|$)/u.test(specifier)
 }
 
 function assertStaticModuleScannerCoverage(): void {
@@ -274,7 +266,6 @@ function assertStaticModuleScannerCoverage(): void {
 function assertAcyclicGeneratorImports(): void {
   const generationFiles = [
     ...walkTypeScript(resolve(FP_ROOT, 'codegen')),
-    ...walkTypeScript(resolve(REPO_ROOT, 'packages/fp-optimizer/codegen')),
     resolve(REPO_ROOT, 'packages/fp-compiler/scripts/gen-ops-table.ts'),
   ]
   const violations: string[] = []
@@ -296,7 +287,6 @@ function assertCleanInputGeneration(): void {
   const temporaryRoot = mkdtempSync(resolve(tmpdir(), 'stopcock-s2-clean-codegen-'))
   try {
     const temporaryFp = resolve(temporaryRoot, 'packages/fp')
-    const temporaryOptimizer = resolve(temporaryRoot, 'packages/fp-optimizer')
     mkdirSync(resolve(temporaryRoot, 'packages/fp-compiler/src'), { recursive: true })
     for (const path of COMPILER_EMITTER_SOURCE_PATHS_V1) {
       const destination = resolve(temporaryRoot, path)
@@ -314,12 +304,6 @@ function assertCleanInputGeneration(): void {
     )
     cpSync(resolve(FP_ROOT, 'module-manifest.ts'), resolve(temporaryFp, 'module-manifest.ts'))
     cpSync(resolve(FP_ROOT, 'package.json'), resolve(temporaryFp, 'package.json'))
-    mkdirSync(resolve(temporaryOptimizer, 'src'), { recursive: true })
-    mkdirSync(resolve(temporaryOptimizer, 'codegen', 'generated'), { recursive: true })
-    cpSync(
-      resolve(REPO_ROOT, 'packages/fp-optimizer/codegen/portable-templates.ts'),
-      resolve(temporaryOptimizer, 'codegen/portable-templates.ts'),
-    )
 
     run('bun', ['run', 'codegen/generate.ts'], temporaryFp, { STOPCOCK_CODEGEN_SKIP_FORMAT: '1' })
 

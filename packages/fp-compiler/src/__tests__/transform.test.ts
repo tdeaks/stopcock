@@ -955,27 +955,6 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
-  it('uses optimizer plan boundaries only after the optimizer single-step shortcut', () => {
-    const singleton = transformStopcockPipelines(
-      `import { compile } from '@stopcock/fp-optimizer'
-import * as A from '@stopcock/fp/array'
-export const run = compile(A.flatten)
-`,
-      'optimizer-single-flatten.ts',
-    )
-    const planned = transformStopcockPipelines(
-      `import { compile } from '@stopcock/fp-optimizer'
-import * as A from '@stopcock/fp/array'
-export const run = compile(A.map((value) => value), A.flatten)
-`,
-      'optimizer-planned-flatten.ts',
-    )
-
-    expect(singleton.code).toContain('var _d0 = _boundary0(_src);')
-    expect(planned.code).toContain('var _d1 = _d0.flat();')
-    expect(planned.code).not.toContain('var _boundary1')
-  })
-
   expectSame('compact AOT without preserves native sparse filter semantics', {
     name: 'compact-without-sparse-source',
     imports: `import { compile } from '@stopcock/fp/compile'
@@ -2031,13 +2010,13 @@ export const out = FP.fusedPipe([1, 2], A.map((x) => x + 1))`,
     ],
     [
       'named fusedFlow',
-      `import { fusedFlow } from '@stopcock/fp-optimizer'
+      `import { fusedFlow } from '@stopcock/fp/fusion'
 import * as A from '@stopcock/fp/array'
 export const run = fusedFlow(A.map((x) => x + 1), A.filter((x) => x > 1))`,
     ],
     [
       'namespace fusedFlow',
-      `import * as FP from '@stopcock/fp-optimizer'
+      `import * as FP from '@stopcock/fp/fusion'
 import * as A from '@stopcock/fp/array'
 export const run = FP.fusedFlow(A.map((x) => x + 1), A.filter((x) => x > 1))`,
     ],
@@ -2696,13 +2675,6 @@ export const run = compile(map(Number))
       'operators from a nonexistent fusion subpath',
       `import { pipe } from '@stopcock/fp/fusion'
 import { map } from '@stopcock/fp/fusion/array'
-export const result = pipe([1,2,3], map(Number))
-`,
-    ],
-    [
-      'operators from a nonexistent optimizer subpath',
-      `import { pipe } from '@stopcock/fp-optimizer'
-import { map } from '@stopcock/fp-optimizer/array'
 export const result = pipe([1,2,3], map(Number))
 `,
     ],

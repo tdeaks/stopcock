@@ -526,7 +526,6 @@ export const result = pipe([1,2], A.map(Number), tail)
   it.each([
     ['@stopcock/fp', '@stopcock/fp/array', 'sequential'],
     ['@stopcock/fp/fusion', '@stopcock/fp/array', 'compact'],
-    ['@stopcock/fp-optimizer', '@stopcock/fp/array', 'optimized'],
   ] as const)('records the %s runtime tier when an unsafe residual is declined', (
     rootSource,
     arraySource,
@@ -567,7 +566,7 @@ export const run = compile(A.map(Number), tail)
   })
 
   it('does not infer a custom wrapper tier from its spelling', () => {
-    const root = '@acme/fp-optimizer-proxy'
+    const root = '@acme/fp-compact-proxy'
     const source = `import { pipe } from '${root}'
 import * as A from '${root}/array'
 const id = (x) => x
@@ -583,8 +582,8 @@ export const result = id(pipe([1], A.map(Number), tail))
     expect(conservative.diagnostics[0].fallbackTier).toBe('compiler')
     const declared = transformStopcockPipelines(source, 'custom-tier.ts', {
       ...baseOptions,
-      fallbackTiers: { [root]: 'optimized' },
+      fallbackTiers: { [root]: 'compact' },
     })
-    expect(declared.diagnostics[0].fallbackTier).toBe('optimized')
+    expect(declared.diagnostics[0].fallbackTier).toBe('compact')
   })
 })

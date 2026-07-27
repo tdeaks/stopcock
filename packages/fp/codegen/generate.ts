@@ -27,7 +27,6 @@ generateProtocolViewsV1({ includeEvidence: false })
 run('codegen/compact-facts.ts')
 run('codegen/dual-inline.ts')
 run('codegen/iter-kernels.ts')
-run('../fp-optimizer/codegen/portable-templates.ts')
 run('scripts/sync-module-manifest.ts')
 formatGeneratedProtocolTypeScriptV1()
 formatGeneratedProtocolTypeScriptV1([

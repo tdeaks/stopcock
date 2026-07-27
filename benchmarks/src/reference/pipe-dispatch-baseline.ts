@@ -3,60 +3,26 @@
 // is not shipped by @stopcock/fp. The dispatch release gate retains it locally
 // so current and baseline dispatch can be paired in one Bun/JSC or Node/V8
 // process without relying on unstable wall-clock results from separate runs.
-import {
-  compile,
-  dispatchAndTrack,
-  planAndLowerFast,
-  type Runner,
-} from '../../../packages/fp-optimizer/src/compile'
-import type { StepBinding } from '../../../packages/fp/src/plan'
-import type { ShapeEntry } from '../../../packages/fp-optimizer/src/shape-entry'
-
-/**
- * The frozen implementation read its bindings straight off the operator's
- * public fields. S5A moved live binding authority into a private table, but
- * this fixture must keep costing what it cost then: importing the current
- * extractBinding would both break (it now takes a provenance entry, not a
- * function) and change the denominator every ratio is measured against.
- */
-const baselineExtractBinding = (step: {
-  _fn?: unknown
-  _a1?: unknown
-  _a2?: unknown
-}): StepBinding => {
-  const binding: { fn?: unknown; a1?: unknown; a2?: unknown } = {}
-  if (step._fn !== undefined) binding.fn = step._fn
-  if (step._a1 !== undefined) binding.a1 = step._a1
-  if (step._a2 !== undefined) binding.a2 = step._a2
-  return binding
-}
+//
+// The front-cache/shape-entry dispatch path this fixture used to exercise
+// lived in the now-deleted specialized fusion engine and has no equivalent
+// in the compact tier, which caches a bound plan directly rather than a
+// per-shape dispatch entry. This fixture keeps the bounded identity-cache
+// dispatch cost it was written to measure and drops the front-cache branch
+// that engine alone provided.
+import { compile, type Runner } from '../../../packages/fp/src/compile'
 
 interface CacheEntry {
   readonly fns: readonly unknown[]
-  readonly runner?: Runner
-  readonly entry?: ShapeEntry
-  readonly bindings?: readonly StepBinding[]
+  readonly runner: Runner
   used: number
 }
 
 const CACHE_SIZE = 4
-const FRONT_CACHE_LIMIT = 256
-const NUM_KEY_BASE = 128
-const NUM_KEY_MAX_LEN = 5
 const cache: Array<CacheEntry | undefined> = [undefined, undefined, undefined, undefined]
-const frontCacheNum = new Map<number, ShapeEntry>()
-const frontCacheStr = new Map<string, ShapeEntry>()
 let clock = 0
 
 const hasOp = (fn: any): boolean => typeof fn._op === 'number' && fn._op > 0
-
-function frontCacheSet<K>(target: Map<K, ShapeEntry>, key: K, entry: ShapeEntry): void {
-  target.set(key, entry)
-  if (target.size > FRONT_CACHE_LIMIT) {
-    const oldest = target.keys().next().value
-    if (oldest !== undefined) target.delete(oldest)
-  }
-}
 
 function matchesArgs(fns: readonly unknown[], args: ArrayLike<unknown>, argc: number): boolean {
   if (fns.length !== argc - 1) return false
@@ -95,67 +61,17 @@ function storeRunner(fns: readonly unknown[], runner: Runner): void {
   cache[cacheSlot()] = { fns, runner, used: ++clock }
 }
 
-function storeTagged(
-  fns: readonly unknown[],
-  entry: ShapeEntry,
-  bindings: readonly StepBinding[],
-): void {
-  cache[cacheSlot()] = { fns, entry, bindings, used: ++clock }
-}
-
 function runTagged(input: unknown, args: ArrayLike<unknown>, argc: number): unknown {
   const cached = lookupCache(args, argc)
-  if (cached) {
-    if (cached.entry) return dispatchAndTrack(cached.entry, input, cached.bindings!)
-    return cached.runner!(input)
-  }
+  if (cached) return cached.runner(input)
 
   const length = argc - 1
   const fns = new Array(length)
-  const useNumberKey = length <= NUM_KEY_MAX_LEN
-  let numberKey = 0
-  let stringKey = ''
-  let allTagged = true
-  for (let index = 0; index < length; index++) {
-    const step = args[index + 1]
-    fns[index] = step
-    if (!allTagged) continue
-    const opcode = (step as any)._op
-    if (typeof opcode !== 'number' || opcode <= 0) {
-      allTagged = false
-    } else if (useNumberKey) {
-      numberKey = numberKey * NUM_KEY_BASE + opcode
-    } else {
-      stringKey += `${opcode},`
-    }
-  }
+  for (let index = 0; index < length; index++) fns[index] = args[index + 1]
 
-  if (!allTagged) {
-    const runner = compile(...fns)
-    storeRunner(fns, runner)
-    return runner(input)
-  }
-
-  let entry: ShapeEntry
-  let bindings: readonly StepBinding[]
-  const cachedEntry = useNumberKey ? frontCacheNum.get(numberKey) : frontCacheStr.get(stringKey)
-  if (cachedEntry) {
-    entry = cachedEntry
-    const bound = new Array(length)
-    for (let index = 0; index < length; index++) {
-      bound[index] = baselineExtractBinding(fns[index] as never)
-    }
-    bindings = bound
-  } else {
-    const built = planAndLowerFast(fns)
-    entry = built.entry
-    bindings = built.bindings
-    if (useNumberKey) frontCacheSet(frontCacheNum, numberKey, entry)
-    else frontCacheSet(frontCacheStr, stringKey, entry)
-  }
-
-  storeTagged(fns, entry, bindings)
-  return dispatchAndTrack(entry, input, bindings)
+  const runner = compile(...(fns as readonly Runner[]))
+  storeRunner(fns, runner)
+  return runner(input)
 }
 
 export function baselinePipe(input: unknown, ...steps: readonly ((value: any) => any)[]): unknown

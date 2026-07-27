@@ -3,11 +3,11 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { PerformanceObserver } from 'node:perf_hooks'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { compile } from '../../../packages/fp-optimizer/src/compile'
+import { compile } from '../../../packages/fp/src/compile'
 import * as A from '../../../packages/fp/src/array'
 import * as Iter from '../../../packages/fp/src/iter'
 import * as TA from '../../../packages/fp/src/typed-array'
-import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
+import { pipe } from '../../../packages/fp/src/fusion'
 import { currentPerfEngine } from './perf-engine'
 import {
   INTERLEAVED_PAIRED_SAMPLER_ID,

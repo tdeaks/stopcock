@@ -18,9 +18,6 @@
     "perf:construction:s5b": "bun run src/reference/s5b-construction-gate.ts",
     "perf:map-history:bun": "bun run src/reference/s4-map-history-gate.ts",
     "perf:map-history:node": "node --import=tsx src/reference/s4-map-history-gate.ts",
-    "perf:facades:s6": "bun run src/reference/s6-facade-gate.ts",
-    "perf:lanes:s7:bun": "bun run src/reference/s7-optimized-sequential-lanes.ts",
-    "perf:lanes:s7:node": "node --import=tsx src/reference/s7-optimized-sequential-lanes.ts",
     "perf:size:s3b": "bun run src/reference/s3b-untagged-size-gate.ts",
     "perf:competitors": "bun run src/reference/competitor-floor-gate.ts",
     "perf:root-size:s8": "bun run src/reference/s8-root-size-gate.ts",
@@ -119,7 +116,6 @@
     "rollup": "4.62.2",
     "terser": "5.49.0",
     "tsx": "4.22.3",
-    "webpack": "5.108.4",
-    "@stopcock/fp-optimizer": "workspace:*"
+    "webpack": "5.108.4"
   }
 }

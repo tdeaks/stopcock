@@ -52,23 +52,10 @@ import type {
 const traverse: typeof _traverse =
   (_traverse as unknown as { default?: typeof _traverse }).default ?? _traverse
 
-/**
- * Specifiers whose `pipe`/`flow`/`compile` the compiler will fuse away.
- *
- * `@stopcock/fp-optimizer` is here because S10X moved the fused runner bank
- * out of FP. Someone who installed the optimizer chose the fastest runtime
- * tier, and compiling their pipeline is strictly better than that tier: it
- * beats both and leaves no engine in the bundle. Recognising only FP's root
- * would have silently stopped compiling exactly the pipelines whose authors
- * cared most about speed.
- */
-const DEFAULT_IMPORT_SOURCES = ['@stopcock/fp', '@stopcock/fp/fusion', '@stopcock/fp-optimizer']
+/** Specifiers whose `pipe`/`flow`/`compile` the compiler will fuse away. */
+const DEFAULT_IMPORT_SOURCES = ['@stopcock/fp', '@stopcock/fp/fusion']
 const DEFAULT_ARRAY_IMPORT_SOURCES = ['@stopcock/fp/array']
-const DEFAULT_COMPILE_IMPORT_SOURCES = [
-  '@stopcock/fp/compile',
-  '@stopcock/fp/fusion',
-  '@stopcock/fp-optimizer',
-]
+const DEFAULT_COMPILE_IMPORT_SOURCES = ['@stopcock/fp/compile', '@stopcock/fp/fusion']
 const OPTION_IMPORT_SOURCE = '@stopcock/fp'
 const OPTION_TERMINALS = new Set(['find', 'findIndex', 'findMap', 'head', 'last', 'min', 'max'])
 
@@ -102,17 +89,6 @@ const FIRST_PARTY_FACADE_EXPORTS = new Map<string, ReadonlySet<FacadeExport>>([
   [
     '@stopcock/fp/fusion',
     new Set<FacadeExport>(['pipe', 'fusedPipe', 'flow', 'fusedFlow', 'compile']),
-  ],
-  [
-    '@stopcock/fp-optimizer',
-    new Set<FacadeExport>([
-      'pipe',
-      'fusedPipe',
-      'flow',
-      'fusedFlow',
-      'compile',
-      'compilePure',
-    ]),
   ],
 ])
 
@@ -196,13 +172,9 @@ function plannedBoundaryIntrinsicExclusion(
   scope: Scope,
   steps: readonly Step[],
   sourceTier: CompilerFallbackTier,
-  runtimeStepCount: number,
 ): string | undefined {
   if (
-    !(
-      sourceTier === 'compact' ||
-      (sourceTier === 'optimized' && runtimeStepCount > 1)
-    ) ||
+    sourceTier !== 'compact' ||
     !steps.some((step) => step.name === 'without') ||
     scope.getBinding('Set') === undefined
   ) {
@@ -535,9 +507,6 @@ function fallbackTierFor(
   if (source !== undefined && configured?.[source] !== undefined) {
     return configured[source]
   }
-  if (source === '@stopcock/fp-optimizer') {
-    return 'optimized'
-  }
   if (
     source === '@stopcock/fp/fusion' ||
     source === '@stopcock/fp/compile'
@@ -563,7 +532,6 @@ function fallbackTierForRawSource(
       .find((source) => candidates.has(source))
   if (importSource === undefined) return 'compiler'
   if (configured?.[importSource] !== undefined) return configured[importSource]
-  if (importSource === '@stopcock/fp-optimizer') return 'optimized'
   if (
     importSource === '@stopcock/fp/fusion' ||
     importSource === '@stopcock/fp/compile'
@@ -942,8 +910,7 @@ function tryTransformDeferred(
     }
   }
   const intrinsicExclusion =
-    lexicalArrayExclusion(scope) ??
-    plannedBoundaryIntrinsicExclusion(scope, steps, sourceTier, stepNodes.length)
+    lexicalArrayExclusion(scope) ?? plannedBoundaryIntrinsicExclusion(scope, steps, sourceTier)
   if (intrinsicExclusion !== undefined) {
     return {
       reason: intrinsicExclusion,
@@ -1448,12 +1415,7 @@ export function transformStopcockPipelines(
       }
       const intrinsicExclusion =
         lexicalArrayExclusion(path.scope) ??
-        plannedBoundaryIntrinsicExclusion(
-          path.scope,
-          steps,
-          fallbackTier,
-          stepNodes.length,
-        )
+        plannedBoundaryIntrinsicExclusion(path.scope, steps, fallbackTier)
       if (intrinsicExclusion !== undefined) {
         const reasonCodes: ReceiptReasonCodeV1[] = ['strict-scope-exclusion']
         if (residual !== undefined) reasonCodes.push('opaque-callback')

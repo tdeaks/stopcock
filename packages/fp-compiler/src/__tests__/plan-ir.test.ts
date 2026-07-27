@@ -151,14 +151,14 @@ describe('StaticCompilerPlanV1', () => {
     const exactPlan = createStaticCompilerPlan({
       siteKind: 'compile',
       mode: 'exact',
-      sourceTier: 'optimized',
+      sourceTier: 'compiler',
       call,
       steps,
     })
     const purePlan = createStaticCompilerPlan({
       siteKind: 'compilePure',
       mode: 'pure',
-      sourceTier: 'optimized',
+      sourceTier: 'compiler',
       call,
       steps,
     })

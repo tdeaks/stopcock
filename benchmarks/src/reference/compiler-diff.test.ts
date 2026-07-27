@@ -21,9 +21,8 @@
 // here -- see packages/fp-compiler/src/__tests__/transform.test.ts for
 // their correctness fixtures (transformed vs. real @stopcock/fp semantics).
 import { describe, expect, it } from 'vite-plus/test'
-import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
-import { compile } from '../../../packages/fp-optimizer/src/compile'
-import { flow } from '../../../packages/fp-optimizer/src/fusion-flow'
+import { pipe, flow } from '@stopcock/fp/fusion'
+import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
 import { none } from '@stopcock/fp/option'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
@@ -44,7 +43,7 @@ interface Fixture {
 }
 
 function probeSource(source: string): string {
-  return `import { pipe } from '@stopcock/fp-optimizer'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+  return `import { pipe } from '@stopcock/fp/fusion'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
 }
 
 function run(source: string, input: readonly number[], log: number[]): unknown {
@@ -344,7 +343,7 @@ describe('W6: flatMap and boundary ops diff clean against fp-compiler', () => {
 // `(input, bindings) => data`).
 
 function probeSourceDeferred(source: string): string {
-  return `import { compile, flow } from '@stopcock/fp-optimizer'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+  return `import { compile, flow } from '@stopcock/fp/fusion'\nimport * as A from '@stopcock/fp/array'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
 }
 
 function runDeferred(source: string, input: readonly number[], log: number[]): unknown {

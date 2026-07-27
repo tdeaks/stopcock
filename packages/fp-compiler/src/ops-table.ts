@@ -3,14 +3,14 @@
 // The compiler consumes a data-only projection; it never imports FP runtime modules.
 // Semantic facts hash: sha256:3c94f27ddcb427d98989804b5302d521c4d4204564f2bcde91dc2f23db941b14
 // Complete semantic manifest hash: sha256:567f46b884d7488f3f12fcc3d65cf0af7449ff82db8fbc55218c2c36520acf0c
-// Compiler emitter ABI hash: sha256:4d9e3f9cac89510166136373c4fcb9a744759284869685848f45e73e2a91f83c
+// Compiler emitter ABI hash: sha256:33b9e046445a0f50da95867881d59b9c46613164ef88526f0807e702323261d8
 
 export const OPERATOR_SEMANTIC_FACTS_V1_HASH =
   'sha256:3c94f27ddcb427d98989804b5302d521c4d4204564f2bcde91dc2f23db941b14'
 export const OPERATOR_MANIFEST_V1_HASH =
   'sha256:567f46b884d7488f3f12fcc3d65cf0af7449ff82db8fbc55218c2c36520acf0c'
 export const COMPILER_EMITTER_ABI_V1_HASH =
-  'sha256:4d9e3f9cac89510166136373c4fcb9a744759284869685848f45e73e2a91f83c'
+  'sha256:33b9e046445a0f50da95867881d59b9c46613164ef88526f0807e702323261d8'
 
 export interface OpsTableEntry {
   readonly name: string

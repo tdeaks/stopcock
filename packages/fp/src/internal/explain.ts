@@ -1,18 +1,9 @@
 /**
  * Static pipeline diagnostics.
  *
- * S9 made `/fusion` compact, which left the debug facade adding 8,905 B to a
- * compact consumer instead of the 288 B it added to an optimized one: `explain`
- * lived in `compile.ts` and dragged the whole optimized engine behind it.
- *
- * Nothing here executes a pipeline.
- *
- * Since S10X extracted the optimizer, `segmentExecutors` reports `generic` for
- * every segment, and that is the truth rather than a loss of detail: what this
- * package executes is the generic exact executor. The fused runner bank lives
- * in `@stopcock/fp-optimizer`, which may not be installed, and claiming a
- * segment runs on a template FP cannot see would be a guess. The optimizer
- * reports its own selection through its own trace.
+ * Nothing here executes a pipeline. `segmentExecutors` reports `generic` for
+ * every segment, because that is what this package executes: the generic
+ * exact executor, with no specialized runner bank behind it.
  */
 import type { PlanShape, SegmentShape } from '../plan'
 import type { OpDomain } from '../registry'

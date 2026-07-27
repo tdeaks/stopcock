@@ -149,10 +149,6 @@
       "types": "./dist/compile.d.ts",
       "import": "./dist/compile.js"
     },
-    "./abi": {
-      "types": "./dist/abi.d.ts",
-      "import": "./dist/abi.js"
-    },
     "./fusion": {
       "types": "./dist/fusion.d.ts",
       "import": "./dist/fusion.js"

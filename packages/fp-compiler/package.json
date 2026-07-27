@@ -48,9 +48,7 @@
   },
   "scripts": {
     "generate:ops": "bun run scripts/gen-ops-table.ts",
-    "qualify:s11r": "node scripts/s11r-qualify.mjs",
     "qualify:s11r:hosts": "node scripts/s11r-extracted-matrix.mjs",
-    "qualify:s11r:layouts": "node scripts/s11r-extracted-layouts.mjs",
     "test": "vp test run src/__tests__",
     "check:source": "tsc -p tsconfig.json --noEmit",
     "check:types": "tsc -p tsconfig.type-tests.json",

@@ -76,7 +76,6 @@ function emitAfterCanonicalProtocolValidationV1<Result>(emit: () => Result): Res
 export const PROTOCOL_GENERATED_PATHS_V1 = [
   'packages/fp/src/opcodes.ts',
   'packages/fp/src/registry.ts',
-  'packages/fp/src/internal/abi-identity.generated.ts',
   'packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts',
   'packages/fp/codegen/generated/operator-manifest-v1.json',
   'packages/fp/codegen/generated/future-tier-manifest-v1.json',
@@ -88,7 +87,6 @@ export const PROTOCOL_GENERATED_PATHS_V1 = [
 const PROTOCOL_GENERATED_TYPESCRIPT_PATHS_V1 = [
   'packages/fp/src/opcodes.ts',
   'packages/fp/src/registry.ts',
-  'packages/fp/src/internal/abi-identity.generated.ts',
   'packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts',
   'packages/fp-compiler/src/ops-table.ts',
   'packages/fp-compiler/src/receipt-schema.generated.ts',
@@ -1321,10 +1319,6 @@ export function generateProtocolViewsV1(
     const records = runtimeRecordsInOpcodeOrderV1()
     writeGenerated('packages/fp/src/opcodes.ts', renderOpcodesV1(records))
     writeGenerated('packages/fp/src/registry.ts', renderRegistryV1(records))
-    writeGenerated(
-      'packages/fp/src/internal/abi-identity.generated.ts',
-      renderOptimizerAbiIdentityV1(),
-    )
     writeGenerated(
       'packages/fp/codegen/generated/operator-manifest-v1.json',
       jsonFile(operatorManifestV1()),

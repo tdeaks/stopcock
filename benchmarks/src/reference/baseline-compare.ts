@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url'
 import { buildCallback, type CallbackSpec } from './binding-specs'
 import { generateInputArray, type SerializedStep } from './generate'
 import { geomean, runPaired } from './perf-runner'
-import { pipe as currentPipe } from '../../../packages/fp-optimizer/src/fusion-engine'
+import { pipe as currentPipe } from '../../../packages/fp/src/fusion'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 

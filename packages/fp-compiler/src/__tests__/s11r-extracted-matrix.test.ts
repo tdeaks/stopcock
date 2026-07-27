@@ -7,7 +7,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const script = new URL('../../scripts/s11r-extracted-matrix.mjs', import.meta.url)
-const layoutScript = new URL('../../scripts/s11r-extracted-layouts.mjs', import.meta.url)
 const sha = (value: string) => `sha256:${createHash('sha256').update(value).digest('hex')}`
 const stable = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`
 
@@ -62,7 +61,6 @@ describe('S11R extracted matrix manifest boundary', () => {
 
   it('rejects a self-consistent pre-extraction cohort before reading any tarball', async () => {
     const { validateManifest } = await import(script.href)
-    const { validateLayoutManifest } = await import(layoutScript.href)
     const scratch = await mkdtemp(join(tmpdir(), 'stopcock-s11r-old-cohort-'))
     try {
       const projection = {
@@ -89,7 +87,6 @@ describe('S11R extracted matrix manifest boundary', () => {
         }),
       )
       await expect(validateManifest(path)).rejects.toThrow(/complete 21-package/u)
-      await expect(validateLayoutManifest(path)).rejects.toThrow(/complete 21-package/u)
     } finally {
       await rm(scratch, { recursive: true, force: true })
     }
@@ -132,7 +129,7 @@ describe('S11R extracted matrix manifest boundary', () => {
       cliEsmClosureSpecifiers(
         `${loaded}\nESM 41: Storing file:///tmp/extracted/fp-compiler/node_modules/@stopcock/fp/dist/fusion.js (implicit type) in ModuleLoadMap\n`,
       ),
-    ).toThrow(/imports FP\/optimizer\/fusion runtime/u)
+    ).toThrow(/imports FP\/fusion runtime/u)
   })
 
   it('gives two scratch roots one emitted-code spelling and still rejects other leaks', async () => {
@@ -224,7 +221,7 @@ describe('S11R extracted matrix manifest boundary', () => {
     expect(first.canonical.count).toBe(5)
     expect(first.harness.ids).toContain('observable-construction')
     expect(first.harness.ids).toContain('import-pruning')
-    expect(first.harness.count).toBe(8)
+    expect(first.harness.count).toBe(7)
     expect(first.canonical.sha256).toMatch(/^sha256:[a-f0-9]{64}$/u)
     expect(first.harness.sha256).toMatch(/^sha256:[a-f0-9]{64}$/u)
   })
@@ -656,7 +653,6 @@ describe('S11R extracted matrix manifest boundary', () => {
         forbiddenExecution: [
           '@stopcock/fp/dist/compact-runtime-*.js',
           '@stopcock/fp/dist/compile.js',
-          '@stopcock/fp-optimizer/dist/*.js',
         ],
         optionalFacades: ['@stopcock/fp/dist/fusion.js'],
         expectedTrace: ['map:1', 'map:2', 'map:3', 'some:2', 'some:3'],
@@ -672,7 +668,6 @@ describe('S11R extracted matrix manifest boundary', () => {
         forbiddenExecution: [
           '@stopcock/fp/dist/index.js',
           '@stopcock/fp/dist/compile.js',
-          '@stopcock/fp-optimizer/dist/*.js',
         ],
         optionalFacades: ['@stopcock/fp/dist/fusion.js'],
         expectedTrace: ['map:1', 'some:2', 'map:2', 'some:3'],
@@ -685,28 +680,13 @@ describe('S11R extracted matrix manifest boundary', () => {
       {
         id: 'compact-compile',
         requiredExecution: ['@stopcock/fp/dist/compact-runtime-*.js'],
-        forbiddenExecution: [
-          '@stopcock/fp/dist/index.js',
-          '@stopcock/fp-optimizer/dist/*.js',
-        ],
+        forbiddenExecution: ['@stopcock/fp/dist/index.js'],
         optionalFacades: ['@stopcock/fp/dist/compile.js'],
         expectedTrace: ['map:1', 'some:2', 'map:2', 'some:3'],
         strictDiagnostic: {
           site: 'compile',
           line: 11,
           reason: 'spread arguments in flow()/compile() call',
-        },
-      },
-      {
-        id: 'optimized',
-        requiredExecution: ['@stopcock/fp-optimizer/dist/index.js'],
-        forbiddenExecution: ['@stopcock/fp/dist/index.js'],
-        optionalFacades: [],
-        expectedTrace: ['map:1', 'some:2', 'map:2', 'some:3'],
-        strictDiagnostic: {
-          site: 'pipe',
-          line: 11,
-          reason: 'spread arguments in pipe() call',
         },
       },
     ])

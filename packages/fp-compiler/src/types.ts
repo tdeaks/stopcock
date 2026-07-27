@@ -3,7 +3,7 @@ export type FilterPattern = ReadonlyArray<string | RegExp> | string | RegExp | n
 export type DiagnosticsLevel = false | 'summary' | 'verbose' | 'error'
 export type CompilerSemantics = 'exact' | 'pure'
 export type CompilerSegmentKind = 'stream' | 'boundary' | 'opaque'
-export type CompilerFallbackTier = 'sequential' | 'compact' | 'optimized' | 'compiler' | 'none'
+export type CompilerFallbackTier = 'sequential' | 'compact' | 'compiler' | 'none'
 
 export interface StopcockCompilerOptions {
   readonly include?: FilterPattern

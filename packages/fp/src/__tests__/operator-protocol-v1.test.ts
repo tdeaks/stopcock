@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
 import {
@@ -836,7 +836,7 @@ describe('ReceiptSchemaV1 generated view parity', () => {
     expect(validateDebugJoin(compilerReceipt as never, { artifactHash: hash }).ok).toBe(false)
   })
 
-  it('keeps both generated validators dependency-free and emits no premature optimizer view', () => {
+  it('keeps both generated validators dependency-free', () => {
     const debugPath = fileURLToPath(
       new URL('../internal/fusion-debug-receipt-schema.generated.ts', import.meta.url),
     )
@@ -845,12 +845,5 @@ describe('ReceiptSchemaV1 generated view parity', () => {
     )
     expect(readFileSync(debugPath, 'utf8')).not.toMatch(/^import\s/mu)
     expect(readFileSync(compilerPath, 'utf8')).not.toMatch(/^import\s/mu)
-    expect(
-      existsSync(
-        fileURLToPath(
-          new URL('../../../fp-optimizer/src/receipt-schema.generated.ts', import.meta.url),
-        ),
-      ),
-    ).toBe(false)
   })
 })

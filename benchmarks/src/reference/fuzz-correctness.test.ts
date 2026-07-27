@@ -10,8 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
 import { buildPlan } from '../../../packages/fp/src/plan'
 import { interpret } from '../../../packages/fp/src/interpret'
-import { pipe } from '../../../packages/fp-optimizer/src/fusion-engine'
-import { compile } from '../../../packages/fp-optimizer/src/compile'
+import { pipe } from '../../../packages/fp/src/fusion'
 import { compileEmittedPipeline } from './emitter'
 import {
   generateSerializedPipeline,
@@ -123,19 +122,6 @@ function runEmitted(sp: SerializedPipeline): RunOutcome {
   }
 }
 
-/** Runs the same shape through the public portable compiler. */
-function runCompiled(sp: SerializedPipeline): RunOutcome {
-  const log: CallLogEntry[] = []
-  const g = resolvePipeline(sp, loggingWrapper(log))
-  try {
-    const runner = compile(...(g.realSteps as unknown[]))
-    const value = runner(g.input)
-    return { value, log }
-  } catch (e) {
-    return { error: (e as Error).message, log }
-  }
-}
-
 interface CompareFailure {
   readonly reason: string
 }
@@ -165,13 +151,10 @@ async function checkPipeline(sp: SerializedPipeline): Promise<CompareFailure | u
   const fromInterpret = runInterpret(sp)
   const fromPipe = runPipe(sp)
   const fromEmitted = runEmitted(sp)
-  const fromCompiled = runCompiled(sp)
   return (
     compareOutcomes(fromInterpret, fromPipe, 'interpret', 'pipe') ??
     compareOutcomes(fromInterpret, fromEmitted, 'interpret', 'emitted') ??
-    compareOutcomes(fromPipe, fromEmitted, 'pipe', 'emitted') ??
-    compareOutcomes(fromInterpret, fromCompiled, 'interpret', 'compiled') ??
-    compareOutcomes(fromPipe, fromCompiled, 'pipe', 'compiled')
+    compareOutcomes(fromPipe, fromEmitted, 'pipe', 'emitted')
   )
 }
 
@@ -230,7 +213,7 @@ describe('W0a pinned corpus (runs every time, before the fuzz loop)', () => {
 
 describe(`W0a seeded fuzz correctness (${FUZZ_COUNT} pipelines)`, () => {
   it(
-    `all ${FUZZ_COUNT} seeded pipelines agree across interpret/pipe/emitter/jit`,
+    `all ${FUZZ_COUNT} seeded pipelines agree across interpret/pipe/emitter`,
     async () => {
       const failures: string[] = []
       for (let i = 0; i < FUZZ_COUNT; i++) {

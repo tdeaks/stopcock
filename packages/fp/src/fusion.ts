@@ -2,10 +2,8 @@
  * Compact fusion.
  *
  * Fuses through one generic exact executor rather than a bank of specialized
- * templates. It is honestly size-first: smaller than the optimizer and slower
- * than it. If you want the fastest fused execution, install and import
- * `@stopcock/fp-optimizer`; if you build with a bundler,
- * `@stopcock/fp-compiler` beats both and leaves no runtime engine at all.
+ * templates. If you build with a bundler, `@stopcock/fp-compiler` compiles
+ * the pipeline and leaves no runtime engine at all.
  *
  * Semantics are identical to every other tier: same results, same callback
  * order, same early-exit counts.
