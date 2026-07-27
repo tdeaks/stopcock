@@ -816,3 +816,94 @@ describe('the keyed and positional operators keep their runtime meaning', () => 
     expect(result.compiled.value).toEqual(result.original.value)
   })
 })
+
+/**
+ * Bare accessors -- the OrUndefined and NonEmpty variants, the single-element
+ * checks, and the nesting operators. These take no arguments, so they appear
+ * in a pipeline as a plain reference rather than a call, and two of them are
+ * re-exports resolved to the operator they alias.
+ */
+const BARE_IMPORTS = `import { pipe } from '@stopcock/fp'\nimport { map, first, firstOrUndefined, headNonEmpty, headOrUndefined, lastNonEmpty, lastOrUndefined, maxNonEmpty, maxOrUndefined, mergeAll, minNonEmpty, minOrUndefined, only, onlyOrUndefined, transpose, unnest } from '@stopcock/fp/array'`
+
+const BARE_LOCALS = Object.fromEntries(
+  [
+  'pipe', 'map',
+  'first',
+  'firstOrUndefined',
+  'headNonEmpty',
+  'headOrUndefined',
+  'lastNonEmpty',
+  'lastOrUndefined',
+  'maxNonEmpty',
+  'maxOrUndefined',
+  'mergeAll',
+  'minNonEmpty',
+  'minOrUndefined',
+  'only',
+  'onlyOrUndefined',
+  'transpose',
+  'unnest',
+].map((name) => [name, name]),
+)
+
+const bareFixture = (name: string, body: string): Fixture => ({
+  name,
+  imports: BARE_IMPORTS,
+  locals: BARE_LOCALS,
+  body,
+  expectTransformed: true,
+})
+
+const BARE_VALUES: readonly (readonly [string, string])[] = [
+  ['headNonEmpty', `return pipe(${SRC}, map((x) => x + 1), headNonEmpty)`],
+  ['headOrUndefined', `return pipe(${SRC}, map((x) => x + 1), headOrUndefined)`],
+  ['lastNonEmpty', `return pipe(${SRC}, map((x) => x + 1), lastNonEmpty)`],
+  ['lastOrUndefined', `return pipe(${SRC}, map((x) => x + 1), lastOrUndefined)`],
+  ['maxNonEmpty', `return pipe(${SRC}, map((x) => x + 1), maxNonEmpty)`],
+  ['maxOrUndefined', `return pipe(${SRC}, map((x) => x + 1), maxOrUndefined)`],
+  ['mergeAll', `return pipe(${SRC}, map((x) => ({ ['k' + x]: x })), mergeAll)`],
+  ['minNonEmpty', `return pipe(${SRC}, map((x) => x + 1), minNonEmpty)`],
+  ['minOrUndefined', `return pipe(${SRC}, map((x) => x + 1), minOrUndefined)`],
+  ['only', `return pipe(${SRC}, map((x) => x + 1), only)`],
+  ['onlyOrUndefined', `return pipe(${SRC}, map((x) => x + 1), onlyOrUndefined)`],
+  ['transpose', `return pipe(${SRC}, map((x) => [x, x + 1]), transpose)`],
+  ['unnest', `return pipe(${SRC}, map((x) => [x, x + 1]), unnest)`],
+  ['first (alias of head)', `return pipe(${SRC}, map((x) => x + 1), first)`],
+  ['firstOrUndefined (alias of headOrUndefined)', `return pipe(${SRC}, map((x) => x + 1), firstOrUndefined)`],
+]
+
+describe('bare accessor operators keep their runtime meaning', () => {
+  it.each(BARE_VALUES)('%s', (name, body) => {
+    const result = runFixture(bareFixture(name.replace(/\W+/gu, '-'), body))
+    expect(result.map).not.toBeNull()
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+
+  it.each([
+    ['headOrUndefined', 'headOrUndefined'],
+    ['lastOrUndefined', 'lastOrUndefined'],
+    ['minOrUndefined', 'minOrUndefined'],
+    ['maxOrUndefined', 'maxOrUndefined'],
+    ['onlyOrUndefined', 'onlyOrUndefined'],
+  ])('%s returns undefined for an empty source, not an Option', (_label, step) => {
+    const result = runFixture(
+      bareFixture('bare-empty', `return pipe([], map((x) => x), {step})`.replace('{step}', step)),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect(result.compiled.value).toBeUndefined()
+  })
+
+  it('completes the upstream stage before a bare accessor reads it', () => {
+    const result = runFixture(
+      bareFixture(
+        'bare-order',
+        `const r = pipe([1,2,3], map((x) => { log.push('m' + x); return x }), lastOrUndefined); return [r, log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3')
+  })
+})

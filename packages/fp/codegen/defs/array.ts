@@ -78,7 +78,11 @@ function groupByPropRaw<A extends Readonly<Record<PropertyKey, unknown>>>(
 }
 
 // Arity 1. Tagged for fusion engine (accessor ops get inlined in pipe)
-export const headOrUndefined = <A>(arr: readonly A[]): A | undefined => arr[0]
+export const headOrUndefined: <A>(arr: readonly A[]) => A | undefined = dual(
+  1,
+  (arr: any) => arr[0],
+  { op: 'headOrUndefined' },
+)
 export const head: <A>(arr: readonly A[]) => Option<A> = dual(
   1,
   (a: any[]) => (a.length === 0 ? optionNone : optionSome(a[0])),
@@ -86,15 +90,27 @@ export const head: <A>(arr: readonly A[]) => Option<A> = dual(
     op: 'head',
   },
 )
-export const headNonEmpty = <A>(arr: readonly [A, ...A[]]): A => arr[0]
+export const headNonEmpty: <A>(arr: readonly [A, ...A[]]) => A = dual(
+  1,
+  (arr: any) => arr[0],
+  { op: 'headNonEmpty' },
+)
 
-export const lastOrUndefined = <A>(arr: readonly A[]): A | undefined => arr[arr.length - 1]
+export const lastOrUndefined: <A>(arr: readonly A[]) => A | undefined = dual(
+  1,
+  (arr: any) => arr[arr.length - 1],
+  { op: 'lastOrUndefined' },
+)
 export const last: <A>(arr: readonly A[]) => Option<A> = dual(
   1,
   (a: any[]) => (a.length === 0 ? optionNone : optionSome(a[a.length - 1])),
   { op: 'last' },
 )
-export const lastNonEmpty = <A>(arr: readonly [A, ...A[]]): A => arr[arr.length - 1]
+export const lastNonEmpty: <A>(arr: readonly [A, ...A[]]) => A = dual(
+  1,
+  (arr: any) => arr[arr.length - 1],
+  { op: 'lastNonEmpty' },
+)
 export const tail: <A>(arr: readonly A[]) => A[] = dual(
   1,
   (arr: any) => {
@@ -165,23 +181,27 @@ export const range: (start: number, end: number) => number[] = (start: any, end:
 export const sort: (arr: readonly number[]) => number[] = dual(1, (arr: any) => mergeSortAsc(arr), {
   op: 'sort',
 })
-export const transpose: <A>(arr: readonly A[][]) => A[][] = (arr: any) => {
-  const rows = arr.length
-  if (rows === 0) return []
-  let cols = arr[0].length
-  for (let i = 1; i < rows; i++) {
-    const rowLen = arr[i].length
-    if (rowLen < cols) cols = rowLen
-  }
-  if (cols === 0) return []
-  const out = new Array(cols)
-  for (let c = 0; c < cols; c++) {
-    const col = new Array(rows)
-    for (let r = 0; r < rows; r++) col[r] = arr[r][c]
-    out[c] = col
-  }
-  return out
-}
+export const transpose: <A>(arr: readonly A[][]) => A[][] = dual(
+  1,
+  (arr: any) => {
+    const rows = arr.length
+    if (rows === 0) return []
+    let cols = arr[0].length
+    for (let i = 1; i < rows; i++) {
+      const rowLen = arr[i].length
+      if (rowLen < cols) cols = rowLen
+    }
+    if (cols === 0) return []
+    const out = new Array(cols)
+    for (let c = 0; c < cols; c++) {
+      const col = new Array(rows)
+      for (let r = 0; r < rows; r++) col[r] = arr[r][c]
+      out[c] = col
+    }
+    return out
+  },
+  { op: 'transpose' },
+)
 
 export const repeat: {
   <A>(value: A, n: number): A[]
@@ -879,7 +899,6 @@ export const reduceRight: {
     return acc
   },
   { op: 'reduceRight' },
-  { op: 'reduceRight' },
 )
 
 export const zip: {
@@ -1016,12 +1035,28 @@ export const scan: {
 
 // Array numeric terminals (JIT-inlined in pipe)
 export const sum: (arr: readonly number[]) => number = dual(1, nSum, { op: 'sum' })
-export const minOrUndefined = nMinOrUndefined
+export const minOrUndefined: (arr: readonly number[]) => number | undefined = dual(
+  1,
+  (arr: any) => nMinOrUndefined(arr),
+  { op: 'minOrUndefined' },
+)
 export const min: (arr: readonly number[]) => Option<number> = dual(1, nMin, { op: 'min' })
-export const minNonEmpty = nMinNonEmpty
-export const maxOrUndefined = nMaxOrUndefined
+export const minNonEmpty: (arr: readonly [number, ...number[]]) => number = dual(
+  1,
+  (arr: any) => nMinNonEmpty(arr),
+  { op: 'minNonEmpty' },
+)
+export const maxOrUndefined: (arr: readonly number[]) => number | undefined = dual(
+  1,
+  (arr: any) => nMaxOrUndefined(arr),
+  { op: 'maxOrUndefined' },
+)
 export const max: (arr: readonly number[]) => Option<number> = dual(1, nMax, { op: 'max' })
-export const maxNonEmpty = nMaxNonEmpty
+export const maxNonEmpty: (arr: readonly [number, ...number[]]) => number = dual(
+  1,
+  (arr: any) => nMaxNonEmpty(arr),
+  { op: 'maxNonEmpty' },
+)
 
 // Sort specializations (JIT-inlined in pipe)
 export const sortAsc: (arr: readonly number[]) => number[] = dual(
@@ -1062,12 +1097,26 @@ export const shuffle: <A>(arr: readonly A[]) => A[] = (arr: any) => {
   }
   return copy
 }
-export const onlyOrUndefined: <A>(arr: readonly A[]) => A | undefined = (arr: any) =>
-  arr.length === 1 ? arr[0] : undefined
-export const only: <A>(arr: readonly A[]) => Option<A> = (arr: any) =>
-  arr.length === 1 ? optionSome(arr[0]) : optionNone
-export const mergeAll: <A>(arr: readonly A[]) => A = (arr: any) => Object.assign({}, ...arr)
-export const unnest: <A>(arr: readonly A[][]) => A[] = (arr: any) => flatten(arr as any)
+export const onlyOrUndefined: <A>(arr: readonly A[]) => A | undefined = dual(
+  1,
+  (arr: any) => (arr.length === 1 ? arr[0] : undefined),
+  { op: 'onlyOrUndefined' },
+)
+export const only: <A>(arr: readonly A[]) => Option<A> = dual(
+  1,
+  (arr: any) => (arr.length === 1 ? optionSome(arr[0]) : optionNone),
+  { op: 'only' },
+)
+export const mergeAll: <A>(arr: readonly A[]) => A = dual(
+  1,
+  (arr: any) => Object.assign({}, ...arr),
+  { op: 'mergeAll' },
+)
+export const unnest: <A>(arr: readonly A[][]) => A[] = dual(
+  1,
+  (arr: any) => flatten(arr as any),
+  { op: 'unnest' },
+)
 
 // Arity 2. Fuseable
 export const reject: {

@@ -148,6 +148,19 @@ import {
   OP_UNION_WITH,
   OP_WITHOUT_BY,
   OP_ZIP_OBJ,
+  OP_HEAD_NON_EMPTY,
+  OP_HEAD_OR_UNDEFINED,
+  OP_LAST_NON_EMPTY,
+  OP_LAST_OR_UNDEFINED,
+  OP_MAX_NON_EMPTY,
+  OP_MAX_OR_UNDEFINED,
+  OP_MERGE_ALL,
+  OP_MIN_NON_EMPTY,
+  OP_MIN_OR_UNDEFINED,
+  OP_ONLY,
+  OP_ONLY_OR_UNDEFINED,
+  OP_TRANSPOSE,
+  OP_UNNEST,
 } from './opcodes'
 import type { OpCode } from './registry'
 // Cardinality comes from the compact fact table rather than the registry.
@@ -239,6 +252,19 @@ import {
   unionWith,
   withoutBy,
   zipObj,
+  headNonEmpty,
+  headOrUndefined,
+  lastNonEmpty,
+  lastOrUndefined,
+  maxNonEmpty,
+  maxOrUndefined,
+  mergeAll,
+  minNonEmpty,
+  minOrUndefined,
+  only,
+  onlyOrUndefined,
+  transpose,
+  unnest,
 } from './array'
 import { mergeSortAsc, mergeSortBy, mergeSortDesc } from './sort-kernel'
 import { type BoundPlan, type SegmentShape, type StepBinding } from './plan'
@@ -464,6 +490,32 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
       return (splice as any)(data, binding.fn, binding.a1, binding.a2)
     case OP_REDUCE_BY:
       return (reduceBy as any)(data, binding.fn, binding.a1, binding.a2)
+    case OP_HEAD_NON_EMPTY:
+      return (headNonEmpty as any)(data)
+    case OP_HEAD_OR_UNDEFINED:
+      return (headOrUndefined as any)(data)
+    case OP_LAST_NON_EMPTY:
+      return (lastNonEmpty as any)(data)
+    case OP_LAST_OR_UNDEFINED:
+      return (lastOrUndefined as any)(data)
+    case OP_MAX_NON_EMPTY:
+      return (maxNonEmpty as any)(data)
+    case OP_MAX_OR_UNDEFINED:
+      return (maxOrUndefined as any)(data)
+    case OP_MERGE_ALL:
+      return (mergeAll as any)(data)
+    case OP_MIN_NON_EMPTY:
+      return (minNonEmpty as any)(data)
+    case OP_MIN_OR_UNDEFINED:
+      return (minOrUndefined as any)(data)
+    case OP_ONLY:
+      return (only as any)(data)
+    case OP_ONLY_OR_UNDEFINED:
+      return (onlyOrUndefined as any)(data)
+    case OP_TRANSPOSE:
+      return (transpose as any)(data)
+    case OP_UNNEST:
+      return (unnest as any)(data)
     default:
       return unsupportedOp(op)
   }

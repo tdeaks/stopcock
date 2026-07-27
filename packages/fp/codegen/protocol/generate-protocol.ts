@@ -43,7 +43,7 @@ export const OPTIMIZER_BANK_PROTOCOL_VERSION_V1 = 1
 
 export const RETAINED_COMPILER_OPERATION_CORPUS_V1 = Object.freeze<OperatorEvidenceCorpusJoinV1>({
   corpusId: COMPILER_OPERATION_CORPUS_ID_V1,
-  corpusHash: 'sha256:d97325fbd223ca4db7c70f3a15cb77210e7943661a89c39dfaad8c5c2f7c0355',
+  corpusHash: 'sha256:612e1521619552bebeddaf7df1ce0f95bf365ea65995d0dc93dbe6bc824ea399',
 })
 
 export interface ProtocolCatalogueV1 {
@@ -593,6 +593,19 @@ const LEGACY_RUNTIME_RECORD_ORDER_V1 = [
   'findLastIndexOrUndefined',
   'meanByOrUndefined',
   'meanByNonEmpty',
+  'headOrUndefined',
+  'headNonEmpty',
+  'lastOrUndefined',
+  'lastNonEmpty',
+  'minOrUndefined',
+  'minNonEmpty',
+  'maxOrUndefined',
+  'maxNonEmpty',
+  'onlyOrUndefined',
+  'only',
+  'mergeAll',
+  'transpose',
+  'unnest',
 ] as const
 
 const LEGACY_TAG_LOOKUP_ORDER_V1 = [
@@ -741,6 +754,19 @@ const LEGACY_TAG_LOOKUP_ORDER_V1 = [
   'findLastIndexOrUndefined',
   'meanByOrUndefined',
   'meanByNonEmpty',
+  'headOrUndefined',
+  'headNonEmpty',
+  'lastOrUndefined',
+  'lastNonEmpty',
+  'minOrUndefined',
+  'minNonEmpty',
+  'maxOrUndefined',
+  'maxNonEmpty',
+  'onlyOrUndefined',
+  'only',
+  'mergeAll',
+  'transpose',
+  'unnest',
 ] as const
 
 function recordsInNamedOrderV1(

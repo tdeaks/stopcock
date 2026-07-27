@@ -7,16 +7,16 @@ import {
 export const EXPECTED_COMPILER_OPERATION_CORPUS = Object.freeze({
   id: COMPILER_OPERATION_CORPUS_ID,
   version: COMPILER_OPERATION_CORPUS_VERSION,
-  totalCaseCount: 120,
-  sha256: 'd97325fbd223ca4db7c70f3a15cb77210e7943661a89c39dfaad8c5c2f7c0355',
-  caseNamesSha256: '427950e230a9023c13fd7923b7c090bcd9a4a69735891781afb97fa5812b9656',
-  targetOpsSha256: 'b07573285e10df17c3338a1d4108b7ba1793ecd3866fdd5e29b7860357432cb9',
-  opcodesSha256: '315e3b3c82e35dd434b3742576facc2ae1ae64ca4117403c330a98a51bace086',
+  totalCaseCount: 133,
+  sha256: '612e1521619552bebeddaf7df1ce0f95bf365ea65995d0dc93dbe6bc824ea399',
+  caseNamesSha256: 'd3f2c0ed3c7c853bb80568f89db21bd6af45ac50dabb11d99a8684dd78c015a3',
+  targetOpsSha256: '26164867ed86440f1797e308cc6fab1de88b7035bc29c78be8968ee8fe895fe3',
+  opcodesSha256: 'e95a705fe4ad61dc65e9089494876a3ed3cca8b9e4e79a8616a5b918f470ac7a',
   categoryCounts: Object.freeze({
     element: 5,
     stateful: 7,
     terminal: 16,
-    materializer: 92,
+    materializer: 105,
   }),
 })
 
@@ -36,7 +36,7 @@ export const EXPECTED_COMPILER_OPERATION_OPTIMIZER_CANARY_OPS = Object.freeze([
   'length',
 ] as const satisfies readonly CompilerSupportedOpName[])
 
-export const EXPECTED_COMPILER_OPERATION_PERFORMANCE_COUNT = 118
+export const EXPECTED_COMPILER_OPERATION_PERFORMANCE_COUNT = 131
 
 export const isCompilerOperationOptimizerCanary = (targetOp: string): boolean =>
   (EXPECTED_COMPILER_OPERATION_OPTIMIZER_CANARY_OPS as readonly string[]).includes(targetOp)
@@ -82,6 +82,8 @@ export const EXPECTED_COMPILER_OPERATION_CASE_NAMES = Object.freeze([
   'operation/groupWith',
   'operation/hasAtLeast',
   'operation/head',
+  'operation/headNonEmpty',
+  'operation/headOrUndefined',
   'operation/includes',
   'operation/indexBy',
   'operation/indexOf',
@@ -97,6 +99,8 @@ export const EXPECTED_COMPILER_OPERATION_CASE_NAMES = Object.freeze([
   'operation/last',
   'operation/lastIndexOf',
   'operation/lastIndexOfOrUndefined',
+  'operation/lastNonEmpty',
+  'operation/lastOrUndefined',
   'operation/length',
   'operation/map',
   'operation/mapAccum',
@@ -104,13 +108,20 @@ export const EXPECTED_COMPILER_OPERATION_CASE_NAMES = Object.freeze([
   'operation/mapToObj',
   'operation/mapWhile',
   'operation/max',
+  'operation/maxNonEmpty',
+  'operation/maxOrUndefined',
   'operation/meanBy',
   'operation/meanByNonEmpty',
   'operation/meanByOrUndefined',
+  'operation/mergeAll',
   'operation/min',
+  'operation/minNonEmpty',
+  'operation/minOrUndefined',
   'operation/none',
   'operation/nth',
   'operation/nthOrUndefined',
+  'operation/only',
+  'operation/onlyOrUndefined',
   'operation/partition',
   'operation/pluck',
   'operation/prepend',
@@ -149,12 +160,14 @@ export const EXPECTED_COMPILER_OPERATION_CASE_NAMES = Object.freeze([
   'operation/takeSortedBy',
   'operation/takeUntil',
   'operation/takeWhile',
+  'operation/transpose',
   'operation/union',
   'operation/unionBy',
   'operation/unionWith',
   'operation/uniq',
   'operation/uniqBy',
   'operation/uniqWith',
+  'operation/unnest',
   'operation/update',
   'operation/without',
   'operation/withoutBy',

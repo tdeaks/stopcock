@@ -164,6 +164,12 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
       "A.hasAtLeast(257)",
     ]),
     operationCase('head', 'terminal', ['A.head'], 32),
+    operationCase('headNonEmpty', 'materializer', [
+      "A.headNonEmpty",
+    ], 32),
+    operationCase('headOrUndefined', 'materializer', [
+      "A.headOrUndefined",
+    ], 32),
     operationCase('includes', 'materializer', [
       "A.includes(input[input.length - 1])",
     ]),
@@ -201,6 +207,12 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     operationCase('lastIndexOfOrUndefined', 'materializer', [
       "A.lastIndexOfOrUndefined(input[input.length - 1])",
     ]),
+    operationCase('lastNonEmpty', 'materializer', [
+      "A.lastNonEmpty",
+    ], 32),
+    operationCase('lastOrUndefined', 'materializer', [
+      "A.lastOrUndefined",
+    ], 32),
     operationCase('length', 'terminal', ['A.length'], 32),
     operationCase('map', 'element', ['A.map((x) => x * 3 + 1)']),
     operationCase('mapAccum', 'materializer', [
@@ -216,6 +228,12 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
       'A.mapWhile((x) => Math.abs(x) < 450 ? x * 2 + 1 : undefined)',
     ]),
     operationCase('max', 'terminal', ['A.max']),
+    operationCase('maxNonEmpty', 'materializer', [
+      "A.maxNonEmpty",
+    ]),
+    operationCase('maxOrUndefined', 'materializer', [
+      "A.maxOrUndefined",
+    ]),
     operationCase('meanBy', 'materializer', [
       "A.meanBy((x) => x * 2)",
     ]),
@@ -225,7 +243,17 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     operationCase('meanByOrUndefined', 'materializer', [
       "A.meanByOrUndefined((x) => x * 2)",
     ]),
+    operationCase('mergeAll', 'materializer', [
+      'A.map((x) => ({ [`k` + (x % 8)]: x }))',
+      "A.mergeAll",
+    ]),
     operationCase('min', 'terminal', ['A.min']),
+    operationCase('minNonEmpty', 'materializer', [
+      "A.minNonEmpty",
+    ]),
+    operationCase('minOrUndefined', 'materializer', [
+      "A.minOrUndefined",
+    ]),
     operationCase('none', 'terminal', [
       'A.none((x) => x === input[input.length - 1])',
     ]),
@@ -235,6 +263,12 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     operationCase('nthOrUndefined', 'materializer', [
       "A.nthOrUndefined(257)",
     ]),
+    operationCase('only', 'materializer', [
+      "A.only",
+    ], 32),
+    operationCase('onlyOrUndefined', 'materializer', [
+      "A.onlyOrUndefined",
+    ], 32),
     operationCase('partition', 'materializer', [
       "A.partition((x) => x % 3 === 1)",
     ]),
@@ -324,6 +358,10 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     ]),
     operationCase('takeUntil', 'stateful', ['A.takeUntil((x) => x > 450)']),
     operationCase('takeWhile', 'stateful', ['A.takeWhile((x) => x < 450)']),
+    operationCase('transpose', 'materializer', [
+      "A.map((x) => [x, x + 1])",
+      "A.transpose",
+    ]),
     operationCase('union', 'materializer', [
       "A.union(input)",
     ]),
@@ -339,6 +377,10 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     ]),
     operationCase('uniqWith', 'materializer', [
       "A.uniqWith((a, b) => a === b)",
+    ]),
+    operationCase('unnest', 'materializer', [
+      "A.map((x) => [x, x + 1])",
+      "A.unnest",
     ]),
     operationCase('update', 'materializer', [
       "A.update(3, 42)",

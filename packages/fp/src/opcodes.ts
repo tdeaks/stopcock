@@ -148,6 +148,19 @@ export const OP_FIND_LAST_OR_UNDEFINED = 158
 export const OP_FIND_LAST_INDEX_OR_UNDEFINED = 159
 export const OP_MEAN_BY_OR_UNDEFINED = 160
 export const OP_MEAN_BY_NON_EMPTY = 161
+export const OP_HEAD_OR_UNDEFINED = 162
+export const OP_HEAD_NON_EMPTY = 163
+export const OP_LAST_OR_UNDEFINED = 164
+export const OP_LAST_NON_EMPTY = 165
+export const OP_MIN_OR_UNDEFINED = 166
+export const OP_MIN_NON_EMPTY = 167
+export const OP_MAX_OR_UNDEFINED = 168
+export const OP_MAX_NON_EMPTY = 169
+export const OP_ONLY_OR_UNDEFINED = 170
+export const OP_ONLY = 171
+export const OP_MERGE_ALL = 172
+export const OP_TRANSPOSE = 173
+export const OP_UNNEST = 174
 
 export const OP_NON_FUSEABLE = 0
 
@@ -297,6 +310,19 @@ export const OP_CODES: Record<string, number> = {
   findLastIndexOrUndefined: OP_FIND_LAST_INDEX_OR_UNDEFINED,
   meanByOrUndefined: OP_MEAN_BY_OR_UNDEFINED,
   meanByNonEmpty: OP_MEAN_BY_NON_EMPTY,
+  headOrUndefined: OP_HEAD_OR_UNDEFINED,
+  headNonEmpty: OP_HEAD_NON_EMPTY,
+  lastOrUndefined: OP_LAST_OR_UNDEFINED,
+  lastNonEmpty: OP_LAST_NON_EMPTY,
+  minOrUndefined: OP_MIN_OR_UNDEFINED,
+  minNonEmpty: OP_MIN_NON_EMPTY,
+  maxOrUndefined: OP_MAX_OR_UNDEFINED,
+  maxNonEmpty: OP_MAX_NON_EMPTY,
+  onlyOrUndefined: OP_ONLY_OR_UNDEFINED,
+  only: OP_ONLY,
+  mergeAll: OP_MERGE_ALL,
+  transpose: OP_TRANSPOSE,
+  unnest: OP_UNNEST,
 }
 
 export const isFuseableOp = (op: number): boolean =>

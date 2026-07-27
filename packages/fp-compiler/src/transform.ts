@@ -10,6 +10,7 @@ import {
   SUPPORTED_OP_NAMES,
   TERMINAL_OPS,
   bindingSlots,
+  canonicalOpName,
   callbackArity,
   compilerOperatorFact,
   isBareOp,
@@ -736,6 +737,7 @@ function analyzeStep(stepNode: t.Node, bindings: Bindings, scope: Scope): StepAn
       reason: 'unrecognized step (not an imported array op)',
     }
   }
+  opName = canonicalOpName(opName)
   if (!SUPPORTED_OP_NAMES.has(opName)) {
     const reason = isRegistryOpName(opName)
       ? `unsupported op: ${opName}`

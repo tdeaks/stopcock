@@ -81,6 +81,23 @@ export function isBareOp(name: string): boolean {
   return bareOps.has(name)
 }
 
+/**
+ * Names that are re-exports of another operator rather than operators of their
+ * own. `A.first` *is* `A.head` -- the same tagged function under a second
+ * name -- so a pipeline step written with the alias lowers to the operator it
+ * points at. Resolving here rather than minting a second opcode keeps one
+ * runtime function with one tag.
+ */
+const OPERATOR_ALIASES: ReadonlyMap<string, string> = new Map([
+  ['first', 'head'],
+  ['firstOrUndefined', 'headOrUndefined'],
+])
+
+/** Canonical operator name for a step's imported name. */
+export function canonicalOpName(name: string): string {
+  return OPERATOR_ALIASES.get(name) ?? name
+}
+
 /** True if `name` is a registered public array op, even if unsupported this wave. */
 export function isRegistryOpName(name: string): boolean {
   return OPS_TABLE.some((entry) => entry.name === name)
