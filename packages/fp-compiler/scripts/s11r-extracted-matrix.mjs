@@ -1111,38 +1111,70 @@ const normalizeSourceMap = (map, topology, label = 'source map') => {
 }
 
 /**
- * Emitted code must be as path-free as the maps beside it, otherwise two
- * scratch roots cannot produce identical evidence. Fail closed on the leak
+ * Vite emits `//#region <absolute module path>` boundaries into the bundle, so
+ * raw bundle bytes are a host-specific spelling of a host-independent artifact.
+ * Rewrite the scratch root to a stable token, exactly as module ids, source
+ * maps, receipt roots, and the CLI closure are already rewritten. Both the
+ * logical and physical spellings are replaced because Node and the bundlers
+ * disagree about `/var` and `/private/var` on macOS.
+ */
+export const canonicalEmittedCode = (code, scratchRoot) => {
+  const roots = new Set([scratchRoot, posix(scratchRoot)])
+  if (existsSync(scratchRoot)) {
+    const physical = realpathSync(scratchRoot)
+    roots.add(physical)
+    roots.add(posix(physical))
+  }
+  let canonical = code
+  for (const root of [...roots].sort((left, right) => right.length - left.length)) {
+    canonical = canonical.replaceAll(root, '<scratch>')
+  }
+  return canonical
+}
+
+/**
+ * Nothing host-specific may survive canonicalization. Fail closed on the leak
  * itself rather than on the downstream hash comparison, which cannot name it.
  */
-const assertPortableEmittedCode = (code, label) => {
-  const portable = posix(code)
-  const snippet = (index) => JSON.stringify(portable.slice(Math.max(0, index - 80), index + 120))
-  const scratch = /stopcock-s11r-extracted-[A-Za-z0-9_-]+/u.exec(portable)
+export const assertPortableEmittedCode = (code, label) => {
+  const probe = posix(code)
+  const snippet = (index) => JSON.stringify(probe.slice(Math.max(0, index - 80), index + 120))
+  const scratch = /stopcock-s11r-extracted-[A-Za-z0-9_-]+/u.exec(probe)
   assert(
     scratch === null,
     `${label} emitted code leaks a scratch identity near ${snippet(scratch?.index ?? 0)}`,
   )
-  const workspace = portable.indexOf(posix(REPOSITORY_ROOT))
-  assert(workspace === -1, `${label} emitted code leaks the workspace path near ${snippet(workspace)}`)
-  const temporary = portable.indexOf(posix(tmpdir()))
-  assert(temporary === -1, `${label} emitted code leaks a temporary path near ${snippet(temporary)}`)
+  const workspace = probe.indexOf(posix(REPOSITORY_ROOT))
+  assert(
+    workspace === -1,
+    `${label} emitted code leaks the workspace path near ${snippet(workspace)}`,
+  )
+  const temporary = probe.indexOf(posix(tmpdir()))
+  assert(
+    temporary === -1,
+    `${label} emitted code leaks a temporary path near ${snippet(temporary)}`,
+  )
 }
 
 const codeIdentity = async (code, map, topology, label = 'emitted output') => {
   const { minify } = await import(pathToFileURL(BENCHMARK_REQUIRE.resolve('terser')).href)
   const minified = await minify(code, structuredClone(MINIFIER_OPTIONS))
   assert(typeof minified.code === 'string' && minified.code.length > 0, 'Terser produced no code')
-  assertPortableEmittedCode(code, label)
-  assertPortableEmittedCode(minified.code, `${label} minified`)
+  // The frozen size denominator stays bound to the unmodified minified bytes.
+  const gzipBytes = gzipSync(Buffer.from(minified.code), { level: 9 }).byteLength
+  const scratchRoot = dirname(topology.consumer)
+  const canonicalCode = canonicalEmittedCode(code, scratchRoot)
+  const canonicalMinified = canonicalEmittedCode(minified.code, scratchRoot)
+  assertPortableEmittedCode(canonicalCode, label)
+  assertPortableEmittedCode(canonicalMinified, `${label} minified`)
   const canonicalMap = map === null ? null : normalizeSourceMap(map, topology)
   return {
-    code: hash(Buffer.from(code)),
-    codeBytes: Buffer.byteLength(code),
-    minifiedCode: hash(Buffer.from(minified.code)),
-    minifiedCodeBytes: Buffer.byteLength(minified.code),
+    code: hash(Buffer.from(canonicalCode)),
+    codeBytes: Buffer.byteLength(canonicalCode),
+    minifiedCode: hash(Buffer.from(canonicalMinified)),
+    minifiedCodeBytes: Buffer.byteLength(canonicalMinified),
     sourceMap: canonicalMap === null ? null : hash(Buffer.from(canonicalMap)),
-    gzipBytes: gzipSync(Buffer.from(minified.code), { level: 9 }).byteLength,
+    gzipBytes,
   }
 }
 

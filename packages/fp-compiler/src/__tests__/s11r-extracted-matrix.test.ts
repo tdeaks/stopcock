@@ -135,6 +135,23 @@ describe('S11R extracted matrix manifest boundary', () => {
     ).toThrow(/imports FP\/optimizer\/fusion runtime/u)
   })
 
+  it('gives two scratch roots one emitted-code spelling and still rejects other leaks', async () => {
+    const { canonicalEmittedCode, assertPortableEmittedCode } = await import(script.href)
+    const region = (root: string) =>
+      `//#region ${root}/extracted/fp/dist/option.js\nvar none = 0;\n`
+    const a = '/private/var/folders/x5/T/stopcock-s11r-extracted-a-Bi1WfA'
+    const b = '/private/var/folders/x5/T/stopcock-s11r-extracted-b-Q7kZlm'
+
+    expect(canonicalEmittedCode(region(a), a)).toBe(canonicalEmittedCode(region(b), b))
+    expect(canonicalEmittedCode(region(a), a)).toContain('<scratch>/extracted/fp/dist/option.js')
+    expect(() =>
+      assertPortableEmittedCode(canonicalEmittedCode(region(a), a), 'vite/common'),
+    ).not.toThrow()
+    expect(() =>
+      assertPortableEmittedCode(canonicalEmittedCode(region(a), b), 'vite/common'),
+    ).toThrow(/leaks a scratch identity/u)
+  })
+
   it('names the first field two materializations disagree on', async () => {
     const { firstDifference } = await import(script.href)
     const base = { cli: { esmClosure: { specifiers: ['node:fs'] } }, hosts: [{ bytes: 501 }] }
