@@ -547,4 +547,103 @@ describe('S11R extracted matrix manifest boundary', () => {
       '/selected/fp/dist/array-generated.js',
     ])
   })
+
+  it('binds mixed tiers to execution engines instead of zero-logic facades', async () => {
+    const { assertMixedTierGraph, mixedTierGraphContractsForTest } = await import(script.href)
+    expect(mixedTierGraphContractsForTest()).toEqual([
+      {
+        id: 'sequential-root',
+        requiredExecution: ['@stopcock/fp/dist/index.js'],
+        forbiddenExecution: [
+          '@stopcock/fp/dist/compact-runtime-*.js',
+          '@stopcock/fp/dist/compile.js',
+          '@stopcock/fp-optimizer/dist/*.js',
+        ],
+        optionalFacades: ['@stopcock/fp/dist/fusion.js'],
+        expectedTrace: ['map:1', 'map:2', 'map:3', 'some:2', 'some:3'],
+      },
+      {
+        id: 'compact-fusion',
+        requiredExecution: ['@stopcock/fp/dist/compact-runtime-*.js'],
+        forbiddenExecution: [
+          '@stopcock/fp/dist/index.js',
+          '@stopcock/fp/dist/compile.js',
+          '@stopcock/fp-optimizer/dist/*.js',
+        ],
+        optionalFacades: ['@stopcock/fp/dist/fusion.js'],
+        expectedTrace: ['map:1', 'some:2', 'map:2', 'some:3'],
+      },
+      {
+        id: 'compact-compile',
+        requiredExecution: ['@stopcock/fp/dist/compact-runtime-*.js'],
+        forbiddenExecution: [
+          '@stopcock/fp/dist/index.js',
+          '@stopcock/fp-optimizer/dist/*.js',
+        ],
+        optionalFacades: ['@stopcock/fp/dist/compile.js'],
+        expectedTrace: ['map:1', 'some:2', 'map:2', 'some:3'],
+      },
+      {
+        id: 'optimized',
+        requiredExecution: ['@stopcock/fp-optimizer/dist/index.js'],
+        forbiddenExecution: ['@stopcock/fp/dist/index.js'],
+        optionalFacades: [],
+        expectedTrace: ['map:1', 'some:2', 'map:2', 'some:3'],
+      },
+    ])
+
+    expect(
+      assertMixedTierGraph({
+        host: 'vite',
+        tier: 'compact-fusion',
+        moduleGraph: ['@stopcock/fp/dist/compact-runtime-content-hash.js'],
+      }),
+    ).toEqual({
+      evidence: 'emitted-bytes',
+      requiredExecution: [
+        {
+          pattern: '@stopcock/fp/dist/compact-runtime-*.js',
+          modules: ['@stopcock/fp/dist/compact-runtime-content-hash.js'],
+        },
+      ],
+      optionalFacades: [],
+      negativeExclusions: { enforced: true, observedIncompatible: [] },
+    })
+    expect(() =>
+      assertMixedTierGraph({
+        host: 'vite',
+        tier: 'compact-fusion',
+        moduleGraph: ['@stopcock/fp/dist/fusion.js'],
+      }),
+    ).toThrow(/pruned required execution engine/u)
+    expect(() =>
+      assertMixedTierGraph({
+        host: 'esbuild',
+        tier: 'compact-fusion',
+        moduleGraph: [
+          '@stopcock/fp/dist/compact-runtime-content-hash.js',
+          '@stopcock/fp/dist/index.js',
+        ],
+      }),
+    ).toThrow(/retained incompatible execution modules/u)
+
+    expect(
+      assertMixedTierGraph({
+        host: 'webpack',
+        tier: 'compact-fusion',
+        moduleGraph: [
+          '@stopcock/fp/dist/compact-runtime-content-hash.js',
+          '@stopcock/fp/dist/fusion.js',
+          '@stopcock/fp/dist/index.js',
+        ],
+      }),
+    ).toMatchObject({
+      evidence: 'final-chunk-reachability',
+      optionalFacades: ['@stopcock/fp/dist/fusion.js'],
+      negativeExclusions: {
+        enforced: false,
+        observedIncompatible: ['@stopcock/fp/dist/index.js'],
+      },
+    })
+  })
 })

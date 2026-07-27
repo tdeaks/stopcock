@@ -1918,6 +1918,23 @@ const runObservableConstructionMatrix = async (topology, root, validateReceiptV1
   return rows.sort((left, right) => compare(left.host, right.host))
 }
 
+const MIXED_GRAPH_EVIDENCE = Object.freeze({
+  vite: 'emitted-bytes',
+  rollup: 'emitted-bytes',
+  esbuild: 'emitted-bytes',
+  webpack: 'final-chunk-reachability',
+  rspack: 'final-chunk-reachability',
+})
+const exactModule = (value) => Object.freeze({ match: 'exact', value })
+const modulePrefix = (value) => Object.freeze({ match: 'prefix', value })
+const SEQUENTIAL_TRACE = Object.freeze([
+  'map:1',
+  'map:2',
+  'map:3',
+  'some:2',
+  'some:3',
+])
+const FUSED_TRACE = Object.freeze(['map:1', 'some:2', 'map:2', 'some:3'])
 const MIXED_TIERS = Object.freeze([
   {
     id: 'sequential-root',
@@ -1925,8 +1942,14 @@ const MIXED_TIERS = Object.freeze([
     fallbackSource: '@stopcock/fp',
     fallbackExport: 'pipe',
     fallbackTier: 'sequential',
-    requiredModule: '@stopcock/fp/dist/index.js',
-    prunedModule: '@stopcock/fp/dist/fusion.js',
+    expectedTrace: SEQUENTIAL_TRACE,
+    requiredExecution: Object.freeze([exactModule('@stopcock/fp/dist/index.js')]),
+    forbiddenExecution: Object.freeze([
+      modulePrefix('@stopcock/fp/dist/compact-runtime-'),
+      exactModule('@stopcock/fp/dist/compile.js'),
+      modulePrefix('@stopcock/fp-optimizer/dist/'),
+    ]),
+    optionalFacades: Object.freeze([exactModule('@stopcock/fp/dist/fusion.js')]),
   },
   {
     id: 'compact-fusion',
@@ -1934,8 +1957,14 @@ const MIXED_TIERS = Object.freeze([
     fallbackSource: '@stopcock/fp/fusion',
     fallbackExport: 'pipe',
     fallbackTier: 'compact',
-    requiredModule: '@stopcock/fp/dist/fusion.js',
-    prunedModule: '@stopcock/fp/dist/index.js',
+    expectedTrace: FUSED_TRACE,
+    requiredExecution: Object.freeze([modulePrefix('@stopcock/fp/dist/compact-runtime-')]),
+    forbiddenExecution: Object.freeze([
+      exactModule('@stopcock/fp/dist/index.js'),
+      exactModule('@stopcock/fp/dist/compile.js'),
+      modulePrefix('@stopcock/fp-optimizer/dist/'),
+    ]),
+    optionalFacades: Object.freeze([exactModule('@stopcock/fp/dist/fusion.js')]),
   },
   {
     id: 'compact-compile',
@@ -1943,8 +1972,13 @@ const MIXED_TIERS = Object.freeze([
     fallbackSource: '@stopcock/fp/compile',
     fallbackExport: 'compile',
     fallbackTier: 'compact',
-    requiredModule: '@stopcock/fp/dist/compile.js',
-    prunedModule: '@stopcock/fp/dist/index.js',
+    expectedTrace: FUSED_TRACE,
+    requiredExecution: Object.freeze([modulePrefix('@stopcock/fp/dist/compact-runtime-')]),
+    forbiddenExecution: Object.freeze([
+      exactModule('@stopcock/fp/dist/index.js'),
+      modulePrefix('@stopcock/fp-optimizer/dist/'),
+    ]),
+    optionalFacades: Object.freeze([exactModule('@stopcock/fp/dist/compile.js')]),
   },
   {
     id: 'optimized',
@@ -1952,10 +1986,61 @@ const MIXED_TIERS = Object.freeze([
     fallbackSource: '@stopcock/fp-optimizer',
     fallbackExport: 'pipe',
     fallbackTier: 'optimized',
-    requiredModule: '@stopcock/fp-optimizer/dist/index.js',
-    prunedModule: '@stopcock/fp/dist/index.js',
+    expectedTrace: FUSED_TRACE,
+    requiredExecution: Object.freeze([exactModule('@stopcock/fp-optimizer/dist/index.js')]),
+    forbiddenExecution: Object.freeze([exactModule('@stopcock/fp/dist/index.js')]),
+    optionalFacades: Object.freeze([]),
   },
 ])
+
+const matchesModulePattern = (id, pattern) =>
+  pattern.match === 'exact' ? id === pattern.value : id.startsWith(pattern.value)
+const patternLabel = (pattern) =>
+  pattern.match === 'exact' ? pattern.value : `${pattern.value}*.js`
+const modulesMatching = (moduleGraph, patterns) =>
+  moduleGraph.filter((id) => patterns.some((pattern) => matchesModulePattern(id, pattern)))
+
+export const mixedTierGraphContractsForTest = () =>
+  MIXED_TIERS.map((tier) => ({
+    id: tier.id,
+    requiredExecution: tier.requiredExecution.map(patternLabel),
+    forbiddenExecution: tier.forbiddenExecution.map(patternLabel),
+    optionalFacades: tier.optionalFacades.map(patternLabel),
+    expectedTrace: [...tier.expectedTrace],
+  }))
+
+export const assertMixedTierGraph = ({ host, moduleGraph, tier }) => {
+  assert(HOSTS.includes(host), `unknown mixed-tier host ${host}`)
+  assert(Array.isArray(moduleGraph), `${host}/${tier} module graph is not an array`)
+  const contract = MIXED_TIERS.find((candidate) => candidate.id === tier)
+  assert(contract !== undefined, `unknown mixed-tier contract ${tier}`)
+  const requiredExecution = contract.requiredExecution.map((pattern) => {
+    const matches = modulesMatching(moduleGraph, [pattern])
+    assert(
+      matches.length > 0,
+      `${host}/${tier} pruned required execution engine ${patternLabel(pattern)}`,
+    )
+    return { pattern: patternLabel(pattern), modules: matches }
+  })
+  const observedForbidden = modulesMatching(moduleGraph, contract.forbiddenExecution)
+  const evidence = MIXED_GRAPH_EVIDENCE[host]
+  const enforcesNegativeExclusions = evidence === 'emitted-bytes'
+  if (enforcesNegativeExclusions) {
+    assert(
+      observedForbidden.length === 0,
+      `${host}/${tier} retained incompatible execution modules: ${observedForbidden.join(', ')}`,
+    )
+  }
+  return {
+    evidence,
+    requiredExecution,
+    optionalFacades: modulesMatching(moduleGraph, contract.optionalFacades),
+    negativeExclusions: {
+      enforced: enforcesNegativeExclusions,
+      observedIncompatible: observedForbidden,
+    },
+  }
+}
 
 const mixedSource = (tier) => {
   const fallback =
@@ -1968,8 +2053,8 @@ const mixedSource = (tier) => {
       : `import { pipe as fallbackPipe } from '${tier.fallbackSource}'`
   return `import { pipe as compiledPipe } from '${tier.supportSource}'
 ${fallbackImport}
-import { filter, map, take } from '@stopcock/fp/array'
-const deferred = [map((value) => value + 1)]
+import { filter, map, some, take } from '@stopcock/fp/array'
+const trace = [], deferred = [map((value) => { trace.push('map:' + value); return value + 1 }), some((value) => { trace.push('some:' + value); return value === 3 })]
 const compiled = compiledPipe(
   [1, 2, 3, 4, 5, 6],
   filter((value) => value % 2 === 0),
@@ -1977,9 +2062,11 @@ const compiled = compiledPipe(
   take(2),
 )
 const fallback = ${fallback}
-export const result = [compiled, fallback]
+export const result = [compiled, fallback, trace]
 `
 }
+
+const mixedExpected = (tier) => [[6, 12], true, [...tier.expectedTrace]]
 
 export const assertStrictDiagnostic = ({ message, topology, entry, site, line, reason }) => {
   assert(typeof message === 'string', 'strict build error is not text')
@@ -2094,20 +2181,14 @@ const runMixedRows = async (topology, root, validateReceiptV1, compiler) => {
         entry,
         out: join(rowRoot, 'out'),
         receipts,
-        expected: [
-          [6, 12],
-          [2, 3, 4],
-        ],
+        expected: mixedExpected(tier),
       })
       const sourceMapAudit = assertSourceMapEnvelope(output.map, topology, `${host}/${tier.id}`)
-      assert(
-        output.moduleGraph.some((id) => id.startsWith(tier.requiredModule)),
-        `${host}/${tier.id} pruned its required ${tier.fallbackTier} fallback`,
-      )
-      assert(
-        !output.moduleGraph.some((id) => id.startsWith(tier.prunedModule)),
-        `${host}/${tier.id} retained the fully transformed facade ${tier.prunedModule}`,
-      )
+      const graphContract = assertMixedTierGraph({
+        host,
+        moduleGraph: output.moduleGraph,
+        tier: tier.id,
+      })
       const receiptPath = join(receipts, 'stopcock-receipts.json')
       const receipt = receiptIdentity(receiptPath, validateReceiptV1)
       const receiptBinding = recomputeReceiptArtifacts({ compiler, entry, receiptPath, topology })
@@ -2136,6 +2217,7 @@ const runMixedRows = async (topology, root, validateReceiptV1, compiler) => {
           Buffer.from(normalizeSourceMap(output.map, topology, `${host}/${tier.id}`)),
         ),
         sourceMapAudit,
+        graphContract,
         moduleGraph: output.moduleGraph,
         coverage: { discovered: 2, transformed: 1, fallback: 1 },
         strict,
@@ -2170,10 +2252,7 @@ const harnessCorpusIdentity = () => {
     ...MIXED_TIERS.map((tier) => ({
       id: `mixed.${tier.id}`,
       source: mixedSource(tier),
-      expected: [
-        [6, 12],
-        [2, 3, 4],
-      ],
+      expected: mixedExpected(tier),
       strict: {
         line: 11,
         reason: `spread arguments in ${tier.fallbackExport === 'compile' ? 'compile' : 'pipe'}() call`,
