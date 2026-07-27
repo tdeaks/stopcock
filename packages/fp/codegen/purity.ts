@@ -24,7 +24,14 @@ export interface PureInitializerSourceModuleV1 {
 export interface PureInitializerSourceSiteV1 {
   readonly module: string
   readonly name: string
-  readonly callKind: 'generated-iife' | 'dual' | 'dual-untagged' | 'typed-array' | 'freeze'
+  readonly callKind:
+    | 'generated-iife'
+    | 'registered-dual-iife'
+    | 'registered-unary'
+    | 'dual'
+    | 'dual-untagged'
+    | 'typed-array'
+    | 'freeze'
 }
 
 const GENERATED_PURE_INITIALIZER_KEYS_V1 = Object.freeze([
@@ -119,6 +126,32 @@ export const MANUAL_PURE_DUAL_INITIALIZERS_V1 = Object.freeze({
   ]),
 } as const)
 
+/**
+ * Each initializer passes one fresh local unary function to the fixed-numeric
+ * tagger, which writes its public opcode and registers that same private
+ * identity. Dropping an unused initializer cannot be observed because no
+ * reference to either the function or its WeakMap entry escapes.
+ */
+export const MANUAL_PURE_REGISTERED_INITIALIZERS_V1 = Object.freeze({
+  string: Object.freeze([
+    'isEmpty',
+    'length',
+    'trim',
+    'trimStart',
+    'trimEnd',
+    'toLowerCase',
+    'toUpperCase',
+  ]),
+} as const)
+
+/**
+ * The initializer allocates only the anonymous arity-zero public wrapper.
+ * Private registration remains inside its data-last call path.
+ */
+export const MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1 = Object.freeze({
+  string: Object.freeze(['split']),
+} as const)
+
 // S3B moved Option and Result onto the independent untagged duals, so their
 // initializers no longer read the opcode table and are reviewed separately.
 export const MANUAL_PURE_UNTAGGED_DUAL_INITIALIZERS_V1 = Object.freeze({
@@ -187,19 +220,11 @@ export const MANUAL_PURE_FREEZE_INITIALIZERS_V1 = Object.freeze({
   option: Object.freeze(['none']),
 } as const)
 
-// Tagged dual calls read the mutable opcode table. They require a separate
-// review even when their operation body is itself referentially transparent.
+// No tagged manual initializer is currently eligible for this deny list:
+// scalar String operators use fixed numeric registration and split constructs
+// its tagged data-last operator only when called.
 export const MANUAL_DENIED_PURE_INITIALIZERS_V1 = Object.freeze({
-  string: Object.freeze([
-    'isEmpty',
-    'length',
-    'trim',
-    'trimStart',
-    'trimEnd',
-    'toLowerCase',
-    'toUpperCase',
-    'split',
-  ]),
+  string: Object.freeze([]),
 } as const)
 
 const PURE_INITIALIZER_SOURCE_SITES_V1 = Object.freeze([
@@ -209,6 +234,12 @@ const PURE_INITIALIZER_SOURCE_SITES_V1 = Object.freeze([
   }),
   ...Object.entries(MANUAL_PURE_DUAL_INITIALIZERS_V1).flatMap(([module, names]) =>
     names.map((name) => Object.freeze({ module, name, callKind: 'dual' as const })),
+  ),
+  ...Object.entries(MANUAL_PURE_REGISTERED_INITIALIZERS_V1).flatMap(([module, names]) =>
+    names.map((name) => Object.freeze({ module, name, callKind: 'registered-unary' as const })),
+  ),
+  ...Object.entries(MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1).flatMap(([module, names]) =>
+    names.map((name) => Object.freeze({ module, name, callKind: 'registered-dual-iife' as const })),
   ),
   ...Object.entries(MANUAL_PURE_UNTAGGED_DUAL_INITIALIZERS_V1).flatMap(([module, names]) =>
     names.map((name) => Object.freeze({ module, name, callKind: 'dual-untagged' as const })),
@@ -256,15 +287,17 @@ export function validatePureInitializerSourcePolicyV1(
 
       const afterMarker = source.slice(markerIndex + marker[0].length)
       const shape =
-        site.callKind === 'generated-iife'
+        site.callKind === 'generated-iife' || site.callKind === 'registered-dual-iife'
           ? /^\s*\(\(\)\s*=>\s*\{/u
-          : site.callKind === 'dual'
-            ? /^\s*dual\(/u
-            : site.callKind === 'dual-untagged'
-              ? /^\s*dualUntagged[234]\(/u
-              : site.callKind === 'typed-array'
-                ? /^\s*Uint8Array\.from\(\[/u
-                : /^\s*Object\.freeze\(\{\s*_tag:\s*0\s*\}\)/u
+          : site.callKind === 'registered-unary'
+            ? /^\s*taggedUnary\(\s*\([^)]*\)\s*=>/u
+            : site.callKind === 'dual'
+              ? /^\s*dual\(/u
+              : site.callKind === 'dual-untagged'
+                ? /^\s*dualUntagged[234]\(/u
+                : site.callKind === 'typed-array'
+                  ? /^\s*Uint8Array\.from\(\[/u
+                  : /^\s*Object\.freeze\(\{\s*_tag:\s*0\s*\}\)/u
       if (!shape.test(afterMarker)) {
         throw new Error(`pure initializer ${key} changed its reviewed ${site.callKind} shape`)
       }

@@ -7,6 +7,8 @@ import {
   MANUAL_DENIED_PURE_INITIALIZERS_V1,
   MANUAL_PURE_DUAL_INITIALIZERS_V1,
   MANUAL_PURE_FREEZE_INITIALIZERS_V1,
+  MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1,
+  MANUAL_PURE_REGISTERED_INITIALIZERS_V1,
   generatedDeniedInitializerKeysV1,
   generatedPureAnnotationV1,
   generatedPureInitializerKeysV1,
@@ -112,6 +114,25 @@ describe('S3A pure initializer policy', () => {
         expect(declaration(source, name)).toMatch(
           /= \/\* @__PURE__ \*\/ Object\.freeze\(\{\s*_tag:\s*0\s*\}\)\s*$/u,
         )
+      }
+    }
+  })
+
+  it('keeps every registered unary annotation on a fresh local function', () => {
+    for (const [moduleName, names] of Object.entries(MANUAL_PURE_REGISTERED_INITIALIZERS_V1)) {
+      const source = readFileSync(join(packageRoot, 'src', `${moduleName}.ts`), 'utf8')
+      for (const name of names) {
+        const initializer = declaration(source, name)
+        expect(initializer).toContain('= /* @__PURE__ */ taggedUnary(')
+      }
+    }
+  })
+
+  it('keeps every registered dual wrapper on a pure allocation initializer', () => {
+    for (const [moduleName, names] of Object.entries(MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1)) {
+      const source = readFileSync(join(packageRoot, 'src', `${moduleName}.ts`), 'utf8')
+      for (const name of names) {
+        expect(declaration(source, name)).toContain('= /* @__PURE__ */ (() =>')
       }
     }
   })

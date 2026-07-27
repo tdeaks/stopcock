@@ -1,44 +1,63 @@
 import { dual } from './dual'
+import { registerTrustedOperator } from './internal/provenance'
+import {
+  OP_STR_IS_EMPTY,
+  OP_STR_LENGTH,
+  OP_STR_LOWER,
+  OP_STR_SPLIT,
+  OP_STR_TRIM,
+  OP_STR_TRIM_END,
+  OP_STR_TRIM_START,
+  OP_STR_UPPER,
+} from './opcodes'
 import { none, some, type Option } from './option'
 import { err, ok, type Result } from './result'
 
-export const isEmpty: (value: string) => boolean = dual(
-  1,
-  (value: string): boolean => value.length === 0,
-  { op: 'strIsEmpty' },
+type TaggedUnary<Data, Output> = ((value: Data) => Output) & { _op: number }
+
+const taggedUnary = <Data, Output>(
+  operator: (value: Data) => Output,
+  op: number,
+): TaggedUnary<Data, Output> => {
+  const tagged = operator as TaggedUnary<Data, Output>
+  tagged._op = op
+  return registerTrustedOperator(tagged, op)
+}
+
+export const isEmpty: (value: string) => boolean = /* @__PURE__ */ taggedUnary(
+  (value: string) => value.length === 0,
+  OP_STR_IS_EMPTY,
 )
 
 /** UTF-16 code-unit length, matching String.prototype.length. */
-export const length: (value: string) => number = dual(1, (value: string): number => value.length, {
-  op: 'strLength',
-})
-
-export const trim: (value: string) => string = dual(1, (value: string): string => value.trim(), {
-  op: 'trim',
-})
-
-export const trimStart: (value: string) => string = dual(
-  1,
-  (value: string): string => value.trimStart(),
-  { op: 'trimStart' },
+export const length: (value: string) => number = /* @__PURE__ */ taggedUnary(
+  (value: string) => value.length,
+  OP_STR_LENGTH,
 )
 
-export const trimEnd: (value: string) => string = dual(
-  1,
-  (value: string): string => value.trimEnd(),
-  { op: 'trimEnd' },
+export const trim: (value: string) => string = /* @__PURE__ */ taggedUnary(
+  (value: string) => value.trim(),
+  OP_STR_TRIM,
 )
 
-export const toLowerCase: (value: string) => string = dual(
-  1,
-  (value: string): string => value.toLowerCase(),
-  { op: 'toLowerCase' },
+export const trimStart: (value: string) => string = /* @__PURE__ */ taggedUnary(
+  (value: string) => value.trimStart(),
+  OP_STR_TRIM_START,
 )
 
-export const toUpperCase: (value: string) => string = dual(
-  1,
-  (value: string): string => value.toUpperCase(),
-  { op: 'toUpperCase' },
+export const trimEnd: (value: string) => string = /* @__PURE__ */ taggedUnary(
+  (value: string) => value.trimEnd(),
+  OP_STR_TRIM_END,
+)
+
+export const toLowerCase: (value: string) => string = /* @__PURE__ */ taggedUnary(
+  (value: string) => value.toLowerCase(),
+  OP_STR_LOWER,
+)
+
+export const toUpperCase: (value: string) => string = /* @__PURE__ */ taggedUnary(
+  (value: string) => value.toUpperCase(),
+  OP_STR_UPPER,
 )
 
 export const startsWith: {
@@ -59,9 +78,26 @@ export const includes: {
 export const split: {
   (value: string, separator: string | RegExp): string[]
   (separator: string | RegExp): (value: string) => string[]
-} = dual(2, (value: string, separator: string | RegExp): string[] => value.split(separator), {
-  op: 'split',
-})
+} = /* @__PURE__ */ (() => {
+  return function () {
+    if (arguments.length < 2) {
+      const separator = arguments[0] as string | RegExp
+      const operator = ((value: string): string[] => value.split(separator)) as ((
+        value: string,
+      ) => string[]) & {
+        _op: number
+        _fn: string | RegExp
+      }
+      operator._op = OP_STR_SPLIT
+      operator._fn = separator
+      return registerTrustedOperator(operator, OP_STR_SPLIT, separator)
+    }
+    return (arguments[0] as string).split(arguments[1] as string | RegExp)
+  }
+})() as {
+  (value: string, separator: string | RegExp): string[]
+  (separator: string | RegExp): (value: string) => string[]
+}
 
 export const repeat: {
   (value: string, count: number): string

@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S11R
-Current slice: PACKED_COHORT_AND_EXTRACTED_MATRIX
-Last verified commit: 8d898c28afcc93312f0f8c41c049fa75bdcf5526
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-26
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -70,7 +70,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S10   | GATE_PASSED        | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                                              |
 | S10X  | GATE_PASSED        | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                                            |
 | S10J  | GATE_PASSED        | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                                              |
-| S11R  | IN_PROGRESS | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. The independently audited compact-pure/compiler source-and-test slice now passes with sealed digest `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`; checkpoint application is pending. The optimizer ABI, compiler artifact-context receipts, and complete extracted-host/layout qualification harness are source-valid; this new source checkpoint is pending before a fresh cohort is packed. The first real cohort replay exposed and now has a focused repair for export-hidden transitive package manifests; checkpoint application is pending before repacking. The second replay copied the isolated closure and exposed a false plugin-shape smoke assertion; its focused harness repair is checkpoint-pending before repacking. The third replay exposed that the generated compiler receipt validator shipped only a declaration; a private packed runtime-entry repair is checkpoint-pending. The fourth replay reached real host graph auditing and exposed a macOS physical-path alias mismatch; its fail-closed canonicalization repair is checkpoint-pending. The fifth replay proved the `.mjs` consumer was outside the compiler default filter and that pre-tree-shake observation was not emitted-retention evidence; both repairs are checkpoint-pending. The sixth replay reached the real Vite source-map gate and exposed temporary extracted paths in generated maps; fail-closed canonical source identities, physical containment, and exact code-to-map linkage are checkpoint-pending. The seventh replay cleared source-map identity and exposed lexical receipt-root comparison across macOS physical aliases; strict regular-file containment and external-locator hardening are checkpoint-pending. The eighth replay cleared receipt identity and exposed a CommonJS wrapper mismatch against the frozen ESM Webpack size denominator; complete Webpack-family ESM alignment is checkpoint-pending. The ninth replay cleared the corrected Webpack size gate and exposed host-dependent logical versus physical source spellings in strict diagnostics; exact physical-identity matching is checkpoint-pending. The tenth replay recognized the exact strict rejection and exposed partial receipt publication from the failed transform; transactional receipt invalidation and atomic commit are checkpoint-pending. The eleventh replay exposed a false compact-fusion graph contract that required its zero-logic façade rather than its retained hashed execution engine; execution-engine and behavioral tier contracts are checkpoint-pending. The twelfth replay reached the compact-compile strict row and exposed a harness-invented diagnostic reason narrower than the compiler's canonical flow/compile parser reason; the shared exact diagnostic contract is checkpoint-pending. The thirteenth replay cleared all mixed tiers and exposed Unplugin 3.3 discarding compiler maps when Webpack or Rspack had no incoming loader map; package-owned high-resolution map seeding for both adapter families is checkpoint-pending. The fourteenth replay retained exact columns but exposed physical FP and consumer sources collapsed to ambiguous Webpack virtual basenames; marker-proven adapter finalization now restores physical identities without changing canonical receipt maps and is checkpoint-pending. The fifteenth replay cleared the source-map matrix and exposed an import-pruning graph contract that required a zero-byte root façade instead of the retained hashed Option engine; exact execution-engine and host-evidence contracts are checkpoint-pending. |
+| S11R  | CHECKPOINT_PENDING | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. The independently audited compact-pure/compiler source-and-test slice now passes with sealed digest `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`; checkpoint application is pending. The optimizer ABI, compiler artifact-context receipts, and complete extracted-host/layout qualification harness are source-valid; this new source checkpoint is pending before a fresh cohort is packed. The first real cohort replay exposed and now has a focused repair for export-hidden transitive package manifests; checkpoint application is pending before repacking. The second replay copied the isolated closure and exposed a false plugin-shape smoke assertion; its focused harness repair is checkpoint-pending before repacking. The third replay exposed that the generated compiler receipt validator shipped only a declaration; a private packed runtime-entry repair is checkpoint-pending. The fourth replay reached real host graph auditing and exposed a macOS physical-path alias mismatch; its fail-closed canonicalization repair is checkpoint-pending. The fifth replay proved the `.mjs` consumer was outside the compiler default filter and that pre-tree-shake observation was not emitted-retention evidence; both repairs are checkpoint-pending. The sixth replay reached the real Vite source-map gate and exposed temporary extracted paths in generated maps; fail-closed canonical source identities, physical containment, and exact code-to-map linkage are checkpoint-pending. The seventh replay cleared source-map identity and exposed lexical receipt-root comparison across macOS physical aliases; strict regular-file containment and external-locator hardening are checkpoint-pending. The eighth replay cleared receipt identity and exposed a CommonJS wrapper mismatch against the frozen ESM Webpack size denominator; complete Webpack-family ESM alignment is checkpoint-pending. The ninth replay cleared the corrected Webpack size gate and exposed host-dependent logical versus physical source spellings in strict diagnostics; exact physical-identity matching is checkpoint-pending. The tenth replay recognized the exact strict rejection and exposed partial receipt publication from the failed transform; transactional receipt invalidation and atomic commit are checkpoint-pending. The eleventh replay exposed a false compact-fusion graph contract that required its zero-logic façade rather than its retained hashed execution engine; execution-engine and behavioral tier contracts are checkpoint-pending. The twelfth replay reached the compact-compile strict row and exposed a harness-invented diagnostic reason narrower than the compiler's canonical flow/compile parser reason; the shared exact diagnostic contract is checkpoint-pending. The thirteenth replay cleared all mixed tiers and exposed Unplugin 3.3 discarding compiler maps when Webpack or Rspack had no incoming loader map; package-owned high-resolution map seeding for both adapter families is checkpoint-pending. The fourteenth replay retained exact columns but exposed physical FP and consumer sources collapsed to ambiguous Webpack virtual basenames; marker-proven adapter finalization now restores physical identities without changing canonical receipt maps and is checkpoint-pending. The fifteenth replay cleared the source-map matrix and exposed an import-pruning graph contract that required a zero-byte root façade instead of the retained hashed Option engine; exact execution-engine and host-evidence contracts are checkpoint-pending. The sixteenth replay cleared import pruning and exposed the real 512-byte two-unrelated-helper gate: unary `trim` retained the generic tagged `dual` and whole opcode table. Fixed-numeric, provenance-preserving String operators now meet the unchanged packed four-host ceiling with exact legacy reflection; this repair is checkpoint-pending. |
 | S11   | NOT_STARTED        | Static Plan IR, tier-preserving codegen, expression/source-map corpus, pure map-to-length rewrite, exact construction semantics, deterministic receipts, and five-host smoke coverage exist in the sealed candidate based at `73cc413`; S11 cannot start until S11R passes                                                                                                                                                |
 | P1A   | GATE_PASSED        | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                                                   |
 | P1B   | GATE_PASSED        | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                                                         |
@@ -2406,6 +2406,54 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   - the source-bound cohort was moved recoverably to
     `/tmp/stopcock-s11r-stale-cohort.J4Pwhk/c6a167ed1572049788344cc219ebee02f43a56da1f514cf02b02de210c0dbd10`.
     No timing command ran and no extracted qualification result is claimed.
+- S11R fixed-numeric String-helper repair evidence:
+  - fresh cohort
+    `sha256:20d983dfcdb73d355a5c001eecc1edd8026b9a6a5fc868431d63c2b833efb3b1`
+    passed the complete packed checker, common and mixed rows, exact source-map
+    matrix, and corrected import-pruning contract before esbuild measured
+    `helpers.two-unrelated` at 1,216 gzip bytes against the unchanged 512-byte
+    ceiling;
+  - isolated packed diagnostics proved `array.map` already passed at 464 gzip
+    bytes while `string.trim` cost 854 bytes because its tagged unary
+    initializer retained the generic `dual` and complete runtime opcode table.
+    The failure reproduced under every required bundler and the frozen
+    Terser 5.49.0 plus gzip-9 denominator; neither the fixture nor the ceiling
+    was stale;
+  - all seven tagged unary String operators now use a fixed numeric opcode
+    path that preserves their enumerable public `_op`, registers the same
+    callable in private provenance, and remains droppable when unused.
+    `split` uses a fixed-numeric anonymous dispatch wrapper and registers its
+    exact captured separator only on the data-last path, so it no longer pins
+    the generic opcode lookup at module initialization;
+  - adversarial review found and rejected a first version whose named
+    functions changed public reflection. The corrected unary arrows preserve
+    empty names, arity one, and non-constructability; the anonymous split
+    wrapper preserves empty name, arity zero, and constructability. Regression
+    tests bind those facts plus public tags, private provenance, and captured
+    separator identity;
+  - a fresh extracted-tarball audit executed the canonical helper fixture and
+    measured esbuild 504, Rollup 501, Rolldown 501, and Webpack 509 gzip bytes.
+    `string.trim` independently measures 149 gzip bytes with no opcode table.
+    The 512-byte helper ceiling and frozen minifier/compression settings are
+    unchanged;
+  - FP codegen/build reproducibility remains
+    `sha256:4136a9e0b73f9995c8ee44af5474b40b595a50e3fe05b1e3644abd12ac91e3a7`.
+    The full FP release contract passes 49 files with 1,243 tests, built
+    purity reports 16 generated, seven registered unary, one registered dual,
+    54 manual dual, and one immutable initializer, the packed 44-module
+    consumer contract passes, and the optimizer passes 10 files with 1,797
+    tests. S3B's former `trim` deferral is now an enforced 717-byte/no-opcode
+    gate and its five-test suite passes;
+  - the canonical prose already admits focused FP implementation seams and
+    size fixtures required by the extracted matrix, but the machine scope
+    omitted these exact paths. Outer control-plane commit
+    `cf7be54b2160904dc08b77cc5e52b4d49d97b177` admitted only the five required
+    String, purity, and S3B paths; the canonical S11R scope checker and
+    workspace checker now pass;
+  - both final independent adversarial audits returned `PASS`. The failed
+    cohort was moved recoverably to
+    `/tmp/stopcock-s11r-stale-cohort.rHsDI1/20d983dfcdb73d355a5c001eecc1edd8026b9a6a5fc868431d63c2b833efb3b1`.
+    No timing command ran and no extracted qualification result is claimed.
 
 ## Surprises and discoveries
 
@@ -2967,14 +3015,28 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   fastest sound base for later S11 specialization.
   Date: 2026-07-26.
 
+- Decision: Give tagged String helpers fixed numeric provenance initializers
+  while preserving every existing callable-reflection contract, and admit only
+  their exact implementation, purity-policy, test, and size-gate paths to the
+  S11R machine scope.
+  Rationale: The generic public `dual` initializer retained the entire opcode
+  table in a one-helper bundle. A dedicated initializer removes that unrelated
+  graph without weakening the 512-byte extracted gate, public tags, private
+  provenance, construction semantics, or data-first/data-last behavior. The
+  canonical S11R prose already owns the focused FP seams needed by its extracted
+  matrix, so the machine policy needed a narrow consistency repair rather than
+  a wider stage.
+  Date: 2026-07-27.
+
 ## Current blockers
 
-There is no external blocker to S11R's deterministic work. The compact-pure,
-endpoint, boundary, provenance, and AOT source-tier blockers are cleared in the
-pending checkpoint. The clean 21-public-package cohort, complete extracted
-host/layout matrix, and fresh independent S2/S7 audits remain. New timing
-evidence remains unavailable until the current host requalifies, but timing is
-outside S11R and is not part of those deterministic prerequisites.
+There is no external blocker to S11R's deterministic work. The fixed-numeric
+String-helper repair that clears the unchanged extracted size ceiling is
+checkpoint-pending. After that checkpoint, a clean 21-public-package cohort,
+the complete extracted host/layout matrix, and fresh independent S2/S7 audits
+remain. New timing evidence remains unavailable until the current host
+requalifies, but timing is outside S11R and is not part of those deterministic
+prerequisites.
 
 ### Historical S1B entry stop
 

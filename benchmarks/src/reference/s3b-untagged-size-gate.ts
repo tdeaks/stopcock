@@ -65,14 +65,10 @@ export const result = trim('  padded  ')
 `,
     maximumBytes: Math.round(0.7 * KIB),
     expectedBytes: [0, Math.round(0.7 * KIB)] as const,
-    // trim is fusible: it carries opcode 50 and stays on the public tagged
-    // dual, which looks its opcode up in the whole OP_CODES table at runtime.
-    opcodeTableAllowed: true,
-    enforcement: Object.freeze({
-      deferredTo: 'S11',
-      reason:
-        'the ceiling needs the tagged dual to stop looking its opcode up in the full table, and S3B may not change public dual',
-    }),
+    // The fixed-numeric unary path preserves the public tag and private
+    // provenance without retaining the generic dual or the whole opcode table.
+    opcodeTableAllowed: false,
+    enforcement: 'enforced',
   }),
   Object.freeze({
     id: 'object.pick',
