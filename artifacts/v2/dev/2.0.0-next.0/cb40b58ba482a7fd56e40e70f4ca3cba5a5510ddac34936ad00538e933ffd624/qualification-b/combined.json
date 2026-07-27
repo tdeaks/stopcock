@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "kind": "stopcock-s11r-combined-qualification",
+  "boundaryHash": "sha256:f3925a394b32e23643855784d951ae8d965301ba1a5eda64feb11695ca1c7f5e",
+  "cohort": {
+    "contentHash": "sha256:cb40b58ba482a7fd56e40e70f4ca3cba5a5510ddac34936ad00538e933ffd624",
+    "manifestSha256": "sha256:28fc09117a6e3129dd29eca3c4ab05c6ab0c710c3ab02642a61875e97ac6b32d",
+    "mode": "dev",
+    "target": "2.0.0-next.0"
+  },
+  "components": {
+    "hosts": {
+      "file": "combined.hosts.json",
+      "sha256": "sha256:cc17ffe5d3b3f7eaede1618ddff7f4ae6ee6ae7ef58898f044fced8e8a6422c6",
+      "bytes": 226692
+    },
+    "layouts": {
+      "file": "combined.layouts.json",
+      "sha256": "sha256:b6becbd073dc1184805fcb783eac0b2a48c8b64f725e0dac0b2145f3db8b0d07",
+      "bytes": 648383
+    }
+  },
+  "artifacts": {
+    "@stopcock/fp": {
+      "sha256": "sha256:5371e07fd85e4588ff1c2e018add356b21e85a572f38d4afec42609ae47859ea",
+      "bytes": 134070
+    },
+    "@stopcock/fp-compiler": {
+      "sha256": "sha256:bd98bebd81d1720976853052445a0b103823593e8db650fae20823e06562980a",
+      "bytes": 74007
+    },
+    "@stopcock/fp-optimizer": {
+      "sha256": "sha256:952fbf15c2b64562e0912a80df5a3e67695deea82cf65ed28a16d725f1bdbe4f",
+      "bytes": 30129
+    }
+  },
+  "fpAbi": {
+    "abiVersion": 2,
+    "protocolVersion": 1,
+    "semanticManifestHash": "sha256:24208c1a8b963d5c951b4515789bd8cf9393a8120b07d1102f60805cd659f094",
+    "runnerSchemaHash": "sha256:adc10bc33b7498be93476b5210e4c33bd4553c2677860c60e718784983c0cd72",
+    "bindingSchemaHash": "sha256:2ad9dc1bbf782bb2f9ba39141d7c38215ac86bd3e9718368e204d46a9d69eb6b",
+    "consumeSchemaHash": "sha256:cf46d686b27a13745198f01cb58a8db86df0ad49f34b0d548034f8958be4e303",
+    "executionContractHash": "sha256:ca6bb601196bd140541d49bc71e4061a241ac2a2702ed68f65c1fd7372873cf4"
+  },
+  "optimizerBank": {
+    "schemaVersion": 1,
+    "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
+    "semanticManifestHash": "sha256:24208c1a8b963d5c951b4515789bd8cf9393a8120b07d1102f60805cd659f094",
+    "runnerCount": 233
+  }
+}

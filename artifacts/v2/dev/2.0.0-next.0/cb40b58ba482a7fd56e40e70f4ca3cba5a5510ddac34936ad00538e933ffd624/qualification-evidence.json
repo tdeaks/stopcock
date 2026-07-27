@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "kind": "stopcock-s11r-qualification-evidence-v1",
+  "cohort": {
+    "contentHash": "sha256:cb40b58ba482a7fd56e40e70f4ca3cba5a5510ddac34936ad00538e933ffd624",
+    "manifestSha256": "sha256:28fc09117a6e3129dd29eca3c4ab05c6ab0c710c3ab02642a61875e97ac6b32d",
+    "target": "2.0.0-next.0",
+    "mode": "dev",
+    "publicCount": 21
+  },
+  "evidence": [
+    {
+      "path": "qualification-a/combined.json",
+      "sha256": "sha256:026010c968e9ccf84923def47b93567ecddf3c4538a856ee9c7e7b3dcb0badc7",
+      "bytes": 2097
+    },
+    {
+      "path": "qualification-a/combined.hosts.json",
+      "sha256": "sha256:cc17ffe5d3b3f7eaede1618ddff7f4ae6ee6ae7ef58898f044fced8e8a6422c6",
+      "bytes": 226692
+    },
+    {
+      "path": "qualification-a/combined.layouts.json",
+      "sha256": "sha256:b6becbd073dc1184805fcb783eac0b2a48c8b64f725e0dac0b2145f3db8b0d07",
+      "bytes": 648383
+    },
+    {
+      "path": "qualification-b/combined.json",
+      "sha256": "sha256:026010c968e9ccf84923def47b93567ecddf3c4538a856ee9c7e7b3dcb0badc7",
+      "bytes": 2097
+    },
+    {
+      "path": "qualification-b/combined.hosts.json",
+      "sha256": "sha256:cc17ffe5d3b3f7eaede1618ddff7f4ae6ee6ae7ef58898f044fced8e8a6422c6",
+      "bytes": 226692
+    },
+    {
+      "path": "qualification-b/combined.layouts.json",
+      "sha256": "sha256:b6becbd073dc1184805fcb783eac0b2a48c8b64f725e0dac0b2145f3db8b0d07",
+      "bytes": 648383
+    }
+  ],
+  "qualifier": [
+    {
+      "path": "s11r-extracted-layouts.mjs",
+      "sha256": "sha256:f7e9b8f41e62d14404ab64aede711724cb4325466682f45f04f70daa4128021f",
+      "bytes": 63311
+    },
+    {
+      "path": "s11r-extracted-matrix.mjs",
+      "sha256": "sha256:ac3c3bfb398ee5d4af56843447ae95d73f241826c806010f717e6c80168c4fcd",
+      "bytes": 115715
+    },
+    {
+      "path": "s11r-qualify.mjs",
+      "sha256": "sha256:98f5c24f719b947ee4681b4665a73064e6b282df123e3439e305eef438ee4963",
+      "bytes": 4752
+    }
+  ],
+  "tools": {
+    "node": "v24.18.0",
+    "qualification": [
+      {
+        "specifier": "@jridgewell/trace-mapping",
+        "package": "@jridgewell/trace-mapping",
+        "version": "0.3.31",
+        "manifest": {
+          "sha256": "sha256:7f5eacc669d36013f9b792ab15721a97d48b26b093100122aa6c8691ebe656be",
+          "bytes": 2252
+        },
+        "entry": {
+          "sha256": "sha256:5ad4ec0709f78aa806c70965d4c162270e1df605f5572aa3a1ced31fe73dd07a",
+          "bytes": 18670
+        }
+      },
+      {
+        "specifier": "@rspack/core",
+        "package": "@rspack/core",
+        "version": "2.1.5",
+        "manifest": {
+          "sha256": "sha256:8f2e20c43c212fc0e9f6dc166c5c2202ffdacb1d22207f6ad9dfa25ce54e0384",
+          "bytes": 2032
+        },
+        "entry": {
+          "sha256": "sha256:7ea0ca9ea3485ea876c3a68b36723bbac7372ee5e92353624ad4e2c56f5d7809",
+          "bytes": 701866
+        }
+      },
+      {
+        "specifier": "esbuild",
+        "package": "esbuild",
+        "version": "0.28.1",
+        "manifest": {
+          "sha256": "sha256:d55d1d19fcc5b6079e4a71dd4111340c79c682bc36835ac7058a0c364c7db58a",
+          "bytes": 3980
+        },
+        "entry": {
+          "sha256": "sha256:8331fe1d8b3a07381f33cc425fcfaa94776e263113653f80ec3ba433e9657e73",
+          "bytes": 97214
+        }
+      },
+      {
+        "specifier": "rolldown",
+        "package": "rolldown",
+        "version": "1.0.1",
+        "manifest": {
+          "sha256": "sha256:1c0eec08ffd5c328ea2ae7a5e831ca5af1ae09d86254674a4fae6ebff721e9c6",
+          "bytes": 5685
+        },
+        "entry": {
+          "sha256": "sha256:4cd5570fb7b6c71af7ed84221071e85ce600ef6b66a45ee7e232fb7357d38601",
+          "bytes": 1535
+        }
+      },
+      {
+        "specifier": "rollup",
+        "package": "rollup",
+        "version": "4.62.2",
+        "manifest": {
+          "sha256": "sha256:f4c43bde641711b4e7cda761bf681dd6b694e58e10cb02bc8a4f691f39f2a8a4",
+          "bytes": 12427
+        },
+        "entry": {
+          "sha256": "sha256:4afcb1ade043bf512ca372b67d78763da68fa476a83f035ed87cc1f6e86bf670",
+          "bytes": 4701
+        }
+      },
+      {
+        "specifier": "terser",
+        "package": "terser",
+        "version": "5.49.0",
+        "manifest": {
+          "sha256": "sha256:94ddd6ce5cb35148367369871cbe470c9fe421eff2c9de08a3c844f4889901f7",
+          "bytes": 3334
+        },
+        "entry": {
+          "sha256": "sha256:0c6e7bcbe21927c8c9a62dffa9ee2eaf83c63cfef8c2e40fd9b511fdf4a3b30b",
+          "bytes": 1082433
+        }
+      },
+      {
+        "specifier": "vite",
+        "package": "@voidzero-dev/vite-plus-core",
+        "version": "0.2.5",
+        "manifest": {
+          "sha256": "sha256:0fc8605794525be3d625094fb6f318808fde94117bf0a308ecfb10038aabdf71",
+          "bytes": 5759
+        },
+        "entry": {
+          "sha256": "sha256:b818c34690ebac6e04a36d48188ce8932b087c3bfc9c76ca63850f7aa3495914",
+          "bytes": 2670
+        }
+      },
+      {
+        "specifier": "webpack",
+        "package": "webpack",
+        "version": "5.108.4",
+        "manifest": {
+          "sha256": "sha256:d89ba60c50a4bfd3c731bddaaabd1bd32792145c9f5ed9aa2c1de27d3d32e1d6",
+          "bytes": 11055
+        },
+        "entry": {
+          "sha256": "sha256:fcf59c7a2792ada369284645918b14a57a308631d6ee21627e7610df6d1240e1",
+          "bytes": 23552
+        }
+      }
+    ]
+  },
+  "qualificationIdentity": "sha256:f80e364cfa055c7345f2d190d2f8c37e59c42b7be82d9ebfad83c2215cdb28a8"
+}
