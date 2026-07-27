@@ -503,20 +503,137 @@ const ELEMENT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
       ],
     }),
   },
+
+  // -- Phase 1.4: the scalar/guard/string/object stragglers -----------------
+  //
+  // Every one of these has `compilerPipelineRole: 'boundary'` on its row
+  // (not `'element'`): its registered `inputDomain` is `'scalar'`, never
+  // `'array'`, so it must never be glommed into an adjacent array segment's
+  // per-element loop by `segmentSteps`/`segmentsFromPlan` -- that would
+  // apply it once per array element instead of once to the pipe's whole
+  // current value, which is what both reference executors do (root
+  // `pipe`/`sequentialPipe`'s plain `step(current)` and
+  // `interpret.ts#runScalarSegment`, whose cases this mirrors exactly).
+  // `compilerFinalBoundary` below is taught that a `'scalar'`-input boundary
+  // is never final, so these compile mid-pipeline like `map -> uniq -> sum`
+  // already does for the array-domain boundaries. Codegen still gets to
+  // splice each one as a single straight-line statement over the segment's
+  // current-value local rather than falling back to the generic
+  // capture-and-call boundary mechanism, because these templates are
+  // `expr` kind, not `{ kind: 'boundary' }`.
+  add: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} + ${ctx.a1});`] }),
+  },
+  subtract: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} - ${ctx.a1});`] }),
+  },
+  multiply: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} * ${ctx.a1});`] }),
+  },
+  divide: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} / ${ctx.a1});`] }),
+  },
+  negate: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (-${ctx.v});`] }),
+  },
+  inc: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} + 1);`] }),
+  },
+  dec: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} - 1);`] }),
+  },
+  trim: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.v}.trim();`] }),
+  },
+  trimStart: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.v}.trimStart();`] }),
+  },
+  trimEnd: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.v}.trimEnd();`] }),
+  },
+  toLowerCase: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.v}.toLowerCase();`] }),
+  },
+  toUpperCase: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.v}.toUpperCase();`] }),
+  },
+  split: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.v}.split(${ctx.a1});`] }),
+  },
+  strLength: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = ${ctx.v}.length;`] }),
+  },
+  strIsEmpty: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} === '');`] }),
+  },
+  dictIsEmpty: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (Object.keys(${ctx.v}).length === 0);`] }),
+  },
+  isArray: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = Array.isArray(${ctx.v});`] }),
+  },
+  isBoolean: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (typeof ${ctx.v} === 'boolean');`] }),
+  },
+  isFunction: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (typeof ${ctx.v} === 'function');`] }),
+  },
+  isNil: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} == null);`] }),
+  },
+  isNumber: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (typeof ${ctx.v} === 'number');`] }),
+  },
+  isObject: {
+    kind: 'expr',
+    render: (ctx) => ({
+      body: [
+        `var ${ctx.next} = (typeof ${ctx.v} === 'object' && ${ctx.v} !== null && !Array.isArray(${ctx.v}));`,
+      ],
+    }),
+  },
+  isString: {
+    kind: 'expr',
+    render: (ctx) => ({ body: [`var ${ctx.next} = (typeof ${ctx.v} === 'string');`] }),
+  },
 }
 
 const BOUNDARY_EMIT_TEMPLATE: OpEmit = { kind: 'boundary' }
 
 function emitDeclarationFor(row: LegacyRowV1): { readonly emit?: OpEmit; readonly fusible: boolean } {
   if (row.compilerPipelineRole === null) return { fusible: false }
-  if (row.compilerPipelineRole === 'boundary') return { emit: BOUNDARY_EMIT_TEMPLATE, fusible: true }
+  // A named template always wins, including for a `'boundary'`-role row: the
+  // scalar stragglers above are boundary-segmented (see the comment on that
+  // block) but render as an inline expression rather than the generic
+  // capture-and-call mechanism. Only a boundary role with no named template
+  // (sort/reverse/uniq/keys/values/sortInline/...) falls back to it.
   const template = ELEMENT_EMIT_TEMPLATES[row.name]
-  if (!template) {
-    throw new Error(
-      `operator definitions v1: ${row.name} has compilerPipelineRole ${row.compilerPipelineRole} but no emit template`,
-    )
-  }
-  return { emit: template, fusible: true }
+  if (template) return { emit: template, fusible: true }
+  if (row.compilerPipelineRole === 'boundary') return { emit: BOUNDARY_EMIT_TEMPLATE, fusible: true }
+  throw new Error(
+    `operator definitions v1: ${row.name} has compilerPipelineRole ${row.compilerPipelineRole} but no emit template`,
+  )
 }
 
 const LEGACY_ROWS = [
@@ -1088,7 +1205,7 @@ const LEGACY_ROWS = [
     false,
     false,
     false,
-    null,
+    'boundary',
   ),
   op(
     23,
@@ -1240,7 +1357,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     51,
@@ -1259,7 +1376,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     52,
@@ -1278,7 +1395,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     53,
@@ -1297,7 +1414,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     54,
@@ -1316,7 +1433,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     55,
@@ -1335,7 +1452,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     56,
@@ -1354,7 +1471,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     57,
@@ -1373,7 +1490,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     60,
@@ -1392,7 +1509,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     61,
@@ -1411,7 +1528,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     62,
@@ -1430,7 +1547,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     70,
@@ -1449,7 +1566,7 @@ const LEGACY_ROWS = [
     true,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     71,
@@ -1468,7 +1585,7 @@ const LEGACY_ROWS = [
     true,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     72,
@@ -1487,7 +1604,7 @@ const LEGACY_ROWS = [
     true,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     73,
@@ -1506,7 +1623,7 @@ const LEGACY_ROWS = [
     true,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     74,
@@ -1525,7 +1642,7 @@ const LEGACY_ROWS = [
     true,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     75,
@@ -1544,7 +1661,7 @@ const LEGACY_ROWS = [
     true,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     76,
@@ -1563,7 +1680,7 @@ const LEGACY_ROWS = [
     true,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     80,
@@ -1582,7 +1699,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     81,
@@ -1601,7 +1718,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     82,
@@ -1620,7 +1737,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     83,
@@ -1639,7 +1756,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     84,
@@ -1658,7 +1775,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     85,
@@ -1677,7 +1794,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     86,
@@ -1696,7 +1813,7 @@ const LEGACY_ROWS = [
     false,
     true,
     false,
-    null,
+    'boundary',
   ),
   op(
     90,
@@ -3712,7 +3829,17 @@ function semanticPublicName(row: LegacyRowV1): string {
  * another array step, so the compiler has to treat it as the last one.
  */
 function compilerFinalBoundary(row: LegacyRowV1): boolean {
-  return row.compilerPipelineRole === 'boundary' && row.outputDomain !== 'array'
+  // A `'scalar'`-input boundary (the phase 1.4 stragglers: math/string/
+  // object/guard ops applied to the pipe's current value) is never final --
+  // it composes with whatever comes next, same as any other step. Every
+  // existing final boundary (`sum`, `min`, `length`, `join`, ...) consumes a
+  // whole array, so gating on `inputDomain === 'array'` here changes nothing
+  // for them.
+  return (
+    row.compilerPipelineRole === 'boundary' &&
+    row.outputDomain !== 'array' &&
+    row.inputDomain === 'array'
+  )
 }
 
 function semanticCardinality(row: LegacyRowV1): CardinalityV1 {

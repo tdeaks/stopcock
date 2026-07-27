@@ -52,8 +52,43 @@ const traverse: typeof _traverse =
 const DEFAULT_IMPORT_SOURCES = ['@stopcock/fp', '@stopcock/fp/fusion']
 const DEFAULT_ARRAY_IMPORT_SOURCES = ['@stopcock/fp/array']
 const DEFAULT_COMPILE_IMPORT_SOURCES = ['@stopcock/fp/compile', '@stopcock/fp/fusion']
+/**
+ * Scalar-domain operator sources: the phase 1.4 stragglers (math/string/
+ * object/guard). Not a `StopcockCompilerOptions` field -- the plan's
+ * decision points rule out new config surface for this pass, so these four
+ * are always on, the same as `DEFAULT_ARRAY_IMPORT_SOURCES` was before array
+ * recognition grew a configuration knob.
+ */
+const DEFAULT_SCALAR_IMPORT_SOURCES = [
+  '@stopcock/fp/math',
+  '@stopcock/fp/string',
+  '@stopcock/fp/object',
+  '@stopcock/fp/guard',
+]
 const OPTION_IMPORT_SOURCE = '@stopcock/fp'
 const OPTION_TERMINALS = new Set(['find', 'findIndex', 'findMap', 'head', 'last', 'min', 'max'])
+/**
+ * A scalar op's real module export sometimes differs from the registry's
+ * canonical compiler name: `strLength`/`strIsEmpty` publish as `length`/
+ * `isEmpty` from `@stopcock/fp/string` (the canonical spellings are taken by
+ * the array ops of the same name), `dictIsEmpty` publishes as `isEmpty` from
+ * `@stopcock/fp/object`, and guard's `isObject` publishes as `isObjectType`
+ * (see `semanticPublicName` in `packages/fp/codegen/protocol/
+ * operator-definitions.ts`, the source of truth for this mapping). Keyed by
+ * exact source rather than folded into one flat table like `canonicalOpName`:
+ * `isEmpty` needs a different canonical name depending on whether it came
+ * from `@stopcock/fp/string` or `@stopcock/fp/object`, so the rename can only
+ * be resolved once the source that produced the binding is known.
+ */
+const SCALAR_EXPORT_ALIASES: ReadonlyMap<string, ReadonlyMap<string, string>> = new Map([
+  ['@stopcock/fp/string', new Map([['length', 'strLength'], ['isEmpty', 'strIsEmpty']])],
+  ['@stopcock/fp/object', new Map([['isEmpty', 'dictIsEmpty']])],
+  ['@stopcock/fp/guard', new Map([['isObjectType', 'isObject']])],
+])
+
+function canonicalScalarOpName(source: string, name: string): string {
+  return SCALAR_EXPORT_ALIASES.get(source)?.get(name) ?? name
+}
 
 interface Bindings {
   readonly pipeLocals: Set<string>
@@ -65,6 +100,15 @@ interface Bindings {
   readonly arrayNamespaceLocals: Set<string>
   /** Local identifier -> canonical @stopcock/fp/array export name. */
   readonly arrayOpLocals: Map<string, string>
+  /**
+   * Namespace local -> exact scalar source (one of `DEFAULT_SCALAR_IMPORT_
+   * SOURCES`), needed to resolve `S.length`/`O.isEmpty`-style property access
+   * through `canonicalScalarOpName`.
+   */
+  readonly scalarNamespaceLocals: Map<string, string>
+  /** Local identifier -> canonical scalar export name, already resolved
+   * through `canonicalScalarOpName` at collection time. */
+  readonly scalarOpLocals: Map<string, string>
   /** Imported pipe/flow/compile binding or namespace -> exact module source. */
   readonly sourceByLocal: Map<string, string>
   /** Named imported facade binding -> exact public export before local aliasing. */
@@ -313,6 +357,7 @@ function collectBindings(
   importSources: readonly string[],
   arrayImportSources: readonly string[],
   compileImportSources: readonly string[],
+  scalarImportSources: readonly string[] = DEFAULT_SCALAR_IMPORT_SOURCES,
 ): Bindings {
   const bindings: Bindings = {
     pipeLocals: new Set(),
@@ -322,6 +367,8 @@ function collectBindings(
     facadeNamespaceExports: new Map(),
     arrayNamespaceLocals: new Set(),
     arrayOpLocals: new Map(),
+    scalarNamespaceLocals: new Map(),
+    scalarOpLocals: new Map(),
     sourceByLocal: new Map(),
     exportByLocal: new Map(),
   }
@@ -332,7 +379,8 @@ function collectBindings(
     const isRootSource = importSources.includes(stmt.source.value)
     const isArraySource = arrayImportSources.includes(stmt.source.value)
     const isCompileSource = compileImportSources.includes(stmt.source.value)
-    if (!isRootSource && !isArraySource && !isCompileSource) continue
+    const isScalarSource = scalarImportSources.includes(stmt.source.value)
+    if (!isRootSource && !isArraySource && !isCompileSource && !isScalarSource) continue
     const facadeExports = facadeExportsFor(
       stmt.source.value,
       isRootSource,
@@ -345,6 +393,7 @@ function collectBindings(
           bindings.facadeNamespaceExports.set(spec.local.name, facadeExports)
         }
         if (isArraySource) bindings.arrayNamespaceLocals.add(spec.local.name)
+        if (isScalarSource) bindings.scalarNamespaceLocals.set(spec.local.name, stmt.source.value)
         if (facadeExports.size > 0) {
           bindings.sourceByLocal.set(spec.local.name, stmt.source.value)
         }
@@ -366,6 +415,12 @@ function collectBindings(
         bindings.exportByLocal.set(spec.local.name, imported as FacadeExport)
       }
       if (isArraySource) bindings.arrayOpLocals.set(spec.local.name, imported)
+      if (isScalarSource) {
+        bindings.scalarOpLocals.set(
+          spec.local.name,
+          canonicalScalarOpName(stmt.source.value, imported),
+        )
+      }
     }
   }
   return bindings
@@ -594,10 +649,13 @@ function resolveStepOpName(
 ): string | undefined {
   if (t.isSuper(callee) || t.isImport(callee) || t.isV8IntrinsicIdentifier(callee)) return undefined
   if (t.isIdentifier(callee)) {
-    if (!isVisibleModuleBinding(callee.name, bindings.arrayOpLocals, scope)) {
-      return undefined
+    if (isVisibleModuleBinding(callee.name, bindings.arrayOpLocals, scope)) {
+      return bindings.arrayOpLocals.get(callee.name)
     }
-    return bindings.arrayOpLocals.get(callee.name)
+    if (isVisibleModuleBinding(callee.name, bindings.scalarOpLocals, scope)) {
+      return bindings.scalarOpLocals.get(callee.name)
+    }
+    return undefined
   }
   if (!t.isMemberExpression(callee) || callee.computed) return undefined
   if (!t.isIdentifier(callee.property)) return undefined
@@ -608,6 +666,10 @@ function resolveStepOpName(
     isVisibleModuleBinding(object.name, bindings.arrayNamespaceLocals, scope)
   ) {
     return opName
+  }
+  if (t.isIdentifier(object) && scope.getBinding(object.name)?.kind === 'module') {
+    const scalarSource = bindings.scalarNamespaceLocals.get(object.name)
+    if (scalarSource !== undefined) return canonicalScalarOpName(scalarSource, opName)
   }
   return undefined
 }
@@ -933,6 +995,7 @@ export function transformStopcockPipelines(
     ...importSources,
     ...arrayImportSources,
     ...compileImportSources,
+    ...DEFAULT_SCALAR_IMPORT_SOURCES,
   ])
 
   // The host plugin sees every included JS/TS file. Most application files

@@ -900,6 +900,50 @@ function emitBoundarySegment(
   return [`var ${nextData} = ${operator}(${curData});`]
 }
 
+// Phase 1.4: a scalar op (math/string/object/guard) is `compilerPipelineRole:
+// 'boundary'` for segmenting purposes only -- its registered `inputDomain` is
+// `'scalar'`, never `'array'`, so `segmentSteps`/`segmentsFromPlan` must never
+// glom it into an adjacent array segment's per-element loop (that would run
+// it once per element instead of once over the pipe's whole current value,
+// diverging from both the sequential and compact reference executors). But
+// unlike sort/reverse/uniq/keys/values, most of these ops have a named `expr`
+// template rather than `{ kind: 'boundary' }`, so instead of the generic
+// capture-and-call mechanism above, splice the template directly over the
+// segment's current-value local: no loop scaffold, no captured function
+// reference, just the same straight-line statement an element step would
+// contribute to a loop body, here running once between two array segments
+// (or standing alone, for an all-scalar pipe with no array step at all).
+function emitInlineBoundaryStep(
+  emit: Exclude<OpEmit, { kind: 'boundary' }>,
+  step: Step,
+  index: number,
+  curData: string,
+  nextData: string,
+  preLines: string[],
+  renderExpression: ExpressionRenderer,
+  outerLabel: string,
+  optionNoneLocal: string,
+): string[] {
+  const a1Node = step.args[0]
+  const a2Node = step.args[1]
+  const ctx: ElementEmitCtx = {
+    index,
+    v: curData,
+    next: nextData,
+    a1: a1Node ? `(${renderExpression(a1Node)})` : '',
+    a2: a2Node ? `(${renderExpression(a2Node)})` : '',
+    indexed: false,
+    position: '',
+    outerLabel,
+    sequential: false,
+    optionNone: optionNoneLocal,
+    cb: NO_CALLBACK_HANDLE,
+  }
+  const fragment = emit.render(ctx)
+  preLines.push(...(fragment.pre ?? []))
+  return [...fragment.body]
+}
+
 function emitPureMapLengthBoundary(stepIndex: number, curData: string, nextData: string): string[] {
   const length = `_pureLength${stepIndex}`
   return [
@@ -965,20 +1009,50 @@ function generateSegmentedBodyInternal(
 
     const nextData = `_d${counter++}`
     if (seg.kind === 'boundary') {
-      blockLines.push(
-        ...(pureMapLengthTerminalIndexes.has(seg.step.index)
-          ? emitPureMapLengthBoundary(seg.step.index, curData, nextData)
-          : emitBoundarySegment(
-              seg,
-              curData,
-              nextData,
-              code,
-              preLines,
-              renderExpression,
-              sourceTier,
-              optionNoneLocal,
-            )),
-      )
+      // A *segment* of kind `'boundary'` is not the same thing as an op whose
+      // *own* `compilerPipelineRole` is `'boundary'`: `sum`/`min`/`max`/`head`/
+      // `last`/`length`/`isEmpty` are `'terminal'`-role ops that `segmentSteps`/
+      // `segmentsFromPlan` still box into a standalone boundary segment (a
+      // direct full-array terminal, or -- for the sequential/compact source
+      // tiers -- `hasSourceTierMaterializerTerminal`'s materializer-parity
+      // case). Those already have bespoke real-loop handling in
+      // `emitBoundarySegment` below; only splice the inline template for an
+      // op that is genuinely boundary-classified itself (the phase 1.4
+      // scalar stragglers), never merely because it landed in this segment.
+      const inlineEmit =
+        seg.step.step.fact.compilerPipelineRole === 'boundary'
+          ? opEmitFor(seg.step.step.name)
+          : undefined
+      if (pureMapLengthTerminalIndexes.has(seg.step.index)) {
+        blockLines.push(...emitPureMapLengthBoundary(seg.step.index, curData, nextData))
+      } else if (inlineEmit !== undefined && inlineEmit.kind !== 'boundary') {
+        blockLines.push(
+          ...emitInlineBoundaryStep(
+            inlineEmit,
+            seg.step.step,
+            seg.step.index,
+            curData,
+            nextData,
+            preLines,
+            renderExpression,
+            outerLabel,
+            optionNoneLocal,
+          ),
+        )
+      } else {
+        blockLines.push(
+          ...emitBoundarySegment(
+            seg,
+            curData,
+            nextData,
+            code,
+            preLines,
+            renderExpression,
+            sourceTier,
+            optionNoneLocal,
+          ),
+        )
+      }
     } else if (
       seg.steps.length === 0 &&
       seg.terminal !== undefined &&

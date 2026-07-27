@@ -617,9 +617,17 @@ const evaluateCompilerOperationPerfReportUnsafe = (
     sameStringArray(caseNames, EXPECTED_COMPILER_OPERATION_CASE_NAMES),
     'measured operation case population does not match the pinned order',
   )
+  // This corpus is array-domain only (`compiler-operation-corpus.ts`'s own
+  // header: "Data-last @stopcock/fp/array expressions") and does not cover
+  // the phase 1.4 scalar stragglers (math/string/object/guard), so a
+  // measured report's rows are checked against the corpus's own live target
+  // ops, not the broader `EXPECTED_COMPILER_SUPPORTED_OP_NAMES` capability
+  // set -- those two populations coincided only by accident before phase 1.4
+  // grew the compiler's supported set past the array domain.
+  const expectedOperationTargetOps = COMPILER_OPERATION_CASES.map((item) => item.targetOp)
   recordFailure(
     failures,
-    sameStringArray(targetOps, EXPECTED_COMPILER_SUPPORTED_OP_NAMES),
+    sameStringArray(targetOps, expectedOperationTargetOps),
     'measured operation rows do not cover every supported opcode exactly once',
   )
   recordFailure(

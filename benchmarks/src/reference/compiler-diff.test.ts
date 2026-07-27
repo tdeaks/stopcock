@@ -24,6 +24,8 @@ import { describe, expect, it } from 'vite-plus/test'
 import { pipe, flow } from '@stopcock/fp/fusion'
 import { compile } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
+import * as N from '@stopcock/fp/math'
+import * as S from '@stopcock/fp/string'
 import { none } from '@stopcock/fp/option'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import { compileEmittedPipeline, type EmitterBinding, type PipelineDesc } from './emitter'
@@ -503,5 +505,144 @@ describe('W6: expanded compiler coverage and clean unsupported diagnostics', () 
     const result = transformStopcockPipelines(source, 'flow-scan.ts', { diagnostics: 'verbose' })
     expect(result.code).not.toBe(source)
     expect(result.diagnostics[0].transformed).toBe(true)
+  })
+})
+
+// --- phase 1.4: scalar ops (math/string/object/guard) mid-pipeline ---
+//
+// `N.inc`/`S.trim`/... are `compilerPipelineRole: 'boundary'` (see
+// operator-definitions.ts), same segmenting treatment as `uniq` in the W6
+// "boundary mid-pipeline" fixture above, but registered `inputDomain:
+// 'scalar'`, never `'array'`. Applied to whatever the pipe's current value
+// actually is at that point -- which, sitting between two array stages, is
+// the whole array the upstream stage produced, not one of its elements. Both
+// reference executors agree: root `pipe`'s plain `step(current)` and
+// `@stopcock/fp/fusion`'s compact engine (`interpret.ts#runScalarSegment`)
+// apply a scalar op to the whole current value. A scalar function fed a
+// whole array does whatever plain JS does with that (numeric coercion,
+// `TypeError` for a missing method, ...): matching that exactly, including a
+// thrown error, is the point of this corpus, not whether the chain is
+// sensible user code.
+
+function probeSourceScalar(source: string): string {
+  return `import { pipe } from '@stopcock/fp/fusion'\nimport * as A from '@stopcock/fp/array'\nimport * as N from '@stopcock/fp/math'\nimport * as S from '@stopcock/fp/string'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+}
+
+function runScalar(source: string, input: readonly number[], log: number[]): unknown {
+  const full = `function __fixture(input, track, pipe, A, N, S) {\n${source}\n}\nreturn __fixture(input, track, pipe, A, N, S);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function('input', 'track', 'pipe', 'A', 'N', 'S', full)
+  return fn(input.slice(), (x: number) => log.push(x), pipe, A, N, S)
+}
+
+function runTransformedScalar(source: string, input: readonly number[], log: number[]): unknown {
+  const wrapped = probeSourceScalar(source)
+  const result = transformStopcockPipelines(wrapped, 'fixture.ts', { diagnostics: false })
+  const stripped = result.code
+    .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+    .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gm, '')
+  const call = `${stripped}\nreturn __fixture(input, track);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function('input', 'track', 'pipe', 'A', 'N', 'S', call)
+  return fn(input.slice(), (x: number) => log.push(x), pipe, A, N, S)
+}
+
+describe('phase 1.4: scalar op mid-pipeline compiles as one site', () => {
+  it('map -> N.inc -> filter: one compiled site, identical output and callback count', () => {
+    const source = `return pipe(
+      input,
+      A.map((x) => (track(x), x + 1)),
+      N.inc,
+      A.filter((x) => x % 2 === 0),
+    );`
+    const originalLog: number[] = []
+    const originalValue = runScalar(source, INPUT, originalLog)
+
+    const probe = probeSourceScalar(source)
+    const result = transformStopcockPipelines(probe, 'inc-mid.ts', { diagnostics: 'verbose' })
+    expect(result.code, 'expected the compiler to transform this pipeline').not.toBe(probe)
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0].transformed).toBe(true)
+    expect(result.diagnostics[0].segmentKinds).toEqual(['stream', 'boundary', 'stream'])
+
+    const transformedLog: number[] = []
+    const transformedValue = runTransformedScalar(source, INPUT, transformedLog)
+
+    expect(transformedValue).toEqual(originalValue)
+    expect(transformedLog.length).toBe(originalLog.length)
+  })
+
+  it('map -> N.add(bound arg) -> filter: one compiled site, identical output', () => {
+    const source = `return pipe(
+      input,
+      A.map((x) => (track(x), x + 1)),
+      N.add(2),
+      A.filter((x) => x % 2 === 0),
+    );`
+    const originalLog: number[] = []
+    const originalValue = runScalar(source, INPUT, originalLog)
+
+    const probe = probeSourceScalar(source)
+    const result = transformStopcockPipelines(probe, 'add-mid.ts', { diagnostics: 'verbose' })
+    expect(result.code).not.toBe(probe)
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0].transformed).toBe(true)
+
+    const transformedLog: number[] = []
+    const transformedValue = runTransformedScalar(source, INPUT, transformedLog)
+
+    expect(transformedValue).toEqual(originalValue)
+    expect(transformedLog.length).toBe(originalLog.length)
+  })
+
+  it('map -> S.trim -> reject: one compiled site, both throw the same TypeError', () => {
+    // S.trim receives the mapped array (a whole-value boundary, not an
+    // element), and arrays have no `.trim` method -- both the reference and
+    // the compiled site must throw, not silently disagree.
+    const source = `return pipe(
+      input,
+      A.map((x) => (track(x), x + 1)),
+      S.trim,
+      A.reject((x) => x % 2 === 0),
+    );`
+    const originalLog: number[] = []
+    let originalError: unknown
+    try {
+      runScalar(source, INPUT, originalLog)
+    } catch (error) {
+      originalError = error
+    }
+    expect(originalError).toBeInstanceOf(TypeError)
+
+    const probe = probeSourceScalar(source)
+    const result = transformStopcockPipelines(probe, 'trim-mid.ts', { diagnostics: 'verbose' })
+    expect(result.code, 'expected the compiler to transform this pipeline').not.toBe(probe)
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0].transformed).toBe(true)
+
+    const transformedLog: number[] = []
+    let transformedError: unknown
+    try {
+      runTransformedScalar(source, INPUT, transformedLog)
+    } catch (error) {
+      transformedError = error
+    }
+    expect(transformedError).toBeInstanceOf(TypeError)
+  })
+
+  it('an all-scalar pipe (no array step at all) compiles to straight-line code', () => {
+    const source = `return pipe(5, N.inc, N.add(2), N.negate);`
+    const originalValue = runScalar(source, INPUT, [])
+
+    const probe = probeSourceScalar(source)
+    const result = transformStopcockPipelines(probe, 'scalar-only.ts', { diagnostics: 'verbose' })
+    expect(result.code).not.toBe(probe)
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0].transformed).toBe(true)
+    expect(result.diagnostics[0].segmentKinds).toEqual(['boundary', 'boundary', 'boundary'])
+
+    const transformedValue = runTransformedScalar(source, INPUT, [])
+    expect(transformedValue).toEqual(originalValue)
+    expect(transformedValue).toBe(-8)
   })
 })

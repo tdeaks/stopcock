@@ -983,7 +983,11 @@ interface CompilerTableEntryV1 {
 }
 
 function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
-  return OPERATOR_DEFINITION_RECORDS_V1.filter((record) => record.publicArrayExport)
+  // Every op with a compiler-tier lowering belongs in the table, not only the
+  // public array exports: phase 1.4 gave the math/string/object/guard
+  // stragglers real compiler lowerings too, and `record.compilerPipelineRole`
+  // (below) is already `'none'` for anything that declined one.
+  return OPERATOR_DEFINITION_RECORDS_V1.filter((record) => record.compilerPipelineRole !== 'none')
     .map((record) => {
       const lowering = record.lowerings.find((candidate) => candidate.targetTier === 'compiler')
       if (!lowering || lowering.compilerPipelineRole === 'none') {
@@ -997,7 +1001,19 @@ function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
         )
       }
       return {
-        name: record.semantic.publicName,
+        // `legacyRuntime.name` (not `semantic.publicName`): the compiler
+        // table is one flat namespace keyed by name, and `publicName`
+        // deliberately collides across namespaces for a few ops (string's
+        // `strLength`/`strIsEmpty` publish as `length`/`isEmpty`, object's
+        // `dictIsEmpty` as `isEmpty` -- see `semanticPublicName` in
+        // operator-definitions.ts) to match what each module actually
+        // exports. `legacyRuntime.name` is the disambiguated registry name,
+        // unique across all 166 ops (`assertRuntimeEncodingCatalogueV1`
+        // enforces it), and identical to `publicName` for every public array
+        // export already in this table. The compiler's own transform.ts
+        // resolves a user's written import name back to this canonical name
+        // before ever consulting the table.
+        name: record.legacyRuntime.name,
         callbackArity: record.semantic.callback.arity,
         bindings: record.semantic.bindings.map(({ slot }) => slot),
         semanticId: record.semantic.semanticId,

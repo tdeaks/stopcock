@@ -19,11 +19,15 @@ import {
 
 describe('ops-table snapshot', () => {
   it('is the exact compiler projection of definition-only semantic lowerings', () => {
-    const expected = OPERATOR_DEFINITION_RECORDS_V1.filter((record) => record.publicArrayExport)
+    const expected = OPERATOR_DEFINITION_RECORDS_V1.filter(
+      (record) => record.compilerPipelineRole !== 'none',
+    )
       .map((record) => {
         const lowering = record.lowerings.find((candidate) => candidate.targetTier === 'compiler')!
         return {
-          name: record.semantic.publicName,
+          // `legacyRuntime.name`, not `semantic.publicName`: see the comment
+          // on this same field in `generate-protocol.ts#compilerEntriesV1`.
+          name: record.legacyRuntime.name,
           callbackArity: record.semantic.callback.arity,
           bindings: record.semantic.bindings.map(({ slot }) => slot),
           semanticId: record.semantic.semanticId,
@@ -58,7 +62,9 @@ describe('ops-table snapshot', () => {
     expect(
       OPS_TABLE.every((entry) => entry.emit.kind === 'boundary' || typeof entry.emit.render === 'function'),
     ).toBe(true)
-    expect(OPS_TABLE).toHaveLength(140)
+    // 140 public array exports plus the phase 1.4 stragglers: 7 math, 8
+    // string, 3 object, 7 guard, 1 array (sortInline) = 26.
+    expect(OPS_TABLE).toHaveLength(166)
   })
 
   it('derives compiler classifications from accepted lowerings', () => {
@@ -95,7 +101,19 @@ describe('ops-table snapshot', () => {
       corpusHash,
     })
     expect(corpusHash).toBe(`sha256:${EXPECTED_COMPILER_OPERATION_CORPUS.sha256}`)
-    expect(OPS_TABLE).toHaveLength(EXPECTED_COMPILER_OPERATION_CORPUS.totalCaseCount)
+    // The perf corpus in `compiler-operation-corpus.ts` is scoped to public
+    // array exports only (its own header: "Data-last @stopcock/fp/array
+    // expressions"); it does not cover the phase 1.4 scalar stragglers (nor
+    // `sortInline`, an array-namespace op with no public array export of its
+    // own). Compare against that same `publicArrayExport` set, not the whole
+    // table.
+    const publicArrayExportNames = new Set(
+      OPERATOR_DEFINITION_RECORDS_V1.filter((record) => record.publicArrayExport).map(
+        (record) => record.legacyRuntime.name,
+      ),
+    )
+    const arrayEntries = OPS_TABLE.filter((entry) => publicArrayExportNames.has(entry.name))
+    expect(arrayEntries).toHaveLength(EXPECTED_COMPILER_OPERATION_CORPUS.totalCaseCount)
   })
 
   it('does not discover facts through generated or runtime FP modules', () => {
@@ -111,7 +129,7 @@ describe('ops-table snapshot', () => {
   it('does not treat a numeric opcode as semantic identity or authority', () => {
     for (const entry of OPS_TABLE) {
       expect(entry).not.toHaveProperty('opcode')
-      expect(entry.semanticId).toMatch(/^@stopcock\/fp\/array\//u)
+      expect(entry.semanticId).toMatch(/^@stopcock\/fp\/(?:array|string|object|math|guard)\//u)
     }
   })
 })

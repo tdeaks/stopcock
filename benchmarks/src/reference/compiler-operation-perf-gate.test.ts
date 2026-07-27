@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { describe, expect, test } from 'vite-plus/test'
 import { SUPPORTED_OP_NAMES } from '../../../packages/fp-compiler/src/ops'
+import { OPERATOR_DEFINITION_RECORDS_V1 } from '../../../packages/fp/codegen/protocol/operator-definitions'
 import {
   COMPILER_PERF_POLICIES,
   EXPECTED_COMPILER_IMPLEMENTATION_FILES,
@@ -246,6 +247,19 @@ describe('fp-compiler operation-complete performance policy', () => {
       new URL('./compiler-operation-emitter.ts', import.meta.url),
     )
     const supportedOps = [...SUPPORTED_OP_NAMES].sort()
+    // This corpus is array-domain only (its own header: "Data-last
+    // @stopcock/fp/array expressions"). Phase 1.4 grew `SUPPORTED_OP_NAMES`
+    // past the array domain (math/string/object/guard), so "one case per
+    // supported operation" now means one case per *array-exported* op, not
+    // literally every entry in `supportedOps` -- compare against that
+    // narrower, still-140 population instead.
+    const arrayScopedSupportedOps = [
+      ...new Set(
+        OPERATOR_DEFINITION_RECORDS_V1.filter((record) => record.publicArrayExport).map(
+          (record) => record.legacyRuntime.name,
+        ),
+      ),
+    ].sort()
 
     expect(COMPILER_OPERATION_CASES).toHaveLength(140)
     expect(EXPECTED_COMPILER_OPERATION_OPTIMIZER_CANARY_OPS).toEqual(['isEmpty', 'length'])
@@ -258,18 +272,21 @@ describe('fp-compiler operation-complete performance policy', () => {
     expect(COMPILER_OPERATION_CASES.map((item) => item.name)).toEqual(
       EXPECTED_COMPILER_OPERATION_CASE_NAMES,
     )
-    expect(COMPILER_OPERATION_CASES.map((item) => item.targetOp)).toEqual(supportedOps)
+    expect(COMPILER_OPERATION_CASES.map((item) => item.targetOp)).toEqual(arrayScopedSupportedOps)
     expect(new Set(COMPILER_OPERATION_CASES.map((item) => item.targetOp)).size).toBe(
-      supportedOps.length,
+      arrayScopedSupportedOps.length,
     )
     expect(new Set(COMPILER_OPERATION_CASES.map((item) => item.opcode)).size).toBe(
-      supportedOps.length,
+      arrayScopedSupportedOps.length,
     )
     expect(
       COMPILER_OPERATION_CASES.every((item) =>
         item.sourceSteps.some((step) => step.startsWith(`A.${item.targetOp}`)),
       ),
     ).toBe(true)
+    // The compiler's overall supported-op capability set (166, all five
+    // domains) is still pinned exactly, just against the whole-set constant
+    // rather than this array-only corpus.
     expect(supportedOps).toEqual(EXPECTED_COMPILER_SUPPORTED_OP_NAMES)
     expect(jsonSha256(projection)).toBe(EXPECTED_COMPILER_OPERATION_CORPUS.sha256)
     expect(jsonSha256(projection.map((item) => item.name))).toBe(
