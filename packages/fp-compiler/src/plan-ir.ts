@@ -202,8 +202,20 @@ const isDictDomain = (
 const isDictFact = (fact: CompilerOperatorFact): boolean =>
   isDictDomain(fact.inputDomain) || isDictDomain(fact.outputDomain)
 
-const nonBoundaryKind = (fact: CompilerOperatorFact): 'stream' | 'option' | 'dict' =>
-  isOptionFact(fact) ? 'option' : isDictFact(fact) ? 'dict' : 'stream'
+/**
+ * True for a fact belonging to the Iterable domain (phase 4): consumes a
+ * lazy `Iter`/`Iterable` (`map`, `filter`, `take`, ...) or is one of its
+ * terminals (`toArray`, `reduce`, `find`, ...). A terminal's `outputDomain`
+ * may be `'option'` (`find`/`first`) -- routed here, not to `isOptionFact`,
+ * the same way an array segment's Option-producing terminal (`head`/`find`)
+ * stays a `'stream'` fact: only `inputDomain` decides, so the fused loop
+ * still runs, and a following Option-domain segment picks up the produced
+ * Option value via the same boundary-fusion machinery phase 2 built.
+ */
+const isIterFact = (fact: CompilerOperatorFact): boolean => fact.inputDomain === 'iterable'
+
+const nonBoundaryKind = (fact: CompilerOperatorFact): 'stream' | 'option' | 'dict' | 'iterable' =>
+  isOptionFact(fact) ? 'option' : isDictFact(fact) ? 'dict' : isIterFact(fact) ? 'iterable' : 'stream'
 
 export const segmentKindsForOperatorFacts = (
   facts: readonly CompilerOperatorFact[],
@@ -220,7 +232,7 @@ export const segmentKindsForOperatorFacts = (
   }
 
   const kinds: CompilerSegmentKind[] = []
-  let openKind: 'stream' | 'option' | 'dict' | undefined
+  let openKind: 'stream' | 'option' | 'dict' | 'iterable' | undefined
   for (const fact of facts) {
     if (
       fact.compilerPipelineRole === 'boundary' ||
@@ -246,7 +258,7 @@ const segmentPlan = (
   sourceTier: CompilerFallbackTier,
 ): readonly PlanSegment[] => {
   const segments: PlanSegment[] = []
-  let streamKind: 'stream' | 'option' | 'dict' | undefined
+  let streamKind: 'stream' | 'option' | 'dict' | 'iterable' | undefined
   let streamStart = -1
   let streamLength = 0
   let streamInput: CompilerOperatorFact['inputDomain'] | 'unknown' = 'unknown'

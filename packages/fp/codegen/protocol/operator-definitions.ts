@@ -34,6 +34,7 @@ export type OperatorNamespaceV1 =
   | 'record'
   | 'map'
   | 'set'
+  | 'iterable'
 
 export const COMPILER_OPERATION_CORPUS_ID_V1 =
   'stopcock-fp-compiler-operation-complete-w0-v1' as const
@@ -135,6 +136,7 @@ const ARRAY_LAYOUTS = [
 const SCALAR_LAYOUTS = ['js-scalar'] as const satisfies readonly PhysicalLayoutV1[]
 const OPTION_LAYOUTS = ['js-option'] as const satisfies readonly PhysicalLayoutV1[]
 const RESULT_LAYOUTS = ['js-result'] as const satisfies readonly PhysicalLayoutV1[]
+const ITER_LAYOUTS = ['js-iterable'] as const satisfies readonly PhysicalLayoutV1[]
 
 const NO_CALLBACK = {
   arity: 0,
@@ -1818,6 +1820,631 @@ function createDictOnlyRecord(row: DictRowV1): OperatorDefinitionRecordV1 {
     compilerPipelineRole: row.compilerPipelineRole,
     compilerFinalBoundary: false,
     emit: row.template === undefined ? BOUNDARY_EMIT_TEMPLATE : DICT_EMIT_TEMPLATES[row.template],
+    fusible: true,
+    contradictionDisposition: 'legacy-classification-retained',
+    previousCapabilityDeclarations: {
+      simd: false,
+      worker: false,
+      disposition: 'unsupported-without-owned-implementation-and-corpus',
+    },
+  }
+}
+
+// -- Phase 4: Iterable domain compiled emission -----------------------------
+//
+// `Iter` is a real fused loop, like the dict domain: `for (const _v of _src)`
+// (or an indexed array loop when the source is statically known to be an
+// Array -- see `emitIterSegment` in codegen.ts), not the option domain's
+// straight-line run. `v` is a persistent local mutated in place across every
+// step of one loop iteration (`dictMapTemplate`'s style), not renamed per
+// step (contrast the array domain's `_v{n+1}` chaining). `next` is populated
+// only for a step whose `compilerPipelineRole` is `'terminal'`, exactly like
+// `DictEmitCtx.next`.
+//
+// Every `iter.ts` callback takes `(value, index)` -- unlike the array
+// domain, there is no separate `withIndex` sibling -- and that index counts
+// only values that actually reach this particular step, not the shared
+// source-element position an array `mapWithIndex` reads. `indexed: true`
+// marks every template that needs it; `emitIterSegment` auto-declares and
+// increments that step's own counter before splicing the template's body,
+// the same way `elementCtx` does for an array `withIndex` op.
+const iterMapTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [`${ctx.v} = ${expr};`])
+    return { pre: cb.pre, body: cb.body }
+  },
+}
+
+const iterFilterTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [`if (!(${expr})) { continue; }`])
+    return { pre: cb.pre, body: cb.body }
+  },
+}
+
+// Mirrors `dictFlatMapTemplate`: the nested `for...of` reassigns the
+// persistent `ctx.v` per inner value and stays open (via `close`) so any
+// later step in the same segment, or the segment's own terminal/collector,
+// runs once per inner value rather than once per outer element.
+const iterFlatMapTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const fm = `_ifm${ctx.index}`
+    const j = `_ifj${ctx.index}`
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [`var ${fm} = ${expr};`])
+    return {
+      pre: cb.pre,
+      body: [...cb.body, `for (var ${j} of ${fm}) {`, `${ctx.v} = ${j};`],
+      close: ['}'],
+    }
+  },
+}
+
+// `iter.ts#natural`, inlined: NaN/non-positive clamps to 0, Infinity passes
+// through, anything else floors. `ctx.a1` is already a stable captured
+// local (evaluated exactly once by the plan's construction-time captures),
+// so referencing it more than once here is safe, not a re-evaluation. This
+// clamp expression is duplicated between `iterTake`/`iterDrop` below rather
+// than shared through a module-level helper: a template's `render` closure
+// is spliced into `ops-table.ts` via `Function.prototype.toString()`, so it
+// may reference only its own parameters, never an outer binding.
+//
+// `emitIterSegment` additionally collects this step's clamped-count local
+// into a whole-segment "any take is statically/dynamically zero" guard
+// around the fused loop itself: `iter.ts#hasZeroTake` never evaluates the
+// upstream iterable at all when a `take` step's count is exactly 0, no
+// matter where in the chain it sits, and every other template's own `pre`
+// already establishes the correct zero-elements result, so skipping only the
+// loop (not `pre`/`state`) reproduces that without a separate empty-result
+// branch.
+// The "already exhausted" check does NOT live in this template's own body:
+// `emitIterSegment` hoists it to the very front of the loop body (before any
+// step, including ones textually upstream of this `take`), because
+// `iter.ts#takeIterator` stops asking its upstream for a new value the
+// instant its count is already satisfied -- an upstream `map`'s callback
+// must not run one extra time for the source element that discovers this.
+// This template only increments once it is reached, which the front guard
+// already proved safe (`count < n` here, always).
+const iterTakeTemplate: OpEmit = {
+  kind: 'iterStep',
+  render: (ctx) => {
+    const n = `_itn${ctx.index}`
+    const count = `_itc${ctx.index}`
+    const clamp = `Number.isNaN(${n}) || ${n} <= 0 ? 0 : ${n} === Infinity ? Infinity : Math.floor(${n})`
+    return {
+      pre: [`var ${n} = (${ctx.a1});`, `${n} = ${clamp};`],
+      state: [`var ${count} = 0;`],
+      body: [`${count}++;`],
+    }
+  },
+}
+
+const iterDropTemplate: OpEmit = {
+  kind: 'iterStep',
+  render: (ctx) => {
+    const n = `_idn${ctx.index}`
+    const dropped = `_idc${ctx.index}`
+    const clamp = `Number.isNaN(${n}) || ${n} <= 0 ? 0 : ${n} === Infinity ? Infinity : Math.floor(${n})`
+    return {
+      pre: [`var ${n} = (${ctx.a1});`, `${n} = ${clamp};`],
+      state: [`var ${dropped} = 0;`],
+      body: [`if (${dropped} < ${n}) { ${dropped}++; continue; }`],
+    }
+  },
+}
+
+const iterTakeWhileTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+      `if (!(${expr})) { break ${ctx.outerLabel}; }`,
+    ])
+    return { pre: cb.pre, body: cb.body }
+  },
+}
+
+// Once the predicate fails once, `dropping` latches false and the predicate
+// is never called again -- matching `iter.ts`'s `state.dropping[position]`
+// gate exactly. The auto-declared position counter keeps incrementing after
+// that (it isn't gated the same way `iter.ts`'s own internal index is), but
+// nothing ever reads it again once the callback stops firing, so this is
+// unobservable.
+const iterDropWhileTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const dropping = `_idw${ctx.index}`
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+      `if (${dropping}) { if (${expr}) { continue; } ${dropping} = false; }`,
+    ])
+    return { state: [`var ${dropping} = true;`], pre: cb.pre, body: cb.body }
+  },
+}
+
+// The accumulator is a *separate* persistent local from `ctx.v`: the
+// callback needs the previous state and the current source value as two
+// distinct inputs (`fn(state, value, index)`), then `ctx.v` is overwritten
+// with the new state so it flows downstream exactly like every other
+// element step's output.
+const iterScanTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const acc = `_isa${ctx.index}`
+    const cb = ctx.cb.emit([acc, ctx.v, ctx.position], (expr) => [`${acc} = ${expr};`])
+    return {
+      pre: [...(cb.pre ?? []), `var ${acc} = ${ctx.a1};`],
+      body: [...cb.body, `${ctx.v} = ${acc};`],
+    }
+  },
+}
+
+const iterEnumerateTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => ({ body: [`${ctx.v} = [${ctx.position}, ${ctx.v}];`] }),
+}
+
+// `emitIterSegment` special-cases this op by name to splice a trailing
+// flush of the final partial buffer after the loop ends naturally (see the
+// comment there): the template itself only has to render the per-iteration
+// buffering, exactly like any other stateful element step. Reproduces
+// `chunkImpl`'s own size validation, which real chunk usage runs once at
+// construction and this compiled path otherwise never reaches.
+const iterChunkTemplate: OpEmit = {
+  kind: 'iterStep',
+  render: (ctx) => {
+    const buf = `_ickb${ctx.index}`
+    return {
+      pre: [
+        `if (!Number.isSafeInteger(${ctx.a1}) || ${ctx.a1} < 1) { throw new RangeError('Iter.chunk: size must be a positive safe integer'); }`,
+      ],
+      state: [`var ${buf} = [];`],
+      body: [
+        `${buf}.push(${ctx.v});`,
+        `if (${buf}.length !== ${ctx.a1}) { continue; }`,
+        `${ctx.v} = ${buf};`,
+        `${buf} = [];`,
+      ],
+    }
+  },
+}
+
+const iterToArrayTemplate: OpEmit = {
+  kind: 'iterStep',
+  render: (ctx) => ({ pre: [`var ${ctx.next} = [];`], body: [`${ctx.next}.push(${ctx.v});`] }),
+}
+
+const iterReduceTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.next, ctx.v, ctx.position], (expr) => [`${ctx.next} = ${expr};`])
+    return { pre: [...(cb.pre ?? []), `var ${ctx.next} = ${ctx.a1};`], body: cb.body }
+  },
+}
+
+const iterForEachTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [`${expr};`])
+    return { pre: [...(cb.pre ?? []), `var ${ctx.next} = undefined;`], body: cb.body }
+  },
+}
+
+// `iterFind`/`iterFindOrUndefined` are the same loop, differing only in
+// "nothing found" and "found" wrapping (`Option<A>` vs `A | undefined`).
+// Each is its own self-contained template, not a shared factory over a
+// closed-over flag: a template's `render` closure is spliced into
+// `ops-table.ts` via `Function.prototype.toString()`, so it may reference
+// only its own parameters, never an outer binding a factory would close
+// over.
+const iterFindTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+      `if (${expr}) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; break ${ctx.outerLabel}; }`,
+    ])
+    return { pre: [`var ${ctx.next} = ${ctx.optionNone};`, ...(cb.pre ?? [])], body: cb.body }
+  },
+}
+
+const iterFindOrUndefinedTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+      `if (${expr}) { ${ctx.next} = ${ctx.v}; break ${ctx.outerLabel}; }`,
+    ])
+    return { pre: [`var ${ctx.next} = undefined;`, ...(cb.pre ?? [])], body: cb.body }
+  },
+}
+
+const iterSomeTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+      `if (${expr}) { ${ctx.next} = true; break ${ctx.outerLabel}; }`,
+    ])
+    return { pre: [`var ${ctx.next} = false;`, ...(cb.pre ?? [])], body: cb.body }
+  },
+}
+
+const iterEveryTemplate: OpEmit = {
+  kind: 'iterStep',
+  indexed: true,
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+      `if (!(${expr})) { ${ctx.next} = false; break ${ctx.outerLabel}; }`,
+    ])
+    return { pre: [`var ${ctx.next} = true;`, ...(cb.pre ?? [])], body: cb.body }
+  },
+}
+
+const iterCountTemplate: OpEmit = {
+  kind: 'iterStep',
+  render: (ctx) => ({ pre: [`var ${ctx.next} = 0;`], body: [`${ctx.next}++;`] }),
+}
+
+// `iterFirst`/`iterFirstOrUndefined`: both stop at the very first element,
+// differing only in "nothing found" and "found" wrapping. Two independent
+// templates for the same closure-splicing reason as `iterFind` above.
+const iterFirstTemplate: OpEmit = {
+  kind: 'iterStep',
+  render: (ctx) => ({
+    pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+    body: [`${ctx.next} = { _tag: 1, value: ${ctx.v} };`, `break ${ctx.outerLabel};`],
+  }),
+}
+
+const iterFirstOrUndefinedTemplate: OpEmit = {
+  kind: 'iterStep',
+  render: (ctx) => ({
+    pre: [`var ${ctx.next} = undefined;`],
+    body: [`${ctx.next} = ${ctx.v};`, `break ${ctx.outerLabel};`],
+  }),
+}
+
+const ITER_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
+  iterMap: iterMapTemplate,
+  iterFilter: iterFilterTemplate,
+  iterFlatMap: iterFlatMapTemplate,
+  iterTake: iterTakeTemplate,
+  iterDrop: iterDropTemplate,
+  iterTakeWhile: iterTakeWhileTemplate,
+  iterDropWhile: iterDropWhileTemplate,
+  iterScan: iterScanTemplate,
+  iterEnumerate: iterEnumerateTemplate,
+  iterChunk: iterChunkTemplate,
+  iterToArray: iterToArrayTemplate,
+  iterReduce: iterReduceTemplate,
+  iterForEach: iterForEachTemplate,
+  iterFind: iterFindTemplate,
+  iterFindOrUndefined: iterFindOrUndefinedTemplate,
+  iterSome: iterSomeTemplate,
+  iterEvery: iterEveryTemplate,
+  iterCount: iterCountTemplate,
+  iterFirst: iterFirstTemplate,
+  iterFirstOrUndefined: iterFirstOrUndefinedTemplate,
+}
+
+interface IterRowV1 {
+  readonly compilerName: string
+  readonly publicName: string
+  readonly outputDomain: 'iterable' | 'array' | 'scalar' | 'option'
+  readonly bindings: readonly BindingSlotV1[]
+  readonly callback: CallbackContractV1
+  readonly compilerPipelineRole: 'element' | 'terminal'
+  readonly cardinality: CardinalityV1
+}
+
+const ITER_ROWS: readonly IterRowV1[] = [
+  {
+    compilerName: 'iterMap',
+    publicName: 'map',
+    outputDomain: 'iterable',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'one-to-one',
+  },
+  {
+    compilerName: 'iterFilter',
+    publicName: 'filter',
+    outputDomain: 'iterable',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'filtering',
+  },
+  {
+    compilerName: 'iterFlatMap',
+    publicName: 'flatMap',
+    outputDomain: 'iterable',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'expanding',
+  },
+  {
+    compilerName: 'iterTake',
+    publicName: 'take',
+    outputDomain: 'iterable',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'stateful',
+  },
+  {
+    compilerName: 'iterDrop',
+    publicName: 'drop',
+    outputDomain: 'iterable',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'stateful',
+  },
+  {
+    compilerName: 'iterTakeWhile',
+    publicName: 'takeWhile',
+    outputDomain: 'iterable',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'stateful',
+  },
+  {
+    compilerName: 'iterDropWhile',
+    publicName: 'dropWhile',
+    outputDomain: 'iterable',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'stateful',
+  },
+  {
+    compilerName: 'iterScan',
+    publicName: 'scan',
+    outputDomain: 'iterable',
+    bindings: ['fn', 'a1'],
+    callback: REDUCER_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'stateful',
+  },
+  {
+    compilerName: 'iterEnumerate',
+    publicName: 'enumerate',
+    outputDomain: 'iterable',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'one-to-one',
+  },
+  {
+    compilerName: 'iterChunk',
+    publicName: 'chunk',
+    outputDomain: 'iterable',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'stateful',
+  },
+  {
+    compilerName: 'iterToArray',
+    publicName: 'toArray',
+    outputDomain: 'array',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+  {
+    compilerName: 'iterReduce',
+    publicName: 'reduce',
+    outputDomain: 'scalar',
+    bindings: ['fn', 'a1'],
+    callback: REDUCER_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+  {
+    compilerName: 'iterForEach',
+    publicName: 'forEach',
+    outputDomain: 'scalar',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+  {
+    compilerName: 'iterFind',
+    publicName: 'find',
+    outputDomain: 'option',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+  {
+    compilerName: 'iterFindOrUndefined',
+    publicName: 'findOrUndefined',
+    outputDomain: 'scalar',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+  {
+    compilerName: 'iterSome',
+    publicName: 'some',
+    outputDomain: 'scalar',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+  {
+    compilerName: 'iterEvery',
+    publicName: 'every',
+    outputDomain: 'scalar',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+  {
+    compilerName: 'iterCount',
+    publicName: 'count',
+    outputDomain: 'scalar',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+  {
+    compilerName: 'iterFirst',
+    publicName: 'first',
+    outputDomain: 'option',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+  {
+    compilerName: 'iterFirstOrUndefined',
+    publicName: 'firstOrUndefined',
+    outputDomain: 'scalar',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+  },
+] as const satisfies readonly IterRowV1[]
+
+function createIterOnlyRecord(row: IterRowV1): OperatorDefinitionRecordV1 {
+  const semanticId = `@stopcock/fp/iter/${row.publicName}`
+  const termination = {
+    earlyTermination: false,
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: row.outputDomain !== 'iterable',
+  } as const
+  const result = resultOwnership(row.outputDomain)
+  const ownership: OwnershipContractV1 = {
+    input: 'borrowed-readonly',
+    result,
+    aliasing: result === 'fresh' ? 'none' : 'borrowed-element-only',
+    detachment: 'forbidden',
+    resultStorage:
+      row.outputDomain === 'scalar' || row.outputDomain === 'option'
+        ? (['js-scalar'] as const)
+        : (['js-array'] as const),
+    scratchStorage: ['none'],
+    allocationScopes: ['fusion-runner-result'],
+  }
+  const bindings: BindingDefinitionV1[] = row.bindings.map((slot) => ({
+    slot,
+    role: slot === 'fn' ? 'callback' : 'constant',
+    required: true,
+  }))
+  const outputShapeFunction =
+    row.outputDomain === 'array'
+      ? '@stopcock/fp/shape/materialized-array-v1'
+      : row.outputDomain === 'scalar'
+        ? '@stopcock/fp/shape/scalar-v1'
+        : row.outputDomain === 'option'
+          ? '@stopcock/fp/shape/option-v1'
+          : '@stopcock/fp/shape/materialized-array-v1'
+  const semantic = defineOperatorV1({
+    protocol: OPERATOR_PROTOCOL_V1,
+    protocolVersion: OPERATOR_PROTOCOL_VERSION_V1,
+    semanticId,
+    semanticRevision: 1,
+    publicName: row.publicName,
+    inputDomain: 'iterable',
+    outputDomain: row.outputDomain,
+    acceptedLayouts: ITER_LAYOUTS,
+    cardinality: row.cardinality,
+    outputShapeFunction,
+    bindings,
+    callback: row.callback,
+    evaluation: {
+      exact: 'observable-order-and-count',
+      pure: 'unsupported',
+      effects: row.callback.arity > 0 ? 'callback-effects-observable' : 'built-in-effects-only',
+      determinism: 'deterministic-except-user-code',
+      sourceMutationVisibility: 'scalar-value',
+      thrownErrorIdentity: 'preserved',
+      thrownErrorTiming: 'original-evaluation-point',
+    },
+    termination,
+    ownership,
+    capabilities: UNSUPPORTED_CAPABILITIES,
+    diagnosticTag: {
+      opcodeField: '_op',
+      bindingFields: bindings.map(({ slot }) => `_${slot}` as const),
+      authority: 'diagnostic-only',
+    },
+    links: {
+      referenceImplementationId: `@stopcock/fp/reference/iter/${row.publicName}/v1`,
+      lawIds: [`@stopcock/fp/law/iter/${row.publicName}/v1`],
+      differentialCorpusIds: [COMPILER_OPERATION_CORPUS_ID_V1],
+    },
+  })
+  const identity = semanticIdentity(semantic)
+  const loweringOwnership = {
+    result: ownership.result,
+    aliasing: ownership.aliasing,
+    resultStorage: ownership.resultStorage,
+    scratchStorage: ownership.scratchStorage,
+    allocationScopes: ownership.allocationScopes,
+  }
+  const compilerLowering = defineLoweringV1({
+    protocol: LOWERING_PROTOCOL_V1,
+    protocolVersion: LOWERING_PROTOCOL_VERSION_V1,
+    loweringId: `${semanticId}/lowering/compiler-aot`,
+    loweringRevision: 1,
+    loweringAbiVersion: 1,
+    semantic: identity,
+    targetTier: 'compiler',
+    targetBackend: 'aot',
+    acceptedSemanticModes: ['exact'],
+    acceptedLayouts: ITER_LAYOUTS,
+    cardinality: row.cardinality,
+    outputShapeFunction: semantic.outputShapeFunction,
+    termination,
+    ownership: loweringOwnership,
+    capability: {
+      predicateId: '@stopcock/fp-compiler/capability/static-pipeline-v1',
+      rejectionCodes: [
+        '@stopcock/reason/unsupported-binding-form',
+        '@stopcock/reason/opaque-callback',
+        '@stopcock/reason/semantic-mode-mismatch',
+      ],
+    },
+    runnerId: `@stopcock/fp-compiler/runner/${row.compilerPipelineRole}/${row.compilerName}/v1`,
+    exactFallback: identity,
+    compilerPipelineRole: row.compilerPipelineRole,
+    compilerFinalBoundary: false,
+  })
+  return {
+    semantic,
+    lowerings: [compilerLowering],
+    compilerName: row.compilerName,
+    namespace: 'iterable',
+    publicArrayExport: false,
+    compilerPipelineRole: row.compilerPipelineRole,
+    compilerFinalBoundary: false,
+    emit: ITER_EMIT_TEMPLATES[row.compilerName],
     fusible: true,
     contradictionDisposition: 'legacy-classification-retained',
     previousCapabilityDeclarations: {
@@ -5462,6 +6089,7 @@ export const OPERATOR_DEFINITION_RECORDS_V1: readonly OperatorDefinitionRecordV1
     ...LEGACY_ROWS.map(createRecord),
     ...OPTION_RESULT_ROWS.map(createCompilerOnlyRecord),
     ...DICT_ROWS.map(createDictOnlyRecord),
+    ...ITER_ROWS.map(createIterOnlyRecord),
   ]
     .map(freezeDefinitionRecordV1)
     .sort((left, right) => {

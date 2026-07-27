@@ -3,6 +3,7 @@ import { flow, none, pipe } from '@stopcock/fp'
 // fixture exercises what a consumer would actually write.
 import { compile, compilePure } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'
+import * as Iter from '@stopcock/fp/iter'
 import { transformStopcockPipelines } from '../transform'
 import type { StopcockCompilerOptions, TransformResult } from '../types'
 
@@ -11,6 +12,7 @@ const RUNTIME: Record<string, unknown> = {
   ...ROOT_RUNTIME,
   ...A,
   A,
+  Iter,
 }
 // A namespace-import fixture (`import * as FP from '@stopcock/fp'`) binds
 // its local to the root module namespace. Array operators live in a separate

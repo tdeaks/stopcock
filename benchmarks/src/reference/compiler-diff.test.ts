@@ -33,6 +33,7 @@ import * as Rec from '@stopcock/fp/record'
 import * as M from '@stopcock/fp/map'
 import * as St from '@stopcock/fp/set'
 import * as Obj from '@stopcock/fp/object'
+import * as Iter from '@stopcock/fp/iter'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import { compileEmittedPipeline, type EmitterBinding, type PipelineDesc } from './emitter'
 
@@ -1191,5 +1192,423 @@ describe('phase 3: Object pick/omit compile, agreeing with the real runtime', ()
       transformedError = error
     }
     expect(transformedError).toBeInstanceOf(TypeError)
+  })
+})
+
+// --- phase 4: the iterable domain -------------------------------------------
+//
+// `Iter`'s loop is `for (const _v of _src)` (or an indexed array loop when
+// the source is statically an Array). Every fixture below materializes with
+// a terminal (`I.toArray`, `I.reduce`, ...) unless the fixture is
+// specifically about the lazy, no-terminal, re-iterable result, which needs
+// its own comparison shape (spreading a lazy Iter twice, not `toEqual`
+// against a single materialization).
+
+function probeSourceIter(source: string): string {
+  return `import { pipe } from '@stopcock/fp/fusion'\nimport * as I from '@stopcock/fp/iter'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+}
+
+function runIter(source: string, input: unknown, log: unknown[]): unknown {
+  const full = `function __fixture(input, track, pipe, I) {\n${source}\n}\nreturn __fixture(input, track, pipe, I);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function('input', 'track', 'pipe', 'I', full)
+  return fn(input, (x: unknown) => log.push(x), pipe, Iter)
+}
+
+function runTransformedIter(source: string, input: unknown, log: unknown[]): unknown {
+  const wrapped = probeSourceIter(source)
+  const result = transformStopcockPipelines(wrapped, 'fixture.ts', { diagnostics: false })
+  const noneAlias = result.code.match(/import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u)?.[1]
+  const stripped = result.code
+    .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gmu, '')
+    .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gmu, '')
+  const call = `${stripped}\nreturn __fixture(input, track);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function(
+    'input',
+    'track',
+    'pipe',
+    'I',
+    ...(noneAlias ? [noneAlias] : []),
+    call,
+  )
+  return fn(input, (x: unknown) => log.push(x), pipe, Iter, ...(noneAlias ? [none] : []))
+}
+
+function expectCompiledMatchIter(name: string, source: string, input: unknown): void {
+  const originalLog: unknown[] = []
+  const originalValue = runIter(source, input, originalLog)
+
+  const probe = probeSourceIter(source)
+  const result = transformStopcockPipelines(probe, `${name}.ts`, { diagnostics: 'verbose' })
+  expect(result.code, `${name}: expected the compiler to transform this pipeline`).not.toBe(probe)
+  expect(result.diagnostics[0]?.transformed, `${name}: expected a compiled site`).toBe(true)
+
+  const transformedLog: unknown[] = []
+  const transformedValue = runTransformedIter(source, input, transformedLog)
+
+  expect(transformedValue, name).toEqual(originalValue)
+  expect(transformedLog.length, `${name}: callback invocation count`).toBe(originalLog.length)
+}
+
+describe('phase 4: Iter element/terminal ops compile, agreeing with the real runtime', () => {
+  const input = [5, 3, 8, 1, 9, 2, 7, 4, 6, 0]
+
+  it.each([
+    ['map', `return pipe(input, I.map((x) => (track(x), x * 2)), I.toArray);`],
+    ['filter', `return pipe(input, I.filter((x) => (track(x), x % 2 === 0)), I.toArray);`],
+    [
+      'flatMap',
+      `return pipe(input, I.flatMap((x) => (track(x), [x, x * 10])), I.toArray);`,
+    ],
+    ['take', `return pipe(input, I.map((x) => (track(x), x)), I.take(4), I.toArray);`],
+    ['drop', `return pipe(input, I.map((x) => (track(x), x)), I.drop(3), I.toArray);`],
+    [
+      'takeWhile',
+      `return pipe(input, I.takeWhile((x) => (track(x), x < 8)), I.toArray);`,
+    ],
+    [
+      'dropWhile',
+      `return pipe(input, I.dropWhile((x) => (track(x), x < 8)), I.toArray);`,
+    ],
+    [
+      'scan',
+      `return pipe(input, I.scan((acc, x) => (track(x), acc + x), 0), I.toArray);`,
+    ],
+    ['enumerate', `return pipe(input, I.enumerate, I.toArray);`],
+    ['chunk', `return pipe(input, I.chunk(3), I.toArray);`],
+    ['toArray', `return pipe(input, I.map((x) => (track(x), x)), I.toArray);`],
+    [
+      'reduce',
+      `return pipe(input, I.reduce((acc, x) => (track(x), acc + x), 0));`,
+    ],
+    [
+      'find: hit',
+      `return pipe(input, I.find((x) => (track(x), x > 6)));`,
+    ],
+    [
+      'find: miss',
+      `return pipe(input, I.find((x) => (track(x), x > 99)));`,
+    ],
+    [
+      'findOrUndefined: hit',
+      `return pipe(input, I.findOrUndefined((x) => (track(x), x > 6)));`,
+    ],
+    ['some: hit', `return pipe(input, I.some((x) => (track(x), x > 6)));`],
+    ['some: miss', `return pipe(input, I.some((x) => (track(x), x > 99)));`],
+    ['every: passes', `return pipe(input, I.every((x) => (track(x), x >= 0)));`],
+    ['every: fails', `return pipe(input, I.every((x) => (track(x), x > 6)));`],
+    ['count', `return pipe(input, I.count);`],
+    ['first: non-empty', `return pipe(input, I.first);`],
+    ['first: empty', `return pipe([], I.first);`],
+    ['firstOrUndefined', `return pipe(input, I.firstOrUndefined);`],
+    [
+      'forEach',
+      `const out = []; pipe(input, I.forEach((x) => (track(x), out.push(x * 2)))); return out;`,
+    ],
+  ])('%s', (name, source) => {
+    expectCompiledMatchIter(name, source, input)
+  })
+})
+
+describe('phase 4: chunk boundary cases', () => {
+  it('final partial chunk is flushed, matching the real runtime', () => {
+    expectCompiledMatchIter(
+      'chunk: trailing partial',
+      `return pipe(input, I.chunk(3), I.toArray);`,
+      [1, 2, 3, 4, 5, 6, 7],
+    )
+  })
+
+  it('exact multiple leaves no partial chunk', () => {
+    expectCompiledMatchIter(
+      'chunk: exact multiple',
+      `return pipe(input, I.chunk(3), I.toArray);`,
+      [1, 2, 3, 4, 5, 6],
+    )
+  })
+
+  it('empty source produces no chunks', () => {
+    expectCompiledMatchIter('chunk: empty', `return pipe(input, I.chunk(3), I.toArray);`, [])
+  })
+
+  it('chunk(size) with an invalid size throws the same RangeError', () => {
+    const source = `return pipe(input, I.chunk(0), I.toArray);`
+    let originalError: unknown
+    try {
+      runIter(source, [1, 2, 3], [])
+    } catch (error) {
+      originalError = error
+    }
+    expect(originalError).toBeInstanceOf(RangeError)
+
+    let transformedError: unknown
+    try {
+      runTransformedIter(source, [1, 2, 3], [])
+    } catch (error) {
+      transformedError = error
+    }
+    expect(transformedError).toBeInstanceOf(RangeError)
+  })
+
+  it('chunk followed by take early-exits with the same value (bounded, documented one-element over-read)', () => {
+    // take's own exhaustion guard is hoisted to the front of the loop, so it
+    // stops the fused loop from doing any further work -- but the
+    // `for...of` has already pulled one raw source element to reach that
+    // check at all, one more than a hand-chained lazy generator would. See
+    // the comment on `emitIterSegment` in fp-compiler's codegen.ts. Bounded,
+    // not unbounded: an infinite source still terminates.
+    expectCompiledMatchIter(
+      'chunk + take',
+      `return pipe(input, I.chunk(3), I.take(2), I.toArray);`,
+      [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    )
+  })
+})
+
+describe('phase 4: take/drop edge cases and infinite sources', () => {
+  it('take(0) never evaluates the upstream iterable', () => {
+    let reads = 0
+    function* countingSource() {
+      while (true) {
+        reads++
+        yield reads
+      }
+    }
+    const value = runTransformedIter(
+      `return pipe(input, I.map((x) => x * 2), I.take(0), I.toArray);`,
+      countingSource(),
+      [],
+    )
+    expect(value).toEqual([])
+    expect(reads).toBe(0)
+  })
+
+  it('take(N) on an infinite source terminates and matches the real runtime', () => {
+    function* naturals() {
+      let n = 0
+      while (true) yield n++
+    }
+    const source = `return pipe(input, I.map((x) => x * 2), I.take(5), I.toArray);`
+    const original = runIter(source, naturals(), [])
+    const transformed = runTransformedIter(source, naturals(), [])
+    expect(transformed).toEqual(original)
+    expect(transformed).toEqual([0, 2, 4, 6, 8])
+  })
+
+  it('drop(N) beyond the source length yields empty, matching the real runtime', () => {
+    expectCompiledMatchIter('drop past end', `return pipe(input, I.drop(100), I.toArray);`, [
+      1, 2, 3,
+    ])
+  })
+
+  it('take/drop with a negative or NaN count clamp to 0, matching iter.ts#natural', () => {
+    expectCompiledMatchIter(
+      'take negative',
+      `return pipe(input, I.take(-3), I.toArray);`,
+      [1, 2, 3],
+    )
+    expectCompiledMatchIter('drop NaN', `return pipe(input, I.drop(NaN), I.toArray);`, [1, 2, 3])
+  })
+
+  it('dropWhile/takeWhile edge transitions: predicate false immediately, true throughout, and mid-stream', () => {
+    expectCompiledMatchIter(
+      'dropWhile: never drops',
+      `return pipe(input, I.dropWhile((x) => x > 100), I.toArray);`,
+      [1, 2, 3],
+    )
+    expectCompiledMatchIter(
+      'dropWhile: drops everything',
+      `return pipe(input, I.dropWhile((x) => x < 100), I.toArray);`,
+      [1, 2, 3],
+    )
+    expectCompiledMatchIter(
+      'takeWhile: stops immediately',
+      `return pipe(input, I.takeWhile((x) => x > 100), I.toArray);`,
+      [1, 2, 3],
+    )
+    expectCompiledMatchIter(
+      'takeWhile: takes everything',
+      `return pipe(input, I.takeWhile((x) => x < 100), I.toArray);`,
+      [1, 2, 3],
+    )
+    expectCompiledMatchIter(
+      'dropWhile -> takeWhile mid-stream transition',
+      `return pipe(input, I.dropWhile((x) => x < 5), I.takeWhile((x) => x < 20), I.toArray);`,
+      [1, 2, 3, 10, 4, 5, 20, 6],
+    )
+  })
+})
+
+describe('phase 4: the lazy, no-terminal result is re-iterable exactly like iter.ts', () => {
+  it('re-iterating over a re-iterable (Array) source re-runs it, matching the real runtime twice', () => {
+    const source = `return pipe(input, I.map((x) => x + 1), I.filter((x) => x % 2 === 0));`
+    const nativeIter = runIter(source, [1, 2, 3, 4], []) as Iterable<number>
+    const nativeFirst = [...nativeIter]
+    const nativeSecond = [...nativeIter]
+
+    const compiledIter = runTransformedIter(source, [1, 2, 3, 4], []) as Iterable<number>
+    const compiledFirst = [...compiledIter]
+    const compiledSecond = [...compiledIter]
+
+    expect(compiledFirst).toEqual(nativeFirst)
+    expect(compiledSecond).toEqual(nativeSecond)
+    expect(compiledFirst.length).toBeGreaterThan(0)
+  })
+
+  it('a one-shot generator source is consumed exactly once: the second pass is empty, matching the real runtime', () => {
+    function* onceEach() {
+      yield 1
+      yield 2
+      yield 3
+    }
+    const source = `return pipe(input, I.map((x) => x * 10));`
+
+    const nativeIter = runIter(source, onceEach(), []) as Iterable<number>
+    const nativeFirst = [...nativeIter]
+    const nativeSecond = [...nativeIter]
+    expect(nativeFirst).toEqual([10, 20, 30])
+    expect(nativeSecond).toEqual([])
+
+    const compiledIter = runTransformedIter(source, onceEach(), []) as Iterable<number>
+    const compiledFirst = [...compiledIter]
+    const compiledSecond = [...compiledIter]
+    expect(compiledFirst).toEqual(nativeFirst)
+    expect(compiledSecond).toEqual(nativeSecond)
+  })
+})
+
+describe('phase 4: 3+ op chains, with a terminal and without', () => {
+  it('a 4-op chain with a terminal compiles as one site and agrees with the real runtime', () => {
+    expectCompiledMatchIter(
+      'map -> filter -> take -> toArray',
+      `return pipe(
+        input,
+        I.map((x) => (track('map:' + x), x * 2)),
+        I.filter((x) => (track('filter:' + x), x % 4 === 0)),
+        I.take(2),
+        I.toArray,
+      );`,
+      [1, 2, 3, 4, 5, 6, 7, 8],
+    )
+  })
+
+  it('a 3-op chain with no terminal compiles as one site and agrees with the real runtime', () => {
+    const source = `return pipe(
+      input,
+      I.map((x) => x + 1),
+      I.filter((x) => x % 2 === 0),
+      I.take(3),
+    );`
+    const original = runIter(source, [1, 2, 3, 4, 5, 6, 7, 8], []) as Iterable<number>
+    const transformed = runTransformedIter(source, [1, 2, 3, 4, 5, 6, 7, 8], []) as Iterable<number>
+    expect([...transformed]).toEqual([...original])
+  })
+})
+
+function probeSourceIterOption(source: string): string {
+  return `import { pipe } from '@stopcock/fp/fusion'\nimport * as I from '@stopcock/fp/iter'\nimport * as O from '@stopcock/fp/option'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+}
+
+function runIterOption(source: string, input: unknown, log: unknown[]): unknown {
+  const full = `function __fixture(input, track, pipe, I, O) {\n${source}\n}\nreturn __fixture(input, track, pipe, I, O);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function('input', 'track', 'pipe', 'I', 'O', full)
+  return fn(input, (x: unknown) => log.push(x), pipe, Iter, O)
+}
+
+function runTransformedIterOption(source: string, input: unknown, log: unknown[]): unknown {
+  const wrapped = probeSourceIterOption(source)
+  const result = transformStopcockPipelines(wrapped, 'fixture.ts', { diagnostics: false })
+  const noneAlias = result.code.match(/import\s*\{\s*none\s+as\s+([A-Za-z_$][\w$]*)\s*\}/u)?.[1]
+  const stripped = result.code
+    .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gmu, '')
+    .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gmu, '')
+  const call = `${stripped}\nreturn __fixture(input, track);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function(
+    'input',
+    'track',
+    'pipe',
+    'I',
+    'O',
+    ...(noneAlias ? [noneAlias] : []),
+    call,
+  )
+  return fn(input, (x: unknown) => log.push(x), pipe, Iter, O, ...(noneAlias ? [none] : []))
+}
+
+describe('phase 4: Iter terminal -> Option boundary fusion', () => {
+  const source = `return pipe(
+    input,
+    I.filter((x) => (track('filter:' + x), x > 0)),
+    I.find((x) => (track('find:' + x), x > 4)),
+    O.map((x) => (track('map:' + x), x * 2)),
+    O.getOrElse(() => -1),
+  );`
+
+  it('fuses as one site (iterable segment then option segment) and agrees on value', () => {
+    const input = [-2, -1, 5, 6, 7]
+    const originalValue = runIterOption(source, input, [])
+
+    const probe = probeSourceIterOption(source)
+    const result = transformStopcockPipelines(probe, 'iter-to-option.ts', { diagnostics: 'verbose' })
+    expect(result.code).not.toBe(probe)
+    expect(result.diagnostics[0]?.transformed).toBe(true)
+    expect(result.diagnostics[0]?.segmentKinds).toEqual(['iterable', 'option'])
+
+    const transformedValue = runTransformedIterOption(source, input, [])
+    expect(transformedValue).toEqual(originalValue)
+    expect(transformedValue).toBe(10)
+  })
+
+  it('the source loop exits at the first match: filter is not called past it', () => {
+    // 5 is the first element to pass both filter (>0) and find (>4), so the
+    // search stops there -- 6 and 7 are never read.
+    const nativeLog: string[] = []
+    runIterOption(source, [-2, -1, 5, 6, 7], nativeLog)
+
+    const log: string[] = []
+    runTransformedIterOption(source, [-2, -1, 5, 6, 7], log)
+    expect(log).toEqual(nativeLog)
+    expect(log).toEqual(['filter:-2', 'filter:-1', 'filter:5', 'find:5', 'map:5'])
+  })
+
+  it('returns the fallback when nothing matches', () => {
+    const value = runTransformedIterOption(source, [-2, -1, -5], [])
+    expect(value).toBe(-1)
+  })
+})
+
+describe('phase 4: zip/zipWith are multi-source and bail', () => {
+  it('I.zip bails with reason code multi-source', () => {
+    const source = probeSourceIter(
+      `return pipe(input, I.zip(other), I.toArray);`,
+    ).replace('function __fixture(input, track)', 'function __fixture(input, track, other)')
+    const result = transformStopcockPipelines(source, 'zip-bail.ts', { diagnostics: 'verbose' })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0]?.transformed).toBe(false)
+    expect(result.diagnostics[0]?.reasonCodes).toContain('multi-source')
+    expect(result.diagnostics[0]?.reason).toContain('multi-source')
+  })
+
+  it('I.zipWith bails with reason code multi-source', () => {
+    const source = probeSourceIter(
+      `return pipe(input, I.zipWith(other, (a, b) => a + b), I.toArray);`,
+    ).replace('function __fixture(input, track)', 'function __fixture(input, track, other)')
+    const result = transformStopcockPipelines(source, 'zipwith-bail.ts', { diagnostics: 'verbose' })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0]?.transformed).toBe(false)
+    expect(result.diagnostics[0]?.reasonCodes).toContain('multi-source')
+  })
+})
+
+describe('phase 4: an async callback is out of scope and bails', () => {
+  it('I.map with an async callback does not compile', () => {
+    const source = probeSourceIter(`return pipe(input, I.map(async (x) => x), I.toArray);`)
+    const result = transformStopcockPipelines(source, 'async-bail.ts', { diagnostics: 'verbose' })
+    expect(result.code).toBe(source)
+    expect(result.diagnostics[0]?.transformed).toBe(false)
+    expect(result.diagnostics[0]?.reason).toContain('async')
   })
 })

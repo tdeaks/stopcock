@@ -5,6 +5,7 @@ import type {
   DictEmitCtx,
   ElementEmitCtx,
   EmitFragment,
+  IterEmitCtx,
   OpEmit,
   OptionEmitCtx,
 } from './ops-table'
@@ -97,7 +98,14 @@ export interface FusedBody {
   readonly prelude: string
   /** Generated execution statements, after every capture has completed. */
   readonly execution: string
-  readonly segmentKinds: readonly ('stream' | 'boundary' | 'opaque' | 'option' | 'dict')[]
+  readonly segmentKinds: readonly (
+    | 'stream'
+    | 'boundary'
+    | 'opaque'
+    | 'option'
+    | 'dict'
+    | 'iterable'
+  )[]
   readonly sourceFragments: readonly GeneratedSourceFragment[]
 }
 
@@ -187,7 +195,22 @@ interface DictSegment {
   readonly terminal?: IndexedStep
 }
 
-type Segment = ElementSegment | BoundarySegment | OptionSegment | DictSegment
+/**
+ * A run of consecutive Iterable-domain steps (phase 4): a real fused loop
+ * (`for (const _v of _src)`, or an indexed array loop when the source is
+ * statically known to be an Array -- see `emitIterSegment`), exactly like
+ * `DictSegment`. A step whose `compilerPipelineRole` is `'terminal'`
+ * (`toArray`, `reduce`, `find`, ...), if present, is always last and ends
+ * the run and eagerly consumes it; with no terminal, the segment's result
+ * is a lazy, re-iterable wrapper object instead.
+ */
+interface IterSegment {
+  readonly kind: 'iterable'
+  readonly steps: readonly IndexedStep[]
+  readonly terminal?: IndexedStep
+}
+
+type Segment = ElementSegment | BoundarySegment | OptionSegment | DictSegment | IterSegment
 
 interface PresentConditionalPlan {
   readonly callback: t.ArrowFunctionExpression
@@ -389,6 +412,34 @@ function segmentsFromPlan(plan: StaticCompilerPlanV1): readonly Segment[] {
         kind: 'dict',
         steps: dictElements,
         ...(dictTerminal === undefined ? {} : { terminal: dictTerminal }),
+      })
+      continue
+    }
+
+    if (planned.kind === 'iterable') {
+      const iterElements: IndexedStep[] = []
+      let iterTerminal: IndexedStep | undefined
+      for (const item of indexed) {
+        const role = item.step.fact.compilerPipelineRole
+        if (role === 'boundary') {
+          throw new Error('fp-compiler: iterable plan segment contains a boundary fact')
+        }
+        if (role === 'terminal') {
+          if (iterTerminal !== undefined) {
+            throw new Error('fp-compiler: iterable plan segment contains a step after its terminal')
+          }
+          iterTerminal = item
+        } else {
+          if (iterTerminal !== undefined) {
+            throw new Error('fp-compiler: iterable plan segment contains a step after its terminal')
+          }
+          iterElements.push(item)
+        }
+      }
+      segments.push({
+        kind: 'iterable',
+        steps: iterElements,
+        ...(iterTerminal === undefined ? {} : { terminal: iterTerminal }),
       })
       continue
     }
@@ -681,11 +732,20 @@ function makeCallbackHandle(
   }
 }
 
-type ElementOpEmit = Exclude<OpEmit, { kind: 'boundary' } | { kind: 'optionStep' } | { kind: 'dictStep' }>
+type ElementOpEmit = Exclude<
+  OpEmit,
+  { kind: 'boundary' } | { kind: 'optionStep' } | { kind: 'dictStep' } | { kind: 'iterStep' }
+>
 
 function requireElementEmit(name: string): ElementOpEmit {
   const emit = opEmitFor(name)
-  if (!emit || emit.kind === 'boundary' || emit.kind === 'optionStep' || emit.kind === 'dictStep') {
+  if (
+    !emit ||
+    emit.kind === 'boundary' ||
+    emit.kind === 'optionStep' ||
+    emit.kind === 'dictStep' ||
+    emit.kind === 'iterStep'
+  ) {
     throw new Error(`fp-compiler: unhandled element op ${name}`)
   }
   return emit
@@ -1294,6 +1354,281 @@ function emitDictSegment(
   return [stateLines.join('\n'), loopOpen, bodyLines.join('\n'), ...closeBraces, '}']
 }
 
+// -- Phase 4: Iterable domain --------------------------------------------
+//
+// Like a dict segment, an iterable segment is a real fused loop: one
+// `for (const _v of _src)` (or an indexed array loop when the source is
+// statically known to be an Array -- `curDataIsArray`, threaded down from
+// `generateFusedBody`/`generateStaticPlanBody`; this is what lets a bundler
+// consumer skip `iter.ts`'s runtime kernel machinery entirely), `_v{startIndex}`
+// mutated in place by each step's template exactly like `emitDictSegment`'s
+// `_k`/`_v`. A step whose `compilerPipelineRole` is `'terminal'` ends the run
+// and eagerly assigns to `nextData`, exactly like `DictSegment.terminal`.
+//
+// With no terminal, the whole loop becomes the body of a generator wrapped
+// in a plain object literal -- `{ [Symbol.iterator]: function () { return
+// (function* () { ... })() } }` -- re-invoked fresh on every
+// `[Symbol.iterator]()` call, matching `iter.ts#make`'s lazy, re-iterable
+// contract: the source is captured exactly once (evaluated once, like every
+// other pipe argument -- `curData` is a stable local by the time this runs),
+// but each traversal re-walks it from scratch, so a one-shot generator
+// source is exhausted after the first pass and a re-iterable source (an
+// Array, another Iter) runs again correctly, both matching `iter.ts` today.
+
+type IterOpEmit = Extract<OpEmit, { kind: 'iterStep' }>
+
+function requireIterEmit(name: string): IterOpEmit {
+  const emit = opEmitFor(name)
+  if (!emit || emit.kind !== 'iterStep') {
+    throw new Error(`fp-compiler: unhandled iterable op ${name}`)
+  }
+  return emit
+}
+
+/**
+ * Builds the per-step template context. Every Iter callback takes
+ * `(value, index)`, so `indexed`/`position` follow `elementCtx`'s
+ * `withIndex` mechanism exactly, just applied per `emit.indexed` rather than
+ * per name -- see the comment on `IterEmitCtx` in operator-v1.ts for why an
+ * unconditional per-step counter is safe even for `dropWhile`, whose real
+ * index stops advancing once its predicate latches.
+ */
+function iterElementCtx(
+  step: Step,
+  index: number,
+  v: string,
+  isTerminal: boolean,
+  nextData: string,
+  code: string,
+  stateLines: string[],
+  bodyLines: string[],
+  inlineCallbacks: boolean,
+  renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
+  outerLabel: string,
+  optionNoneLocal: string,
+): IterEmitCtx {
+  const emit = requireIterEmit(step.name)
+  const arity = callbackArity(step.name) ?? 0
+  const hasCallback = arity > 0
+  const restStart = hasCallback ? 1 : 0
+  const a1Node = step.args[restStart]
+  const a2Node = step.args[restStart + 1]
+  const cb = hasCallback
+    ? makeCallbackHandle(
+        step.args[0],
+        `_icb${index}`,
+        code,
+        inlineCallbacks,
+        renderExpression,
+        renderSource,
+      )
+    : NO_CALLBACK_HANDLE
+  const indexed = !!emit.indexed
+  const position = indexed ? `_ipv${index}` : ''
+  if (indexed) {
+    stateLines.push(`var _ipc${index} = 0;`)
+    bodyLines.push(`var ${position} = _ipc${index}++;`)
+  }
+  return {
+    index,
+    v,
+    next: isTerminal ? nextData : '',
+    a1: a1Node ? `(${renderExpression(a1Node)})` : '',
+    a2: a2Node ? `(${renderExpression(a2Node)})` : '',
+    indexed,
+    position,
+    outerLabel,
+    optionNone: optionNoneLocal,
+    cb,
+  }
+}
+
+/**
+ * `iterTakeTemplate`'s internal clamped-count local, by construction (not by
+ * reading it back out of the spliced fragment text): `_itn{index}`. Used to
+ * build the whole-segment "any take is zero" guard below.
+ */
+const iterTakeZeroGuardVar = (index: number): string => `_itn${index}`
+
+/**
+ * A real fused loop over `curData`, `_v{startIndex}` mutated in place by
+ * each step exactly like `emitDictSegment`. Two cross-cutting concerns live
+ * here rather than in any one template:
+ *
+ * - `iter.ts#hasZeroTake`: a `take` step whose clamped count is exactly 0
+ *   never evaluates the upstream iterable at all, wherever it sits in the
+ *   chain. Every template's own `pre` already establishes the correct
+ *   zero-elements result (`toArray`'s `[]`, `count`'s `0`, `find`'s `None`,
+ *   ...), so wrapping only the loop itself in a guard reproduces that with
+ *   no separate empty-result branch.
+ * - `iterChunk`'s trailing partial buffer: real `chunk` only flushes it when
+ *   its own upstream generator ends *naturally* (source exhaustion, or an
+ *   upstream stage's own generator concluding), never when a downstream
+ *   consumer abandons it early (`.return()`). In this fused single loop, a
+ *   break from a downstream stage can only ever fire on an iteration where
+ *   `chunk` has *just* emitted and reset its buffer to empty (downstream
+ *   only runs when `chunk` forwards a full buffer), and a break from an
+ *   upstream stage always lands here with the buffer however it was left --
+ *   exactly the "my own source ended" case that real `chunk` flushes. So an
+ *   unconditional `if (buffer.length > 0)` after the loop, replaying
+ *   whatever ran after `chunk`'s own step, is correct either way with no
+ *   need to track whether the loop exited via `break` at all. The replay is
+ *   wrapped in its own labeled one-shot `do...while (false)` so a
+ *   downstream `continue`/`break outerLabel` inside it -- syntax only legal
+ *   inside a loop -- still resolves correctly for exactly one pass. (Known
+ *   gap: a step upstream of `chunk` that opens its own nested scope, i.e.
+ *   `flatMap` immediately before `chunk`, is not replayed correctly here --
+ *   not exercised by this wave's op set combinations.)
+ *
+ * Known, accepted over-read: `take`'s own exhaustion guard (below) is
+ * hoisted to the front of the loop body, so once it fires it stops before
+ * `chunk` (or any other upstream step) does any work for that source
+ * element -- but the `for (const _v of _src)` loop has already pulled that
+ * one raw element to reach the top of the body at all, one more than a
+ * hand-chained lazy generator would (which checks its own limit *before*
+ * asking upstream for the next value). Bounded to exactly one extra source
+ * pull, never unbounded, so an infinite source still terminates. The
+ * *value* produced is identical either way; only a source with an
+ * observable side effect in its own generator body (not a user callback)
+ * would notice.
+ */
+function emitIterSegment(
+  seg: IterSegment,
+  curData: string,
+  nextData: string,
+  code: string,
+  preLines: string[],
+  optionNoneLocal: string,
+  inlineCallbacks: boolean,
+  renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
+  outerLabel: string,
+  curDataIsArray: boolean,
+): string[] {
+  const startIndex = (seg.steps[0] ?? seg.terminal!).index
+  const v = `_v${startIndex}`
+
+  const stateLines: string[] = []
+  const bodyLines: string[] = []
+  const closeBraces: string[] = []
+  const zeroGuards: string[] = []
+  let chunkFlush: { readonly buffer: string; readonly continuationStart: number } | undefined
+
+  // `iter.ts#takeIterator` stops asking its upstream for a new value the
+  // instant its count is already satisfied, so an upstream step positioned
+  // before `take` in this same segment must not run for the source element
+  // that only *discovers* the count was already met. A plain per-step
+  // template can't express that (it only controls what happens at its own
+  // position, after everything upstream already ran this iteration), so
+  // this hoists an "already exhausted" check for every `take` in the
+  // segment to the very front of the loop body, before any step's own
+  // lines. `iterTakeTemplate`'s own body then only ever increments -- this
+  // guard has already proved `count < n` by the time it's reached.
+  const takeExhaustionGuards: string[] = []
+  for (const { index, step } of seg.steps) {
+    if (step.name === 'iterTake') {
+      takeExhaustionGuards.push(`_itc${index} >= _itn${index}`)
+    }
+  }
+  if (takeExhaustionGuards.length > 0) {
+    bodyLines.push(`if (${takeExhaustionGuards.join(' || ')}) { break ${outerLabel}; }`)
+  }
+
+  seg.steps.forEach(({ index, step }) => {
+    const ctx = iterElementCtx(
+      step,
+      index,
+      v,
+      false,
+      nextData,
+      code,
+      stateLines,
+      bodyLines,
+      inlineCallbacks,
+      renderExpression,
+      renderSource,
+      outerLabel,
+      optionNoneLocal,
+    )
+    const fragment = requireIterEmit(step.name).render(ctx)
+    splice(fragment, preLines, stateLines, bodyLines, closeBraces)
+    if (step.name === 'iterTake') zeroGuards.push(iterTakeZeroGuardVar(index))
+    if (step.name === 'iterChunk') {
+      chunkFlush = { buffer: `_ickb${index}`, continuationStart: bodyLines.length }
+    }
+  })
+
+  const terminal = seg.terminal
+  if (terminal) {
+    const ctx = iterElementCtx(
+      terminal.step,
+      terminal.index,
+      v,
+      true,
+      nextData,
+      code,
+      stateLines,
+      bodyLines,
+      inlineCallbacks,
+      renderExpression,
+      renderSource,
+      outerLabel,
+      optionNoneLocal,
+    )
+    const fragment = requireIterEmit(terminal.step.name).render(ctx)
+    splice(fragment, preLines, stateLines, bodyLines, closeBraces)
+  } else {
+    bodyLines.push(`yield ${v};`)
+  }
+
+  const loopOpen = curDataIsArray
+    ? [
+        `${outerLabel}: for (var _vi${startIndex} = 0, _vlen${startIndex} = ${curData}.length; _vi${startIndex} < _vlen${startIndex}; _vi${startIndex}++) {`,
+        `var ${v} = ${curData}[_vi${startIndex}];`,
+      ]
+    : [`${outerLabel}: for (var ${v} of ${curData}) {`]
+
+  // `stateLines` (counters, the scan accumulator, the chunk buffer, ...)
+  // stay unguarded even when a `take` step's count is statically/dynamically
+  // zero: they are cheap internal declarations with no observable effect of
+  // their own, and the chunk flush below reads the buffer variable
+  // unconditionally, so it must exist either way.
+  const loopBody = [...loopOpen, bodyLines.join('\n'), ...closeBraces, '}']
+  const guardedLoopBody =
+    zeroGuards.length === 0
+      ? loopBody
+      : [`if (${zeroGuards.map((g) => `${g} !== 0`).join(' && ')}) {`, ...loopBody, '}']
+  const guardedLoop = [stateLines.join('\n'), ...guardedLoopBody]
+
+  const flushLines: string[] = []
+  if (chunkFlush) {
+    const { buffer, continuationStart } = chunkFlush
+    const continuation = bodyLines.slice(continuationStart)
+    flushLines.push(
+      `if (${buffer}.length > 0) {`,
+      `${v} = ${buffer};`,
+      `${outerLabel}: do {`,
+      continuation.join('\n'),
+      '} while (false);',
+      '}',
+    )
+  }
+
+  if (terminal) return [...guardedLoop, ...flushLines]
+
+  return [
+    `var ${nextData} = {`,
+    '[Symbol.iterator]: function () {',
+    'return (function* () {',
+    ...guardedLoop,
+    ...flushLines,
+    '})();',
+    '},',
+    '};',
+  ]
+}
+
 // Boundary operator expressions are hoisted with the other pipe arguments.
 // Calling the real operator preserves its stable sorting kernel, callback
 // trace, and property-access/evaluation semantics instead of reimplementing
@@ -1484,7 +1819,7 @@ function emitBoundarySegment(
 // contribute to a loop body, here running once between two array segments
 // (or standing alone, for an all-scalar pipe with no array step at all).
 function emitInlineBoundaryStep(
-  emit: Exclude<OpEmit, { kind: 'boundary' } | { kind: 'optionStep' } | { kind: 'dictStep' }>,
+  emit: ElementOpEmit,
   step: Step,
   index: number,
   curData: string,
@@ -1546,6 +1881,22 @@ function emitPureMapLengthBoundary(stepIndex: number, curData: string, nextData:
  * time-boxed warmup (as opposed to a long-running server) can leave the
  * loop stuck on a lower tier and miss loop vectorization entirely.
  */
+/**
+ * Whether a segment's own `nextData` is provably a fresh, plain Array --
+ * used only to decide the *next* segment's loop shape (phase 4's
+ * array-source fold). A boundary op's real outcome is whatever its fact
+ * declares; an element/iterable segment with no terminal defaults to a
+ * plain array only for the array domain (`emitElementSegment`'s
+ * `nextData.push`), never the iterable domain (a no-terminal iterable
+ * segment's `nextData` is the lazy wrapper object, not an array).
+ */
+function segmentOutputIsArray(seg: Segment): boolean {
+  if (seg.kind === 'boundary') return seg.step.step.fact.outputDomain === 'array'
+  if (seg.kind === 'option' || seg.kind === 'dict') return false
+  if (seg.terminal) return seg.terminal.step.fact.outputDomain === 'array'
+  return seg.kind === 'element'
+}
+
 function generateSegmentedBodyInternal(
   code: string,
   steps: readonly Step[],
@@ -1560,6 +1911,7 @@ function generateSegmentedBodyInternal(
   outerLabel: string,
   pureMapLengthTerminalIndexes: ReadonlySet<number> = new Set(),
   sourceTier: StaticCompilerPlanV1['sourceTier'] = 'compiler',
+  sourceIsArrayLiteral = false,
 ): Omit<FusedBody, 'sourceFragments'> {
   const blockLines: string[] = []
 
@@ -1572,6 +1924,7 @@ function generateSegmentedBodyInternal(
     steps.reduce((count, step) => count + (CALLBACK_OPS.has(step.name) ? 1 : 0), 0) <=
     INLINE_CALLBACK_LIMIT
   let curData = '_src'
+  let curDataIsArray = sourceIsArrayLiteral
   let counter = 0
 
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
@@ -1599,7 +1952,8 @@ function generateSegmentedBodyInternal(
         inlineEmit !== undefined &&
         inlineEmit.kind !== 'boundary' &&
         inlineEmit.kind !== 'optionStep' &&
-        inlineEmit.kind !== 'dictStep'
+        inlineEmit.kind !== 'dictStep' &&
+        inlineEmit.kind !== 'iterStep'
       ) {
         blockLines.push(
           ...emitInlineBoundaryStep(
@@ -1655,6 +2009,22 @@ function generateSegmentedBodyInternal(
           renderSource,
         ),
       )
+    } else if (seg.kind === 'iterable') {
+      blockLines.push(
+        ...emitIterSegment(
+          seg,
+          curData,
+          nextData,
+          code,
+          preLines,
+          optionNoneLocal,
+          inlineCallbacks,
+          renderExpression,
+          renderSource,
+          outerLabel,
+          curDataIsArray,
+        ),
+      )
     } else if (
       seg.steps.length === 0 &&
       seg.terminal !== undefined &&
@@ -1681,6 +2051,7 @@ function generateSegmentedBodyInternal(
       )
     }
     curData = nextData
+    curDataIsArray = segmentOutputIsArray(seg)
   }
 
   const prelude = preLines.join('\n')
@@ -1692,7 +2063,10 @@ function generateSegmentedBodyInternal(
     prelude,
     execution,
     segmentKinds: segments.map((segment) =>
-      segment.kind === 'boundary' || segment.kind === 'option' || segment.kind === 'dict'
+      segment.kind === 'boundary' ||
+      segment.kind === 'option' ||
+      segment.kind === 'dict' ||
+      segment.kind === 'iterable'
         ? segment.kind
         : 'stream',
     ),
@@ -1919,6 +2293,16 @@ export function generateStaticPlanBody(
       .filter((rewrite) => rewrite.kind === 'elide-unused-map')
       .map((rewrite) => rewrite.terminalIndex),
   )
+  // Phase 4's array-source fold: a literal array argument (`pipe([1, 2, 3],
+  // I.map(f), ...)`) is provably a fresh Array, so an iterable segment can
+  // open an indexed loop over it instead of the generic `for...of`. Only
+  // the `'capture'` source form carries the original AST node; the
+  // `'inline'` form (an already-evaluated function parameter) is a runtime
+  // value with no statically known shape, so it conservatively stays
+  // `false`.
+  const sourceIsArrayLiteral =
+    plan.source.kind === 'capture' &&
+    t.isArrayExpression(captures.get(plan.source.captureId)?.node)
   const knownBody = generateSegmentedBodyInternal(
     code,
     operatorSteps,
@@ -1933,6 +2317,7 @@ export function generateStaticPlanBody(
     outerLabel,
     pureMapLengthTerminalIndexes,
     plan.sourceTier,
+    sourceIsArrayLiteral,
   )
 
   let taggedStatements = knownBody.stmts

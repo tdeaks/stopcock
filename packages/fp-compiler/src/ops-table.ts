@@ -68,6 +68,24 @@ export interface DictEmitCtx {
   readonly cb: CallbackHandle
 }
 
+/** Everything an Iterable-domain template needs: a real fused loop (like
+ * `DictEmitCtx`, not `OptionEmitCtx`'s straight-line run). `indexed` marks
+ * an op whose callback takes `(value, index)`; `position` is this step's
+ * own per-step counter, populated only then. `next` is only populated for a
+ * `'terminal'`-role step. */
+export interface IterEmitCtx {
+  readonly index: number
+  readonly v: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly indexed: boolean
+  readonly position: string
+  readonly outerLabel: string
+  readonly optionNone: string
+  readonly cb: CallbackHandle
+}
+
 export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
 
 export type OpEmit =
@@ -83,6 +101,11 @@ export type OpEmit =
   | {
       readonly kind: 'dictStep'
       readonly render: (ctx: DictEmitCtx) => EmitFragment
+    }
+  | {
+      readonly kind: 'iterStep'
+      readonly indexed?: true
+      readonly render: (ctx: IterEmitCtx) => EmitFragment
     }
   | { readonly kind: 'boundary' }
 
@@ -142,6 +165,16 @@ export const ELEMENT_OP_NAMES = [
   'take',
   'takeUntil',
   'takeWhile',
+  'iterChunk',
+  'iterDrop',
+  'iterDropWhile',
+  'iterEnumerate',
+  'iterFilter',
+  'iterFlatMap',
+  'iterMap',
+  'iterScan',
+  'iterTake',
+  'iterTakeWhile',
   'mapFilter',
   'mapFilterMap',
   'mapMap',
@@ -185,6 +218,16 @@ export const TERMINAL_OP_NAMES = [
   'reduce',
   'some',
   'sum',
+  'iterCount',
+  'iterEvery',
+  'iterFind',
+  'iterFindOrUndefined',
+  'iterFirst',
+  'iterFirstOrUndefined',
+  'iterForEach',
+  'iterReduce',
+  'iterSome',
+  'iterToArray',
   'mapPartition',
   'mapReduce',
   'optionGetOrElse',
@@ -3502,6 +3545,558 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     emit: {
       kind: 'expr',
       render: (ctx) => ({ body: [`var ${ctx.next} = (typeof ${ctx.v} === 'string');`] }),
+    },
+  },
+  {
+    name: 'iterChunk',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/iter/chunk',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'stateful',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/chunk/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterChunk/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      render: (ctx) => {
+        const buf = `_ickb${ctx.index}`
+        return {
+          pre: [
+            `if (!Number.isSafeInteger(${ctx.a1}) || ${ctx.a1} < 1) { throw new RangeError('Iter.chunk: size must be a positive safe integer'); }`,
+          ],
+          state: [`var ${buf} = [];`],
+          body: [
+            `${buf}.push(${ctx.v});`,
+            `if (${buf}.length !== ${ctx.a1}) { continue; }`,
+            `${ctx.v} = ${buf};`,
+            `${buf} = [];`,
+          ],
+        }
+      },
+    },
+  },
+  {
+    name: 'iterCount',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/iter/count',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/count/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterCount/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      render: (ctx) => ({ pre: [`var ${ctx.next} = 0;`], body: [`${ctx.next}++;`] }),
+    },
+  },
+  {
+    name: 'iterDrop',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/iter/drop',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'stateful',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/drop/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterDrop/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      render: (ctx) => {
+        const n = `_idn${ctx.index}`,
+          dropped = `_idc${ctx.index}`,
+          clamp = `Number.isNaN(${n}) || ${n} <= 0 ? 0 : ${n} === Infinity ? Infinity : Math.floor(${n})`
+        return {
+          pre: [`var ${n} = (${ctx.a1});`, `${n} = ${clamp};`],
+          state: [`var ${dropped} = 0;`],
+          body: [`if (${dropped} < ${n}) { ${dropped}++; continue; }`],
+        }
+      },
+    },
+  },
+  {
+    name: 'iterDropWhile',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/dropWhile',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'stateful',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/dropWhile/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterDropWhile/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const dropping = `_idw${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+            `if (${dropping}) { if (${expr}) { continue; } ${dropping} = false; }`,
+          ])
+        return { state: [`var ${dropping} = true;`], pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterEnumerate',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/iter/enumerate',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/enumerate/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterEnumerate/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => ({ body: [`${ctx.v} = [${ctx.position}, ${ctx.v}];`] }),
+    },
+  },
+  {
+    name: 'iterEvery',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/every',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/every/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterEvery/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+          `if (!(${expr})) { ${ctx.next} = false; break ${ctx.outerLabel}; }`,
+        ])
+        return { pre: [`var ${ctx.next} = true;`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterFilter',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/filter',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'filtering',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/filter/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterFilter/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [`if (!(${expr})) { continue; }`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterFind',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/find',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'option',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/find/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterFind/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+          `if (${expr}) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; break ${ctx.outerLabel}; }`,
+        ])
+        return { pre: [`var ${ctx.next} = ${ctx.optionNone};`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterFindOrUndefined',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/findOrUndefined',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/findOrUndefined/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterFindOrUndefined/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+          `if (${expr}) { ${ctx.next} = ${ctx.v}; break ${ctx.outerLabel}; }`,
+        ])
+        return { pre: [`var ${ctx.next} = undefined;`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterFirst',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/iter/first',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'option',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/first/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterFirst/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      render: (ctx) => ({
+        pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+        body: [`${ctx.next} = { _tag: 1, value: ${ctx.v} };`, `break ${ctx.outerLabel};`],
+      }),
+    },
+  },
+  {
+    name: 'iterFirstOrUndefined',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/iter/firstOrUndefined',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/firstOrUndefined/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterFirstOrUndefined/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      render: (ctx) => ({
+        pre: [`var ${ctx.next} = undefined;`],
+        body: [`${ctx.next} = ${ctx.v};`, `break ${ctx.outerLabel};`],
+      }),
+    },
+  },
+  {
+    name: 'iterFlatMap',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/flatMap',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'expanding',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/flatMap/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterFlatMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const fm = `_ifm${ctx.index}`,
+          j = `_ifj${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [`var ${fm} = ${expr};`])
+        return {
+          pre: cb.pre,
+          body: [...cb.body, `for (var ${j} of ${fm}) {`, `${ctx.v} = ${j};`],
+          close: ['}'],
+        }
+      },
+    },
+  },
+  {
+    name: 'iterForEach',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/forEach',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/forEach/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterForEach/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [`${expr};`])
+        return { pre: [...(cb.pre ?? []), `var ${ctx.next} = undefined;`], body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterMap',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/map',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/map/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [`${ctx.v} = ${expr};`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterReduce',
+    callbackArity: 2,
+    bindings: ['fn', 'a1'],
+    semanticId: '@stopcock/fp/iter/reduce',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/reduce/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterReduce/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.next, ctx.v, ctx.position], (expr) => [
+          `${ctx.next} = ${expr};`,
+        ])
+        return { pre: [...(cb.pre ?? []), `var ${ctx.next} = ${ctx.a1};`], body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterScan',
+    callbackArity: 2,
+    bindings: ['fn', 'a1'],
+    semanticId: '@stopcock/fp/iter/scan',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'stateful',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/scan/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterScan/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const acc = `_isa${ctx.index}`,
+          cb = ctx.cb.emit([acc, ctx.v, ctx.position], (expr) => [`${acc} = ${expr};`])
+        return {
+          pre: [...(cb.pre ?? []), `var ${acc} = ${ctx.a1};`],
+          body: [...cb.body, `${ctx.v} = ${acc};`],
+        }
+      },
+    },
+  },
+  {
+    name: 'iterSome',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/some',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/some/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterSome/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+          `if (${expr}) { ${ctx.next} = true; break ${ctx.outerLabel}; }`,
+        ])
+        return { pre: [`var ${ctx.next} = false;`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterTake',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/iter/take',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'stateful',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/take/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterTake/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      render: (ctx) => {
+        const n = `_itn${ctx.index}`,
+          count = `_itc${ctx.index}`,
+          clamp = `Number.isNaN(${n}) || ${n} <= 0 ? 0 : ${n} === Infinity ? Infinity : Math.floor(${n})`
+        return {
+          pre: [`var ${n} = (${ctx.a1});`, `${n} = ${clamp};`],
+          state: [`var ${count} = 0;`],
+          body: [`${count}++;`],
+        }
+      },
+    },
+  },
+  {
+    name: 'iterTakeWhile',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/iter/takeWhile',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'iterable',
+    cardinality: 'stateful',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/iter/takeWhile/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/iterTakeWhile/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v, ctx.position], (expr) => [
+          `if (!(${expr})) { break ${ctx.outerLabel}; }`,
+        ])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'iterToArray',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/iter/toArray',
+    semanticRevision: 1,
+    inputDomain: 'iterable',
+    outputDomain: 'array',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/iter/toArray/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/iterToArray/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'iterStep',
+      render: (ctx) => ({ pre: [`var ${ctx.next} = [];`], body: [`${ctx.next}.push(${ctx.v});`] }),
     },
   },
   {

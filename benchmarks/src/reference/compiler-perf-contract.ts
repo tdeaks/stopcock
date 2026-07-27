@@ -92,6 +92,26 @@ export const EXPECTED_COMPILER_SUPPORTED_OP_NAMES = Object.freeze([
   'isNumber',
   'isObject',
   'isString',
+  'iterChunk',
+  'iterCount',
+  'iterDrop',
+  'iterDropWhile',
+  'iterEnumerate',
+  'iterEvery',
+  'iterFilter',
+  'iterFind',
+  'iterFindOrUndefined',
+  'iterFirst',
+  'iterFirstOrUndefined',
+  'iterFlatMap',
+  'iterForEach',
+  'iterMap',
+  'iterReduce',
+  'iterScan',
+  'iterSome',
+  'iterTake',
+  'iterTakeWhile',
+  'iterToArray',
   'join',
   'keys',
   'last',
@@ -249,7 +269,7 @@ export const EXPECTED_COMPILER_SUPPORTED_OP_NAMES = Object.freeze([
 ] as const)
 
 export const EXPECTED_COMPILER_SUPPORTED_OPS_SHA256 =
-  '411a9dbf90e7ec9d83f1df636a31ad18e59e59b517cec918cd61fd96e92d9737'
+  'd34361c0adf29868980f70ddc4bb9ddae1c1cc4f6d95d6875128f51abd6f2839'
 
 /**
  * The compiler currently claims all 44 portable-corpus cases. Keeping the

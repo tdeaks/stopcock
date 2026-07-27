@@ -134,6 +134,12 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'broad Iter frozen-baseline geomean and per-row floors',
   }),
   Object.freeze({
+    script: 'iter-compiled-perf-gate.ts',
+    kind: 'timing',
+    group: 'parity:iter',
+    checks: 'phase 4: compiled Iter chains against the same chains through the uncompiled runtime',
+  }),
+  Object.freeze({
     script: 'typed-array-perf-gate.ts',
     kind: 'timing',
     group: 'parity:iter',

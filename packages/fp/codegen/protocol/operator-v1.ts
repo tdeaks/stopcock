@@ -21,6 +21,7 @@ export type PhysicalLayoutV1 =
   | 'js-array-dense'
   | 'js-array-sparse-as-undefined'
   | 'js-scalar'
+  | 'js-iterable'
   | 'js-option'
   | 'js-result'
   | 'js-record'
@@ -739,6 +740,7 @@ export function defineOperatorV1(input: OperatorSemanticInputV1): OperatorSemant
         'js-array-dense',
         'js-array-sparse-as-undefined',
         'js-scalar',
+        'js-iterable',
         'js-option',
         'js-result',
         'js-record',
@@ -821,6 +823,7 @@ export function defineLoweringV1(input: OperatorLoweringInputV1): OperatorLoweri
         'js-array-dense',
         'js-array-sparse-as-undefined',
         'js-scalar',
+        'js-iterable',
         'js-option',
         'js-result',
         'js-record',
@@ -1240,15 +1243,43 @@ export interface DictEmitCtx {
   readonly cb: CallbackHandle
 }
 
-/** The eight emission kinds. `expr`/`filter`/`expand`/`stateful` cover
+/** Everything an Iterable-domain (phase 4) template needs. Like `DictEmitCtx`
+ * this is a real fused loop, `for (const _v of _src)` (or an indexed array
+ * loop when the source is statically known to be an Array), not the
+ * straight-line run `OptionEmitCtx` gets. Unlike an array `mapWithIndex`
+ * reading the shared source-element position, every Iter callback that takes
+ * an index (map/filter/filterMap/flatMap/takeWhile/dropWhile/scan/forEach/
+ * find/some/every, plus `enumerate`'s own index-only use) reads *this step's
+ * own* per-step counter -- `iter.ts`'s execution state increments one such
+ * counter per step, only for values that actually reach it. `indexed` on the
+ * `OpEmit` (mirroring `ElementEmitCtx`'s flag) marks which ops need one;
+ * `position` is only populated then. `next` is the per-step output local;
+ * for a `'terminal'`-role step it is the segment's result variable, exactly
+ * like `ElementEmitCtx.next`. */
+export interface IterEmitCtx {
+  readonly index: number
+  readonly v: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly indexed: boolean
+  readonly position: string
+  readonly outerLabel: string
+  readonly optionNone: string
+  readonly cb: CallbackHandle
+}
+
+/** The nine emission kinds. `expr`/`filter`/`expand`/`stateful` cover
  * element (loop-body) ops; `sink` covers terminals; `optionStep` covers the
  * Option/Result domains (phase 2), a straight-line statement over persistent
  * `_ok`/`_v`/`_err` locals rather than a loop body; `dictStep` covers the
  * Record/Map/Set domains (phase 3), a loop body over persistent `_k`/`_v`
- * locals; a `boundary` op has no template at all, it stays a whole-container
- * call emitted by `emitBoundarySegment`. `indexed` marks the `withIndex`
- * sibling of a base op (map/mapWithIndex, filter/filterWithIndex,
- * forEach/forEachWithIndex) reusing the same `render` function. */
+ * locals; `iterStep` covers the Iterable domain (phase 4), a loop body over
+ * a persistent `_v` local plus this step's own index counter; a `boundary`
+ * op has no template at all, it stays a whole-container call emitted by
+ * `emitBoundarySegment`. `indexed` marks the `withIndex` sibling of a base
+ * op (map/mapWithIndex, filter/filterWithIndex, forEach/forEachWithIndex)
+ * reusing the same `render` function. */
 export type OpEmit =
   | {
       readonly kind: OpEmitKind
@@ -1262,5 +1293,10 @@ export type OpEmit =
   | {
       readonly kind: 'dictStep'
       readonly render: (ctx: DictEmitCtx) => EmitFragment
+    }
+  | {
+      readonly kind: 'iterStep'
+      readonly indexed?: true
+      readonly render: (ctx: IterEmitCtx) => EmitFragment
     }
   | { readonly kind: 'boundary' }

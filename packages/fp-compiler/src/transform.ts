@@ -66,7 +66,19 @@ const DEFAULT_SCALAR_IMPORT_SOURCES = [
   '@stopcock/fp/guard',
 ]
 const OPTION_IMPORT_SOURCE = '@stopcock/fp'
-const OPTION_TERMINALS = new Set(['find', 'findIndex', 'findMap', 'head', 'last', 'min', 'max'])
+const OPTION_TERMINALS = new Set([
+  'find',
+  'findIndex',
+  'findMap',
+  'head',
+  'last',
+  'min',
+  'max',
+  // phase 4: the iterable domain's own Option-producing terminals get the
+  // same array-terminal-to-option boundary fusion phase 2 built.
+  'iterFind',
+  'iterFirst',
+])
 /**
  * Option/Result operator sources (phase 2). Not a `StopcockCompilerOptions`
  * field for the same reason `DEFAULT_SCALAR_IMPORT_SOURCES` isn't: no new
@@ -224,6 +236,62 @@ function canonicalDictOpName(source: string, name: string): string {
   return DICT_EXPORT_ALIASES.get(source)?.get(name) ?? name
 }
 
+/**
+ * Phase 4 iterable-domain source (`@stopcock/fp/iter`). Not a
+ * `StopcockCompilerOptions` field, for the same reason
+ * `DEFAULT_SCALAR_IMPORT_SOURCES` isn't.
+ */
+const DEFAULT_ITER_IMPORT_SOURCES = ['@stopcock/fp/iter']
+
+/**
+ * Every named export from `@stopcock/fp/iter` that the compiler recognizes,
+ * mapped to the flat `ops-table.ts` name it occupies: `map`/`filter`/
+ * `flatMap`/`take`/`drop`/`takeWhile`/`dropWhile`/`scan`/`toArray`/`reduce`/
+ * `forEach`/`find`/`some`/`every`/`count` all collide with the array
+ * domain's own canonical names (see the `ITER_ROWS` comment in
+ * `operator-definitions.ts`), so every Iter op mints its own compiler-table
+ * name. `zip`/`zipWith` are mapped here too, but only so `analyzeStep` can
+ * report a specific `multi-source` bail instead of "unknown op" -- they have
+ * no row in `operator-definitions.ts` and never reach `SUPPORTED_OP_NAMES`.
+ */
+const ITER_EXPORT_ALIASES: ReadonlyMap<string, string> = new Map([
+  ['map', 'iterMap'],
+  ['filter', 'iterFilter'],
+  ['flatMap', 'iterFlatMap'],
+  ['take', 'iterTake'],
+  ['drop', 'iterDrop'],
+  ['takeWhile', 'iterTakeWhile'],
+  ['dropWhile', 'iterDropWhile'],
+  ['scan', 'iterScan'],
+  ['enumerate', 'iterEnumerate'],
+  ['chunk', 'iterChunk'],
+  ['toArray', 'iterToArray'],
+  ['reduce', 'iterReduce'],
+  ['forEach', 'iterForEach'],
+  ['find', 'iterFind'],
+  ['findOrUndefined', 'iterFindOrUndefined'],
+  ['some', 'iterSome'],
+  ['every', 'iterEvery'],
+  ['count', 'iterCount'],
+  ['first', 'iterFirst'],
+  ['firstOrUndefined', 'iterFirstOrUndefined'],
+  ['zip', 'iterZip'],
+  ['zipWith', 'iterZipWith'],
+])
+
+function canonicalIterOpName(name: string): string {
+  return ITER_EXPORT_ALIASES.get(name) ?? name
+}
+
+/**
+ * `iterZip`/`iterZipWith`: multi-source iterable ops, out of scope for phase
+ * 4 (the plan's "Not doing" list). Recognized only so a pipe step written
+ * as `I.zip(...)`/`zipWith(...)` reports a specific bail rather than
+ * "unknown op": neither has a row in `operator-definitions.ts`, so they
+ * never reach `SUPPORTED_OP_NAMES`/`isRegistryOpName` either.
+ */
+const MULTI_SOURCE_ITER_OP_NAMES: ReadonlySet<string> = new Set(['iterZip', 'iterZipWith'])
+
 interface Bindings {
   readonly pipeLocals: Set<string>
   readonly flowLocals: Set<string>
@@ -257,6 +325,13 @@ interface Bindings {
   /** Local identifier -> canonical dict-domain export name, already
    * resolved through `canonicalDictOpName` at collection time. */
   readonly dictOpLocals: Map<string, string>
+  /** Namespace local bound to `@stopcock/fp/iter` -- the phase 4 iterable
+   * domain has exactly one source, so (unlike dict's three) no per-local
+   * source lookup is needed, only membership. */
+  readonly iterNamespaceLocals: Set<string>
+  /** Local identifier -> canonical iterable-domain export name, already
+   * resolved through `canonicalIterOpName` at collection time. */
+  readonly iterOpLocals: Map<string, string>
   /** Imported pipe/flow/compile binding or namespace -> exact module source. */
   readonly sourceByLocal: Map<string, string>
   /** Named imported facade binding -> exact public export before local aliasing. */
@@ -528,6 +603,7 @@ function collectBindings(
     DEFAULT_OPTION_RESULT_IMPORT_SOURCE.result,
   ],
   dictImportSources: readonly string[] = DEFAULT_DICT_IMPORT_SOURCES,
+  iterImportSources: readonly string[] = DEFAULT_ITER_IMPORT_SOURCES,
 ): Bindings {
   const bindings: Bindings = {
     pipeLocals: new Set(),
@@ -543,6 +619,8 @@ function collectBindings(
     optionResultOpLocals: new Map(),
     dictNamespaceLocals: new Map(),
     dictOpLocals: new Map(),
+    iterNamespaceLocals: new Set(),
+    iterOpLocals: new Map(),
     sourceByLocal: new Map(),
     exportByLocal: new Map(),
   }
@@ -556,13 +634,15 @@ function collectBindings(
     const isScalarSource = scalarImportSources.includes(stmt.source.value)
     const isOptionResultSource = optionResultImportSources.includes(stmt.source.value)
     const isDictSource = dictImportSources.includes(stmt.source.value)
+    const isIterSource = iterImportSources.includes(stmt.source.value)
     if (
       !isRootSource &&
       !isArraySource &&
       !isCompileSource &&
       !isScalarSource &&
       !isOptionResultSource &&
-      !isDictSource
+      !isDictSource &&
+      !isIterSource
     ) {
       continue
     }
@@ -583,6 +663,7 @@ function collectBindings(
           bindings.optionResultNamespaceLocals.set(spec.local.name, stmt.source.value)
         }
         if (isDictSource) bindings.dictNamespaceLocals.set(spec.local.name, stmt.source.value)
+        if (isIterSource) bindings.iterNamespaceLocals.add(spec.local.name)
         if (facadeExports.size > 0) {
           bindings.sourceByLocal.set(spec.local.name, stmt.source.value)
         }
@@ -618,6 +699,9 @@ function collectBindings(
       }
       if (isDictSource) {
         bindings.dictOpLocals.set(spec.local.name, canonicalDictOpName(stmt.source.value, imported))
+      }
+      if (isIterSource) {
+        bindings.iterOpLocals.set(spec.local.name, canonicalIterOpName(imported))
       }
     }
   }
@@ -859,6 +943,9 @@ function resolveStepOpName(
     if (isVisibleModuleBinding(callee.name, bindings.dictOpLocals, scope)) {
       return bindings.dictOpLocals.get(callee.name)
     }
+    if (isVisibleModuleBinding(callee.name, bindings.iterOpLocals, scope)) {
+      return bindings.iterOpLocals.get(callee.name)
+    }
     return undefined
   }
   if (!t.isMemberExpression(callee) || callee.computed) return undefined
@@ -870,6 +957,12 @@ function resolveStepOpName(
     isVisibleModuleBinding(object.name, bindings.arrayNamespaceLocals, scope)
   ) {
     return opName
+  }
+  if (
+    t.isIdentifier(object) &&
+    isVisibleModuleBinding(object.name, bindings.iterNamespaceLocals, scope)
+  ) {
+    return canonicalIterOpName(opName)
   }
   if (t.isIdentifier(object) && scope.getBinding(object.name)?.kind === 'module') {
     const scalarSource = bindings.scalarNamespaceLocals.get(object.name)
@@ -907,6 +1000,7 @@ interface StepAnalysis {
   /** A syntactically present, unresolved unary step rather than a malformed known op. */
   readonly opaque?: boolean
   readonly reason?: string
+  readonly reasonCodes?: readonly DiagnosticReasonCode[]
   readonly name?: string
   readonly args: readonly t.Expression[]
 }
@@ -948,6 +1042,15 @@ function analyzeStep(stepNode: t.Node, bindings: Bindings, scope: Scope): StepAn
     }
   }
   opName = canonicalOpName(opName)
+  if (MULTI_SOURCE_ITER_OP_NAMES.has(opName)) {
+    return {
+      ok: false,
+      args: [],
+      name: opName,
+      reason: `${opName}: multi-source iterable ops are not compiled (bails to the runtime)`,
+      reasonCodes: ['multi-source'],
+    }
+  }
   if (!SUPPORTED_OP_NAMES.has(opName)) {
     const reason = isRegistryOpName(opName)
       ? `unsupported op: ${opName}`
@@ -987,6 +1090,26 @@ function analyzeStep(stepNode: t.Node, bindings: Bindings, scope: Scope): StepAn
       reason: `${opName}: unexpected arg count ${args.length}`,
     }
   }
+  // `for await`/async iterables are out of scope for the iterable domain:
+  // `iter.ts` is synchronous only, and an async callback would silently
+  // hand a fused loop a Promise where it expects a plain value. Scoped to
+  // the iterable domain only -- every other domain's callback contract is
+  // already synchronous by construction.
+  const firstArg = args[0]
+  if (
+    compilerOperatorFact(opName)?.inputDomain === 'iterable' &&
+    firstArg !== undefined &&
+    t.isFunction(firstArg) &&
+    firstArg.async === true
+  ) {
+    return {
+      ok: false,
+      args: [],
+      name: opName,
+      reason: `${opName}: an async callback is not compiled (for await / async iterables are out of scope)`,
+      reasonCodes: ['opaque-callback'],
+    }
+  }
   return { ok: true, name: opName, args }
 }
 
@@ -996,6 +1119,7 @@ interface StepsResult {
   /** One final opaque unary step executed after the compiled static prefix. */
   readonly residual?: t.Expression
   readonly reason?: string
+  readonly reasonCodes?: readonly DiagnosticReasonCode[]
   /**
    * Operators recognised before the collector gave up. A rejected site that
    * used real operators is still worth describing in diagnostics.
@@ -1048,6 +1172,7 @@ function collectSteps(
       return {
         ok: false,
         reason: check.reason,
+        reasonCodes: check.reasonCodes,
         partialNames: recognisedIncludingRejected,
       }
     }
@@ -1230,6 +1355,7 @@ export function transformStopcockPipelines(
     ...compileImportSources,
     ...DEFAULT_SCALAR_IMPORT_SOURCES,
     ...DEFAULT_DICT_IMPORT_SOURCES,
+    ...DEFAULT_ITER_IMPORT_SOURCES,
     DEFAULT_OPTION_RESULT_IMPORT_SOURCE.option,
     DEFAULT_OPTION_RESULT_IMPORT_SOURCE.result,
   ])
@@ -1510,7 +1636,9 @@ export function transformStopcockPipelines(
                       segmentKinds: ['opaque'] as const,
                       reasonCodes: ['opaque-callback'] as const,
                     }
-                  : {}),
+                  : collected.reasonCodes !== undefined
+                    ? { reasonCodes: collected.reasonCodes }
+                    : {}),
               },
             ),
           )

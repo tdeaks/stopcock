@@ -1158,6 +1158,24 @@ export interface DictEmitCtx {
   readonly cb: CallbackHandle
 }
 
+/** Everything an Iterable-domain template needs: a real fused loop (like
+ * \`DictEmitCtx\`, not \`OptionEmitCtx\`'s straight-line run). \`indexed\` marks
+ * an op whose callback takes \`(value, index)\`; \`position\` is this step's
+ * own per-step counter, populated only then. \`next\` is only populated for a
+ * \`'terminal'\`-role step. */
+export interface IterEmitCtx {
+  readonly index: number
+  readonly v: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly indexed: boolean
+  readonly position: string
+  readonly outerLabel: string
+  readonly optionNone: string
+  readonly cb: CallbackHandle
+}
+
 export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
 
 export type OpEmit =
@@ -1173,6 +1191,11 @@ export type OpEmit =
   | {
       readonly kind: 'dictStep'
       readonly render: (ctx: DictEmitCtx) => EmitFragment
+    }
+  | {
+      readonly kind: 'iterStep'
+      readonly indexed?: true
+      readonly render: (ctx: IterEmitCtx) => EmitFragment
     }
   | { readonly kind: 'boundary' }
 

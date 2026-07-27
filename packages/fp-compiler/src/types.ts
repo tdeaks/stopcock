@@ -2,7 +2,7 @@ export type FilterPattern = ReadonlyArray<string | RegExp> | string | RegExp | n
 
 export type DiagnosticsLevel = false | 'summary' | 'verbose' | 'error'
 export type CompilerSemantics = 'exact' | 'pure'
-export type CompilerSegmentKind = 'stream' | 'boundary' | 'opaque' | 'option' | 'dict'
+export type CompilerSegmentKind = 'stream' | 'boundary' | 'opaque' | 'option' | 'dict' | 'iterable'
 export type CompilerFallbackTier = 'sequential' | 'compact' | 'compiler' | 'none'
 export type DiagnosticReasonCode =
   | 'opaque-callback'
@@ -15,6 +15,9 @@ export type DiagnosticReasonCode =
    * (the generic boundary call-through handles any key shape correctly),
    * just not eligible for the static unrolled-literal fast path. */
   | 'dynamic-keys'
+  /** `Iter.zip`/`Iter.zipWith`: multi-source iterable ops are out of scope
+   * for phase 4 and bail to the runtime, loudly. */
+  | 'multi-source'
 
 export interface StopcockCompilerOptions {
   readonly include?: FilterPattern
