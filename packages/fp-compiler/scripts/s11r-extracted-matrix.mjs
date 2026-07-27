@@ -2910,6 +2910,44 @@ const buildMaterialization = async ({ manifest, manifestDirectory, records, scra
   }
 }
 
+/**
+ * Name the first field two materializations disagree on. A bare "bytes differ"
+ * verdict cannot be acted on, and the canonical failure rule requires the exact
+ * first failure rather than a rerun to find it.
+ */
+export const firstDifference = (left, right, path = '') => {
+  const here = path === '' ? '<root>' : path
+  const show = (value) => {
+    const rendered = JSON.stringify(value) ?? 'undefined'
+    return rendered.length > 200 ? `${rendered.slice(0, 200)}…` : rendered
+  }
+  if (Object.is(left, right)) return null
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== 'object' ||
+    typeof right !== 'object' ||
+    Array.isArray(left) !== Array.isArray(right)
+  ) {
+    return `${here}: ${show(left)} !== ${show(right)}`
+  }
+  if (Array.isArray(left)) {
+    if (left.length !== right.length) {
+      return `${here}: length ${left.length} !== ${right.length}`
+    }
+    for (let index = 0; index < left.length; index++) {
+      const found = firstDifference(left[index], right[index], `${path}[${index}]`)
+      if (found !== null) return found
+    }
+    return null
+  }
+  for (const key of [...new Set([...Object.keys(left), ...Object.keys(right)])].sort(compare)) {
+    const found = firstDifference(left[key], right[key], path === '' ? key : `${path}.${key}`)
+    if (found !== null) return found
+  }
+  return null
+}
+
 export const buildQualification = async ({ manifestPath, outputPath }) => {
   const context = await validateManifest(manifestPath)
   const output = resolve(outputPath)
@@ -2925,7 +2963,9 @@ export const buildQualification = async ({ manifestPath, outputPath }) => {
     const replayBytes = Buffer.from(stable(second))
     assert(
       bytes.equals(replayBytes),
-      'two independent extracted materialisations produced different qualification bytes',
+      `two independent extracted materialisations produced different qualification bytes: ${
+        firstDifference(first, second) ?? 'difference is outside the compared value'
+      }`,
     )
     assert(!bytes.includes(Buffer.from(tmpdir())), 'qualification output leaks a temporary path')
     writeFileSync(output, bytes)

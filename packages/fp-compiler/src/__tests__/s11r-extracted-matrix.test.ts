@@ -135,6 +135,23 @@ describe('S11R extracted matrix manifest boundary', () => {
     ).toThrow(/imports FP\/optimizer\/fusion runtime/u)
   })
 
+  it('names the first field two materializations disagree on', async () => {
+    const { firstDifference } = await import(script.href)
+    const base = { cli: { esmClosure: { specifiers: ['node:fs'] } }, hosts: [{ bytes: 501 }] }
+
+    expect(firstDifference(base, structuredClone(base))).toBeNull()
+    expect(
+      firstDifference(base, { ...base, hosts: [{ bytes: 509 }] }),
+    ).toBe('hosts[0].bytes: 501 !== 509')
+    expect(
+      firstDifference(base, {
+        ...base,
+        cli: { esmClosure: { specifiers: ['node:fs', 'node:path'] } },
+      }),
+    ).toBe('cli.esmClosure.specifiers: length 1 !== 2')
+    expect(firstDifference({ a: 1 }, { b: 1 })).toBe('a: 1 !== undefined')
+  })
+
   it('binds import pruning to retained engines instead of zero-byte facades', async () => {
     const { assertImportPruningGraph } = await import(script.href)
     const optionEngine = '@stopcock/fp/dist/option-B35NiKCI.js'
