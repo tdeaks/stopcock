@@ -68,6 +68,25 @@ import {
   OP_TAKE_WHILE,
   OP_UNIQ_INLINE,
   OP_WITHOUT,
+  OP_ADJUST,
+  OP_APERTURE,
+  OP_CHUNK,
+  OP_DIFFERENCE,
+  OP_GROUP_BY,
+  OP_INCLUDES,
+  OP_INSERT,
+  OP_INTERSECTION,
+  OP_INTERSPERSE,
+  OP_PARTITION,
+  OP_REMOVE,
+  OP_SLIDING_WINDOW,
+  OP_SYMMETRIC_DIFFERENCE,
+  OP_UNION,
+  OP_UNIQ_BY,
+  OP_UPDATE,
+  OP_XPROD,
+  OP_ZIP,
+  OP_ZIP_WITH,
 } from './opcodes'
 import type { OpCode } from './registry'
 // Cardinality comes from the compact fact table rather than the registry.
@@ -75,6 +94,30 @@ import type { OpCode } from './registry'
 // module is also compact fusion's executor, where those bytes are the whole
 // budget. Nothing here needs a name.
 import { CARD_SINK, compactCardinality } from './internal/compact/facts.generated'
+// Materialising boundaries run as one whole-array call in every tier, so the
+// interpreter calls the operator itself rather than keeping a second copy of
+// it that could drift.
+import {
+  adjust,
+  aperture,
+  chunk,
+  difference,
+  groupBy,
+  includes,
+  insert,
+  intersection,
+  intersperse,
+  partition,
+  remove,
+  slidingWindow,
+  symmetricDifference,
+  union,
+  uniqBy,
+  update,
+  xprod,
+  zip,
+  zipWith,
+} from './array'
 import { mergeSortAsc, mergeSortBy, mergeSortDesc } from './sort-kernel'
 import { type BoundPlan, type SegmentShape, type StepBinding } from './plan'
 import { none as optionNone, some as optionSome } from './option'
@@ -139,6 +182,44 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
       const exclude = new Set(binding.fn as readonly unknown[])
       return data.filter((x) => !exclude.has(x))
     }
+    case OP_CHUNK:
+      return (chunk as any)(data, binding.fn)
+    case OP_SLIDING_WINDOW:
+      return (slidingWindow as any)(data, binding.fn)
+    case OP_APERTURE:
+      return (aperture as any)(data, binding.fn)
+    case OP_INTERSPERSE:
+      return (intersperse as any)(data, binding.fn)
+    case OP_UNIQ_BY:
+      return (uniqBy as any)(data, binding.fn)
+    case OP_GROUP_BY:
+      return (groupBy as any)(data, binding.fn)
+    case OP_PARTITION:
+      return (partition as any)(data, binding.fn)
+    case OP_ZIP:
+      return (zip as any)(data, binding.fn)
+    case OP_XPROD:
+      return (xprod as any)(data, binding.fn)
+    case OP_INTERSECTION:
+      return (intersection as any)(data, binding.fn)
+    case OP_UNION:
+      return (union as any)(data, binding.fn)
+    case OP_DIFFERENCE:
+      return (difference as any)(data, binding.fn)
+    case OP_SYMMETRIC_DIFFERENCE:
+      return (symmetricDifference as any)(data, binding.fn)
+    case OP_INCLUDES:
+      return (includes as any)(data, binding.fn)
+    case OP_ZIP_WITH:
+      return (zipWith as any)(data, binding.fn, binding.a1)
+    case OP_ADJUST:
+      return (adjust as any)(data, binding.fn, binding.a1)
+    case OP_UPDATE:
+      return (update as any)(data, binding.fn, binding.a1)
+    case OP_INSERT:
+      return (insert as any)(data, binding.fn, binding.a1)
+    case OP_REMOVE:
+      return (remove as any)(data, binding.fn, binding.a1)
     default:
       return unsupportedOp(op)
   }

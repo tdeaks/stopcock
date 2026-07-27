@@ -56,7 +56,19 @@ const operationCase = (
  */
 export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
   Object.freeze([
+    operationCase('adjust', 'materializer', [
+      "A.adjust(3, (x) => x + 1)",
+    ]),
+    operationCase('aperture', 'materializer', [
+      "A.aperture(4)",
+    ]),
+    operationCase('chunk', 'materializer', [
+      "A.chunk(8)",
+    ]),
     operationCase('count', 'terminal', ['A.count((x) => x % 3 === 1)']),
+    operationCase('difference', 'materializer', [
+      "A.difference(input)",
+    ]),
     operationCase('drop', 'stateful', ['A.drop(257)']),
     operationCase('dropRepeats', 'materializer', ['A.dropRepeats']),
     operationCase('dropWhile', 'stateful', ['A.dropWhile((x) => x < 0)']),
@@ -84,8 +96,23 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     operationCase('forEach', 'terminal', [
       'A.forEach((x) => (__observation += x))',
     ]),
+    operationCase('groupBy', 'materializer', [
+      "A.groupBy((x) => String(x % 8))",
+    ]),
     operationCase('head', 'terminal', ['A.head'], 32),
+    operationCase('includes', 'materializer', [
+      "A.includes(input[input.length - 1])",
+    ]),
     operationCase('init', 'materializer', ['A.init']),
+    operationCase('insert', 'materializer', [
+      "A.insert(3, 42)",
+    ]),
+    operationCase('intersection', 'materializer', [
+      "A.intersection(input)",
+    ]),
+    operationCase('intersperse', 'materializer', [
+      "A.intersperse(0)",
+    ]),
     operationCase('isEmpty', 'terminal', ['A.isEmpty'], 32),
     operationCase('join', 'materializer', ["A.join('|')"]),
     operationCase('last', 'terminal', ['A.last'], 32),
@@ -99,10 +126,19 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     operationCase('none', 'terminal', [
       'A.none((x) => x === input[input.length - 1])',
     ]),
+    operationCase('partition', 'materializer', [
+      "A.partition((x) => x % 3 === 1)",
+    ]),
     operationCase('reduce', 'terminal', ['A.reduce((acc, x) => acc + x, 7)']),
     operationCase('reject', 'element', ['A.reject((x) => x % 3 === 1)']),
+    operationCase('remove', 'materializer', [
+      "A.remove(3, 2)",
+    ]),
     operationCase('reverse', 'materializer', ['A.reverse']),
     operationCase('scan', 'stateful', ['A.scan((acc, x) => acc + x, 7)']),
+    operationCase('slidingWindow', 'materializer', [
+      "A.slidingWindow(4)",
+    ]),
     operationCase('some', 'terminal', [
       'A.some((x) => x === input[input.length - 1])',
     ]),
@@ -111,13 +147,34 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     operationCase('sortBy', 'materializer', ['A.sortBy((a, b) => a - b)'], 2_048),
     operationCase('sortDesc', 'materializer', ['A.sortDesc'], 2_048),
     operationCase('sum', 'terminal', ['A.sum']),
+    operationCase('symmetricDifference', 'materializer', [
+      "A.symmetricDifference(input)",
+    ]),
     operationCase('tail', 'materializer', ['A.tail']),
     operationCase('take', 'stateful', ['A.take(512)']),
     operationCase('takeUntil', 'stateful', ['A.takeUntil((x) => x > 450)']),
     operationCase('takeWhile', 'stateful', ['A.takeWhile((x) => x < 450)']),
+    operationCase('union', 'materializer', [
+      "A.union(input)",
+    ]),
     operationCase('uniq', 'materializer', ['A.uniq']),
+    operationCase('uniqBy', 'materializer', [
+      "A.uniqBy((x) => x % 16)",
+    ]),
+    operationCase('update', 'materializer', [
+      "A.update(3, 42)",
+    ]),
     operationCase('without', 'materializer', [
       'A.without([input[input.length - 1]])',
+    ]),
+    operationCase('xprod', 'materializer', [
+      "A.xprod([1, 2])",
+    ]),
+    operationCase('zip', 'materializer', [
+      "A.zip(input)",
+    ]),
+    operationCase('zipWith', 'materializer', [
+      "A.zipWith(input, (a, b) => a + b)",
     ]),
   ])
 

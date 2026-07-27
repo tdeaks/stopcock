@@ -43,7 +43,7 @@ export const OPTIMIZER_BANK_PROTOCOL_VERSION_V1 = 1
 
 export const RETAINED_COMPILER_OPERATION_CORPUS_V1 = Object.freeze<OperatorEvidenceCorpusJoinV1>({
   corpusId: COMPILER_OPERATION_CORPUS_ID_V1,
-  corpusHash: 'sha256:f86324c0d2ec822b1e69b377c1126caf080a7958c486637331d3758bb5df4018',
+  corpusHash: 'sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849',
 })
 
 export interface ProtocolCatalogueV1 {
@@ -513,6 +513,25 @@ const LEGACY_RUNTIME_RECORD_ORDER_V1 = [
   'scan',
   'without',
   'dropRepeats',
+  'chunk',
+  'slidingWindow',
+  'aperture',
+  'intersperse',
+  'uniqBy',
+  'groupBy',
+  'partition',
+  'zip',
+  'zipWith',
+  'xprod',
+  'intersection',
+  'union',
+  'difference',
+  'symmetricDifference',
+  'adjust',
+  'update',
+  'insert',
+  'remove',
+  'includes',
 ] as const
 
 const LEGACY_TAG_LOOKUP_ORDER_V1 = [
@@ -581,6 +600,25 @@ const LEGACY_TAG_LOOKUP_ORDER_V1 = [
   'isObject',
   'isFunction',
   'dropRepeats',
+  'chunk',
+  'slidingWindow',
+  'aperture',
+  'intersperse',
+  'uniqBy',
+  'groupBy',
+  'partition',
+  'zip',
+  'zipWith',
+  'xprod',
+  'intersection',
+  'union',
+  'difference',
+  'symmetricDifference',
+  'adjust',
+  'update',
+  'insert',
+  'remove',
+  'includes',
 ] as const
 
 function recordsInNamedOrderV1(

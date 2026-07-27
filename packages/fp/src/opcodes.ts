@@ -68,6 +68,25 @@ export const OP_SORT_DESC = 91
 export const OP_SCAN = 102
 export const OP_WITHOUT = 103
 export const OP_DROP_REPEATS = 23
+export const OP_CHUNK = 104
+export const OP_SLIDING_WINDOW = 105
+export const OP_APERTURE = 106
+export const OP_INTERSPERSE = 107
+export const OP_UNIQ_BY = 108
+export const OP_GROUP_BY = 109
+export const OP_PARTITION = 110
+export const OP_ZIP = 111
+export const OP_ZIP_WITH = 112
+export const OP_XPROD = 113
+export const OP_INTERSECTION = 114
+export const OP_UNION = 115
+export const OP_DIFFERENCE = 116
+export const OP_SYMMETRIC_DIFFERENCE = 117
+export const OP_ADJUST = 118
+export const OP_UPDATE = 119
+export const OP_INSERT = 120
+export const OP_REMOVE = 121
+export const OP_INCLUDES = 122
 
 export const OP_NON_FUSEABLE = 0
 
@@ -137,6 +156,25 @@ export const OP_CODES: Record<string, number> = {
   isObject: OP_GUARD_IS_OBJECT,
   isFunction: OP_GUARD_IS_FUNCTION,
   dropRepeats: OP_DROP_REPEATS,
+  chunk: OP_CHUNK,
+  slidingWindow: OP_SLIDING_WINDOW,
+  aperture: OP_APERTURE,
+  intersperse: OP_INTERSPERSE,
+  uniqBy: OP_UNIQ_BY,
+  groupBy: OP_GROUP_BY,
+  partition: OP_PARTITION,
+  zip: OP_ZIP,
+  zipWith: OP_ZIP_WITH,
+  xprod: OP_XPROD,
+  intersection: OP_INTERSECTION,
+  union: OP_UNION,
+  difference: OP_DIFFERENCE,
+  symmetricDifference: OP_SYMMETRIC_DIFFERENCE,
+  adjust: OP_ADJUST,
+  update: OP_UPDATE,
+  insert: OP_INSERT,
+  remove: OP_REMOVE,
+  includes: OP_INCLUDES,
 }
 
 export const isFuseableOp = (op: number): boolean =>

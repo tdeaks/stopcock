@@ -1,8 +1,8 @@
 {
   "protocol": "stopcock.future-tier-manifest",
   "protocolVersion": 1,
-  "semanticManifestHash": "sha256:68f5454eb499db7db35f1f24422b181250b5c3a52db294d9bef35a5437ee278a",
-  "semanticFactsHash": "sha256:46e80d4f9af7f50a72984acf2797a616eb3ef32dd0db1efeb346e910e4868b03",
+  "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+  "semanticFactsHash": "sha256:e8ff1b4fdcdbb29ed57edfcdbd640d36531d4ea7367afd5f34a7f58f4e15771f",
   "tiers": [
     {
       "tier": "compact",

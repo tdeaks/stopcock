@@ -456,3 +456,100 @@ export const b = pipe([4,5], map((x) => x + 1))`)
     expect(out.code).toMatch(/export const r = _d0|export const r = _out0/u)
   })
 })
+
+/**
+ * Operators the compiler lowers as materialising boundaries. The generated
+ * code calls the real operator between two loops rather than reimplementing
+ * it, so what has to hold is that the surrounding pipeline still fuses, the
+ * boundary argument is evaluated once at construction, and the callbacks that
+ * do run stay in their original order relative to the neighbouring stages.
+ */
+const BOUNDARY_IMPORTS = `import { pipe } from '@stopcock/fp'
+import { map, filter, sum, length, adjust, aperture, chunk, difference, dropRepeats, groupBy, includes, insert, intersection, intersperse, partition, remove, slidingWindow, symmetricDifference, union, uniqBy, update, xprod, zip, zipWith } from '@stopcock/fp/array'`
+
+const BOUNDARY_LOCALS = Object.fromEntries(
+  [
+    'pipe', 'map', 'filter', 'sum', 'length', 'adjust', 'aperture', 'chunk',
+    'difference', 'dropRepeats', 'groupBy', 'includes', 'insert', 'intersection',
+    'intersperse', 'partition', 'remove', 'slidingWindow', 'symmetricDifference',
+    'union', 'uniqBy', 'update', 'xprod', 'zip', 'zipWith',
+  ].map((name) => [name, name]),
+)
+
+const boundaryFixture = (name: string, body: string): Fixture => ({
+  name,
+  imports: BOUNDARY_IMPORTS,
+  locals: BOUNDARY_LOCALS,
+  body,
+  expectTransformed: true,
+})
+
+const SRC = '[3,1,1,4,1,5,9,2,6]'
+
+const BOUNDARY_VALUES: readonly (readonly [string, string])[] = [
+  ['adjust', `return pipe(${SRC}, map((x) => x + 1), adjust(2, (x) => x * 10))`],
+  ['aperture', `return pipe(${SRC}, map((x) => x + 1), aperture(3))`],
+  ['chunk', `return pipe(${SRC}, map((x) => x + 1), chunk(4))`],
+  ['difference', `return pipe(${SRC}, map((x) => x + 1), difference([2,3]))`],
+  ['dropRepeats', `return pipe(${SRC}, map((x) => x + 1), dropRepeats)`],
+  ['groupBy', `return pipe(${SRC}, map((x) => x + 1), groupBy((x) => String(x % 3)))`],
+  ['includes', `return pipe(${SRC}, map((x) => x + 1), includes(5))`],
+  ['insert', `return pipe(${SRC}, map((x) => x + 1), insert(1, 99))`],
+  ['intersection', `return pipe(${SRC}, map((x) => x + 1), intersection([2,5,7]))`],
+  ['intersperse', `return pipe(${SRC}, map((x) => x + 1), intersperse(0))`],
+  ['partition', `return pipe(${SRC}, map((x) => x + 1), partition((x) => x % 2 === 0))`],
+  ['remove', `return pipe(${SRC}, map((x) => x + 1), remove(2, 3))`],
+  ['slidingWindow', `return pipe(${SRC}, map((x) => x + 1), slidingWindow(2))`],
+  ['symmetricDifference', `return pipe(${SRC}, map((x) => x + 1), symmetricDifference([2,42]))`],
+  ['union', `return pipe(${SRC}, map((x) => x + 1), union([42,2]))`],
+  ['uniqBy', `return pipe(${SRC}, map((x) => x + 1), uniqBy((x) => x % 4))`],
+  ['update', `return pipe(${SRC}, map((x) => x + 1), update(0, 77))`],
+  ['xprod', `return pipe(${SRC}, map((x) => x + 1), xprod(['a','b']))`],
+  ['zip', `return pipe(${SRC}, map((x) => x + 1), zip(['a','b','c']))`],
+  ['zipWith', `return pipe(${SRC}, map((x) => x + 1), zipWith([10,20,30], (a, b) => a + b))`],
+  // The segment after a boundary has to fuse on its own.
+  ['downstream fuses', `return pipe(${SRC}, chunk(3), map((c) => c.length), sum)`],
+  ['two boundaries', `return pipe(${SRC}, dropRepeats, chunk(2), length)`],
+  // An empty source still has to reach the boundary.
+  ['empty source', `return pipe([], map((x) => x), chunk(2))`],
+]
+
+describe('boundary operators keep their runtime meaning inside a compiled pipeline', () => {
+  it.each(BOUNDARY_VALUES)('%s', (name, body) => {
+    const result = runFixture(boundaryFixture(name.replace(/\W+/gu, '-'), body))
+    expect(result.map).not.toBeNull()
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+})
+
+const BOUNDARY_ORDER: readonly (readonly [string, string])[] = [
+  [
+    'the upstream stage completes before a boundary callback runs',
+    `const r = pipe([1,2,3], map((x) => { log.push('m' + x); return x }), uniqBy((x) => { log.push('u' + x); return x })); return [r, log.join(',')]`,
+  ],
+  [
+    'a boundary argument is evaluated once, before the loop',
+    `const size = () => { log.push('arg'); return 2 }; const r = pipe([1,2,3], map((x) => { log.push('m' + x); return x }), chunk(size())); return [r, log.join(',')]`,
+  ],
+  [
+    'a throwing boundary callback leaves the upstream log intact',
+    `try { pipe([1,2,3], map((x) => { log.push('m' + x); return x }), groupBy((x) => { if (x === 2) throw new Error('g'); return String(x) })) } catch (e) { return [e.message, log.join(',')] }`,
+  ],
+  [
+    'a stage after the boundary sees the boundary result',
+    `const r = pipe([1,2,3,4], chunk(2), map((c) => { log.push(c.join('+')); return c.length })); return [r, log.join(',')]`,
+  ],
+]
+
+describe('boundary operators preserve evaluation order', () => {
+  it.each(BOUNDARY_ORDER)('%s', (name, body) => {
+    const result = runFixture(boundaryFixture(name.replace(/\W+/gu, '-'), body), () => ({
+      log: [] as unknown[],
+    }))
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+})

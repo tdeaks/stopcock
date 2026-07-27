@@ -285,7 +285,9 @@ export const xprod: {
     }
     return out
     }
-    return _dl
+    _dl._op = 113
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 113, _a0)
   }
   const a = _arg0, b = _arg1
   let lenA = a.length
@@ -617,7 +619,9 @@ export const includes: {
       const arr = data, value = _a0
       return arr.includes(value)
     }
-    return _dl
+    _dl._op = 122
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 122, _a0)
   }
   const arr = _arg0, value = _arg1
   return arr.includes(value)
@@ -743,7 +747,9 @@ export const uniqBy: {
     }
     return out
     }
-    return _dl
+    _dl._op = 108
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 108, _a0)
   }
   const arr = _arg0, f = _arg1
   var seen = new Set(),
@@ -899,7 +905,9 @@ export const chunk: {
     }
     return out
     }
-    return _dl
+    _dl._op = 104
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 104, _a0)
   }
   const arr = _arg0, n = _arg1
   var len = arr.length
@@ -936,7 +944,9 @@ export const slidingWindow: {
     }
     return out
     }
-    return _dl
+    _dl._op = 105
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 105, _a0)
   }
   const arr = _arg0, n = _arg1
   let len = arr.length
@@ -978,7 +988,9 @@ export const intersperse: {
     }
     return out
     }
-    return _dl
+    _dl._op = 107
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 107, _a0)
   }
   const arr = _arg0, sep = _arg1
   let len = arr.length
@@ -1051,7 +1063,9 @@ export const groupBy: {
     }
     return out
     }
-    return _dl
+    _dl._op = 109
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 109, _a0)
   }
   const arr = _arg0, f = _arg1
   var out: Dict<any[]> = {}
@@ -1093,7 +1107,9 @@ export const partition: {
     truncate(fail, fi)
     return [pass, fail]
     }
-    return _dl
+    _dl._op = 110
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 110, _a0)
   }
   const arr = _arg0, pred = _arg1
   let len = arr.length
@@ -1140,7 +1156,9 @@ export const aperture: {
     }
     return out
     }
-    return _dl
+    _dl._op = 106
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 106, _a0)
   }
   const arr = _arg0, n = _arg1
   let len = arr.length
@@ -1180,7 +1198,9 @@ export const intersection: {
     }
     return out
     }
-    return _dl
+    _dl._op = 114
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 114, _a0)
   }
   const a = _arg0, b = _arg1
   const included = new Set(b)
@@ -1223,7 +1243,9 @@ export const union: {
     }
     return out
     }
-    return _dl
+    _dl._op = 115
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 115, _a0)
   }
   const a = _arg0, b = _arg1
   const seen = new Set()
@@ -1266,7 +1288,9 @@ export const difference: {
     }
     return out
     }
-    return _dl
+    _dl._op = 116
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 116, _a0)
   }
   const a = _arg0, b = _arg1
   const excluded = new Set(b)
@@ -1311,7 +1335,9 @@ export const symmetricDifference: {
     }
     return out
     }
-    return _dl
+    _dl._op = 117
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 117, _a0)
   }
   const a = _arg0, b = _arg1
   const setA = new Set(a)
@@ -1399,7 +1425,9 @@ export const zip: {
     }
     return out
     }
-    return _dl
+    _dl._op = 111
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 111, _a0)
   }
   const a = _arg0, b = _arg1
   var len = a.length < b.length ? a.length : b.length
@@ -1430,7 +1458,10 @@ export const zipWith: {
     }
     return out
     }
-    return _dl
+    _dl._op = 112
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 112, _a0, _a1)
   }
   const a = _arg0, b = _arg1, f = _arg2
   let lenA = a.length
@@ -1460,7 +1491,10 @@ export const adjust: {
     out[index] = f(arr[index])
     return out
     }
-    return _dl
+    _dl._op = 118
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 118, _a0, _a1)
   }
   const arr = _arg0, index = _arg1, f = _arg2
   let len = arr.length
@@ -1487,7 +1521,10 @@ export const update: {
     out[index] = value
     return out
     }
-    return _dl
+    _dl._op = 119
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 119, _a0, _a1)
   }
   const arr = _arg0, index = _arg1, value = _arg2
   var len = arr.length
@@ -1518,7 +1555,10 @@ export const insert: {
     }
     return out
     }
-    return _dl
+    _dl._op = 120
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 120, _a0, _a1)
   }
   const arr = _arg0, index = _arg1, value = _arg2
   let len = arr.length
@@ -1558,7 +1598,10 @@ export const remove: {
     }
     return out
     }
-    return _dl
+    _dl._op = 121
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 121, _a0, _a1)
   }
   const arr = _arg0, index = _arg1, count = _arg2
   let len = arr.length

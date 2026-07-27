@@ -54,7 +54,7 @@ describe('ops-table snapshot', () => {
       .sort((left, right) => left.semanticId.localeCompare(right.semanticId))
 
     expect(OPS_TABLE).toEqual(expected)
-    expect(OPS_TABLE).toHaveLength(40)
+    expect(OPS_TABLE).toHaveLength(59)
     const generatedSource = readFileSync(
       fileURLToPath(new URL('../ops-table.ts', import.meta.url)),
       'utf8',
