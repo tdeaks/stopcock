@@ -282,7 +282,7 @@ const out = _ok ? _v : 0
 
 ### Steps
 
-- [ ] Registry: add option/result domains and ops with facts and
+- [x] Registry: add option/result domains and ops with facts and
       templates. Initial set (~22): `O.map`, `O.flatMap` (callback
       returns a real Option; unwrap via `isSome`), `O.filter`,
       `O.getOrElse`, `O.orElse`, `O.match`, `O.fromNullable`,
@@ -290,22 +290,22 @@ const out = _ok ? _v : 0
       and the Result mirrors (`R.map`, `R.mapErr`, `R.flatMap`,
       `R.getOrElse`, `R.match`, `R.fromThrowable`, `R.toOption`...).
       Each is a straight-line template over the locals; no loop scaffold.
-- [ ] Boundary fusion: an array segment ending in an Option-producing
+- [x] Boundary fusion: an array segment ending in an Option-producing
       terminal (`head`, `last`, `find`, `findMap`, `get`) flows into a
       following option segment: one loop, early exit sets `_ok`/`_v`,
       then the option block runs. Extend `segmentsFromPlan` and
       `segmentKindsForOperatorFacts` with the `option` segment kind. The
       existing `DEFAULT_OPTION_NONE_LOCAL` plumbing in codegen.ts is the
       seed of this and gets subsumed.
-- [ ] `flatMap` boundary honesty: the callback returns a runtime Option,
+- [x] `flatMap` boundary honesty: the callback returns a runtime Option,
       so the template unwraps it (`_ok = isSome(_t); if (_ok) _v =
       _t.value`). One allocation at the callback edge, zero from our
       operators. Do not try to compile the callback's interior.
-- [ ] No runtime fusion work: an uncompiled Option chain runs as plain
+- [x] No runtime fusion work: an uncompiled Option chain runs as plain
       function calls through pipe (sequential semantics, already
       correct). Compact runtime untouched, no new opcodes in the compact
       engine.
-- [ ] Delete `dualUntagged2/3/4/N` in `dual-internal.ts`; revert the
+- [x] Delete `dualUntagged2/3/4/N` in `dual-internal.ts`; revert the
       untagged modules to plain `dual`. Compiled sites import no runtime
       Option machinery, so the tree-shaking contortion has no job.
       `size:consumer` gate proves it stays within ceiling.
@@ -501,6 +501,16 @@ Append one line per phase: `Phase N landed at <commit>`.
 
 Phase 0 landed at 1b4f1cc (0.1), e33c55a (0.2+0.4), 305c182 (0.3+0.5+0.6).
 Phase 1 landed at 287409e (1.1+1.2), 56917e3 (1.3), 784cda2 (1.4).
+Phase 2 landed at 094b029.
+Phase 2 notes: 19 ops (toNull is really toNullable; no get terminal exists;
+zip/getOrElse collisions avoided via canonical optionMap/resultMap names).
+Compiler-only rows: opcodes.ts and registry.ts byte-identical. dualUntagged
+NOT merged into plain dual: tagged dual drags OP_CODES into every consumer
+(216B -> 1471B vs the 922B ceiling) and its overloads collapse generic
+callbacks; dispatchers live in dual-untagged.ts instead, size gate green.
+Zero-allocation confirmed: 6.99 B/element retained on the compiled option
+chain vs 7.04 for bare array.map. option-result bench: compiled rows 2.2x
+to 2.4x over uncompiled. Suite 2912 tests green.
 Phase 1 notes: purity fold skipped (purity.ts governs @__PURE__ annotation
 policy per module, not per-op semantics; left as is). Overrides map has one
 member: findMap (AST fast path inspects the raw arrow). keys/values/
