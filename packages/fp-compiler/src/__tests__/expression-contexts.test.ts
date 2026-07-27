@@ -20,9 +20,17 @@ import { runFixture, type Fixture } from './harness'
  */
 
 const IMPORTS = `import { pipe } from '@stopcock/fp'
-import { filter, map, reduce, find } from '@stopcock/fp/array'`
+import { filter, map, reduce, find, some, every } from '@stopcock/fp/array'`
 
-const LOCALS = { pipe: 'pipe', filter: 'filter', map: 'map', reduce: 'reduce', find: 'find' }
+const LOCALS = {
+  pipe: 'pipe',
+  filter: 'filter',
+  map: 'map',
+  reduce: 'reduce',
+  find: 'find',
+  some: 'some',
+  every: 'every',
+}
 
 const fixture = (name: string, body: string): Fixture => ({
   name,
@@ -67,6 +75,17 @@ const VALUE_CONTEXTS: readonly (readonly [string, string])[] = [
   ['this inside a method', `const o = { k: 10, m() { return pipe([1,2,3], map((x) => x * this.k)) } }; return o.m()`],
   ['arguments of the enclosing function', `function outer() { return pipe([1,2], map((x) => x + arguments.length)) } return outer(9)`],
   ['empty source', `return pipe([], map((x) => x * 2))`],
+  ['for-of body', `let t = 0; for (const n of [1,2]) { t += pipe([1,2,3], map((x) => x * n)).length } return t`],
+  ['for-in body', `let t = 0; for (const k in { a: 1 }) { t += pipe([1,2,3], map((x) => x * 2)).length + k.length } return t`],
+  ['do-while body', `let n = 0; let t = 0; do { t += pipe([1,2], map((x) => x)).length; n++ } while (n < 2) return t`],
+  ['labeled loop containing a pipeline', `let t = 0; outer: for (let i = 0; i < 2; i++) { t += pipe([1,2], map((x) => x)).length; if (t > 3) break outer } return t`],
+  ['generator body in statement position', `function* g() { const r = pipe([1,2,3], map((x) => x * 2)); yield r.length } return [...g()]`],
+  ['async arrow expression body', `const f = async () => pipe([1,2,3], map((x) => x * 2)); return f() instanceof Promise`],
+  ['setter body', `const seen = []; const o = { set v(next) { seen.push(pipe(next, map((x) => x * 2)).length) } }; o.v = [1,2,3]; return seen`],
+  ['unary operand', `return !pipe([1,2,3], map((x) => x * 2)).length`],
+  ['typeof operand', `return typeof pipe([1,2,3], map((x) => x * 2))`],
+  ['optional call on the result', `return pipe([1,2,3], map((x) => x * 2))?.length`],
+  ['for-statement initializer', `let t = 0; for (let i = pipe([1,2,3], map((x) => x * 2)).length; i > 0; i--) { t++ } return t`],
 ]
 
 describe('compiled pipelines preserve meaning in every expression context', () => {
@@ -135,6 +154,26 @@ const ORDER_CONTEXTS: readonly (readonly [string, string])[] = [
   [
     'a throwing callback propagates and stops the loop',
     `try { pipe([1,2,3], map((x) => { log.push(x); if (x === 2) throw new Error('boom'); return x })) } catch (e) { return [e.message, log.join(',')] }`,
+  ],
+  [
+    'a short-circuited optional call does not run the pipeline',
+    `const o = null; const r = o?.m(pipe([1,2,3], map((x) => { log.push(x); return x }))); return [r, log.join(',')]`,
+  ],
+  [
+    'a short-circuited optional computed member does not run the pipeline',
+    `const o = null; const r = o?.[pipe([1], map((x) => { log.push(x); return x }))]; return [r, log.join(',')]`,
+  ],
+  [
+    'logical-or assignment short-circuits away from the pipeline',
+    `let v = 'set'; v ||= pipe([1,2,3], map((x) => { log.push(x); return x })); return [v, log.join(',')]`,
+  ],
+  [
+    'logical-and assignment short-circuits away from the pipeline',
+    `let v = 0; v &&= pipe([1,2,3], map((x) => { log.push(x); return x })); return [v, log.join(',')]`,
+  ],
+  [
+    'nullish assignment short-circuits away from the pipeline',
+    `let v = 'set'; v ??= pipe([1,2,3], map((x) => { log.push(x); return x })); return [v, log.join(',')]`,
   ],
 ]
 
@@ -290,6 +329,76 @@ describe('compiling root pipe preserves sequential callback order and count', ()
     )
     expect(result.compiled.value).toEqual(result.original.value)
     expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3,m4')
+  })
+})
+
+/**
+ * The fused loop replaces N sequential passes with one. Everything above is
+ * about where the loop is spliced; this is about whether the loop itself still
+ * observes the source the way the sequential tiers do. These are the divergences
+ * that would not show up as a wrong shape, only as a wrong answer: a source read
+ * twice, a callback built per element, a hole treated as a value, a live length,
+ * or an early exit that consumed the wrong number of items.
+ */
+const ITERATION_SEMANTICS: readonly (readonly [string, string])[] = [
+  [
+    'the source getter is read exactly once',
+    `const o = { get values() { log.push('get'); return [1,2,3] } }; const r = pipe(o.values, map((x) => x * 2)); return [r, log.join(',')]`,
+  ],
+  [
+    'a callback factory runs once, not per element',
+    `const make = () => { log.push('make'); return (x) => x * 2 }; const r = pipe([1,2,3], map(make())); return [r, log.join(',')]`,
+  ],
+  [
+    'holes in a sparse source are observed the same way',
+    `const src = [1,,3]; const r = pipe(src, map((x) => { log.push(String(x)); return x })); return [r, log.join(',')]`,
+  ],
+  [
+    'appending to the source during iteration does not change the item count',
+    `const src = [1,2,3]; const r = pipe(src, map((x) => { if (x === 1) src.push(99); log.push(x); return x })); return [r, log.join(','), src.length]`,
+  ],
+  [
+    'truncating the source during iteration is observed the same way',
+    `const src = [1,2,3,4]; const r = pipe(src, map((x) => { if (x === 1) src.length = 2; log.push(x); return x })); return [r, log.join(',')]`,
+  ],
+  [
+    'mutating a later element during iteration is observed the same way',
+    `const src = [1,2,3]; const r = pipe(src, map((x) => { if (x === 1) src[2] = 99; log.push(x); return x })); return [r, log.join(',')]`,
+  ],
+  [
+    'find consumes only up to the match',
+    `const r = pipe([1,2,3,4], map((x) => { log.push(x); return x }), find((x) => x === 2)); return [String(r && r.value), log.join(',')]`,
+  ],
+  [
+    'some stops at the first true',
+    `const r = pipe([1,2,3,4], map((x) => { log.push(x); return x }), some((x) => x === 2)); return [r, log.join(',')]`,
+  ],
+  [
+    'every stops at the first false',
+    `const r = pipe([1,2,3,4], map((x) => { log.push(x); return x }), every((x) => x < 2)); return [r, log.join(',')]`,
+  ],
+  [
+    'a throwing predicate leaves the earlier callback log intact',
+    `try { pipe([1,2,3], map((x) => { log.push('m' + x); return x }), filter((x) => { if (x === 2) throw new Error('p'); return true })) } catch (e) { return [e.message, log.join(',')] }`,
+  ],
+  [
+    'NaN is matched by find the same way',
+    `const r = pipe([1, NaN, 3], map((x) => x), find((x) => Number.isNaN(x))); return String(r && r.value)`,
+  ],
+  [
+    'negative zero survives the fused loop',
+    `const r = pipe([-0, 0], map((x) => x)); return [Object.is(r[0], -0), Object.is(r[1], 0)]`,
+  ],
+]
+
+describe('the fused loop observes the source exactly as the sequential tiers do', () => {
+  it.each(ITERATION_SEMANTICS)('%s', (name, body) => {
+    const result = runFixture(fixture(name.replace(/\W+/gu, '-'), body), () => ({
+      log: [] as unknown[],
+    }))
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
   })
 })
 

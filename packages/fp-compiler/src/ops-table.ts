@@ -1,14 +1,14 @@
 // GENERATED FILE -- do not edit by hand.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
 // The compiler consumes a data-only projection; it never imports FP runtime modules.
-// Semantic facts hash: sha256:b8fc99c1023be40c96da6df4c393ed1a0f17c86d86c7d1d5546fd37ed10b5c16
-// Complete semantic manifest hash: sha256:24208c1a8b963d5c951b4515789bd8cf9393a8120b07d1102f60805cd659f094
+// Semantic facts hash: sha256:46e80d4f9af7f50a72984acf2797a616eb3ef32dd0db1efeb346e910e4868b03
+// Complete semantic manifest hash: sha256:68f5454eb499db7db35f1f24422b181250b5c3a52db294d9bef35a5437ee278a
 // Compiler emitter ABI hash: sha256:3e60898a26eaba6a63b14eaa477fc30f3c6f7238fec10ac6b326a6928bc50d8c
 
 export const OPERATOR_SEMANTIC_FACTS_V1_HASH =
-  'sha256:b8fc99c1023be40c96da6df4c393ed1a0f17c86d86c7d1d5546fd37ed10b5c16'
+  'sha256:46e80d4f9af7f50a72984acf2797a616eb3ef32dd0db1efeb346e910e4868b03'
 export const OPERATOR_MANIFEST_V1_HASH =
-  'sha256:24208c1a8b963d5c951b4515789bd8cf9393a8120b07d1102f60805cd659f094'
+  'sha256:68f5454eb499db7db35f1f24422b181250b5c3a52db294d9bef35a5437ee278a'
 export const COMPILER_EMITTER_ABI_V1_HASH =
   'sha256:3e60898a26eaba6a63b14eaa477fc30f3c6f7238fec10ac6b326a6928bc50d8c'
 
@@ -72,6 +72,7 @@ export const TERMINAL_OP_NAMES = [
   'sum',
 ] as const
 export const BOUNDARY_OP_NAMES = [
+  'dropRepeats',
   'flatten',
   'init',
   'join',
@@ -128,6 +129,27 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     loweringHash: 'sha256:304983c8e685cf418935e1b9dc9a805f816f22cb35e7f0938c5f39f7dfd6799d',
     runnerId: '@stopcock/fp-compiler/runner/element/drop/v1',
     compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+  },
+  {
+    name: 'dropRepeats',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/array/dropRepeats',
+    semanticRevision: 1,
+    semanticHash: 'sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae',
+    inputDomain: 'array',
+    outputDomain: 'array',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/array/dropRepeats/lowering/compiler-aot',
+    loweringRevision: 1,
+    loweringAbiVersion: 1,
+    loweringHash: 'sha256:e8f3b060b8d103356504b3fbc5b6b8d87ad4569848f151eadf0328a81032d20d',
+    runnerId: '@stopcock/fp-compiler/runner/boundary/dropRepeats/v1',
+    compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
   },
   {

@@ -1664,8 +1664,8 @@ export const dropRepeats: <A>(arr: readonly A[]) => A[] = /* @__PURE__ */ (() =>
       if (!structEq(x, arr[i - 1])) result.push(x)
     }
     return result }
-  _f._op = 0
-  return registerTrustedOperator(_f, 0)
+  _f._op = 23
+  return registerTrustedOperator(_f, 23)
 })()
 
 export const shuffle: <A>(arr: readonly A[]) => A[] = (arr: any) => {

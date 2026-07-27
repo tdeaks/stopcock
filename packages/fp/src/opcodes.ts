@@ -67,6 +67,7 @@ export const OP_SORT_ASC = 90
 export const OP_SORT_DESC = 91
 export const OP_SCAN = 102
 export const OP_WITHOUT = 103
+export const OP_DROP_REPEATS = 23
 
 export const OP_NON_FUSEABLE = 0
 
@@ -135,6 +136,7 @@ export const OP_CODES: Record<string, number> = {
   isArray: OP_GUARD_IS_ARRAY,
   isObject: OP_GUARD_IS_OBJECT,
   isFunction: OP_GUARD_IS_FUNCTION,
+  dropRepeats: OP_DROP_REPEATS,
 }
 
 export const isFuseableOp = (op: number): boolean =>

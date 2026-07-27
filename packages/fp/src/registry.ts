@@ -2,7 +2,7 @@
 // Compatibility runtime projection of the canonical definition-only operator protocol.
 // Legacy callback/capability fields preserve 1.x bytes and never authorize a semantic or backend.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
-// Semantic facts hash: sha256:b8fc99c1023be40c96da6df4c393ed1a0f17c86d86c7d1d5546fd37ed10b5c16
+// Semantic facts hash: sha256:46e80d4f9af7f50a72984acf2797a616eb3ef32dd0db1efeb346e910e4868b03
 import * as OpCodes from './opcodes'
 import { OP_CODES, OP_NON_FUSEABLE } from './opcodes'
 
@@ -712,6 +712,15 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         callbackArity: 0,
         bindings: ['fn'],
         constructorPreserving: false,
+      }),
+      meta({
+        op: OpCodes.OP_DROP_REPEATS,
+        name: 'dropRepeats',
+        inputDomain: 'array',
+        outputDomain: 'array',
+        cardinality: 'materializer',
+        callbackArity: 0,
+        bindings: [],
       }),
     ] satisfies readonly OpMeta[]
   ).map((entry) => [entry.op, entry]),

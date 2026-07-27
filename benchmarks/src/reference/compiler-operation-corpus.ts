@@ -58,6 +58,7 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
   Object.freeze([
     operationCase('count', 'terminal', ['A.count((x) => x % 3 === 1)']),
     operationCase('drop', 'stateful', ['A.drop(257)']),
+    operationCase('dropRepeats', 'materializer', ['A.dropRepeats']),
     operationCase('dropWhile', 'stateful', ['A.dropWhile((x) => x < 0)']),
     operationCase('every', 'terminal', [
       'A.every((x) => x !== input[input.length - 1])',

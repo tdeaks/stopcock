@@ -1,7 +1,7 @@
 {
   "protocol": "stopcock.operator-manifest",
   "protocolVersion": 1,
-  "semanticFactsHash": "sha256:b8fc99c1023be40c96da6df4c393ed1a0f17c86d86c7d1d5546fd37ed10b5c16",
+  "semanticFactsHash": "sha256:46e80d4f9af7f50a72984acf2797a616eb3ef32dd0db1efeb346e910e4868b03",
   "semantics": [
     {
       "protocol": "stopcock.operator",
@@ -171,6 +171,82 @@
         ]
       },
       "semanticHash": "sha256:857f8b148b384da0038b282b27f65fb4121f85a7411bfa6830694190b24d7b0f"
+    },
+    {
+      "protocol": "stopcock.operator",
+      "protocolVersion": 1,
+      "semanticId": "@stopcock/fp/array/dropRepeats",
+      "semanticRevision": 1,
+      "publicName": "dropRepeats",
+      "inputDomain": "array",
+      "outputDomain": "array",
+      "acceptedLayouts": [
+        "js-array-dense",
+        "js-array-sparse-as-undefined"
+      ],
+      "cardinality": "materializer",
+      "outputShapeFunction": "@stopcock/fp/shape/materialized-array-v1",
+      "bindings": [],
+      "callback": {
+        "arity": 0,
+        "arguments": [],
+        "index": "not-passed",
+        "count": "not-applicable",
+        "order": "left-to-right",
+        "evaluationPoint": "not-applicable"
+      },
+      "evaluation": {
+        "exact": "observable-order-and-count",
+        "pure": "equivalent-rewrite-allowed",
+        "effects": "built-in-effects-only",
+        "determinism": "deterministic-except-user-code",
+        "sourceMutationVisibility": "snapshot-array-length-then-dense-index-read",
+        "thrownErrorIdentity": "preserved",
+        "thrownErrorTiming": "original-evaluation-point"
+      },
+      "termination": {
+        "earlyTermination": false,
+        "streamTermination": false,
+        "fullMaterialization": true,
+        "domainTransition": false
+      },
+      "ownership": {
+        "input": "borrowed-readonly",
+        "result": "fresh",
+        "aliasing": "none",
+        "detachment": "forbidden",
+        "resultStorage": [
+          "js-array"
+        ],
+        "scratchStorage": [
+          "js-array"
+        ],
+        "allocationScopes": [
+          "fusion-runner-result",
+          "fusion-runner-scratch"
+        ]
+      },
+      "capabilities": {
+        "worker": "unsupported",
+        "simd": "unsupported",
+        "wasm": "unsupported",
+        "incremental": "unsupported"
+      },
+      "diagnosticTag": {
+        "opcodeField": "_op",
+        "bindingFields": [],
+        "authority": "diagnostic-only"
+      },
+      "links": {
+        "referenceImplementationId": "@stopcock/fp/reference/array/dropRepeats/v1",
+        "lawIds": [
+          "@stopcock/fp/law/array/dropRepeats/v1"
+        ],
+        "differentialCorpusIds": [
+          "stopcock-fp-compiler-operation-complete-w0-v1"
+        ]
+      },
+      "semanticHash": "sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae"
     },
     {
       "protocol": "stopcock.operator",
@@ -5366,6 +5442,127 @@
       "compilerPipelineRole": "none",
       "compilerFinalBoundary": false,
       "loweringHash": "sha256:6e14aac7e7c100f695e0af5325db8abd91ffc98f9d79692e8283bb9f26ecd5fd"
+    },
+    {
+      "protocol": "stopcock.operator-lowering",
+      "protocolVersion": 1,
+      "loweringId": "@stopcock/fp/array/dropRepeats/lowering/compiler-aot",
+      "loweringRevision": 1,
+      "loweringAbiVersion": 1,
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/dropRepeats",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae"
+      },
+      "targetTier": "compiler",
+      "targetBackend": "aot",
+      "acceptedSemanticModes": [
+        "exact",
+        "pure"
+      ],
+      "acceptedLayouts": [
+        "js-array-dense",
+        "js-array-sparse-as-undefined"
+      ],
+      "cardinality": "materializer",
+      "outputShapeFunction": "@stopcock/fp/shape/materialized-array-v1",
+      "termination": {
+        "earlyTermination": false,
+        "streamTermination": false,
+        "fullMaterialization": true,
+        "domainTransition": false
+      },
+      "ownership": {
+        "result": "fresh",
+        "aliasing": "none",
+        "resultStorage": [
+          "js-array"
+        ],
+        "scratchStorage": [
+          "js-array"
+        ],
+        "allocationScopes": [
+          "fusion-runner-result",
+          "fusion-runner-scratch"
+        ]
+      },
+      "capability": {
+        "predicateId": "@stopcock/fp-compiler/capability/static-pipeline-v1",
+        "rejectionCodes": [
+          "@stopcock/reason/unsupported-binding-form",
+          "@stopcock/reason/opaque-callback",
+          "@stopcock/reason/semantic-mode-mismatch"
+        ]
+      },
+      "runnerId": "@stopcock/fp-compiler/runner/boundary/dropRepeats/v1",
+      "exactFallback": {
+        "semanticId": "@stopcock/fp/array/dropRepeats",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae"
+      },
+      "compilerPipelineRole": "boundary",
+      "compilerFinalBoundary": false,
+      "loweringHash": "sha256:e8f3b060b8d103356504b3fbc5b6b8d87ad4569848f151eadf0328a81032d20d"
+    },
+    {
+      "protocol": "stopcock.operator-lowering",
+      "protocolVersion": 1,
+      "loweringId": "@stopcock/fp/array/dropRepeats/lowering/legacy-portable",
+      "loweringRevision": 1,
+      "loweringAbiVersion": 1,
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/dropRepeats",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae"
+      },
+      "targetTier": "legacy",
+      "targetBackend": "portable",
+      "acceptedSemanticModes": [
+        "exact",
+        "pure"
+      ],
+      "acceptedLayouts": [
+        "js-array-dense",
+        "js-array-sparse-as-undefined"
+      ],
+      "cardinality": "materializer",
+      "outputShapeFunction": "@stopcock/fp/shape/materialized-array-v1",
+      "termination": {
+        "earlyTermination": false,
+        "streamTermination": false,
+        "fullMaterialization": true,
+        "domainTransition": false
+      },
+      "ownership": {
+        "result": "fresh",
+        "aliasing": "none",
+        "resultStorage": [
+          "js-array"
+        ],
+        "scratchStorage": [
+          "js-array"
+        ],
+        "allocationScopes": [
+          "fusion-runner-result",
+          "fusion-runner-scratch"
+        ]
+      },
+      "capability": {
+        "predicateId": "@stopcock/fp/capability/legacy-portable-v1",
+        "rejectionCodes": [
+          "@stopcock/reason/unsupported-layout",
+          "@stopcock/reason/semantic-mode-mismatch"
+        ]
+      },
+      "runnerId": "@stopcock/fp/runner/legacy/dropRepeats/v1",
+      "exactFallback": {
+        "semanticId": "@stopcock/fp/array/dropRepeats",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae"
+      },
+      "compilerPipelineRole": "none",
+      "compilerFinalBoundary": false,
+      "loweringHash": "sha256:72b3407fa8bc5ddc4963086072eab8e84ccd709d7af3868f987768c4fb18a5e2"
     },
     {
       "protocol": "stopcock.operator-lowering",
@@ -11574,6 +11771,131 @@
     {
       "protocol": "stopcock.fusion-runner",
       "protocolVersion": 1,
+      "descriptorId": "@stopcock/fp/array/dropRepeats/lowering/compiler-aot/descriptor",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/dropRepeats",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae"
+      },
+      "loweringId": "@stopcock/fp/array/dropRepeats/lowering/compiler-aot",
+      "loweringRevision": 1,
+      "loweringHash": "sha256:e8f3b060b8d103356504b3fbc5b6b8d87ad4569848f151eadf0328a81032d20d",
+      "loweringAbiVersion": 1,
+      "targetTier": "compiler",
+      "targetBackend": "aot",
+      "acceptedSemanticModes": [
+        "exact",
+        "pure"
+      ],
+      "acceptedLayouts": [
+        "js-array-dense",
+        "js-array-sparse-as-undefined"
+      ],
+      "cardinality": "materializer",
+      "outputShapeFunction": "@stopcock/fp/shape/materialized-array-v1",
+      "termination": {
+        "earlyTermination": false,
+        "streamTermination": false,
+        "fullMaterialization": true,
+        "domainTransition": false
+      },
+      "ownership": {
+        "result": "fresh",
+        "aliasing": "none",
+        "resultStorage": [
+          "js-array"
+        ],
+        "scratchStorage": [
+          "js-array"
+        ],
+        "allocationScopes": [
+          "fusion-runner-result",
+          "fusion-runner-scratch"
+        ]
+      },
+      "capability": {
+        "predicateId": "@stopcock/fp-compiler/capability/static-pipeline-v1",
+        "rejectionCodes": [
+          "@stopcock/reason/unsupported-binding-form",
+          "@stopcock/reason/opaque-callback",
+          "@stopcock/reason/semantic-mode-mismatch"
+        ]
+      },
+      "runnerId": "@stopcock/fp-compiler/runner/boundary/dropRepeats/v1",
+      "exactFallback": {
+        "semanticId": "@stopcock/fp/array/dropRepeats",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae"
+      },
+      "compilerPipelineRole": "boundary",
+      "compilerFinalBoundary": false,
+      "descriptorHash": "sha256:032c5562082a99ba3e8ae36fd8769e29fb7e9cc52981dad94e3ba84dbf1415c7"
+    },
+    {
+      "protocol": "stopcock.fusion-runner",
+      "protocolVersion": 1,
+      "descriptorId": "@stopcock/fp/array/dropRepeats/lowering/legacy-portable/descriptor",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/dropRepeats",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae"
+      },
+      "loweringId": "@stopcock/fp/array/dropRepeats/lowering/legacy-portable",
+      "loweringRevision": 1,
+      "loweringHash": "sha256:72b3407fa8bc5ddc4963086072eab8e84ccd709d7af3868f987768c4fb18a5e2",
+      "loweringAbiVersion": 1,
+      "targetTier": "legacy",
+      "targetBackend": "portable",
+      "acceptedSemanticModes": [
+        "exact",
+        "pure"
+      ],
+      "acceptedLayouts": [
+        "js-array-dense",
+        "js-array-sparse-as-undefined"
+      ],
+      "cardinality": "materializer",
+      "outputShapeFunction": "@stopcock/fp/shape/materialized-array-v1",
+      "termination": {
+        "earlyTermination": false,
+        "streamTermination": false,
+        "fullMaterialization": true,
+        "domainTransition": false
+      },
+      "ownership": {
+        "result": "fresh",
+        "aliasing": "none",
+        "resultStorage": [
+          "js-array"
+        ],
+        "scratchStorage": [
+          "js-array"
+        ],
+        "allocationScopes": [
+          "fusion-runner-result",
+          "fusion-runner-scratch"
+        ]
+      },
+      "capability": {
+        "predicateId": "@stopcock/fp/capability/legacy-portable-v1",
+        "rejectionCodes": [
+          "@stopcock/reason/unsupported-layout",
+          "@stopcock/reason/semantic-mode-mismatch"
+        ]
+      },
+      "runnerId": "@stopcock/fp/runner/legacy/dropRepeats/v1",
+      "exactFallback": {
+        "semanticId": "@stopcock/fp/array/dropRepeats",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:090649b8c75f90287c9b7011a1936f7d9874896a292be387388d38c3659d2eae"
+      },
+      "compilerPipelineRole": "none",
+      "compilerFinalBoundary": false,
+      "descriptorHash": "sha256:2ce9465a17013038da8c28369dda50de14a6574b19db55dd165d2edb97662f67"
+    },
+    {
+      "protocol": "stopcock.fusion-runner",
+      "protocolVersion": 1,
       "descriptorId": "@stopcock/fp/array/dropWhile/lowering/compiler-aot/descriptor",
       "semantic": {
         "semanticId": "@stopcock/fp/array/dropWhile",
@@ -17727,5 +18049,5 @@
     }
   ],
   "receiptSchemaHash": "sha256:2a384c3a3ecf3b608f7d00c128a821e8d9e1d73ea715748062614bee61ad5884",
-  "manifestHash": "sha256:24208c1a8b963d5c951b4515789bd8cf9393a8120b07d1102f60805cd659f094"
+  "manifestHash": "sha256:68f5454eb499db7db35f1f24422b181250b5c3a52db294d9bef35a5437ee278a"
 }
