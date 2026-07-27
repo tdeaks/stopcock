@@ -132,6 +132,16 @@ describe('packed stopcock check', () => {
     expect(invalid.stdout).toBe('')
     expect(invalid.stderr).toContain('duplicate')
 
+    const malformedArtifactContext = check([
+      'check',
+      '--receipts',
+      'artifacts/invalid/artifact-context.json',
+      '--policy',
+      'unsupported',
+    ])
+    expect(malformedArtifactContext.status).toBe(2)
+    expect(malformedArtifactContext.stderr).toContain('artifactContext')
+
     expect(check(['check', '--receipts', 'artifacts/receipts']).status).toBe(2)
   })
 })

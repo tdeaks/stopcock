@@ -21,7 +21,15 @@
  * module. Exact peer ranges are necessary but not sufficient, so identity is
  * negotiated by hash at runtime as well — see `OPTIMIZER_ABI_IDENTITY`.
  */
-import { SEMANTIC_MANIFEST_HASH } from './internal/abi-identity.generated'
+import {
+  OPTIMIZER_BINDING_SCHEMA_HASH,
+  OPTIMIZER_ABI_VERSION,
+  OPTIMIZER_CONSUME_SCHEMA_HASH,
+  OPTIMIZER_EXECUTION_CONTRACT_HASH,
+  OPTIMIZER_PROTOCOL_VERSION,
+  OPTIMIZER_RUNNER_SCHEMA_HASH,
+  SEMANTIC_MANIFEST_HASH,
+} from './internal/abi-identity.generated'
 import { buildCompactPlan } from './internal/compact/plan'
 import { interpret } from './interpret'
 import { extractBinding as extractPlanBinding } from './plan'
@@ -29,10 +37,13 @@ import type { BoundPlan, ConsumeMeta, PlanShape, SegmentShape, StepBinding } fro
 import type { OpCode, OpDomain } from './registry'
 import { trustedOperatorEntry } from './internal/provenance'
 
-/** Incremented when the shape of anything below changes. */
-export const OPTIMIZER_ABI_VERSION = 1
-/** Incremented when opcode meanings change, independently of the ABI shape. */
-export const OPTIMIZER_PROTOCOL_VERSION = 1
+// Deliberately unexported module identity. It is neither an operator
+// capability nor provenance authority: vetPipeline is the only way it crosses
+// the boundary, and the optimizer uses it solely to reject a plan assembled by
+// a different physical FP instance in a duplicate-install layout.
+const FP_OPTIMIZER_INSTANCE_TOKEN = Object.freeze(Object.create(null))
+
+export { OPTIMIZER_ABI_VERSION, OPTIMIZER_PROTOCOL_VERSION }
 
 /**
  * Identity the two sides negotiate before a specialized runner is invoked.
@@ -44,28 +55,45 @@ export interface OptimizerAbiIdentityV1 {
   readonly protocolVersion: number
   /** Identity of the semantic manifest this FP's opcodes are read against. */
   readonly semanticManifestHash: string
+  /** Versioned fusion-runner descriptor and bank vocabulary. */
+  readonly runnerSchemaHash: string
+  /** Vetted-plan and call-local binding-slot wire contract. */
+  readonly bindingSchemaHash: string
+  /** Early-termination consumption reporting contract. */
+  readonly consumeSchemaHash: string
+  /** Exact execution, ownership, aliasing, and error contract. */
+  readonly executionContractHash: string
 }
 
 export const OPTIMIZER_ABI_IDENTITY: OptimizerAbiIdentityV1 = Object.freeze({
   abiVersion: OPTIMIZER_ABI_VERSION,
   protocolVersion: OPTIMIZER_PROTOCOL_VERSION,
   semanticManifestHash: SEMANTIC_MANIFEST_HASH,
+  runnerSchemaHash: OPTIMIZER_RUNNER_SCHEMA_HASH,
+  bindingSchemaHash: OPTIMIZER_BINDING_SCHEMA_HASH,
+  consumeSchemaHash: OPTIMIZER_CONSUME_SCHEMA_HASH,
+  executionContractHash: OPTIMIZER_EXECUTION_CONTRACT_HASH,
 })
 
 /**
  * A pipeline FP has authenticated, reduced to data.
  *
- * `bindings` holds the caller's callbacks for this call only. Neither side
- * retains it: FP builds it per call and the optimizer must not cache it, or a
- * later call with different callbacks would run against stale ones.
+ * `bindings` holds the caller's callbacks for this authenticated plan. FP
+ * creates fresh boundary data. The optimizer's shape caches never retain
+ * bindings; its bounded identity cache may retain an exact step/binding set
+ * until eviction, and a returned compiled runner retains its own bindings for
+ * that runner's lifetime. Bindings must never be reused for different step
+ * identities.
  */
 export interface VettedPlanV1 {
+  /** Opaque per-module identity; not public authority and never callable. */
+  readonly instanceToken: object
   readonly identity: OptimizerAbiIdentityV1
   readonly codes: readonly number[]
   readonly segments: readonly SegmentShape[]
   readonly bindings: readonly StepBinding[]
   /** Exact semantics. Reserved so a future mode cannot be assumed away. */
-  readonly mode: 'exact'
+  readonly mode: 'exact' | 'pure'
   /** Input layouts FP guarantees for this plan. */
   readonly layout: 'dense-array'
   /** True when every step authenticated. A false here must not be specialized. */
@@ -80,14 +108,18 @@ export interface VettedPlanV1 {
  * as it does for FP's own tiers — but it does clear `fullyTrusted`, and the
  * optimizer is required to treat that as ineligible for specialization.
  */
-export function vetPipeline(steps: readonly unknown[]): VettedPlanV1 {
+export function vetPipeline(
+  steps: readonly unknown[],
+  mode: VettedPlanV1['mode'] = 'exact',
+): VettedPlanV1 {
   const plan = buildCompactPlan(steps)
   return Object.freeze({
+    instanceToken: FP_OPTIMIZER_INSTANCE_TOKEN,
     identity: OPTIMIZER_ABI_IDENTITY,
     codes: plan.shape.codes,
     segments: plan.shape.segments,
     bindings: plan.bindings,
-    mode: 'exact',
+    mode,
     layout: 'dense-array',
     fullyTrusted: steps.every((step) => trustedOperatorEntry(step) !== undefined),
   } as const)
@@ -128,6 +160,18 @@ export function negotiate(candidate: OptimizerAbiIdentityV1): string | undefined
   }
   if (candidate.semanticManifestHash !== OPTIMIZER_ABI_IDENTITY.semanticManifestHash) {
     return 'semantic manifest hash differs'
+  }
+  if (candidate.runnerSchemaHash !== OPTIMIZER_ABI_IDENTITY.runnerSchemaHash) {
+    return 'runner schema hash differs'
+  }
+  if (candidate.bindingSchemaHash !== OPTIMIZER_ABI_IDENTITY.bindingSchemaHash) {
+    return 'binding schema hash differs'
+  }
+  if (candidate.consumeSchemaHash !== OPTIMIZER_ABI_IDENTITY.consumeSchemaHash) {
+    return 'consume schema hash differs'
+  }
+  if (candidate.executionContractHash !== OPTIMIZER_ABI_IDENTITY.executionContractHash) {
+    return 'execution contract hash differs'
   }
   return undefined
 }

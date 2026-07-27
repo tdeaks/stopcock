@@ -19,13 +19,24 @@ import {
   FUSION_RUNNER_PROTOCOL_VERSION,
   type FusionRunnerDescriptorV1,
 } from '../../fp/codegen/protocol/fusion-runner-v1'
-import { OPERATOR_MANIFEST_V1_HASH as SEMANTIC_MANIFEST_HASH } from '../../fp/codegen/protocol/generate-protocol'
+import {
+  OPERATOR_MANIFEST_V1_HASH as SEMANTIC_MANIFEST_HASH,
+  OPTIMIZER_ABI_VERSION_V1 as OPTIMIZER_ABI_VERSION,
+  OPTIMIZER_BANK_PROTOCOL_VERSION_V1,
+  OPTIMIZER_BINDING_SCHEMA_V1_HASH,
+  OPTIMIZER_CONSUME_SCHEMA_V1_HASH,
+  OPTIMIZER_EXECUTION_CONTRACT_V1_HASH,
+  OPTIMIZER_PROTOCOL_VERSION_V1 as OPTIMIZER_PROTOCOL_VERSION,
+  OPTIMIZER_RUNNER_SCHEMA_V1_HASH,
+} from '../../fp/codegen/protocol/generate-protocol'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const OUT = join(ROOT, 'src', 'portable-templates.ts')
 const DESCRIPTOR_OUT = join(ROOT, 'codegen', 'generated', 'fusion-runner-bank-v1.json')
 const KEYS_OUT = join(ROOT, 'src', 'runner-keys.generated.ts')
 const BANK_IDENTITY_OUT = join(ROOT, 'src', 'bank-identity.generated.ts')
+const ABI_EXPECTATIONS_OUT = join(ROOT, 'src', 'abi-expectations.generated.ts')
+const OPTIMIZER_BANK_SCHEMA_VERSION = OPTIMIZER_BANK_PROTOCOL_VERSION_V1
 
 /** Everything a descriptor says that is not one of its two identity fields. */
 type DescriptorFacts = Omit<
@@ -584,7 +595,7 @@ function writeDescriptorBank(): void {
   }))
   const bank = {
     protocol: 'stopcock.fusion-runner-bank',
-    protocolVersion: 1,
+    protocolVersion: OPTIMIZER_BANK_SCHEMA_VERSION,
     semanticManifestHash: SEMANTIC_MANIFEST_HASH,
     bankHash,
     genericFallbackId: GENERIC_FALLBACK_ID,
@@ -646,12 +657,14 @@ function writeBankIdentity(bankHash: string): void {
     `// GENERATED FILE. Do not edit by hand — run \`bun run codegen\` to regenerate.
 
 export interface OptimizerBankIdentityV1 {
+  readonly schemaVersion: number
   readonly bankHash: string
   readonly semanticManifestHash: string
   readonly runnerCount: number
 }
 
 export const OPTIMIZER_BANK_IDENTITY: OptimizerBankIdentityV1 = Object.freeze({
+  schemaVersion: ${OPTIMIZER_BANK_SCHEMA_VERSION},
   bankHash: '${bankHash}',
   semanticManifestHash: '${SEMANTIC_MANIFEST_HASH}',
   runnerCount: ${descriptorFacts.length},
@@ -659,6 +672,39 @@ export const OPTIMIZER_BANK_IDENTITY: OptimizerBankIdentityV1 = Object.freeze({
 `,
   )
   console.log(`bank-identity: ${bankHash}`)
+}
+
+/**
+ * A second generated release fact, intentionally separate from the runtime
+ * bank identity.  The compatibility gate compares the two modules so a stale
+ * or swapped checked-in runner bank cannot agree with itself.
+ */
+function writeAbiExpectations(bankHash: string): void {
+  writeFileSync(
+    ABI_EXPECTATIONS_OUT,
+    `// GENERATED FILE. Do not edit by hand — run \`bun run codegen\` to regenerate.
+
+/** Static ABI facts this optimizer build was generated and tested against. */
+export const OPTIMIZER_ABI_EXPECTATIONS = Object.freeze({
+  fpIdentity: {
+    abiVersion: ${OPTIMIZER_ABI_VERSION},
+    protocolVersion: ${OPTIMIZER_PROTOCOL_VERSION},
+    semanticManifestHash: '${SEMANTIC_MANIFEST_HASH}',
+    runnerSchemaHash: '${OPTIMIZER_RUNNER_SCHEMA_V1_HASH}',
+    bindingSchemaHash: '${OPTIMIZER_BINDING_SCHEMA_V1_HASH}',
+    consumeSchemaHash: '${OPTIMIZER_CONSUME_SCHEMA_V1_HASH}',
+    executionContractHash: '${OPTIMIZER_EXECUTION_CONTRACT_V1_HASH}',
+  },
+  optimizerBank: {
+    schemaVersion: ${OPTIMIZER_BANK_SCHEMA_VERSION},
+    bankHash: '${bankHash}',
+    semanticManifestHash: '${SEMANTIC_MANIFEST_HASH}',
+    runnerCount: ${descriptorFacts.length},
+  },
+} as const)
+`,
+  )
+  console.log(`abi-expectations: ${bankHash}`)
 }
 
 function main(): void {
@@ -873,7 +919,9 @@ ${manifestSink.join(',\n')},
   }
   writeDescriptorBank()
   writeRunnerKeys()
-  writeBankIdentity(bankHashOf(descriptorFacts))
+  const bankHash = bankHashOf(descriptorFacts)
+  writeBankIdentity(bankHash)
+  writeAbiExpectations(bankHash)
 }
 
 main()

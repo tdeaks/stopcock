@@ -20,7 +20,7 @@ import {
 } from './codegen.js'
 import {
   COMPILER_EMITTER_ABI_V1_HASH,
-  OPERATOR_SEMANTIC_FACTS_V1_HASH,
+  OPERATOR_MANIFEST_V1_HASH,
   OPS_TABLE,
 } from './ops-table.js'
 import { segmentKindsForOperatorFacts } from './plan-ir.js'
@@ -89,7 +89,12 @@ export const COMPILER_HASH = sha256(
   }),
 )
 
-export const SEMANTIC_MANIFEST_HASH = OPERATOR_SEMANTIC_FACTS_V1_HASH
+/**
+ * Complete S2 identity, not merely the operator-facts subset. In particular,
+ * this changes when the receipt schema or a lowering/runner descriptor changes,
+ * so an old receipt cannot authenticate itself against a newer wire contract.
+ */
+export const SEMANTIC_MANIFEST_HASH = OPERATOR_MANIFEST_V1_HASH
 
 /**
  * Free-text reasons are for humans. A receipt carries a code from the frozen
@@ -126,6 +131,7 @@ export interface ReceiptContext {
   readonly configHash: string
   readonly emittedCode: string | null
   readonly sourceMap: string | null
+  readonly artifactContext?: CompilerReceiptV1['artifactContext']
 }
 
 /**
@@ -213,6 +219,7 @@ export const buildCompilerReceipt = (
     site.transformed && context.emittedCode !== null ? sha256(context.emittedCode) : null
   const sourceMapHash =
     site.transformed && context.sourceMap !== null ? sha256(context.sourceMap) : null
+  const artifactContext = context.artifactContext ?? null
   const receiptCore = {
     kind: 'stopcock.compiler-receipt' as const,
     schemaVersion: 1 as const,
@@ -234,6 +241,7 @@ export const buildCompilerReceipt = (
     reasonCodes,
     emittedCodeHash,
     sourceMapHash,
+    artifactContext,
     evidenceRefs: [] as readonly string[],
   }
 
@@ -278,6 +286,12 @@ export const serializeReceipts = (receipts: readonly CompilerReceiptV1[]): strin
       reasonCodes: 0,
       emittedCodeHash: 0,
       sourceMapHash: 0,
+      artifactContext: 0,
+      fpArtifactHash: 0,
+      compilerArtifactHash: 0,
+      optimizerArtifactHash: 0,
+      fpAbiHash: 0,
+      optimizerBankHash: 0,
       evidenceRefs: 0,
     }),
     2,

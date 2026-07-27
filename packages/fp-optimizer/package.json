@@ -18,7 +18,7 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/abi-entry.d.ts",
       "import": "./dist/index.js"
     }
   },

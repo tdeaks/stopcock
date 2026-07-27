@@ -726,6 +726,13 @@ describe('ReceiptSchemaV1 generated view parity', () => {
     reasonCodes: [],
     emittedCodeHash: hash,
     sourceMapHash: null,
+    artifactContext: {
+      fpArtifactHash: hash,
+      compilerArtifactHash: hash,
+      optimizerArtifactHash: null,
+      fpAbiHash: hash,
+      optimizerBankHash: null,
+    },
     evidenceRefs: [hash],
   }
   const planReceipt = {

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { OPERATOR_DEFINITION_RECORDS_V1 } from '../../../fp/codegen/protocol/operator-definitions'
 import {
   COMPILER_EMITTER_ABI_V1_HASH as LIVE_COMPILER_EMITTER_ABI_V1_HASH,
+  OPERATOR_MANIFEST_V1_HASH as LIVE_OPERATOR_MANIFEST_V1_HASH,
   OPERATOR_SEMANTIC_FACTS_V1_HASH,
   RETAINED_COMPILER_OPERATION_CORPUS_V1,
 } from '../../../fp/codegen/protocol/generate-protocol'
@@ -18,6 +19,7 @@ import {
   COMPILER_EMITTER_ABI_V1_HASH,
   ELEMENT_OP_NAMES,
   FINAL_BOUNDARY_OP_NAMES,
+  OPERATOR_MANIFEST_V1_HASH,
   OPS_TABLE,
   TERMINAL_OP_NAMES,
 } from '../ops-table'
@@ -59,9 +61,13 @@ describe('ops-table snapshot', () => {
     )
     expect(generatedSource).toContain(`// Semantic facts hash: ${OPERATOR_SEMANTIC_FACTS_V1_HASH}`)
     expect(generatedSource).toContain(
+      `// Complete semantic manifest hash: ${LIVE_OPERATOR_MANIFEST_V1_HASH}`,
+    )
+    expect(generatedSource).toContain(
       `// Compiler emitter ABI hash: ${LIVE_COMPILER_EMITTER_ABI_V1_HASH}`,
     )
-    expect(generatedSource).not.toContain('OPERATOR_MANIFEST_HASH')
+    expect(OPERATOR_MANIFEST_V1_HASH).toBe(LIVE_OPERATOR_MANIFEST_V1_HASH)
+    expect(OPERATOR_MANIFEST_V1_HASH).not.toBe(OPERATOR_SEMANTIC_FACTS_V1_HASH)
     expect(COMPILER_EMITTER_ABI_V1_HASH).toBe(LIVE_COMPILER_EMITTER_ABI_V1_HASH)
   })
 

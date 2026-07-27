@@ -30,6 +30,7 @@ export const compilerReceiptCore = (
   reasonCodes: receipt.reasonCodes,
   emittedCodeHash: receipt.emittedCodeHash,
   sourceMapHash: receipt.sourceMapHash,
+  artifactContext: receipt.artifactContext,
   evidenceRefs: receipt.evidenceRefs,
 })
 

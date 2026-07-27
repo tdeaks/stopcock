@@ -37,7 +37,7 @@ import {
 } from './plan-ir'
 import {
   COMPILER_EMITTER_ABI_V1_HASH,
-  OPERATOR_SEMANTIC_FACTS_V1_HASH,
+  OPERATOR_MANIFEST_V1_HASH,
 } from './ops-table'
 import type { ReceiptReasonCodeV1 } from './receipt-schema.generated'
 import type {
@@ -627,10 +627,10 @@ function staleCompilerSelection(
 ): { readonly reason: string; readonly reasonCode: ReceiptReasonCodeV1 } | undefined {
   if (
     options.expectedSemanticManifestHash !== undefined &&
-    options.expectedSemanticManifestHash !== OPERATOR_SEMANTIC_FACTS_V1_HASH
+    options.expectedSemanticManifestHash !== OPERATOR_MANIFEST_V1_HASH
   ) {
     return {
-      reason: `stale semantic manifest: expected ${options.expectedSemanticManifestHash}, compiler has ${OPERATOR_SEMANTIC_FACTS_V1_HASH}`,
+      reason: `stale semantic manifest: expected ${options.expectedSemanticManifestHash}, compiler has ${OPERATOR_MANIFEST_V1_HASH}`,
       reasonCode: 'stale-semantic-hash',
     }
   }

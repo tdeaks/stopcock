@@ -19,6 +19,14 @@ const CONTEXT: ReceiptContext = {
   sourceMap: '{"version":3}',
 }
 
+const ARTIFACT_CONTEXT = {
+  fpArtifactHash: `sha256:${'1'.repeat(64)}`,
+  compilerArtifactHash: `sha256:${'2'.repeat(64)}`,
+  optimizerArtifactHash: `sha256:${'3'.repeat(64)}`,
+  fpAbiHash: `sha256:${'4'.repeat(64)}`,
+  optimizerBankHash: `sha256:${'5'.repeat(64)}`,
+} as const
+
 const siteOf = (overrides: Partial<DiagnosticSite> = {}): DiagnosticSite => ({
   id: '/repo/src/app.ts',
   line: 12,
@@ -69,6 +77,48 @@ describe('receipt emission', () => {
 
     expect(fallback.receiptId).not.toBe(transformed.receiptId)
     expect(changedSource.receiptId).not.toBe(transformed.receiptId)
+  })
+
+  it('binds a complete packed artifact context into the receipt identity', () => {
+    const ordinary = buildCompilerReceipt(siteOf(), 'source', CONTEXT)
+    const packed = buildCompilerReceipt(siteOf(), 'source', {
+      ...CONTEXT,
+      artifactContext: ARTIFACT_CONTEXT,
+    })
+    const changedArtifact = buildCompilerReceipt(siteOf(), 'source', {
+      ...CONTEXT,
+      artifactContext: { ...ARTIFACT_CONTEXT, fpArtifactHash: `sha256:${'6'.repeat(64)}` },
+    })
+
+    expect(ordinary.artifactContext).toBeNull()
+    expect(packed.artifactContext).toEqual(ARTIFACT_CONTEXT)
+    expect(packed.receiptId).not.toBe(ordinary.receiptId)
+    expect(changedArtifact.receiptId).not.toBe(packed.receiptId)
+    expect(validateReceiptV1(packed)).toEqual({ ok: true, value: packed })
+  })
+
+  it('rejects malformed or unknown artifact context fields without relaxing record keys', () => {
+    const receipt = buildCompilerReceipt(siteOf(), 'source', {
+      ...CONTEXT,
+      artifactContext: ARTIFACT_CONTEXT,
+    })
+    const malformed = validateReceiptV1({
+      ...receipt,
+      artifactContext: { ...ARTIFACT_CONTEXT, optimizerBankHash: null },
+    })
+    const unknown = validateReceiptV1({
+      ...receipt,
+      artifactContext: { ...ARTIFACT_CONTEXT, unexpected: true },
+    })
+
+    expect(malformed.ok).toBe(false)
+    expect(malformed.ok ? [] : malformed.errors).toContain(
+      'artifactContext optimizerArtifactHash and optimizerBankHash must both be sha256 hashes or both be null',
+    )
+    expect(unknown.ok).toBe(false)
+    expect(unknown.ok ? [] : unknown.errors).toContain(
+      'artifactContext has unknown or missing fields',
+    )
   })
 
   it('orders receipts stably regardless of discovery order', () => {

@@ -123,6 +123,32 @@ export const fused = pipe([1, 2, 3], map((x) => x * 2))
     expect(JSON.stringify(receipts[0])).not.toContain('/repo/src/fixture.ts')
   })
 
+  it('passes an extracted artifact context through unchanged to each receipt', async () => {
+    const artifactContext = {
+      fpArtifactHash: `sha256:${'1'.repeat(64)}`,
+      compilerArtifactHash: `sha256:${'2'.repeat(64)}`,
+      optimizerArtifactHash: `sha256:${'3'.repeat(64)}`,
+      fpAbiHash: `sha256:${'4'.repeat(64)}`,
+      optimizerBankHash: `sha256:${'5'.repeat(64)}`,
+    } as const
+    const receipts: any[] = []
+    const plugin = stopcockFp.raw({
+      receipts: { artifactContext, onReceipts: (emitted) => receipts.push(...emitted) },
+    }) as any
+    const source = `import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+export const result = pipe([1], map((value) => value + 1))
+`
+
+    plugin.buildStart.call({})
+    await plugin.transform.handler.call({}, source, '/repo/src/fixture.ts')
+    plugin.buildEnd.call({})
+
+    expect(receipts).toHaveLength(1)
+    expect(receipts[0]?.artifactContext).toEqual(artifactContext)
+  })
+
+
   it('emits a tier-visible receipt for an opaque-only site when diagnostics are disabled', async () => {
     const source = `
 import { pipe } from '@stopcock/fp'

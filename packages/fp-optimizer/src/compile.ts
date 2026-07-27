@@ -8,22 +8,20 @@ import {
   OP_REDUCE,
   OP_TAKE,
 } from '@stopcock/fp/abi'
-import { vetOperator } from '@stopcock/fp/abi'
+import { IncompatibleOptimizerError, runExactFallback, vetOperator } from '@stopcock/fp/abi'
 import { recordSelection } from './selection-trace'
-import {
-  findElidableMapBeforeLength,
-  pureRewrites,
-  type PureRewrite,
-} from '@stopcock/fp/abi'
+import { findElidableMapBeforeLength, pureRewrites, type PureRewrite } from '@stopcock/fp/abi'
 import { none as optionNone, some as optionSome } from '@stopcock/fp/option'
 import { lowerShape, type PortableRunner } from './lower'
-import { buildPlan } from './plan-bridge'
 import {
-  planShapeKey,
-  type PlanShape,
-  type SegmentShape,
-  type StepBinding,
-} from '@stopcock/fp/abi'
+  buildOptimizerPlan,
+  compatibilityCandidateForPlan,
+  evaluatePlanCompatibility,
+  type OptimizerBoundPlanV1,
+  evaluateOptimizerCompatibility,
+  type OptimizerCompatibilityCandidateV1,
+} from './abi-compatibility'
+import { planShapeKey, type PlanShape, type SegmentShape, type StepBinding } from '@stopcock/fp/abi'
 import { type OpCode, type OpDomain } from '@stopcock/fp/abi'
 import {
   entryCount,
@@ -66,8 +64,6 @@ export type Runner<Input = unknown, Output = unknown> = (input: Input) => Output
 
 export type { PureRewrite }
 
-
-
 export interface OptimizerStats {
   readonly plansBuilt: number
   readonly lowerings: number
@@ -81,6 +77,7 @@ let plansBuilt = 0
 let lowerings = 0
 let shapeCacheHits = 0
 let shapeCacheMisses = 0
+const exactFallbackEntries = new WeakSet<ShapeEntry>()
 
 export function getOptimizerStats(): Readonly<OptimizerStats> {
   return Object.freeze({
@@ -127,9 +124,35 @@ export function dispatchAndTrack(
   data: unknown,
   bindings: readonly StepBinding[],
 ): unknown {
+  if (exactFallbackEntries.has(entry)) return entry.run(data, bindings)
   entry.execCount++
   recordSelection('executed', 'shared', entry.shapeKey)
   return entry.run(data, bindings)
+}
+
+/**
+ * A physical ABI mismatch still has to fit the fusion engine's existing
+ * shape-entry call seam. This entry is deliberately outside the specialized
+ * shape cache and selection trace: it delegates only to FP's exact fallback,
+ * using the call-local bindings supplied by the fusion cache.
+ */
+function exactFallbackEntry(plan: OptimizerBoundPlanV1): ShapeEntry {
+  const template = Object.freeze({
+    instanceToken: plan.instanceToken,
+    identity: plan.identity,
+    codes: plan.codes,
+    segments: plan.segments,
+    mode: plan.mode,
+    layout: plan.layout,
+    fullyTrusted: plan.fullyTrusted,
+  })
+  const entry: ShapeEntry = {
+    execCount: 0,
+    shapeKey: `exact-fallback:${planShapeKey(plan.shape)}`,
+    run: (input, bindings) => runExactFallback({ ...template, bindings }, input),
+  }
+  exactFallbackEntries.add(entry)
+  return entry
 }
 
 const bindEntryRunner = (entry: ShapeEntry, bindings: readonly StepBinding[]): Runner => {
@@ -272,7 +295,11 @@ export function planAndLowerFast(steps: readonly unknown[]): {
   readonly entry: ShapeEntry
   readonly bindings: readonly StepBinding[]
 } {
-  const plan = buildPlan(steps)
+  const plan = buildOptimizerPlan(steps, 'exact')
+  const compatibility = evaluatePlanCompatibility(plan, 'exact')
+  if (!compatibility.eligible) {
+    return { entry: exactFallbackEntry(plan), bindings: plan.bindings }
+  }
   plansBuilt++
   // `pipe` never reaches bindCriticalRunner, so its selection is always the
   // shared runner. Recording it here rather than inferring it from the cache
@@ -286,14 +313,11 @@ export function __shapeEntryForSteps(
   steps: readonly unknown[],
   mode: SemanticMode = 'exact',
 ): ShapeEntry {
-  const plan = buildPlan(steps)
+  const plan = buildOptimizerPlan(steps, mode)
+  const compatibility = evaluatePlanCompatibility(plan, mode)
+  if (!compatibility.eligible) throw new IncompatibleOptimizerError(compatibility.reason)
   return shapeEntryFor(plan.shape, mode, 'none')
 }
-
-
-
-
-
 
 function readDenseLength(data: readonly unknown[]): number {
   const length = data.length
@@ -326,12 +350,7 @@ function buildPortable(
         for (const run of after) value = run(value, currentBindings)
         return value
       }
-      const entry = shapeEntryFor(
-        shape,
-        'pure',
-        'elide-unused-map',
-        () => portable,
-      )
+      const entry = shapeEntryFor(shape, 'pure', 'elide-unused-map', () => portable)
       recordSelection('selected', 'shared', entry.shapeKey)
       return {
         run: bindEntryRunner(entry, bindings),
@@ -364,9 +383,22 @@ interface RunnerRecord {
 
 const runnerEntries = new WeakMap<Runner, RunnerRecord>()
 
-function compileInternal(pure: boolean, steps: readonly unknown[]): Runner {
-  if (steps.length === 0) return (input) => input
-  if (steps.length === 1) {
+function compileVettedPlan(
+  pure: boolean,
+  plan: OptimizerBoundPlanV1,
+  steps?: readonly unknown[],
+  compatibilityCandidate?: OptimizerCompatibilityCandidateV1,
+): Runner {
+  const semanticMode: SemanticMode = pure ? 'pure' : 'exact'
+  const compatibility =
+    compatibilityCandidate === undefined
+      ? evaluatePlanCompatibility(plan, semanticMode)
+      : evaluateOptimizerCompatibility(compatibilityCandidate)
+  // A foreign/opaque plan is semantically valid but ineligible for the bank.
+  // Run FP's interpreter directly so it cannot populate a runner cache, emit a
+  // specialized selection event, or accidentally reach a bound fast path.
+  if (!compatibility.eligible) return (input) => runExactFallback(plan, input)
+  if (steps?.length === 1) {
     const step = steps[0] as Runner
     // A data-last filter closure shares one callback callsite across every
     // predicate identity. Route it through the checked-in callback-lane
@@ -376,7 +408,6 @@ function compileInternal(pure: boolean, steps: readonly unknown[]): Runner {
       return (input) => step(input)
     }
   }
-  const plan = buildPlan(steps)
   plansBuilt++
   const built = buildPortable(plan.shape, plan.bindings, pure)
   // buildPortable already returns a runner bound to this compile's callback
@@ -390,6 +421,25 @@ function compileInternal(pure: boolean, steps: readonly unknown[]): Runner {
     rewrites: built.rewrites,
   })
   return runner
+}
+
+function compileInternal(pure: boolean, steps: readonly unknown[]): Runner {
+  if (steps.length === 0) return (input) => input
+  const semanticMode: SemanticMode = pure ? 'pure' : 'exact'
+  return compileVettedPlan(pure, buildOptimizerPlan(steps, semanticMode), steps)
+}
+
+/**
+ * Internal boundary probe for the extracted-package qualification matrix. It
+ * shares the production execution gate; it is intentionally not re-exported
+ * from the optimizer package root.
+ */
+export function __compileVettedPlanForTest(
+  plan: OptimizerBoundPlanV1,
+  mode: SemanticMode,
+  candidate: OptimizerCompatibilityCandidateV1 = compatibilityCandidateForPlan(plan, mode),
+): Runner {
+  return compileVettedPlan(mode === 'pure', plan, undefined, candidate)
 }
 
 export function compile(): Runner

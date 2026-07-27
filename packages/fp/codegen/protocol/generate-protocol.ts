@@ -28,9 +28,18 @@ import {
   RECEIPT_SCHEMA_V1_HASH,
   renderReceiptSchemaViewV1,
 } from './receipt-schema-v1'
+import {
+  FUSION_RUNNER_PROTOCOL,
+  FUSION_RUNNER_PROTOCOL_VERSION,
+} from './fusion-runner-v1'
 
 const FP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const REPO_ROOT = resolve(FP_ROOT, '../..')
+
+/** Single authority for the packed FP-to-optimizer wire versions. */
+export const OPTIMIZER_ABI_VERSION_V1 = 2
+export const OPTIMIZER_PROTOCOL_VERSION_V1 = 1
+export const OPTIMIZER_BANK_PROTOCOL_VERSION_V1 = 1
 
 export const RETAINED_COMPILER_OPERATION_CORPUS_V1 = Object.freeze<OperatorEvidenceCorpusJoinV1>({
   corpusId: COMPILER_OPERATION_CORPUS_ID_V1,
@@ -161,6 +170,253 @@ function semanticManifestInputV1(): object {
 
 export const OPERATOR_MANIFEST_V1_HASH = hashCanonical(semanticManifestInputV1())
 
+const OPTIMIZER_OPCODE_VOCABULARY_V1 = Object.freeze(
+  runtimeRecordsInOpcodeOrderV1().map((record) => ({
+    opcode: record.legacyRuntime.opcode,
+    semanticId: record.semantic.semanticId,
+    semanticRevision: record.semantic.semanticRevision,
+    semanticHash: record.semantic.semanticHash,
+  })),
+)
+
+/**
+ * The FP-owned, data-only projection of the optimizer boundary.  These facts
+ * intentionally describe the wire and execution contracts, never a concrete
+ * optimizer runner bank: FP must be able to ship and validate on its own.
+ *
+ * Keep these as plain objects rather than TypeScript type strings.  Their
+ * canonical hashes are release facts and therefore remain meaningful across
+ * package builds and physical installations.
+ */
+const OPTIMIZER_RUNNER_SCHEMA_V1 = Object.freeze({
+  protocol: 'stopcock.optimizer-runner-schema',
+  protocolVersion: 1,
+  bank: {
+    fields: [
+      'protocol',
+      'protocolVersion',
+      'semanticManifestHash',
+      'bankHash',
+      'genericFallbackId',
+      'runnerCount',
+      'descriptors',
+    ],
+    protocol: 'stopcock.fusion-runner-bank',
+    protocolVersion: OPTIMIZER_BANK_PROTOCOL_VERSION_V1,
+    semanticManifestHash: 'sha256/canonical-operator-manifest',
+    bankHash: 'sha256/canonical-runner-bank-projection',
+    genericFallbackId: 'fusion-runner/generic-exact',
+    runnerCount: 'safe-integer/non-negative/equals-descriptors-length',
+    descriptors: {
+      ordering: 'runner-id/ascending',
+      identityFields: [
+        'protocol',
+        'protocolVersion',
+        'semanticManifestHash',
+        'bankHash',
+        'runnerId',
+        'descriptorHash',
+      ],
+      fields: [
+        'protocol',
+        'protocolVersion',
+        'semanticManifestHash',
+        'bankHash',
+        'runnerId',
+        'semanticSequence',
+        'mode',
+        'capability',
+        'outputShape',
+        'cardinality',
+        'termination',
+        'materializes',
+        'domainBoundary',
+        'reportsConsumed',
+        'resultOwnership',
+        'aliasesInput',
+        'allocationScope',
+        'scratchClass',
+        'fallbackRunnerId',
+        'descriptorHash',
+      ],
+      protocol: FUSION_RUNNER_PROTOCOL,
+      protocolVersion: FUSION_RUNNER_PROTOCOL_VERSION,
+      semanticManifestHash: 'equals-bank-semantic-manifest-hash',
+      bankHash: 'equals-bank-hash',
+      runnerId: 'stable/non-empty/unique-within-bank',
+      semanticSequence: {
+        element: 'safe-integer/positive/registered-opcode',
+        vocabulary: OPTIMIZER_OPCODE_VOCABULARY_V1,
+        cardinality: 'non-empty',
+      },
+      mode: ['exact'],
+      capability: {
+        fields: [
+          'layouts',
+          'arity',
+          'readsBindingSlots',
+          'requiredBindingSlots',
+          'rejectionCodes',
+        ],
+        layouts: ['dense-array', 'array-like'],
+        arity: 'safe-integer/positive/equals-semantic-sequence-length',
+        readsBindingSlots: {
+          element: ['fn', 'a1', 'a2'],
+          ordering: 'stable/no-duplicates',
+        },
+        requiredBindingSlots: {
+          element: ['fn', 'a1', 'a2'],
+          relation: 'subset-of-reads-binding-slots',
+          ordering: 'stable/no-duplicates',
+        },
+        rejectionCodes: [
+          'layout-unsupported',
+          'arity-mismatch',
+          'binding-incomplete',
+          'domain-boundary',
+        ],
+      },
+      outputShape: ['array', 'scalar', 'option', 'boolean', 'index'],
+      cardinality: ['one-to-one', 'filtering', 'folding', 'expanding'],
+      termination: ['exhaustive', 'limit', 'predicate'],
+      materializes: 'boolean',
+      domainBoundary: ['none', 'sum-materializer'],
+      reportsConsumed: 'boolean',
+      resultOwnership: ['fresh', 'borrowed'],
+      aliasesInput: 'boolean',
+      allocationScope: ['none', 'result-only', 'scratch'],
+      scratchClass: ['none', 'per-call'],
+      fallbackRunnerId: 'fusion-runner/generic-exact',
+      descriptorHash: 'sha256/canonical-descriptor-without-bank-and-semantic-identities',
+    },
+    genericFallback: {
+      runnerId: 'fusion-runner/generic-exact',
+      mode: 'exact',
+      coverage: 'all-vetted-plan-shapes',
+      bindingLifetime: 'per-invocation-input/no-runner-bank-retention',
+    },
+  },
+})
+
+const OPTIMIZER_ABI_IDENTITY_FIELDS_V1 = Object.freeze([
+  'abiVersion',
+  'protocolVersion',
+  'semanticManifestHash',
+  'runnerSchemaHash',
+  'bindingSchemaHash',
+  'consumeSchemaHash',
+  'executionContractHash',
+])
+
+const OPTIMIZER_BINDING_SCHEMA_V1 = Object.freeze({
+  protocol: 'stopcock.optimizer-binding-schema',
+  protocolVersion: 1,
+  vettedPlan: {
+    fields: [
+      'instanceToken',
+      'identity',
+      'codes',
+      'segments',
+      'bindings',
+      'mode',
+      'layout',
+      'fullyTrusted',
+    ],
+    instanceToken: 'opaque-per-fp-module/identity-only/non-serializable',
+    identity: {
+      fields: OPTIMIZER_ABI_IDENTITY_FIELDS_V1,
+      values: 'exact-generated-release-facts',
+    },
+    codes: {
+      dataGateElement: 'safe-integer/non-negative',
+      authenticatedPlanElement: 'zero-non-fuseable-sentinel-or-registered-opcode',
+      nonFuseableSentinel: 0,
+      registeredVocabulary: OPTIMIZER_OPCODE_VOCABULARY_V1,
+      ordering: 'pipeline-order',
+    },
+    segments: {
+      fields: ['kind', 'domain', 'startIndex', 'length'],
+      kind: ['stream', 'boundary', 'opaque'],
+      domain: ['array', 'scalar', 'iterable'],
+      startIndex: 'safe-integer/non-negative',
+      length: 'safe-integer/positive',
+      coverage: 'ordered-contiguous-complete-over-codes',
+    },
+    bindings: {
+      stepFields: ['fn', 'a1', 'a2', 'opaqueFn'],
+      optionalFields: ['fn', 'a1', 'a2', 'opaqueFn'],
+      opaqueFn: 'present-only-for-corresponding-opaque-segment-step',
+      cardinality: 'equals-codes-length',
+      ordering: 'one-binding-per-code/pipeline-order',
+      boundaryTransfer: 'fresh-vetted-plan-data',
+      shapeCaches: 'no-bindings-or-callables',
+      pipeIdentityCache:
+        'bounded-four-entry/exact-step-identity/bindings-retained-until-entry-eviction',
+      compiledRunner:
+        'bindings-retained-until-returned-runner-and-weak-runner-record-are-unreachable',
+      reuse: 'never-across-different-step-identities',
+    },
+    mode: ['exact', 'pure'],
+    layout: ['dense-array'],
+    fullyTrusted:
+      'boolean/false-only-for-foreign-or-untrusted-provenance/trusted-non-fuseable-may-remain-true',
+  },
+  semantics: OPERATOR_SEMANTICS_V1.map((semantic) => ({
+    semanticId: semantic.semanticId,
+    semanticRevision: semantic.semanticRevision,
+    semanticHash: semantic.semanticHash,
+    bindings: semantic.bindings,
+    callback: semantic.callback,
+  })),
+})
+
+const OPTIMIZER_CONSUME_SCHEMA_V1 = Object.freeze({
+  protocol: 'stopcock.optimizer-consume-schema',
+  protocolVersion: 1,
+  consumeMeta: {
+    fields: ['consumed'],
+    consumed: 'safe-integer/first-true-source-read/only-early-termination',
+    ownership: 'fresh-caller-owned',
+  },
+})
+
+const OPTIMIZER_EXECUTION_CONTRACT_V1 = Object.freeze({
+  protocol: 'stopcock.optimizer-execution-contract',
+  protocolVersion: 1,
+  boundary: {
+    modes: ['exact', 'pure'],
+    layout: 'dense-array',
+    shape: 'codes-and-contiguous-segments',
+    output: 'same-as-fp-exact-fallback',
+    evaluationOrder: 'source-order/callback-order',
+    effects: 'exact-mode-preserves-observable-effects',
+    errors: 'deterministic-original-thrown-error-identity',
+    termination: 'descriptor-declared-and-consume-reported',
+    sourceMutation: 'same-snapshot-boundary-as-fp-exact-fallback',
+    ownership: 'fresh-result-unless-descriptor-declares-aliasing',
+    aliasing: 'descriptor-declared',
+    scratch: 'descriptor-declared/no-callable-retention',
+  },
+  semantics: OPERATOR_SEMANTICS_V1.map((semantic) => ({
+    semanticId: semantic.semanticId,
+    semanticRevision: semantic.semanticRevision,
+    semanticHash: semantic.semanticHash,
+    inputDomain: semantic.inputDomain,
+    outputDomain: semantic.outputDomain,
+    acceptedLayouts: semantic.acceptedLayouts,
+    cardinality: semantic.cardinality,
+    outputShapeFunction: semantic.outputShapeFunction,
+    evaluation: semantic.evaluation,
+    termination: semantic.termination,
+    ownership: semantic.ownership,
+  })),
+})
+
+export const OPTIMIZER_RUNNER_SCHEMA_V1_HASH = hashCanonical(OPTIMIZER_RUNNER_SCHEMA_V1)
+export const OPTIMIZER_BINDING_SCHEMA_V1_HASH = hashCanonical(OPTIMIZER_BINDING_SCHEMA_V1)
+export const OPTIMIZER_CONSUME_SCHEMA_V1_HASH = hashCanonical(OPTIMIZER_CONSUME_SCHEMA_V1)
+export const OPTIMIZER_EXECUTION_CONTRACT_V1_HASH = hashCanonical(OPTIMIZER_EXECUTION_CONTRACT_V1)
+
 function operatorManifestV1(): object {
   return {
     ...semanticManifestInputV1(),
@@ -171,8 +427,18 @@ function operatorManifestV1(): object {
 function renderOptimizerAbiIdentityV1(): string {
   return `// GENERATED FILE. Do not edit by hand — run \`bun run codegen\` to regenerate.
 
+/** Generated versions of the packed FP-to-optimizer boundary. */
+export const OPTIMIZER_ABI_VERSION = ${OPTIMIZER_ABI_VERSION_V1}
+export const OPTIMIZER_PROTOCOL_VERSION = ${OPTIMIZER_PROTOCOL_VERSION_V1}
+
 /** Identity of the semantic manifest this build's opcodes are read against. */
 export const SEMANTIC_MANIFEST_HASH = '${OPERATOR_MANIFEST_V1_HASH}'
+
+/** Hashes of the FP-owned optimizer ABI contract projections. */
+export const OPTIMIZER_RUNNER_SCHEMA_HASH = '${OPTIMIZER_RUNNER_SCHEMA_V1_HASH}'
+export const OPTIMIZER_BINDING_SCHEMA_HASH = '${OPTIMIZER_BINDING_SCHEMA_V1_HASH}'
+export const OPTIMIZER_CONSUME_SCHEMA_HASH = '${OPTIMIZER_CONSUME_SCHEMA_V1_HASH}'
+export const OPTIMIZER_EXECUTION_CONTRACT_HASH = '${OPTIMIZER_EXECUTION_CONTRACT_V1_HASH}'
 `
 }
 
@@ -687,9 +953,11 @@ export function renderCompilerOpsTableV1(): string {
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
 // The compiler consumes a data-only projection; it never imports FP runtime modules.
 // Semantic facts hash: ${OPERATOR_SEMANTIC_FACTS_V1_HASH}
+// Complete semantic manifest hash: ${OPERATOR_MANIFEST_V1_HASH}
 // Compiler emitter ABI hash: ${COMPILER_EMITTER_ABI_V1_HASH}
 
 export const OPERATOR_SEMANTIC_FACTS_V1_HASH = ${JSON.stringify(OPERATOR_SEMANTIC_FACTS_V1_HASH)}
+export const OPERATOR_MANIFEST_V1_HASH = ${JSON.stringify(OPERATOR_MANIFEST_V1_HASH)}
 export const COMPILER_EMITTER_ABI_V1_HASH = ${JSON.stringify(COMPILER_EMITTER_ABI_V1_HASH)}
 
 export interface OpsTableEntry {

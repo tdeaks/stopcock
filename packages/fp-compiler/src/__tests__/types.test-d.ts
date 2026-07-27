@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import {
   COMPILER_EMITTER_ABI_V1_HASH,
+  OPERATOR_MANIFEST_V1_HASH,
   OPERATOR_SEMANTIC_FACTS_V1_HASH,
   callbackArity,
   stopcockFp,
@@ -26,7 +27,7 @@ describe('public compiler types', () => {
       fallbackTiers: {
         '@stopcock/fp': 'sequential',
       },
-      expectedSemanticManifestHash: OPERATOR_SEMANTIC_FACTS_V1_HASH,
+      expectedSemanticManifestHash: OPERATOR_MANIFEST_V1_HASH,
       expectedLoweringAbiHash: COMPILER_EMITTER_ABI_V1_HASH,
       diagnostics: 'verbose',
     } satisfies StopcockCompilerOptions
@@ -46,6 +47,7 @@ describe('public compiler types', () => {
       0 | 1 | 2 | undefined
     >()
     expectTypeOf(OPERATOR_SEMANTIC_FACTS_V1_HASH).toEqualTypeOf<string>()
+    expectTypeOf(OPERATOR_MANIFEST_V1_HASH).toEqualTypeOf<string>()
     expectTypeOf(COMPILER_EMITTER_ABI_V1_HASH).toEqualTypeOf<string>()
   })
 })

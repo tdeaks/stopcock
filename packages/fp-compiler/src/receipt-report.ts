@@ -47,6 +47,7 @@ function checkedCompilerReceiptCoreHash(receipt: CompilerReceiptV1): string {
     reasonCodes: receipt.reasonCodes,
     emittedCodeHash: receipt.emittedCodeHash,
     sourceMapHash: receipt.sourceMapHash,
+    artifactContext: receipt.artifactContext,
     evidenceRefs: receipt.evidenceRefs,
   }
   return `sha256:${createHash('sha256').update(JSON.stringify(core)).digest('hex')}`

@@ -32,6 +32,7 @@
   "reasonCodes": [],
   "emittedCodeHash": "sha256:0c0b483de895bb7e810df39ff6e3aab1f01ecce3717bd24dbfa69c7ae406a845",
   "sourceMapHash": "sha256:43cc68af5cc970a17d432c17e9a61bb36fb7e96df301b7c425f13e2339cb72b0",
+  "artifactContext": null,
   "evidenceRefs": [
     "sha256:46ece0a9a199a853d3e1af4e7287b9a6b5fa308a456f21ab83f62513baca7715",
     "sha256:606ee51e1ab5abd3a9aa7c1fc740dbc46fcba8ab4e5ae2b49a551bfe4fe3fdfc"

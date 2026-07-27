@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S11R
-Current slice: PACKED_COHORT_AND_EXTRACTED_MATRIX
-Last verified commit: c035f7f75d8ea38446a033969250a3c563ecb3a9
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-26
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -70,7 +70,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S10   | GATE_PASSED        | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                                              |
 | S10X  | GATE_PASSED        | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                                            |
 | S10J  | GATE_PASSED        | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                                              |
-| S11R  | IN_PROGRESS | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. The independently audited compact-pure/compiler source-and-test slice now passes with sealed digest `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`; checkpoint application is pending. |
+| S11R  | CHECKPOINT_PENDING | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. The independently audited compact-pure/compiler source-and-test slice now passes with sealed digest `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`; checkpoint application is pending. The optimizer ABI, compiler artifact-context receipts, and complete extracted-host/layout qualification harness are source-valid; this new source checkpoint is pending before a fresh cohort is packed. |
 | S11   | NOT_STARTED        | Static Plan IR, tier-preserving codegen, expression/source-map corpus, pure map-to-length rewrite, exact construction semantics, deterministic receipts, and five-host smoke coverage exist in the sealed candidate based at `73cc413`; S11 cannot start until S11R passes                                                                                                                                                |
 | P1A   | GATE_PASSED        | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                                                   |
 | P1B   | GATE_PASSED        | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                                                         |
@@ -1961,6 +1961,49 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
     exact S11R scope, workspace, focused semantic probes, and returned `PASS`;
   - no timing command ran. This is the clean-source checkpoint prerequisite,
     not the packed-cohort, extracted-matrix, fresh S2/S7, or S11R exit verdict.
+- S11R packed-cohort/extracted-matrix source checkpoint evidence:
+  - FP now publishes one physical instance token plus complete semantic,
+    runner, binding, consume, and execution identities. The optimizer owns an
+    independently generated expected identity and runner-bank contract, and
+    the production compatibility gate rejects every identity, mode, layout,
+    shape, trust, or physical-instance mismatch before a specialized runner can
+    execute;
+  - an installed-ABI mismatch uses FP's exact interpreter without recording a
+    specialized selection. Its opcode-front-cache entry retains only immutable
+    shape metadata; current-call bindings are supplied at invocation, and an
+    independent re-audit proved no callback or binding remains reachable from
+    either opcode front cache;
+  - compiler receipts now bind exact FP, compiler, optional optimizer, FP ABI,
+    and optimizer-bank artifact identities. The semantic-manifest field binds
+    the complete operator manifest, while semantic-facts retain their separate
+    projection identity;
+  - two consecutive protocol generations reproduced operator manifest
+    `sha256:24208c1a8b963d5c951b4515789bd8cf9393a8120b07d1102f60805cd659f094`,
+    runner schema
+    `sha256:adc10bc33b7498be93476b5210e4c33bd4553c2677860c60e718784983c0cd72`,
+    binding schema
+    `sha256:2ad9dc1bbf782bb2f9ba39141d7c38215ac86bd3e9718368e204d46a9d69eb6b`,
+    and optimizer bank
+    `sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4`;
+  - the extracted matrix requires exactly 21 public tarballs, copies only the
+    lock-bound compiler dependency closure, scrubs inherited Node injection,
+    runs the declared packed CLI, and covers five real hosts, common and mixed
+    sites, import pruning, executable source maps, construction semantics,
+    deterministic receipts, corpus joins, and CLI failures;
+  - the extracted layout matrix covers ordinary, hoisted, isolated,
+    duplicate/shared, and duplicate/separate installs on every materialized
+    package side. It mutates every ABI and runner-bank identity independently,
+    records the effective package-tree identity, exercises the production
+    compatibility gate, and requires two byte-identical materializations;
+  - FP source/type/contract/codegen gates pass with 49 files and 1,233 tests;
+    optimizer source/build passes with 10 files and 1,797 tests; compiler
+    source/type/build passes with 17 files and 446 tests; the focused S11R
+    manifest/layout boundary suite passes four tests. Independent adversarial
+    re-audits passed the generated optimizer expectation boundary, duplicate
+    layout-side coverage, and binding-free fallback-cache retention;
+  - no timing command ran. No packed-cohort or extracted qualification result
+    is claimed by this source checkpoint; the cohort must be produced from the
+    resulting clean commit.
 
 ## Surprises and discoveries
 

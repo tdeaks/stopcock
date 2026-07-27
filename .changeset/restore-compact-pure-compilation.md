@@ -27,3 +27,14 @@ Fused `take` keeps its established one-item lookahead at its lexical position.
 The build-time compiler preserves root sequential stages, and lowers a fused
 `take` or `drop` only when its count is statically known to produce a primitive
 number.
+
+The FP-to-optimizer boundary now negotiates generated identities for the
+semantic manifest, runner-bank wire schema, call-local binding schema,
+consumption reporting, and the exact execution contract. A stale, swapped, or
+duplicate physical package pair fails closed to FP's compact exact executor
+before any specialized runner can execute.
+
+Compiler receipts may now carry a deterministic packed-artifact context. The
+receipt identity binds the selected FP, compiler, optional optimizer, FP ABI,
+and optimizer runner bank so post-extraction qualification cannot accidentally
+reuse source-workspace or pre-extraction evidence.

@@ -3,7 +3,7 @@
 // Source: packages/fp/codegen/protocol/receipt-schema-v1.ts
 
 export const RECEIPT_SCHEMA_V1_HASH =
-  'sha256:9bb0669aa1519ed6e78a9862c2c182e33850ebac502efec9eb91ff58a2775a85' as const
+  'sha256:2a384c3a3ecf3b608f7d00c128a821e8d9e1d73ea715748062614bee61ad5884' as const
 export const RECEIPT_SCHEMA_V1 = {
   protocol: 'stopcock.receipt-schema',
   schemaVersion: 1,
@@ -107,6 +107,7 @@ export const RECEIPT_SCHEMA_V1 = {
       'reasonCodes',
       'emittedCodeHash',
       'sourceMapHash',
+      'artifactContext',
       'evidenceRefs',
     ],
     plan: [
@@ -194,7 +195,21 @@ export interface CompilerReceiptV1 {
   readonly reasonCodes: readonly ReceiptReasonCodeV1[]
   readonly emittedCodeHash: string | null
   readonly sourceMapHash: string | null
+  /**
+   * Bound packed-artifact identity for extracted-host qualification. Ordinary
+   * source builds intentionally carry null: a receipt must never imply a
+   * package artifact it did not execute against.
+   */
+  readonly artifactContext: CompilerReceiptArtifactContextV1 | null
   readonly evidenceRefs: readonly string[]
+}
+
+export interface CompilerReceiptArtifactContextV1 {
+  readonly fpArtifactHash: string
+  readonly compilerArtifactHash: string
+  readonly optimizerArtifactHash: string | null
+  readonly fpAbiHash: string
+  readonly optimizerBankHash: string | null
 }
 
 export interface PlanReceiptV1 {
@@ -355,6 +370,36 @@ const commonReceiptId = (
   if (!hasHash(value[key])) errors.push(`${key} must be a deterministic sha256 hash`)
 }
 
+const artifactContext = (value: unknown, errors: string[]): void => {
+  if (value === null) return
+  if (!isRecord(value)) {
+    errors.push('artifactContext must be null or an object')
+    return
+  }
+  exactKeys(
+    value,
+    [
+      'fpArtifactHash',
+      'compilerArtifactHash',
+      'optimizerArtifactHash',
+      'fpAbiHash',
+      'optimizerBankHash',
+    ],
+    'artifactContext',
+    errors,
+  )
+  for (const key of ['fpArtifactHash', 'compilerArtifactHash', 'fpAbiHash'] as const) {
+    if (!hasHash(value[key])) errors.push(`artifactContext.${key} must be a sha256 hash`)
+  }
+  const optimizerAbsent = value.optimizerArtifactHash === null && value.optimizerBankHash === null
+  const optimizerPresent = hasHash(value.optimizerArtifactHash) && hasHash(value.optimizerBankHash)
+  if (!optimizerAbsent && !optimizerPresent) {
+    errors.push(
+      'artifactContext optimizerArtifactHash and optimizerBankHash must both be sha256 hashes or both be null',
+    )
+  }
+}
+
 const validateCompiler = (value: Record<string, unknown>, errors: string[]): void => {
   exactKeys(value, RECEIPT_SCHEMA_V1.recordKeys.compiler, 'compiler receipt', errors)
   commonVersion(value, errors)
@@ -450,6 +495,7 @@ const validateCompiler = (value: Record<string, unknown>, errors: string[]): voi
   if (value.sourceMapHash !== null && !hasHash(value.sourceMapHash)) {
     errors.push('sourceMapHash must be null or a sha256 hash')
   }
+  artifactContext(value.artifactContext, errors)
   hashes(value.evidenceRefs, 'evidenceRefs', errors)
 }
 

@@ -87,6 +87,10 @@ describe('stopcock check artifacts', () => {
     expect(await invalid('unknown-field.json')).toContain('unknown or missing fields')
   })
 
+  it('rejects malformed packed artifact context', async () => {
+    expect(await invalid('artifact-context.json')).toContain('artifactContext')
+  })
+
   it('rejects an empty receipt set and unreadable paths', async () => {
     const missing = await runCheck([
       'check',

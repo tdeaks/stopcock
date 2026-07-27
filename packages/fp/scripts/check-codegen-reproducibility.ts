@@ -47,6 +47,7 @@ const GENERATED_PATHS = [
   'packages/fp-optimizer/codegen/generated/fusion-runner-bank-v1.json',
   'packages/fp-optimizer/src/runner-keys.generated.ts',
   'packages/fp-optimizer/src/bank-identity.generated.ts',
+  'packages/fp-optimizer/src/abi-expectations.generated.ts',
   'packages/fp/package.json',
 ] as const
 

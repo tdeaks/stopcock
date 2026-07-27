@@ -1,0 +1,2253 @@
+#!/usr/bin/env node
+/*
+ * S11R is deliberately a consumer-side gate.  In particular, it must never
+ * turn into another convenient in-repository compiler test: the only
+ * Stopcock bytes that reach a bundler are unpacked from the selected cohort.
+ * Host tools may be resolved from this checkout's node_modules because they
+ * are test tools, not part of the qualified Stopcock closure.
+ */
+import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
+import {
+  lstatSync,
+  existsSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
+import { gzipSync } from 'node:zlib'
+import { tmpdir } from 'node:os'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
+import { createRequire } from 'node:module'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const REPOSITORY_ROOT = resolve(PACKAGE_ROOT, '..', '..')
+// This require is deliberately rooted at the compiler package.  The root
+// workspace does not necessarily expose the compiler's locked dependency
+// graph (Bun's isolated install is an example), and resolving from it would
+// silently qualify whatever happened to be hoisted in a developer checkout.
+const COMPILER_REQUIRE = createRequire(join(PACKAGE_ROOT, 'package.json'))
+const BENCHMARK_REQUIRE = createRequire(join(REPOSITORY_ROOT, 'benchmarks', 'package.json'))
+const TRACE_MAPPING_REQUIRE = createRequire(
+  COMPILER_REQUIRE.resolve('@babel/traverse/package.json'),
+)
+const TRACE_MAPPING = await import(
+  pathToFileURL(TRACE_MAPPING_REQUIRE.resolve('@jridgewell/trace-mapping')).href
+)
+const SHA256 = /^sha256:[a-f0-9]{64}$/u
+const S11R_PUBLIC_COHORT_COUNT = 21
+const COMMON_CONSUMERS = Object.freeze([
+  'compiler.collect.common',
+  'compiler.reduce.common',
+  'compiler.deep',
+  'compiler.option-terminal',
+])
+const HOSTS = Object.freeze(['vite', 'rollup', 'esbuild', 'webpack', 'rspack'])
+const STOPCOCK = Object.freeze(['@stopcock/fp', '@stopcock/fp-compiler', '@stopcock/fp-optimizer'])
+const FORBIDDEN_ENGINE_MODULES = Object.freeze([
+  '@stopcock/fp/dist/index.js',
+  '@stopcock/fp/dist/compile',
+  '@stopcock/fp/dist/fusion',
+  '@stopcock/fp/dist/internal/compact-runtime',
+  '@stopcock/fp/dist/internal/compact/plan',
+  '@stopcock/fp/dist/internal/plan-',
+  '@stopcock/fp/dist/plan',
+  '@stopcock/fp-optimizer/',
+])
+const CONSTRUCTION_LEAF_MODULE =
+  /^@stopcock\/fp\/dist\/(?:array(?:-[A-Za-z0-9_-]+)?|number-[A-Za-z0-9_-]+|option-[A-Za-z0-9_-]+|provenance-[A-Za-z0-9_-]+|result-[A-Za-z0-9_-]+|sort-kernel-[A-Za-z0-9_-]+)\.js$/u
+const ENGINE_LOGIC_CONTENT =
+  /(?:compact-runtime|fusion-engine|runner-bank|vetPipeline|compilePipeline|executePipeline|createStaticPlan|fusedPipe|fusedFlow|@stopcock\/fp-optimizer)/u
+const MINIFIER_OPTIONS = Object.freeze({
+  ecma: 2022,
+  module: true,
+  toplevel: true,
+  mangle: Object.freeze({ toplevel: true }),
+  compress: Object.freeze({ passes: 3 }),
+  format: Object.freeze({ comments: false }),
+})
+
+const fail = (message) => {
+  throw new Error(`S11R extracted matrix: ${message}`)
+}
+const assert = (condition, message) => {
+  if (!condition) fail(message)
+}
+const stable = (value) => JSON.stringify(value, null, 2) + '\n'
+const hash = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`
+const posix = (value) => value.split(sep).join('/')
+const compare = (left, right) => left.localeCompare(right)
+const text = (value) => {
+  if (typeof value === 'string') return value
+  if (value instanceof Uint8Array) return Buffer.from(value).toString('utf8')
+  if (value !== null && value !== undefined) return JSON.stringify(value)
+  return null
+}
+const fileIdentity = (path) => {
+  const metadata = lstatSync(path)
+  assert(metadata.isFile() && !metadata.isSymbolicLink(), `${path} must be a regular file`)
+  const bytes = readFileSync(path)
+  return { sha256: hash(bytes), bytes: bytes.length }
+}
+const canonicalPath = (root, path) => {
+  const result = posix(relative(root, path))
+  assert(
+    result !== '' && !result.startsWith('../') && !result.includes('/../'),
+    'path escapes qualification root',
+  )
+  return result
+}
+const remove = (path) => rmSync(path, { recursive: true, force: true })
+const regularFilesUnder = (root) => {
+  if (!existsSync(root)) return []
+  const files = []
+  const visit = (directory) => {
+    for (const name of readdirSync(directory).sort(compare)) {
+      const path = join(directory, name)
+      const info = lstatSync(path)
+      if (info.isDirectory()) visit(path)
+      else if (info.isFile() || info.isSymbolicLink()) files.push(path)
+    }
+  }
+  visit(root)
+  return files
+}
+const cleanNodeEnvironment = (extra = {}) => {
+  const env = { ...process.env, ...extra }
+  delete env.NODE_PATH
+  delete env.NODE_OPTIONS
+  return env
+}
+const parseJsonWithTrailingCommas = (source, label) => {
+  // bun.lock is deterministic JSON-with-trailing-commas. Remove only commas
+  // outside strings that are immediately followed by a closing token.
+  let output = ''
+  let quoted = false
+  let escaped = false
+  for (let index = 0; index < source.length; index++) {
+    const character = source[index]
+    if (quoted) {
+      output += character
+      if (escaped) escaped = false
+      else if (character === '\\') escaped = true
+      else if (character === '"') quoted = false
+      continue
+    }
+    if (character === '"') {
+      quoted = true
+      output += character
+      continue
+    }
+    if (character === ',') {
+      let cursor = index + 1
+      while (/\s/u.test(source[cursor] ?? '')) cursor++
+      if (source[cursor] === '}' || source[cursor] === ']') continue
+    }
+    output += character
+  }
+  try {
+    return JSON.parse(output)
+  } catch (error) {
+    fail(
+      `${label} is not parseable deterministic JSONC: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+}
+
+const cohortProjection = (manifest) => ({
+  schemaVersion: manifest.schemaVersion,
+  kind: manifest.kind,
+  target: manifest.target,
+  publicCount: manifest.publicCount,
+  privateCompatibility: manifest.privateCompatibility,
+  buildInputs: manifest.buildInputs,
+  buildOrder: manifest.buildOrder,
+  dependencyGraph: manifest.dependencyGraph,
+  packages: manifest.packages,
+})
+
+/** Exported so a small unit test can pin the fail-closed manifest boundary. */
+export const validateManifest = async (manifestPath) => {
+  const absolute = resolve(manifestPath)
+  const manifest = JSON.parse(readFileSync(absolute, 'utf8'))
+  assert(
+    manifest?.schemaVersion === 1 && manifest.kind === 'stopcock-v2-cohort',
+    'not a v1 cohort manifest',
+  )
+  assert(
+    typeof manifest.mode === 'string' && typeof manifest.target === 'string',
+    'manifest mode/target missing',
+  )
+  assert(SHA256.test(manifest.cohortContentHash), 'invalid cohort content hash')
+  assert(
+    hash(Buffer.from(stable(cohortProjection(manifest)))) === manifest.cohortContentHash,
+    'cohort content hash does not match canonical manifest projection',
+  )
+  const manifestDirectory = dirname(absolute)
+  assert(
+    resolve(manifestDirectory) ===
+      resolve(dirname(manifestDirectory), manifest.cohortContentHash.slice(7)),
+    'manifest is not in its content-addressed cohort directory',
+  )
+  assert(Array.isArray(manifest.packages), 'manifest packages missing')
+  assert(
+    manifest.publicCount === S11R_PUBLIC_COHORT_COUNT &&
+      manifest.packages.length === S11R_PUBLIC_COHORT_COUNT,
+    `S11R requires the complete ${S11R_PUBLIC_COHORT_COUNT}-package extracted cohort`,
+  )
+  const records = new Map(manifest.packages.map((entry) => [entry.name, entry]))
+  for (const name of STOPCOCK) {
+    const record = records.get(name)
+    assert(record !== undefined, `selected cohort has no ${name}`)
+    assert(record.version === manifest.target, `${name} version differs from target`)
+    assert(record.tarball && SHA256.test(record.tarball.sha256), `${name} tarball hash missing`)
+    assert(
+      Number.isSafeInteger(record.tarball.bytes) && record.tarball.bytes > 0,
+      `${name} tarball byte count invalid`,
+    )
+    const tarball = resolve(manifestDirectory, record.tarball.path)
+    assert(
+      canonicalPath(manifestDirectory, tarball) === record.tarball.path,
+      `${name} tarball path is not canonical`,
+    )
+    const actual = fileIdentity(tarball)
+    assert(
+      actual.sha256 === record.tarball.sha256 && actual.bytes === record.tarball.bytes,
+      `${name} tarball identity mismatch`,
+    )
+  }
+  const { checkPackedCohort } = await import(
+    pathToFileURL(join(REPOSITORY_ROOT, 'tooling', 'v2-cohort.mjs')).href
+  )
+  const checked = await checkPackedCohort({
+    root: REPOSITORY_ROOT,
+    manifest: absolute,
+    verifyWorkspace: true,
+  })
+  assert(
+    checked.publicCount === S11R_PUBLIC_COHORT_COUNT,
+    'canonical packed-cohort check returned the wrong public package count',
+  )
+  return { manifest, manifestDirectory, records }
+}
+
+const extract = (tarball, destination) => {
+  mkdirSync(destination, { recursive: true })
+  const result = spawnSync('tar', ['-xzf', tarball, '-C', destination, '--strip-components=1'], {
+    encoding: 'utf8',
+  })
+  assert(
+    result.status === 0,
+    `cannot extract ${tarball}: ${(result.stderr || result.stdout || '').trim()}`,
+  )
+}
+const link = (target, destination) => {
+  mkdirSync(dirname(destination), { recursive: true })
+  remove(destination)
+  symlinkSync(target, destination, 'dir')
+}
+const rootModule = (specifier) => {
+  try {
+    return dirname(COMPILER_REQUIRE.resolve(`${specifier}/package.json`))
+  } catch {
+    let cursor = dirname(COMPILER_REQUIRE.resolve(specifier))
+    while (cursor !== dirname(cursor)) {
+      if (existsSync(join(cursor, 'package.json'))) return cursor
+      cursor = dirname(cursor)
+    }
+    fail(`cannot locate package root for host dependency ${specifier}`)
+  }
+}
+const toolIdentity = (specifier, resolver = COMPILER_REQUIRE) => {
+  let manifestPath
+  try {
+    manifestPath = resolver.resolve(`${specifier}/package.json`)
+  } catch {
+    const entry = resolver.resolve(specifier)
+    let cursor = dirname(entry)
+    while (cursor !== dirname(cursor) && !existsSync(join(cursor, 'package.json')))
+      cursor = dirname(cursor)
+    assert(
+      existsSync(join(cursor, 'package.json')),
+      `qualification tool ${specifier} has no package manifest`,
+    )
+    manifestPath = join(cursor, 'package.json')
+  }
+  const manifestBytes = readFileSync(manifestPath)
+  const manifest = JSON.parse(manifestBytes)
+  const entry = resolver.resolve(specifier)
+  return {
+    specifier,
+    package: manifest.name,
+    version: manifest.version,
+    manifest: { sha256: hash(manifestBytes), bytes: manifestBytes.length },
+    entry: fileIdentity(entry),
+  }
+}
+
+const packageTarget = (parent, name) => join(parent, 'node_modules', ...name.split('/'))
+const packageClosureIdentity = (root) => {
+  const entries = []
+  const visit = (directory) => {
+    for (const name of readdirSync(directory).sort(compare)) {
+      const path = join(directory, name)
+      const info = lstatSync(path)
+      assert(!info.isSymbolicLink(), `copied compiler dependency closure retains symlink ${path}`)
+      if (info.isDirectory()) visit(path)
+      else if (info.isFile())
+        entries.push({ path: canonicalPath(root, path), ...fileIdentity(path) })
+      else fail(`copied compiler dependency closure contains non-file entry ${path}`)
+    }
+  }
+  visit(root)
+  return { sha256: hash(Buffer.from(stable(entries))), files: entries.length, entries }
+}
+
+/**
+ * Recreate the compiler's runtime closure under the extraction as real files.
+ * The host bundlers remain workspace tooling, but an extracted compiler must
+ * never load Babel/unplugin through a workspace symlink or parent lookup.
+ */
+export const copyCompilerDependencyClosure = (compilerRoot, cohortManifest) => {
+  const lockfilePath = join(REPOSITORY_ROOT, 'bun.lock')
+  const lockfileBytes = readFileSync(lockfilePath)
+  const lockfileIdentity = fileIdentity(lockfilePath)
+  const frozenLockfile = cohortManifest.buildInputs?.find((entry) => entry.path === 'bun.lock')
+  assert(
+    frozenLockfile?.sha256 === lockfileIdentity.sha256 &&
+      frozenLockfile?.bytes === lockfileIdentity.bytes,
+    'workspace dependency resolution lockfile differs from the packed cohort input',
+  )
+  const lockfile = parseJsonWithTrailingCommas(lockfileBytes.toString('utf8'), 'bun.lock')
+  const lockedWorkspace = lockfile.workspaces?.['packages/fp-compiler']
+  assert(
+    lockedWorkspace?.name === '@stopcock/fp-compiler',
+    'bun.lock has no fp-compiler workspace resolution',
+  )
+  const copied = new Map()
+  const install = (name, parentRequire, destinationParent, ancestry = new Set()) => {
+    let manifestPath
+    try {
+      manifestPath = parentRequire.resolve(`${name}/package.json`)
+    } catch (error) {
+      fail(
+        `locked compiler dependency ${name} cannot be resolved: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+    const source = dirname(manifestPath)
+    if (ancestry.has(source)) return
+    const target = packageTarget(destinationParent, name)
+    const identity = `${source}\0${target}`
+    if (copied.has(identity)) return
+    copied.set(identity, source)
+    remove(target)
+    mkdirSync(dirname(target), { recursive: true })
+    cpSync(source, target, {
+      recursive: true,
+      dereference: true,
+      verbatimSymlinks: false,
+      filter: (path) => {
+        const nested = posix(relative(source, path))
+        return nested === '' || (nested !== 'node_modules' && !nested.startsWith('node_modules/'))
+      },
+    })
+    const manifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
+    assert(
+      manifest.name === name,
+      `resolved ${name} package manifest has unexpected name ${manifest.name}`,
+    )
+    const nestedRequire = createRequire(join(source, 'package.json'))
+    const descendants = new Set([...ancestry, source])
+    const dependencies = Object.keys({
+      ...(manifest.dependencies ?? {}),
+      ...(manifest.optionalDependencies ?? {}),
+    }).sort(compare)
+    for (const dependency of dependencies) {
+      try {
+        install(dependency, nestedRequire, target, descendants)
+      } catch (error) {
+        // Optional native helpers can legitimately be absent on this host;
+        // declared runtime dependencies cannot.
+        const missingOptional =
+          manifest.optionalDependencies &&
+          dependency in manifest.optionalDependencies &&
+          error instanceof Error &&
+          error.message.startsWith(
+            `S11R extracted matrix: locked compiler dependency ${dependency} cannot be resolved:`,
+          )
+        if (!missingOptional) throw error
+      }
+    }
+  }
+  const compilerManifestBytes = readFileSync(join(compilerRoot, 'package.json'))
+  const compilerManifest = JSON.parse(compilerManifestBytes)
+  const workspaceManifestBytes = readFileSync(join(PACKAGE_ROOT, 'package.json'))
+  const workspaceManifest = JSON.parse(workspaceManifestBytes)
+  assert(
+    JSON.stringify(compilerManifest.dependencies ?? {}) ===
+      JSON.stringify(workspaceManifest.dependencies ?? {}) &&
+      JSON.stringify(compilerManifest.dependencies ?? {}) ===
+        JSON.stringify(lockedWorkspace.dependencies ?? {}),
+    'packed compiler production dependencies differ from workspace manifest or bun.lock',
+  )
+  for (const dependency of Object.keys(compilerManifest.dependencies ?? {}).sort(compare)) {
+    install(dependency, COMPILER_REQUIRE, compilerRoot)
+  }
+  const directResolutions = Object.keys(compilerManifest.dependencies ?? {})
+    .sort(compare)
+    .map((name) => {
+      const manifestPath = COMPILER_REQUIRE.resolve(`${name}/package.json`)
+      const installed = JSON.parse(readFileSync(manifestPath, 'utf8'))
+      const resolution = `${installed.name}@${installed.version}`
+      assert(
+        lockfile.packages?.[name]?.[0] === resolution,
+        `direct compiler dependency ${name} does not match bun.lock resolution`,
+      )
+      return { name, requested: compilerManifest.dependencies[name], resolution }
+    })
+  const identity = packageClosureIdentity(join(compilerRoot, 'node_modules'))
+  const packageRecords = new Map()
+  for (const path of copied.values()) {
+    const bytes = readFileSync(join(path, 'package.json'))
+    const manifest = JSON.parse(bytes)
+    const resolution = `${manifest.name}@${manifest.version}`
+    const lockEntries = Object.entries(lockfile.packages ?? {})
+      .filter(([, value]) => Array.isArray(value) && value[0] === resolution)
+      .map(([key, value]) => ({ key, integrity: value[3] ?? null }))
+      .sort((left, right) => compare(left.key, right.key))
+    assert(
+      lockEntries.length > 0,
+      `${resolution} copied into compiler closure is absent from bun.lock`,
+    )
+    packageRecords.set(resolution, {
+      name: manifest.name,
+      version: manifest.version,
+      manifestSha256: hash(bytes),
+      lockEntries,
+    })
+  }
+  return {
+    sha256: identity.sha256,
+    files: identity.files,
+    packages: [...packageRecords.values()].sort((left, right) =>
+      `${left.name}\0${left.version}`.localeCompare(`${right.name}\0${right.version}`),
+    ),
+    inputs: {
+      lockfile: lockfileIdentity,
+      packedManifest: { sha256: hash(compilerManifestBytes), bytes: compilerManifestBytes.length },
+      workspaceManifest: {
+        sha256: hash(workspaceManifestBytes),
+        bytes: workspaceManifestBytes.length,
+      },
+      declaredDependencies: compilerManifest.dependencies ?? {},
+      directResolutions,
+    },
+  }
+}
+
+const extractedTopology = ({ manifest, manifestDirectory, records, scratch }) => {
+  const packages = new Map()
+  for (const name of STOPCOCK) {
+    const record = records.get(name)
+    const destination = join(scratch, 'extracted', name.replace('@stopcock/', ''))
+    extract(resolve(manifestDirectory, record.tarball.path), destination)
+    const extractedPackage = JSON.parse(readFileSync(join(destination, 'package.json'), 'utf8'))
+    assert(
+      extractedPackage.name === name && extractedPackage.version === record.version,
+      `${name} packed manifest mismatch`,
+    )
+    packages.set(name, destination)
+  }
+  const compilerDependencyClosure = copyCompilerDependencyClosure(
+    packages.get('@stopcock/fp-compiler'),
+    manifest,
+  )
+  // Node resolves a symlinked package from its real extraction path.  Model a
+  // real peer installation beside the unpacked optimizer, never by falling
+  // back through this workspace's FP package.
+  link(
+    packages.get('@stopcock/fp'),
+    join(packages.get('@stopcock/fp-optimizer'), 'node_modules', '@stopcock', 'fp'),
+  )
+  const consumer = join(scratch, 'consumer')
+  mkdirSync(consumer, { recursive: true })
+  writeFileSync(
+    join(consumer, 'package.json'),
+    stable({ name: 'stopcock-s11r-extracted-consumer', private: true, type: 'module' }),
+  )
+  for (const name of STOPCOCK) link(packages.get(name), join(consumer, 'node_modules', name))
+  // These links are tooling only.  The package roots above are verified tarball
+  // extractions and all generated source imports resolve through them.
+  for (const name of ['vite', 'rollup', 'esbuild', 'webpack'])
+    link(rootModule(name), join(consumer, 'node_modules', name))
+  link(rootModule('@rspack/core'), join(consumer, 'node_modules', '@rspack', 'core'))
+  const compilerRoot = packages.get('@stopcock/fp-compiler')
+  const compilerManifest = JSON.parse(readFileSync(join(compilerRoot, 'package.json'), 'utf8'))
+  assert(
+    compilerManifest.bin &&
+      Object.keys(compilerManifest.bin).length === 1 &&
+      compilerManifest.bin.stopcock === './dist/cli.js',
+    'packed compiler must declare exactly bin.stopcock -> ./dist/cli.js',
+  )
+  const binTarget = resolve(compilerRoot, compilerManifest.bin.stopcock)
+  assert(
+    canonicalPath(compilerRoot, binTarget) === 'dist/cli.js',
+    'packed bin.stopcock escapes compiler package',
+  )
+  const binInfo = lstatSync(binTarget)
+  assert(
+    binInfo.isFile() && !binInfo.isSymbolicLink(),
+    'packed bin.stopcock target is not a regular file',
+  )
+  assert((binInfo.mode & 0o111) !== 0, 'packed bin.stopcock target is not executable')
+  assert(
+    readFileSync(binTarget, 'utf8').startsWith('#!/usr/bin/env node\n'),
+    'packed bin.stopcock has no Node shebang',
+  )
+  const cliConsumer = join(scratch, 'cli-consumer')
+  mkdirSync(cliConsumer, { recursive: true })
+  writeFileSync(
+    join(cliConsumer, 'package.json'),
+    stable({ name: 'stopcock-s11r-cli-consumer', private: true, type: 'module' }),
+  )
+  link(compilerRoot, join(cliConsumer, 'node_modules', '@stopcock', 'fp-compiler'))
+  const cliBin = join(cliConsumer, 'node_modules', '.bin', 'stopcock')
+  mkdirSync(dirname(cliBin), { recursive: true })
+  symlinkSync('../@stopcock/fp-compiler/dist/cli.js', cliBin)
+  assert(
+    realpathSync(cliBin) === realpathSync(binTarget),
+    'consumer .bin/stopcock does not resolve to packed manifest target',
+  )
+  const dependencySmoke = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      "import('@stopcock/fp-compiler').then((module) => { if (typeof module.stopcockFp !== 'function') process.exit(3); process.stdout.write('ok') })",
+    ],
+    { cwd: cliConsumer, encoding: 'utf8', env: cleanNodeEnvironment() },
+  )
+  assert(
+    dependencySmoke.status === 0 && dependencySmoke.stdout === 'ok',
+    `extracted compiler dependency closure cannot load without parent/NODE_PATH fallback: ${(dependencySmoke.stderr || dependencySmoke.stdout).trim()}`,
+  )
+  const qualificationTools = [
+    ...['vite', 'rollup', 'esbuild', 'webpack', '@rspack/core'].map((name) => toolIdentity(name)),
+    toolIdentity('terser', BENCHMARK_REQUIRE),
+    toolIdentity('rolldown', BENCHMARK_REQUIRE),
+    toolIdentity('@jridgewell/trace-mapping', TRACE_MAPPING_REQUIRE),
+  ].sort((left, right) => compare(left.specifier, right.specifier))
+  return {
+    consumer,
+    packages,
+    compilerDependencyClosure,
+    qualificationTools,
+    cliConsumer,
+    cliBin,
+    cliBinIdentity: {
+      manifestTarget: compilerManifest.bin.stopcock,
+      target: fileIdentity(binTarget),
+    },
+  }
+}
+
+const canonicalFixtures = () => {
+  const selected = [...COMMON_CONSUMERS, 'helpers.two-unrelated']
+  const program = `import { FP_CONSUMER_FIXTURES } from './benchmarks/src/bundle-size/fixtures.ts';
+const selected = new Set(${JSON.stringify(selected)});
+const rows = FP_CONSUMER_FIXTURES.filter((fixture) => selected.has(fixture.id)).map((fixture) => ({ id: fixture.id, entryKind: fixture.entryKind, sourceKind: fixture.sourceKind, source: fixture.source, expected: fixture.expected, applicability: fixture.applicability }));
+process.stdout.write(JSON.stringify(rows));`
+  const result = spawnSync('bun', ['-e', program], {
+    cwd: REPOSITORY_ROOT,
+    encoding: 'utf8',
+  })
+  assert(
+    result.status === 0,
+    `cannot project canonical benchmark fixtures: ${(result.stderr || result.stdout || '').trim()}`,
+  )
+  const rows = JSON.parse(result.stdout)
+  assert(
+    Array.isArray(rows) && rows.length === selected.length,
+    'canonical benchmark fixture projection is incomplete',
+  )
+  const byId = new Map(rows.map((row) => [row.id, row]))
+  for (const id of selected) {
+    const row = byId.get(id)
+    assert(
+      row?.entryKind === 'single' &&
+        row?.sourceKind === (id.startsWith('compiler.') ? 'compiler-transformed' : 'consumer'),
+      `canonical fixture ${id} has unexpected identity`,
+    )
+    assert(
+      row?.applicability?.status === 'active' && typeof row.source === 'string',
+      `canonical fixture ${id} is not an active source fixture`,
+    )
+  }
+  const projection = selected.map((id) => byId.get(id))
+  return Object.freeze({
+    common: byId,
+    helpers: byId.get('helpers.two-unrelated'),
+    corpus: {
+      ids: [...selected],
+      count: projection.length,
+      sha256: hash(Buffer.from(stable(projection))),
+    },
+  })
+}
+
+const assertCompiled = (code, label) => {
+  assert(/\bfor\s*\(/u.test(code), `${label} did not emit a lowered loop`)
+}
+const normalizeModule = (topology, id) => {
+  const clean = posix(String(id))
+    .replaceAll('\0', '')
+    .replace(/^.*[|!]/u, '')
+    .split('?')[0]
+  const absolute = resolve(clean)
+  for (const name of STOPCOCK) {
+    const marker = `/node_modules/${name}/`
+    const offset = clean.indexOf(marker)
+    if (offset !== -1) {
+      const actual = existsSync(absolute) ? realpathSync(absolute) : absolute
+      const expectedRoot = topology.packages.get(name)
+      assert(
+        actual === expectedRoot || actual.startsWith(`${expectedRoot}${sep}`),
+        `Stopcock module resolved outside selected extraction: ${clean}`,
+      )
+      return `${name}/${clean.slice(offset + marker.length)}`
+    }
+  }
+  if (absolute === topology.consumer || absolute.startsWith(`${topology.consumer}${sep}`)) {
+    return `consumer/${posix(relative(topology.consumer, absolute))}`
+  }
+  for (const [name, packageRoot] of topology.packages) {
+    if (absolute === packageRoot || absolute.startsWith(`${packageRoot}${sep}`)) {
+      return `${name}/${posix(relative(packageRoot, absolute))}`
+    }
+  }
+  // An unresolved Stopcock-looking identifier is never benign: normalising it
+  // would hide a compiler/FP escape from the graph evidence.  Likewise a
+  // workspace path cannot be relabelled as an external host virtual module.
+  assert(!/stopcock/iu.test(clean), `unknown Stopcock module identity ${clean}`)
+  if (clean.startsWith('/') || /^[A-Za-z]:\//u.test(clean)) {
+    assert(
+      !absolute.startsWith(`${REPOSITORY_ROOT}${sep}`) && absolute !== REPOSITORY_ROOT,
+      `unknown module identity points into repository ${clean}`,
+    )
+  }
+  // Preserve an unknown host virtual module without retaining a machine path
+  // (or a scratch-directory-specific hash).  The basename is intentionally
+  // bounded and Stopcock has already been rejected above.
+  const label =
+    basename(posix(clean))
+      .replace(/[^A-Za-z0-9._-]/gu, '_')
+      .slice(0, 96) || 'virtual'
+  return `external/${label}`
+}
+
+const canonicalGraph = (topology, moduleIds) =>
+  [...new Set(moduleIds.map((id) => normalizeModule(topology, id)))].sort(compare)
+
+export const validateConstructionLeafSource = (source, label = 'construction leaf') => {
+  assert(!ENGINE_LOGIC_CONTENT.test(source), `${label} contains execution-engine logic`)
+  assert(
+    !/\b(?:pipe|flow|compile|compilePure|interpret|execute)\b/u.test(source),
+    `${label} exposes composition/execution vocabulary`,
+  )
+  const imports = [...source.matchAll(/\bfrom\s+["']([^"']+)["']/gu)].map((match) => match[1])
+  assert(
+    imports.every(
+      (specifier) => !/(?:compact|fusion|plan|compile|interpret|optimizer)/u.test(specifier),
+    ),
+    `${label} imports an execution-engine module`,
+  )
+  return {
+    imports: imports.sort(compare),
+    sha256: hash(Buffer.from(source)),
+    bytes: Buffer.byteLength(source),
+  }
+}
+
+const assertCompiledGraph = (topology, moduleGraph, label) => {
+  const forbidden = moduleGraph.filter((id) =>
+    FORBIDDEN_ENGINE_MODULES.some((fragment) => id.includes(fragment)),
+  )
+  assert(
+    forbidden.length === 0,
+    `${label} retains runtime composition/execution modules: ${forbidden.join(', ')}`,
+  )
+  const unaudited = moduleGraph.filter(
+    (id) => id.startsWith('@stopcock/fp/dist/') && !CONSTRUCTION_LEAF_MODULE.test(id),
+  )
+  assert(
+    unaudited.length === 0,
+    `${label} retains unaudited FP construction modules: ${unaudited.join(', ')}`,
+  )
+  const constructionLeaves = moduleGraph
+    .filter((id) => CONSTRUCTION_LEAF_MODULE.test(id))
+    .map((id) => {
+      const path = join(topology.packages.get('@stopcock/fp'), id.slice('@stopcock/fp/'.length))
+      const bytes = readFileSync(path)
+      const source = bytes.toString('utf8')
+      validateConstructionLeafSource(source, `${label} construction leaf ${id}`)
+      return { id, sha256: hash(bytes), bytes: bytes.length }
+    })
+    .sort((left, right) => compare(left.id, right.id))
+  return { constructionLeaves }
+}
+
+const rawSourceMap = (map, label) => {
+  const parsed = JSON.parse(map)
+  assert(
+    Array.isArray(parsed.sources) && parsed.sources.length > 0,
+    `${label} source map has no sources`,
+  )
+  const rawFields = [
+    ...parsed.sources,
+    ...(typeof parsed.sourceRoot === 'string' ? [parsed.sourceRoot] : []),
+    ...(typeof parsed.file === 'string' ? [parsed.file] : []),
+  ]
+  for (const value of rawFields) {
+    assert(typeof value === 'string', `${label} source map has a non-string path field`)
+    const portable = posix(value)
+    assert(
+      !portable.startsWith('/') && !/^[A-Za-z]:\//u.test(portable),
+      `${label} raw source map leaks absolute path ${value}`,
+    )
+    assert(
+      !portable.includes(posix(REPOSITORY_ROOT)),
+      `${label} raw source map leaks workspace path ${value}`,
+    )
+    assert(
+      !/stopcock-s11r-extracted-[^/]+/u.test(portable),
+      `${label} raw source map leaks scratch path ${value}`,
+    )
+  }
+  assert(
+    typeof parsed.mappings === 'string' && parsed.mappings.length > 0,
+    `${label} source map has no mappings`,
+  )
+  return parsed
+}
+
+const normalizeSourceMap = (map, topology, label = 'source map') => {
+  const parsed = rawSourceMap(map, label)
+  parsed.sources = (parsed.sources ?? []).map((source) => {
+    if (typeof source !== 'string') fail('source map contains a non-string source')
+    const scratchConsumer = /(?:^|\/)stopcock-s11r-extracted-[^/]+\/consumer\/(.*)$/u.exec(
+      posix(source),
+    )
+    if (scratchConsumer) return `consumer/${scratchConsumer[1]}`
+    if (source.startsWith('webpack://')) {
+      const marker = source.indexOf('/src/')
+      return marker === -1 ? `virtual/${basename(source)}` : `consumer${source.slice(marker)}`
+    }
+    if (!source.startsWith('/') && !/^[A-Za-z]:[\\/]/u.test(source)) return posix(source)
+    return normalizeModule(topology, source)
+  })
+  if (typeof parsed.sourceRoot === 'string' && parsed.sourceRoot.length > 0) {
+    parsed.sourceRoot = parsed.sourceRoot.startsWith('/') ? 'consumer/' : posix(parsed.sourceRoot)
+  }
+  return JSON.stringify(parsed)
+}
+
+const codeIdentity = async (code, map, topology) => {
+  const { minify } = await import(pathToFileURL(BENCHMARK_REQUIRE.resolve('terser')).href)
+  const minified = await minify(code, structuredClone(MINIFIER_OPTIONS))
+  assert(typeof minified.code === 'string' && minified.code.length > 0, 'Terser produced no code')
+  const canonicalMap = map === null ? null : normalizeSourceMap(map, topology)
+  return {
+    code: hash(Buffer.from(code)),
+    minifiedCode: hash(Buffer.from(minified.code)),
+    sourceMap: canonicalMap === null ? null : hash(Buffer.from(canonicalMap)),
+    gzipBytes: gzipSync(Buffer.from(minified.code), { level: 9 }).byteLength,
+  }
+}
+
+const stopcockExport = (topology, source) => {
+  const match = /^(@stopcock\/(?:fp|fp-optimizer|fp-compiler))(\/.*)?$/u.exec(source)
+  if (!match) return null
+  const root = topology.packages.get(match[1])
+  if (!root) return null
+  const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  const key = match[2] === undefined ? '.' : `.${match[2]}`
+  const target = manifest.exports?.[key]
+  const path = typeof target === 'string' ? target : (target?.import ?? target?.default)
+  assert(typeof path === 'string', `${source} is not exported by its extracted package`)
+  return join(root, path)
+}
+
+const stopcockResolver = (topology) => ({
+  name: 'stopcock-s11r-extracted-resolver',
+  resolveId(source) {
+    return stopcockExport(topology, source)
+  },
+})
+
+const graphAuditPlugin = (ids) => ({
+  name: 'stopcock-s11r-module-graph-audit',
+  generateBundle() {
+    for (const id of this.getModuleIds()) ids.add(id)
+  },
+})
+
+const pluginOptions = (topology, receiptDirectory, strict = false, compilerOptions = {}) => ({
+  ...compilerOptions,
+  diagnostics: strict ? 'error' : 'summary',
+  receipts: {
+    dir: receiptDirectory,
+    root: topology.consumer,
+    // Populated once the extracted FP/optimizer identities have been loaded.
+    // It is deliberately absent for an ordinary plugin invocation.
+    ...(topology.artifactContext === undefined
+      ? {}
+      : { artifactContext: topology.artifactContext }),
+  },
+})
+const executeEsm = async (file, expected, label) => {
+  const loaded = await import(`${pathToFileURL(file).href}?s11r=${encodeURIComponent(label)}`)
+  assert(JSON.stringify(loaded.result) === JSON.stringify(expected), `${label} oracle failed`)
+}
+const executeCjs = (file, expected, label) => {
+  const require = createRequire(file)
+  delete require.cache[file]
+  const loaded = require(file)
+  assert(JSON.stringify(loaded.result) === JSON.stringify(expected), `${label} oracle failed`)
+}
+
+const adapter = (packages, host) =>
+  pathToFileURL(join(packages.get('@stopcock/fp-compiler'), 'dist', `${host}.js`)).href
+const writeExternalSourceMapOutput = (output, code, map) => {
+  const withoutDirective = code.replace(/\n?\/\/[#@]\s*sourceMappingURL=.*?(?:\n|$)/gu, '\n')
+  const mappedCode = `${withoutDirective.replace(/\s*$/u, '')}\n//# sourceMappingURL=${basename(output)}.map\n`
+  mkdirSync(dirname(output), { recursive: true })
+  writeFileSync(output, mappedCode)
+  writeFileSync(`${output}.map`, map)
+  return mappedCode
+}
+const runRollup = async ({
+  topology,
+  entry,
+  out,
+  receipts,
+  expected,
+  strict = false,
+  execute = true,
+  compilerOptions = {},
+}) => {
+  const { rollup } = await import('rollup')
+  const { stopcockFp } = await import(adapter(topology.packages, 'rollup'))
+  const audited = new Set()
+  const bundle = await rollup({
+    input: entry,
+    plugins: [
+      stopcockResolver(topology),
+      stopcockFp(pluginOptions(topology, receipts, strict, compilerOptions)),
+      graphAuditPlugin(audited),
+    ],
+  })
+  const generated = await bundle.generate({ format: 'es', sourcemap: true })
+  await bundle.close()
+  const chunk = generated.output.find((item) => item.type === 'chunk' && item.isEntry)
+  assert(chunk, 'rollup did not emit an entry chunk')
+  const mapAsset = generated.output.find(
+    (item) => item.type === 'asset' && item.fileName.endsWith('.map'),
+  )
+  const map = text(chunk.map) ?? text(mapAsset?.source)
+  assert(map !== null, 'rollup did not emit a source map')
+  const output = join(out, 'out.mjs')
+  const code = writeExternalSourceMapOutput(output, chunk.code, map)
+  if (execute) await executeEsm(output, expected, 'rollup')
+  return { code, map, moduleGraph: canonicalGraph(topology, [...audited]) }
+}
+const runEsbuild = async ({
+  topology,
+  entry,
+  out,
+  receipts,
+  expected,
+  strict = false,
+  execute = true,
+  compilerOptions = {},
+}) => {
+  const esbuild = await import('esbuild')
+  const { stopcockFp } = await import(adapter(topology.packages, 'esbuild'))
+  const output = join(out, 'out.mjs')
+  mkdirSync(out, { recursive: true })
+  const result = await esbuild.build({
+    entryPoints: [entry],
+    outfile: output,
+    bundle: true,
+    format: 'esm',
+    platform: 'node',
+    sourcemap: 'external',
+    metafile: true,
+    plugins: [stopcockFp(pluginOptions(topology, receipts, strict, compilerOptions))],
+  })
+  const code = readFileSync(output, 'utf8')
+  const map = readFileSync(`${output}.map`, 'utf8')
+  if (execute) await executeEsm(output, expected, 'esbuild')
+  return { code, map, moduleGraph: canonicalGraph(topology, Object.keys(result.metafile.inputs)) }
+}
+const collectStatsModuleIds = (modules) =>
+  modules.flatMap((module) => [
+    ...(typeof module.identifier === 'string' ? [module.identifier] : []),
+    ...(typeof module.name === 'string' ? [module.name] : []),
+    ...collectStatsModuleIds(module.modules ?? []),
+  ])
+
+const runWebpackLike = async ({
+  topology,
+  entry,
+  out,
+  receipts,
+  expected,
+  host,
+  strict = false,
+  execute = true,
+  compilerOptions = {},
+}) => {
+  const library = host === 'webpack' ? await import('webpack') : await import('@rspack/core')
+  const compile = host === 'webpack' ? library.default : library.rspack
+  const { stopcockFp } = await import(adapter(topology.packages, host))
+  mkdirSync(out, { recursive: true })
+  const output = join(out, 'out.cjs')
+  const stats = await new Promise((resolveStats, reject) => {
+    const compiler = compile({
+      mode: 'production',
+      entry,
+      target: 'node',
+      devtool: 'source-map',
+      optimization: { minimize: false },
+      output: { path: out, filename: 'out.cjs', library: { type: 'commonjs2' } },
+      plugins: [stopcockFp(pluginOptions(topology, receipts, strict, compilerOptions))],
+    })
+    compiler.run((error, result) =>
+      compiler.close(() => {
+        if (error) return reject(error)
+        if (result?.hasErrors()) return reject(new Error(result.toString({ errorDetails: true })))
+        resolveStats(result)
+      }),
+    )
+  })
+  const code = readFileSync(output, 'utf8')
+  const map = readFileSync(`${output}.map`, 'utf8')
+  if (execute) executeCjs(output, expected, host)
+  const json = stats.toJson({ all: false, modules: true, nestedModules: true })
+  return {
+    code,
+    map,
+    moduleGraph: canonicalGraph(topology, collectStatsModuleIds(json.modules ?? [])),
+  }
+}
+const runVite = async ({
+  topology,
+  entry,
+  out,
+  receipts,
+  expected,
+  strict = false,
+  execute = true,
+  compilerOptions = {},
+}) => {
+  const { build } = await import('vite')
+  const { stopcockFp } = await import(adapter(topology.packages, 'vite'))
+  const audited = new Set()
+  mkdirSync(out, { recursive: true })
+  await build({
+    root: topology.consumer,
+    logLevel: 'silent',
+    plugins: [
+      stopcockFp(pluginOptions(topology, receipts, strict, compilerOptions)),
+      graphAuditPlugin(audited),
+    ],
+    build: {
+      sourcemap: true,
+      minify: false,
+      outDir: out,
+      emptyOutDir: true,
+      lib: { entry, formats: ['es'], fileName: () => 'out.mjs' },
+    },
+  })
+  const output = join(out, 'out.mjs')
+  const code = readFileSync(output, 'utf8')
+  const map = readFileSync(`${output}.map`, 'utf8')
+  if (execute) await executeEsm(output, expected, 'vite')
+  return { code, map, moduleGraph: canonicalGraph(topology, [...audited]) }
+}
+const runHost = async ({ host, ...input }) => {
+  if (host === 'rollup') return runRollup(input)
+  if (host === 'esbuild') return runEsbuild(input)
+  if (host === 'vite') return runVite(input)
+  return runWebpackLike({ ...input, host })
+}
+
+const receiptIdentity = (path, validateReceiptV1) => {
+  const bytes = readFileSync(path)
+  const parsed = JSON.parse(bytes)
+  assert(Array.isArray(parsed), 'receipt file is not an array')
+  for (const entry of parsed) {
+    const validated = validateReceiptV1(entry)
+    assert(
+      validated.ok,
+      `extracted receipt schema rejected a receipt: ${validated.errors?.join('; ')}`,
+    )
+    assert(
+      typeof entry.sourcePath === 'string' && !entry.sourcePath.startsWith('/'),
+      'receipt source path is not project-relative',
+    )
+    assert(
+      !entry.sourcePath.includes('stopcock-s11r-extracted-'),
+      'receipt source path contains a scratch identity',
+    )
+    assert(typeof entry.semanticManifestHash === 'string', 'receipt semantic binding missing')
+    if (entry.disposition === 'transformed') {
+      assert(typeof entry.loweringHash === 'string', 'transformed receipt lowering binding missing')
+    } else {
+      assert(entry.loweringHash === null, 'fallback/skipped receipt claims a lowering')
+    }
+  }
+  const ids = parsed.map((entry) => entry.receiptId)
+  assert(JSON.stringify(ids) === JSON.stringify([...ids].sort(compare)), 'receipts are not sorted')
+  return { sha256: hash(bytes), bytes: bytes.length, count: parsed.length }
+}
+const recomputeReceiptArtifacts = ({
+  compiler,
+  entry,
+  receiptPath,
+  topology,
+  compilerOptions = {},
+}) => {
+  const source = readFileSync(entry, 'utf8')
+  const result = compiler.transformStopcockPipelines(source, entry, {
+    ...compilerOptions,
+    diagnostics: 'summary',
+  })
+  const codeHash = result.code === source ? null : hash(Buffer.from(result.code))
+  const mapHash = result.map === null ? null : hash(Buffer.from(JSON.stringify(result.map)))
+  const records = JSON.parse(readFileSync(receiptPath, 'utf8'))
+  const expectedPath = canonicalPath(topology.consumer, entry)
+  for (const record of records) {
+    assert(
+      record.sourcePath === expectedPath,
+      `${expectedPath} receipt is bound to a different source path`,
+    )
+    assert(
+      record.sourceHash === hash(Buffer.from(source)),
+      `${expectedPath} receipt source hash does not match emitted source`,
+    )
+    if (topology.artifactContext !== undefined) {
+      assert(
+        JSON.stringify(record.artifactContext) === JSON.stringify(topology.artifactContext),
+        `${expectedPath} receipt artifact context does not bind the extracted cohort`,
+      )
+    }
+    if (record.disposition === 'transformed') {
+      assert(
+        record.emittedCodeHash === codeHash,
+        `${expectedPath} receipt emittedCodeHash does not match direct extracted transform`,
+      )
+      assert(
+        record.sourceMapHash === mapHash,
+        `${expectedPath} receipt sourceMapHash does not match direct extracted transform`,
+      )
+    } else {
+      assert(
+        record.emittedCodeHash === null && record.sourceMapHash === null,
+        `${expectedPath} non-transformed receipt claims emitted artifacts`,
+      )
+    }
+  }
+  return {
+    sourceHash: hash(Buffer.from(source)),
+    transformCodeHash: codeHash,
+    transformSourceMapHash: mapHash,
+    receiptIds: records.map((record) => record.receiptId).sort(compare),
+  }
+}
+const runCommonMatrix = async (topology, root, validateReceiptV1, canonical, compiler) => {
+  const rows = []
+  for (const consumerName of COMMON_CONSUMERS) {
+    const fixture = canonical.common.get(consumerName)
+    assert(fixture !== undefined, `canonical fixture ${consumerName} disappeared`)
+    const entry = join(topology.consumer, 'src', `${consumerName}.mjs`)
+    mkdirSync(dirname(entry), { recursive: true })
+    writeFileSync(entry, fixture.source)
+    for (const host of HOSTS) {
+      const rowRoot = join(root, 'rows', host, consumerName)
+      const receipts = join(rowRoot, 'receipts')
+      const output = await runHost({
+        host,
+        topology,
+        entry,
+        out: join(rowRoot, 'out'),
+        receipts,
+        expected: fixture.expected,
+      })
+      assertCompiled(output.code, `${host}/${consumerName}`)
+      const graphContract = assertCompiledGraph(
+        topology,
+        output.moduleGraph,
+        `${host}/${consumerName}`,
+      )
+      const sourceMapAudit = assertSourceMapEnvelope(
+        output.map,
+        topology,
+        `${host}/${consumerName}`,
+      )
+      const identity = await codeIdentity(output.code, output.map, topology)
+      assert(
+        identity.gzipBytes <= 1024,
+        `${host}/${consumerName} gzip ${identity.gzipBytes} exceeds 1024`,
+      )
+      const receipt = receiptIdentity(join(receipts, 'stopcock-receipts.json'), validateReceiptV1)
+      assert(receipt.count === 1, `${host}/${consumerName} expected one transformed receipt`)
+      const receiptBinding = recomputeReceiptArtifacts({
+        compiler,
+        entry,
+        receiptPath: join(receipts, 'stopcock-receipts.json'),
+        topology,
+      })
+      rows.push({
+        host,
+        consumer: consumerName,
+        ...identity,
+        sourceMapAudit,
+        receipt,
+        receiptBinding,
+        graphContract,
+        moduleGraph: output.moduleGraph,
+      })
+    }
+  }
+  return rows.sort((left, right) =>
+    `${left.host}\0${left.consumer}`.localeCompare(`${right.host}\0${right.consumer}`),
+  )
+}
+
+const assertSourceMapEnvelope = (map, topology, label) => {
+  const raw = rawSourceMap(map, label)
+  const canonical = normalizeSourceMap(map, topology, label)
+  const parsed = JSON.parse(canonical)
+  assert(
+    Array.isArray(parsed.sources) && parsed.sources.length > 0,
+    `${label} canonical source map has no sources`,
+  )
+  return {
+    raw: {
+      sha256: hash(Buffer.from(map)),
+      sources: [...raw.sources],
+      sourceRoot: raw.sourceRoot ?? null,
+      file: raw.file ?? null,
+    },
+    canonical: { sha256: hash(Buffer.from(canonical)), sources: [...parsed.sources] },
+  }
+}
+
+const originalPositionFor = (map, generatedLine, generatedColumn) => {
+  const trace = new TRACE_MAPPING.TraceMap(map)
+  const position = TRACE_MAPPING.originalPositionFor(trace, {
+    line: generatedLine + 1,
+    column: generatedColumn,
+    bias: TRACE_MAPPING.GREATEST_LOWER_BOUND,
+  })
+  return position.source === null || position.line === null || position.column === null
+    ? undefined
+    : { source: position.source, line: position.line, column: position.column }
+}
+
+const assertMappedMarker = (code, map, marker, expected, label) => {
+  const lines = code.split('\n')
+  const line = lines.findIndex((value) => value.includes(marker))
+  assert(line >= 0, `${label} output does not contain ${marker}`)
+  const column = lines[line].indexOf(marker)
+  const actual = originalPositionFor(map, line, column)
+  assert(
+    actual?.source?.endsWith(expected.source) &&
+      actual?.line === expected.line &&
+      actual?.column === expected.column,
+    `${label} ${marker} maps to ${JSON.stringify(actual)} instead of ${JSON.stringify(expected)}`,
+  )
+  return { generatedLine: line + 1, generatedColumn: column, original: actual }
+}
+
+const assertExactSourceMap = (output, topology, testCase, label) => {
+  const envelope = assertSourceMapEnvelope(output.map, topology, label)
+  const map = JSON.parse(normalizeSourceMap(output.map, topology, label))
+  return {
+    envelope,
+    throwSite: assertMappedMarker(output.code, map, testCase.marker, testCase.original, label),
+  }
+}
+
+const SOURCE_MAP_CASES = Object.freeze([
+  {
+    id: 'callback',
+    source: `import { pipe } from '@stopcock/fp'
+import { map, filter } from '@stopcock/fp/array'
+const boom = (value) => {
+  if (value === 2) throw new Error('s11r callback boom')
+  return value * 2
+}
+export const result = pipe([1, 2, 3], map(boom), filter((value) => value > 2))
+`,
+    marker: 'throw new Error',
+    error: 's11r callback boom',
+    original: { source: 'source-map-callback.mjs', line: 4, column: 19 },
+    runtime: { line: 4, column: 26 },
+  },
+  {
+    id: 'pipeline',
+    source: `import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+const source = null
+export const result = pipe(source, map((value) => value * 2))
+`,
+    marker: '_src.length',
+    error: 'Cannot read properties of null',
+    original: { source: 'source-map-pipeline.mjs', line: 4, column: 22 },
+    runtime: { line: 4, column: 23 },
+  },
+])
+
+const regexEscape = (value) => value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+const assertRuntimeMappedThrow = (output, topology, testCase, label) => {
+  const result = spawnSync(process.execPath, ['--enable-source-maps', output], {
+    cwd: topology.cliConsumer,
+    encoding: 'utf8',
+    env: cleanNodeEnvironment(),
+  })
+  assert(
+    result.status !== 0 && result.stderr.includes(testCase.error),
+    `${label} did not execute the expected throw`,
+  )
+  const source = basename(testCase.original.source)
+  const match = new RegExp(`${regexEscape(source)}:${testCase.runtime.line}:(\\d+)`, 'u').exec(
+    result.stderr,
+  )
+  assert(
+    match !== null,
+    `${label} runtime stack did not map to ${source}:${testCase.runtime.line}: ${result.stderr}`,
+  )
+  assert(
+    Number(match[1]) === testCase.runtime.column,
+    `${label} runtime stack column ${match[1]} differs from ${testCase.runtime.column}`,
+  )
+  const materializationRoot = dirname(topology.consumer)
+  const normalized = result.stderr
+    .replaceAll(posix(materializationRoot), '<materialization>')
+    .replaceAll(materializationRoot, '<materialization>')
+  return {
+    status: result.status,
+    error: testCase.error,
+    original: { source, line: testCase.runtime.line, column: Number(match[1]) },
+    stack: hash(Buffer.from(normalized)),
+  }
+}
+
+const runSourceMapMatrix = async (topology, root, validateReceiptV1, compiler) => {
+  const rows = []
+  for (const testCase of SOURCE_MAP_CASES) {
+    const entry = join(topology.consumer, 'src', `source-map-${testCase.id}.mjs`)
+    writeFileSync(entry, testCase.source)
+    for (const host of HOSTS) {
+      const rowRoot = join(root, 'source-maps', testCase.id, host)
+      const out = join(rowRoot, 'out')
+      const output = await runHost({
+        host,
+        topology,
+        entry,
+        out,
+        receipts: join(rowRoot, 'receipts'),
+        expected: undefined,
+        execute: false,
+      })
+      const label = `${host}/source-map-${testCase.id}`
+      assertCompiled(output.code, label)
+      const graphContract = assertCompiledGraph(topology, output.moduleGraph, label)
+      const receiptPath = join(rowRoot, 'receipts', 'stopcock-receipts.json')
+      const receipt = receiptIdentity(receiptPath, validateReceiptV1)
+      const receiptBinding = recomputeReceiptArtifacts({ compiler, entry, receiptPath, topology })
+      const outputPath = join(out, host === 'webpack' || host === 'rspack' ? 'out.cjs' : 'out.mjs')
+      rows.push({
+        host,
+        case: testCase.id,
+        positions: assertExactSourceMap(output, topology, testCase, label),
+        runtimeThrow: assertRuntimeMappedThrow(outputPath, topology, testCase, label),
+        sourceMap: hash(Buffer.from(normalizeSourceMap(output.map, topology, label))),
+        receipt,
+        receiptBinding,
+        graphContract,
+      })
+    }
+  }
+  return rows.sort((left, right) =>
+    `${left.host}\0${left.case}`.localeCompare(`${right.host}\0${right.case}`),
+  )
+}
+
+const OBSERVABLE_CONSTRUCTION_FIXTURE = `import { pipe } from '@stopcock/fp'
+import { constructionTrace, filter, map, take } from './instrumented-construction.mjs'
+export { constructionTrace }
+export const result = pipe(
+  [1, 2, 3, 4, 5, 6],
+  filter((value) => value % 2 === 0),
+  map((value) => value * 3),
+  take(2),
+)
+`
+const INSTRUMENTED_CONSTRUCTION_LEAF = `export const constructionTrace = []
+const build = (name, value) => {
+  constructionTrace.push('construct:' + name)
+  return () => {
+    constructionTrace.push('execute:' + name)
+    throw new Error('instrumented construction leaf executed transformed pipeline: ' + name)
+  }
+}
+export const filter = (callback) => build('filter', callback)
+export const map = (callback) => build('map', callback)
+export const take = (count) => build('take', count)
+`
+const OBSERVABLE_COMPILER_OPTIONS = Object.freeze({
+  arrayImportSources: ['./instrumented-construction.mjs'],
+})
+
+const assertObservableEsm = async (output, label) => {
+  const loaded = await import(
+    `${pathToFileURL(output).href}?s11r-observable=${encodeURIComponent(label)}`
+  )
+  assert(
+    JSON.stringify(loaded.result) === JSON.stringify([6, 12]),
+    `${label} observable fixture result failed`,
+  )
+  assert(
+    JSON.stringify(loaded.constructionTrace) ===
+      JSON.stringify(['construct:filter', 'construct:map', 'construct:take']),
+    `${label} construction factories were not evaluated exactly once in source order or an operator executed`,
+  )
+}
+const assertObservableCjs = (output, label) => {
+  const require = createRequire(output)
+  delete require.cache[output]
+  const loaded = require(output)
+  assert(
+    JSON.stringify(loaded.result) === JSON.stringify([6, 12]),
+    `${label} observable fixture result failed`,
+  )
+  assert(
+    JSON.stringify(loaded.constructionTrace) ===
+      JSON.stringify(['construct:filter', 'construct:map', 'construct:take']),
+    `${label} construction factories were not evaluated exactly once in source order or an operator executed`,
+  )
+}
+const runObservableConstructionMatrix = async (topology, root, validateReceiptV1, compiler) => {
+  const entry = join(topology.consumer, 'src', 'observable-construction.mjs')
+  writeFileSync(entry, OBSERVABLE_CONSTRUCTION_FIXTURE)
+  writeFileSync(
+    join(topology.consumer, 'src', 'instrumented-construction.mjs'),
+    INSTRUMENTED_CONSTRUCTION_LEAF,
+  )
+  const rows = []
+  for (const host of HOSTS) {
+    const rowRoot = join(root, 'observable-construction', host)
+    const receipts = join(rowRoot, 'receipts')
+    const output = await runHost({
+      host,
+      topology,
+      entry,
+      out: join(rowRoot, 'out'),
+      receipts,
+      expected: undefined,
+      execute: false,
+      compilerOptions: OBSERVABLE_COMPILER_OPTIONS,
+    })
+    assertCompiled(output.code, `${host}/observable-construction`)
+    const graphContract = assertCompiledGraph(
+      topology,
+      output.moduleGraph,
+      `${host}/observable-construction`,
+    )
+    const outputPath = join(
+      rowRoot,
+      'out',
+      host === 'webpack' || host === 'rspack' ? 'out.cjs' : 'out.mjs',
+    )
+    if (host === 'webpack' || host === 'rspack')
+      assertObservableCjs(outputPath, `${host}/observable-construction`)
+    else await assertObservableEsm(outputPath, `${host}/observable-construction`)
+    const receiptPath = join(receipts, 'stopcock-receipts.json')
+    const receipt = receiptIdentity(receiptPath, validateReceiptV1)
+    assert(receipt.count === 1, `${host}/observable-construction expected one transformed receipt`)
+    rows.push({
+      host,
+      sourceMapAudit: assertSourceMapEnvelope(
+        output.map,
+        topology,
+        `${host}/observable-construction`,
+      ),
+      receipt,
+      receiptBinding: recomputeReceiptArtifacts({
+        compiler,
+        entry,
+        receiptPath,
+        topology,
+        compilerOptions: OBSERVABLE_COMPILER_OPTIONS,
+      }),
+      graphContract,
+      moduleGraph: output.moduleGraph,
+    })
+  }
+  return rows.sort((left, right) => compare(left.host, right.host))
+}
+
+const MIXED_TIERS = Object.freeze([
+  {
+    id: 'sequential-root',
+    supportSource: '@stopcock/fp/fusion',
+    fallbackSource: '@stopcock/fp',
+    fallbackExport: 'pipe',
+    fallbackTier: 'sequential',
+    requiredModule: '@stopcock/fp/dist/index.js',
+    prunedModule: '@stopcock/fp/dist/fusion.js',
+  },
+  {
+    id: 'compact-fusion',
+    supportSource: '@stopcock/fp',
+    fallbackSource: '@stopcock/fp/fusion',
+    fallbackExport: 'pipe',
+    fallbackTier: 'compact',
+    requiredModule: '@stopcock/fp/dist/fusion.js',
+    prunedModule: '@stopcock/fp/dist/index.js',
+  },
+  {
+    id: 'compact-compile',
+    supportSource: '@stopcock/fp',
+    fallbackSource: '@stopcock/fp/compile',
+    fallbackExport: 'compile',
+    fallbackTier: 'compact',
+    requiredModule: '@stopcock/fp/dist/compile.js',
+    prunedModule: '@stopcock/fp/dist/index.js',
+  },
+  {
+    id: 'optimized',
+    supportSource: '@stopcock/fp',
+    fallbackSource: '@stopcock/fp-optimizer',
+    fallbackExport: 'pipe',
+    fallbackTier: 'optimized',
+    requiredModule: '@stopcock/fp-optimizer/dist/index.js',
+    prunedModule: '@stopcock/fp/dist/index.js',
+  },
+])
+
+const mixedSource = (tier) => {
+  const fallback =
+    tier.fallbackExport === 'compile'
+      ? 'fallbackCompile(...deferred)([1, 2, 3])'
+      : 'fallbackPipe([1, 2, 3], ...deferred)'
+  const fallbackImport =
+    tier.fallbackExport === 'compile'
+      ? `import { compile as fallbackCompile } from '${tier.fallbackSource}'`
+      : `import { pipe as fallbackPipe } from '${tier.fallbackSource}'`
+  return `import { pipe as compiledPipe } from '${tier.supportSource}'
+${fallbackImport}
+import { filter, map, take } from '@stopcock/fp/array'
+const deferred = [map((value) => value + 1)]
+const compiled = compiledPipe(
+  [1, 2, 3, 4, 5, 6],
+  filter((value) => value % 2 === 0),
+  map((value) => value * 3),
+  take(2),
+)
+const fallback = ${fallback}
+export const result = [compiled, fallback]
+`
+}
+
+const strictHostRejects = async ({ host, topology, entry, rowRoot, tier }) => {
+  const strictOut = join(rowRoot, 'strict-out')
+  const strictReceipts = join(rowRoot, 'strict-receipts')
+  remove(strictOut)
+  remove(strictReceipts)
+  const site = tier.fallbackExport === 'compile' ? 'compile' : 'pipe'
+  const reason = `spread arguments in ${site}() call`
+  const expected = `fp-compiler: skipped ${site}() at ${entry}:11: ${reason}`
+  try {
+    await runHost({
+      host,
+      topology,
+      entry,
+      out: strictOut,
+      receipts: strictReceipts,
+      expected: undefined,
+      strict: true,
+      execute: false,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    assert(
+      message.includes(expected),
+      `${host} strict build did not reject the exact unsupported ${site} site/reason: ${message}`,
+    )
+    assert(
+      regularFilesUnder(strictOut).length === 0,
+      `${host} strict rejection emitted build output`,
+    )
+    assert(
+      regularFilesUnder(strictReceipts).length === 0,
+      `${host} strict rejection emitted receipts`,
+    )
+    return { rejected: true, site, line: 11, reason, outputFiles: 0, receiptFiles: 0 }
+  }
+  fail(`${host} strict build accepted an intentionally unsupported site`)
+}
+
+const runMixedRows = async (topology, root, validateReceiptV1, compiler) => {
+  const rows = []
+  for (const tier of MIXED_TIERS) {
+    const entry = join(topology.consumer, 'src', `mixed-${tier.id}.mjs`)
+    writeFileSync(entry, mixedSource(tier))
+    for (const host of HOSTS) {
+      const rowRoot = join(root, 'mixed', tier.id, host)
+      const receipts = join(rowRoot, 'receipts')
+      const output = await runHost({
+        host,
+        topology,
+        entry,
+        out: join(rowRoot, 'out'),
+        receipts,
+        expected: [
+          [6, 12],
+          [2, 3, 4],
+        ],
+      })
+      const sourceMapAudit = assertSourceMapEnvelope(output.map, topology, `${host}/${tier.id}`)
+      assert(
+        output.moduleGraph.some((id) => id.startsWith(tier.requiredModule)),
+        `${host}/${tier.id} pruned its required ${tier.fallbackTier} fallback`,
+      )
+      assert(
+        !output.moduleGraph.some((id) => id.startsWith(tier.prunedModule)),
+        `${host}/${tier.id} retained the fully transformed facade ${tier.prunedModule}`,
+      )
+      const receiptPath = join(receipts, 'stopcock-receipts.json')
+      const receipt = receiptIdentity(receiptPath, validateReceiptV1)
+      const receiptBinding = recomputeReceiptArtifacts({ compiler, entry, receiptPath, topology })
+      const parsed = JSON.parse(readFileSync(receiptPath, 'utf8'))
+      const transformed = parsed.filter((entry) => entry.disposition === 'transformed')
+      const fallback = parsed.filter((entry) => entry.disposition === 'fallback')
+      assert(parsed.length === 2, `${host}/${tier.id} did not discover both sites`)
+      assert(transformed.length === 1, `${host}/${tier.id} transformed count mismatch`)
+      assert(fallback.length === 1, `${host}/${tier.id} fallback count mismatch`)
+      assert(
+        fallback[0].fallbackTier === tier.fallbackTier &&
+          fallback[0].sourceSpecifier === tier.fallbackSource,
+        `${host}/${tier.id} fallback source/tier mismatch`,
+      )
+      assert(
+        transformed[0].sourceSpecifier === tier.supportSource,
+        `${host}/${tier.id} transformed source identity mismatch`,
+      )
+      const strict = await strictHostRejects({ host, topology, entry, rowRoot, tier })
+      rows.push({
+        host,
+        tier: tier.id,
+        receipt,
+        receiptBinding,
+        sourceMap: hash(
+          Buffer.from(normalizeSourceMap(output.map, topology, `${host}/${tier.id}`)),
+        ),
+        sourceMapAudit,
+        moduleGraph: output.moduleGraph,
+        coverage: { discovered: 2, transformed: 1, fallback: 1 },
+        strict,
+      })
+    }
+  }
+  return rows.sort((left, right) =>
+    `${left.host}\0${left.tier}`.localeCompare(`${right.host}\0${right.tier}`),
+  )
+}
+
+const IMPORT_PRUNING_FIXTURE = `import { pipe, some } from '@stopcock/fp'
+import { compile as fallbackCompile } from '@stopcock/fp/compile'
+import { filter, map, take } from '@stopcock/fp/array'
+const deferred = [map((value) => value + 1)]
+const compiled = pipe(
+  [1, 2, 3, 4, 5, 6],
+  filter((value) => value % 2 === 0),
+  map((value) => value * 3),
+  take(2),
+)
+const fallback = fallbackCompile(...deferred)([1, 2, 3])
+export const result = { compiled, fallback, sibling: some(7) }
+`
+const IMPORT_PRUNING_EXPECTED = Object.freeze({
+  compiled: [6, 12],
+  fallback: [2, 3, 4],
+  sibling: { _tag: 1, value: 7 },
+})
+const harnessCorpusIdentity = () => {
+  const entries = [
+    ...MIXED_TIERS.map((tier) => ({
+      id: `mixed.${tier.id}`,
+      source: mixedSource(tier),
+      expected: [
+        [6, 12],
+        [2, 3, 4],
+      ],
+      strict: {
+        line: 11,
+        reason: `spread arguments in ${tier.fallbackExport === 'compile' ? 'compile' : 'pipe'}() call`,
+      },
+    })),
+    ...SOURCE_MAP_CASES.map((testCase) => ({
+      id: `source-map.${testCase.id}`,
+      source: testCase.source,
+      error: testCase.error,
+      original: testCase.original,
+      runtime: testCase.runtime,
+    })),
+    {
+      id: 'observable-construction',
+      source: OBSERVABLE_CONSTRUCTION_FIXTURE,
+      constructionLeaf: INSTRUMENTED_CONSTRUCTION_LEAF,
+      compilerOptions: OBSERVABLE_COMPILER_OPTIONS,
+      expected: { result: [6, 12], trace: ['construct:filter', 'construct:map', 'construct:take'] },
+    },
+    { id: 'import-pruning', source: IMPORT_PRUNING_FIXTURE, expected: IMPORT_PRUNING_EXPECTED },
+  ]
+  return {
+    ids: entries.map((entry) => entry.id),
+    count: entries.length,
+    sha256: hash(Buffer.from(stable(entries))),
+  }
+}
+export const corpusIdentitiesForTest = () => ({
+  canonical: canonicalFixtures().corpus,
+  harness: harnessCorpusIdentity(),
+})
+const assertImportPruning = (compiler, entry) => {
+  const source = readFileSync(entry, 'utf8')
+  const result = compiler.transformStopcockPipelines(source, entry, { diagnostics: 'summary' })
+  const rootImport = /import\s*\{([^}]*)\}\s*from\s*['"]@stopcock\/fp['"]/u.exec(result.code)
+  assert(rootImport !== null, 'import-pruning transform removed needed @stopcock/fp sibling import')
+  const names = rootImport[1].split(',').map((name) => name.trim().split(/\s+as\s+/u)[0])
+  assert(
+    names.includes('some') && !names.includes('pipe'),
+    'import-pruning transform did not remove only the transformed pipe specifier',
+  )
+  assert(
+    /import\s*\{\s*compile\s+as\s+fallbackCompile\s*\}\s*from\s*['"]@stopcock\/fp\/compile['"]/u.test(
+      result.code,
+    ),
+    'import-pruning transform removed needed fallback import',
+  )
+  assert(
+    result.diagnostics.filter((site) => site.transformed).length === 1,
+    'import-pruning row transformed-site count mismatch',
+  )
+  assert(
+    result.diagnostics.filter((site) => !site.transformed).length === 1,
+    'import-pruning row fallback-site count mismatch',
+  )
+  return {
+    source: hash(Buffer.from(source)),
+    transformed: hash(Buffer.from(result.code)),
+    retained: ['some', 'fallbackCompile'],
+    removed: ['pipe'],
+  }
+}
+const runImportPruningMatrix = async (topology, root, validateReceiptV1, compiler) => {
+  const entry = join(topology.consumer, 'src', 'import-pruning.mjs')
+  writeFileSync(entry, IMPORT_PRUNING_FIXTURE)
+  const transform = assertImportPruning(compiler, entry)
+  const rows = []
+  for (const host of HOSTS) {
+    const rowRoot = join(root, 'import-pruning', host)
+    const receipts = join(rowRoot, 'receipts')
+    const output = await runHost({
+      host,
+      topology,
+      entry,
+      out: join(rowRoot, 'out'),
+      receipts,
+      expected: IMPORT_PRUNING_EXPECTED,
+    })
+    assertCompiled(output.code, `${host}/import-pruning`)
+    assert(
+      output.moduleGraph.some((id) => id.startsWith('@stopcock/fp/dist/index.js')),
+      `${host}/import-pruning lost needed root sibling module`,
+    )
+    assert(
+      output.moduleGraph.some((id) => id.startsWith('@stopcock/fp/dist/compile.js')),
+      `${host}/import-pruning lost needed fallback module`,
+    )
+    assert(
+      !output.moduleGraph.some((id) => id.startsWith('@stopcock/fp-optimizer/')),
+      `${host}/import-pruning introduced optimizer runtime`,
+    )
+    const receiptPath = join(receipts, 'stopcock-receipts.json')
+    const receipt = receiptIdentity(receiptPath, validateReceiptV1)
+    assert(receipt.count === 2, `${host}/import-pruning expected transformed and fallback receipts`)
+    rows.push({
+      host,
+      transform,
+      sourceMapAudit: assertSourceMapEnvelope(output.map, topology, `${host}/import-pruning`),
+      receipt,
+      receiptBinding: recomputeReceiptArtifacts({ compiler, entry, receiptPath, topology }),
+      moduleGraph: output.moduleGraph,
+    })
+  }
+  return rows.sort((left, right) => compare(left.host, right.host))
+}
+
+const runCli = (topology, qualificationRoot, receiptPaths) => {
+  assert(receiptPaths.length > 0, 'packed CLI has no emitted receipt files to inspect')
+  const invoke = (args, debugEsm = false) =>
+    spawnSync('stopcock', args, {
+      cwd: topology.cliConsumer,
+      encoding: 'utf8',
+      env: cleanNodeEnvironment({
+        PATH: `${dirname(topology.cliBin)}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH ?? ''}`,
+        ...(debugEsm ? { NODE_DEBUG: 'esm' } : {}),
+      }),
+    })
+  const expectStatus = (result, status, label) => {
+    assert(result.status === status, `${label} exit must be ${status}, received ${result.status}`)
+    return result
+  }
+
+  const receiptPath = receiptPaths.find((path) =>
+    JSON.parse(readFileSync(path, 'utf8')).every((record) => record.disposition === 'transformed'),
+  )
+  assert(
+    receiptPath !== undefined,
+    'packed CLI has no all-transformed receipt document for pass/tamper checks',
+  )
+  const passArgs = ['check', '--receipts', receiptPath, '--policy', 'unsupported', '--json']
+  const pass = expectStatus(invoke(passArgs), 0, 'packed CLI pass')
+  const passReplay = expectStatus(invoke(passArgs), 0, 'packed CLI pass replay')
+  assert(pass.stdout === passReplay.stdout, 'packed stopcock check pass JSON is not deterministic')
+  const parseSemanticReport = (stdout, label, expectedSites, expectedStatus = 'passed') => {
+    const report = JSON.parse(stdout)
+    assert(
+      report?.tool === 'stopcock-check' && report?.status === expectedStatus,
+      `${label} did not emit the expected ${expectedStatus} semantic report`,
+    )
+    assert(
+      report?.summary?.sites === expectedSites && report?.summary?.transformed >= 0,
+      `${label} report summary does not cover its receipt document`,
+    )
+    assert(
+      Array.isArray(report?.policies) &&
+        report.policies.length === 1 &&
+        report.policies[0].status === expectedStatus,
+      `${label} semantic policy report is incomplete`,
+    )
+    return report
+  }
+  parseSemanticReport(
+    pass.stdout,
+    'packed CLI pass',
+    JSON.parse(readFileSync(receiptPath, 'utf8')).length,
+  )
+  const allReports = []
+  for (const path of [...receiptPaths].sort(compare)) {
+    const records = JSON.parse(readFileSync(path, 'utf8'))
+    const expectedStatus = records.every((record) => record.disposition === 'transformed') ? 0 : 1
+    const result = expectStatus(
+      invoke(['check', '--receipts', path, '--policy', 'unsupported', '--json']),
+      expectedStatus,
+      `packed CLI semantic receipt ${canonicalPath(qualificationRoot, path)}`,
+    )
+    const reportStatus = expectedStatus === 0 ? 'passed' : 'failed'
+    const report = parseSemanticReport(
+      result.stdout,
+      `packed CLI semantic receipt ${canonicalPath(qualificationRoot, path)}`,
+      records.length,
+      reportStatus,
+    )
+    allReports.push({
+      receipt: canonicalPath(qualificationRoot, path),
+      status: report.status,
+      report: hash(Buffer.from(result.stdout)),
+    })
+  }
+  const debug = expectStatus(invoke(passArgs, true), 0, 'packed CLI ESM import closure')
+  assert(
+    !/@stopcock\/fp(?:\/|$)|@stopcock\/fp-optimizer|(?:^|[/\\])fusion(?:[./\\]|$)/iu.test(
+      debug.stderr,
+    ),
+    `packed CLI ESM closure imports FP/optimizer/fusion runtime: ${debug.stderr}`,
+  )
+  const compilerRoot = topology.packages.get('@stopcock/fp-compiler')
+  const closureModules = [...debug.stderr.matchAll(/file:\/\/\/[^\s'"\])},]+/gu)]
+    .map((match) => fileURLToPath(match[0]))
+    .filter((path, index, all) => all.indexOf(path) === index)
+    .sort(compare)
+  assert(closureModules.length > 0, 'NODE_DEBUG=esm did not expose a CLI import closure')
+  for (const path of closureModules) {
+    assert(
+      path === compilerRoot || path.startsWith(`${compilerRoot}${sep}`),
+      `packed CLI ESM closure escapes extracted compiler: ${path}`,
+    )
+  }
+  const normalizedDebug = debug.stderr
+    .replaceAll(posix(compilerRoot), '<compiler>')
+    .replaceAll(compilerRoot, '<compiler>')
+
+  const [receipt] = JSON.parse(readFileSync(receiptPath, 'utf8'))
+  const duplicatePath = join(qualificationRoot, 'cli-duplicate.json')
+  writeFileSync(duplicatePath, stable([receipt, receipt]))
+  const forgedPath = join(qualificationRoot, 'cli-forged-core.json')
+  writeFileSync(forgedPath, stable([{ ...receipt, sourceHash: `sha256:${'0'.repeat(64)}` }]))
+  const invalidPath = join(qualificationRoot, 'cli-invalid.json')
+  writeFileSync(invalidPath, stable([{ ...receipt, schemaVersion: 99 }]))
+  const stalePath = join(qualificationRoot, 'cli-stale-expectations.json')
+  writeFileSync(
+    stalePath,
+    stable({
+      kind: 'stopcock.check-expectations',
+      schemaVersion: 1,
+      compilerHash: receipt.compilerHash,
+      configHash: receipt.configHash,
+      semanticManifestHash: receipt.semanticManifestHash,
+      sites: [
+        {
+          receiptId: receipt.receiptId,
+          sourceHash: `sha256:${'0'.repeat(64)}`,
+          emittedCodeHash: receipt.emittedCodeHash,
+        },
+      ],
+    }),
+  )
+
+  const duplicate = expectStatus(
+    invoke(['check', '--receipts', duplicatePath, '--policy', 'unsupported', '--json']),
+    2,
+    'packed CLI duplicate receipt',
+  )
+  const forged = expectStatus(
+    invoke(['check', '--receipts', forgedPath, '--policy', 'unsupported', '--json']),
+    2,
+    'packed CLI forged receipt core',
+  )
+  const invalid = expectStatus(
+    invoke(['check', '--receipts', invalidPath, '--policy', 'unsupported', '--json']),
+    2,
+    'packed CLI invalid receipt',
+  )
+  const missing = expectStatus(
+    invoke([
+      'check',
+      '--receipts',
+      join(qualificationRoot, 'cli-missing.json'),
+      '--policy',
+      'unsupported',
+      '--json',
+    ]),
+    2,
+    'packed CLI missing receipt',
+  )
+  const staleArgs = [
+    'check',
+    '--receipts',
+    receiptPath,
+    '--expectations',
+    stalePath,
+    '--policy',
+    'stale-evidence',
+    '--json',
+  ]
+  const stale = expectStatus(invoke(staleArgs), 1, 'packed CLI stale expectations')
+  const staleReplay = expectStatus(invoke(staleArgs), 1, 'packed CLI stale replay')
+  assert(
+    stale.stdout === staleReplay.stdout,
+    'packed stopcock check stale JSON is not deterministic',
+  )
+  JSON.parse(stale.stdout)
+
+  return {
+    pass: { status: pass.status, json: hash(Buffer.from(pass.stdout)) },
+    duplicate: { status: duplicate.status },
+    forgedCore: { status: forged.status },
+    invalid: { status: invalid.status },
+    missing: { status: missing.status },
+    stale: { status: stale.status, json: hash(Buffer.from(stale.stdout)) },
+    semanticReports: allReports,
+    esmClosure: {
+      debug: hash(Buffer.from(normalizedDebug)),
+      modules: closureModules.map((path) => canonicalPath(compilerRoot, path)),
+      fpRuntimeExcluded: true,
+    },
+    executable: topology.cliBinIdentity,
+  }
+}
+
+const compatibilityFailures = (topology) => {
+  const fp = topology.packages.get('@stopcock/fp')
+  const optimizer = topology.packages.get('@stopcock/fp-optimizer')
+  return Promise.all([
+    import(pathToFileURL(join(fp, 'dist', 'abi.js')).href),
+    import(pathToFileURL(join(optimizer, 'dist', 'index.js')).href),
+  ]).then(([abi, optimizerApi]) => {
+    const vetted = abi.vetPipeline([])
+    const base = {
+      fpIdentity: abi.OPTIMIZER_ABI_IDENTITY,
+      fpInstanceToken: vetted.instanceToken,
+      optimizerBank: optimizerApi.bankIdentity,
+      requestedMode: 'exact',
+      planMode: 'exact',
+      layout: 'dense-array',
+      fullyTrusted: true,
+      shape: { codes: [], segments: [], bindingCount: 0 },
+    }
+    assert(
+      optimizerApi.evaluateCompatibility(base).eligible,
+      'matching extracted ABI is unexpectedly ineligible',
+    )
+    const mutations = {
+      instance: { fpInstanceToken: {} },
+      abi: { fpIdentity: { ...base.fpIdentity, abiVersion: base.fpIdentity.abiVersion + 1 } },
+      protocol: {
+        fpIdentity: { ...base.fpIdentity, protocolVersion: base.fpIdentity.protocolVersion + 1 },
+      },
+      semantic: {
+        fpIdentity: { ...base.fpIdentity, semanticManifestHash: 'sha256:' + '0'.repeat(64) },
+      },
+      bank: { optimizerBank: { ...base.optimizerBank, bankHash: 'sha256:' + '0'.repeat(64) } },
+      mode: { requestedMode: 'pure' },
+      layout: { layout: 'foreign-layout' },
+    }
+    const failures = Object.entries(mutations).map(([kind, override]) => {
+      const result = optimizerApi.evaluateCompatibility({ ...base, ...override })
+      assert(!result.eligible, `${kind} mismatch remained optimizer-eligible`)
+      return { kind, reason: result.reason }
+    })
+    return failures.sort((left, right) => compare(left.kind, right.kind))
+  })
+}
+
+const assertNoHelperEngine = (graph, label) => {
+  const forbidden = graph.filter((id) =>
+    FORBIDDEN_ENGINE_MODULES.some((fragment) => id.includes(fragment)),
+  )
+  assert(
+    forbidden.length === 0,
+    `${label} helper graph retains an execution engine: ${forbidden.join(', ')}`,
+  )
+}
+
+const runPlainRollupLike = async ({ topology, entry, out, host, helper }) => {
+  const library =
+    host === 'rollup'
+      ? await import('rollup')
+      : await import(pathToFileURL(BENCHMARK_REQUIRE.resolve('rolldown')).href)
+  const makeBundle = host === 'rollup' ? library.rollup : library.rolldown
+  const audited = new Set()
+  const bundle = await makeBundle({
+    input: entry,
+    plugins: [stopcockResolver(topology), graphAuditPlugin(audited)],
+  })
+  const generated = await bundle.generate({ format: 'es' })
+  await bundle.close()
+  const chunk = generated.output.find((item) => item.type === 'chunk' && item.isEntry)
+  assert(chunk, `${host} did not emit helpers.two-unrelated`)
+  mkdirSync(out, { recursive: true })
+  const output = join(out, 'out.mjs')
+  writeFileSync(output, chunk.code)
+  await executeEsm(output, helper.expected, `${host}/helpers.two-unrelated`)
+  return { code: chunk.code, moduleGraph: canonicalGraph(topology, [...audited]) }
+}
+
+const runPlainEsbuild = async ({ topology, entry, out, helper }) => {
+  const esbuild = await import('esbuild')
+  mkdirSync(out, { recursive: true })
+  const output = join(out, 'out.mjs')
+  const result = await esbuild.build({
+    entryPoints: [entry],
+    outfile: output,
+    bundle: true,
+    format: 'esm',
+    platform: 'node',
+    metafile: true,
+  })
+  const code = readFileSync(output, 'utf8')
+  await executeEsm(output, helper.expected, 'esbuild/helpers.two-unrelated')
+  return { code, moduleGraph: canonicalGraph(topology, Object.keys(result.metafile.inputs)) }
+}
+
+const runPlainWebpack = async ({ topology, entry, out, helper }) => {
+  const { default: webpack } = await import('webpack')
+  mkdirSync(out, { recursive: true })
+  const stats = await new Promise((resolveStats, reject) => {
+    const compiler = webpack({
+      mode: 'production',
+      entry,
+      target: 'node',
+      optimization: { minimize: false },
+      output: { path: out, filename: 'out.cjs', library: { type: 'commonjs2' } },
+    })
+    compiler.run((error, result) =>
+      compiler.close(() => {
+        if (error) return reject(error)
+        if (result?.hasErrors()) return reject(new Error(result.toString({ errorDetails: true })))
+        resolveStats(result)
+      }),
+    )
+  })
+  const output = join(out, 'out.cjs')
+  const code = readFileSync(output, 'utf8')
+  executeCjs(output, helper.expected, 'webpack/helpers.two-unrelated')
+  const json = stats.toJson({ all: false, modules: true, nestedModules: true })
+  return { code, moduleGraph: canonicalGraph(topology, collectStatsModuleIds(json.modules ?? [])) }
+}
+
+const runHelpersMatrix = async (topology, root, canonical) => {
+  const helper = canonical.helpers
+  assert(helper !== undefined, 'canonical helpers.two-unrelated fixture disappeared')
+  const entry = join(topology.consumer, 'src', 'helpers.two-unrelated.mjs')
+  writeFileSync(entry, helper.source)
+  const rows = []
+  for (const host of ['esbuild', 'rollup', 'webpack', 'rolldown']) {
+    const out = join(root, 'helpers', host)
+    const output =
+      host === 'esbuild'
+        ? await runPlainEsbuild({ topology, entry, out, helper })
+        : host === 'webpack'
+          ? await runPlainWebpack({ topology, entry, out, helper })
+          : await runPlainRollupLike({ topology, entry, out, host, helper })
+    assertNoHelperEngine(output.moduleGraph, `${host}/helpers.two-unrelated`)
+    const identity = await codeIdentity(output.code, null, topology)
+    assert(
+      identity.gzipBytes <= 512,
+      `${host}/helpers.two-unrelated gzip ${identity.gzipBytes} exceeds 512`,
+    )
+    rows.push({ host, ...identity, moduleGraph: output.moduleGraph })
+  }
+  return rows.sort((left, right) => compare(left.host, right.host))
+}
+
+const collectedReceiptPaths = (root) => {
+  const paths = []
+  const visit = (directory) => {
+    for (const name of readdirSync(directory).sort(compare)) {
+      const path = join(directory, name)
+      const info = statSync(path)
+      if (info.isDirectory()) visit(path)
+      else if (info.isFile() && name === 'stopcock-receipts.json') paths.push(path)
+    }
+  }
+  visit(root)
+  return paths.sort(compare)
+}
+
+const buildMaterialization = async ({ manifest, manifestDirectory, records, scratch }) => {
+  const topology = extractedTopology({ manifest, manifestDirectory, records, scratch })
+  const qualificationRoot = join(scratch, 'qualification')
+  mkdirSync(join(topology.consumer, 'src'), { recursive: true })
+  const receiptSchema = await import(
+    pathToFileURL(
+      join(topology.packages.get('@stopcock/fp-compiler'), 'dist', 'receipt-schema.generated.js'),
+    ).href
+  )
+  assert(
+    typeof receiptSchema.validateReceiptV1 === 'function',
+    'extracted receipt validator is absent',
+  )
+  const compilerProtocol = await import(
+    pathToFileURL(join(topology.packages.get('@stopcock/fp-compiler'), 'dist', 'index.js')).href
+  )
+  assert(
+    typeof compilerProtocol.transformStopcockPipelines === 'function',
+    'extracted compiler transform is absent',
+  )
+  assert(
+    SHA256.test(compilerProtocol.OPERATOR_MANIFEST_V1_HASH),
+    'extracted compiler full operator-manifest identity is absent',
+  )
+  assert(
+    SHA256.test(compilerProtocol.OPERATOR_SEMANTIC_FACTS_V1_HASH),
+    'extracted compiler semantic-facts identity is absent',
+  )
+  assert(
+    compilerProtocol.OPERATOR_MANIFEST_V1_HASH !== compilerProtocol.OPERATOR_SEMANTIC_FACTS_V1_HASH,
+    'compiler full manifest and semantic-facts identities are accidentally conflated',
+  )
+  const fpAbi = await import(
+    pathToFileURL(join(topology.packages.get('@stopcock/fp'), 'dist', 'abi.js')).href
+  )
+  const optimizer = await import(
+    pathToFileURL(join(topology.packages.get('@stopcock/fp-optimizer'), 'dist', 'index.js')).href
+  )
+  assert(
+    fpAbi.OPTIMIZER_ABI_IDENTITY && typeof optimizer.bankIdentity?.bankHash === 'string',
+    'extracted ABI identities are absent',
+  )
+  topology.artifactContext = Object.freeze({
+    fpArtifactHash: records.get('@stopcock/fp').tarball.sha256,
+    compilerArtifactHash: records.get('@stopcock/fp-compiler').tarball.sha256,
+    optimizerArtifactHash: records.get('@stopcock/fp-optimizer').tarball.sha256,
+    fpAbiHash: hash(Buffer.from(JSON.stringify(fpAbi.OPTIMIZER_ABI_IDENTITY))),
+    optimizerBankHash: optimizer.bankIdentity.bankHash,
+  })
+
+  const canonical = canonicalFixtures()
+  const common = await runCommonMatrix(
+    topology,
+    qualificationRoot,
+    receiptSchema.validateReceiptV1,
+    canonical,
+    compilerProtocol,
+  )
+  const mixed = await runMixedRows(
+    topology,
+    qualificationRoot,
+    receiptSchema.validateReceiptV1,
+    compilerProtocol,
+  )
+  const sourceMaps = await runSourceMapMatrix(
+    topology,
+    qualificationRoot,
+    receiptSchema.validateReceiptV1,
+    compilerProtocol,
+  )
+  const observableConstruction = await runObservableConstructionMatrix(
+    topology,
+    qualificationRoot,
+    receiptSchema.validateReceiptV1,
+    compilerProtocol,
+  )
+  const importPruning = await runImportPruningMatrix(
+    topology,
+    qualificationRoot,
+    receiptSchema.validateReceiptV1,
+    compilerProtocol,
+  )
+  const helpers = await runHelpersMatrix(topology, qualificationRoot, canonical)
+  const receiptPaths = collectedReceiptPaths(qualificationRoot)
+  const expectedReceiptFiles =
+    HOSTS.length * (COMMON_CONSUMERS.length + MIXED_TIERS.length + SOURCE_MAP_CASES.length + 2)
+  assert(
+    receiptPaths.length === expectedReceiptFiles,
+    `expected ${expectedReceiptFiles} extracted host receipt files, received ${receiptPaths.length}`,
+  )
+  const cli = runCli(topology, qualificationRoot, receiptPaths)
+  const mismatches = await compatibilityFailures(topology)
+  const emittedReceipt = receiptPaths
+    .flatMap((path) => JSON.parse(readFileSync(path, 'utf8')))
+    .find((receipt) => receipt.disposition === 'transformed')
+  assert(emittedReceipt !== undefined, 'extracted host matrix emitted no transformed receipt')
+  for (const path of receiptPaths) {
+    for (const receipt of JSON.parse(readFileSync(path, 'utf8'))) {
+      assert(
+        receipt.semanticManifestHash === compilerProtocol.OPERATOR_MANIFEST_V1_HASH,
+        'receipt full semantic-manifest hash differs from extracted compiler',
+      )
+    }
+  }
+  assert(
+    emittedReceipt.semanticManifestHash === compilerProtocol.OPERATOR_MANIFEST_V1_HASH,
+    'receipt semantic hash does not match extracted compiler full manifest',
+  )
+  assert(
+    fpAbi.OPTIMIZER_ABI_IDENTITY.semanticManifestHash === emittedReceipt.semanticManifestHash,
+    'extracted FP ABI semantic hash differs from compiler receipt',
+  )
+  assert(
+    optimizer.bankIdentity?.semanticManifestHash === emittedReceipt.semanticManifestHash,
+    'extracted optimizer bank semantic hash differs from compiler receipt',
+  )
+  return {
+    schemaVersion: 1,
+    kind: 'stopcock-s11r-extracted-qualification',
+    cohort: { contentHash: manifest.cohortContentHash, target: manifest.target },
+    artifacts: Object.fromEntries(STOPCOCK.map((name) => [name, records.get(name).tarball])),
+    compilerDependencyClosure: topology.compilerDependencyClosure,
+    qualificationTools: topology.qualificationTools,
+    corpus: {
+      canonicalFixtures: canonical.corpus,
+      harness: harnessCorpusIdentity(),
+      harnessImplementation: fileIdentity(fileURLToPath(import.meta.url)),
+    },
+    bindings: {
+      operatorManifestHash: emittedReceipt.semanticManifestHash,
+      compilerSemanticFactsHash: compilerProtocol.OPERATOR_SEMANTIC_FACTS_V1_HASH,
+      loweringHash: emittedReceipt.loweringHash,
+      compilerEmitterAbiHash: compilerProtocol.COMPILER_EMITTER_ABI_V1_HASH,
+      fpAbi: fpAbi.OPTIMIZER_ABI_IDENTITY,
+      optimizerBank: optimizer.bankIdentity,
+      artifactContext: topology.artifactContext,
+    },
+    common,
+    mixed,
+    sourceMaps,
+    observableConstruction,
+    importPruning,
+    helpers,
+    cli,
+    compatibilityMismatches: mismatches,
+  }
+}
+
+export const buildQualification = async ({ manifestPath, outputPath }) => {
+  const context = await validateManifest(manifestPath)
+  const output = resolve(outputPath)
+  mkdirSync(dirname(output), { recursive: true })
+  const scratches = [
+    mkdtempSync(join(tmpdir(), 'stopcock-s11r-extracted-a-')),
+    mkdtempSync(join(tmpdir(), 'stopcock-s11r-extracted-b-')),
+  ]
+  try {
+    const first = await buildMaterialization({ ...context, scratch: scratches[0] })
+    const second = await buildMaterialization({ ...context, scratch: scratches[1] })
+    const bytes = Buffer.from(stable(first))
+    const replayBytes = Buffer.from(stable(second))
+    assert(
+      bytes.equals(replayBytes),
+      'two independent extracted materialisations produced different qualification bytes',
+    )
+    assert(!bytes.includes(Buffer.from(tmpdir())), 'qualification output leaks a temporary path')
+    writeFileSync(output, bytes)
+    assert(readFileSync(output).equals(bytes), 'qualification output was not byte stable')
+    return first
+  } finally {
+    for (const scratch of scratches) remove(scratch)
+  }
+}
+
+const parseArguments = (argv) => {
+  const values = new Map()
+  for (let index = 0; index < argv.length; index += 2) {
+    const key = argv[index]
+    const value = argv[index + 1]
+    assert(
+      (key === '--manifest' || key === '--out') && typeof value === 'string',
+      'usage: --manifest <cohort-manifest.json> --out <qualification.json>',
+    )
+    assert(!values.has(key), `duplicate ${key}`)
+    values.set(key, value)
+  }
+  assert(values.size === 2, 'usage: --manifest <cohort-manifest.json> --out <qualification.json>')
+  return { manifestPath: values.get('--manifest'), outputPath: values.get('--out') }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    const result = await buildQualification(parseArguments(process.argv.slice(2)))
+    process.stdout.write(
+      stable({ status: 'passed', qualification: hash(Buffer.from(stable(result))) }),
+    )
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
+    process.exitCode = 1
+  }
+}

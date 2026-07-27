@@ -136,6 +136,7 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
               configHash,
               emittedCode: result.code === code ? null : result.code,
               sourceMap: result.map === null ? null : JSON.stringify(result.map),
+              artifactContext: receiptOptions.artifactContext ?? null,
             })
             receipts.push(receipt)
           }

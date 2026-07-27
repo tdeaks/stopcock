@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import { buildCompilerReceipt, type ReceiptContext } from '../receipt-emit'
 import {
   COMPILER_EMITTER_ABI_V1_HASH,
-  OPERATOR_SEMANTIC_FACTS_V1_HASH,
+  OPERATOR_MANIFEST_V1_HASH,
 } from '../ops-table'
 import { renderCheckReportV1 } from '../receipt-report'
 import { validateReceiptV1 } from '../receipt-schema.generated'
@@ -359,7 +359,7 @@ export const result = pipe([1,2], A.map((x) => x + 1))
 `
     const result = transformStopcockPipelines(source, 'current-pins.ts', {
       diagnostics: 'verbose',
-      expectedSemanticManifestHash: OPERATOR_SEMANTIC_FACTS_V1_HASH,
+      expectedSemanticManifestHash: OPERATOR_MANIFEST_V1_HASH,
       expectedLoweringAbiHash: COMPILER_EMITTER_ABI_V1_HASH,
     })
     expect(result.code).not.toBe(source)

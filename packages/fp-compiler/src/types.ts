@@ -58,6 +58,13 @@ export interface ReceiptOptions {
   readonly dir?: string
   /** Root that receipt paths are made relative to. Defaults to cwd. */
   readonly root?: string
+  /**
+   * Packed-artifact identities for an extracted-host qualification build.
+   * Ordinary source builds omit this and receipts record null instead.
+   */
+  readonly artifactContext?:
+    | import('./receipt-schema.generated.js').CompilerReceiptArtifactContextV1
+    | null
   /** For hosts that manage artifacts themselves. Called once per build. */
   readonly onReceipts?: (
     receipts: readonly import('./receipt-schema.generated.js').CompilerReceiptV1[],
