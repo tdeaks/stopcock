@@ -2322,6 +2322,47 @@ const assertImportPruning = (compiler, entry) => {
     removed: ['pipe'],
   }
 }
+
+export const assertImportPruningGraph = (moduleGraph, host) => {
+  assert(HOSTS.includes(host), `import-pruning received unknown host ${host}`)
+  const rootFacades = moduleGraph.filter(
+    (id) => id === '@stopcock/fp/dist/index.js',
+  )
+  const siblingEngines = moduleGraph.filter((id) =>
+    /^@stopcock\/fp\/dist\/option-[A-Za-z0-9_-]+\.js$/u.test(id),
+  )
+  const fallbackEngines = moduleGraph.filter(
+    (id) => id === '@stopcock/fp/dist/compile.js',
+  )
+  assert(
+    siblingEngines.length > 0,
+    `${host}/import-pruning lost needed root sibling execution module`,
+  )
+  assert(
+    fallbackEngines.length > 0,
+    `${host}/import-pruning lost needed fallback module`,
+  )
+  const emittedByteHost = host === 'vite' || host === 'rollup' || host === 'esbuild'
+  if (emittedByteHost) {
+    assert(
+      rootFacades.length === 0,
+      `${host}/import-pruning retained the pruned root facade in emitted bytes`,
+    )
+  }
+  assert(
+    !moduleGraph.some((id) => id.startsWith('@stopcock/fp-optimizer/')),
+    `${host}/import-pruning introduced optimizer runtime`,
+  )
+  return {
+    siblingEngines,
+    fallbackEngines,
+    rootFacade: {
+      observed: rootFacades,
+      evidence: emittedByteHost ? 'emitted-bytes' : 'final-chunk-reachability',
+    },
+  }
+}
+
 const runImportPruningMatrix = async (topology, root, validateReceiptV1, compiler) => {
   const entry = join(topology.consumer, 'src', 'import-pruning.mjs')
   writeFileSync(entry, IMPORT_PRUNING_FIXTURE)
@@ -2339,18 +2380,7 @@ const runImportPruningMatrix = async (topology, root, validateReceiptV1, compile
       expected: IMPORT_PRUNING_EXPECTED,
     })
     assertCompiled(output.code, `${host}/import-pruning`)
-    assert(
-      output.moduleGraph.some((id) => id.startsWith('@stopcock/fp/dist/index.js')),
-      `${host}/import-pruning lost needed root sibling module`,
-    )
-    assert(
-      output.moduleGraph.some((id) => id.startsWith('@stopcock/fp/dist/compile.js')),
-      `${host}/import-pruning lost needed fallback module`,
-    )
-    assert(
-      !output.moduleGraph.some((id) => id.startsWith('@stopcock/fp-optimizer/')),
-      `${host}/import-pruning introduced optimizer runtime`,
-    )
+    const graphContract = assertImportPruningGraph(output.moduleGraph, host)
     const receiptPath = join(receipts, 'stopcock-receipts.json')
     const receipt = receiptIdentity(receiptPath, validateReceiptV1)
     assert(receipt.count === 2, `${host}/import-pruning expected transformed and fallback receipts`)
@@ -2360,6 +2390,7 @@ const runImportPruningMatrix = async (topology, root, validateReceiptV1, compile
       sourceMapAudit: assertSourceMapEnvelope(output.map, topology, `${host}/import-pruning`),
       receipt,
       receiptBinding: recomputeReceiptArtifacts({ compiler, entry, receiptPath, topology }),
+      graphContract,
       moduleGraph: output.moduleGraph,
     })
   }

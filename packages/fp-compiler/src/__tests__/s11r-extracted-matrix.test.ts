@@ -110,6 +110,46 @@ describe('S11R extracted matrix manifest boundary', () => {
     ).toMatch(/^sha256:[a-f0-9]{64}$/u)
   })
 
+  it('binds import pruning to retained engines instead of zero-byte facades', async () => {
+    const { assertImportPruningGraph } = await import(script.href)
+    const optionEngine = '@stopcock/fp/dist/option-B35NiKCI.js'
+    const fallbackEngine = '@stopcock/fp/dist/compile.js'
+    const rootFacade = '@stopcock/fp/dist/index.js'
+
+    expect(assertImportPruningGraph([optionEngine, fallbackEngine], 'vite')).toEqual({
+      siblingEngines: [optionEngine],
+      fallbackEngines: [fallbackEngine],
+      rootFacade: { observed: [], evidence: 'emitted-bytes' },
+    })
+    expect(() =>
+      assertImportPruningGraph([rootFacade, fallbackEngine], 'vite'),
+    ).toThrow(/root sibling execution module/u)
+    expect(() =>
+      assertImportPruningGraph(
+        [optionEngine, `${fallbackEngine}-unrelated`],
+        'vite',
+      ),
+    ).toThrow(/needed fallback module/u)
+    expect(() =>
+      assertImportPruningGraph([rootFacade, optionEngine, fallbackEngine], 'vite'),
+    ).toThrow(/retained the pruned root facade/u)
+    expect(
+      assertImportPruningGraph(
+        [`${rootFacade}-unrelated`, optionEngine, fallbackEngine],
+        'vite',
+      ).rootFacade,
+    ).toEqual({ observed: [], evidence: 'emitted-bytes' })
+    expect(
+      assertImportPruningGraph(
+        [rootFacade, optionEngine, fallbackEngine],
+        'webpack',
+      ).rootFacade,
+    ).toEqual({
+      observed: [rootFacade],
+      evidence: 'final-chunk-reachability',
+    })
+  })
+
   it('binds deterministic exact canonical and adversarial harness corpora', async () => {
     const { corpusIdentitiesForTest } = await import(script.href)
     const first = corpusIdentitiesForTest()
