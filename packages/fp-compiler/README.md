@@ -50,7 +50,7 @@ factories exactly once.
 
 | Option                 | Purpose                                                                                                                           |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `include`              | Files the plugin may transform. Defaults to JavaScript and TypeScript, including JSX/TSX.                                         |
+| `include`              | Files the plugin may transform. Defaults to `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.mts`, and `.cts`.                     |
 | `exclude`              | Files the plugin must ignore. Defaults to `node_modules`.                                                                         |
 | `importSources`        | Package roots that export `pipe`, `flow`, and `compile`. Defaults to `@stopcock/fp`.                                              |
 | `arrayImportSources`   | Exact package entries that export array operators. Derived as `${importSource}/array` by default.                                 |

@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { chmodSync } from 'node:fs'
 import { cp, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import pkg from '../../package.json' with { type: 'json' }
@@ -67,13 +67,35 @@ describe('packed stopcock check', () => {
   })
 
   it('renders reports without importing a fusion runtime', async () => {
-    const cli = await readFile(join(installedRoot, 'dist/cli.js'), 'utf8')
-    const specifiers = [...cli.matchAll(/(?:from\s*|import\s*\()\s*['"]([^'"]+)['"]/gu)].map(
-      ([, specifier]) => specifier,
-    )
-    expect(specifiers.every((specifier) => specifier.startsWith('node:'))).toBe(true)
-    expect(cli).not.toMatch(/@stopcock\/fp(?!-compiler)/u)
-    expect(cli).not.toMatch(/@babel/u)
+    const compilerPrefix = `${resolve(installedRoot)}${sep}`
+    const visited = new Set<string>()
+    const visit = async (file: string): Promise<void> => {
+      const physical = resolve(file)
+      expect(physical.startsWith(compilerPrefix)).toBe(true)
+      if (visited.has(physical)) return
+      visited.add(physical)
+      const source = await readFile(physical, 'utf8')
+      expect(source).not.toMatch(/@stopcock\/fp(?!-compiler)/u)
+      expect(source).not.toMatch(/@babel/u)
+      expect(source).not.toMatch(/(?:^|[/\\])fusion(?:[./\\]|$)/iu)
+      const staticSpecifiers = [
+        ...source.matchAll(
+          /^\s*(?:import(?:\s+[^'"\n]*?\s+from)?|export\s+[^'"\n]*?\s+from)\s*['"]([^'"]+)['"]/gmu,
+        ),
+      ].map(([, specifier]) => specifier)
+      const dynamicSpecifiers = [
+        ...source.matchAll(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/gu),
+      ].map(([, specifier]) => specifier)
+      const specifiers = [...staticSpecifiers, ...dynamicSpecifiers]
+      for (const specifier of specifiers) {
+        if (specifier.startsWith('node:')) continue
+        expect(specifier).toMatch(/^\.{1,2}\//u)
+        await visit(resolve(dirname(physical), specifier))
+      }
+    }
+
+    await visit(join(installedRoot, 'dist/cli.js'))
+    expect(visited.size).toBeGreaterThan(1)
   })
 
   it('exits 0 when every requested policy passes', () => {

@@ -39,9 +39,12 @@ const BENCHMARK_REQUIRE = createRequire(join(REPOSITORY_ROOT, 'benchmarks', 'pac
 const TRACE_MAPPING_REQUIRE = createRequire(
   COMPILER_REQUIRE.resolve('@babel/traverse/package.json'),
 )
-const TRACE_MAPPING = await import(
+const TRACE_MAPPING_NAMESPACE = await import(
   pathToFileURL(TRACE_MAPPING_REQUIRE.resolve('@jridgewell/trace-mapping')).href
 )
+// createRequire can select this dependency's CommonJS condition. Node exposes
+// that build under `default`, whereas native ESM exposes the named API.
+const TRACE_MAPPING = TRACE_MAPPING_NAMESPACE.default ?? TRACE_MAPPING_NAMESPACE
 const SHA256 = /^sha256:[a-f0-9]{64}$/u
 const PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/u
 const MISSING_LOCKED_DEPENDENCY = 'STOPCOCK_MISSING_LOCKED_DEPENDENCY'
@@ -924,10 +927,116 @@ const stopcockResolver = (topology) => ({
   },
 })
 
+export const emittedRollupModuleIds = (bundle, label = 'Rollup-family output') => {
+  const ids = new Set()
+  let chunkCount = 0
+  for (const item of Object.values(bundle)) {
+    if (item?.type !== 'chunk') continue
+    chunkCount++
+    assert(
+      item.modules !== null && typeof item.modules === 'object',
+      `${label} chunk has no rendered-module metadata`,
+    )
+    for (const [id, module] of Object.entries(item.modules)) {
+      assert(
+        Number.isSafeInteger(module?.renderedLength) && module.renderedLength >= 0,
+        `${label} module ${id} has an invalid rendered length`,
+      )
+      if (module.renderedLength > 0) ids.add(id)
+    }
+  }
+  assert(chunkCount > 0, `${label} emitted no JavaScript chunks`)
+  assert(ids.size > 0, `${label} emitted no module contributors`)
+  return [...ids]
+}
+
+export const emittedEsbuildModuleIds = (metafile, output, label = 'esbuild output') => {
+  assert(
+    metafile?.outputs !== null && typeof metafile?.outputs === 'object',
+    `${label} has no output metadata`,
+  )
+  const physicalOutput = realpathSync(output)
+  const matches = Object.entries(metafile.outputs).filter(([path]) => {
+    const absolute = resolve(path)
+    return existsSync(absolute) && realpathSync(absolute) === physicalOutput
+  })
+  assert(
+    matches.length === 1,
+    `${label} has ${matches.length} metadata records for ${basename(output)}`,
+  )
+  const inputs = matches[0][1]?.inputs
+  assert(inputs !== null && typeof inputs === 'object', `${label} has no input contribution map`)
+  const ids = []
+  for (const [id, contribution] of Object.entries(inputs)) {
+    assert(
+      Number.isSafeInteger(contribution?.bytesInOutput) && contribution.bytesInOutput >= 0,
+      `${label} input ${id} has an invalid emitted-byte contribution`,
+    )
+    if (contribution.bytesInOutput > 0) ids.push(id)
+  }
+  assert(ids.length > 0, `${label} has no emitted input contributors`)
+  return ids
+}
+
+export const emittedWebpackModuleIds = (compilation, label = 'Webpack-family output') => {
+  const chunks = compilation?.chunks
+  const chunkGraph = compilation?.chunkGraph
+  assert(chunks?.[Symbol.iterator] !== undefined, `${label} has no emitted chunk graph`)
+  assert(
+    typeof chunkGraph?.getChunkModulesIterableBySourceType === 'function',
+    `${label} has no JavaScript chunk-module API`,
+  )
+  const ids = new Set()
+  const visited = new Set()
+  let chunkCount = 0
+  let javascriptModuleCount = 0
+  const visit = (module) => {
+    assert(module !== null && typeof module === 'object', `${label} contains an invalid module`)
+    if (visited.has(module)) return
+    visited.add(module)
+    if (module.modules !== undefined) {
+      assert(
+        module.modules?.[Symbol.iterator] !== undefined,
+        `${label} aggregate module has non-iterable members`,
+      )
+      const members = [...module.modules]
+      assert(members.length > 0, `${label} aggregate module has no members`)
+      for (const member of members) visit(member)
+      return
+    }
+    const id =
+      typeof module.resource === 'string'
+        ? module.resource
+        : typeof module.identifier === 'function'
+          ? module.identifier()
+          : null
+    assert(typeof id === 'string' && id.length > 0, `${label} module has no stable identity`)
+    ids.add(id)
+  }
+  for (const chunk of chunks) {
+    chunkCount++
+    const modules = chunkGraph.getChunkModulesIterableBySourceType(chunk, 'javascript')
+    assert(
+      modules?.[Symbol.iterator] !== undefined,
+      `${label} chunk has no JavaScript module iterable`,
+    )
+    for (const module of modules) {
+      javascriptModuleCount++
+      visit(module)
+    }
+  }
+  assert(chunkCount > 0, `${label} emitted no chunks`)
+  assert(
+    javascriptModuleCount > 0 && ids.size > 0,
+    `${label} emitted no JavaScript contributors`,
+  )
+  return [...ids]
+}
+
 const graphAuditPlugin = (ids) => ({
   name: 'stopcock-s11r-module-graph-audit',
-  generateBundle() {
-    for (const id of this.getModuleIds()) ids.add(id)
+  generateBundle(_options, bundle) {
+    for (const id of emittedRollupModuleIds(bundle)) ids.add(id)
   },
 })
 
@@ -1027,14 +1136,41 @@ const runEsbuild = async ({
   const code = readFileSync(output, 'utf8')
   const map = readFileSync(`${output}.map`, 'utf8')
   if (execute) await executeEsm(output, expected, 'esbuild')
-  return { code, map, moduleGraph: canonicalGraph(topology, Object.keys(result.metafile.inputs)) }
+  return {
+    code,
+    map,
+    moduleGraph: canonicalGraph(
+      topology,
+      emittedEsbuildModuleIds(result.metafile, output, 'esbuild output'),
+    ),
+  }
 }
-const collectStatsModuleIds = (modules) =>
-  modules.flatMap((module) => [
-    ...(typeof module.identifier === 'string' ? [module.identifier] : []),
-    ...(typeof module.name === 'string' ? [module.name] : []),
-    ...collectStatsModuleIds(module.modules ?? []),
-  ])
+
+const compileWebpackLike = (compile, configuration, label) =>
+  new Promise((resolveCompilation, reject) => {
+    const compiler = compile(configuration)
+    compiler.run((error, result) => {
+      let failure = error ?? null
+      let moduleIds
+      if (failure === null) {
+        try {
+          assert(result !== undefined, `${label} returned no compilation`)
+          if (result.hasErrors()) {
+            failure = new Error(result.toString({ errorDetails: true }))
+          } else {
+            moduleIds = emittedWebpackModuleIds(result.compilation, label)
+          }
+        } catch (caught) {
+          failure = caught
+        }
+      }
+      compiler.close((closeError) => {
+        if (failure !== null) return reject(failure)
+        if (closeError) return reject(closeError)
+        resolveCompilation({ moduleIds })
+      })
+    })
+  })
 
 const runWebpackLike = async ({
   topology,
@@ -1052,32 +1188,27 @@ const runWebpackLike = async ({
   const { stopcockFp } = await import(adapter(topology.packages, host))
   mkdirSync(out, { recursive: true })
   const output = join(out, 'out.cjs')
-  const stats = await new Promise((resolveStats, reject) => {
-    const compiler = compile({
+  const compilation = await compileWebpackLike(
+    compile,
+    {
       mode: 'production',
+      context: topology.consumer,
       entry,
       target: 'node',
       devtool: 'source-map',
       optimization: { minimize: false },
       output: { path: out, filename: 'out.cjs', library: { type: 'commonjs2' } },
       plugins: [stopcockFp(pluginOptions(topology, receipts, strict, compilerOptions))],
-    })
-    compiler.run((error, result) =>
-      compiler.close(() => {
-        if (error) return reject(error)
-        if (result?.hasErrors()) return reject(new Error(result.toString({ errorDetails: true })))
-        resolveStats(result)
-      }),
-    )
-  })
+    },
+    `${host} output`,
+  )
   const code = readFileSync(output, 'utf8')
   const map = readFileSync(`${output}.map`, 'utf8')
   if (execute) executeCjs(output, expected, host)
-  const json = stats.toJson({ all: false, modules: true, nestedModules: true })
   return {
     code,
     map,
-    moduleGraph: canonicalGraph(topology, collectStatsModuleIds(json.modules ?? [])),
+    moduleGraph: canonicalGraph(topology, compilation.moduleIds),
   }
 }
 const runVite = async ({
@@ -2114,33 +2245,34 @@ const runPlainEsbuild = async ({ topology, entry, out, helper }) => {
   })
   const code = readFileSync(output, 'utf8')
   await executeEsm(output, helper.expected, 'esbuild/helpers.two-unrelated')
-  return { code, moduleGraph: canonicalGraph(topology, Object.keys(result.metafile.inputs)) }
+  return {
+    code,
+    moduleGraph: canonicalGraph(
+      topology,
+      emittedEsbuildModuleIds(result.metafile, output, 'esbuild helper output'),
+    ),
+  }
 }
 
 const runPlainWebpack = async ({ topology, entry, out, helper }) => {
   const { default: webpack } = await import('webpack')
   mkdirSync(out, { recursive: true })
-  const stats = await new Promise((resolveStats, reject) => {
-    const compiler = webpack({
+  const compilation = await compileWebpackLike(
+    webpack,
+    {
       mode: 'production',
+      context: topology.consumer,
       entry,
       target: 'node',
       optimization: { minimize: false },
       output: { path: out, filename: 'out.cjs', library: { type: 'commonjs2' } },
-    })
-    compiler.run((error, result) =>
-      compiler.close(() => {
-        if (error) return reject(error)
-        if (result?.hasErrors()) return reject(new Error(result.toString({ errorDetails: true })))
-        resolveStats(result)
-      }),
-    )
-  })
+    },
+    'webpack helper output',
+  )
   const output = join(out, 'out.cjs')
   const code = readFileSync(output, 'utf8')
   executeCjs(output, helper.expected, 'webpack/helpers.two-unrelated')
-  const json = stats.toJson({ all: false, modules: true, nestedModules: true })
-  return { code, moduleGraph: canonicalGraph(topology, collectStatsModuleIds(json.modules ?? [])) }
+  return { code, moduleGraph: canonicalGraph(topology, compilation.moduleIds) }
 }
 
 const runHelpersMatrix = async (topology, root, canonical) => {

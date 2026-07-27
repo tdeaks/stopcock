@@ -136,7 +136,7 @@ afterAll(async () => {
 describe('real-host smoke tests', () => {
   it('builds and fuses with Rollup', async () => {
     const dir = await scratchDir('rollup')
-    const entry = join(dir, 'fixture.js')
+    const entry = join(dir, 'fixture.mjs')
     await writeFile(entry, FIXTURE_SOURCE)
 
     const { rollup } = await import('rollup')
@@ -168,7 +168,7 @@ describe('real-host smoke tests', () => {
 
   it('builds and fuses with esbuild', async () => {
     const dir = await scratchDir('esbuild')
-    const entry = join(dir, 'fixture.js')
+    const entry = join(dir, 'fixture.mjs')
     const outfile = join(dir, 'out.mjs')
     await writeFile(entry, FIXTURE_SOURCE)
 
@@ -203,7 +203,7 @@ describe('real-host smoke tests', () => {
 
   it('builds and fuses with webpack 5', async () => {
     const dir = await scratchDir('webpack')
-    const entry = join(dir, 'fixture.js')
+    const entry = join(dir, 'fixture.mjs')
     await writeFile(entry, FIXTURE_SOURCE)
 
     const { default: webpack } = await import('webpack')
@@ -259,7 +259,7 @@ describe('real-host smoke tests', () => {
 
   it('builds and fuses with Rspack', async () => {
     const dir = await scratchDir('rspack')
-    const entry = join(dir, 'fixture.js')
+    const entry = join(dir, 'fixture.mjs')
     await writeFile(entry, FIXTURE_SOURCE)
 
     const { rspack } = await import('@rspack/core')
@@ -312,7 +312,7 @@ describe('real-host smoke tests', () => {
 
   it('builds and fuses with Vite (vite-plus core)', async () => {
     const dir = await scratchDir('vite')
-    const entry = join(dir, 'fixture.js')
+    const entry = join(dir, 'fixture.mjs')
     await writeFile(entry, FIXTURE_SOURCE)
 
     const { build } = await import('vite')

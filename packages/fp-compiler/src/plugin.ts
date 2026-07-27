@@ -7,7 +7,9 @@ import type { CompilerReceiptV1 } from './receipt-schema.generated'
 import { transformStopcockPipelines } from './transform'
 import type { FilterPattern, StopcockCompilerOptions } from './types'
 
-const DEFAULT_INCLUDE = /\.[jt]sx?$/
+// JavaScript and TypeScript module variants are ordinary compiler inputs.
+// Keep JSX/TSX support while avoiding invented extensions such as `.mtsx`.
+const DEFAULT_INCLUDE = /\.(?:[cm]?[jt]s|[jt]sx)$/
 const DEFAULT_EXCLUDE = [/node_modules/]
 
 // unplugin's filter typing wants a mutable array; our public FilterPattern

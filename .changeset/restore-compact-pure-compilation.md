@@ -44,3 +44,8 @@ validator as executable JavaScript beside its declaration, so extracted S11R
 qualification can validate the packed internal authority without importing
 workspace source or guessing a shared-chunk name. It is not a new public
 package export.
+
+The compiler's default source filter now includes standard ESM/CommonJS
+JavaScript and TypeScript module extensions. Extracted qualification attributes
+runtime retention only to modules that contribute to emitted host chunks,
+rather than every module observed before tree-shaking.

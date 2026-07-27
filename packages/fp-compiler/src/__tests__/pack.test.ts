@@ -268,7 +268,7 @@ const roots = []
 const makeFixture = async (host) => {
   const root = await mkdtemp(join(tmpdir(), \`stopcock-packed-\${host}-\`))
   roots.push(root)
-  const entry = join(root, 'fixture.js')
+  const entry = join(root, 'fixture.mjs')
   await writeFile(entry, fixtureSource)
   return { root, entry }
 }

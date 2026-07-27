@@ -243,4 +243,61 @@ describe('S11R extracted matrix manifest boundary', () => {
       await rm(scratch, { recursive: true, force: true })
     }
   })
+
+  it('attributes Rollup and esbuild graphs only to emitted byte contributors', async () => {
+    const { emittedEsbuildModuleIds, emittedRollupModuleIds } = await import(script.href)
+    expect(
+      emittedRollupModuleIds({
+        'entry.js': {
+          type: 'chunk',
+          modules: {
+            '/consumer/entry.js': { renderedLength: 41 },
+            '/selected/fp/dist/index.js': { renderedLength: 0 },
+          },
+        },
+        'entry.js.map': { type: 'asset' },
+      }),
+    ).toEqual(['/consumer/entry.js'])
+
+    const scratch = await mkdtemp(join(tmpdir(), 'stopcock-s11r-esbuild-graph-'))
+    try {
+      const output = join(scratch, 'out.mjs')
+      await writeFile(output, 'export const result = 1\n')
+      expect(
+        emittedEsbuildModuleIds(
+          {
+            outputs: {
+              [output]: {
+                inputs: {
+                  '/consumer/entry.js': { bytesInOutput: 24 },
+                  '/selected/fp/dist/index.js': { bytesInOutput: 0 },
+                },
+              },
+            },
+          },
+          output,
+        ),
+      ).toEqual(['/consumer/entry.js'])
+    } finally {
+      await rm(scratch, { recursive: true, force: true })
+    }
+  })
+
+  it('flattens only final Webpack-family chunk contributors', async () => {
+    const { emittedWebpackModuleIds } = await import(script.href)
+    const entry = { resource: '/consumer/entry.js' }
+    const construction = { resource: '/selected/fp/dist/array-generated.js' }
+    const aggregate = { modules: new Set([entry, construction]) }
+    const compilation = {
+      chunks: new Set([{}]),
+      chunkGraph: {
+        getChunkModulesIterableBySourceType: () => new Set([aggregate]),
+      },
+    }
+
+    expect(emittedWebpackModuleIds(compilation)).toEqual([
+      '/consumer/entry.js',
+      '/selected/fp/dist/array-generated.js',
+    ])
+  })
 })
