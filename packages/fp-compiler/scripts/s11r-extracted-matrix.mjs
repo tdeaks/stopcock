@@ -2490,11 +2490,16 @@ const runCli = (topology, qualificationRoot, receiptPaths) => {
     })
   }
   const debug = expectStatus(invoke(passArgs, true), 0, 'packed CLI ESM import closure')
-  const compilerRoot = topology.packages.get('@stopcock/fp-compiler')
+  // Node reports the loader's physical spelling, so compare both sides physically.
+  const compilerRoot = realpathSync(topology.packages.get('@stopcock/fp-compiler'))
   const closureSpecifiers = cliEsmClosureSpecifiers(debug.stderr)
+  const physical = (specifier) => {
+    const path = fileURLToPath(specifier)
+    return existsSync(path) ? realpathSync(path) : path
+  }
   const closureModules = closureSpecifiers
     .filter((specifier) => specifier.startsWith('file://'))
-    .map((specifier) => fileURLToPath(specifier))
+    .map(physical)
     .sort(compare)
   assert(closureModules.length > 0, 'NODE_DEBUG=esm did not expose a CLI file module closure')
   for (const path of closureModules) {
@@ -2505,7 +2510,7 @@ const runCli = (topology, qualificationRoot, receiptPaths) => {
   }
   const normalizedClosure = closureSpecifiers.map((specifier) =>
     specifier.startsWith('file://')
-      ? `file://<compiler>/${canonicalPath(compilerRoot, fileURLToPath(specifier))}`
+      ? `file://<compiler>/${canonicalPath(compilerRoot, physical(specifier))}`
       : specifier,
   )
 
