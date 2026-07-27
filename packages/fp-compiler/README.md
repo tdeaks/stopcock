@@ -193,6 +193,12 @@ stable without admitting a symlink escape. Virtual, queried, missing, non-file,
 and outside-root host IDs are recorded as opaque domain-separated hashes; raw
 machine paths never enter receipt JSON.
 
+When `diagnostics: 'error'` rejects a transform, the plugin discards every
+receipt buffered for that compilation. It invokes no receipt callback and
+writes no receipt document for the failed build; a later watch rebuild starts
+from an empty buffer and invalidates the previous document before transforming.
+Successful receipt files are committed by same-directory atomic rename.
+
 ## Development contract
 
 The compiler snapshots public array operator metadata so its published

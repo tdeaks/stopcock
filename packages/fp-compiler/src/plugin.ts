@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { createHash, randomUUID } from 'node:crypto'
+import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve as resolvePath } from 'node:path'
 import { createUnplugin } from 'unplugin'
 import { buildCompilerReceipt, serializeReceipts } from './receipt-emit'
@@ -54,6 +54,10 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
   const semantics = options.assumePure === true ? 'pure' : 'exact'
   const receiptOptions = options.receipts
   const receiptRoot = resolvePath(receiptOptions?.root ?? process.cwd())
+  const receiptDirectory =
+    receiptOptions?.dir === undefined ? undefined : resolvePath(receiptOptions.dir)
+  const receiptPath =
+    receiptDirectory === undefined ? undefined : join(receiptDirectory, 'stopcock-receipts.json')
   /*
    * Diagnostics are the transform's site-evidence channel. Receipts must
    * collect that evidence even when the caller has disabled user-facing
@@ -96,6 +100,23 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
   let fusedSiteCount = 0
   let partialSiteCount = 0
   let skippedSiteCount = 0
+  let transformFailed = false
+
+  const invalidateReceiptFile = (): void => {
+    if (receiptPath !== undefined) rmSync(receiptPath, { force: true })
+  }
+  const writeReceiptFile = (contents: string): void => {
+    if (receiptDirectory === undefined || receiptPath === undefined) return
+    mkdirSync(receiptDirectory, { recursive: true })
+    const temporaryPath = `${receiptPath}.${process.pid}.${randomUUID()}.tmp`
+    rmSync(temporaryPath, { force: true })
+    try {
+      writeFileSync(temporaryPath, contents, { flag: 'wx' })
+      renameSync(temporaryPath, receiptPath)
+    } finally {
+      rmSync(temporaryPath, { force: true })
+    }
+  }
 
   return {
     name: 'stopcock-fp',
@@ -107,7 +128,9 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
       fusedSiteCount = 0
       partialSiteCount = 0
       skippedSiteCount = 0
+      transformFailed = false
       receipts = []
+      invalidateReceiptFile()
     },
     transform: {
       filter: {
@@ -119,8 +142,19 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
       handler(code, id) {
         fileCount++
         // diagnostics: 'error' makes transformStopcockPipelines throw itself
-        // on the first unfusable site; nothing further to check here.
-        const result = transformStopcockPipelines(code, id, transformOptions)
+        // on the first unfusable site. A portable Unplugin buildEnd hook does
+        // not receive the host's failure state, so remember a transform error
+        // here and never commit receipts from that failed compilation.
+        const result = (() => {
+          try {
+            return transformStopcockPipelines(code, id, transformOptions)
+          } catch (error) {
+            transformFailed = true
+            receipts = []
+            invalidateReceiptFile()
+            throw error
+          }
+        })()
         if (result.diagnostics.length > 0) {
           pipelineFileCount++
           for (const site of result.diagnostics) {
@@ -166,13 +200,19 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
         }
       },
     },
-    buildEnd() {
+    buildEnd(error?: Error) {
+      if (transformFailed || error !== undefined) {
+        receipts = []
+        invalidateReceiptFile()
+        return
+      }
       if (receiptOptions !== undefined) {
-        receiptOptions.onReceipts?.(receipts)
-        if (receiptOptions.dir !== undefined) {
-          const directory = resolvePath(receiptOptions.dir)
-          mkdirSync(directory, { recursive: true })
-          writeFileSync(join(directory, 'stopcock-receipts.json'), serializeReceipts(receipts))
+        try {
+          writeReceiptFile(serializeReceipts(receipts))
+          receiptOptions.onReceipts?.(receipts)
+        } catch (receiptError) {
+          invalidateReceiptFile()
+          throw receiptError
         }
       }
       if (diagnostics === 'summary') {

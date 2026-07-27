@@ -1,3 +1,7 @@
+import { existsSync } from 'node:fs'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { stopcockFp } from '../plugin'
 
@@ -133,6 +137,70 @@ export const fused = pipe([1, 2, 3], map((x) => x * 2))
       sourcePath: expect.stringMatching(/^external\/sha256-[0-9a-f]{64}$/u),
     })
     expect(JSON.stringify(receipts[0])).not.toContain('/repo/src/fixture.ts')
+  })
+
+  it('discards buffered receipts when a later strict transform fails', async () => {
+    const scratch = await mkdtemp(join(tmpdir(), 'stopcock-fp-compiler-failed-build-'))
+    try {
+      const receiptDirectory = join(scratch, 'receipts')
+      const emitted: any[] = []
+      const onReceipts = vi.fn((receipts: readonly any[]) => emitted.push(...receipts))
+      const plugin = stopcockFp.raw({
+        diagnostics: 'error',
+        receipts: {
+          dir: receiptDirectory,
+          root: scratch,
+          onReceipts,
+        },
+      }) as any
+      const supported = `import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+export const result = pipe([1, 2, 3], map((value) => value * 2))
+`
+      const unsupported = `import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+const steps = [map((value) => value * 2)]
+export const result = pipe([1, 2, 3], ...steps)
+`
+
+      plugin.buildStart.call({})
+      await plugin.transform.handler.call({}, supported, join(scratch, 'supported.ts'))
+      plugin.buildEnd.call({})
+
+      expect(emitted).toHaveLength(1)
+      expect(onReceipts).toHaveBeenCalledTimes(1)
+      expect(existsSync(join(receiptDirectory, 'stopcock-receipts.json'))).toBe(true)
+
+      plugin.buildStart.call({})
+      expect(existsSync(join(receiptDirectory, 'stopcock-receipts.json'))).toBe(false)
+      await plugin.transform.handler.call({}, supported, join(scratch, 'supported.ts'))
+      expect(() =>
+        plugin.transform.handler.call({}, unsupported, join(scratch, 'unsupported.ts')),
+      ).toThrow(/skipped pipe/u)
+      plugin.buildEnd.call({})
+
+      expect(emitted).toHaveLength(1)
+      expect(onReceipts).toHaveBeenCalledTimes(1)
+      expect(existsSync(join(receiptDirectory, 'stopcock-receipts.json'))).toBe(false)
+
+      plugin.buildStart.call({})
+      await plugin.transform.handler.call({}, supported, join(scratch, 'supported.ts'))
+      plugin.buildEnd.call({}, new Error('native host failure'))
+
+      expect(emitted).toHaveLength(1)
+      expect(onReceipts).toHaveBeenCalledTimes(1)
+      expect(existsSync(join(receiptDirectory, 'stopcock-receipts.json'))).toBe(false)
+
+      plugin.buildStart.call({})
+      await plugin.transform.handler.call({}, supported, join(scratch, 'supported.ts'))
+      plugin.buildEnd.call({})
+
+      expect(emitted).toHaveLength(2)
+      expect(onReceipts).toHaveBeenCalledTimes(2)
+      expect(existsSync(join(receiptDirectory, 'stopcock-receipts.json'))).toBe(true)
+    } finally {
+      await rm(scratch, { recursive: true, force: true })
+    }
   })
 
   it('passes an extracted artifact context through unchanged to each receipt', async () => {
