@@ -1077,11 +1077,13 @@ function mutateInstalledIdentity(fpRoot, property, oldValue, digit) {
     'FP bundle has no concrete ABI identity object',
   )
   const identity = source.slice(identityStart, identityEnd + '\n});'.length)
-  // The bundler inlines the numeric identities but keeps the hash identities as
-  // references to their generated constants. Mutate whichever spelling this
-  // build actually emitted; either way one installed byte range changes.
-  const property_ = property.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-  const inlined = new RegExp(`${property_}\\s*:\\s*${escaped}(?=\\s*[,}])`, 'u').test(identity)
+  // Compatibility reads the installed FP's frozen identity object. The bundler
+  // inlines the numeric identities into it and leaves the hash identities as
+  // references to their generated constants, so mutate whichever spelling this
+  // build emitted; both reach the same negotiated field.
+  const replacement = replacementLiteral(oldValue, digit)
+  const escapedProperty = property.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  const inlined = new RegExp(`${escapedProperty}\\s*:\\s*${escaped}(?=\\s*[,}])`, 'u').test(identity)
   let output
   let spelling
   if (inlined) {
@@ -1090,21 +1092,18 @@ function mutateInstalledIdentity(fpRoot, property, oldValue, digit) {
       identity,
       property,
       oldValue,
-      replacementLiteral(oldValue, digit),
+      replacement,
       'FP concrete ABI identity object',
     )}${source.slice(identityEnd + '\n});'.length)}`
   } else {
     assert(
-      new RegExp(`${property_}\\s*:\\s*${symbol}(?=\\s*[,}])`, 'u').test(identity),
+      new RegExp(`${escapedProperty}\\s*:\\s*${symbol}(?=\\s*[,}])`, 'u').test(identity),
       `FP concrete ABI identity object neither inlines nor references ${property}`,
     )
     spelling = 'generated-constant'
-    const replacement = generated.replace(
-      generatedField,
-      (_match, prefix) => `${prefix}${replacementLiteral(oldValue, digit)}`,
-    )
-    assert(replacement !== generated, `${symbol} mutation made no source change`)
-    output = `${source.slice(0, generatedStart)}${replacement}${source.slice(generatedEnd)}`
+    const mutated = generated.replace(generatedField, (_match, prefix) => `${prefix}${replacement}`)
+    assert(mutated !== generated, `${symbol} mutation made no source change`)
+    output = `${source.slice(0, generatedStart)}${mutated}${source.slice(generatedEnd)}`
   }
   writeFileSync(path, output)
   const after = readFileSync(path)
@@ -1195,10 +1194,21 @@ function runPhysicalMismatch(
     `${layout}/${side}/${name} physical FP relationship differs from the selected topology`,
   )
   assert(result.executedRunnerIds.length === 0, `${name} invoked a specialized runner`)
-  assert(
-    typeof result.negotiationFailure === 'string' && result.negotiationFailure.length > 0,
-    `${name} has no mismatch reason`,
-  )
+  if (expectedNegotiationFailure) {
+    assert(
+      typeof result.negotiationFailure === 'string' && result.negotiationFailure.length > 0,
+      `${name} has no mismatch reason`,
+    )
+  } else {
+    // The one modelled exception: a mutated secondary FP that is a foreign
+    // duplicate rather than this optimizer's peer, so the shared pair still
+    // negotiates cleanly. Fail-closed behaviour is proved by the absent
+    // specialized runner above and the unchanged exact result below.
+    assert(
+      result.negotiationFailure === null,
+      `${name} reported a mismatch reason for a healthy shared pair`,
+    )
+  }
   assert(result.result === 4, `${name} changed exact fallback result`)
   return {
     layout,
