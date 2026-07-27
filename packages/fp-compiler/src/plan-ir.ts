@@ -133,6 +133,24 @@ const INLINE_CALLBACK_OPS = new Set([
   'every',
   'some',
   'none',
+  // phase 3: dict domain (record/map/set) element and terminal ops.
+  'recordMap',
+  'recordFilter',
+  'recordFilterMap',
+  'recordMapKeys',
+  'recordPartition',
+  'mapMap',
+  'mapFilter',
+  'mapFilterMap',
+  'mapMapKeys',
+  'mapPartition',
+  'mapReduce',
+  'setMap',
+  'setFilter',
+  'setFilterMap',
+  'setFlatMap',
+  'setPartition',
+  'setReduce',
 ])
 
 const spanOf = (node: {
@@ -168,8 +186,24 @@ const isOptionFact = (fact: CompilerOperatorFact): boolean =>
   isOptionDomain(fact.inputDomain) ||
   (fact.inputDomain === 'scalar' && isOptionDomain(fact.outputDomain))
 
-const nonBoundaryKind = (fact: CompilerOperatorFact): 'stream' | 'option' =>
-  isOptionFact(fact) ? 'option' : 'stream'
+/**
+ * True for a fact belonging to the Record/Map/Set domains (phase 3): either
+ * it consumes/produces one of those containers directly (`map`, `filter`,
+ * `mapKeys`, ...) or it is a `reduce` terminal folding one down to a scalar.
+ * Distinguishing this from `'array'`/`'scalar'`/`'option'` here is what
+ * routes a run of these ops into a `'dict'` segment (the `for (const key of
+ * enumerableKeys(...))`/`for...of` loop scaffold in codegen.ts) instead of
+ * the array-loop `'stream'` scaffold or the straight-line `'option'` run.
+ */
+const isDictDomain = (
+  domain: CompilerOperatorFact['inputDomain'] | CompilerOperatorFact['outputDomain'],
+): boolean => domain === 'record' || domain === 'map' || domain === 'set'
+
+const isDictFact = (fact: CompilerOperatorFact): boolean =>
+  isDictDomain(fact.inputDomain) || isDictDomain(fact.outputDomain)
+
+const nonBoundaryKind = (fact: CompilerOperatorFact): 'stream' | 'option' | 'dict' =>
+  isOptionFact(fact) ? 'option' : isDictFact(fact) ? 'dict' : 'stream'
 
 export const segmentKindsForOperatorFacts = (
   facts: readonly CompilerOperatorFact[],
@@ -186,7 +220,7 @@ export const segmentKindsForOperatorFacts = (
   }
 
   const kinds: CompilerSegmentKind[] = []
-  let openKind: 'stream' | 'option' | undefined
+  let openKind: 'stream' | 'option' | 'dict' | undefined
   for (const fact of facts) {
     if (
       fact.compilerPipelineRole === 'boundary' ||
@@ -212,7 +246,7 @@ const segmentPlan = (
   sourceTier: CompilerFallbackTier,
 ): readonly PlanSegment[] => {
   const segments: PlanSegment[] = []
-  let streamKind: 'stream' | 'option' | undefined
+  let streamKind: 'stream' | 'option' | 'dict' | undefined
   let streamStart = -1
   let streamLength = 0
   let streamInput: CompilerOperatorFact['inputDomain'] | 'unknown' = 'unknown'

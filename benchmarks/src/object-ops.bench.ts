@@ -1,15 +1,42 @@
 import { bench, describe } from 'vite-plus/test'
+import { pipe } from '@stopcock/fp/fusion'
 import * as Obj from '@stopcock/fp/object'
 import * as R from 'remeda'
 import * as _ from 'lodash-es'
 import * as Ra from 'ramda'
 import * as Rb from 'rambda'
+import { transformStopcockPipelines } from '../../packages/fp-compiler/src/transform'
+
+/**
+ * Phase 3: compiles `source` (a `pipe(input, ...)` expression over
+ * `@stopcock/fp/fusion`) once at bench setup and returns the generated
+ * `(input) => result` function -- same pattern as `option-result.bench.ts`
+ * and `dict-ops.bench.ts`. A statically known key array (`pick`/`omit`
+ * below) unrolls to a guarded object literal, no function call at all.
+ */
+function compileFixture(source: string): (input: unknown) => unknown {
+  const wrapped = `import { pipe } from '@stopcock/fp/fusion'\nimport * as Obj from '@stopcock/fp/object'\nfunction run(input) {\n${source}\n}\nexport { run };`
+  const result = transformStopcockPipelines(wrapped, 'object-ops-bench.ts', { diagnostics: 'error' })
+  if (result.code === wrapped) {
+    throw new Error(`object-ops.bench: expected the compiler to transform: ${source}`)
+  }
+  const stripped = result.code
+    .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gmu, '')
+    .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gmu, '')
+  const body = `${stripped}\nreturn run;`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const factory = new Function('Obj', body) as (objectModule: typeof Obj) => (input: unknown) => unknown
+  return factory(Obj)
+}
 
 const obj = { a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8, i: 9, j: 10 }
 const nested = { user: { name: 'Alice', address: { city: 'Portland', zip: '97201' } } }
 
 describe('pick', () => {
+  const compiled = compileFixture(`return pipe(input, Obj.pick(['a', 'c', 'e']));`)
+
   bench('stopcock', () => Obj.pick(obj, ['a', 'c', 'e']))
+  bench('stopcock (compiled)', () => compiled(obj))
   bench('remeda', () => R.pick(obj, ['a', 'c', 'e']))
   bench('rambda', () => Rb.pick(['a', 'c', 'e'])(obj))
   bench('ramda', () => Ra.pick(['a', 'c', 'e'], obj))
@@ -17,7 +44,10 @@ describe('pick', () => {
 })
 
 describe('omit', () => {
+  const compiled = compileFixture(`return pipe(input, Obj.omit(['a', 'c', 'e']));`)
+
   bench('stopcock', () => Obj.omit(obj, ['a', 'c', 'e']))
+  bench('stopcock (compiled)', () => compiled(obj))
   bench('remeda', () => R.omit(obj, ['a', 'c', 'e']))
   bench('rambda', () => Rb.omit(['a', 'c', 'e'])(obj))
   bench('ramda', () => Ra.omit(['a', 'c', 'e'], obj))

@@ -64,8 +64,9 @@ describe('ops-table snapshot', () => {
     ).toBe(true)
     // 140 public array exports plus the phase 1.4 stragglers: 7 math, 8
     // string, 3 object, 7 guard, 1 array (sortInline) = 26, plus phase 2's
-    // 12 option ops and 7 result ops = 19.
-    expect(OPS_TABLE).toHaveLength(185)
+    // 12 option ops and 7 result ops = 19, plus phase 3's dict domain: 9
+    // record, 13 map, 11 set, 3 object (pick/omit/mapValues) = 36.
+    expect(OPS_TABLE).toHaveLength(221)
   })
 
   it('derives compiler classifications from accepted lowerings', () => {
@@ -131,7 +132,7 @@ describe('ops-table snapshot', () => {
     for (const entry of OPS_TABLE) {
       expect(entry).not.toHaveProperty('opcode')
       expect(entry.semanticId).toMatch(
-        /^@stopcock\/fp\/(?:array|string|object|math|guard|option|result)\//u,
+        /^@stopcock\/fp\/(?:array|string|object|math|guard|option|result|record|map|set)\//u,
       )
     }
   })

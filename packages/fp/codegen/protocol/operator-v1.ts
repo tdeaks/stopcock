@@ -8,13 +8,24 @@ export const RUNNER_DESCRIPTOR_PROTOCOL_V1 = 'stopcock.fusion-runner' as const
 export const RUNNER_DESCRIPTOR_PROTOCOL_VERSION_V1 = 1 as const
 
 export type SemanticModeV1 = 'exact' | 'pure'
-export type LogicalDomainV1 = 'array' | 'scalar' | 'iterable' | 'option' | 'result'
+export type LogicalDomainV1 =
+  | 'array'
+  | 'scalar'
+  | 'iterable'
+  | 'option'
+  | 'result'
+  | 'record'
+  | 'map'
+  | 'set'
 export type PhysicalLayoutV1 =
   | 'js-array-dense'
   | 'js-array-sparse-as-undefined'
   | 'js-scalar'
   | 'js-option'
   | 'js-result'
+  | 'js-record'
+  | 'js-map'
+  | 'js-set'
 export type CardinalityV1 =
   | 'one-to-one'
   | 'filtering'
@@ -707,10 +718,14 @@ export function defineOperatorV1(input: OperatorSemanticInputV1): OperatorSemant
   assertPackageQualifiedSemanticId(input.semanticId, 'semanticId')
   assertInteger(input.semanticRevision, 'semanticRevision')
   assertString(input.publicName, 'publicName')
-  assertEnum(input.inputDomain, ['array', 'scalar', 'iterable', 'option', 'result'], 'inputDomain')
+  assertEnum(
+    input.inputDomain,
+    ['array', 'scalar', 'iterable', 'option', 'result', 'record', 'map', 'set'],
+    'inputDomain',
+  )
   assertEnum(
     input.outputDomain,
-    ['array', 'scalar', 'iterable', 'option', 'result'],
+    ['array', 'scalar', 'iterable', 'option', 'result', 'record', 'map', 'set'],
     'outputDomain',
   )
   assertStringArray(input.acceptedLayouts, 'acceptedLayouts', {
@@ -726,6 +741,9 @@ export function defineOperatorV1(input: OperatorSemanticInputV1): OperatorSemant
         'js-scalar',
         'js-option',
         'js-result',
+        'js-record',
+        'js-map',
+        'js-set',
       ],
       `acceptedLayouts[${index}]`,
     ),
@@ -805,6 +823,9 @@ export function defineLoweringV1(input: OperatorLoweringInputV1): OperatorLoweri
         'js-scalar',
         'js-option',
         'js-result',
+        'js-record',
+        'js-map',
+        'js-set',
       ],
       `lowering.acceptedLayouts[${index}]`,
     ),
@@ -1198,14 +1219,36 @@ export interface OptionEmitCtx {
   readonly cb: CallbackHandle
 }
 
-/** The seven emission kinds. `expr`/`filter`/`expand`/`stateful` cover
+/** Everything a Record/Map/Set (phase 3, "dict domain") template needs. Like
+ * `OptionEmitCtx`, `k`/`v` are persistent locals mutated in place across every
+ * step of the run rather than renamed per step -- the surrounding loop
+ * (`emitDictSegment` in codegen.ts) declares them once per iteration from the
+ * domain-appropriate source (`enumerableKeys(_src)` for a record, `for
+ * (const [k, v] of _src)` for a Map, `for (const v of _src)` for a Set, where
+ * `k` is unused). `domain` lets one template (e.g. `map`/`filter`) serve all
+ * three container kinds; only `mapKeys` (record/map) actually rewrites `k`.
+ * `next` is populated only for a step whose `compilerPipelineRole` is
+ * `'terminal'` (`partition`, `reduce`), exactly like `ElementEmitCtx.next`. */
+export interface DictEmitCtx {
+  readonly index: number
+  readonly domain: 'record' | 'map' | 'set'
+  readonly k: string
+  readonly v: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly cb: CallbackHandle
+}
+
+/** The eight emission kinds. `expr`/`filter`/`expand`/`stateful` cover
  * element (loop-body) ops; `sink` covers terminals; `optionStep` covers the
  * Option/Result domains (phase 2), a straight-line statement over persistent
- * `_ok`/`_v`/`_err` locals rather than a loop body; a `boundary` op has no
- * template at all, it stays a whole-array call emitted by
- * `emitBoundarySegment`. `indexed` marks the `withIndex` sibling of a base op
- * (map/mapWithIndex, filter/filterWithIndex, forEach/forEachWithIndex)
- * reusing the same `render` function. */
+ * `_ok`/`_v`/`_err` locals rather than a loop body; `dictStep` covers the
+ * Record/Map/Set domains (phase 3), a loop body over persistent `_k`/`_v`
+ * locals; a `boundary` op has no template at all, it stays a whole-container
+ * call emitted by `emitBoundarySegment`. `indexed` marks the `withIndex`
+ * sibling of a base op (map/mapWithIndex, filter/filterWithIndex,
+ * forEach/forEachWithIndex) reusing the same `render` function. */
 export type OpEmit =
   | {
       readonly kind: OpEmitKind
@@ -1215,5 +1258,9 @@ export type OpEmit =
   | {
       readonly kind: 'optionStep'
       readonly render: (ctx: OptionEmitCtx) => EmitFragment
+    }
+  | {
+      readonly kind: 'dictStep'
+      readonly render: (ctx: DictEmitCtx) => EmitFragment
     }
   | { readonly kind: 'boundary' }

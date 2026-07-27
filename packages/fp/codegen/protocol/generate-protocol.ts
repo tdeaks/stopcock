@@ -1143,6 +1143,21 @@ export interface OptionEmitCtx {
   readonly cb: CallbackHandle
 }
 
+/** Everything a Record/Map/Set template needs: persistent \`_k\`/\`_v\` locals
+ * mutated in place across every step of one fused loop iteration (\`k\` is
+ * unused/empty for a Set, which has no key). \`next\` is only populated for a
+ * \`'terminal'\`-role step (\`partition\`, \`reduce\`). */
+export interface DictEmitCtx {
+  readonly index: number
+  readonly domain: 'record' | 'map' | 'set'
+  readonly k: string
+  readonly v: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly cb: CallbackHandle
+}
+
 export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
 
 export type OpEmit =
@@ -1155,6 +1170,10 @@ export type OpEmit =
       readonly kind: 'optionStep'
       readonly render: (ctx: OptionEmitCtx) => EmitFragment
     }
+  | {
+      readonly kind: 'dictStep'
+      readonly render: (ctx: DictEmitCtx) => EmitFragment
+    }
   | { readonly kind: 'boundary' }
 
 export interface OpsTableEntry {
@@ -1163,8 +1182,8 @@ export interface OpsTableEntry {
   readonly bindings: readonly ('fn' | 'a1' | 'a2')[]
   readonly semanticId: string
   readonly semanticRevision: number
-  readonly inputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result'
-  readonly outputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result'
+  readonly inputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result' | 'record' | 'map' | 'set'
+  readonly outputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result' | 'record' | 'map' | 'set'
   readonly cardinality:
     | 'one-to-one'
     | 'filtering'

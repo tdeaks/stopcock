@@ -1,6 +1,13 @@
 import * as t from '@babel/types'
 import { BOUNDARY_OPS, TERMINAL_OPS, callbackArity, opEmitFor } from './ops'
-import type { CallbackHandle, ElementEmitCtx, EmitFragment, OpEmit, OptionEmitCtx } from './ops-table'
+import type {
+  CallbackHandle,
+  DictEmitCtx,
+  ElementEmitCtx,
+  EmitFragment,
+  OpEmit,
+  OptionEmitCtx,
+} from './ops-table'
 import { planInline, renderDirectInlineExpressionMapped, renderDirectInlineMapped } from './inline'
 import {
   FULL_ARRAY_LOWERING_ID,
@@ -90,7 +97,7 @@ export interface FusedBody {
   readonly prelude: string
   /** Generated execution statements, after every capture has completed. */
   readonly execution: string
-  readonly segmentKinds: readonly ('stream' | 'boundary' | 'opaque' | 'option')[]
+  readonly segmentKinds: readonly ('stream' | 'boundary' | 'opaque' | 'option' | 'dict')[]
   readonly sourceFragments: readonly GeneratedSourceFragment[]
 }
 
@@ -119,6 +126,24 @@ const CALLBACK_OPS = new Set([
   'every',
   'some',
   'none',
+  // phase 3: dict domain (record/map/set) element and terminal ops.
+  'recordMap',
+  'recordFilter',
+  'recordFilterMap',
+  'recordMapKeys',
+  'recordPartition',
+  'mapMap',
+  'mapFilter',
+  'mapFilterMap',
+  'mapMapKeys',
+  'mapPartition',
+  'mapReduce',
+  'setMap',
+  'setFilter',
+  'setFilterMap',
+  'setFlatMap',
+  'setPartition',
+  'setReduce',
 ])
 const DIRECT_FULL_ARRAY_TERMINALS = new Set(['head', 'last', 'length', 'isEmpty', 'min', 'max'])
 
@@ -149,7 +174,20 @@ interface OptionSegment {
   readonly steps: readonly IndexedStep[]
 }
 
-type Segment = ElementSegment | BoundarySegment | OptionSegment
+/**
+ * A run of consecutive Record/Map/Set-domain steps (phase 3): a real fused
+ * loop (unlike `OptionSegment`'s straight-line run) over persistent `_k`/`_v`
+ * locals. A step whose `compilerPipelineRole` is `'terminal'` (`partition`,
+ * `reduce`), if present, is always the last one and ends the run, exactly
+ * like `ElementSegment.terminal`.
+ */
+interface DictSegment {
+  readonly kind: 'dict'
+  readonly steps: readonly IndexedStep[]
+  readonly terminal?: IndexedStep
+}
+
+type Segment = ElementSegment | BoundarySegment | OptionSegment | DictSegment
 
 interface PresentConditionalPlan {
   readonly callback: t.ArrowFunctionExpression
@@ -324,6 +362,34 @@ function segmentsFromPlan(plan: StaticCompilerPlanV1): readonly Segment[] {
         if (item.step.fact.compilerPipelineRole === 'terminal') sawTerminal = true
       }
       segments.push({ kind: 'option', steps: indexed })
+      continue
+    }
+
+    if (planned.kind === 'dict') {
+      const dictElements: IndexedStep[] = []
+      let dictTerminal: IndexedStep | undefined
+      for (const item of indexed) {
+        const role = item.step.fact.compilerPipelineRole
+        if (role === 'boundary') {
+          throw new Error('fp-compiler: dict plan segment contains a boundary fact')
+        }
+        if (role === 'terminal') {
+          if (dictTerminal !== undefined) {
+            throw new Error('fp-compiler: dict plan segment contains a step after its terminal')
+          }
+          dictTerminal = item
+        } else {
+          if (dictTerminal !== undefined) {
+            throw new Error('fp-compiler: dict plan segment contains a step after its terminal')
+          }
+          dictElements.push(item)
+        }
+      }
+      segments.push({
+        kind: 'dict',
+        steps: dictElements,
+        ...(dictTerminal === undefined ? {} : { terminal: dictTerminal }),
+      })
       continue
     }
 
@@ -615,11 +681,11 @@ function makeCallbackHandle(
   }
 }
 
-type ElementOpEmit = Exclude<OpEmit, { kind: 'boundary' } | { kind: 'optionStep' }>
+type ElementOpEmit = Exclude<OpEmit, { kind: 'boundary' } | { kind: 'optionStep' } | { kind: 'dictStep' }>
 
 function requireElementEmit(name: string): ElementOpEmit {
   const emit = opEmitFor(name)
-  if (!emit || emit.kind === 'boundary' || emit.kind === 'optionStep') {
+  if (!emit || emit.kind === 'boundary' || emit.kind === 'optionStep' || emit.kind === 'dictStep') {
     throw new Error(`fp-compiler: unhandled element op ${name}`)
   }
   return emit
@@ -1059,10 +1125,266 @@ function emitOptionSegment(
   return bodyLines
 }
 
+// -- Phase 3: Record/Map/Set ("dict domain") ----------------------------
+//
+// Unlike an Option/Result segment, a dict segment is a real fused loop: one
+// `for` over the source container, `_k`/`_v` persistent locals (named
+// `_k{startIndex}`/`_v{startIndex}` after the segment's first step, exactly
+// like `emitOptionSegment`'s `_ok{startIndex}`/`_v{startIndex}`) mutated in
+// place by each step's template, then either a domain-appropriate default
+// collector (map/filter/mapKeys/flatMap with no following terminal) or a
+// terminal template (`partition`/`reduce`) that assigns the segment's result
+// straight into `nextData`.
+
+type DictOpEmit = Extract<OpEmit, { kind: 'dictStep' }>
+
+function requireDictEmit(name: string): DictOpEmit {
+  const emit = opEmitFor(name)
+  if (!emit || emit.kind !== 'dictStep') {
+    throw new Error(`fp-compiler: unhandled dict op ${name}`)
+  }
+  return emit
+}
+
+function dictElementCtx(
+  step: Step,
+  index: number,
+  domain: 'record' | 'map' | 'set',
+  k: string,
+  v: string,
+  next: string,
+  code: string,
+  inlineCallbacks: boolean,
+  renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
+): DictEmitCtx {
+  const arity = callbackArity(step.name) ?? 0
+  const hasCallback = arity > 0
+  const restStart = hasCallback ? 1 : 0
+  const a1Node = step.args[restStart]
+  const a2Node = step.args[restStart + 1]
+  const cb = hasCallback
+    ? makeCallbackHandle(
+        step.args[0],
+        `_dcb${index}`,
+        code,
+        inlineCallbacks,
+        renderExpression,
+        renderSource,
+      )
+    : NO_CALLBACK_HANDLE
+  return {
+    index,
+    domain,
+    k,
+    v,
+    next,
+    a1: a1Node ? `(${renderExpression(a1Node)})` : '',
+    a2: a2Node ? `(${renderExpression(a2Node)})` : '',
+    cb,
+  }
+}
+
+function dictSegmentDomain(seg: DictSegment): 'record' | 'map' | 'set' {
+  const anchor = seg.steps[0] ?? seg.terminal
+  if (anchor === undefined) throw new Error('fp-compiler: empty dict plan segment')
+  const domain = anchor.step.fact.inputDomain
+  if (domain !== 'record' && domain !== 'map' && domain !== 'set') {
+    throw new Error(`fp-compiler: dict plan segment has non-dict-domain fact ${domain}`)
+  }
+  return domain
+}
+
+function emitDictSegment(
+  seg: DictSegment,
+  curData: string,
+  nextData: string,
+  code: string,
+  preLines: string[],
+  inlineCallbacks: boolean,
+  renderExpression: ExpressionRenderer,
+  renderSource: SourceRangeRenderer,
+): string[] {
+  const domain = dictSegmentDomain(seg)
+  const startIndex = (seg.steps[0] ?? seg.terminal!).index
+  const k = `_k${startIndex}`
+  const v = `_v${startIndex}`
+
+  const stateLines: string[] = []
+  const bodyLines: string[] = []
+  const closeBraces: string[] = []
+
+  let loopOpen: string
+  if (domain === 'record') {
+    // Reproduces `record.ts#enumerableKeys` exactly: one `Reflect.ownKeys`
+    // snapshot (a stateful Proxy `ownKeys` trap must be enumerated once),
+    // compacted in place to the keys `propertyIsEnumerable` accepts --
+    // including symbol keys, and in `Reflect.ownKeys`'s own order
+    // (integer-like string keys ascending, then other strings by insertion,
+    // then symbols), not `Object.keys`/`for...in`/`Object.hasOwn`.
+    const keys = `_dkeys${startIndex}`
+    const scan = `_dscan${startIndex}`
+    const write = `_dwrite${startIndex}`
+    const scanKey = `_dskey${startIndex}`
+    stateLines.push(
+      `var ${keys} = Reflect.ownKeys(${curData});`,
+      `var ${write} = 0;`,
+      `for (var ${scan} = 0; ${scan} < ${keys}.length; ${scan}++) {`,
+      `var ${scanKey} = ${keys}[${scan}];`,
+      `if (Object.prototype.propertyIsEnumerable.call(${curData}, ${scanKey})) { ${keys}[${write}++] = ${scanKey}; }`,
+      '}',
+      `${keys}.length = ${write};`,
+    )
+    const ri = `_dri${startIndex}`
+    loopOpen = `for (var ${ri} = 0; ${ri} < ${keys}.length; ${ri}++) {`
+    bodyLines.push(`var ${k} = ${keys}[${ri}];`, `var ${v} = ${curData}[${k}];`)
+  } else if (domain === 'map') {
+    loopOpen = `for (var [${k}, ${v}] of ${curData}) {`
+  } else {
+    loopOpen = `for (var ${v} of ${curData}) {`
+  }
+
+  seg.steps.forEach(({ index, step }) => {
+    const ctx = dictElementCtx(
+      step,
+      index,
+      domain,
+      k,
+      v,
+      '',
+      code,
+      inlineCallbacks,
+      renderExpression,
+      renderSource,
+    )
+    const fragment = requireDictEmit(step.name).render(ctx)
+    splice(fragment, preLines, stateLines, bodyLines, closeBraces)
+  })
+
+  const terminal = seg.terminal
+  if (!terminal) {
+    if (domain === 'record') {
+      preLines.push(`var ${nextData} = Object.create(null);`)
+      bodyLines.push(`${nextData}[${k}] = ${v};`)
+    } else if (domain === 'map') {
+      preLines.push(`var ${nextData} = new Map();`)
+      bodyLines.push(`${nextData}.set(${k}, ${v});`)
+    } else {
+      preLines.push(`var ${nextData} = new Set();`)
+      bodyLines.push(`${nextData}.add(${v});`)
+    }
+  } else {
+    const { index, step } = terminal
+    const ctx = dictElementCtx(
+      step,
+      index,
+      domain,
+      k,
+      v,
+      nextData,
+      code,
+      inlineCallbacks,
+      renderExpression,
+      renderSource,
+    )
+    const fragment = requireDictEmit(step.name).render(ctx)
+    splice(fragment, preLines, stateLines, bodyLines, closeBraces)
+  }
+
+  return [stateLines.join('\n'), loopOpen, bodyLines.join('\n'), ...closeBraces, '}']
+}
+
 // Boundary operator expressions are hoisted with the other pipe arguments.
 // Calling the real operator preserves its stable sorting kernel, callback
 // trace, and property-access/evaluation semantics instead of reimplementing
 // an accidentally different Array.prototype operation in generated code.
+/** `Obj.pick`/`Obj.omit`'s dangerous own keys: `object.ts#define` throws a
+ * `TypeError` writing any of these, matching what real property assignment
+ * cannot reproduce (a `__proto__` *data* property is legal, but only
+ * `Object.defineProperty` can create one on a non-null-prototype target). */
+const UNSAFE_OBJECT_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype'])
+
+/** A statically known array of string/numeric key literals, or `undefined`
+ * for anything else (identifier, computed access, spread, symbol, ...) --
+ * the compiler falls back to the generic capture-and-call boundary for those
+ * (diagnostic reason `dynamic-keys`), never a hard failure: the real
+ * `pick`/`omit` export already handles a dynamic key list correctly. */
+function staticKeyLiteralsOf(node: t.Expression | undefined): readonly string[] | undefined {
+  if (node === undefined || !t.isArrayExpression(node)) return undefined
+  const keys: string[] = []
+  for (const element of node.elements) {
+    if (t.isStringLiteral(element)) {
+      keys.push(element.value)
+    } else if (t.isNumericLiteral(element)) {
+      keys.push(String(element.value))
+    } else {
+      return undefined
+    }
+  }
+  return keys
+}
+
+/**
+ * `pick`'s unrolled fast path: `object.ts#pick` iterates the *requested*
+ * keys (never the source's own key set), so every accessed key is already
+ * statically known and the whole call becomes a guarded per-key read with
+ * no `Set`/loop over the source at all. Skipped (falls back to the generic
+ * boundary call) when a requested key is one `define()` would throw on --
+ * simplest correct choice, since whether the throw actually fires depends on
+ * the source object's own shape at run time, not on the static key list.
+ */
+function emitStaticPick(
+  keys: readonly string[],
+  curData: string,
+  nextData: string,
+): string[] | undefined {
+  if (keys.some((key) => UNSAFE_OBJECT_KEYS.has(key))) return undefined
+  const lines = [`var ${nextData} = Object.create(null);`]
+  for (const key of keys) {
+    const literal = JSON.stringify(key)
+    lines.push(
+      `if (Object.prototype.hasOwnProperty.call(${curData}, ${literal}) && Object.prototype.propertyIsEnumerable.call(${curData}, ${literal})) { ${nextData}[${literal}] = ${curData}[${literal}]; }`,
+    )
+  }
+  return lines
+}
+
+/**
+ * `omit`'s unrolled fast path: still a loop (the copied key set is whatever
+ * the source has left over, only known at run time), but the excluded-key
+ * `Set` + `normalizeKey` becomes inline `===` comparisons against the
+ * static literals. The dangerous-key throw is still live here (unlike
+ * `pick`, `omit` copies whatever the source's own enumerable keys are, so an
+ * unexcluded `__proto__`/`constructor`/`prototype` can reach the write even
+ * though the *static* omitted list never mentions it) and must match
+ * `object.ts#define` exactly, including the throw.
+ */
+function emitStaticOmit(
+  keys: readonly string[],
+  curData: string,
+  nextData: string,
+  index: number,
+): string[] {
+  const ownKeys = `_omitKeys${index}`
+  const scanIndex = `_omitI${index}`
+  const scanKey = `_omitKey${index}`
+  const exclusion =
+    keys.length === 0
+      ? []
+      : [`if (${keys.map((key) => `${scanKey} === ${JSON.stringify(key)}`).join(' || ')}) { continue; }`]
+  return [
+    `var ${ownKeys} = Reflect.ownKeys(${curData});`,
+    `var ${nextData} = Object.create(null);`,
+    `for (var ${scanIndex} = 0; ${scanIndex} < ${ownKeys}.length; ${scanIndex}++) {`,
+    `var ${scanKey} = ${ownKeys}[${scanIndex}];`,
+    `if (!Object.prototype.propertyIsEnumerable.call(${curData}, ${scanKey})) { continue; }`,
+    ...exclusion,
+    `if (${scanKey} === '__proto__' || ${scanKey} === 'constructor' || ${scanKey} === 'prototype') { throw new TypeError('Unsafe object key: ' + String(${scanKey})); }`,
+    `${nextData}[${scanKey}] = ${curData}[${scanKey}];`,
+    '}',
+  ]
+}
+
 function emitBoundarySegment(
   seg: BoundarySegment,
   curData: string,
@@ -1074,6 +1396,20 @@ function emitBoundarySegment(
   optionNoneLocal: string,
 ): string[] {
   const { step } = seg.step
+  if (step.name === 'objectPick' || step.name === 'objectOmit') {
+    const keys = staticKeyLiteralsOf(step.args[0])
+    if (keys !== undefined) {
+      const unrolled =
+        step.name === 'objectPick'
+          ? emitStaticPick(keys, curData, nextData)
+          : emitStaticOmit(keys, curData, nextData, seg.step.index)
+      if (unrolled !== undefined) return unrolled
+    }
+    // Falls through to the generic capture-and-call boundary below: a
+    // dynamic key list (or a static-but-dangerous pick list) still compiles
+    // correctly through the real `pick`/`omit` export, just without the
+    // unrolled fast path.
+  }
   const sourceTierUsesRuntimePlan = sourceTier === 'compact'
   // These bare terminals are validated imports with no construction-time
   // bindings. Lowering them to their defining property checks avoids a
@@ -1148,7 +1484,7 @@ function emitBoundarySegment(
 // contribute to a loop body, here running once between two array segments
 // (or standing alone, for an all-scalar pipe with no array step at all).
 function emitInlineBoundaryStep(
-  emit: Exclude<OpEmit, { kind: 'boundary' } | { kind: 'optionStep' }>,
+  emit: Exclude<OpEmit, { kind: 'boundary' } | { kind: 'optionStep' } | { kind: 'dictStep' }>,
   step: Step,
   index: number,
   curData: string,
@@ -1262,7 +1598,8 @@ function generateSegmentedBodyInternal(
       } else if (
         inlineEmit !== undefined &&
         inlineEmit.kind !== 'boundary' &&
-        inlineEmit.kind !== 'optionStep'
+        inlineEmit.kind !== 'optionStep' &&
+        inlineEmit.kind !== 'dictStep'
       ) {
         blockLines.push(
           ...emitInlineBoundaryStep(
@@ -1305,6 +1642,19 @@ function generateSegmentedBodyInternal(
           renderSource,
         ),
       )
+    } else if (seg.kind === 'dict') {
+      blockLines.push(
+        ...emitDictSegment(
+          seg,
+          curData,
+          nextData,
+          code,
+          preLines,
+          inlineCallbacks,
+          renderExpression,
+          renderSource,
+        ),
+      )
     } else if (
       seg.steps.length === 0 &&
       seg.terminal !== undefined &&
@@ -1342,7 +1692,9 @@ function generateSegmentedBodyInternal(
     prelude,
     execution,
     segmentKinds: segments.map((segment) =>
-      segment.kind === 'boundary' || segment.kind === 'option' ? segment.kind : 'stream',
+      segment.kind === 'boundary' || segment.kind === 'option' || segment.kind === 'dict'
+        ? segment.kind
+        : 'stream',
     ),
   }
 }

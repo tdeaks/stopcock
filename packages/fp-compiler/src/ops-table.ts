@@ -53,6 +53,21 @@ export interface OptionEmitCtx {
   readonly cb: CallbackHandle
 }
 
+/** Everything a Record/Map/Set template needs: persistent `_k`/`_v` locals
+ * mutated in place across every step of one fused loop iteration (`k` is
+ * unused/empty for a Set, which has no key). `next` is only populated for a
+ * `'terminal'`-role step (`partition`, `reduce`). */
+export interface DictEmitCtx {
+  readonly index: number
+  readonly domain: 'record' | 'map' | 'set'
+  readonly k: string
+  readonly v: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly cb: CallbackHandle
+}
+
 export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
 
 export type OpEmit =
@@ -65,6 +80,10 @@ export type OpEmit =
       readonly kind: 'optionStep'
       readonly render: (ctx: OptionEmitCtx) => EmitFragment
     }
+  | {
+      readonly kind: 'dictStep'
+      readonly render: (ctx: DictEmitCtx) => EmitFragment
+    }
   | { readonly kind: 'boundary' }
 
 export interface OpsTableEntry {
@@ -73,8 +92,24 @@ export interface OpsTableEntry {
   readonly bindings: readonly ('fn' | 'a1' | 'a2')[]
   readonly semanticId: string
   readonly semanticRevision: number
-  readonly inputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result'
-  readonly outputDomain: 'array' | 'scalar' | 'iterable' | 'option' | 'result'
+  readonly inputDomain:
+    | 'array'
+    | 'scalar'
+    | 'iterable'
+    | 'option'
+    | 'result'
+    | 'record'
+    | 'map'
+    | 'set'
+  readonly outputDomain:
+    | 'array'
+    | 'scalar'
+    | 'iterable'
+    | 'option'
+    | 'result'
+    | 'record'
+    | 'map'
+    | 'set'
   readonly cardinality:
     | 'one-to-one'
     | 'filtering'
@@ -107,6 +142,10 @@ export const ELEMENT_OP_NAMES = [
   'take',
   'takeUntil',
   'takeWhile',
+  'mapFilter',
+  'mapFilterMap',
+  'mapMap',
+  'mapMapKeys',
   'optionFilter',
   'optionFlatMap',
   'optionFromNullable',
@@ -115,10 +154,18 @@ export const ELEMENT_OP_NAMES = [
   'optionOrElse',
   'optionTap',
   'optionZip',
+  'recordFilter',
+  'recordFilterMap',
+  'recordMap',
+  'recordMapKeys',
   'resultFlatMap',
   'resultFromThrowable',
   'resultMap',
   'resultMapErr',
+  'setFilter',
+  'setFilterMap',
+  'setFlatMap',
+  'setMap',
 ] as const
 export const TERMINAL_OP_NAMES = [
   'count',
@@ -138,13 +185,18 @@ export const TERMINAL_OP_NAMES = [
   'reduce',
   'some',
   'sum',
+  'mapPartition',
+  'mapReduce',
   'optionGetOrElse',
   'optionMatch',
   'optionToNullable',
   'optionToUndefined',
+  'recordPartition',
   'resultGetOrElse',
   'resultMatch',
   'resultToOption',
+  'setPartition',
+  'setReduce',
 ] as const
 export const BOUNDARY_OP_NAMES = [
   'adjust',
@@ -265,6 +317,13 @@ export const BOUNDARY_OP_NAMES = [
   'isNumber',
   'isObject',
   'isString',
+  'mapDifference',
+  'mapEntriesIterator',
+  'mapIntersection',
+  'mapKeysIterator',
+  'mapMerge',
+  'mapToArray',
+  'mapValuesIterator',
   'add',
   'dec',
   'divide',
@@ -274,7 +333,19 @@ export const BOUNDARY_OP_NAMES = [
   'subtract',
   'dictIsEmpty',
   'keys',
+  'objectMapValues',
+  'objectOmit',
+  'objectPick',
   'values',
+  'recordEntries',
+  'recordFromEntries',
+  'recordKeys',
+  'recordValues',
+  'setDifference',
+  'setIntersection',
+  'setSymmetricDifference',
+  'setToArray',
+  'setUnion',
   'strIsEmpty',
   'strLength',
   'split',
@@ -3434,6 +3505,321 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     },
   },
   {
+    name: 'mapDifference',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/map/difference',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'map',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/map/difference/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/mapDifference/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'mapEntriesIterator',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/map/entries',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'array',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/map/entries/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/mapEntriesIterator/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'mapFilter',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/map/filter',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'map',
+    cardinality: 'filtering',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/map/filter/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/mapFilter/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          cb = ctx.cb.emit(inputs, (expr) => [`if (!(${expr})) { continue; }`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'mapFilterMap',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/map/filterMap',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'map',
+    cardinality: 'filtering',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/map/filterMap/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/mapFilterMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          t = `_dfm${ctx.index}`,
+          cb = ctx.cb.emit(inputs, (expr) => [`var ${t} = ${expr};`])
+        return {
+          pre: cb.pre,
+          body: [...cb.body, `if (${t}._tag !== 1) { continue; }`, `${ctx.v} = ${t}.value;`],
+        }
+      },
+    },
+  },
+  {
+    name: 'mapIntersection',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/map/intersection',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'map',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/map/intersection/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/mapIntersection/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'mapKeysIterator',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/map/keys',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'array',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/map/keys/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/mapKeysIterator/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'mapMap',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/map/map',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'map',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/map/map/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/mapMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          cb = ctx.cb.emit(inputs, (expr) => [`${ctx.v} = ${expr};`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'mapMapKeys',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/map/mapKeys',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'map',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/map/mapKeys/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/mapMapKeys/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.k, ctx.v], (expr) => [`${ctx.k} = ${expr};`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'mapMerge',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/map/merge',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'map',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/map/merge/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/mapMerge/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'mapPartition',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/map/partition',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'map',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/map/partition/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/mapPartition/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          empty =
+            ctx.domain === 'record'
+              ? 'Object.create(null)'
+              : ctx.domain === 'map'
+                ? 'new Map()'
+                : 'new Set()',
+          acceptedWrite =
+            ctx.domain === 'record'
+              ? `${ctx.next}[0][${ctx.k}] = ${ctx.v};`
+              : ctx.domain === 'map'
+                ? `${ctx.next}[0].set(${ctx.k}, ${ctx.v});`
+                : `${ctx.next}[0].add(${ctx.v});`,
+          rejectedWrite =
+            ctx.domain === 'record'
+              ? `${ctx.next}[1][${ctx.k}] = ${ctx.v};`
+              : ctx.domain === 'map'
+                ? `${ctx.next}[1].set(${ctx.k}, ${ctx.v});`
+                : `${ctx.next}[1].add(${ctx.v});`,
+          cb = ctx.cb.emit(inputs, (expr) => [
+            `if (${expr}) { ${acceptedWrite} } else { ${rejectedWrite} }`,
+          ])
+        return {
+          pre: [...(cb.pre ?? []), `var ${ctx.next} = [${empty}, ${empty}];`],
+          body: cb.body,
+        }
+      },
+    },
+  },
+  {
+    name: 'mapReduce',
+    callbackArity: 2,
+    bindings: ['fn', 'a1'],
+    semanticId: '@stopcock/fp/map/reduce',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/map/reduce/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/mapReduce/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.next, ctx.v] : [ctx.next, ctx.v, ctx.k],
+          cb = ctx.cb.emit(inputs, (expr) => [`${ctx.next} = ${expr};`])
+        return { pre: [...(cb.pre ?? []), `var ${ctx.next} = ${ctx.a1};`], body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'mapToArray',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/map/toArray',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'array',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/map/toArray/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/mapToArray/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'mapValuesIterator',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/map/values',
+    semanticRevision: 1,
+    inputDomain: 'map',
+    outputDomain: 'array',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/map/values/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/mapValuesIterator/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
     name: 'add',
     callbackArity: 0,
     bindings: ['a1'],
@@ -3606,7 +3992,19 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     compilerFinalBoundary: false,
     emit: {
       kind: 'expr',
-      render: (ctx) => ({ body: [`var ${ctx.next} = (Object.keys(${ctx.v}).length === 0);`] }),
+      render: (ctx) => {
+        const keys = `_dek${ctx.index}`,
+          i = `_dei${ctx.index}`
+        return {
+          body: [
+            `var ${ctx.next} = true;`,
+            `var ${keys} = Reflect.ownKeys(${ctx.v});`,
+            `for (var ${i} = 0; ${i} < ${keys}.length; ${i}++) {`,
+            `if (Object.prototype.propertyIsEnumerable.call(${ctx.v}, ${keys}[${i}])) { ${ctx.next} = false; break; }`,
+            '}',
+          ],
+        }
+      },
     },
   },
   {
@@ -3624,6 +4022,63 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     loweringId: '@stopcock/fp/object/keys/lowering/compiler-aot',
     loweringRevision: 1,
     runnerId: '@stopcock/fp-compiler/runner/boundary/keys/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'objectMapValues',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/object/mapValues',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'record',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/object/mapValues/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/objectMapValues/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'objectOmit',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/object/omit',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'record',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/object/omit/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/objectOmit/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'objectPick',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/object/pick',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'record',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/object/pick/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/objectPick/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
     emit: { kind: 'boundary' },
@@ -3963,6 +4418,238 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     },
   },
   {
+    name: 'recordEntries',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/record/entries',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'array',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/record/entries/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/recordEntries/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'recordFilter',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/record/filter',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'record',
+    cardinality: 'filtering',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/record/filter/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/recordFilter/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          cb = ctx.cb.emit(inputs, (expr) => [`if (!(${expr})) { continue; }`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'recordFilterMap',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/record/filterMap',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'record',
+    cardinality: 'filtering',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/record/filterMap/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/recordFilterMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          t = `_dfm${ctx.index}`,
+          cb = ctx.cb.emit(inputs, (expr) => [`var ${t} = ${expr};`])
+        return {
+          pre: cb.pre,
+          body: [...cb.body, `if (${t}._tag !== 1) { continue; }`, `${ctx.v} = ${t}.value;`],
+        }
+      },
+    },
+  },
+  {
+    name: 'recordFromEntries',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/record/fromEntries',
+    semanticRevision: 1,
+    inputDomain: 'array',
+    outputDomain: 'record',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/record/fromEntries/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/recordFromEntries/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'recordKeys',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/record/keys',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'array',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/record/keys/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/recordKeys/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'recordMap',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/record/map',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'record',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/record/map/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/recordMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          cb = ctx.cb.emit(inputs, (expr) => [`${ctx.v} = ${expr};`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'recordMapKeys',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/record/mapKeys',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'record',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/record/mapKeys/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/recordMapKeys/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.k, ctx.v], (expr) => [`${ctx.k} = ${expr};`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'recordPartition',
+    callbackArity: 2,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/record/partition',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'record',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/record/partition/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/recordPartition/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          empty =
+            ctx.domain === 'record'
+              ? 'Object.create(null)'
+              : ctx.domain === 'map'
+                ? 'new Map()'
+                : 'new Set()',
+          acceptedWrite =
+            ctx.domain === 'record'
+              ? `${ctx.next}[0][${ctx.k}] = ${ctx.v};`
+              : ctx.domain === 'map'
+                ? `${ctx.next}[0].set(${ctx.k}, ${ctx.v});`
+                : `${ctx.next}[0].add(${ctx.v});`,
+          rejectedWrite =
+            ctx.domain === 'record'
+              ? `${ctx.next}[1][${ctx.k}] = ${ctx.v};`
+              : ctx.domain === 'map'
+                ? `${ctx.next}[1].set(${ctx.k}, ${ctx.v});`
+                : `${ctx.next}[1].add(${ctx.v});`,
+          cb = ctx.cb.emit(inputs, (expr) => [
+            `if (${expr}) { ${acceptedWrite} } else { ${rejectedWrite} }`,
+          ])
+        return {
+          pre: [...(cb.pre ?? []), `var ${ctx.next} = [${empty}, ${empty}];`],
+          body: cb.body,
+        }
+      },
+    },
+  },
+  {
+    name: 'recordValues',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/record/values',
+    semanticRevision: 1,
+    inputDomain: 'record',
+    outputDomain: 'array',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/record/values/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/recordValues/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
     name: 'resultFlatMap',
     callbackArity: 1,
     bindings: ['fn'],
@@ -4152,6 +4839,289 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
         body: [`var ${ctx.next} = ${ctx.ok} ? { _tag: 1, value: ${ctx.v} } : ${ctx.optionNone};`],
       }),
     },
+  },
+  {
+    name: 'setDifference',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/set/difference',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'set',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/set/difference/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/setDifference/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'setFilter',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/set/filter',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'set',
+    cardinality: 'filtering',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/set/filter/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/setFilter/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          cb = ctx.cb.emit(inputs, (expr) => [`if (!(${expr})) { continue; }`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'setFilterMap',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/set/filterMap',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'set',
+    cardinality: 'filtering',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/set/filterMap/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/setFilterMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          t = `_dfm${ctx.index}`,
+          cb = ctx.cb.emit(inputs, (expr) => [`var ${t} = ${expr};`])
+        return {
+          pre: cb.pre,
+          body: [...cb.body, `if (${t}._tag !== 1) { continue; }`, `${ctx.v} = ${t}.value;`],
+        }
+      },
+    },
+  },
+  {
+    name: 'setFlatMap',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/set/flatMap',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'set',
+    cardinality: 'expanding',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/set/flatMap/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/setFlatMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const fm = `_dxm${ctx.index}`,
+          j = `_dxj${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v], (expr) => [`var ${fm} = ${expr};`])
+        return {
+          pre: cb.pre,
+          body: [...cb.body, `for (var ${j} of ${fm}) {`, `${ctx.v} = ${j};`],
+          close: ['}'],
+        }
+      },
+    },
+  },
+  {
+    name: 'setIntersection',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/set/intersection',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'set',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/set/intersection/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/setIntersection/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'setMap',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/set/map',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'set',
+    cardinality: 'one-to-one',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/set/map/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/element/setMap/v1',
+    compilerPipelineRole: 'element',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          cb = ctx.cb.emit(inputs, (expr) => [`${ctx.v} = ${expr};`])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'setPartition',
+    callbackArity: 1,
+    bindings: ['fn'],
+    semanticId: '@stopcock/fp/set/partition',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'set',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/set/partition/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/setPartition/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k],
+          empty =
+            ctx.domain === 'record'
+              ? 'Object.create(null)'
+              : ctx.domain === 'map'
+                ? 'new Map()'
+                : 'new Set()',
+          acceptedWrite =
+            ctx.domain === 'record'
+              ? `${ctx.next}[0][${ctx.k}] = ${ctx.v};`
+              : ctx.domain === 'map'
+                ? `${ctx.next}[0].set(${ctx.k}, ${ctx.v});`
+                : `${ctx.next}[0].add(${ctx.v});`,
+          rejectedWrite =
+            ctx.domain === 'record'
+              ? `${ctx.next}[1][${ctx.k}] = ${ctx.v};`
+              : ctx.domain === 'map'
+                ? `${ctx.next}[1].set(${ctx.k}, ${ctx.v});`
+                : `${ctx.next}[1].add(${ctx.v});`,
+          cb = ctx.cb.emit(inputs, (expr) => [
+            `if (${expr}) { ${acceptedWrite} } else { ${rejectedWrite} }`,
+          ])
+        return {
+          pre: [...(cb.pre ?? []), `var ${ctx.next} = [${empty}, ${empty}];`],
+          body: cb.body,
+        }
+      },
+    },
+  },
+  {
+    name: 'setReduce',
+    callbackArity: 2,
+    bindings: ['fn', 'a1'],
+    semanticId: '@stopcock/fp/set/reduce',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'scalar',
+    cardinality: 'sink',
+    streamTermination: false,
+    fullMaterialization: false,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/set/reduce/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/terminal/setReduce/v1',
+    compilerPipelineRole: 'terminal',
+    compilerFinalBoundary: false,
+    emit: {
+      kind: 'dictStep',
+      render: (ctx) => {
+        const inputs = ctx.domain === 'set' ? [ctx.next, ctx.v] : [ctx.next, ctx.v, ctx.k],
+          cb = ctx.cb.emit(inputs, (expr) => [`${ctx.next} = ${expr};`])
+        return { pre: [...(cb.pre ?? []), `var ${ctx.next} = ${ctx.a1};`], body: cb.body }
+      },
+    },
+  },
+  {
+    name: 'setSymmetricDifference',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/set/symmetricDifference',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'set',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/set/symmetricDifference/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/setSymmetricDifference/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'setToArray',
+    callbackArity: 0,
+    bindings: [],
+    semanticId: '@stopcock/fp/set/toArray',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'array',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: true,
+    loweringId: '@stopcock/fp/set/toArray/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/setToArray/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
+  },
+  {
+    name: 'setUnion',
+    callbackArity: 0,
+    bindings: ['a1'],
+    semanticId: '@stopcock/fp/set/union',
+    semanticRevision: 1,
+    inputDomain: 'set',
+    outputDomain: 'set',
+    cardinality: 'materializer',
+    streamTermination: false,
+    fullMaterialization: true,
+    domainTransition: false,
+    loweringId: '@stopcock/fp/set/union/lowering/compiler-aot',
+    loweringRevision: 1,
+    runnerId: '@stopcock/fp-compiler/runner/boundary/setUnion/v1',
+    compilerPipelineRole: 'boundary',
+    compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'strIsEmpty',

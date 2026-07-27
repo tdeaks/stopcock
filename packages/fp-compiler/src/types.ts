@@ -2,7 +2,7 @@ export type FilterPattern = ReadonlyArray<string | RegExp> | string | RegExp | n
 
 export type DiagnosticsLevel = false | 'summary' | 'verbose' | 'error'
 export type CompilerSemantics = 'exact' | 'pure'
-export type CompilerSegmentKind = 'stream' | 'boundary' | 'opaque' | 'option'
+export type CompilerSegmentKind = 'stream' | 'boundary' | 'opaque' | 'option' | 'dict'
 export type CompilerFallbackTier = 'sequential' | 'compact' | 'compiler' | 'none'
 export type DiagnosticReasonCode =
   | 'opaque-callback'
@@ -11,6 +11,10 @@ export type DiagnosticReasonCode =
   | 'host-restriction'
   | 'strict-scope-exclusion'
   | 'compiler-defect'
+  /** `Obj.pick`/`Obj.omit` with a non-static key argument: still compiled
+   * (the generic boundary call-through handles any key shape correctly),
+   * just not eligible for the static unrolled-literal fast path. */
+  | 'dynamic-keys'
 
 export interface StopcockCompilerOptions {
   readonly include?: FilterPattern

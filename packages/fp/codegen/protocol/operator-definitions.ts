@@ -31,6 +31,9 @@ export type OperatorNamespaceV1 =
   | 'guard'
   | 'option'
   | 'result'
+  | 'record'
+  | 'map'
+  | 'set'
 
 export const COMPILER_OPERATION_CORPUS_ID_V1 =
   'stopcock-fp-compiler-operation-complete-w0-v1' as const
@@ -613,9 +616,26 @@ const ELEMENT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
     kind: 'expr',
     render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} === '');`] }),
   },
+  // Matches `record.ts#isEmpty` exactly, not `Object.keys(...).length === 0`:
+  // that would miss an enumerable symbol key, which `record.ts`'s
+  // `Reflect.ownKeys` + `propertyIsEnumerable` early-exit loop counts as
+  // non-empty. See the phase 3 note on `DICT_EMIT_TEMPLATES` for why this is
+  // inlined rather than importing the runtime helper.
   dictIsEmpty: {
     kind: 'expr',
-    render: (ctx) => ({ body: [`var ${ctx.next} = (Object.keys(${ctx.v}).length === 0);`] }),
+    render: (ctx) => {
+      const keys = `_dek${ctx.index}`
+      const i = `_dei${ctx.index}`
+      return {
+        body: [
+          `var ${ctx.next} = true;`,
+          `var ${keys} = Reflect.ownKeys(${ctx.v});`,
+          `for (var ${i} = 0; ${i} < ${keys}.length; ${i}++) {`,
+          `if (Object.prototype.propertyIsEnumerable.call(${ctx.v}, ${keys}[${i}])) { ${ctx.next} = false; break; }`,
+          '}',
+        ],
+      }
+    },
   },
   isArray: {
     kind: 'expr',
@@ -1053,6 +1073,760 @@ const OPTION_RESULT_ROWS: readonly OptionResultRowV1[] = [
     compilerPipelineRole: 'terminal',
   },
 ] as const satisfies readonly OptionResultRowV1[]
+
+// -- Phase 3: Record/Map/Set ("dict domain") compiled emission --------------
+//
+// Record is `for (const key of enumerableKeys(_src))`, Map is `for (const [k,
+// v] of _src)`, Set is `for (const v of _src)`: a real fused loop, unlike
+// Option/Result's straight-line run. Like `OptionEmitCtx`, `k`/`v` are
+// persistent locals mutated in place per step rather than renamed per step
+// (`_k{startIndex}`/`_v{startIndex}`, declared once by `emitDictSegment` in
+// codegen.ts); only `mapKeys` rewrites `k`. `ctx.domain` lets one template
+// serve all three container kinds where the shape is identical (map/filter/
+// filterMap/partition); Set has no keys, so its callbacks take `[v]` only.
+// `next` is populated only for a `'terminal'`-role step (`partition`,
+// `reduce`), exactly like an Option terminal populates `OptionEmitCtx.next`.
+//
+// Scaffold choice (documented here, applied in codegen.ts): the record loop
+// header inlines `Reflect.ownKeys` + `propertyIsEnumerable` compaction
+// directly rather than importing `record.ts`'s private `enumerableKeys`
+// helper. `enumerableKeys` is not a public export, and every other compiled
+// domain (Option/Result's `{ _tag, value }` object literals, the array
+// terminals' `{ _tag: 1, value }` shapes) already inlines the runtime's
+// shape rather than calling into it, so a generated site stays a
+// self-contained function with no new runtime import wiring. This is
+// semantically exact -- both compute `Reflect.ownKeys` once, then keep only
+// the keys `Object.prototype.propertyIsEnumerable` accepts, in the same
+// order -- and keeps the generated loop as one allocation (the key array)
+// with no extra call frame per element.
+const dictMapTemplate: OpEmit = {
+  kind: 'dictStep',
+  render: (ctx) => {
+    const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k]
+    const cb = ctx.cb.emit(inputs, (expr) => [`${ctx.v} = ${expr};`])
+    return { pre: cb.pre, body: cb.body }
+  },
+}
+
+const dictFilterTemplate: OpEmit = {
+  kind: 'dictStep',
+  render: (ctx) => {
+    const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k]
+    const cb = ctx.cb.emit(inputs, (expr) => [`if (!(${expr})) { continue; }`])
+    return { pre: cb.pre, body: cb.body }
+  },
+}
+
+// Option-shaped, not null-check-shaped: `record.ts#filterMapImpl`/`map.ts#
+// filterMapImpl`/`set.ts#filterMapImpl` all test the callback's real
+// `Option<B>` return (`_tag === 1`), unlike the array domain's `filterMap`
+// (which treats a `null`/`undefined` return as "drop").
+const dictFilterMapTemplate: OpEmit = {
+  kind: 'dictStep',
+  render: (ctx) => {
+    const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k]
+    const t = `_dfm${ctx.index}`
+    const cb = ctx.cb.emit(inputs, (expr) => [`var ${t} = ${expr};`])
+    return {
+      pre: cb.pre,
+      body: [...cb.body, `if (${t}._tag !== 1) { continue; }`, `${ctx.v} = ${t}.value;`],
+    }
+  },
+}
+
+// Record/Map only (Set has no keys to rewrite). Collision (two keys mapping
+// to the same output key) is last-write-wins for free: the segment's default
+// collector (or a later step) writes through `ctx.k` in iteration order, so a
+// later write simply overwrites an earlier one, exactly like
+// `record.ts#mapKeysImpl`'s `result[f(key, source[key])] = source[key]` and
+// `map.ts#mapKeysImpl`'s `result.set(f(key, value), value)`.
+const dictMapKeysTemplate: OpEmit = {
+  kind: 'dictStep',
+  render: (ctx) => {
+    const cb = ctx.cb.emit([ctx.k, ctx.v], (expr) => [`${ctx.k} = ${expr};`])
+    return { pre: cb.pre, body: cb.body }
+  },
+}
+
+// Set only. Mirrors the array `flatMap` template: the nested `for...of`
+// reassigns the persistent `${ctx.v}` per inner value and stays open (via
+// `close`) so any later step in the same segment, or the segment's default
+// collector, runs once per inner value rather than once per outer element.
+const dictFlatMapTemplate: OpEmit = {
+  kind: 'dictStep',
+  render: (ctx) => {
+    const fm = `_dxm${ctx.index}`
+    const j = `_dxj${ctx.index}`
+    const cb = ctx.cb.emit([ctx.v], (expr) => [`var ${fm} = ${expr};`])
+    return {
+      pre: cb.pre,
+      body: [...cb.body, `for (var ${j} of ${fm}) {`, `${ctx.v} = ${j};`],
+      close: ['}'],
+    }
+  },
+}
+
+// Terminal: builds both output containers itself (a tuple has no single
+// "default collector" the segment scaffold could apply generically) and
+// assigns the finished pair to `ctx.next` before the loop, mutating its two
+// slots in place per element -- by the time the loop ends, `ctx.next` already
+// holds `[accepted, rejected]`, no post-loop assembly line needed.
+const dictPartitionTemplate: OpEmit = {
+  kind: 'dictStep',
+  render: (ctx) => {
+    const inputs = ctx.domain === 'set' ? [ctx.v] : [ctx.v, ctx.k]
+    const empty =
+      ctx.domain === 'record' ? 'Object.create(null)' : ctx.domain === 'map' ? 'new Map()' : 'new Set()'
+    // No local helper function here (unlike `write` in an earlier draft):
+    // `Function.prototype.toString()` splices only the runtime's already
+    // type-erased text, so a locally declared arrow with a parameter would
+    // land in `ops-table.ts` with no type annotation, tripping its
+    // `noImplicitAny` gate. Two flat ternaries instead.
+    const acceptedWrite =
+      ctx.domain === 'record'
+        ? `${ctx.next}[0][${ctx.k}] = ${ctx.v};`
+        : ctx.domain === 'map'
+          ? `${ctx.next}[0].set(${ctx.k}, ${ctx.v});`
+          : `${ctx.next}[0].add(${ctx.v});`
+    const rejectedWrite =
+      ctx.domain === 'record'
+        ? `${ctx.next}[1][${ctx.k}] = ${ctx.v};`
+        : ctx.domain === 'map'
+          ? `${ctx.next}[1].set(${ctx.k}, ${ctx.v});`
+          : `${ctx.next}[1].add(${ctx.v});`
+    const cb = ctx.cb.emit(inputs, (expr) => [
+      `if (${expr}) { ${acceptedWrite} } else { ${rejectedWrite} }`,
+    ])
+    return {
+      pre: [...(cb.pre ?? []), `var ${ctx.next} = [${empty}, ${empty}];`],
+      body: cb.body,
+    }
+  },
+}
+
+// Terminal: `ctx.next` is the accumulator itself, declared from the seed
+// before the loop and reassigned per element, exactly like the array
+// `reduce` template's `ctx.next`. `map.ts#reduce`'s real callback is
+// ternary (`state, value, key`); the protocol's `CallbackContractV1.arity`
+// field only models 0/1/2, so this reuses the 2-ary `REDUCER_CALLBACK`
+// shape as descriptive metadata only -- codegen invokes the callback with
+// however many `inputs` this template passes, never consulting `arity`
+// beyond "is there a callback at all" (see `elementCtx`/`dictElementCtx` in
+// codegen.ts).
+const dictReduceTemplate: OpEmit = {
+  kind: 'dictStep',
+  render: (ctx) => {
+    const inputs = ctx.domain === 'set' ? [ctx.next, ctx.v] : [ctx.next, ctx.v, ctx.k]
+    const cb = ctx.cb.emit(inputs, (expr) => [`${ctx.next} = ${expr};`])
+    return { pre: [...(cb.pre ?? []), `var ${ctx.next} = ${ctx.a1};`], body: cb.body }
+  },
+}
+
+const DICT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
+  dictMap: dictMapTemplate,
+  dictFilter: dictFilterTemplate,
+  dictFilterMap: dictFilterMapTemplate,
+  dictMapKeys: dictMapKeysTemplate,
+  dictFlatMap: dictFlatMapTemplate,
+  dictPartition: dictPartitionTemplate,
+  dictReduce: dictReduceTemplate,
+}
+
+/** (key, value) => next key -- `mapKeys`. There is no `'key'` token in
+ * `CallbackContractV1.arguments`'s enum, so the first position reuses
+ * `'index'` as an available, if imprecisely named, placeholder; validation
+ * only checks internal consistency (arity/arguments/index agree with each
+ * other), never the specific string content, and codegen never reads this
+ * metadata at all (see the `dictReduce` comment above). */
+const REKEY_CALLBACK: CallbackContractV1 = {
+  arity: 2,
+  arguments: ['index', 'value'],
+  index: 'not-passed',
+  count: 'once-per-consumed-value',
+  order: 'left-to-right',
+  evaluationPoint: 'during-element-consumption',
+}
+
+type DictNamespaceV1 = 'record' | 'map' | 'set' | 'object'
+type DictContainerDomainV1 = 'record' | 'map' | 'set'
+
+interface DictRowV1 {
+  readonly compilerName: string
+  readonly publicName: string
+  readonly namespace: DictNamespaceV1
+  readonly inputDomain: LogicalDomainV1
+  readonly outputDomain: LogicalDomainV1
+  readonly bindings: readonly BindingSlotV1[]
+  readonly callback: CallbackContractV1
+  readonly compilerPipelineRole: 'element' | 'terminal' | 'boundary'
+  readonly cardinality: CardinalityV1
+  /** Which template in `DICT_EMIT_TEMPLATES` this row splices, `undefined`
+   * for a `'boundary'`-role row (no template: the generic capture-and-call
+   * mechanism in `emitBoundarySegment` calls the real bound export, correct
+   * by construction for any arity/callback shape without new codegen). */
+  readonly template?: keyof typeof DICT_EMIT_TEMPLATES
+}
+
+const DICT_ROWS: readonly DictRowV1[] = [
+  // -- record ---------------------------------------------------------------
+  {
+    compilerName: 'recordMap',
+    publicName: 'map',
+    namespace: 'record',
+    inputDomain: 'record',
+    outputDomain: 'record',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'one-to-one',
+    template: 'dictMap',
+  },
+  {
+    compilerName: 'recordFilter',
+    publicName: 'filter',
+    namespace: 'record',
+    inputDomain: 'record',
+    outputDomain: 'record',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'filtering',
+    template: 'dictFilter',
+  },
+  {
+    compilerName: 'recordFilterMap',
+    publicName: 'filterMap',
+    namespace: 'record',
+    inputDomain: 'record',
+    outputDomain: 'record',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'filtering',
+    template: 'dictFilterMap',
+  },
+  {
+    compilerName: 'recordMapKeys',
+    publicName: 'mapKeys',
+    namespace: 'record',
+    inputDomain: 'record',
+    outputDomain: 'record',
+    bindings: ['fn'],
+    callback: REKEY_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'one-to-one',
+    template: 'dictMapKeys',
+  },
+  {
+    compilerName: 'recordPartition',
+    publicName: 'partition',
+    namespace: 'record',
+    inputDomain: 'record',
+    outputDomain: 'record',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+    template: 'dictPartition',
+  },
+  {
+    compilerName: 'recordKeys',
+    publicName: 'keys',
+    namespace: 'record',
+    inputDomain: 'record',
+    outputDomain: 'array',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'recordValues',
+    publicName: 'values',
+    namespace: 'record',
+    inputDomain: 'record',
+    outputDomain: 'array',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'recordEntries',
+    publicName: 'entries',
+    namespace: 'record',
+    inputDomain: 'record',
+    outputDomain: 'array',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'recordFromEntries',
+    publicName: 'fromEntries',
+    namespace: 'record',
+    inputDomain: 'array',
+    outputDomain: 'record',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  // -- map --------------------------------------------------------------
+  {
+    compilerName: 'mapMap',
+    publicName: 'map',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'map',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'one-to-one',
+    template: 'dictMap',
+  },
+  {
+    compilerName: 'mapFilter',
+    publicName: 'filter',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'map',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'filtering',
+    template: 'dictFilter',
+  },
+  {
+    compilerName: 'mapFilterMap',
+    publicName: 'filterMap',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'map',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'filtering',
+    template: 'dictFilterMap',
+  },
+  {
+    compilerName: 'mapMapKeys',
+    publicName: 'mapKeys',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'map',
+    bindings: ['fn'],
+    callback: REKEY_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'one-to-one',
+    template: 'dictMapKeys',
+  },
+  {
+    compilerName: 'mapPartition',
+    publicName: 'partition',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'map',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+    template: 'dictPartition',
+  },
+  {
+    compilerName: 'mapReduce',
+    publicName: 'reduce',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'scalar',
+    bindings: ['fn', 'a1'],
+    callback: REDUCER_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+    template: 'dictReduce',
+  },
+  {
+    compilerName: 'mapKeysIterator',
+    publicName: 'keys',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'array',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'mapValuesIterator',
+    publicName: 'values',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'array',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'mapEntriesIterator',
+    publicName: 'entries',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'array',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'mapToArray',
+    publicName: 'toArray',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'array',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    // `union` is `merge` under a second exported name (`map.ts`: `export
+    // const union: typeof merge = merge`, the same function object), so a
+    // pipeline step written as `M.union(other)` resolves to this row too --
+    // see `MAP_EXPORT_ALIASES` in transform.ts.
+    compilerName: 'mapMerge',
+    publicName: 'merge',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'map',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'mapIntersection',
+    publicName: 'intersection',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'map',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'mapDifference',
+    publicName: 'difference',
+    namespace: 'map',
+    inputDomain: 'map',
+    outputDomain: 'map',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  // -- set --------------------------------------------------------------
+  {
+    compilerName: 'setMap',
+    publicName: 'map',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'set',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'one-to-one',
+    template: 'dictMap',
+  },
+  {
+    compilerName: 'setFilter',
+    publicName: 'filter',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'set',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'filtering',
+    template: 'dictFilter',
+  },
+  {
+    compilerName: 'setFilterMap',
+    publicName: 'filterMap',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'set',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'filtering',
+    template: 'dictFilterMap',
+  },
+  {
+    compilerName: 'setFlatMap',
+    publicName: 'flatMap',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'set',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'element',
+    cardinality: 'expanding',
+    template: 'dictFlatMap',
+  },
+  {
+    compilerName: 'setPartition',
+    publicName: 'partition',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'set',
+    bindings: ['fn'],
+    callback: VALUE_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+    template: 'dictPartition',
+  },
+  {
+    compilerName: 'setUnion',
+    publicName: 'union',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'set',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'setIntersection',
+    publicName: 'intersection',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'set',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'setDifference',
+    publicName: 'difference',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'set',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'setSymmetricDifference',
+    publicName: 'symmetricDifference',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'set',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'setReduce',
+    publicName: 'reduce',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'scalar',
+    bindings: ['fn', 'a1'],
+    callback: REDUCER_CALLBACK,
+    compilerPipelineRole: 'terminal',
+    cardinality: 'sink',
+    template: 'dictReduce',
+  },
+  {
+    compilerName: 'setToArray',
+    publicName: 'toArray',
+    namespace: 'set',
+    inputDomain: 'set',
+    outputDomain: 'array',
+    bindings: [],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  // -- object (plain-object container ops; see the harness note on why
+  // pick/omit/mapValues are compiler-only rows here rather than LEGACY_ROWS:
+  // they route through `dual-untagged`, never had a 1.x opcode) -----------
+  {
+    compilerName: 'objectPick',
+    publicName: 'pick',
+    namespace: 'object',
+    inputDomain: 'record',
+    outputDomain: 'record',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'objectOmit',
+    publicName: 'omit',
+    namespace: 'object',
+    inputDomain: 'record',
+    outputDomain: 'record',
+    bindings: ['a1'],
+    callback: NO_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+  {
+    compilerName: 'objectMapValues',
+    publicName: 'mapValues',
+    namespace: 'object',
+    inputDomain: 'record',
+    outputDomain: 'record',
+    bindings: ['fn'],
+    callback: INDEXED_VALUE_CALLBACK,
+    compilerPipelineRole: 'boundary',
+    cardinality: 'materializer',
+  },
+] as const satisfies readonly DictRowV1[]
+
+function createDictOnlyRecord(row: DictRowV1): OperatorDefinitionRecordV1 {
+  const semanticId = `@stopcock/fp/${row.namespace}/${row.publicName}`
+  const termination = {
+    earlyTermination: false,
+    streamTermination: false,
+    fullMaterialization: row.compilerPipelineRole === 'boundary',
+    domainTransition: row.inputDomain !== row.outputDomain,
+  } as const
+  const result = resultOwnership(row.outputDomain)
+  const ownership: OwnershipContractV1 = {
+    input: 'borrowed-readonly',
+    result,
+    aliasing: result === 'fresh' ? 'none' : 'borrowed-element-only',
+    detachment: 'forbidden',
+    resultStorage:
+      row.outputDomain === 'array'
+        ? (['js-array'] as const)
+        : row.outputDomain === 'scalar'
+          ? (['js-scalar'] as const)
+          : (['js-array'] as const),
+    scratchStorage: ['none'],
+    allocationScopes: ['fusion-runner-result'],
+  }
+  const bindings: BindingDefinitionV1[] = row.bindings.map((slot) => ({
+    slot,
+    role: slot === 'fn' ? 'callback' : 'constant',
+    required: true,
+  }))
+  const outputShapeFunction =
+    row.outputDomain === 'array'
+      ? '@stopcock/fp/shape/materialized-array-v1'
+      : row.outputDomain === 'scalar'
+        ? '@stopcock/fp/shape/scalar-v1'
+        : '@stopcock/fp/shape/materialized-array-v1'
+  const acceptedLayouts: readonly PhysicalLayoutV1[] =
+    row.inputDomain === 'record'
+      ? (['js-record'] as const)
+      : row.inputDomain === 'map'
+        ? (['js-map'] as const)
+        : row.inputDomain === 'set'
+          ? (['js-set'] as const)
+          : row.inputDomain === 'array'
+            ? ARRAY_LAYOUTS
+            : SCALAR_LAYOUTS
+  const semantic = defineOperatorV1({
+    protocol: OPERATOR_PROTOCOL_V1,
+    protocolVersion: OPERATOR_PROTOCOL_VERSION_V1,
+    semanticId,
+    semanticRevision: 1,
+    publicName: row.publicName,
+    inputDomain: row.inputDomain,
+    outputDomain: row.outputDomain,
+    acceptedLayouts,
+    cardinality: row.cardinality,
+    outputShapeFunction,
+    bindings,
+    callback: row.callback,
+    evaluation: {
+      exact: 'observable-order-and-count',
+      pure: 'unsupported',
+      effects: row.callback.arity > 0 ? 'callback-effects-observable' : 'built-in-effects-only',
+      determinism: 'deterministic-except-user-code',
+      sourceMutationVisibility: 'scalar-value',
+      thrownErrorIdentity: 'preserved',
+      thrownErrorTiming: 'original-evaluation-point',
+    },
+    termination,
+    ownership,
+    capabilities: UNSUPPORTED_CAPABILITIES,
+    diagnosticTag: {
+      opcodeField: '_op',
+      bindingFields: bindings.map(({ slot }) => `_${slot}` as const),
+      authority: 'diagnostic-only',
+    },
+    links: {
+      referenceImplementationId: `@stopcock/fp/reference/${row.namespace}/${row.publicName}/v1`,
+      lawIds: [`@stopcock/fp/law/${row.namespace}/${row.publicName}/v1`],
+      differentialCorpusIds: [COMPILER_OPERATION_CORPUS_ID_V1],
+    },
+  })
+  const identity = semanticIdentity(semantic)
+  const loweringOwnership = {
+    result: ownership.result,
+    aliasing: ownership.aliasing,
+    resultStorage: ownership.resultStorage,
+    scratchStorage: ownership.scratchStorage,
+    allocationScopes: ownership.allocationScopes,
+  }
+  const compilerLowering = defineLoweringV1({
+    protocol: LOWERING_PROTOCOL_V1,
+    protocolVersion: LOWERING_PROTOCOL_VERSION_V1,
+    loweringId: `${semanticId}/lowering/compiler-aot`,
+    loweringRevision: 1,
+    loweringAbiVersion: 1,
+    semantic: identity,
+    targetTier: 'compiler',
+    targetBackend: 'aot',
+    acceptedSemanticModes: ['exact'],
+    acceptedLayouts,
+    cardinality: row.cardinality,
+    outputShapeFunction: semantic.outputShapeFunction,
+    termination,
+    ownership: loweringOwnership,
+    capability: {
+      predicateId: '@stopcock/fp-compiler/capability/static-pipeline-v1',
+      rejectionCodes: [
+        '@stopcock/reason/unsupported-binding-form',
+        '@stopcock/reason/opaque-callback',
+        '@stopcock/reason/semantic-mode-mismatch',
+      ],
+    },
+    runnerId: `@stopcock/fp-compiler/runner/${row.compilerPipelineRole}/${row.compilerName}/v1`,
+    exactFallback: identity,
+    compilerPipelineRole: row.compilerPipelineRole,
+    compilerFinalBoundary: false,
+  })
+  return {
+    semantic,
+    lowerings: [compilerLowering],
+    compilerName: row.compilerName,
+    namespace: row.namespace,
+    publicArrayExport: false,
+    compilerPipelineRole: row.compilerPipelineRole,
+    compilerFinalBoundary: false,
+    emit: row.template === undefined ? BOUNDARY_EMIT_TEMPLATE : DICT_EMIT_TEMPLATES[row.template],
+    fusible: true,
+    contradictionDisposition: 'legacy-classification-retained',
+    previousCapabilityDeclarations: {
+      simd: false,
+      worker: false,
+      disposition: 'unsupported-without-owned-implementation-and-corpus',
+    },
+  }
+}
 
 const LEGACY_ROWS = [
   op(
@@ -4684,7 +5458,11 @@ function freezeDefinitionRecordV1(record: OperatorDefinitionRecordV1): OperatorD
 }
 
 export const OPERATOR_DEFINITION_RECORDS_V1: readonly OperatorDefinitionRecordV1[] = Object.freeze(
-  [...LEGACY_ROWS.map(createRecord), ...OPTION_RESULT_ROWS.map(createCompilerOnlyRecord)]
+  [
+    ...LEGACY_ROWS.map(createRecord),
+    ...OPTION_RESULT_ROWS.map(createCompilerOnlyRecord),
+    ...DICT_ROWS.map(createDictOnlyRecord),
+  ]
     .map(freezeDefinitionRecordV1)
     .sort((left, right) => {
       const byId = left.semantic.semanticId.localeCompare(right.semantic.semanticId)

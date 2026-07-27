@@ -1,8 +1,33 @@
 import { bench, describe } from 'vite-plus/test'
+import { pipe } from '@stopcock/fp/fusion'
 import * as S from '@stopcock/fp/string'
 import * as Ra from 'ramda'
 import * as Rb from 'rambda'
 import * as _ from 'lodash-es'
+import { transformStopcockPipelines } from '../../packages/fp-compiler/src/transform'
+
+/**
+ * Phase 3: compiles `source` (a `pipe(input, ...)` expression over
+ * `@stopcock/fp/fusion`) once at bench setup -- same pattern as
+ * `option-result.bench.ts`/`dict-ops.bench.ts`. The scalar stragglers
+ * (phase 1.4) already compile `trim`/`toLowerCase`/`split` individually;
+ * this measures the whole chain composing as straight-line statements with
+ * no per-step function call, not any one op in isolation.
+ */
+function compileFixture(source: string): (input: unknown) => unknown {
+  const wrapped = `import { pipe } from '@stopcock/fp/fusion'\nimport * as S from '@stopcock/fp/string'\nfunction run(input) {\n${source}\n}\nexport { run };`
+  const result = transformStopcockPipelines(wrapped, 'string-ops-bench.ts', { diagnostics: 'error' })
+  if (result.code === wrapped) {
+    throw new Error(`string-ops.bench: expected the compiler to transform: ${source}`)
+  }
+  const stripped = result.code
+    .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gmu, '')
+    .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gmu, '')
+  const body = `${stripped}\nreturn run;`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const factory = new Function('S', body) as (stringModule: typeof S) => (input: unknown) => unknown
+  return factory(S)
+}
 
 const str = 'The quick brown fox jumps over the lazy dog'
 const long = str.repeat(100)
@@ -70,4 +95,12 @@ describe('slice (string)', () => {
   bench('stopcock', () => S.slice(long, 100, 200))
   bench('rambda', () => Rb.slice(100, 200)(long))
   bench('ramda', () => Ra.slice(100, 200, long))
+})
+
+describe('chain: trim -> toLowerCase -> split', () => {
+  const padded = '   ' + str + '   '
+  const compiled = compileFixture(`return pipe(input, S.trim, S.toLowerCase, S.split(' '));`)
+
+  bench('stopcock', () => pipe(padded, S.trim, S.toLowerCase, S.split(' ')))
+  bench('stopcock (compiled)', () => compiled(padded))
 })

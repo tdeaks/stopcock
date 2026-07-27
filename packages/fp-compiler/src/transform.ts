@@ -119,23 +119,109 @@ function canonicalOptionResultOpName(source: string, name: string): string {
  * A scalar op's real module export sometimes differs from the registry's
  * canonical compiler name: `strLength`/`strIsEmpty` publish as `length`/
  * `isEmpty` from `@stopcock/fp/string` (the canonical spellings are taken by
- * the array ops of the same name), `dictIsEmpty` publishes as `isEmpty` from
- * `@stopcock/fp/object`, and guard's `isObject` publishes as `isObjectType`
- * (see `semanticPublicName` in `packages/fp/codegen/protocol/
+ * the array ops of the same name), `object.ts`'s `pick`/`omit`/`mapValues`
+ * publish under their own names (see phase 3's `objectPick`/`objectOmit`/
+ * `objectMapValues` compiler-table rows), and guard's `isObject` publishes as
+ * `isObjectType` (see `semanticPublicName` in `packages/fp/codegen/protocol/
  * operator-definitions.ts`, the source of truth for this mapping). Keyed by
  * exact source rather than folded into one flat table like `canonicalOpName`:
- * `isEmpty` needs a different canonical name depending on whether it came
- * from `@stopcock/fp/string` or `@stopcock/fp/object`, so the rename can only
- * be resolved once the source that produced the binding is known.
+ * the rename can only be resolved once the source that produced the binding
+ * is known. `dictIsEmpty`'s real consumer is `@stopcock/fp/record`'s
+ * `isEmpty` (`record.ts` is the only module of the four that actually
+ * exports one), not `@stopcock/fp/object` -- see `DICT_EXPORT_ALIASES` below.
  */
 const SCALAR_EXPORT_ALIASES: ReadonlyMap<string, ReadonlyMap<string, string>> = new Map([
   ['@stopcock/fp/string', new Map([['length', 'strLength'], ['isEmpty', 'strIsEmpty']])],
-  ['@stopcock/fp/object', new Map([['isEmpty', 'dictIsEmpty']])],
+  [
+    '@stopcock/fp/object',
+    new Map([
+      ['pick', 'objectPick'],
+      ['omit', 'objectOmit'],
+      ['mapValues', 'objectMapValues'],
+    ]),
+  ],
   ['@stopcock/fp/guard', new Map([['isObjectType', 'isObject']])],
 ])
 
 function canonicalScalarOpName(source: string, name: string): string {
   return SCALAR_EXPORT_ALIASES.get(source)?.get(name) ?? name
+}
+
+/**
+ * Phase 3 dict-domain sources (`@stopcock/fp/record`, `@stopcock/fp/map`,
+ * `@stopcock/fp/set`). Not a `StopcockCompilerOptions` field, for the same
+ * reason `DEFAULT_SCALAR_IMPORT_SOURCES` isn't.
+ */
+const DEFAULT_DICT_IMPORT_SOURCES = [
+  '@stopcock/fp/record',
+  '@stopcock/fp/map',
+  '@stopcock/fp/set',
+]
+
+/**
+ * Every named export from `@stopcock/fp/record`/`@stopcock/fp/map`/
+ * `@stopcock/fp/set` that the compiler recognizes, mapped to the flat
+ * `ops-table.ts` name it occupies (`record`/`map`/`set` mint their own
+ * compiler-table names -- `recordMap`, `mapMap`, `setMap`, ... -- because
+ * `map`/`filter`/`filterMap`/`partition`/`keys`/`values`/`entries`/`reduce`
+ * all collide across these three modules and with the array domain; see the
+ * `DICT_ROWS` comment in `operator-definitions.ts`). `record.ts`'s `isEmpty`
+ * is the real consumer of the legacy `dictIsEmpty` boundary row (phase 1.4
+ * minted it for this purpose; the alias sat on `@stopcock/fp/object`, which
+ * has no `isEmpty` export, so it was unreachable -- see the harness note).
+ */
+const RECORD_EXPORT_ALIASES: ReadonlyMap<string, string> = new Map([
+  ['isEmpty', 'dictIsEmpty'],
+  ['map', 'recordMap'],
+  ['filter', 'recordFilter'],
+  ['filterMap', 'recordFilterMap'],
+  ['mapKeys', 'recordMapKeys'],
+  ['partition', 'recordPartition'],
+  ['keys', 'recordKeys'],
+  ['values', 'recordValues'],
+  ['entries', 'recordEntries'],
+  ['fromEntries', 'recordFromEntries'],
+])
+const MAP_EXPORT_ALIASES: ReadonlyMap<string, string> = new Map([
+  ['map', 'mapMap'],
+  ['filter', 'mapFilter'],
+  ['filterMap', 'mapFilterMap'],
+  ['mapKeys', 'mapMapKeys'],
+  ['partition', 'mapPartition'],
+  ['reduce', 'mapReduce'],
+  ['keys', 'mapKeysIterator'],
+  ['values', 'mapValuesIterator'],
+  ['entries', 'mapEntriesIterator'],
+  ['toArray', 'mapToArray'],
+  ['merge', 'mapMerge'],
+  // `union` is `merge` re-exported under a second name (`map.ts`: `export
+  // const union: typeof merge = merge`, the same function object) -- route
+  // it to the same compiler-table row.
+  ['union', 'mapMerge'],
+  ['intersection', 'mapIntersection'],
+  ['difference', 'mapDifference'],
+])
+const SET_EXPORT_ALIASES: ReadonlyMap<string, string> = new Map([
+  ['map', 'setMap'],
+  ['filter', 'setFilter'],
+  ['filterMap', 'setFilterMap'],
+  ['flatMap', 'setFlatMap'],
+  ['partition', 'setPartition'],
+  ['union', 'setUnion'],
+  ['intersection', 'setIntersection'],
+  ['difference', 'setDifference'],
+  ['symmetricDifference', 'setSymmetricDifference'],
+  ['reduce', 'setReduce'],
+  ['toArray', 'setToArray'],
+])
+const DICT_EXPORT_ALIASES: ReadonlyMap<string, ReadonlyMap<string, string>> = new Map([
+  ['@stopcock/fp/record', RECORD_EXPORT_ALIASES],
+  ['@stopcock/fp/map', MAP_EXPORT_ALIASES],
+  ['@stopcock/fp/set', SET_EXPORT_ALIASES],
+])
+
+function canonicalDictOpName(source: string, name: string): string {
+  return DICT_EXPORT_ALIASES.get(source)?.get(name) ?? name
 }
 
 interface Bindings {
@@ -164,6 +250,13 @@ interface Bindings {
   /** Local identifier -> canonical option/result export name, already
    * resolved through `canonicalOptionResultOpName` at collection time. */
   readonly optionResultOpLocals: Map<string, string>
+  /** Namespace local -> exact dict-domain source (`@stopcock/fp/record`/
+   * `map`/`set`), needed to resolve `Rec.map`/`M.filter`-style property
+   * access through `canonicalDictOpName`. */
+  readonly dictNamespaceLocals: Map<string, string>
+  /** Local identifier -> canonical dict-domain export name, already
+   * resolved through `canonicalDictOpName` at collection time. */
+  readonly dictOpLocals: Map<string, string>
   /** Imported pipe/flow/compile binding or namespace -> exact module source. */
   readonly sourceByLocal: Map<string, string>
   /** Named imported facade binding -> exact public export before local aliasing. */
@@ -434,6 +527,7 @@ function collectBindings(
     DEFAULT_OPTION_RESULT_IMPORT_SOURCE.option,
     DEFAULT_OPTION_RESULT_IMPORT_SOURCE.result,
   ],
+  dictImportSources: readonly string[] = DEFAULT_DICT_IMPORT_SOURCES,
 ): Bindings {
   const bindings: Bindings = {
     pipeLocals: new Set(),
@@ -447,6 +541,8 @@ function collectBindings(
     scalarOpLocals: new Map(),
     optionResultNamespaceLocals: new Map(),
     optionResultOpLocals: new Map(),
+    dictNamespaceLocals: new Map(),
+    dictOpLocals: new Map(),
     sourceByLocal: new Map(),
     exportByLocal: new Map(),
   }
@@ -459,12 +555,14 @@ function collectBindings(
     const isCompileSource = compileImportSources.includes(stmt.source.value)
     const isScalarSource = scalarImportSources.includes(stmt.source.value)
     const isOptionResultSource = optionResultImportSources.includes(stmt.source.value)
+    const isDictSource = dictImportSources.includes(stmt.source.value)
     if (
       !isRootSource &&
       !isArraySource &&
       !isCompileSource &&
       !isScalarSource &&
-      !isOptionResultSource
+      !isOptionResultSource &&
+      !isDictSource
     ) {
       continue
     }
@@ -484,6 +582,7 @@ function collectBindings(
         if (isOptionResultSource) {
           bindings.optionResultNamespaceLocals.set(spec.local.name, stmt.source.value)
         }
+        if (isDictSource) bindings.dictNamespaceLocals.set(spec.local.name, stmt.source.value)
         if (facadeExports.size > 0) {
           bindings.sourceByLocal.set(spec.local.name, stmt.source.value)
         }
@@ -516,6 +615,9 @@ function collectBindings(
           spec.local.name,
           canonicalOptionResultOpName(stmt.source.value, imported),
         )
+      }
+      if (isDictSource) {
+        bindings.dictOpLocals.set(spec.local.name, canonicalDictOpName(stmt.source.value, imported))
       }
     }
   }
@@ -754,6 +856,9 @@ function resolveStepOpName(
     if (isVisibleModuleBinding(callee.name, bindings.optionResultOpLocals, scope)) {
       return bindings.optionResultOpLocals.get(callee.name)
     }
+    if (isVisibleModuleBinding(callee.name, bindings.dictOpLocals, scope)) {
+      return bindings.dictOpLocals.get(callee.name)
+    }
     return undefined
   }
   if (!t.isMemberExpression(callee) || callee.computed) return undefined
@@ -771,6 +876,8 @@ function resolveStepOpName(
     if (scalarSource !== undefined) return canonicalScalarOpName(scalarSource, opName)
     const optionResultSource = bindings.optionResultNamespaceLocals.get(object.name)
     if (optionResultSource !== undefined) return canonicalOptionResultOpName(optionResultSource, opName)
+    const dictSource = bindings.dictNamespaceLocals.get(object.name)
+    if (dictSource !== undefined) return canonicalDictOpName(dictSource, opName)
   }
   return undefined
 }
@@ -1122,6 +1229,7 @@ export function transformStopcockPipelines(
     ...arrayImportSources,
     ...compileImportSources,
     ...DEFAULT_SCALAR_IMPORT_SOURCES,
+    ...DEFAULT_DICT_IMPORT_SOURCES,
     DEFAULT_OPTION_RESULT_IMPORT_SOURCE.option,
     DEFAULT_OPTION_RESULT_IMPORT_SOURCE.result,
   ])

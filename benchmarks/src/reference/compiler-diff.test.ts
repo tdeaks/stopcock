@@ -29,6 +29,10 @@ import * as S from '@stopcock/fp/string'
 import * as O from '@stopcock/fp/option'
 import * as R from '@stopcock/fp/result'
 import { none } from '@stopcock/fp/option'
+import * as Rec from '@stopcock/fp/record'
+import * as M from '@stopcock/fp/map'
+import * as St from '@stopcock/fp/set'
+import * as Obj from '@stopcock/fp/object'
 import { transformStopcockPipelines } from '../../../packages/fp-compiler/src/transform'
 import { compileEmittedPipeline, type EmitterBinding, type PipelineDesc } from './emitter'
 
@@ -949,5 +953,243 @@ describe('phase 2: A.filter -> A.head -> O.map -> O.getOrElse fuses as one site'
     expect(result.diagnostics).toHaveLength(1)
     expect(result.diagnostics[0].transformed).toBe(true)
     expect(result.diagnostics[0].segmentKinds).toEqual(['stream', 'option'])
+  })
+})
+
+// --- phase 3: the dict domain (Record/Map/Set/Object) ---------------------
+//
+// Record's loop is `for (const key of enumerableKeys(source))`, Map/Set are
+// native `for...of`. `pipe` here is `@stopcock/fp/fusion`'s (the fused
+// tier), same as every other fixture in this file.
+
+function probeSourceDict(source: string): string {
+  return `import { pipe } from '@stopcock/fp/fusion'\nimport * as Rec from '@stopcock/fp/record'\nimport * as M from '@stopcock/fp/map'\nimport * as St from '@stopcock/fp/set'\nimport * as Obj from '@stopcock/fp/object'\nfunction __fixture(input, track) {\n${source}\n}\nexport { __fixture };`
+}
+
+function runDict(source: string, input: unknown, log: unknown[]): unknown {
+  const full = `function __fixture(input, track, pipe, Rec, M, St, Obj) {\n${source}\n}\nreturn __fixture(input, track, pipe, Rec, M, St, Obj);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function('input', 'track', 'pipe', 'Rec', 'M', 'St', 'Obj', full)
+  return fn(input, (x: unknown) => log.push(x), pipe, Rec, M, St, Obj)
+}
+
+function runTransformedDict(source: string, input: unknown, log: unknown[]): unknown {
+  const wrapped = probeSourceDict(source)
+  const result = transformStopcockPipelines(wrapped, 'fixture.ts', { diagnostics: false })
+  const stripped = result.code
+    .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gmu, '')
+    .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gmu, '')
+  const call = `${stripped}\nreturn __fixture(input, track);`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const fn = new Function('input', 'track', 'pipe', 'Rec', 'M', 'St', 'Obj', call)
+  return fn(input, (x: unknown) => log.push(x), pipe, Rec, M, St, Obj)
+}
+
+function expectCompiledMatchDict(name: string, source: string, input: unknown): void {
+  const originalLog: unknown[] = []
+  const originalValue = runDict(source, input, originalLog)
+
+  const probe = probeSourceDict(source)
+  const result = transformStopcockPipelines(probe, `${name}.ts`, { diagnostics: 'verbose' })
+  expect(result.code, `${name}: expected the compiler to transform this pipeline`).not.toBe(probe)
+  expect(result.diagnostics[0]?.transformed, `${name}: expected a compiled site`).toBe(true)
+
+  const transformedLog: unknown[] = []
+  const transformedValue = runTransformedDict(source, input, transformedLog)
+
+  expect(transformedValue, name).toEqual(originalValue)
+  expect(transformedLog.length, `${name}: callback invocation count`).toBe(originalLog.length)
+}
+
+describe('phase 3: Record ops compile, agreeing with the real runtime', () => {
+  const withSymbol = Symbol('tag')
+  const record: Record<PropertyKey, number> = { b: 2, a: 1, '10': 100, '2': 20, [withSymbol]: 999 }
+  Object.defineProperty(record, 'hidden', { value: -1, enumerable: false })
+
+  it.each([
+    ['map: value*key filter+map fuse as one loop', `return pipe(input, Rec.filter((v) => v > 0), Rec.map((v, k) => (track(k), v * 2)));`],
+    ['filterMap: Option-shaped, not null-shaped', `return pipe(input, Rec.filterMap((v, k) => (track(k), v > 1 ? { _tag: 1, value: v * 10 } : { _tag: 0 })));`],
+    ['mapKeys: rewrites the key, value untouched', `return pipe(input, Rec.mapKeys((k, v) => (track(v), String(k) + '_x')));`],
+    ['partition: two records, same predicate', `return pipe(input, Rec.partition((v, k) => (track(k), v > 1)));`],
+  ])('%s', (name, source) => {
+    expectCompiledMatchDict(name, source, record)
+  })
+
+  it('key order: integer-like ascending, then insertion order, then symbols -- including the symbol key (reality, not the plan sketch)', () => {
+    const compiled = runTransformedDict(`return pipe(input, Rec.map((v) => v));`, record, [])
+    expect(Object.getOwnPropertyNames(compiled)).toEqual(['2', '10', 'b', 'a'])
+    expect(Object.getOwnPropertySymbols(compiled)).toEqual([withSymbol])
+    expect((compiled as Record<PropertyKey, number>)[withSymbol]).toBe(999)
+  })
+
+  it('a non-enumerable own key is excluded, matching enumerableKeys', () => {
+    const compiled = runTransformedDict(`return pipe(input, Rec.map((v) => v));`, record, [])
+    expect(Object.prototype.hasOwnProperty.call(compiled, 'hidden')).toBe(false)
+  })
+
+  it('an inherited (prototype-chain) key is excluded', () => {
+    const base = { inherited: 1 }
+    const child = Object.create(base) as Record<string, number>
+    child.own = 2
+    const compiled = runTransformedDict(`return pipe(input, Rec.map((v) => v));`, child, [])
+    expect(compiled).toEqual({ own: 2 })
+  })
+
+  it('empty record input', () => {
+    expectCompiledMatchDict('empty record', `return pipe(input, Rec.filter((v) => v > 0), Rec.map((v) => v * 2));`, {})
+  })
+
+  it('mapKeys collision is last-write-wins, matching record.ts#mapKeysImpl', () => {
+    const compiled = runTransformedDict(`return pipe(input, Rec.mapKeys(() => 'same'));`, { a: 1, b: 2, c: 3 }, [])
+    expect(compiled).toEqual({ same: 3 })
+  })
+
+  it('mapKeys writing __proto__ creates a safe own data property, no prototype pollution', () => {
+    const compiled = runTransformedDict(`return pipe(input, Rec.mapKeys(() => '__proto__'));`, { a: 1 }, []) as Record<
+      PropertyKey,
+      unknown
+    >
+    expect(Object.getPrototypeOf(compiled)).toBe(null)
+    expect(Object.prototype.hasOwnProperty.call(compiled, '__proto__')).toBe(true)
+    expect(compiled.__proto__).toBe(1)
+  })
+
+  it('a stateful Proxy ownKeys trap is enumerated exactly once per compiled call', () => {
+    let ownKeysCalls = 0
+    const target = { a: 1, b: 2 }
+    const proxy = new Proxy(target, {
+      ownKeys(t) {
+        ownKeysCalls++
+        return Reflect.ownKeys(t)
+      },
+    })
+    const compiled = runTransformedDict(`return pipe(input, Rec.map((v) => v * 2));`, proxy, [])
+    expect(compiled).toEqual({ a: 2, b: 4 })
+    expect(ownKeysCalls).toBe(1)
+  })
+
+  it('dict -> array -> dict roundtrip (entries -> array ops -> fromEntries) compiles as one site', () => {
+    const source = `return pipe(
+      input,
+      Rec.entries,
+      Rec.fromEntries,
+    );`
+    const originalLog: number[] = []
+    const originalValue = runDict(source, { a: 1, b: 2 }, originalLog)
+
+    const probe = probeSourceDict(source)
+    const result = transformStopcockPipelines(probe, 'dict-array-dict-roundtrip.ts', {
+      diagnostics: 'verbose',
+    })
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0].transformed).toBe(true)
+
+    const transformedValue = runTransformedDict(source, { a: 1, b: 2 }, [])
+    expect(transformedValue).toEqual(originalValue)
+  })
+})
+
+describe('phase 3: Map ops compile, agreeing with the real runtime', () => {
+  const map = new Map([
+    ['z', 1],
+    ['a', 2],
+    ['m', 3],
+  ])
+
+  it.each([
+    ['map/filter fuse as one loop', `return [...pipe(input, M.filter((v) => v > 0), M.map((v, k) => (track(k), v * 10)))];`],
+    ['filterMap: Option-shaped', `return [...pipe(input, M.filterMap((v) => v > 1 ? { _tag: 1, value: v * 100 } : { _tag: 0 }))];`],
+    ['mapKeys: rewrites the key', `return [...pipe(input, M.mapKeys((k, v) => (track(v), k + '!')))];`],
+    ['partition: two maps', `const [acc, rej] = pipe(input, M.partition((v) => v > 1)); return [[...acc], [...rej]];`],
+    ['reduce fuses with a preceding filter', `return pipe(input, M.filter((v) => v > 0), M.reduce((acc, v, k) => (track(k), acc + v), 0));`],
+  ])('%s', (name, source) => {
+    expectCompiledMatchDict(name, source, map)
+  })
+
+  it('insertion order is preserved (native Map iteration, not sorted)', () => {
+    const compiled = runTransformedDict(`return [...pipe(input, M.map((v) => v))];`, map, [])
+    expect(compiled).toEqual([...map])
+  })
+
+  it('empty map input', () => {
+    expectCompiledMatchDict('empty map', `return [...pipe(input, M.filter((v) => v > 0))];`, new Map())
+  })
+
+  it('mapKeys collision is last-write-wins (native Map.set semantics)', () => {
+    const compiled = runTransformedDict(`return [...pipe(input, M.mapKeys(() => 'x'))];`, new Map([['a', 1], ['b', 2]]), [])
+    expect(compiled).toEqual([['x', 2]])
+  })
+})
+
+describe('phase 3: Set ops compile, agreeing with the real runtime', () => {
+  const set = new Set([1, -1, 2, 3, -4])
+
+  it.each([
+    ['map/filter fuse as one loop', `return [...pipe(input, St.filter((v) => (track(v), v > 0)), St.map((v) => v * 10))];`],
+    ['filterMap: Option-shaped', `return [...pipe(input, St.filterMap((v) => v % 2 === 0 ? { _tag: 1, value: v } : { _tag: 0 }))];`],
+    ['flatMap expands per-element and fuses with a following filter', `return [...pipe(input, St.flatMap((v) => (track(v), [v, v * 100])), St.filter((v) => v > 0))];`],
+    ['partition: two sets', `const [acc, rej] = pipe(input, St.partition((v) => v > 0)); return [[...acc], [...rej]];`],
+    ['reduce fuses with a preceding map', `return pipe(input, St.map((v) => v * 2), St.reduce((acc, v) => (track(v), acc + v), 0));`],
+  ])('%s', (name, source) => {
+    expectCompiledMatchDict(name, source, set)
+  })
+
+  it('insertion order is preserved (native Set iteration)', () => {
+    const compiled = runTransformedDict(`return [...pipe(input, St.map((v) => v))];`, set, [])
+    expect(compiled).toEqual([...set])
+  })
+
+  it('empty set input', () => {
+    expectCompiledMatchDict('empty set', `return [...pipe(input, St.filter((v) => v > 0))];`, new Set())
+  })
+})
+
+describe('phase 3: Object pick/omit compile, agreeing with the real runtime', () => {
+  const obj = { a: 1, b: 2, c: 3 }
+
+  it.each([
+    ['pick: static key array', `return pipe(input, Obj.pick(['a', 'c']));`],
+    ['omit: static key array', `return pipe(input, Obj.omit(['b']));`],
+    ['pick: dynamic key array still compiles (no unrolled literal, still one site)', `const keys = ['a']; return pipe(input, Obj.pick(keys));`],
+    ['mapValues: value*key', `return pipe(input, Obj.mapValues((v, k) => (track(k), v * 2)));`],
+  ])('%s', (name, source) => {
+    expectCompiledMatchDict(name, source, obj)
+  })
+
+  it('pick skips an absent key and a non-enumerable own key', () => {
+    const source = obj as Record<string, unknown>
+    Object.defineProperty(source, 'hidden', { value: 99, enumerable: false })
+    expectCompiledMatchDict('pick absent+non-enumerable', `return pipe(input, Obj.pick(['a', 'hidden', 'missing']));`, source)
+  })
+
+  it('pick with a statically dangerous key falls back (still compiles, no unrolled literal)', () => {
+    expectCompiledMatchDict('pick dangerous key', `return pipe(input, Obj.pick(['a', '__proto__']));`, obj)
+  })
+
+  it('omit throws on an unexcluded dangerous own key, matching object.ts#define exactly (throw included)', () => {
+    const dangerous: Record<string, unknown> = { a: 1 }
+    Object.defineProperty(dangerous, 'constructor', {
+      value: 5,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    })
+    const source = `return pipe(input, Obj.omit(['a']));`
+
+    let originalError: unknown
+    try {
+      runDict(source, dangerous, [])
+    } catch (error) {
+      originalError = error
+    }
+    expect(originalError).toBeInstanceOf(TypeError)
+
+    let transformedError: unknown
+    try {
+      runTransformedDict(source, dangerous, [])
+    } catch (error) {
+      transformedError = error
+    }
+    expect(transformedError).toBeInstanceOf(TypeError)
   })
 })
