@@ -23,7 +23,11 @@ const shebang = {
 export default defineConfig({
   pack: {
     ...pack,
-    entry: { ...(pack.entry as Record<string, string>), cli: 'src/cli.ts' },
+    entry: {
+      ...(pack.entry as Record<string, string>),
+      cli: 'src/cli.ts',
+      'receipt-schema.generated': 'src/receipt-schema.generated.ts',
+    },
     plugins: [...(pack.plugins ?? []), shebang],
   },
   run: {

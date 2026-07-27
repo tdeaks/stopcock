@@ -472,6 +472,7 @@ try {
     )
     const declaration = await readFile(join(installedRoot, 'dist/index.d.ts'), 'utf8')
     const runtime = await readFile(join(installedRoot, 'dist/index.js'), 'utf8')
+    const receiptSchemaRuntime = join(installedRoot, 'dist/receipt-schema.generated.js')
     const distFiles = await readdir(join(installedRoot, 'dist'), {
       recursive: true,
     })
@@ -489,6 +490,10 @@ try {
     expect(runtime).not.toMatch(
       /(?:from\s*|import\s*\()\s*['"]@stopcock\/fp(?:\/[^'"]*)?['"]/,
     )
+    await access(receiptSchemaRuntime)
+    const receiptSchema = await import(pathToFileURL(receiptSchemaRuntime).href)
+    expect(typeof receiptSchema.validateReceiptV1).toBe('function')
+    expect(receiptSchema.RECEIPT_SCHEMA_V1_HASH).toMatch(/^sha256:[a-f0-9]{64}$/u)
     expect(distFiles).not.toContain('fp-compiler/src/index.d.ts')
     expect(distFiles.some((file) => file.includes('__tests__'))).toBe(false)
     await expect(

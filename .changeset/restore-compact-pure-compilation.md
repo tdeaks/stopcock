@@ -38,3 +38,9 @@ Compiler receipts may now carry a deterministic packed-artifact context. The
 receipt identity binds the selected FP, compiler, optional optimizer, FP ABI,
 and optimizer runner bank so post-extraction qualification cannot accidentally
 reuse source-workspace or pre-extraction evidence.
+
+The compiler tarball now also carries the generated dependency-free receipt
+validator as executable JavaScript beside its declaration, so extracted S11R
+qualification can validate the packed internal authority without importing
+workspace source or guessing a shared-chunk name. It is not a new public
+package export.
