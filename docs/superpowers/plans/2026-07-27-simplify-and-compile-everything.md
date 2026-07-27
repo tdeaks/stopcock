@@ -70,19 +70,19 @@ apparatus so every later phase touches less code. No new capability.
 
 ### 0.1 Delete `@stopcock/fp-optimizer`
 
-- [ ] `git rm -r packages/fp-optimizer`. Remove from root workspace
+- [x] `git rm -r packages/fp-optimizer`. Remove from root workspace
       globs if pinned anywhere.
-- [ ] fp: delete `src/abi.ts` and `src/internal/abi-identity.generated.ts`.
+- [x] fp: delete `src/abi.ts` and `src/internal/abi-identity.generated.ts`.
       Remove the `./abi` subpath from `packages/fp/package.json` exports.
-- [ ] fp: in `src/compile.ts` and `src/fusion.ts`, remove optimizer
+- [x] fp: in `src/compile.ts` and `src/fusion.ts`, remove optimizer
       negotiation branches and the `'@stopcock/fp-optimizer'` install
       probe. `compile` binds directly to the compact engine.
-- [ ] fp tests: simplify `__tests__/fp-only-install.test.ts` to assert the
+- [x] fp tests: simplify `__tests__/fp-only-install.test.ts` to assert the
       compact engine loads with no optional lookups.
-- [ ] compiler: remove `'@stopcock/fp-optimizer'` from
+- [x] compiler: remove `'@stopcock/fp-optimizer'` from
       `DEFAULT_IMPORT_SOURCES` in `transform.ts`; drop the `'optimized'`
       member from `CompilerFallbackTier` in `types.ts`.
-- [ ] benchmarks: delete `s12p-requalification-gate.ts`,
+- [x] benchmarks: delete `s12p-requalification-gate.ts`,
       `s6-facade-gate.ts`, optimizer rows in `compiler-diff.test.ts` and
       `compiler-operation-perf.ts` (keep compiled vs runtime rows).
 
@@ -92,56 +92,56 @@ The transform already produces per-site diagnostics
 (`DiagnosticsLevel = 'summary' | 'verbose' | 'error'`). That survives as
 the only observability surface.
 
-- [ ] compiler: delete `receipt-core.ts`, `receipt-emit.ts`,
+- [x] compiler: delete `receipt-core.ts`, `receipt-emit.ts`,
       `receipt-report.ts`, `receipt-schema.generated.ts`.
-- [ ] `types.ts`: delete `ReceiptOptions`, `receipts`,
+- [x] `types.ts`: delete `ReceiptOptions`, `receipts`,
       `expectedSemanticManifestHash`, `expectedLoweringAbiHash`.
       `TransformResult` keeps a `diagnostics: readonly DiagnosticSite[]`
       array (`{file, line, column, op, kind: 'compiled' | 'bailed',
       reason}`).
-- [ ] `cli.ts`: rewrite as one file, ~80 lines. `stopcock check` runs the
+- [x] `cli.ts`: rewrite as one file, ~80 lines. `stopcock check` runs the
       transform over the project's include globs in dry-run mode and
       prints the diagnostics table plus a summary line
       (`N sites compiled, M bailed`). Exit 1 only with `--strict` and
       bailed sites. Delete policies, evidence manifests, expectation
       envelopes, canonical JSON.
-- [ ] fp: delete `src/internal/fusion-debug-receipt-schema.generated.ts`;
+- [x] fp: delete `src/internal/fusion-debug-receipt-schema.generated.ts`;
       `fusion/debug` keeps `explain()` (plan shape and chosen tier as a
       plain object) and loses schema'd JSON output.
-- [ ] transform.ts: delete receipt emission and stale-hash handling paths
+- [x] transform.ts: delete receipt emission and stale-hash handling paths
       (the `ReceiptReasonCodeV1` import and everything feeding it).
 
 ### 0.3 Delete the v2 release apparatus
 
-- [ ] Delete `tooling/v2-cohort.mjs`, `v2-pack-cohort.mjs`,
+- [x] Delete `tooling/v2-cohort.mjs`, `v2-pack-cohort.mjs`,
       `v2-synth-compat.mjs`, `apply-stopcock-v2-checkpoint.mjs`,
       `check-stopcock-v2-package-cohort-readiness.mjs`,
       `run-stopcock-v2-controller.sh`, and all six
       `tooling/__tests__/*.mjs` controller tests.
-- [ ] Delete `STOPCOCK_V2_PROGRESS.md`, `artifacts/v2` (2.6 MB), and the
+- [x] Delete `STOPCOCK_V2_PROGRESS.md`, `artifacts/v2` (2.6 MB), and the
       controller sections of `AGENTS.md`.
-- [ ] Remove the `test:controller`, `test:v2-*`, and `release:v2:*`
+- [x] Remove the `test:controller`, `test:v2-*`, and `release:v2:*`
       scripts from the root `package.json`. Release flow is changesets
       version + publish, nothing else.
-- [ ] Add ONE packed smoke test (new, ~100 lines,
+- [x] Add ONE packed smoke test (new, ~100 lines,
       `tooling/packed-smoke.test.mjs`): `npm pack` fp and fp-compiler into
       a temp dir, install into a scratch project, build a three-op
       pipeline with the vite plugin, run it, assert output and assert the
       bundle contains no `@stopcock/fp` engine import. This is the sole
       survivor of the packed-consumer idea.
-- [ ] Delete `scratch_tools_before.txt`.
+- [x] Delete `scratch_tools_before.txt`.
 
 ### 0.4 Slim the generated tables
 
-- [ ] Registry: drop `simdEligible`, `workerEligible`, `denseHoles`,
+- [x] Registry: drop `simdEligible`, `workerEligible`, `denseHoles`,
       `exactLowering` columns (two are speculative, two are literal
       `true` constants).
-- [ ] Ops table: drop `semanticHash`, `loweringHash`,
+- [x] Ops table: drop `semanticHash`, `loweringHash`,
       `loweringAbiVersion`, and the three top-of-file `sha256` constants.
       They existed for receipts and ABI negotiation. Keep `semanticId`
       and `semanticRevision` (cheap, human-readable identity for
       diagnostics). Update `CompilerOperatorFact` in `ops.ts`.
-- [ ] Generator: stop writing `abi-identity.generated.ts`,
+- [x] Generator: stop writing `abi-identity.generated.ts`,
       `fusion-debug-receipt-schema.generated.ts`,
       `receipt-schema.generated.ts`, `operator-evidence-v1.json`,
       `future-tier-manifest-v1.json`, `operator-manifest-v1.json`.
@@ -149,22 +149,22 @@ the only observability surface.
 
 ### 0.5 Bundler adapters
 
-- [ ] Delete `webpack.ts`, `rspack.ts`, `webpack-like-source-maps.ts`,
+- [x] Delete `webpack.ts`, `rspack.ts`, `webpack-like-source-maps.ts`,
       `source-map-seed-loader.js`. Keep `vite.ts`, `rollup.ts`,
       `esbuild.ts`, `plugin.ts` (unplugin core). Unplugin's built-in
       webpack export may keep working; README marks it untested. (D2)
-- [ ] Delete webpack/rspack rows from compiler tests and the packed smoke
+- [x] Delete webpack/rspack rows from compiler tests and the packed smoke
       test matrix.
 
 ### 0.6 Benchmark gate consolidation
 
-- [ ] Keep `run-gates.ts` as the single entry (`perf:gates`). Inside it,
+- [x] Keep `run-gates.ts` as the single entry (`perf:gates`). Inside it,
       keep gates keyed by invariant, not stage: `size:engine` (was s9),
       `size:consumer` (was s3a/s3b/s8), `parity:compiler` (was
       compiler-perf-gate), `parity:iter` (was iter gates), `allocation`,
       `competitors`. Delete gates that guarded deleted machinery
       (s5b construction, s6 facades, s12p, portable/callback-churn).
-- [ ] Root and benchmarks `package.json` scripts shrink to: `bench`,
+- [x] Root and benchmarks `package.json` scripts shrink to: `bench`,
       `bench:dist`, `perf:gates`, `report:*`. Everything else goes.
 
 Gate: `vp test` green in fp and fp-compiler, `perf:gates` green,
@@ -498,3 +498,13 @@ land green gets reverted, not patched forward on a broken base.
 ## Ledger
 
 Append one line per phase: `Phase N landed at <commit>`.
+
+Phase 0 landed at 1b4f1cc (0.1), e33c55a (0.2+0.4), 305c182 (0.3+0.5+0.6).
+Notes: D1 deferred (packages stay @stopcock/*; cohort tooling deleted, not
+replaced). D2 done. optional-dispositions-gate deleted with its ledger (p3b
+stage machinery). perf-profile-gate kept: allocation and competitor gates
+import its host-profile helpers. Emitted code diffed byte-identical against
+ee883ec across sentinel/short-circuit/drop/dropWhile/flatMap shapes; the
+four residual timing-gate failures are shared-box noise (geomeans 1.4-2.2x,
+only small-n early-exit tails dip) and need one release-grade rerun on a
+dedicated quiet machine. Suite: 2854 tests green, packed smoke green.
