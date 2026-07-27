@@ -1110,14 +1110,37 @@ const normalizeSourceMap = (map, topology, label = 'source map') => {
   return JSON.stringify(parsed)
 }
 
-const codeIdentity = async (code, map, topology) => {
+/**
+ * Emitted code must be as path-free as the maps beside it, otherwise two
+ * scratch roots cannot produce identical evidence. Fail closed on the leak
+ * itself rather than on the downstream hash comparison, which cannot name it.
+ */
+const assertPortableEmittedCode = (code, label) => {
+  const portable = posix(code)
+  const snippet = (index) => JSON.stringify(portable.slice(Math.max(0, index - 80), index + 120))
+  const scratch = /stopcock-s11r-extracted-[A-Za-z0-9_-]+/u.exec(portable)
+  assert(
+    scratch === null,
+    `${label} emitted code leaks a scratch identity near ${snippet(scratch?.index ?? 0)}`,
+  )
+  const workspace = portable.indexOf(posix(REPOSITORY_ROOT))
+  assert(workspace === -1, `${label} emitted code leaks the workspace path near ${snippet(workspace)}`)
+  const temporary = portable.indexOf(posix(tmpdir()))
+  assert(temporary === -1, `${label} emitted code leaks a temporary path near ${snippet(temporary)}`)
+}
+
+const codeIdentity = async (code, map, topology, label = 'emitted output') => {
   const { minify } = await import(pathToFileURL(BENCHMARK_REQUIRE.resolve('terser')).href)
   const minified = await minify(code, structuredClone(MINIFIER_OPTIONS))
   assert(typeof minified.code === 'string' && minified.code.length > 0, 'Terser produced no code')
+  assertPortableEmittedCode(code, label)
+  assertPortableEmittedCode(minified.code, `${label} minified`)
   const canonicalMap = map === null ? null : normalizeSourceMap(map, topology)
   return {
     code: hash(Buffer.from(code)),
+    codeBytes: Buffer.byteLength(code),
     minifiedCode: hash(Buffer.from(minified.code)),
+    minifiedCodeBytes: Buffer.byteLength(minified.code),
     sourceMap: canonicalMap === null ? null : hash(Buffer.from(canonicalMap)),
     gzipBytes: gzipSync(Buffer.from(minified.code), { level: 9 }).byteLength,
   }
@@ -1624,7 +1647,12 @@ const runCommonMatrix = async (topology, root, validateReceiptV1, canonical, com
         topology,
         `${host}/${consumerName}`,
       )
-      const identity = await codeIdentity(output.code, output.map, topology)
+      const identity = await codeIdentity(
+        output.code,
+        output.map,
+        topology,
+        `${host}/${consumerName}`,
+      )
       assert(
         identity.gzipBytes <= 1024,
         `${host}/${consumerName} gzip ${identity.gzipBytes} exceeds 1024`,
@@ -2738,7 +2766,12 @@ const runHelpersMatrix = async (topology, root, canonical) => {
           ? await runPlainWebpack({ topology, entry, out, helper })
           : await runPlainRollupLike({ topology, entry, out, host, helper })
     assertNoHelperEngine(output.moduleGraph, `${host}/helpers.two-unrelated`)
-    const identity = await codeIdentity(output.code, null, topology)
+    const identity = await codeIdentity(
+      output.code,
+      null,
+      topology,
+      `${host}/helpers.two-unrelated`,
+    )
     assert(
       identity.gzipBytes <= 512,
       `${host}/helpers.two-unrelated gzip ${identity.gzipBytes} exceeds 512`,
