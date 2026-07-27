@@ -1999,6 +1999,14 @@ const patternLabel = (pattern) =>
   pattern.match === 'exact' ? pattern.value : `${pattern.value}*.js`
 const modulesMatching = (moduleGraph, patterns) =>
   moduleGraph.filter((id) => patterns.some((pattern) => matchesModulePattern(id, pattern)))
+const mixedStrictDiagnostic = (tier) => ({
+  site: tier.fallbackExport === 'compile' ? 'compile' : 'pipe',
+  line: 11,
+  reason:
+    tier.fallbackExport === 'compile'
+      ? 'spread arguments in flow()/compile() call'
+      : 'spread arguments in pipe() call',
+})
 
 export const mixedTierGraphContractsForTest = () =>
   MIXED_TIERS.map((tier) => ({
@@ -2007,6 +2015,7 @@ export const mixedTierGraphContractsForTest = () =>
     forbiddenExecution: tier.forbiddenExecution.map(patternLabel),
     optionalFacades: tier.optionalFacades.map(patternLabel),
     expectedTrace: [...tier.expectedTrace],
+    strictDiagnostic: mixedStrictDiagnostic(tier),
   }))
 
 export const assertMixedTierGraph = ({ host, moduleGraph, tier }) => {
@@ -2138,8 +2147,7 @@ const strictHostRejects = async ({ host, topology, entry, rowRoot, tier }) => {
   const strictReceipts = join(rowRoot, 'strict-receipts')
   remove(strictOut)
   remove(strictReceipts)
-  const site = tier.fallbackExport === 'compile' ? 'compile' : 'pipe'
-  const reason = `spread arguments in ${site}() call`
+  const { site, line, reason } = mixedStrictDiagnostic(tier)
   try {
     await runHost({
       host,
@@ -2153,7 +2161,7 @@ const strictHostRejects = async ({ host, topology, entry, rowRoot, tier }) => {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    assertStrictDiagnostic({ message, topology, entry, site, line: 11, reason })
+    assertStrictDiagnostic({ message, topology, entry, site, line, reason })
     assert(
       regularFilesUnder(strictOut).length === 0,
       `${host} strict rejection emitted build output`,
@@ -2162,7 +2170,7 @@ const strictHostRejects = async ({ host, topology, entry, rowRoot, tier }) => {
       regularFilesUnder(strictReceipts).length === 0,
       `${host} strict rejection emitted receipts`,
     )
-    return { rejected: true, site, line: 11, reason, outputFiles: 0, receiptFiles: 0 }
+    return { rejected: true, site, line, reason, outputFiles: 0, receiptFiles: 0 }
   }
   fail(`${host} strict build accepted an intentionally unsupported site`)
 }
@@ -2254,8 +2262,7 @@ const harnessCorpusIdentity = () => {
       source: mixedSource(tier),
       expected: mixedExpected(tier),
       strict: {
-        line: 11,
-        reason: `spread arguments in ${tier.fallbackExport === 'compile' ? 'compile' : 'pipe'}() call`,
+        ...mixedStrictDiagnostic(tier),
       },
     })),
     ...SOURCE_MAP_CASES.map((testCase) => ({

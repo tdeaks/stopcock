@@ -561,6 +561,11 @@ describe('S11R extracted matrix manifest boundary', () => {
         ],
         optionalFacades: ['@stopcock/fp/dist/fusion.js'],
         expectedTrace: ['map:1', 'map:2', 'map:3', 'some:2', 'some:3'],
+        strictDiagnostic: {
+          site: 'pipe',
+          line: 11,
+          reason: 'spread arguments in pipe() call',
+        },
       },
       {
         id: 'compact-fusion',
@@ -572,6 +577,11 @@ describe('S11R extracted matrix manifest boundary', () => {
         ],
         optionalFacades: ['@stopcock/fp/dist/fusion.js'],
         expectedTrace: ['map:1', 'some:2', 'map:2', 'some:3'],
+        strictDiagnostic: {
+          site: 'pipe',
+          line: 11,
+          reason: 'spread arguments in pipe() call',
+        },
       },
       {
         id: 'compact-compile',
@@ -582,6 +592,11 @@ describe('S11R extracted matrix manifest boundary', () => {
         ],
         optionalFacades: ['@stopcock/fp/dist/compile.js'],
         expectedTrace: ['map:1', 'some:2', 'map:2', 'some:3'],
+        strictDiagnostic: {
+          site: 'compile',
+          line: 11,
+          reason: 'spread arguments in flow()/compile() call',
+        },
       },
       {
         id: 'optimized',
@@ -589,6 +604,11 @@ describe('S11R extracted matrix manifest boundary', () => {
         forbiddenExecution: ['@stopcock/fp/dist/index.js'],
         optionalFacades: [],
         expectedTrace: ['map:1', 'some:2', 'map:2', 'some:3'],
+        strictDiagnostic: {
+          site: 'pipe',
+          line: 11,
+          reason: 'spread arguments in pipe() call',
+        },
       },
     ])
 
