@@ -2,7 +2,6 @@
 // Compatibility runtime projection of the canonical definition-only operator protocol.
 // Legacy callback/capability fields preserve 1.x bytes and never authorize a semantic or backend.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
-// Semantic facts hash: sha256:3c94f27ddcb427d98989804b5302d521c4d4204564f2bcde91dc2f23db941b14
 import * as OpCodes from './opcodes'
 import { OP_CODES, OP_NON_FUSEABLE } from './opcodes'
 
@@ -27,12 +26,8 @@ export interface OpMeta {
   readonly bindings: readonly ArgBinding[]
   readonly earlyTermination: boolean
   readonly constructorPreserving: boolean
-  readonly denseHoles: true
   readonly reverseSafe: boolean
-  readonly exactLowering: true
   readonly pureLowering: boolean
-  readonly simdEligible: boolean
-  readonly workerEligible: boolean
   readonly isMaterializationBoundary: boolean
 }
 
@@ -48,8 +43,6 @@ function meta(partial: {
   constructorPreserving?: boolean
   reverseSafe?: boolean
   pureLowering?: boolean
-  simdEligible?: boolean
-  workerEligible?: boolean
 }): OpMeta {
   const cardinality = partial.cardinality
   return {
@@ -62,12 +55,8 @@ function meta(partial: {
     bindings: partial.bindings,
     earlyTermination: partial.earlyTermination ?? false,
     constructorPreserving: partial.constructorPreserving ?? false,
-    denseHoles: true,
     reverseSafe: partial.reverseSafe ?? cardinality !== 'stateful',
-    exactLowering: true,
     pureLowering: partial.pureLowering ?? true,
-    simdEligible: partial.simdEligible ?? false,
-    workerEligible: partial.workerEligible ?? false,
     isMaterializationBoundary: cardinality === 'materializer' || cardinality === 'sink',
   }
 }
@@ -411,8 +400,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'materializer',
         callbackArity: 0,
         bindings: [],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_MIN,
@@ -422,8 +409,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'materializer',
         callbackArity: 0,
         bindings: [],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_MAX,
@@ -433,8 +418,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'materializer',
         callbackArity: 0,
         bindings: [],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_STR_TRIM,
@@ -543,8 +526,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'one-to-one',
         callbackArity: 0,
         bindings: ['a1'],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_MATH_SUBTRACT,
@@ -554,8 +535,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'one-to-one',
         callbackArity: 0,
         bindings: ['a1'],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_MATH_MULTIPLY,
@@ -565,8 +544,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'one-to-one',
         callbackArity: 0,
         bindings: ['a1'],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_MATH_DIVIDE,
@@ -576,8 +553,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'one-to-one',
         callbackArity: 0,
         bindings: ['a1'],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_MATH_NEGATE,
@@ -587,8 +562,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'one-to-one',
         callbackArity: 0,
         bindings: [],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_MATH_INC,
@@ -598,8 +571,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'one-to-one',
         callbackArity: 0,
         bindings: [],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_MATH_DEC,
@@ -609,8 +580,6 @@ const REGISTRY: ReadonlyMap<OpCode, OpMeta> = new Map(
         cardinality: 'one-to-one',
         callbackArity: 0,
         bindings: [],
-        simdEligible: true,
-        workerEligible: true,
       }),
       meta({
         op: OpCodes.OP_GUARD_IS_NUMBER,

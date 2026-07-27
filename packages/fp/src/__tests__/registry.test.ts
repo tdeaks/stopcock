@@ -67,14 +67,6 @@ describe('operation registry', () => {
     }
   })
 
-  it('declares dense-hole and exact-lowering semantics uniformly', () => {
-    for (const op of REGISTERED_OP_CODES) {
-      const entry = getOpMeta(op)!
-      expect(entry.denseHoles).toBe(true)
-      expect(entry.exactLowering).toBe(true)
-    }
-  })
-
   it('preserves the legacy comparator arity in the emitted runtime projection', () => {
     expect(getOpMeta(OP_SORT_BY)?.callbackArity).toBe(1)
     expect(getOpMeta(OP_SORT_INLINE)?.callbackArity).toBe(1)

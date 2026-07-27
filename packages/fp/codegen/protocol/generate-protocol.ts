@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -13,21 +13,13 @@ import {
   type OperatorDefinitionRecordV1,
 } from './operator-definitions'
 import {
-  assertEvidenceJoinsCurrentV1,
   assertOperatorCatalogueV1,
   hashCanonical,
-  sha256Text,
   type FusionRunnerDescriptorV1,
   type OperatorEvidenceCorpusJoinV1,
-  type OperatorEvidenceV1,
   type OperatorLoweringV1,
   type OperatorSemanticV1,
 } from './operator-v1'
-import {
-  RECEIPT_SCHEMA_DEFINITION_V1,
-  RECEIPT_SCHEMA_V1_HASH,
-  renderReceiptSchemaViewV1,
-} from './receipt-schema-v1'
 import {
   FUSION_RUNNER_PROTOCOL,
   FUSION_RUNNER_PROTOCOL_VERSION,
@@ -76,20 +68,7 @@ function emitAfterCanonicalProtocolValidationV1<Result>(emit: () => Result): Res
 export const PROTOCOL_GENERATED_PATHS_V1 = [
   'packages/fp/src/opcodes.ts',
   'packages/fp/src/registry.ts',
-  'packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts',
-  'packages/fp/codegen/generated/operator-manifest-v1.json',
-  'packages/fp/codegen/generated/future-tier-manifest-v1.json',
-  'packages/fp/codegen/generated/operator-evidence-v1.json',
   'packages/fp-compiler/src/ops-table.ts',
-  'packages/fp-compiler/src/receipt-schema.generated.ts',
-] as const
-
-const PROTOCOL_GENERATED_TYPESCRIPT_PATHS_V1 = [
-  'packages/fp/src/opcodes.ts',
-  'packages/fp/src/registry.ts',
-  'packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts',
-  'packages/fp-compiler/src/ops-table.ts',
-  'packages/fp-compiler/src/receipt-schema.generated.ts',
 ] as const
 
 function absolute(relativePath: string): string {
@@ -102,71 +81,6 @@ function writeGenerated(relativePath: string, contents: string): void {
   writeFileSync(path, contents)
 }
 
-function jsonFile(value: unknown): string {
-  return `${JSON.stringify(value, null, 2)}\n`
-}
-
-function sourceHash(relativePath: string): string {
-  return sha256Text(readFileSync(absolute(relativePath), 'utf8'))
-}
-
-function semanticFactsInputV1(): object {
-  return {
-    protocol: 'stopcock.operator-semantic-facts',
-    protocolVersion: 1,
-    semantics: OPERATOR_SEMANTICS_V1.map((semantic) => ({
-      semanticId: semantic.semanticId,
-      semanticRevision: semantic.semanticRevision,
-      semanticHash: semantic.semanticHash,
-    })),
-  }
-}
-
-export const OPERATOR_SEMANTIC_FACTS_V1_HASH = hashCanonical(semanticFactsInputV1())
-
-export const COMPILER_EMITTER_SOURCE_PATHS_V1 = [
-  'packages/fp-compiler/src/codegen.ts',
-  'packages/fp-compiler/src/inline.ts',
-  'packages/fp-compiler/src/mapped-code.ts',
-  'packages/fp-compiler/src/ops.ts',
-  'packages/fp-compiler/src/plan-ir.ts',
-  'packages/fp-compiler/src/prune-imports.ts',
-  'packages/fp-compiler/src/receipt-core.ts',
-  'packages/fp-compiler/src/transform.ts',
-] as const
-
-/**
- * Build-time compiler ABI projection. Receipts previously authenticated only
- * the generated operator table, so a codegen/evaluation-order change could
- * reuse evidence for different emitted machinery. This descriptor makes every
- * emitter source byte, plus the capture/receiver/map contracts, part of the
- * generated fact consumed by the compiler.
- */
-export const COMPILER_EMITTER_ABI_V1_HASH = hashCanonical({
-  protocol: 'stopcock.compiler-emitter-abi',
-  protocolVersion: 1,
-  captureAbi: 'ordered-source-bindings-before-execution/v1',
-  receiverAbi: 'facade-specific-fail-closed/v1',
-  sourceMapAbi: 'source-backed-fragments/v1',
-  sources: COMPILER_EMITTER_SOURCE_PATHS_V1.map((path) => ({
-    path,
-    hash: sourceHash(path),
-  })),
-})
-
-function semanticManifestInputV1(): object {
-  return {
-    protocol: 'stopcock.operator-manifest',
-    protocolVersion: 1,
-    semanticFactsHash: OPERATOR_SEMANTIC_FACTS_V1_HASH,
-    semantics: OPERATOR_SEMANTICS_V1,
-    lowerings: OPERATOR_LOWERINGS_V1,
-    runnerDescriptors: FUSION_RUNNER_DESCRIPTORS_V1,
-    receiptSchemaHash: RECEIPT_SCHEMA_V1_HASH,
-  }
-}
-
-export const OPERATOR_MANIFEST_V1_HASH = hashCanonical(semanticManifestInputV1())
 
 const OPTIMIZER_OPCODE_VOCABULARY_V1 = Object.freeze(
   runtimeRecordsInOpcodeOrderV1().map((record) => ({
@@ -414,31 +328,6 @@ export const OPTIMIZER_RUNNER_SCHEMA_V1_HASH = hashCanonical(OPTIMIZER_RUNNER_SC
 export const OPTIMIZER_BINDING_SCHEMA_V1_HASH = hashCanonical(OPTIMIZER_BINDING_SCHEMA_V1)
 export const OPTIMIZER_CONSUME_SCHEMA_V1_HASH = hashCanonical(OPTIMIZER_CONSUME_SCHEMA_V1)
 export const OPTIMIZER_EXECUTION_CONTRACT_V1_HASH = hashCanonical(OPTIMIZER_EXECUTION_CONTRACT_V1)
-
-function operatorManifestV1(): object {
-  return {
-    ...semanticManifestInputV1(),
-    manifestHash: OPERATOR_MANIFEST_V1_HASH,
-  }
-}
-
-function renderOptimizerAbiIdentityV1(): string {
-  return `// GENERATED FILE. Do not edit by hand — run \`bun run codegen\` to regenerate.
-
-/** Generated versions of the packed FP-to-optimizer boundary. */
-export const OPTIMIZER_ABI_VERSION = ${OPTIMIZER_ABI_VERSION_V1}
-export const OPTIMIZER_PROTOCOL_VERSION = ${OPTIMIZER_PROTOCOL_VERSION_V1}
-
-/** Identity of the semantic manifest this build's opcodes are read against. */
-export const SEMANTIC_MANIFEST_HASH = '${OPERATOR_MANIFEST_V1_HASH}'
-
-/** Hashes of the FP-owned optimizer ABI contract projections. */
-export const OPTIMIZER_RUNNER_SCHEMA_HASH = '${OPTIMIZER_RUNNER_SCHEMA_V1_HASH}'
-export const OPTIMIZER_BINDING_SCHEMA_HASH = '${OPTIMIZER_BINDING_SCHEMA_V1_HASH}'
-export const OPTIMIZER_CONSUME_SCHEMA_HASH = '${OPTIMIZER_CONSUME_SCHEMA_V1_HASH}'
-export const OPTIMIZER_EXECUTION_CONTRACT_HASH = '${OPTIMIZER_EXECUTION_CONTRACT_V1_HASH}'
-`
-}
 
 // These lists preserve the observable serialization order of the 1.x runtime
 // projection. They contain no semantic facts: every name must resolve to the
@@ -922,8 +811,6 @@ function renderRegistryEntryV1(record: OperatorDefinitionRecordV1): string {
   if (!runtime.pureLowering || runtime.name === 'sortBy') {
     optional.push(`pureLowering: ${runtime.pureLowering},`)
   }
-  if (runtime.simdEligible) optional.push('simdEligible: true,')
-  if (runtime.workerEligible) optional.push('workerEligible: true,')
   const optionalSource =
     optional.length === 0 ? '' : `\n${optional.map((line) => `        ${line}`).join('\n')}`
   return `      meta({
@@ -943,7 +830,6 @@ function renderRegistryV1(records: readonly OperatorDefinitionRecordV1[]): strin
 // Compatibility runtime projection of the canonical definition-only operator protocol.
 // Legacy callback/capability fields preserve 1.x bytes and never authorize a semantic or backend.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
-// Semantic facts hash: ${OPERATOR_SEMANTIC_FACTS_V1_HASH}
 import * as OpCodes from './opcodes'
 import { OP_CODES, OP_NON_FUSEABLE } from './opcodes'
 
@@ -968,12 +854,8 @@ export interface OpMeta {
   readonly bindings: readonly ArgBinding[]
   readonly earlyTermination: boolean
   readonly constructorPreserving: boolean
-  readonly denseHoles: true
   readonly reverseSafe: boolean
-  readonly exactLowering: true
   readonly pureLowering: boolean
-  readonly simdEligible: boolean
-  readonly workerEligible: boolean
   readonly isMaterializationBoundary: boolean
 }
 
@@ -989,8 +871,6 @@ function meta(partial: {
   constructorPreserving?: boolean
   reverseSafe?: boolean
   pureLowering?: boolean
-  simdEligible?: boolean
-  workerEligible?: boolean
 }): OpMeta {
   const cardinality = partial.cardinality
   return {
@@ -1003,12 +883,8 @@ function meta(partial: {
     bindings: partial.bindings,
     earlyTermination: partial.earlyTermination ?? false,
     constructorPreserving: partial.constructorPreserving ?? false,
-    denseHoles: true,
     reverseSafe: partial.reverseSafe ?? cardinality !== 'stateful',
-    exactLowering: true,
     pureLowering: partial.pureLowering ?? true,
-    simdEligible: partial.simdEligible ?? false,
-    workerEligible: partial.workerEligible ?? false,
     isMaterializationBoundary: cardinality === 'materializer' || cardinality === 'sink',
   }
 }
@@ -1089,7 +965,6 @@ interface CompilerTableEntryV1 {
   readonly bindings: readonly ('fn' | 'a1' | 'a2')[]
   readonly semanticId: string
   readonly semanticRevision: number
-  readonly semanticHash: string
   readonly inputDomain: string
   readonly outputDomain: string
   readonly cardinality: string
@@ -1098,8 +973,6 @@ interface CompilerTableEntryV1 {
   readonly domainTransition: boolean
   readonly loweringId: string
   readonly loweringRevision: number
-  readonly loweringAbiVersion: 1
-  readonly loweringHash: string
   readonly runnerId: string
   readonly compilerPipelineRole: 'element' | 'terminal' | 'boundary'
   readonly compilerFinalBoundary: boolean
@@ -1120,7 +993,6 @@ function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
         bindings: record.semantic.bindings.map(({ slot }) => slot),
         semanticId: record.semantic.semanticId,
         semanticRevision: record.semantic.semanticRevision,
-        semanticHash: record.semantic.semanticHash,
         inputDomain: record.semantic.inputDomain,
         outputDomain: record.semantic.outputDomain,
         cardinality: record.semantic.cardinality,
@@ -1129,8 +1001,6 @@ function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
         domainTransition: record.semantic.termination.domainTransition,
         loweringId: lowering.loweringId,
         loweringRevision: lowering.loweringRevision,
-        loweringAbiVersion: lowering.loweringAbiVersion,
-        loweringHash: lowering.loweringHash,
         runnerId: lowering.runnerId,
         compilerPipelineRole: lowering.compilerPipelineRole,
         compilerFinalBoundary: lowering.compilerFinalBoundary,
@@ -1152,13 +1022,6 @@ export function renderCompilerOpsTableV1(): string {
   return `// GENERATED FILE -- do not edit by hand.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
 // The compiler consumes a data-only projection; it never imports FP runtime modules.
-// Semantic facts hash: ${OPERATOR_SEMANTIC_FACTS_V1_HASH}
-// Complete semantic manifest hash: ${OPERATOR_MANIFEST_V1_HASH}
-// Compiler emitter ABI hash: ${COMPILER_EMITTER_ABI_V1_HASH}
-
-export const OPERATOR_SEMANTIC_FACTS_V1_HASH = ${JSON.stringify(OPERATOR_SEMANTIC_FACTS_V1_HASH)}
-export const OPERATOR_MANIFEST_V1_HASH = ${JSON.stringify(OPERATOR_MANIFEST_V1_HASH)}
-export const COMPILER_EMITTER_ABI_V1_HASH = ${JSON.stringify(COMPILER_EMITTER_ABI_V1_HASH)}
 
 export interface OpsTableEntry {
   readonly name: string
@@ -1166,7 +1029,6 @@ export interface OpsTableEntry {
   readonly bindings: readonly ('fn' | 'a1' | 'a2')[]
   readonly semanticId: string
   readonly semanticRevision: number
-  readonly semanticHash: string
   readonly inputDomain: 'array' | 'scalar' | 'iterable'
   readonly outputDomain: 'array' | 'scalar' | 'iterable'
   readonly cardinality:
@@ -1181,8 +1043,6 @@ export interface OpsTableEntry {
   readonly domainTransition: boolean
   readonly loweringId: string
   readonly loweringRevision: number
-  readonly loweringAbiVersion: 1
-  readonly loweringHash: string
   readonly runnerId: string
   readonly compilerPipelineRole: 'element' | 'terminal' | 'boundary'
   readonly compilerFinalBoundary: boolean
@@ -1204,7 +1064,7 @@ export function writeCompilerOpsTableV1(): void {
 }
 
 export function formatGeneratedProtocolTypeScriptV1(
-  paths: readonly string[] = PROTOCOL_GENERATED_TYPESCRIPT_PATHS_V1,
+  paths: readonly string[] = PROTOCOL_GENERATED_PATHS_V1,
 ): void {
   if (process.env.STOPCOCK_CODEGEN_SKIP_FORMAT === '1') return
   const result = spawnSync('vp', ['fmt', '--write', ...paths], {
@@ -1217,126 +1077,12 @@ export function formatGeneratedProtocolTypeScriptV1(
   if (result.status !== 0) throw new Error('protocol generation: formatter failed')
 }
 
-function futureTierManifestV1(): object {
-  return {
-    protocol: 'stopcock.future-tier-manifest',
-    protocolVersion: 1,
-    semanticManifestHash: OPERATOR_MANIFEST_V1_HASH,
-    semanticFactsHash: OPERATOR_SEMANTIC_FACTS_V1_HASH,
-    tiers: [
-      {
-        tier: 'compact',
-        status: 'deferred',
-        loweringAbiVersion: 1,
-        descriptors: [],
-      },
-      {
-        tier: 'optimized',
-        status: 'deferred',
-        loweringAbiVersion: 1,
-        descriptors: [],
-      },
-    ],
-    unsupportedCapabilities: ['worker', 'simd', 'wasm', 'incremental'],
-  }
-}
-
-function evidenceIndexV1(): object {
-  const artifactHashes = {
-    legacy: sourceHash('packages/fp/src/registry.ts'),
-    compiler: sourceHash('packages/fp-compiler/src/ops-table.ts'),
-  }
-  const descriptorsByLowering = new Map(
-    FUSION_RUNNER_DESCRIPTORS_V1.map((descriptor) => [descriptor.loweringId, descriptor]),
-  )
-  const semanticsById = new Map(
-    OPERATOR_SEMANTICS_V1.map((semantic) => [semantic.semanticId, semantic]),
-  )
-  const entries: OperatorEvidenceV1[] = OPERATOR_LOWERINGS_V1.filter(
-    (lowering) => lowering.targetTier === 'compiler',
-  ).map((lowering) => {
-    const descriptor = descriptorsByLowering.get(lowering.loweringId)
-    const semantic = semanticsById.get(lowering.semantic.semanticId)
-    if (!descriptor || !semantic) {
-      throw new Error(`protocol generation: incomplete evidence join for ${lowering.loweringId}`)
-    }
-    const evidenceInput = {
-      protocol: 'stopcock.operator-evidence',
-      protocolVersion: 1,
-      status: 'declared',
-      semantic: lowering.semantic,
-      loweringId: lowering.loweringId,
-      loweringHash: lowering.loweringHash,
-      descriptorId: descriptor.descriptorId,
-      descriptorHash: descriptor.descriptorHash,
-      emittedArtifactHash: artifactHashes.compiler,
-      corpora: [RETAINED_COMPILER_OPERATION_CORPUS_V1],
-    } as const
-    const evidence: OperatorEvidenceV1 = {
-      ...evidenceInput,
-      evidenceId: `@stopcock/evidence/${hashCanonical(evidenceInput).slice('sha256:'.length)}`,
-    }
-    assertEvidenceJoinsCurrentV1(
-      evidence,
-      OPERATOR_SEMANTICS_V1,
-      OPERATOR_LOWERINGS_V1,
-      FUSION_RUNNER_DESCRIPTORS_V1,
-      {
-        emittedArtifactHash: artifactHashes.compiler,
-        corpora: [RETAINED_COMPILER_OPERATION_CORPUS_V1],
-      },
-    )
-    return evidence
-  })
-  const input = {
-    protocol: 'stopcock.operator-evidence-index',
-    protocolVersion: 1,
-    semanticManifestHash: OPERATOR_MANIFEST_V1_HASH,
-    semanticFactsHash: OPERATOR_SEMANTIC_FACTS_V1_HASH,
-    artifactHashes,
-    retainedCorpora: [RETAINED_COMPILER_OPERATION_CORPUS_V1],
-    entries,
-  }
-  return {
-    ...input,
-    evidenceIndexHash: hashCanonical(input),
-  }
-}
-
-export function writeOperatorEvidenceIndexV1(): void {
-  emitAfterCanonicalProtocolValidationV1(() => {
-    writeGenerated(
-      'packages/fp/codegen/generated/operator-evidence-v1.json',
-      jsonFile(evidenceIndexV1()),
-    )
-  })
-}
-
-export function generateProtocolViewsV1(
-  options: { readonly includeEvidence?: boolean } = {},
-): readonly string[] {
+export function generateProtocolViewsV1(): readonly string[] {
   return emitAfterCanonicalProtocolValidationV1(() => {
     const records = runtimeRecordsInOpcodeOrderV1()
     writeGenerated('packages/fp/src/opcodes.ts', renderOpcodesV1(records))
     writeGenerated('packages/fp/src/registry.ts', renderRegistryV1(records))
-    writeGenerated(
-      'packages/fp/codegen/generated/operator-manifest-v1.json',
-      jsonFile(operatorManifestV1()),
-    )
-    writeGenerated(
-      'packages/fp/codegen/generated/future-tier-manifest-v1.json',
-      jsonFile(futureTierManifestV1()),
-    )
-    writeGenerated(
-      'packages/fp/src/internal/fusion-debug-receipt-schema.generated.ts',
-      renderReceiptSchemaViewV1('fp-fusion-debug'),
-    )
-    writeGenerated(
-      'packages/fp-compiler/src/receipt-schema.generated.ts',
-      renderReceiptSchemaViewV1('fp-compiler'),
-    )
     writeCompilerOpsTableV1()
-    if (options.includeEvidence === true) writeOperatorEvidenceIndexV1()
     return PROTOCOL_GENERATED_PATHS_V1
   })
 }
@@ -1346,14 +1092,7 @@ export function describeGeneratedProtocolPathsV1(): readonly string[] {
 }
 
 if (import.meta.main) {
-  const generated = generateProtocolViewsV1({ includeEvidence: false })
+  const generated = generateProtocolViewsV1()
   formatGeneratedProtocolTypeScriptV1()
-  writeOperatorEvidenceIndexV1()
-  console.log(
-    `operator protocol v1: generated ${generated.length} files; manifest ${OPERATOR_MANIFEST_V1_HASH}`,
-  )
-  console.log(`receipt schema v1: ${RECEIPT_SCHEMA_V1_HASH}`)
-  if (hashCanonical(RECEIPT_SCHEMA_DEFINITION_V1) !== RECEIPT_SCHEMA_V1_HASH) {
-    throw new Error('receipt schema hash drift after generation')
-  }
+  console.log(`operator protocol v1: generated ${generated.length} files`)
 }

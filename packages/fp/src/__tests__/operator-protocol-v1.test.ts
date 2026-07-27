@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
 import {
   FUSION_RUNNER_DESCRIPTORS_V1,
@@ -13,7 +11,6 @@ import {
   type OperatorDefinitionRecordV1,
 } from '../../codegen/protocol/operator-definitions'
 import {
-  OPERATOR_SEMANTIC_FACTS_V1_HASH,
   RETAINED_COMPILER_OPERATION_CORPUS_V1,
   emitAfterProtocolCatalogueValidationV1,
 } from '../../codegen/protocol/generate-protocol'
@@ -30,24 +27,7 @@ import {
   type OperatorLoweringInputV1,
   type OperatorSemanticInputV1,
 } from '../../codegen/protocol/operator-v1'
-import {
-  RECEIPT_SCHEMA_V1_HASH as DEBUG_RECEIPT_SCHEMA_HASH,
-  validateReceiptJoinV1 as validateDebugJoin,
-  validateReceiptV1 as validateDebugReceipt,
-} from '../internal/fusion-debug-receipt-schema.generated'
-import {
-  RECEIPT_SCHEMA_V1_HASH as COMPILER_RECEIPT_SCHEMA_HASH,
-  validateReceiptJoinV1 as validateCompilerJoin,
-  validateReceiptV1 as validateCompilerReceipt,
-} from '../../../fp-compiler/src/receipt-schema.generated'
 import { map } from '../array'
-
-function generatedSemanticFactsHash(path: string): string {
-  const source = readFileSync(path, 'utf8')
-  const match = source.match(/^\/\/ Semantic facts hash: (sha256:[a-f0-9]{64})$/mu)
-  if (!match) throw new Error(`missing generated semantic facts hash in ${path}`)
-  return match[1]
-}
 
 function semanticInput(
   semantic = requireOperatorDefinitionByNameV1('map').semantic,
@@ -386,16 +366,6 @@ describe('OperatorSemanticV1 authoring', () => {
     expect(tagged).not.toHaveProperty('fn')
   })
 
-  it('records one non-runtime semantic fact hash in both generated projections', () => {
-    const runtimePath = fileURLToPath(new URL('../registry.ts', import.meta.url))
-    const compilerPath = fileURLToPath(
-      new URL('../../../fp-compiler/src/ops-table.ts', import.meta.url),
-    )
-    expect(generatedSemanticFactsHash(runtimePath)).toBe(OPERATOR_SEMANTIC_FACTS_V1_HASH)
-    expect(generatedSemanticFactsHash(compilerPath)).toBe(OPERATOR_SEMANTIC_FACTS_V1_HASH)
-    expect(readFileSync(runtimePath, 'utf8')).not.toContain('OPERATOR_MANIFEST_HASH')
-    expect(readFileSync(compilerPath, 'utf8')).not.toContain('OPERATOR_MANIFEST_HASH')
-  })
 })
 
 describe('OperatorLoweringV1 refinement', () => {
@@ -662,188 +632,5 @@ describe('OperatorEvidenceV1 joins', () => {
     expect(record.semantic).not.toHaveProperty('evidence')
     expect(lowering).not.toHaveProperty('evidence')
     expect(descriptor).not.toHaveProperty('evidence')
-  })
-
-  it('emits only declared corpus-bound compiler evidence', () => {
-    const index = JSON.parse(
-      readFileSync(
-        fileURLToPath(
-          new URL('../../codegen/generated/operator-evidence-v1.json', import.meta.url),
-        ),
-        'utf8',
-      ),
-    ) as {
-      retainedCorpora: readonly unknown[]
-      entries: readonly OperatorEvidenceV1[]
-    }
-    expect(index.retainedCorpora).toEqual([RETAINED_COMPILER_OPERATION_CORPUS_V1])
-    expect(index.entries).toHaveLength(140)
-    for (const evidence of index.entries) {
-      expect(evidence.status).toBe('declared')
-      expect(evidence.loweringId).toContain('/lowering/compiler-aot')
-      expect(evidence.corpora).toEqual([RETAINED_COMPILER_OPERATION_CORPUS_V1])
-      const { evidenceId, ...identityInput } = evidence
-      expect(evidenceId).toBe(
-        `@stopcock/evidence/${hashCanonical(identityInput).slice('sha256:'.length)}`,
-      )
-    }
-  })
-})
-
-describe('ReceiptSchemaV1 generated view parity', () => {
-  const hash = `sha256:${'a'.repeat(64)}`
-  const compilerReceipt = {
-    kind: 'stopcock.compiler-receipt',
-    schemaVersion: 1,
-    receiptId: hash,
-    sourcePath: 'src/example.ts',
-    sourceHash: hash,
-    sourceSpecifier: '@stopcock/fp',
-    sourceExport: 'pipe',
-    sourceSpan: {
-      startLine: 1,
-      startColumn: 0,
-      endLine: 1,
-      endColumn: 42,
-    },
-    siteFingerprint: hash,
-    compilerHash: hash,
-    configHash: hash,
-    semanticManifestHash: hash,
-    semanticIds: [
-      {
-        semanticId: '@stopcock/fp/array/map',
-        semanticRevision: 1,
-        semanticHash: hash,
-        mode: 'exact',
-      },
-    ],
-    semanticMode: 'exact',
-    segmentKinds: ['stream'],
-    disposition: 'transformed',
-    loweringHash: hash,
-    fallbackTier: 'sequential',
-    reasonCodes: [],
-    emittedCodeHash: hash,
-    sourceMapHash: null,
-    artifactContext: {
-      fpArtifactHash: hash,
-      compilerArtifactHash: hash,
-      optimizerArtifactHash: null,
-      fpAbiHash: hash,
-      optimizerBankHash: null,
-    },
-    evidenceRefs: [hash],
-  }
-  const planReceipt = {
-    kind: 'stopcock.plan-receipt',
-    schemaVersion: 1,
-    receiptId: hash,
-    planHash: hash,
-    semanticManifestHash: hash,
-    semanticIds: compilerReceipt.semanticIds,
-    segmentKinds: ['stream'],
-    selectedLoweringHashes: [hash],
-    fallbackTier: 'sequential',
-    reasonCodes: [],
-    evidenceRefs: [hash],
-  }
-  const runtimeProfile = {
-    kind: 'stopcock.runtime-profile',
-    schemaVersion: 1,
-    profileId: hash,
-    receiptId: hash,
-    planHash: hash,
-    artifactHash: hash,
-    runtimeHash: hash,
-    executions: 1,
-    inputSizeBucket: 'small',
-    consumedItems: 3,
-    selectedRunnerId: '@stopcock/fp/runner/portable/v1',
-    executedRunnerId: '@stopcock/fp/runner/portable/v1',
-    hotness: 1,
-    timingNanoseconds: 100,
-    allocations: [
-      {
-        scope: 'fusion-runner-result',
-        count: 1,
-        bytes: 24,
-      },
-    ],
-    privacy: {
-      inputValues: false,
-      callbackCaptures: false,
-      resultValues: false,
-    },
-  }
-  const evidenceRef = {
-    kind: 'stopcock.release-evidence-ref',
-    schemaVersion: 1,
-    evidenceRefId: hash,
-    evidenceKind: 'semantic-differential',
-    artifactHash: hash,
-    semanticHash: hash,
-    loweringHash: hash,
-    corpusHash: hash,
-    status: 'corpus-verified',
-  }
-
-  it('uses one schema hash and accepts the same fixture in debug and compiler views', () => {
-    expect(DEBUG_RECEIPT_SCHEMA_HASH).toBe(COMPILER_RECEIPT_SCHEMA_HASH)
-    for (const fixture of [
-      compilerReceipt,
-      planReceipt,
-      runtimeProfile,
-      evidenceRef,
-      { ...evidenceRef, status: 'stale' },
-      { ...evidenceRef, status: 'unavailable' },
-      { ...compilerReceipt, sourcePath: `external/sha256-${'a'.repeat(64)}` },
-    ]) {
-      expect(validateDebugReceipt(fixture)).toEqual(validateCompilerReceipt(fixture))
-      expect(validateDebugReceipt(fixture).ok).toBe(true)
-    }
-  })
-
-  it('rejects unknown versions, fields, vocabulary, hashes, and mismatched joins identically', () => {
-    const invalidFixtures = [
-      { ...compilerReceipt, schemaVersion: 2 },
-      { ...compilerReceipt, surprise: true },
-      { ...compilerReceipt, reasonCodes: ['made-up-reason'] },
-      { ...compilerReceipt, sourceHash: 'not-a-hash' },
-      { ...compilerReceipt, sourcePath: '../outside.ts' },
-      { ...compilerReceipt, sourcePath: 'external/foo.ts' },
-      { ...compilerReceipt, sourcePath: 'external/sha256-not-a-hash' },
-      { ...evidenceRef, status: 'verified' },
-      {
-        ...runtimeProfile,
-        privacy: { ...runtimeProfile.privacy, inputValues: true },
-      },
-    ]
-    for (const fixture of invalidFixtures) {
-      expect(validateDebugReceipt(fixture)).toEqual(validateCompilerReceipt(fixture))
-      expect(validateDebugReceipt(fixture).ok).toBe(false)
-    }
-    const mismatched = `sha256:${'b'.repeat(64)}`
-    expect(validateDebugJoin(compilerReceipt as never, { sourceHash: mismatched })).toEqual(
-      validateCompilerJoin(compilerReceipt as never, { sourceHash: mismatched }),
-    )
-    expect(validateDebugJoin(compilerReceipt as never, { sourceHash: mismatched }).ok).toBe(false)
-    expect(validateDebugJoin(compilerReceipt as never, { semanticHash: hash }).ok).toBe(true)
-    expect(validateCompilerJoin(planReceipt as never, { loweringHash: hash }).ok).toBe(true)
-    expect(validateDebugJoin(compilerReceipt as never, { artifactHash: hash })).toEqual(
-      validateCompilerJoin(compilerReceipt as never, { artifactHash: hash }),
-    )
-    expect(validateDebugJoin(compilerReceipt as never, { artifactHash: hash }).ok).toBe(false)
-  })
-
-  it('keeps both generated validators dependency-free', () => {
-    const debugPath = fileURLToPath(
-      new URL('../internal/fusion-debug-receipt-schema.generated.ts', import.meta.url),
-    )
-    const compilerPath = fileURLToPath(
-      new URL('../../../fp-compiler/src/receipt-schema.generated.ts', import.meta.url),
-    )
-    expect(readFileSync(debugPath, 'utf8')).not.toMatch(/^import\s/mu)
-    expect(readFileSync(compilerPath, 'utf8')).not.toMatch(/^import\s/mu)
   })
 })

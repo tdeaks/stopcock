@@ -25,14 +25,11 @@ export type CompilerOperatorFact = Pick<
   | 'bindings'
   | 'semanticId'
   | 'semanticRevision'
-  | 'semanticHash'
   | 'inputDomain'
   | 'outputDomain'
   | 'cardinality'
   | 'loweringId'
   | 'loweringRevision'
-  | 'loweringAbiVersion'
-  | 'loweringHash'
   | 'compilerPipelineRole'
 >
 
@@ -40,7 +37,7 @@ const operatorFacts = new Map(
   OPS_TABLE.map((entry) => [entry.name, entry satisfies CompilerOperatorFact] as const),
 )
 
-/** Hash-pinned S2 semantic/lowering fact for a statically resolved operator. */
+/** Generated semantic/lowering fact for a statically resolved operator. */
 export function compilerOperatorFact(name: string): CompilerOperatorFact | undefined {
   return operatorFacts.get(name)
 }

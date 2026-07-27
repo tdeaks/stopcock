@@ -14,10 +14,7 @@ import { createRequire } from 'node:module'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
-import {
-  COMPILER_EMITTER_SOURCE_PATHS_V1,
-  PROTOCOL_GENERATED_PATHS_V1,
-} from '../codegen/protocol/generate-protocol'
+import { PROTOCOL_GENERATED_PATHS_V1 } from '../codegen/protocol/generate-protocol'
 
 const FP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const REPO_ROOT = resolve(FP_ROOT, '../..')
@@ -288,11 +285,6 @@ function assertCleanInputGeneration(): void {
   try {
     const temporaryFp = resolve(temporaryRoot, 'packages/fp')
     mkdirSync(resolve(temporaryRoot, 'packages/fp-compiler/src'), { recursive: true })
-    for (const path of COMPILER_EMITTER_SOURCE_PATHS_V1) {
-      const destination = resolve(temporaryRoot, path)
-      mkdirSync(dirname(destination), { recursive: true })
-      cpSync(resolve(REPO_ROOT, path), destination)
-    }
     cpSync(resolve(FP_ROOT, 'codegen'), resolve(temporaryFp, 'codegen'), {
       recursive: true,
       filter: (source) => !source.split('/').includes('generated'),

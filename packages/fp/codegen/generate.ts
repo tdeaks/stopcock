@@ -2,10 +2,8 @@ import { spawnSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  OPERATOR_MANIFEST_V1_HASH,
   formatGeneratedProtocolTypeScriptV1,
   generateProtocolViewsV1,
-  writeOperatorEvidenceIndexV1,
 } from './protocol/generate-protocol'
 
 const FP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -23,7 +21,7 @@ function run(relativeScript: string): void {
   }
 }
 
-generateProtocolViewsV1({ includeEvidence: false })
+generateProtocolViewsV1()
 run('codegen/compact-facts.ts')
 run('codegen/dual-inline.ts')
 run('codegen/iter-kernels.ts')
@@ -33,6 +31,5 @@ formatGeneratedProtocolTypeScriptV1([
   'packages/fp/src/internal/compact/facts.generated.ts',
   'packages/fp/src/iter-kernels.ts',
 ])
-writeOperatorEvidenceIndexV1()
 
-console.log(`canonical codegen complete: ${OPERATOR_MANIFEST_V1_HASH}`)
+console.log('canonical codegen complete')

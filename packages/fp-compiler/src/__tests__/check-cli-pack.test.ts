@@ -2,7 +2,7 @@
 // no workspace resolution, no build step, no fusion runtime on disk.
 import { execFileSync, spawnSync } from 'node:child_process'
 import { chmodSync } from 'node:fs'
-import { cp, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -10,7 +10,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import pkg from '../../package.json' with { type: 'json' }
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url))
-const FIXTURES = fileURLToPath(new URL('./fixtures/check', import.meta.url))
 const TARBALL = `${pkg.name.replace('@', '').replace('/', '-')}-${pkg.version}.tgz`
 
 let scratchDir: string
@@ -49,7 +48,33 @@ beforeAll(async () => {
   await symlink(join(installedRoot, 'dist/cli.js'), bin)
   chmodSync(join(installedRoot, 'dist/cli.js'), 0o755)
 
-  await cp(FIXTURES, join(consumerDir, 'artifacts'), { recursive: true })
+  // `check` runs the real transform, which needs its declared dependencies
+  // (@babel/*, magic-string) resolvable. A real install would pull these in
+  // transitively; stand in with the workspace's already-installed copies
+  // instead of hitting the network.
+  for (const dependency of ['@babel', 'magic-string']) {
+    await symlink(
+      join(PACKAGE_ROOT, 'node_modules', dependency),
+      join(consumerDir, 'node_modules', dependency),
+    )
+  }
+
+  const src = join(consumerDir, 'src')
+  await mkdir(src, { recursive: true })
+  await writeFile(
+    join(src, 'good.ts'),
+    `import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+export const result = pipe([1, 2, 3], map((x) => x + 1))
+`,
+  )
+  await writeFile(
+    join(src, 'bad.ts'),
+    `import { pipe } from '@stopcock/fp'
+const steps = [(x) => x]
+export const result = pipe([1, 2, 3], ...steps)
+`,
+  )
 }, 120_000)
 
 afterAll(async () => {
@@ -66,8 +91,10 @@ describe('packed stopcock check', () => {
     expect(cli.startsWith('#!/usr/bin/env node\n')).toBe(true)
   })
 
-  it('renders reports without importing a fusion runtime', async () => {
+  it('runs the check without importing the @stopcock/fp engine or a fusion runtime', async () => {
     const compilerPrefix = `${resolve(installedRoot)}${sep}`
+    // The transform's own declared dependencies; nothing else bare is allowed.
+    const allowedExternal = /^(?:@babel\/(?:parser|traverse|types)|magic-string)$/u
     const visited = new Set<string>()
     const visit = async (file: string): Promise<void> => {
       const physical = resolve(file)
@@ -75,9 +102,6 @@ describe('packed stopcock check', () => {
       if (visited.has(physical)) return
       visited.add(physical)
       const source = await readFile(physical, 'utf8')
-      expect(source).not.toMatch(/@stopcock\/fp(?!-compiler)/u)
-      expect(source).not.toMatch(/@babel/u)
-      expect(source).not.toMatch(/(?:^|[/\\])fusion(?:[./\\]|$)/iu)
       const staticSpecifiers = [
         ...source.matchAll(
           /^\s*(?:import(?:\s+[^'"\n]*?\s+from)?|export\s+[^'"\n]*?\s+from)\s*['"]([^'"]+)['"]/gmu,
@@ -86,11 +110,13 @@ describe('packed stopcock check', () => {
       const dynamicSpecifiers = [
         ...source.matchAll(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/gu),
       ].map(([, specifier]) => specifier)
-      const specifiers = [...staticSpecifiers, ...dynamicSpecifiers]
-      for (const specifier of specifiers) {
+      for (const specifier of [...staticSpecifiers, ...dynamicSpecifiers]) {
         if (specifier.startsWith('node:')) continue
-        expect(specifier).toMatch(/^\.{1,2}\//u)
-        await visit(resolve(dirname(physical), specifier))
+        if (specifier.startsWith('.')) {
+          await visit(resolve(dirname(physical), specifier))
+          continue
+        }
+        expect(specifier).toMatch(allowedExternal)
       }
     }
 
@@ -98,72 +124,16 @@ describe('packed stopcock check', () => {
     expect(visited.size).toBeGreaterThan(1)
   })
 
-  it('exits 0 when every requested policy passes', () => {
-    const result = check([
-      'check',
-      '--receipts',
-      'artifacts/receipts/transformed.json',
-      '--evidence',
-      'artifacts/evidence',
-      '--expectations',
-      'artifacts/expectations/fresh.json',
-      '--policy',
-      'unsupported',
-      '--policy',
-      'stale-evidence',
-      '--json',
-    ])
+  it('reports compiled and bailed sites with a summary line', () => {
+    const result = check(['check'])
     expect(result.status).toBe(0)
-    expect(result.stderr).toContain('stopcock check')
-    const report = JSON.parse(result.stdout) as { status: string }
-    expect(report.status).toBe('passed')
+    expect(result.stdout).toMatch(/good\.ts:\d+:\d+\s+compiled/u)
+    expect(result.stdout).toMatch(/bad\.ts:\d+:\d+\s+bailed/u)
+    expect(result.stdout).toContain('1 sites compiled, 1 bailed')
   })
 
-  it('emits byte-identical JSON across runs', () => {
-    const args = [
-      'check',
-      '--receipts',
-      'artifacts/receipts',
-      '--evidence',
-      'artifacts/evidence',
-      '--expectations',
-      'artifacts/expectations/fresh.json',
-      '--policy',
-      'unsupported',
-      '--json',
-    ]
-    const first = check(args)
-    const second = check(args)
-    expect(first.status).toBe(1)
-    expect(second.stdout).toBe(first.stdout)
-  })
-
-  it('exits 1 on a failed policy and 2 on invalid artifacts', () => {
-    const failed = check(['check', '--receipts', 'artifacts/receipts', '--policy', 'unsupported'])
-    expect(failed.status).toBe(1)
-    expect(failed.stdout).toContain('static decision')
-
-    const invalid = check([
-      'check',
-      '--receipts',
-      'artifacts/invalid/duplicate-site-id.json',
-      '--policy',
-      'unsupported',
-    ])
-    expect(invalid.status).toBe(2)
-    expect(invalid.stdout).toBe('')
-    expect(invalid.stderr).toContain('duplicate')
-
-    const malformedArtifactContext = check([
-      'check',
-      '--receipts',
-      'artifacts/invalid/artifact-context.json',
-      '--policy',
-      'unsupported',
-    ])
-    expect(malformedArtifactContext.status).toBe(2)
-    expect(malformedArtifactContext.stderr).toContain('artifactContext')
-
-    expect(check(['check', '--receipts', 'artifacts/receipts']).status).toBe(2)
+  it('exits 1 with --strict when a site bailed, 2 on an unknown subcommand', () => {
+    expect(check(['check', '--strict']).status).toBe(1)
+    expect(check(['nonsense']).status).toBe(2)
   })
 })

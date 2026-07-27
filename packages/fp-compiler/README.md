@@ -149,58 +149,26 @@ useful when writing a custom host adapter.
 
 ## `stopcock check`
 
-The package ships a `stopcock` bin with one subcommand. It reads receipts your
-build already emitted and evidence manifests you hand it. It never compiles,
-profiles, or benchmarks your code, and it never loads a fusion runtime.
+The package ships a `stopcock` bin with one subcommand. `stopcock check`
+dry-runs the transform over your project's source files and reports which
+pipeline sites compiled and which bailed. It never writes transformed code
+back to disk.
 
 ```bash
-stopcock check \
-  --receipts build/receipts \
-  --evidence build/evidence \
-  --expectations build/expectations.json \
-  --policy unsupported \
-  --policy stale-evidence \
-  --json
+stopcock check
+stopcock check --strict
+stopcock check --strict src
 ```
 
-| flag                    | meaning                                                  |
-| ----------------------- | -------------------------------------------------------- |
-| `--receipts <path>`     | receipt JSON file or directory, repeatable, required     |
-| `--evidence <path>`     | evidence manifest file or directory, repeatable          |
-| `--expectations <path>` | hashes the artifacts are expected to match               |
-| `--policy <id>`         | `unsupported`, `stale-evidence`, or `coverage-threshold` |
-| `--policy-file <path>`  | a project policy document                                |
-| `--coverage <n>/<d>`    | exact ratio required by `coverage-threshold`             |
-| `--json`                | deterministic JSON on stdout, prose on stderr            |
+| flag        | meaning                                    |
+| ----------- | ------------------------------------------- |
+| `--strict`  | exit 1 when any site bailed                 |
+| directory   | project root to scan; defaults to cwd       |
 
-At least one policy is required. Exit `0` means every requested policy passed,
-`1` means a checked policy failed, `2` means the arguments, schema, or
-artifacts were invalid. Missing evidence is never a pass.
-
-Each site renders six classes separately: declared capability, static
-decision, corpus evidence, runtime observation, qualified benchmark, and
-packed release evidence. A fallback never reads as transformed, a statically
-selected lowering never reads as executed, and a stale source, config,
-semantic-manifest, output, package, or runtime hash withdraws every claim in
-the classes it invalidates.
-
-Each compiler receipt records the exact source module/export, ordered source
-span, selected fallback tier/lowering, generated semantic identities, emitted
-code and source-map hashes, and a deterministic SHA-256 of the complete receipt
-core excluding the hash itself. `stopcock check` recomputes that projection and
-rejects tampered or duplicate receipts.
-
-An existing regular source is project-relative only when its physical path is
-contained by the physical receipt root. This keeps system and symlink aliases
-stable without admitting a symlink escape. Virtual, queried, missing, non-file,
-and outside-root host IDs are recorded as opaque domain-separated hashes; raw
-machine paths never enter receipt JSON.
-
-When `diagnostics: 'error'` rejects a transform, the plugin discards every
-receipt buffered for that compilation. It invokes no receipt callback and
-writes no receipt document for the failed build; a later watch rebuild starts
-from an empty buffer and invalidates the previous document before transforming.
-Successful receipt files are committed by same-directory atomic rename.
+Output is a table of `file:line:column  compiled|bailed  op  reason` rows
+followed by a summary line (`N sites compiled, M bailed`). Exit `0` unless
+`--strict` is given and at least one site bailed, in which case exit `1`.
+Exit `2` means the arguments were invalid.
 
 ## Development contract
 

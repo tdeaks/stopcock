@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parse } from '@babel/parser'
 import { none } from '@stopcock/fp'
-import { buildCompilerReceipt } from '../receipt-emit'
 import { transformStopcockPipelines } from '../transform'
 import { type Fixture, runFixture } from './harness'
 
@@ -1184,7 +1183,7 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
-  it('emits complete deferred-runner plan evidence into receipts', () => {
+  it('reports segment kinds and op names for a deferred-runner plan', () => {
     const source = `import { flow } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
 export const run = flow(A.map(Number), A.filter(Boolean), A.sum)
@@ -1192,23 +1191,12 @@ export const run = flow(A.map(Number), A.filter(Boolean), A.sum)
     const result = transformStopcockPipelines(source, '/repo/src/runner.ts', {
       diagnostics: 'verbose',
     })
-    const receipt = buildCompilerReceipt(result.diagnostics[0], source, {
-      root: '/repo',
-      configHash: `sha256:${'2'.repeat(64)}`,
-      emittedCode: result.code,
-      sourceMap: JSON.stringify(result.map),
-    })
-    expect(receipt).toMatchObject({
-      disposition: 'transformed',
+    expect(result.diagnostics[0]).toMatchObject({
+      transformed: true,
       segmentKinds: ['stream', 'stream', 'boundary'],
-      semanticMode: 'exact',
+      semantics: 'exact',
+      opNames: ['map', 'filter', 'sum'],
     })
-    expect(receipt?.semanticIds.map((identity) => identity.semanticId)).toEqual([
-      '@stopcock/fp/array/map',
-      '@stopcock/fp/array/filter',
-      '@stopcock/fp/array/sum',
-    ])
-    expect(receipt?.loweringHash).toMatch(/^sha256:[a-f0-9]{64}$/u)
   })
 
   expectSame('compile() captures factories and bound values once', {

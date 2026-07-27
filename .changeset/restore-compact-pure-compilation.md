@@ -34,32 +34,8 @@ consumption reporting, and the exact execution contract. A stale, swapped, or
 duplicate physical package pair fails closed to FP's compact exact executor
 before any specialized runner can execute.
 
-Compiler receipts may now carry a deterministic packed-artifact context. The
-receipt identity binds the selected FP, compiler, optional optimizer, FP ABI,
-and optimizer runner bank so post-extraction qualification cannot accidentally
-reuse source-workspace or pre-extraction evidence.
-
-The compiler tarball now also carries the generated dependency-free receipt
-validator as executable JavaScript beside its declaration, so extracted S11R
-qualification can validate the packed internal authority without importing
-workspace source or guessing a shared-chunk name. It is not a new public
-package export.
-
 The compiler's default source filter now includes standard ESM/CommonJS
-JavaScript and TypeScript module extensions. Extracted qualification attributes
-runtime retention only to modules that contribute to emitted host chunks,
-rather than every module observed before tree-shaking.
-
-Receipt source paths now use physical containment for existing regular files,
-so system and symlink aliases of the configured project root produce the same
-project-relative identity. Virtual, queried, missing, non-file, and escaping
-host IDs remain opaque domain-separated external locators.
-
-Strict compiler transform failures now discard every buffered receipt instead
-of committing partial build evidence. Receipt callbacks and files resume from
-an empty buffer on the next successful build; prior receipt files are
-invalidated when a rebuild begins, and successful documents publish by atomic
-rename.
+JavaScript and TypeScript module extensions.
 
 Webpack and Rspack adapters now preserve the compiler's high-resolution source
 map when no earlier loader supplied one, retaining exact callback and generated

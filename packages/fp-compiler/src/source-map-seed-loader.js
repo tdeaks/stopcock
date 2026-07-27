@@ -10,7 +10,7 @@ const sourceMapObject = (value) =>
  * Preserve source-map composition around Unplugin 3.3's transform loader.
  * `seed` supplies its missing upstream map; `finalize` restores the physical
  * identity which MagicString intentionally keeps relative in direct compiler
- * receipts.
+ * output.
  */
 export default function sourceMapSeedLoader(source, sourceMap) {
   const callback = this.async()

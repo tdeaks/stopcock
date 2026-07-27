@@ -3,12 +3,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { OPERATOR_DEFINITION_RECORDS_V1 } from '../../../fp/codegen/protocol/operator-definitions'
-import {
-  COMPILER_EMITTER_ABI_V1_HASH as LIVE_COMPILER_EMITTER_ABI_V1_HASH,
-  OPERATOR_MANIFEST_V1_HASH as LIVE_OPERATOR_MANIFEST_V1_HASH,
-  OPERATOR_SEMANTIC_FACTS_V1_HASH,
-  RETAINED_COMPILER_OPERATION_CORPUS_V1,
-} from '../../../fp/codegen/protocol/generate-protocol'
+import { RETAINED_COMPILER_OPERATION_CORPUS_V1 } from '../../../fp/codegen/protocol/generate-protocol'
 import {
   COMPILER_OPERATION_CORPUS_ID,
   compilerOperationCorpusProjection,
@@ -16,10 +11,8 @@ import {
 import { EXPECTED_COMPILER_OPERATION_CORPUS } from '../../../../benchmarks/src/reference/compiler-operation-perf-contract'
 import {
   BOUNDARY_OP_NAMES,
-  COMPILER_EMITTER_ABI_V1_HASH,
   ELEMENT_OP_NAMES,
   FINAL_BOUNDARY_OP_NAMES,
-  OPERATOR_MANIFEST_V1_HASH,
   OPS_TABLE,
   TERMINAL_OP_NAMES,
 } from '../ops-table'
@@ -35,7 +28,6 @@ describe('ops-table snapshot', () => {
           bindings: record.semantic.bindings.map(({ slot }) => slot),
           semanticId: record.semantic.semanticId,
           semanticRevision: record.semantic.semanticRevision,
-          semanticHash: record.semantic.semanticHash,
           inputDomain: record.semantic.inputDomain,
           outputDomain: record.semantic.outputDomain,
           cardinality: record.semantic.cardinality,
@@ -44,8 +36,6 @@ describe('ops-table snapshot', () => {
           domainTransition: record.semantic.termination.domainTransition,
           loweringId: lowering.loweringId,
           loweringRevision: lowering.loweringRevision,
-          loweringAbiVersion: lowering.loweringAbiVersion,
-          loweringHash: lowering.loweringHash,
           runnerId: lowering.runnerId,
           compilerPipelineRole: lowering.compilerPipelineRole,
           compilerFinalBoundary: lowering.compilerFinalBoundary,
@@ -55,20 +45,6 @@ describe('ops-table snapshot', () => {
 
     expect(OPS_TABLE).toEqual(expected)
     expect(OPS_TABLE).toHaveLength(140)
-    const generatedSource = readFileSync(
-      fileURLToPath(new URL('../ops-table.ts', import.meta.url)),
-      'utf8',
-    )
-    expect(generatedSource).toContain(`// Semantic facts hash: ${OPERATOR_SEMANTIC_FACTS_V1_HASH}`)
-    expect(generatedSource).toContain(
-      `// Complete semantic manifest hash: ${LIVE_OPERATOR_MANIFEST_V1_HASH}`,
-    )
-    expect(generatedSource).toContain(
-      `// Compiler emitter ABI hash: ${LIVE_COMPILER_EMITTER_ABI_V1_HASH}`,
-    )
-    expect(OPERATOR_MANIFEST_V1_HASH).toBe(LIVE_OPERATOR_MANIFEST_V1_HASH)
-    expect(OPERATOR_MANIFEST_V1_HASH).not.toBe(OPERATOR_SEMANTIC_FACTS_V1_HASH)
-    expect(COMPILER_EMITTER_ABI_V1_HASH).toBe(LIVE_COMPILER_EMITTER_ABI_V1_HASH)
   })
 
   it('derives compiler classifications from accepted lowerings', () => {
@@ -122,8 +98,6 @@ describe('ops-table snapshot', () => {
     for (const entry of OPS_TABLE) {
       expect(entry).not.toHaveProperty('opcode')
       expect(entry.semanticId).toMatch(/^@stopcock\/fp\/array\//u)
-      expect(entry.semanticHash).toMatch(/^sha256:[a-f0-9]{64}$/u)
-      expect(entry.loweringHash).toMatch(/^sha256:[a-f0-9]{64}$/u)
     }
   })
 })

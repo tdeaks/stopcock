@@ -31,7 +31,6 @@ export default defineConfig({
     entry: {
       ...(pack.entry as Record<string, string>),
       cli: 'src/cli.ts',
-      'receipt-schema.generated': 'src/receipt-schema.generated.ts',
       'source-map-seed-loader': 'src/source-map-seed-loader.js',
     },
     plugins: [...packPlugins, shebang],

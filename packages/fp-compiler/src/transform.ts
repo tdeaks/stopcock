@@ -36,14 +36,10 @@ import {
   type OpaqueReceiverAbi,
   type StaticCompilerPlanV1,
 } from './plan-ir'
-import {
-  COMPILER_EMITTER_ABI_V1_HASH,
-  OPERATOR_MANIFEST_V1_HASH,
-} from './ops-table'
-import type { ReceiptReasonCodeV1 } from './receipt-schema.generated'
 import type {
   CompilerFallbackTier,
   CompilerSemantics,
+  DiagnosticReasonCode,
   DiagnosticSite,
   StopcockCompilerOptions,
   TransformResult,
@@ -591,30 +587,6 @@ function containsUnshadowedDirectEval(ast: t.File): boolean {
   return found
 }
 
-function staleCompilerSelection(
-  options: StopcockCompilerOptions,
-): { readonly reason: string; readonly reasonCode: ReceiptReasonCodeV1 } | undefined {
-  if (
-    options.expectedSemanticManifestHash !== undefined &&
-    options.expectedSemanticManifestHash !== OPERATOR_MANIFEST_V1_HASH
-  ) {
-    return {
-      reason: `stale semantic manifest: expected ${options.expectedSemanticManifestHash}, compiler has ${OPERATOR_MANIFEST_V1_HASH}`,
-      reasonCode: 'stale-semantic-hash',
-    }
-  }
-  if (
-    options.expectedLoweringAbiHash !== undefined &&
-    options.expectedLoweringAbiHash !== COMPILER_EMITTER_ABI_V1_HASH
-  ) {
-    return {
-      reason: `stale lowering ABI: expected ${options.expectedLoweringAbiHash}, compiler has ${COMPILER_EMITTER_ABI_V1_HASH}`,
-      reasonCode: 'stale-lowering-hash',
-    }
-  }
-  return undefined
-}
-
 function resolveStepOpName(
   callee: t.CallExpression['callee'],
   bindings: Bindings,
@@ -756,8 +728,7 @@ interface StepsResult {
   readonly reason?: string
   /**
    * Operators recognised before the collector gave up. A rejected site that
-   * used real operators is still worth describing: without these it produces
-   * no receipt at all and becomes invisible to coverage.
+   * used real operators is still worth describing in diagnostics.
    */
   readonly partialNames?: readonly string[]
 }
@@ -848,9 +819,6 @@ function tryTransformDeferred(
   optionNoneLocal: string,
   semantics: CompilerSemantics,
   sourceTier: CompilerFallbackTier,
-  staleSelection:
-    | { readonly reason: string; readonly reasonCode: ReceiptReasonCodeV1 }
-    | undefined,
   directEval: boolean,
   outerLabel: string,
 ): {
@@ -859,7 +827,7 @@ function tryTransformDeferred(
   readonly steps?: number
   readonly reason?: string
   readonly opNames?: readonly string[]
-  readonly reasonCodes?: readonly ReceiptReasonCodeV1[]
+  readonly reasonCodes?: readonly DiagnosticReasonCode[]
   readonly needsOptionImport?: boolean
 } {
   if (call.arguments.some((a) => t.isSpreadElement(a))) {
@@ -884,13 +852,6 @@ function tryTransformDeferred(
     return {
       reason: numericFallback,
       reasonCodes: ['materialization-boundary'],
-      opNames: steps.map((step) => step.name),
-    }
-  }
-  if (staleSelection !== undefined) {
-    return {
-      reason: staleSelection.reason,
-      reasonCodes: [staleSelection.reasonCode],
       opNames: steps.map((step) => step.name),
     }
   }
@@ -968,7 +929,6 @@ export function transformStopcockPipelines(
       : compileSourcesFor(importSources, undefined))
   const diagnosticsLevel = options.diagnostics ?? false
   const semantics: CompilerSemantics = options.assumePure === true ? 'pure' : 'exact'
-  const staleSelection = staleCompilerSelection(options)
   const candidateSources = new Set([
     ...importSources,
     ...arrayImportSources,
@@ -1128,7 +1088,6 @@ export function transformStopcockPipelines(
           optionNoneLocal,
           semantics,
           fallbackTier,
-          staleSelection,
           hasUnshadowedDirectEval,
           generatedOuterLabel(path),
         )
@@ -1355,37 +1314,10 @@ export function transformStopcockPipelines(
          */
         return
       }
-      if (staleSelection !== undefined) {
-        if (diagnosticsLevel !== false) {
-          diagnostics.push(
-            site(
-              call,
-              id,
-              false,
-              stepNodes.length,
-              semantics,
-              staleSelection.reason,
-              steps.map((step) => step.name),
-              {
-                ...sourceIdentity,
-                reasonCodes: [staleSelection.reasonCode],
-                fallbackTier,
-                operatorFacts: steps.map((step) => step.fact),
-              },
-            ),
-          )
-        }
-        if (diagnosticsLevel === 'error') {
-          throw new Error(
-            `fp-compiler: skipped pipe() at ${id}:${call.loc?.start.line}: ${staleSelection.reason}`,
-          )
-        }
-        return
-      }
       if (hasUnshadowedDirectEval) {
         const reason =
           'static lowering declines unshadowed direct eval because generated lexical bindings would change its observable scope'
-        const reasonCodes: ReceiptReasonCodeV1[] = ['strict-scope-exclusion']
+        const reasonCodes: DiagnosticReasonCode[] = ['strict-scope-exclusion']
         if (residual !== undefined) reasonCodes.push('opaque-callback')
         if (diagnosticsLevel !== false) {
           diagnostics.push(
@@ -1417,7 +1349,7 @@ export function transformStopcockPipelines(
         lexicalArrayExclusion(path.scope) ??
         plannedBoundaryIntrinsicExclusion(path.scope, steps, fallbackTier)
       if (intrinsicExclusion !== undefined) {
-        const reasonCodes: ReceiptReasonCodeV1[] = ['strict-scope-exclusion']
+        const reasonCodes: DiagnosticReasonCode[] = ['strict-scope-exclusion']
         if (residual !== undefined) reasonCodes.push('opaque-callback')
         if (diagnosticsLevel !== false) {
           diagnostics.push(
@@ -1583,7 +1515,7 @@ export function transformStopcockPipelines(
       )
       if (collision !== undefined) {
         const reason = `static lowering declined because generated local ${collision} is not hygienic in this scope`
-        const reasonCodes: ReceiptReasonCodeV1[] = ['strict-scope-exclusion']
+        const reasonCodes: DiagnosticReasonCode[] = ['strict-scope-exclusion']
         if (residual !== undefined) reasonCodes.push('opaque-callback')
         if (diagnosticsLevel !== false) {
           diagnostics.push(

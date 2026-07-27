@@ -4,6 +4,13 @@ export type DiagnosticsLevel = false | 'summary' | 'verbose' | 'error'
 export type CompilerSemantics = 'exact' | 'pure'
 export type CompilerSegmentKind = 'stream' | 'boundary' | 'opaque'
 export type CompilerFallbackTier = 'sequential' | 'compact' | 'compiler' | 'none'
+export type DiagnosticReasonCode =
+  | 'opaque-callback'
+  | 'materialization-boundary'
+  | 'unsupported-layout'
+  | 'host-restriction'
+  | 'strict-scope-exclusion'
+  | 'compiler-defect'
 
 export interface StopcockCompilerOptions {
   readonly include?: FilterPattern
@@ -39,36 +46,6 @@ export interface StopcockCompilerOptions {
    */
   readonly assumePure?: boolean
   readonly diagnostics?: DiagnosticsLevel
-  /**
-   * Optional build-policy pins. A mismatch never guesses: recognised sites
-   * stay on their exact imported runtime tier and emit a stale-hash receipt.
-   */
-  readonly expectedSemanticManifestHash?: string
-  readonly expectedLoweringAbiHash?: string
-  /**
-   * Emits one deterministic `CompilerReceiptV1` per recognised site. Off by
-   * default: an ordinary build should not pay for evidence it did not ask for,
-   * and receipt emission never changes generated code or transform selection.
-   */
-  readonly receipts?: ReceiptOptions
-}
-
-export interface ReceiptOptions {
-  /** Directory for `stopcock-receipts.json`, relative to the project root. */
-  readonly dir?: string
-  /** Root that receipt paths are made relative to. Defaults to cwd. */
-  readonly root?: string
-  /**
-   * Packed-artifact identities for an extracted-host qualification build.
-   * Ordinary source builds omit this and receipts record null instead.
-   */
-  readonly artifactContext?:
-    | import('./receipt-schema.generated.js').CompilerReceiptArtifactContextV1
-    | null
-  /** For hosts that manage artifacts themselves. Called once per build. */
-  readonly onReceipts?: (
-    receipts: readonly import('./receipt-schema.generated.js').CompilerReceiptV1[],
-  ) => void
 }
 
 export interface DiagnosticSite {
@@ -87,18 +64,17 @@ export interface DiagnosticSite {
   readonly reason?: string
   /**
    * Operator names the site resolved, in pipeline order. Empty when the call
-   * form was rejected before any operator could be identified; that fallback
-   * still receives a receipt with an empty semantic identity sequence.
+   * form was rejected before any operator could be identified.
    */
   readonly opNames?: readonly string[]
   /** The actual static plan shape selected for this site. */
   readonly segmentKinds?: readonly CompilerSegmentKind[]
-  /** Stable lowering ABI identity used to derive the receipt lowering hash. */
+  /** Stable lowering identity of the selected Plan IR. */
   readonly loweringId?: string
   /** Exact generated S2 facts consumed by the selected Plan IR. */
   readonly operatorFacts?: readonly import('./ops.js').CompilerOperatorFact[]
   /** Structured reasons supplementing, rather than parsing, free-form prose. */
-  readonly reasonCodes?: readonly import('./receipt-schema.generated.js').ReceiptReasonCodeV1[]
+  readonly reasonCodes?: readonly DiagnosticReasonCode[]
   /** The original runtime tier retained when this site is not transformed. */
   readonly fallbackTier?: CompilerFallbackTier
 }

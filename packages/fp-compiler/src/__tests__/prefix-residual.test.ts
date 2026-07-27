@@ -1,12 +1,5 @@
 import { parse } from '@babel/parser'
 import { describe, expect, it } from 'vite-plus/test'
-import { buildCompilerReceipt, type ReceiptContext } from '../receipt-emit'
-import {
-  COMPILER_EMITTER_ABI_V1_HASH,
-  OPERATOR_MANIFEST_V1_HASH,
-} from '../ops-table'
-import { renderCheckReportV1 } from '../receipt-report'
-import { validateReceiptV1 } from '../receipt-schema.generated'
 import { transformStopcockPipelines } from '../transform'
 import { runFixture, type Fixture } from './harness'
 
@@ -352,71 +345,7 @@ class Child extends Base {
   })
 })
 
-describe('residual imports, receipts, and fallback tiers', () => {
-  it('accepts current semantic and lowering pins', () => {
-    const source = `${IMPORTS}
-export const result = pipe([1,2], A.map((x) => x + 1))
-`
-    const result = transformStopcockPipelines(source, 'current-pins.ts', {
-      diagnostics: 'verbose',
-      expectedSemanticManifestHash: OPERATOR_MANIFEST_V1_HASH,
-      expectedLoweringAbiHash: COMPILER_EMITTER_ABI_V1_HASH,
-    })
-    expect(result.code).not.toBe(source)
-    expect(result.diagnostics[0].transformed).toBe(true)
-  })
-
-  it.each([
-    ['semantic', 'expectedSemanticManifestHash', 'stale-semantic-hash'],
-    ['lowering', 'expectedLoweringAbiHash', 'stale-lowering-hash'],
-  ] as const)('fails closed when the %s selection pin is stale', (
-    _name,
-    option,
-    reasonCode,
-  ) => {
-    const source = `${IMPORTS}
-export const result = pipe([1,2], A.map((x) => x + 1))
-`
-    const result = transformStopcockPipelines(source, '/repo/src/stale-pin.ts', {
-      diagnostics: 'verbose',
-      [option]: `sha256:${'0'.repeat(64)}`,
-    })
-    expect(result.code).toBe(source)
-    expect(result.diagnostics[0]).toMatchObject({
-      transformed: false,
-      fallbackTier: 'sequential',
-      reasonCodes: [reasonCode],
-    })
-    const receipt = buildCompilerReceipt(result.diagnostics[0], source, {
-      root: '/repo',
-      configHash: `sha256:${'1'.repeat(64)}`,
-      emittedCode: null,
-      sourceMap: null,
-    })
-    expect(receipt).toMatchObject({
-      disposition: 'fallback',
-      fallbackTier: 'sequential',
-      reasonCodes: [reasonCode],
-    })
-  })
-
-  it('fails a stale lowering pin closed for deferred runners too', () => {
-    const source = `import { flow } from '@stopcock/fp'
-import * as A from '@stopcock/fp/array'
-export const run = flow(A.map(Number), A.filter(Boolean))
-`
-    const result = transformStopcockPipelines(source, 'stale-runner.ts', {
-      diagnostics: 'verbose',
-      expectedLoweringAbiHash: `sha256:${'f'.repeat(64)}`,
-    })
-    expect(result.code).toBe(source)
-    expect(result.diagnostics[0]).toMatchObject({
-      transformed: false,
-      fallbackTier: 'sequential',
-      reasonCodes: ['stale-lowering-hash'],
-    })
-  })
-
+describe('residual imports and fallback tiers', () => {
   it('retains operator imports when the root step vector must contain actual step values', () => {
     const source = `import { pipe } from '@stopcock/fp'
 import { map } from '@stopcock/fp/array'
@@ -476,7 +405,7 @@ export const result = FP.pipe([1,2], map(Number), (xs) => <FP.Widget xs={xs} />)
     expect(result.code).toContain("import { map }")
   })
 
-  it('emits a schema-valid opaque-segment receipt with a lowering identity', () => {
+  it('reports an opaque-segment site with a lowering identity', () => {
     const source = `${IMPORTS}
 const tail = (xs) => xs
 export const result = pipe([1,2], A.map(Number), tail)
@@ -484,43 +413,12 @@ export const result = pipe([1,2], A.map(Number), tail)
     const result = transformStopcockPipelines(source, '/repo/src/residual.ts', {
       diagnostics: 'verbose',
     })
-    const context: ReceiptContext = {
-      root: '/repo',
-      configHash: `sha256:${'0'.repeat(64)}`,
-      emittedCode: result.code,
-      sourceMap: JSON.stringify(result.map),
-    }
-    const receipt = buildCompilerReceipt(result.diagnostics[0], source, context)
-    expect(receipt?.segmentKinds).toEqual(['stream', 'opaque'])
-    expect(receipt?.reasonCodes).toEqual(['opaque-callback'])
-    expect(receipt?.fallbackTier).toBe('none')
-    expect(receipt?.loweringHash).toMatch(/^sha256:[a-f0-9]{64}$/u)
-    const validation = validateReceiptV1(receipt)
-    expect(validation.ok ? [] : validation.errors).toEqual([])
-
-    const unsupported = renderCheckReportV1({
-      receipts: [receipt!],
-      plans: [],
-      profiles: [],
-      evidence: [],
-      policies: ['unsupported'],
+    expect(result.diagnostics[0]).toMatchObject({
+      transformed: true,
+      segmentKinds: ['stream', 'opaque'],
+      reasonCodes: ['opaque-callback'],
     })
-    expect(unsupported.status).toBe('failed')
-    const strict = renderCheckReportV1({
-      receipts: [receipt!],
-      plans: [],
-      profiles: [],
-      evidence: [],
-      policies: [
-        {
-          kind: 'stopcock.check-policy',
-          schemaVersion: 1,
-          policyId: 'fully-static',
-          forbidReasonCodes: ['opaque-callback'],
-        },
-      ],
-    })
-    expect(strict.status).toBe('failed')
+    expect(result.diagnostics[0].loweringId).toMatch(/^@stopcock\/fp-compiler\//u)
   })
 
   it.each([
@@ -542,14 +440,6 @@ export const result = id(pipe([1], A.map(Number), tail))
     })
     expect(result.diagnostics[0].transformed).toBe(false)
     expect(result.diagnostics[0].fallbackTier).toBe(tier)
-    const receipt = buildCompilerReceipt(result.diagnostics[0], source, {
-      root: '/repo',
-      configHash: `sha256:${'0'.repeat(64)}`,
-      emittedCode: null,
-      sourceMap: null,
-    })
-    expect(receipt?.disposition).toBe('fallback')
-    expect(receipt?.fallbackTier).toBe(tier)
   })
 
   it('records the compatibility compile entry as compact', () => {
