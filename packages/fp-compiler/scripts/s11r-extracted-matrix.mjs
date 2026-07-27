@@ -24,7 +24,7 @@ import {
 } from 'node:fs'
 import { gzipSync } from 'node:zlib'
 import { tmpdir } from 'node:os'
-import { basename, dirname, join, relative, resolve, sep } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -104,6 +104,8 @@ const stable = (value) => JSON.stringify(value, null, 2) + '\n'
 const hash = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`
 const posix = (value) => value.replaceAll('\\', '/').split(sep).join('/')
 const compare = (left, right) => left.localeCompare(right)
+const hasControlCharacters = (value) =>
+  value.includes('\0') || value.includes('\r') || value.includes('\n')
 const text = (value) => {
   if (typeof value === 'string') return value
   if (value instanceof Uint8Array) return Buffer.from(value).toString('utf8')
@@ -976,7 +978,7 @@ const canonicalSourceMapSource = ({
   topology,
   label,
 }) => {
-  assert(!/[\0\r\n]/u.test(source), `${label} has a source path containing control characters`)
+  assert(!hasControlCharacters(source), `${label} has a source path containing control characters`)
   let rooted = source
   if (typeof sourceRoot === 'string' && sourceRoot.length > 0) {
     rooted = sourceRoot.endsWith('/') ? `${sourceRoot}${source}` : `${sourceRoot}/${source}`
@@ -1013,7 +1015,7 @@ const canonicalSourceMapSource = ({
     return canonicalPhysicalSource(topology, path, label, rooted)
   }
   const decoded = decodeSourceMapPath(rooted, label)
-  assert(!/[\0\r\n]/u.test(decoded), `${label} has a decoded path containing control characters`)
+  assert(!hasControlCharacters(decoded), `${label} has a decoded path containing control characters`)
   const windowsAbsolute = /^[A-Za-z]:[\\/]/u.test(decoded)
   if (windowsAbsolute && process.platform !== 'win32') {
     fail(`${label} has an unresolvable Windows absolute source ${decoded}`)
@@ -1979,6 +1981,71 @@ export const result = [compiled, fallback]
 `
 }
 
+export const assertStrictDiagnostic = ({ message, topology, entry, site, line, reason }) => {
+  assert(typeof message === 'string', 'strict build error is not text')
+  assert(site === 'pipe' || site === 'compile', 'strict diagnostic site is invalid')
+  assert(Number.isSafeInteger(line) && line > 0, 'strict diagnostic line is invalid')
+  assert(
+    typeof reason === 'string' && reason.length > 0 && !hasControlCharacters(reason),
+    'strict diagnostic reason is invalid',
+  )
+  const marker = 'fp-compiler: skipped '
+  const diagnostics = []
+  for (const errorLine of message.split(/\r?\n/u)) {
+    let offset = 0
+    while (offset < errorLine.length) {
+      const index = errorLine.indexOf(marker, offset)
+      if (index === -1) break
+      offset = index + marker.length
+      if (index > 0 && !/\s/u.test(errorLine[index - 1])) continue
+      const parsed =
+        /^fp-compiler: skipped (pipe|compile)\(\) at (.+):([1-9][0-9]*): (.+)$/u.exec(
+          errorLine.slice(index),
+        )
+      if (parsed !== null) {
+        diagnostics.push({
+          site: parsed[1],
+          source: parsed[2],
+          line: Number(parsed[3]),
+          reason: parsed[4],
+        })
+      }
+    }
+  }
+  assert(
+    diagnostics.length === 1,
+    `strict build emitted ${diagnostics.length} complete compiler diagnostics instead of one: ${message}`,
+  )
+  const diagnostic = diagnostics[0]
+  assert(diagnostic.site === site, `strict diagnostic site ${diagnostic.site} differs from ${site}`)
+  assert(diagnostic.line === line, `strict diagnostic line ${diagnostic.line} differs from ${line}`)
+  assert(
+    diagnostic.reason === reason,
+    `strict diagnostic reason ${diagnostic.reason} differs from ${reason}`,
+  )
+  assert(
+    isAbsolute(diagnostic.source) && !hasControlCharacters(diagnostic.source),
+    `strict diagnostic source is not an absolute native path: ${diagnostic.source}`,
+  )
+  const expectedSource = canonicalPhysicalSource(
+    topology,
+    entry,
+    'strict diagnostic expected source',
+    entry,
+  )
+  const actualSource = canonicalPhysicalSource(
+    topology,
+    diagnostic.source,
+    'strict diagnostic source',
+    diagnostic.source,
+  )
+  assert(
+    actualSource === expectedSource,
+    `strict diagnostic source ${actualSource} differs from ${expectedSource}`,
+  )
+  return { site, source: actualSource, line, reason }
+}
+
 const strictHostRejects = async ({ host, topology, entry, rowRoot, tier }) => {
   const strictOut = join(rowRoot, 'strict-out')
   const strictReceipts = join(rowRoot, 'strict-receipts')
@@ -1986,7 +2053,6 @@ const strictHostRejects = async ({ host, topology, entry, rowRoot, tier }) => {
   remove(strictReceipts)
   const site = tier.fallbackExport === 'compile' ? 'compile' : 'pipe'
   const reason = `spread arguments in ${site}() call`
-  const expected = `fp-compiler: skipped ${site}() at ${entry}:11: ${reason}`
   try {
     await runHost({
       host,
@@ -2000,10 +2066,7 @@ const strictHostRejects = async ({ host, topology, entry, rowRoot, tier }) => {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    assert(
-      message.includes(expected),
-      `${host} strict build did not reject the exact unsupported ${site} site/reason: ${message}`,
-    )
+    assertStrictDiagnostic({ message, topology, entry, site, line: 11, reason })
     assert(
       regularFilesUnder(strictOut).length === 0,
       `${host} strict rejection emitted build output`,

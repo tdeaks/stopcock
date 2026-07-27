@@ -239,6 +239,83 @@ describe('S11R extracted matrix manifest boundary', () => {
     }
   })
 
+  it('matches strict host failures by exact physical source identity and diagnostic fields', async () => {
+    const { assertStrictDiagnostic } = await import(script.href)
+    const scratch = await mkdtemp(join(tmpdir(), 'stopcock-s11r-strict-diagnostic-'))
+    try {
+      const consumer = join(scratch, 'consumer')
+      const alias = join(scratch, 'consumer-alias')
+      const entry = join(consumer, 'src', 'entry.mjs')
+      const foreign = join(scratch, 'foreign', 'entry.mjs')
+      await mkdir(dirname(entry), { recursive: true })
+      await mkdir(dirname(foreign), { recursive: true })
+      await writeFile(entry, 'export const result = 1\n')
+      await writeFile(foreign, 'export const result = 2\n')
+      await symlink(consumer, alias, 'dir')
+      const aliasEntry = join(alias, 'src', 'entry.mjs')
+      const physicalEntry = await realpath(entry)
+      const topology = { consumer: alias, packages: new Map() }
+      const diagnostic = (
+        source: string,
+        site = 'pipe',
+        line = 11,
+        reason = 'spread arguments in pipe() call',
+      ) => `Build failed\nError: fp-compiler: skipped ${site}() at ${source}:${line}: ${reason}`
+      const expected = {
+        site: 'pipe',
+        source: 'consumer/src/entry.mjs',
+        line: 11,
+        reason: 'spread arguments in pipe() call',
+      }
+
+      expect(
+        assertStrictDiagnostic({
+          message: diagnostic(aliasEntry),
+          topology,
+          entry: aliasEntry,
+          site: 'pipe',
+          line: 11,
+          reason: 'spread arguments in pipe() call',
+        }),
+      ).toEqual(expected)
+      expect(
+        assertStrictDiagnostic({
+          message: diagnostic(physicalEntry),
+          topology,
+          entry: aliasEntry,
+          site: 'pipe',
+          line: 11,
+          reason: 'spread arguments in pipe() call',
+        }),
+      ).toEqual(expected)
+
+      const assertRejected = (message: string): void => {
+        expect(() =>
+          assertStrictDiagnostic({
+            message,
+            topology,
+            entry: aliasEntry,
+            site: 'pipe',
+            line: 11,
+            reason: 'spread arguments in pipe() call',
+          }),
+        ).toThrow()
+      }
+      assertRejected(diagnostic(foreign))
+      assertRejected(diagnostic(physicalEntry, 'compile'))
+      assertRejected(diagnostic(physicalEntry, 'pipe', 12))
+      assertRejected(diagnostic(physicalEntry, 'pipe', 11, 'different reason'))
+      assertRejected(
+        diagnostic(physicalEntry)
+          .split('\n')[1]
+          .replace('Error: fp-compiler', 'fakefp-compiler'),
+      )
+      assertRejected(`${diagnostic(physicalEntry)}\n${diagnostic(physicalEntry).split('\n')[1]}`)
+    } finally {
+      await rm(scratch, { recursive: true, force: true })
+    }
+  })
+
   it('decodes file URLs before rejecting a symlink-aliased workspace module', async () => {
     const { canonicalGraph } = await import(script.href)
     const scratch = await mkdtemp(join(tmpdir(), 'graph-uri-'))
