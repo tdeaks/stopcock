@@ -1005,3 +1005,59 @@ describe('indexed operators fuse into the loop with the right index', () => {
     expect((result.compiled.value as unknown[])[1]).toBe('0,1,2,3,4')
   })
 })
+
+/**
+ * The last four: two whose built-in draws on Math.random (so the fixtures pin
+ * shape and call count rather than a value), and two binary searches that
+ * gained a data-last form so they can be a pipeline step at all.
+ */
+const TAIL_IMPORTS = `import { pipe } from '@stopcock/fp'
+import { map, sortAsc, length, shuffle, sample, sortedIndex, sortedLastIndex } from '@stopcock/fp/array'`
+
+const TAIL_LOCALS = Object.fromEntries(
+  ['pipe', 'map', 'sortAsc', 'length', 'shuffle', 'sample', 'sortedIndex', 'sortedLastIndex'].map(
+    (name) => [name, name],
+  ),
+)
+
+const tailFixture = (name: string, body: string): Fixture => ({
+  name,
+  imports: TAIL_IMPORTS,
+  locals: TAIL_LOCALS,
+  body,
+  expectTransformed: true,
+})
+
+describe('the nondeterministic and binary-search operators', () => {
+  it.each([
+    ['sortedIndex', `return pipe(${SRC}, sortAsc, sortedIndex(4))`],
+    ['sortedLastIndex', `return pipe(${SRC}, sortAsc, sortedLastIndex(4))`],
+    ['sortedIndex after map', `return pipe(${SRC}, map((x) => x * 2), sortAsc, sortedIndex(8))`],
+  ] as const)('%s', (name, body) => {
+    const result = runFixture(tailFixture(name.replace(/\W+/gu, '-'), body))
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+
+  it.each([
+    ['shuffle', `return pipe(${SRC}, map((x) => x + 1), shuffle).length`],
+    ['sample', `return pipe(${SRC}, map((x) => x + 1), sample(3)).length`],
+  ] as const)('%s keeps its shape through the compiled pipeline', (name, body) => {
+    // Both draw on Math.random, so the two runs cannot be compared by value.
+    const result = runFixture(tailFixture(name.replace(/\W+/gu, '-'), body))
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+
+  it('runs the upstream stage exactly once before a nondeterministic boundary', () => {
+    const result = runFixture(
+      tailFixture(
+        'nondeterministic-order',
+        `const r = pipe([1,2,3], map((x) => { log.push(x); return x }), shuffle); return [r.length, log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('1,2,3')
+  })
+})

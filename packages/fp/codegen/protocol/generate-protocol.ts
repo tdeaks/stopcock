@@ -43,7 +43,7 @@ export const OPTIMIZER_BANK_PROTOCOL_VERSION_V1 = 1
 
 export const RETAINED_COMPILER_OPERATION_CORPUS_V1 = Object.freeze<OperatorEvidenceCorpusJoinV1>({
   corpusId: COMPILER_OPERATION_CORPUS_ID_V1,
-  corpusHash: 'sha256:8413c83ade62d77ea6f7d1551b34620613d5791e28bb83621cf6ce4c614d4c3e',
+  corpusHash: 'sha256:5b67b126ece103aac8d9a77cc03004f60b8748377e4a41ab4b42a9f088ee8dec',
 })
 
 export interface ProtocolCatalogueV1 {
@@ -609,6 +609,10 @@ const LEGACY_RUNTIME_RECORD_ORDER_V1 = [
   'mapWithIndex',
   'filterWithIndex',
   'forEachWithIndex',
+  'shuffle',
+  'sample',
+  'sortedIndex',
+  'sortedLastIndex',
 ] as const
 
 const LEGACY_TAG_LOOKUP_ORDER_V1 = [
@@ -773,6 +777,10 @@ const LEGACY_TAG_LOOKUP_ORDER_V1 = [
   'mapWithIndex',
   'filterWithIndex',
   'forEachWithIndex',
+  'shuffle',
+  'sample',
+  'sortedIndex',
+  'sortedLastIndex',
 ] as const
 
 function recordsInNamedOrderV1(

@@ -164,6 +164,10 @@ export const OP_UNNEST = 174
 export const OP_MAP_WITH_INDEX = 175
 export const OP_FILTER_WITH_INDEX = 176
 export const OP_FOR_EACH_WITH_INDEX = 177
+export const OP_SHUFFLE = 178
+export const OP_SAMPLE = 179
+export const OP_SORTED_INDEX = 180
+export const OP_SORTED_LAST_INDEX = 181
 
 export const OP_NON_FUSEABLE = 0
 
@@ -329,6 +333,10 @@ export const OP_CODES: Record<string, number> = {
   mapWithIndex: OP_MAP_WITH_INDEX,
   filterWithIndex: OP_FILTER_WITH_INDEX,
   forEachWithIndex: OP_FOR_EACH_WITH_INDEX,
+  shuffle: OP_SHUFFLE,
+  sample: OP_SAMPLE,
+  sortedIndex: OP_SORTED_INDEX,
+  sortedLastIndex: OP_SORTED_LAST_INDEX,
 }
 
 export const isFuseableOp = (op: number): boolean =>

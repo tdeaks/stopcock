@@ -48,6 +48,7 @@ const GENERATED_PURE_INITIALIZER_KEYS_V1 = Object.freeze([
   'array.sortAsc',
   'array.sortDesc',
   'array.dropRepeats',
+  'array.shuffle',
   'array.headOrUndefined',
   'array.headNonEmpty',
   'array.lastOrUndefined',

@@ -7,16 +7,16 @@ import {
 export const EXPECTED_COMPILER_OPERATION_CORPUS = Object.freeze({
   id: COMPILER_OPERATION_CORPUS_ID,
   version: COMPILER_OPERATION_CORPUS_VERSION,
-  totalCaseCount: 136,
-  sha256: '8413c83ade62d77ea6f7d1551b34620613d5791e28bb83621cf6ce4c614d4c3e',
-  caseNamesSha256: 'd6492f16e5ef42f4ec6c64a4db5c0ee70f3d69cb8a7d25c92c023ed402ee3c00',
-  targetOpsSha256: '7f90160f8eaff8080ef75a37e95442d7ebce50bfcd7d6edfe65939febdcb3aa6',
-  opcodesSha256: '7a1d935f72e3944b7276f582380e90d72efe66200431eb8ad8780e06ef0bb562',
+  totalCaseCount: 140,
+  sha256: '5b67b126ece103aac8d9a77cc03004f60b8748377e4a41ab4b42a9f088ee8dec',
+  caseNamesSha256: 'a81144aee546d1f9181c8a0da0b11dcd8ed995e9f08bf6be5a8d4c8dbbb7573c',
+  targetOpsSha256: '7637a20edc7c95e2a43b594776a51d23bb58a2a882fa2ecd01408a1b045dfeb6',
+  opcodesSha256: 'a9091f79273580dff1547de73082556b75d067e1903dc833a7eefb88b3da1d62',
   categoryCounts: Object.freeze({
     element: 7,
     stateful: 7,
     terminal: 17,
-    materializer: 105,
+    materializer: 109,
   }),
 })
 
@@ -36,7 +36,7 @@ export const EXPECTED_COMPILER_OPERATION_OPTIMIZER_CANARY_OPS = Object.freeze([
   'length',
 ] as const satisfies readonly CompilerSupportedOpName[])
 
-export const EXPECTED_COMPILER_OPERATION_PERFORMANCE_COUNT = 134
+export const EXPECTED_COMPILER_OPERATION_PERFORMANCE_COUNT = 138
 
 export const isCompilerOperationOptimizerCanary = (targetOp: string): boolean =>
   (EXPECTED_COMPILER_OPERATION_OPTIMIZER_CANARY_OPS as readonly string[]).includes(targetOp)
@@ -135,7 +135,9 @@ export const EXPECTED_COMPILER_OPERATION_CASE_NAMES = Object.freeze([
   'operation/reject',
   'operation/remove',
   'operation/reverse',
+  'operation/sample',
   'operation/scan',
+  'operation/shuffle',
   'operation/slice',
   'operation/slidingWindow',
   'operation/some',
@@ -143,8 +145,10 @@ export const EXPECTED_COMPILER_OPERATION_CASE_NAMES = Object.freeze([
   'operation/sortAsc',
   'operation/sortBy',
   'operation/sortDesc',
+  'operation/sortedIndex',
   'operation/sortedIndexBy',
   'operation/sortedIndexWith',
+  'operation/sortedLastIndex',
   'operation/sortedLastIndexBy',
   'operation/splice',
   'operation/splitAt',

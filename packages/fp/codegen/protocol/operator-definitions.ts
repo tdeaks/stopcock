@@ -3287,6 +3287,82 @@ const LEGACY_ROWS = [
     true,
     'terminal',
   ),
+  op(
+    178,
+    'shuffle',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    [],
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    179,
+    'sample',
+    'array',
+    'array',
+    'array',
+    'materializer',
+    0,
+    ['fn'],
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    180,
+    'sortedIndex',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    ['fn'],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
+  op(
+    181,
+    'sortedLastIndex',
+    'array',
+    'array',
+    'scalar',
+    'materializer',
+    0,
+    ['fn'],
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    'boundary',
+  ),
 ] as const satisfies readonly LegacyRowV1[]
 
 function opcodeConstantFor(row: LegacyRowV1): string {
@@ -3379,6 +3455,14 @@ const RIGHT_TO_LEFT_CALLBACK_NAMES: ReadonlySet<string> = new Set([
   'takeLastWhile',
 ])
 
+/**
+ * Operators whose built-in draws on Math.random, so two calls on the same
+ * input need not agree. Their lowering is still exact -- every tier makes the
+ * same single call to the same operator -- but no tier may cache or elide it
+ * on the assumption that the result is a function of the input.
+ */
+const NONDETERMINISTIC_NAMES: ReadonlySet<string> = new Set(['sample', 'shuffle'])
+
 /** Operators whose callback takes the element's position as a second argument. */
 const INDEXED_CALLBACK_NAMES: ReadonlySet<string> = new Set([
   'filterWithIndex',
@@ -3453,7 +3537,9 @@ function createRecord(row: LegacyRowV1): OperatorDefinitionRecordV1 {
       exact: 'observable-order-and-count',
       pure: row.pureLowering ? 'equivalent-rewrite-allowed' : 'unsupported',
       effects: callback.arity > 0 ? 'callback-effects-observable' : 'built-in-effects-only',
-      determinism: 'deterministic-except-user-code',
+      determinism: NONDETERMINISTIC_NAMES.has(row.name)
+        ? 'nondeterministic-built-in'
+        : 'deterministic-except-user-code',
       sourceMutationVisibility:
         row.inputDomain === 'array'
           ? 'snapshot-array-length-then-dense-index-read'

@@ -51,7 +51,7 @@ export interface EvaluationContractV1 {
   readonly exact: 'observable-order-and-count'
   readonly pure: 'equivalent-rewrite-allowed' | 'unsupported'
   readonly effects: 'callback-effects-observable' | 'built-in-effects-only'
-  readonly determinism: 'deterministic-except-user-code'
+  readonly determinism: 'deterministic-except-user-code' | 'nondeterministic-built-in'
   readonly sourceMutationVisibility: 'snapshot-array-length-then-dense-index-read' | 'scalar-value'
   readonly thrownErrorIdentity: 'preserved'
   readonly thrownErrorTiming: 'original-evaluation-point'
@@ -549,7 +549,11 @@ function assertEvaluation(value: unknown): asserts value is EvaluationContractV1
     ['callback-effects-observable', 'built-in-effects-only'],
     'evaluation.effects',
   )
-  assertEnum(value.determinism, ['deterministic-except-user-code'], 'evaluation.determinism')
+  assertEnum(
+    value.determinism,
+    ['deterministic-except-user-code', 'nondeterministic-built-in'],
+    'evaluation.determinism',
+  )
   assertEnum(
     value.sourceMutationVisibility,
     ['snapshot-array-length-then-dense-index-read', 'scalar-value'],

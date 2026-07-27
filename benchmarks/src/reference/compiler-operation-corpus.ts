@@ -303,7 +303,13 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
       "A.remove(3, 2)",
     ]),
     operationCase('reverse', 'materializer', ['A.reverse']),
+    operationCase('sample', 'materializer', [
+      "A.sample(16)",
+    ]),
     operationCase('scan', 'stateful', ['A.scan((acc, x) => acc + x, 7)']),
+    operationCase('shuffle', 'materializer', [
+      "A.shuffle",
+    ]),
     operationCase('slice', 'materializer', [
       "A.slice(7, 519)",
     ]),
@@ -317,11 +323,19 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     operationCase('sortAsc', 'materializer', ['A.sortAsc'], 2_048),
     operationCase('sortBy', 'materializer', ['A.sortBy((a, b) => a - b)'], 2_048),
     operationCase('sortDesc', 'materializer', ['A.sortDesc'], 2_048),
+    operationCase('sortedIndex', 'materializer', [
+      "A.sortAsc",
+      "A.sortedIndex(7)",
+    ]),
     operationCase('sortedIndexBy', 'materializer', [
       "A.sortedIndexBy(7, (x) => x)",
     ]),
     operationCase('sortedIndexWith', 'materializer', [
       "A.sortedIndexWith((x) => x < 7)",
+    ]),
+    operationCase('sortedLastIndex', 'materializer', [
+      "A.sortAsc",
+      "A.sortedLastIndex(7)",
     ]),
     operationCase('sortedLastIndexBy', 'materializer', [
       "A.sortedLastIndexBy(7, (x) => x)",

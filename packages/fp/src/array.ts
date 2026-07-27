@@ -1770,16 +1770,19 @@ export const dropRepeats: <A>(arr: readonly A[]) => A[] = /* @__PURE__ */ (() =>
   return registerTrustedOperator(_f, 23)
 })()
 
-export const shuffle: <A>(arr: readonly A[]) => A[] = (arr: any) => {
-  const copy = arr.slice()
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    const tmp = copy[i]
-    copy[i] = copy[j]
-    copy[j] = tmp
-  }
-  return copy
-}
+export const shuffle: <A>(arr: readonly A[]) => A[] = /* @__PURE__ */ (() => {
+  const _f: any = function shuffle(arr: any) { const copy = arr.slice()
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const tmp = copy[i]
+      copy[i] = copy[j]
+      copy[j] = tmp
+    }
+    return copy }
+  _f._op = 178
+  return registerTrustedOperator(_f, 178)
+})()
+
 export const onlyOrUndefined: <A>(arr: readonly A[]) => A | undefined = /* @__PURE__ */ (() => {
   const _f: any = function onlyOrUndefined(arr: any) { return (arr.length === 1 ? arr[0] : undefined) }
   _f._op = 170
@@ -3232,7 +3235,9 @@ export const sample: {
       const arr = data, n = _a0
       return sampleRaw(arr, n)
     }
-    return _dl
+    _dl._op = 179
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 179, _a0)
   }
   const arr = _arg0, n = _arg1
   return sampleRaw(arr, n)
@@ -3501,33 +3506,71 @@ export const arrayEndsWith: {
 } as any
 
 
-export const sortedIndex: (arr: readonly number[], value: number) => number = (
-  arr: any,
-  value: any,
-) => {
-  let lo = 0,
-    hi = arr.length
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1
-    if (arr[mid] < value) lo = mid + 1
-    else hi = mid
+export const sortedIndex: {
+  (arr: readonly number[], value: number): number
+  (value: number): (arr: readonly number[]) => number
+} = function sortedIndex(_arg0?: any, _arg1?: any) {
+  if (arguments.length < 2) {
+    const _a0 = _arg0
+    const _dl: any = function(data: any) {
+      const arr = data, value = _a0
+      let lo = 0,
+      hi = arr.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (arr[mid] < value) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+    }
+    _dl._op = 180
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 180, _a0)
   }
-  return lo
-}
+  const arr = _arg0, value = _arg1
+  let lo = 0,
+      hi = arr.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (arr[mid] < value) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+} as any
 
-export const sortedLastIndex: (arr: readonly number[], value: number) => number = (
-  arr: any,
-  value: any,
-) => {
-  let lo = 0,
-    hi = arr.length
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1
-    if (arr[mid] <= value) lo = mid + 1
-    else hi = mid
+
+export const sortedLastIndex: {
+  (arr: readonly number[], value: number): number
+  (value: number): (arr: readonly number[]) => number
+} = function sortedLastIndex(_arg0?: any, _arg1?: any) {
+  if (arguments.length < 2) {
+    const _a0 = _arg0
+    const _dl: any = function(data: any) {
+      const arr = data, value = _a0
+      let lo = 0,
+      hi = arr.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (arr[mid] <= value) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+    }
+    _dl._op = 181
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 181, _a0)
   }
-  return lo
-}
+  const arr = _arg0, value = _arg1
+  let lo = 0,
+      hi = arr.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (arr[mid] <= value) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+} as any
+
 
 export const pair: <A, B>(a: A, b: B) => [A, B] = (a: any, b: any) => [a, b]
 

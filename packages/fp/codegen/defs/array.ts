@@ -1087,16 +1087,20 @@ export const dropRepeats: <A>(arr: readonly A[]) => A[] = dual(
   },
   { op: 'dropRepeats' },
 )
-export const shuffle: <A>(arr: readonly A[]) => A[] = (arr: any) => {
-  const copy = arr.slice()
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    const tmp = copy[i]
-    copy[i] = copy[j]
-    copy[j] = tmp
-  }
-  return copy
-}
+export const shuffle: <A>(arr: readonly A[]) => A[] = dual(
+  1,
+  (arr: any) => {
+    const copy = arr.slice()
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const tmp = copy[i]
+      copy[i] = copy[j]
+      copy[j] = tmp
+    }
+    return copy
+  },
+  { op: 'shuffle' },
+)
 export const onlyOrUndefined: <A>(arr: readonly A[]) => A | undefined = dual(
   1,
   (arr: any) => (arr.length === 1 ? arr[0] : undefined),
@@ -1946,7 +1950,9 @@ export const sample: {
   (n: number): <A>(arr: readonly A[]) => A[]
 } = dual(2, (arr: any, n: any) => {
   return sampleRaw(arr, n)
-})
+},
+  { op: 'sample' },
+)
 
 export const hasAtLeast: {
   <A>(arr: readonly A[], n: number): boolean
@@ -2072,33 +2078,41 @@ export const arrayEndsWith: {
   { op: 'arrayEndsWith' },
 )
 
-export const sortedIndex: (arr: readonly number[], value: number) => number = (
-  arr: any,
-  value: any,
-) => {
-  let lo = 0,
-    hi = arr.length
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1
-    if (arr[mid] < value) lo = mid + 1
-    else hi = mid
-  }
-  return lo
-}
+export const sortedIndex: {
+  (arr: readonly number[], value: number): number
+  (value: number): (arr: readonly number[]) => number
+} = dual(
+  2,
+  (arr: any, value: any) => {
+    let lo = 0,
+      hi = arr.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (arr[mid] < value) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+  },
+  { op: 'sortedIndex' },
+)
 
-export const sortedLastIndex: (arr: readonly number[], value: number) => number = (
-  arr: any,
-  value: any,
-) => {
-  let lo = 0,
-    hi = arr.length
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1
-    if (arr[mid] <= value) lo = mid + 1
-    else hi = mid
-  }
-  return lo
-}
+export const sortedLastIndex: {
+  (arr: readonly number[], value: number): number
+  (value: number): (arr: readonly number[]) => number
+} = dual(
+  2,
+  (arr: any, value: any) => {
+    let lo = 0,
+      hi = arr.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (arr[mid] <= value) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+  },
+  { op: 'sortedLastIndex' },
+)
 
 export const pair: <A, B>(a: A, b: B) => [A, B] = (a: any, b: any) => [a, b]
 
