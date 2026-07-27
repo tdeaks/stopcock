@@ -9,6 +9,11 @@ const pack = libraryPack({
   webpack: 'src/webpack.ts',
   rspack: 'src/rspack.ts',
 })
+const packPlugins = Array.isArray(pack.plugins)
+  ? pack.plugins
+  : pack.plugins === undefined
+    ? []
+    : [pack.plugins]
 
 // The `stopcock` bin is a real entry rather than a re-export facade: it has to
 // keep its shebang and must not drag the transform pipeline into its chunk.
@@ -27,8 +32,9 @@ export default defineConfig({
       ...(pack.entry as Record<string, string>),
       cli: 'src/cli.ts',
       'receipt-schema.generated': 'src/receipt-schema.generated.ts',
+      'source-map-seed-loader': 'src/source-map-seed-loader.js',
     },
-    plugins: [...(pack.plugins ?? []), shebang],
+    plugins: [...packPlugins, shebang],
   },
   run: {
     tasks: {

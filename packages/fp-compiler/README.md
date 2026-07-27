@@ -34,6 +34,9 @@ target several hosts: it exposes `.vite(...)`, `.rollup(...)`,
 `.esbuild(...)`, `.webpack(...)`, and `.rspack(...)`. The release suite builds
 and executes a real fixture through all five adapters, then repeats that matrix
 from the SHA-256-addressed extraction of the packed compiler tarball.
+The Webpack and Rspack adapters preserve the compiler's high-resolution source
+map even when no earlier loader supplied a map, so callback and generated
+pipeline failures retain their original columns.
 
 For release builds, `diagnostics: 'summary'` prints fused and skipped pipeline
 counts plus the static coverage percentage. Use `diagnostics: 'error'` to make

@@ -3,6 +3,7 @@
 // that the pipe() facade call is gone and generated code, not a retained
 // runtime composition engine, executes the transformed site.
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { SourceMap } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -37,6 +38,14 @@ export const result = pipe(
 `.trimStart()
 
 const EXPECTED = [20, 40]
+const SOURCE_MAP_FIXTURE = `import { pipe } from '@stopcock/fp'
+import { map, filter } from '@stopcock/fp/array'
+const boom = (value) => {
+  if (value === 2) throw new Error('source map callback boom')
+  return value * 2
+}
+export const result = pipe([1, 2, 3], map(boom), filter((value) => value > 2))
+`
 
 const dirs: string[] = []
 
@@ -51,6 +60,68 @@ function assertCompiledExecution(bundleText: string, host: string) {
     /[^.\w]pipe\(/,
   )
   expect(bundleText, `${host} bundle should contain a generated loop`).toMatch(/for\s*\(/)
+}
+
+async function assertWebpackLikeCallbackSourceMap(
+  host: 'webpack' | 'rspack',
+): Promise<void> {
+  const dir = await scratchDir(`${host}-source-map`)
+  const entry = join(dir, 'source-map-callback.mjs')
+  const output = join(dir, 'out.mjs')
+  await writeFile(entry, SOURCE_MAP_FIXTURE)
+  const library =
+    host === 'webpack' ? await import('webpack') : await import('@rspack/core')
+  const compile = host === 'webpack' ? library.default : library.rspack
+  const plugin = host === 'webpack' ? stopcockWebpack() : stopcockRspack()
+
+  await new Promise<void>((resolve, reject) => {
+    const compiler = compile({
+      mode: 'production',
+      context: dir,
+      entry,
+      target: 'node',
+      devtool: 'source-map',
+      optimization: { minimize: false },
+      experiments: { outputModule: true },
+      output: {
+        path: dir,
+        filename: 'out.mjs',
+        module: true,
+        library: { type: 'module' },
+      },
+      resolve: {
+        alias: {
+          '@stopcock/fp$': FP_DIST_ENTRY,
+          '@stopcock/fp/array$': FP_ARRAY_DIST_ENTRY,
+        },
+      },
+      plugins: [plugin],
+    })
+    compiler.run((error, stats) => {
+      compiler.close((closeError) => {
+        if (error) return reject(error)
+        if (closeError) return reject(closeError)
+        if (stats?.hasErrors()) {
+          return reject(new Error(stats.toString({ errorDetails: true })))
+        }
+        resolve()
+      })
+    })
+  })
+
+  const code = await readFile(output, 'utf8')
+  const map = JSON.parse(await readFile(`${output}.map`, 'utf8'))
+  const lines = code.split('\n')
+  const generatedLine = lines.findIndex((line) => line.includes('throw new Error'))
+  const generatedColumn = lines[generatedLine]?.indexOf('throw new Error') ?? -1
+  expect(generatedLine).toBeGreaterThanOrEqual(0)
+  expect(generatedColumn).toBeGreaterThanOrEqual(0)
+  const original = new SourceMap(map).findEntry(generatedLine, generatedColumn)
+  expect(original).toMatchObject({
+    originalLine: 3,
+    originalColumn: 19,
+  })
+  expect(original.originalSource).toMatch(/source-map-callback\.mjs$/u)
 }
 
 /**
@@ -309,6 +380,11 @@ describe('real-host smoke tests', () => {
     const mod = require(outFile)
     expect(mod.result).toEqual(EXPECTED)
   })
+
+  it.each(['webpack', 'rspack'] as const)(
+    'preserves exact callback source-map columns with %s',
+    assertWebpackLikeCallbackSourceMap,
+  )
 
   it('builds and fuses with Vite (vite-plus core)', async () => {
     const dir = await scratchDir('vite')

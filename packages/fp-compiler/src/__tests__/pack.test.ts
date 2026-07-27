@@ -491,6 +491,7 @@ try {
       /(?:from\s*|import\s*\()\s*['"]@stopcock\/fp(?:\/[^'"]*)?['"]/,
     )
     await access(receiptSchemaRuntime)
+    await access(join(installedRoot, 'dist/source-map-seed-loader.js'))
     const receiptSchema = await import(pathToFileURL(receiptSchemaRuntime).href)
     expect(typeof receiptSchema.validateReceiptV1).toBe('function')
     expect(receiptSchema.RECEIPT_SCHEMA_V1_HASH).toMatch(/^sha256:[a-f0-9]{64}$/u)

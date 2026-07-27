@@ -60,3 +60,7 @@ of committing partial build evidence. Receipt callbacks and files resume from
 an empty buffer on the next successful build; prior receipt files are
 invalidated when a rebuild begins, and successful documents publish by atomic
 rename.
+
+Webpack and Rspack adapters now preserve the compiler's high-resolution source
+map when no earlier loader supplied one, retaining exact callback and generated
+pipeline columns in final bundles.

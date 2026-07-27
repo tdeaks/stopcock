@@ -6,6 +6,7 @@ import { buildCompilerReceipt, serializeReceipts } from './receipt-emit'
 import type { CompilerReceiptV1 } from './receipt-schema.generated'
 import { transformStopcockPipelines } from './transform'
 import type { FilterPattern, StopcockCompilerOptions } from './types'
+import { preserveWebpackLikeSourceMaps } from './webpack-like-source-maps'
 
 // JavaScript and TypeScript module variants are ordinary compiler inputs.
 // Keep JSX/TSX support while avoiding invented extensions such as `.mtsx`.
@@ -49,7 +50,7 @@ function filterIdentity(pattern: FilterPattern): FilterIdentity {
   }
 }
 
-export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | undefined = {}) => {
+const unplugin = createUnplugin((options: StopcockCompilerOptions | undefined = {}) => {
   const diagnostics = options.diagnostics ?? false
   const semantics = options.assumePure === true ? 'pure' : 'exact'
   const receiptOptions = options.receipts
@@ -226,5 +227,11 @@ export const stopcockFp = createUnplugin((options: StopcockCompilerOptions | und
     },
   }
 })
+
+export const stopcockFp: typeof unplugin = {
+  ...unplugin,
+  webpack: preserveWebpackLikeSourceMaps(unplugin.webpack, 'webpack'),
+  rspack: preserveWebpackLikeSourceMaps(unplugin.rspack, 'rspack'),
+}
 
 export default stopcockFp
