@@ -365,20 +365,20 @@ must beat the runtime rows; differential corpus green. Expected delta:
 
 Objective: iterator-protocol overhead disappears from compiled chains.
 
-- [ ] Terminal present: `pipe(src, I.map(f), I.filter(g), I.toArray)`
+- [x] Terminal present: `pipe(src, I.map(f), I.filter(g), I.toArray)`
       emits one `for (const _v of _src)` loop with inlined bodies and
       the existing take/early-exit bookkeeping. No `.next()` result
       objects beyond the source's own.
-- [ ] No terminal: emit a single generator function containing the fused
+- [x] No terminal: emit a single generator function containing the fused
       body (`function* (_src) { for (const _v of _src) { ...; yield _v } }`).
       One generator replaces N chained ones.
-- [ ] Op set (~20): `map`, `filter`, `flatMap`, `take`, `drop`,
+- [x] Op set (~20): `map`, `filter`, `flatMap`, `take`, `drop`,
       `takeWhile`, `dropWhile`, `scan`, `enumerate`, `chunk`, plus
       terminals `toArray`, `reduce`, `forEach`, `find`, `some`, `every`,
       `count`, `first`. Excluded initially: `zip`, `interleave`, and
       anything multi-source (bails with reason `multi-source`); revisit
       only on demand.
-- [ ] Sources: anything iterable. When the source is statically known to
+- [x] Sources: anything iterable. When the source is statically known to
       be an Array (literal or from a compiled array segment), emit the
       indexed array loop instead. That fold makes Phase 6's kernel
       deletion safe for bundler users.
@@ -503,6 +503,17 @@ Phase 0 landed at 1b4f1cc (0.1), e33c55a (0.2+0.4), 305c182 (0.3+0.5+0.6).
 Phase 1 landed at 287409e (1.1+1.2), 56917e3 (1.3), 784cda2 (1.4).
 Phase 2 landed at 094b029.
 Phase 3 landed at 50be26a.
+Phase 4 landed at a085506.
+Phase 4 notes: 20 iterable ops. toArrayInto dropped: it is a bare type cast
+with no data-last form, pipe(src, I.toArrayInto(t)) is broken in uncompiled
+code too (runtime bug, tracked separately). No-terminal chains emit one
+re-iterable generator wrapper matching make(factory); one-shot generator
+sources empty on second pass, corpus-pinned. Known bounded gap: chunk
+followed by take can over-read one raw source element (one fused loop vs
+chained lazy generators), value-identical output, documented in code and
+corpus. iter-compiled-perf-gate added under parity:iter: geomean 1.79x over
+the uncompiled Iter runtime, dropWhile chain 4.23x. Suite 2990 tests
+green.
 Phase 3 notes: 36 compiler-only ops (record 9, map 13, set 11, object 3).
 Record scaffold inlines the Reflect.ownKeys + propertyIsEnumerable snapshot;
 SYMBOL KEYS ARE VISITED (the corpus line above saying excluded was wrong
