@@ -7,7 +7,7 @@ import { none, some } from '@stopcock/fp/option'
 import * as A from '@stopcock/fp/array'
 import * as S from '@stopcock/fp/string'
 import * as M from '@stopcock/fp/math'
-import { getOptimizerStats, resetOptimizerStats } from '../compile'
+import { compile, getOptimizerStats, resetOptimizerStats } from '../compile'
 import { explain } from '../explain'
 
 describe('pipe fusion', () => {
@@ -1398,5 +1398,19 @@ describe('pipe fusion', () => {
       )
       expect(result).toEqual([10, 30])
     })
+  })
+})
+
+describe('materialising boundaries the optimizer has no kernel for', () => {
+  // Every operator tagged after the original wave lowers to a whole-array call
+  // on the operator itself. Without that path these throw `unsupported op N`
+  // rather than falling back, which no earlier shape in this file would catch.
+  it.each([
+    ['array boundary', () => compile(A.map((x: number) => x + 1), A.chunk(2)), [1, 2, 3, 4], [[2, 3], [4, 5]]],
+    ['scalar boundary', () => compile(A.map((x: number) => x + 1), A.sumBy((x: number) => x)), [1, 2, 3], 9],
+    ['bare accessor', () => compile(A.map((x: number) => x + 1), A.lastOrUndefined), [1, 2, 3], 4],
+    ['three bindings', () => compile(A.map((x: number) => x), A.splice(1, 1, [9])), [1, 2, 3], [1, 9, 3]],
+  ] as const)('%s', (_label, make, input, expected) => {
+    expect((make() as (v: unknown) => unknown)(input)).toEqual(expected)
   })
 })

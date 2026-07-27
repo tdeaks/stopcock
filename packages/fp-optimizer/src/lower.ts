@@ -170,6 +170,10 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
       return data.filter((x) => !exclude.has(x))
     }
     default:
+      // A materialising boundary with no kernel here runs the operator the
+      // plan authenticated at build time -- the same whole-array call every
+      // other tier makes for it.
+      if (binding.boundaryFn !== undefined) return binding.boundaryFn(data)
       return unsupportedOp(op)
   }
 }

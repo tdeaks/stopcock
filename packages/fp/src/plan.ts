@@ -27,6 +27,14 @@ export interface StepBinding {
   readonly a2?: unknown
   /** Present only for opaque (untagged) steps: the whole-domain function itself. */
   readonly opaqueFn?: (value: unknown) => unknown
+  /**
+   * Present for materialising boundaries: the authenticated operator itself.
+   * Only ever set from a step that already passed `trustedOperatorEntry`, and
+   * only for the whole-array call every tier makes anyway. An executor with no
+   * kernel of its own for the opcode runs this instead of keeping a second
+   * copy of the operator that could drift from the real one.
+   */
+  readonly boundaryFn?: (value: unknown) => unknown
 }
 
 export interface BoundPlan {
@@ -159,6 +167,12 @@ export function buildPlan(steps: readonly unknown[]): BoundPlan {
     if (entry === undefined || entry.op <= 0) return opaque()
     const opMeta = getOpMeta(entry.op as OpCode)
     if (opMeta === undefined) return opaque()
+    if (opMeta.cardinality === 'materializer') {
+      return {
+        op: opMeta.op,
+        binding: { ...extractBinding(entry), boundaryFn: step as (value: unknown) => unknown },
+      }
+    }
     return { op: opMeta.op, binding: extractBinding(entry) }
   })
   return segmentBoundSteps(entries)

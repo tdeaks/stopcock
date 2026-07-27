@@ -112,6 +112,12 @@ export const buildCompactPlan = (steps: readonly unknown[]): BoundPlan =>
           binding: { opaqueFn: step as (value: unknown) => unknown },
         }
       }
+      if (compactCardinality(entry.op) === CARD_MATERIALIZER) {
+        return {
+          op: entry.op,
+          binding: { ...bindingOf(entry), boundaryFn: step as (value: unknown) => unknown },
+        }
+      }
       return { op: entry.op, binding: bindingOf(entry) }
     }),
   )
