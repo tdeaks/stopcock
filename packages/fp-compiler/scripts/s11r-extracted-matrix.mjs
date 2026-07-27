@@ -630,13 +630,30 @@ const extractedTopology = ({ manifest, manifestDirectory, records, scratch }) =>
     [
       '--input-type=module',
       '-e',
-      "import('@stopcock/fp-compiler').then((module) => { if (typeof module.stopcockFp !== 'function') process.exit(3); process.stdout.write('ok') })",
+      [
+        "const module = await import('@stopcock/fp-compiler')",
+        'const plugin = module.stopcockFp',
+        "for (const adapter of ['raw', 'vite', 'rollup', 'webpack', 'rspack', 'esbuild']) {",
+        "  if (typeof plugin?.[adapter] !== 'function') throw new Error(`missing stopcockFp.${adapter}`)",
+        '}',
+        "process.stdout.write('ok')",
+      ].join('\n'),
     ],
     { cwd: cliConsumer, encoding: 'utf8', env: cleanNodeEnvironment() },
   )
+  const dependencySmokeDiagnostic = [
+    dependencySmoke.error?.message,
+    dependencySmoke.stderr,
+    dependencySmoke.stdout,
+    dependencySmoke.signal ? `signal ${dependencySmoke.signal}` : undefined,
+    `status ${dependencySmoke.status ?? 'none'}`,
+  ]
+    .filter((value) => typeof value === 'string' && value.trim() !== '')
+    .map((value) => value.trim())
+    .join(' | ')
   assert(
     dependencySmoke.status === 0 && dependencySmoke.stdout === 'ok',
-    `extracted compiler dependency closure cannot load without parent/NODE_PATH fallback: ${(dependencySmoke.stderr || dependencySmoke.stdout).trim()}`,
+    `extracted compiler dependency closure cannot load without parent/NODE_PATH fallback: ${dependencySmokeDiagnostic}`,
   )
   const qualificationTools = [
     ...['vite', 'rollup', 'esbuild', 'webpack', '@rspack/core'].map((name) => toolIdentity(name)),
