@@ -1271,12 +1271,23 @@ const executeEsm = async (file, expected, label) => {
   const loaded = await import(`${pathToFileURL(file).href}?s11r=${encodeURIComponent(label)}`)
   assert(JSON.stringify(loaded.result) === JSON.stringify(expected), `${label} oracle failed`)
 }
-const executeCjs = (file, expected, label) => {
-  const require = createRequire(file)
-  delete require.cache[file]
-  const loaded = require(file)
-  assert(JSON.stringify(loaded.result) === JSON.stringify(expected), `${label} oracle failed`)
-}
+
+export const webpackQualificationOutput = (path) => ({
+  experiments: { outputModule: true },
+  output: {
+    path,
+    filename: 'out.mjs',
+    module: true,
+    library: { type: 'module' },
+    environment: {
+      arrowFunction: true,
+      const: true,
+      destructuring: true,
+      dynamicImport: true,
+      module: true,
+    },
+  },
+})
 
 const adapter = (packages, host) =>
   pathToFileURL(join(packages.get('@stopcock/fp-compiler'), 'dist', `${host}.js`)).href
@@ -1332,7 +1343,7 @@ const runRollup = async ({
   const map = sanitizeSourceMap(rawMap, topology, output, 'rollup source map')
   const code = writeExternalSourceMapOutput(output, chunk.code, map)
   if (execute) await executeEsm(output, expected, 'rollup')
-  return { code, map, moduleGraph: canonicalGraph(topology, [...audited]) }
+  return { code, map, moduleGraph: canonicalGraph(topology, [...audited]), outputPath: output }
 }
 const runEsbuild = async ({
   topology,
@@ -1374,6 +1385,7 @@ const runEsbuild = async ({
       topology,
       emittedEsbuildModuleIds(result.metafile, output, 'esbuild output'),
     ),
+    outputPath: output,
   }
 }
 
@@ -1418,7 +1430,7 @@ const runWebpackLike = async ({
   const compile = host === 'webpack' ? library.default : library.rspack
   const { stopcockFp } = await import(adapter(topology.packages, host))
   mkdirSync(out, { recursive: true })
-  const output = join(out, 'out.cjs')
+  const output = join(out, 'out.mjs')
   const compilation = await compileWebpackLike(
     compile,
     {
@@ -1428,7 +1440,7 @@ const runWebpackLike = async ({
       target: 'node',
       devtool: 'source-map',
       optimization: { minimize: false },
-      output: { path: out, filename: 'out.cjs', library: { type: 'commonjs2' } },
+      ...webpackQualificationOutput(out),
       plugins: [stopcockFp(pluginOptions(topology, receipts, strict, compilerOptions))],
     },
     `${host} output`,
@@ -1441,11 +1453,12 @@ const runWebpackLike = async ({
     `${host} source map`,
   )
   const code = writeExternalSourceMapOutput(output, rawCode, map)
-  if (execute) executeCjs(output, expected, host)
+  if (execute) await executeEsm(output, expected, host)
   return {
     code,
     map,
     moduleGraph: canonicalGraph(topology, compilation.moduleIds),
+    outputPath: output,
   }
 }
 const runVite = async ({
@@ -1487,7 +1500,7 @@ const runVite = async ({
   )
   const code = writeExternalSourceMapOutput(output, rawCode, map)
   if (execute) await executeEsm(output, expected, 'vite')
-  return { code, map, moduleGraph: canonicalGraph(topology, [...audited]) }
+  return { code, map, moduleGraph: canonicalGraph(topology, [...audited]), outputPath: output }
 }
 const runHost = async ({ host, ...input }) => {
   if (host === 'rollup') return runRollup(input)
@@ -1793,12 +1806,11 @@ const runSourceMapMatrix = async (topology, root, validateReceiptV1, compiler) =
       const receiptPath = join(rowRoot, 'receipts', 'stopcock-receipts.json')
       const receipt = receiptIdentity(receiptPath, validateReceiptV1)
       const receiptBinding = recomputeReceiptArtifacts({ compiler, entry, receiptPath, topology })
-      const outputPath = join(out, host === 'webpack' || host === 'rspack' ? 'out.cjs' : 'out.mjs')
       rows.push({
         host,
         case: testCase.id,
         positions: assertExactSourceMap(output, topology, testCase, label),
-        runtimeThrow: assertRuntimeMappedThrow(outputPath, topology, testCase, label),
+        runtimeThrow: assertRuntimeMappedThrow(output.outputPath, topology, testCase, label),
         sourceMap: hash(Buffer.from(normalizeSourceMap(output.map, topology, label))),
         receipt,
         receiptBinding,
@@ -1851,20 +1863,6 @@ const assertObservableEsm = async (output, label) => {
     `${label} construction factories were not evaluated exactly once in source order or an operator executed`,
   )
 }
-const assertObservableCjs = (output, label) => {
-  const require = createRequire(output)
-  delete require.cache[output]
-  const loaded = require(output)
-  assert(
-    JSON.stringify(loaded.result) === JSON.stringify([6, 12]),
-    `${label} observable fixture result failed`,
-  )
-  assert(
-    JSON.stringify(loaded.constructionTrace) ===
-      JSON.stringify(['construct:filter', 'construct:map', 'construct:take']),
-    `${label} construction factories were not evaluated exactly once in source order or an operator executed`,
-  )
-}
 const runObservableConstructionMatrix = async (topology, root, validateReceiptV1, compiler) => {
   const entry = join(topology.consumer, 'src', 'observable-construction.mjs')
   writeFileSync(entry, OBSERVABLE_CONSTRUCTION_FIXTURE)
@@ -1892,14 +1890,7 @@ const runObservableConstructionMatrix = async (topology, root, validateReceiptV1
       output.moduleGraph,
       `${host}/observable-construction`,
     )
-    const outputPath = join(
-      rowRoot,
-      'out',
-      host === 'webpack' || host === 'rspack' ? 'out.cjs' : 'out.mjs',
-    )
-    if (host === 'webpack' || host === 'rspack')
-      assertObservableCjs(outputPath, `${host}/observable-construction`)
-    else await assertObservableEsm(outputPath, `${host}/observable-construction`)
+    await assertObservableEsm(output.outputPath, `${host}/observable-construction`)
     const receiptPath = join(receipts, 'stopcock-receipts.json')
     const receipt = receiptIdentity(receiptPath, validateReceiptV1)
     assert(receipt.count === 1, `${host}/observable-construction expected one transformed receipt`)
@@ -2519,13 +2510,13 @@ const runPlainWebpack = async ({ topology, entry, out, helper }) => {
       entry,
       target: 'node',
       optimization: { minimize: false },
-      output: { path: out, filename: 'out.cjs', library: { type: 'commonjs2' } },
+      ...webpackQualificationOutput(out),
     },
     'webpack helper output',
   )
-  const output = join(out, 'out.cjs')
+  const output = join(out, 'out.mjs')
   const code = readFileSync(output, 'utf8')
-  executeCjs(output, helper.expected, 'webpack/helpers.two-unrelated')
+  await executeEsm(output, helper.expected, 'webpack/helpers.two-unrelated')
   return { code, moduleGraph: canonicalGraph(topology, compilation.moduleIds) }
 }
 

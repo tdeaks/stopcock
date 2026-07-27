@@ -12,6 +12,26 @@ const sha = (value: string) => `sha256:${createHash('sha256').update(value).dige
 const stable = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`
 
 describe('S11R extracted matrix manifest boundary', () => {
+  it('uses the canonical ESM size denominator for Webpack-family qualification', async () => {
+    const { webpackQualificationOutput } = await import(script.href)
+    expect(webpackQualificationOutput('/qualification/out')).toEqual({
+      experiments: { outputModule: true },
+      output: {
+        path: '/qualification/out',
+        filename: 'out.mjs',
+        module: true,
+        library: { type: 'module' },
+        environment: {
+          arrowFunction: true,
+          const: true,
+          destructuring: true,
+          dynamicImport: true,
+          module: true,
+        },
+      },
+    })
+  })
+
   it('rejects a manifest whose claimed content identity is forgeable', async () => {
     const { validateManifest } = await import(script.href)
     const scratch = await mkdtemp(join(tmpdir(), 'stopcock-s11r-manifest-'))

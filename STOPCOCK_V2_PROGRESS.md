@@ -9,13 +9,13 @@ Execution authorization: AUTHORIZED
 External mutation authorization: NONE
 External authorized action: NONE
 External authorized artifact: NONE
-Programme status: IN_PROGRESS
+Programme status: CHECKPOINT_PENDING
 Base release ref: 624b25bc0cd226178bd46294d60b1a337fa11aee
 Execution branch: codex/stopcock-v2
 Execution worktree: /Users/tomdeakin/IdeaProjects/lay-some-pipe-stopcock-v2
 Current canonical stage: S11R
-Current slice: PACKED_COHORT_AND_EXTRACTED_MATRIX
-Last verified commit: 52e65960fb202fad8d8172f3859842d6de1f5f86
+Current slice: CHECKPOINT_PENDING
+Last verified commit: CHECKPOINT_PENDING
 Last controller run: 2026-07-26
 
 Do not change `Execution authorization` to `AUTHORIZED` merely because the
@@ -70,7 +70,7 @@ Allowed status values are `NOT_STARTED`, `IN_PROGRESS`, `CHECKPOINT_PENDING`,
 | S10   | GATE_PASSED        | Generated 233-descriptor runner bank at `a1286fd`, every descriptor executed against its runner; static `explain` cuts the debug facade's compact increment from 8,905 B to 996 B; selection observable and truthful; 27/27 disposition matrix shipped; hand-loop parity at 1.00x-1.07x. Pareto/evidence sidecar deferred, hard-coded critical runners deliberately retained                                              |
 | S10X  | GATE_PASSED        | External-package branch taken on the user's decision at `e75c9be`. `@stopcock/fp-optimizer` created, cohort joined at 21 public packages; FP's tarball carries 0 B of optimizer, measured from the packed artifact. OptimizerAbiV1 keeps provenance inside FP and negotiates identity on hashes; FP has no dependency or peer on the optimizer                                                                            |
 | S10J  | GATE_PASSED        | `externalization-required`, decided from the packed artifact rather than an estimate: optimizer 214,155 B, 2.09x the 100 KiB threshold, dominated by the 192,752 B chunk holding the 233 generated templates                                                                                                                                                                                                              |
-| S11R  | IN_PROGRESS | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. The independently audited compact-pure/compiler source-and-test slice now passes with sealed digest `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`; checkpoint application is pending. The optimizer ABI, compiler artifact-context receipts, and complete extracted-host/layout qualification harness are source-valid; this new source checkpoint is pending before a fresh cohort is packed. The first real cohort replay exposed and now has a focused repair for export-hidden transitive package manifests; checkpoint application is pending before repacking. The second replay copied the isolated closure and exposed a false plugin-shape smoke assertion; its focused harness repair is checkpoint-pending before repacking. The third replay exposed that the generated compiler receipt validator shipped only a declaration; a private packed runtime-entry repair is checkpoint-pending. The fourth replay reached real host graph auditing and exposed a macOS physical-path alias mismatch; its fail-closed canonicalization repair is checkpoint-pending. The fifth replay proved the `.mjs` consumer was outside the compiler default filter and that pre-tree-shake observation was not emitted-retention evidence; both repairs are checkpoint-pending. The sixth replay reached the real Vite source-map gate and exposed temporary extracted paths in generated maps; fail-closed canonical source identities, physical containment, and exact code-to-map linkage are checkpoint-pending. The seventh replay cleared source-map identity and exposed lexical receipt-root comparison across macOS physical aliases; strict regular-file containment and external-locator hardening are checkpoint-pending. |
+| S11R  | CHECKPOINT_PENDING | Corrective prerequisite stage authorized on 2026-07-26: repair S2/S7 compiler integrity, bind the complete S10X extracted-artifact matrix, and obtain fresh critical-boundary audits before S11. Source/test slice: static Plan IR, import-aware exact/pure lowering, deterministic whole-core receipts, hashed external locators, Rspack, five-host composition-engine gates, and packed compiler smoke validation pass. FP packed-package-contract repair also passes independently; compact `compilePure`, the extracted matrix, and fresh audits remain. The independently audited compact-pure/compiler source-and-test slice now passes with sealed digest `sha256:cfc4a407607e9b32fca93a9b38b1a8fd1343adbe0df8fc7c088d4411dfc34f90`; checkpoint application is pending. The optimizer ABI, compiler artifact-context receipts, and complete extracted-host/layout qualification harness are source-valid; this new source checkpoint is pending before a fresh cohort is packed. The first real cohort replay exposed and now has a focused repair for export-hidden transitive package manifests; checkpoint application is pending before repacking. The second replay copied the isolated closure and exposed a false plugin-shape smoke assertion; its focused harness repair is checkpoint-pending before repacking. The third replay exposed that the generated compiler receipt validator shipped only a declaration; a private packed runtime-entry repair is checkpoint-pending. The fourth replay reached real host graph auditing and exposed a macOS physical-path alias mismatch; its fail-closed canonicalization repair is checkpoint-pending. The fifth replay proved the `.mjs` consumer was outside the compiler default filter and that pre-tree-shake observation was not emitted-retention evidence; both repairs are checkpoint-pending. The sixth replay reached the real Vite source-map gate and exposed temporary extracted paths in generated maps; fail-closed canonical source identities, physical containment, and exact code-to-map linkage are checkpoint-pending. The seventh replay cleared source-map identity and exposed lexical receipt-root comparison across macOS physical aliases; strict regular-file containment and external-locator hardening are checkpoint-pending. The eighth replay cleared receipt identity and exposed a CommonJS wrapper mismatch against the frozen ESM Webpack size denominator; complete Webpack-family ESM alignment is checkpoint-pending. |
 | S11   | NOT_STARTED        | Static Plan IR, tier-preserving codegen, expression/source-map corpus, pure map-to-length rewrite, exact construction semantics, deterministic receipts, and five-host smoke coverage exist in the sealed candidate based at `73cc413`; S11 cannot start until S11R passes                                                                                                                                                |
 | P1A   | GATE_PASSED        | Iter Array kernels merged at `bd13eaf`; the floor stays at `0.80x` with ten terminals shipping below it under a recorded exception owned by S11, on the user's decision                                                                                                                                                                                                                                                   |
 | P1B   | GATE_PASSED        | Typed-array Iter admission merged at `171826c` under a second named size exception granted by the user; separate kernel families, because sharing P1A's cost the Array product 2x                                                                                                                                                                                                                                         |
@@ -2183,6 +2183,44 @@ opcode N`; it is now simply generic, and the pipe fast-path test was
   - the stale source-bound cohort was moved recoverably to
     `/tmp/stopcock-s11r-stale-cohort.kAoLSQ/40cdf0f4c4f948ee2fe3a22863d3a1b5b7c52e8dd987b2c3097884c101a654a8`.
     No timing command ran and no extracted qualification result is claimed.
+- S11R Webpack-family size-denominator repair evidence:
+  - fresh cohort
+    `sha256:f89a963cd2549d0e1b915c83c77284c0c5ce7f623c31fa49f11ffcec755fc05c`
+    passed the complete 21-package checker with compiler tarball
+    `sha256:75867fb38a737473d1768becb24d1b6e75f51dfdbb4a7b53c4098329700ec6a5`,
+    FP tarball
+    `sha256:9e2f0fc3059d28e83ee876e0cbf99e5393440cf85c2d607b69f7ec8145810876`,
+    and optimizer tarball
+    `sha256:952fbf15c2b64562e0912a80df5a3e67695deea82cf65ed28a16d725f1bdbe4f`;
+    it cleared the receipt and prior extracted gates, then failed the unchanged
+    1,024-byte ceiling because `webpack/compiler.deep` measured 1,063 gzip
+    bytes under the harness's CommonJS2 wrapper;
+  - the retained 2,623-byte minified artifact contains the required observable
+    operator-construction calls and permitted construction leaves, but no FP
+    execution engine. A controlled six-format replay produced identical
+    `[8,14]` behavior: Webpack measured 1,063 bytes as CommonJS2, 1,107 as
+    CommonJS static, and 842 as output-module ESM; Rspack measured 1,029,
+    1,073, and 966 bytes respectively;
+  - the frozen S1A Webpack denominator already uses output-module ESM. The
+    extracted matrix now centralizes that same `outputModule`, `module`,
+    module-library, and modern-environment envelope for every Webpack and
+    Rspack common, source-map, and observable-construction row plus the plain
+    Webpack helper row. Each host returns its physical `out.mjs` path for
+    execution and source-map verification instead of reconstructing an
+    extension;
+  - the 1,024-byte compiler ceiling, the 512-byte helper ceiling, production
+    compiler/runtime code, frozen benchmark evidence, graph allowlist, and
+    minifier settings are unchanged. Source and packed CommonJS2 adapter tests
+    remain for both Webpack and Rspack, and a focused regression freezes the
+    extracted ESM output profile;
+  - script syntax, diff integrity, three focused host/pack/harness files with
+    23 tests, and the compiler release gate with 17 files and 456 tests pass.
+    Independent module-extension and size-denominator re-audits both returned
+    `PASS`;
+  - the stale source-bound cohort was moved recoverably to
+    `/tmp/stopcock-s11r-stale-cohort.aQYzCD/f89a963cd2549d0e1b915c83c77284c0c5ce7f623c31fa49f11ffcec755fc05c`.
+    No timing command ran, no size ceiling was weakened, and no extracted
+    qualification result is claimed.
 
 ## Surprises and discoveries
 
