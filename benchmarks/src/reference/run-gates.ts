@@ -17,6 +17,7 @@ const referenceDir = dirname(fileURLToPath(import.meta.url))
 export interface GateOutcome {
   readonly script: string
   readonly kind: GateEntry['kind']
+  readonly group: GateEntry['group']
   readonly status: number | null
   readonly passed: boolean
   readonly failureLines: readonly string[]
@@ -37,6 +38,7 @@ const runGate = (gate: GateEntry, runtime: string): GateOutcome => {
   return {
     script: gate.script,
     kind: gate.kind,
+    group: gate.group,
     status: child.status,
     // A gate that crashes fails even if it printed no FAIL line.
     passed: child.status === 0,
@@ -58,7 +60,9 @@ const main = (): void => {
     const outcome = runGate(gate, runtime)
     outcomes.push(outcome)
     const mark = outcome.passed ? 'ok  ' : 'FAIL'
-    console.log(`${mark}\t${outcome.script}\t${outcome.kind}\t${outcome.durationMs} ms`)
+    console.log(
+      `${mark}\t${outcome.script}\t${outcome.group}\t${outcome.kind}\t${outcome.durationMs} ms`,
+    )
     for (const line of outcome.failureLines) console.log(`      ${line}`)
   }
 

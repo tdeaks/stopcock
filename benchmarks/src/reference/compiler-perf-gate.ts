@@ -25,7 +25,7 @@ import {
   INTERLEAVED_PAIRED_SAMPLER_ID,
   INTERLEAVED_PAIRED_SAMPLER_ORDER,
 } from './perf-runner'
-import { EXPECTED_FROZEN_EMITTER, EXPECTED_PORTABLE_CORPUS } from './portable-perf-contract'
+import { EXPECTED_FROZEN_EMITTER, EXPECTED_PORTABLE_CORPUS } from './frozen-reference-contract'
 
 export interface CompilerGateMeasurement {
   readonly label: 'global geomean' | 'worst case'

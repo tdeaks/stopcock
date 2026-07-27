@@ -21,7 +21,7 @@ import {
 import {
   EXPECTED_PORTABLE_SUBJECT,
   minimumPortableBatchIterations,
-} from './portable-perf-contract'
+} from './frozen-reference-contract'
 
 const localDirectory = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(localDirectory, '..', '..', '..')

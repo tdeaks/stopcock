@@ -168,10 +168,9 @@ const projectionExports = (
           })
   }
   projected['./package.json'] = './package.json'
-  const optimized =
-    topology.entries.find(({ specifier }) =>
-      topology.mode === 'legacy' ? specifier === './compile' : specifier === './fusion/optimized',
-    ) ?? topology.entries[0]
+  const optimized = topology.entries.find(
+    ({ specifier }) => specifier === topology.sharedRuntime.optimizedSpecifier,
+  )
   if (optimized === undefined) throw new Error('projection has no optimized source entry')
   const types =
     optimized.types ??
@@ -204,7 +203,7 @@ const buildProjectionPackage = async (
   const sourceManifest = fileByPath.get('package.json')
   if (sourceManifest === undefined) throw new Error('projection source manifest is missing')
   const manifest = JSON.parse(sourceManifest.content) as Readonly<Record<string, unknown>>
-  const optimizedSpecifier = topology.mode === 'legacy' ? './compile' : './fusion/optimized'
+  const optimizedSpecifier = topology.sharedRuntime.optimizedSpecifier
   const optimized = topology.entries.find(({ specifier }) => specifier === optimizedSpecifier)
   if (optimized === undefined) throw new Error(`projection has no ${optimizedSpecifier} entry`)
 

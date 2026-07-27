@@ -39,6 +39,7 @@
  * These are ratios against a hand loop, not a claim to be the fastest anything.
  */
 import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as A from '../../../packages/fp/src/array'
@@ -184,8 +185,21 @@ export const measureLaneSession = (id: LaneId, rounds = 24): LaneSession => {
 
 const SESSION_ENV = 'STOPCOCK_S10_LANE'
 const self = fileURLToPath(import.meta.url)
+
+/**
+ * The child inherits whatever cwd the gate itself was launched from, which
+ * `run-gates.ts` sets to the repo root. A bare `--import=tsx` resolves
+ * against that cwd's node_modules, and tsx is only hoisted into this
+ * package's node_modules, not the root's, so resolution fails there. Anchor
+ * the resolution at this file instead, so the child finds it under any cwd.
+ */
+const resolveTsxLoader = (): string => {
+  const require = createRequire(import.meta.url)
+  return require.resolve('tsx')
+}
+
 const childArgv = (): string[] =>
-  typeof process.versions.bun === 'string' ? [self] : ['--import=tsx', self]
+  typeof process.versions.bun === 'string' ? [self] : [`--import=${resolveTsxLoader()}`, self]
 
 export const SESSIONS_PER_LANE = 21
 

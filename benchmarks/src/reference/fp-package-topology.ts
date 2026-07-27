@@ -421,10 +421,20 @@ export const deriveFpPackageTopology = (
   const { manifest } = parseManifest(files)
   const exports = manifest.exports as PackageExports
   const fileByPath = new Map(files.map((file) => [file.path, file]))
+  const hasOptimized = Object.hasOwn(exports, './fusion/optimized')
   const fusionCount = FUSION_SPECIFIERS.filter((specifier) =>
     Object.hasOwn(exports, specifier),
   ).length
-  if (fusionCount !== 0 && fusionCount !== FUSION_SPECIFIERS.length) {
+  // Phase 0 permanently deleted the optimizer tier: `./fusion` plus
+  // `./fusion/debug` with no `./fusion/optimized` is a complete two-tier
+  // topology, not a partial three-tier one. Any other partial combination
+  // (a lone tier, or optimized without debug) still means a broken export
+  // map.
+  const validCombination =
+    fusionCount === 0 ||
+    fusionCount === FUSION_SPECIFIERS.length ||
+    (fusionCount === 2 && Object.hasOwn(exports, './fusion') && Object.hasOwn(exports, './fusion/debug'))
+  if (!validCombination) {
     throw new Error('partial fusion export topology is forbidden')
   }
   const mode: FpPackageTopologyMode = fusionCount === 0 ? 'legacy' : 'tiered'
@@ -497,7 +507,8 @@ export const deriveFpPackageTopology = (
     )
     .sort((left, right) => left.sha256.localeCompare(right.sha256))
 
-  const optimizedSpecifier = mode === 'legacy' ? './compile' : './fusion/optimized'
+  const optimizedSpecifier =
+    mode === 'legacy' ? './compile' : hasOptimized ? './fusion/optimized' : './fusion'
   const optimizedSource = entries.find(({ specifier }) => specifier === optimizedSpecifier)
   if (optimizedSource === undefined) {
     throw new Error(`topology has no ${optimizedSpecifier} entry`)
@@ -529,9 +540,16 @@ export const deriveFpPackageTopology = (
     })
   } else {
     const compact = entries.find(({ specifier }) => specifier === './fusion')
-    const optimized = entries.find(({ specifier }) => specifier === './fusion/optimized')
     const debug = entries.find(({ specifier }) => specifier === './fusion/debug')
-    if (compact === undefined || optimized === undefined || debug === undefined) {
+    if (compact === undefined || debug === undefined) {
+      throw new Error('tiered topology is missing a required fusion entry')
+    }
+    // No separate optimizer tier ships anymore: the compact fusion entry is
+    // the optimized entry, so its exclusive-artifact set is correctly empty.
+    const optimized = hasOptimized
+      ? entries.find(({ specifier }) => specifier === './fusion/optimized')
+      : compact
+    if (optimized === undefined) {
       throw new Error('tiered topology is missing a required fusion entry')
     }
     const compactSet = new Set(compact.closure)
@@ -584,9 +602,16 @@ export const deriveFpPackageTopology = (
 }
 
 const optimizedEntry = (topology: FpPackageTopologyEvidence): FpPackageEntryEvidence => {
-  const specifier = topology.mode === 'legacy' ? './compile' : './fusion/optimized'
-  const entry = topology.entries.find((candidate) => candidate.specifier === specifier)
-  if (entry === undefined) throw new Error(`topology has no ${specifier} entry`)
+  if (topology.mode === 'legacy') {
+    const entry = topology.entries.find((candidate) => candidate.specifier === './compile')
+    if (entry === undefined) throw new Error('topology has no ./compile entry')
+    return entry
+  }
+  // `tiered.optimizedEntry` already resolves to the compact fusion entry's
+  // own JavaScript path when no separate optimizer tier ships.
+  const optimizedJavascript = topology.tiered?.optimizedEntry
+  const entry = topology.entries.find((candidate) => candidate.javascript === optimizedJavascript)
+  if (entry === undefined) throw new Error('topology has no optimized-equivalent entry')
   return entry
 }
 

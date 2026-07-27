@@ -146,20 +146,13 @@ beforeAll(async () => {
       'dir',
     )
   }
-  for (const name of ['esbuild', 'rollup', 'vite', 'webpack']) {
+  for (const name of ['esbuild', 'rollup', 'vite']) {
     await symlink(
       join(PACKAGE_ROOT, 'node_modules', name),
       join(nodeModules, name),
       'dir',
     )
   }
-  const rspackModules = join(nodeModules, '@rspack')
-  await mkdir(rspackModules, { recursive: true })
-  await symlink(
-    join(PACKAGE_ROOT, 'node_modules/@rspack/core'),
-    join(rspackModules, 'core'),
-    'dir',
-  )
 }, 60_000)
 
 afterAll(async () => {
@@ -198,20 +191,15 @@ import {
 } from '@stopcock/fp-compiler'
 import { stopcockFp as esbuildStopcockFp } from '@stopcock/fp-compiler/esbuild'
 import { stopcockFp as rollupStopcockFp } from '@stopcock/fp-compiler/rollup'
-import { stopcockFp as rspackStopcockFp } from '@stopcock/fp-compiler/rspack'
 import { stopcockFp as viteStopcockFp } from '@stopcock/fp-compiler/vite'
-import { stopcockFp as webpackStopcockFp } from '@stopcock/fp-compiler/webpack'
 
 assert.equal(callbackArity('map'), 1)
 assert.equal(callbackArity('not-an-op'), undefined)
 assert.equal(typeof stopcockFp.rollup, 'function')
-assert.equal(typeof stopcockFp.rspack, 'function')
 assert.equal(typeof stopcockFp.vite, 'function')
 assert.equal(typeof viteStopcockFp, 'function')
 assert.equal(typeof rollupStopcockFp, 'function')
 assert.equal(typeof esbuildStopcockFp, 'function')
-assert.equal(typeof rspackStopcockFp, 'function')
-assert.equal(typeof webpackStopcockFp, 'function')
 const result = transformStopcockPipelines(
   ${JSON.stringify(source)},
   'fixture.ts',
@@ -233,24 +221,20 @@ assert.ok(result.diagnostics.some((site) => site.transformed))
     expect(result.diagnostics.some((d: { transformed: boolean }) => d.transformed)).toBe(true)
   }, 60_000)
 
-  it('builds and executes through all five adapters from the packed artifact', async () => {
+  it('builds and executes through all three adapters from the packed artifact', async () => {
     const probe = join(consumerDir, 'packed-hosts-probe.mjs')
     await writeFile(
       probe,
       `
 import assert from 'node:assert/strict'
-import { createRequire } from 'node:module'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { stopcockFp as esbuildStopcockFp } from '@stopcock/fp-compiler/esbuild'
 import { stopcockFp as rollupStopcockFp } from '@stopcock/fp-compiler/rollup'
-import { stopcockFp as rspackStopcockFp } from '@stopcock/fp-compiler/rspack'
 import { stopcockFp as viteStopcockFp } from '@stopcock/fp-compiler/vite'
-import { stopcockFp as webpackStopcockFp } from '@stopcock/fp-compiler/webpack'
 
-const require = createRequire(import.meta.url)
 const fpEntry = join(process.cwd(), 'node_modules/@stopcock/fp/dist/index.js')
 const fpArrayEntry = join(process.cwd(), 'node_modules/@stopcock/fp/dist/array.js')
 const fixtureSource = \`
@@ -337,84 +321,6 @@ try {
   }
 
   {
-    const { root, entry } = await makeFixture('webpack')
-    const { default: webpack } = await import('webpack')
-    const filename = 'out.cjs'
-    await new Promise((resolve, reject) => {
-      const compiler = webpack({
-        mode: 'production',
-        entry,
-        target: 'node',
-        output: {
-          path: root,
-          filename,
-          library: { type: 'commonjs2' },
-        },
-        resolve: {
-          alias: {
-            '@stopcock/fp$': fpEntry,
-            '@stopcock/fp/array$': fpArrayEntry,
-          },
-        },
-        plugins: [webpackStopcockFp({ diagnostics: 'error' })],
-      })
-      compiler.run((error, stats) => {
-        compiler.close(() => {
-          if (error) return reject(error)
-          if (stats?.hasErrors()) {
-            return reject(new Error(stats.toString({ errorDetails: true })))
-          }
-          resolve()
-        })
-      })
-    })
-    const outfile = join(root, filename)
-    const code = await readFile(outfile, 'utf8')
-    assertCompiled(code, 'webpack')
-    delete require.cache[outfile]
-    assert.deepEqual(require(outfile).result, expected)
-  }
-
-  {
-    const { root, entry } = await makeFixture('rspack')
-    const { rspack } = await import('@rspack/core')
-    const filename = 'out.cjs'
-    await new Promise((resolve, reject) => {
-      const compiler = rspack({
-        mode: 'production',
-        entry,
-        target: 'node',
-        output: {
-          path: root,
-          filename,
-          library: { type: 'commonjs2' },
-        },
-        resolve: {
-          alias: {
-            '@stopcock/fp$': fpEntry,
-            '@stopcock/fp/array$': fpArrayEntry,
-          },
-        },
-        plugins: [rspackStopcockFp({ diagnostics: 'error' })],
-      })
-      compiler.run((error, stats) => {
-        compiler.close(() => {
-          if (error) return reject(error)
-          if (stats?.hasErrors()) {
-            return reject(new Error(stats.toString({ errorDetails: true })))
-          }
-          resolve()
-        })
-      })
-    })
-    const outfile = join(root, filename)
-    const code = await readFile(outfile, 'utf8')
-    assertCompiled(code, 'rspack')
-    delete require.cache[outfile]
-    assert.deepEqual(require(outfile).result, expected)
-  }
-
-  {
     const { root, entry } = await makeFixture('vite')
     const { build } = await import('vite')
     await build({
@@ -447,7 +353,7 @@ try {
 
   console.log(JSON.stringify({
     artifact: ${JSON.stringify(`sha256-${compilerTarballHash}`)},
-    hosts: ['rollup', 'esbuild', 'webpack', 'rspack', 'vite'],
+    hosts: ['rollup', 'esbuild', 'vite'],
   }))
 } finally {
   await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true })))
@@ -461,7 +367,7 @@ try {
     })
     expect(JSON.parse(output.trim())).toEqual({
       artifact: `sha256-${compilerTarballHash}`,
-      hosts: ['rollup', 'esbuild', 'webpack', 'rspack', 'vite'],
+      hosts: ['rollup', 'esbuild', 'vite'],
     })
   }, 120_000)
 
@@ -479,7 +385,7 @@ try {
 
     expect(declaration).toContain('transformStopcockPipelines')
     expect(declaration).toContain('callbackArity')
-    for (const adapter of ['vite', 'rollup', 'esbuild', 'webpack', 'rspack']) {
+    for (const adapter of ['vite', 'rollup', 'esbuild']) {
       const adapterDeclaration = await readFile(
         join(installedRoot, `dist/${adapter}.d.ts`),
         'utf8',
@@ -489,7 +395,6 @@ try {
     expect(runtime).not.toMatch(
       /(?:from\s*|import\s*\()\s*['"]@stopcock\/fp(?:\/[^'"]*)?['"]/,
     )
-    await access(join(installedRoot, 'dist/source-map-seed-loader.js'))
     expect(distFiles).not.toContain('fp-compiler/src/index.d.ts')
     expect(distFiles.some((file) => file.includes('__tests__'))).toBe(false)
     await expect(
@@ -573,10 +478,10 @@ void stopcockFp.vite(options)
             moduleResolution: 'bundler',
             strict: true,
             noEmit: true,
-            // unplugin intentionally references optional host packages
-            // (Farm, Rspack, webpack, etc.) from its own declarations. The
-            // consumer only installs the host it uses, so validate this
-            // package's surface without requiring every unplugin host.
+            // unplugin intentionally references other optional bundler-host
+            // packages from its own declarations. The consumer only installs
+            // the host it uses, so validate this package's surface without
+            // requiring every unplugin host.
             skipLibCheck: true,
           },
           include: ['consumer.ts'],
@@ -596,11 +501,11 @@ void stopcockFp.vite(options)
             strict: true,
             noEmit: true,
             types: [],
-            // Unplugin intentionally exposes adapters for optional hosts
-            // (Farm, Rspack, webpack, etc.) in one declaration. A consumer
-            // installs only the host it uses, so validate this package's
-            // NodeNext resolution and public types without requiring every
-            // optional host's declarations.
+            // Unplugin intentionally exposes adapters for other optional
+            // bundler hosts in one declaration. A consumer installs only the
+            // host it uses, so validate this package's NodeNext resolution
+            // and public types without requiring every optional host's
+            // declarations.
             skipLibCheck: true,
           },
           include: ['consumer.ts'],

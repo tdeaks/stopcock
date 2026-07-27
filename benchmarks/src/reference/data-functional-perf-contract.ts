@@ -1,5 +1,5 @@
 import type { PerfEngine } from './perf-engine'
-import { minimumPortableBatchIterations } from './portable-perf-contract'
+import { minimumPortableBatchIterations } from './frozen-reference-contract'
 
 export const EXPECTED_DATA_FUNCTIONAL_SUBJECT_ID = 'stopcock-data-functional-hotpaths-live-v1'
 

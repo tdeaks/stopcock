@@ -6,8 +6,6 @@ const pack = libraryPack({
   vite: 'src/vite.ts',
   rollup: 'src/rollup.ts',
   esbuild: 'src/esbuild.ts',
-  webpack: 'src/webpack.ts',
-  rspack: 'src/rspack.ts',
 })
 const packPlugins = Array.isArray(pack.plugins)
   ? pack.plugins
@@ -31,7 +29,6 @@ export default defineConfig({
     entry: {
       ...(pack.entry as Record<string, string>),
       cli: 'src/cli.ts',
-      'source-map-seed-loader': 'src/source-map-seed-loader.js',
     },
     plugins: [...packPlugins, shebang],
   },

@@ -1,5 +1,5 @@
 import type { PerfEngine } from './perf-engine'
-import { minimumPortableBatchIterations } from './portable-perf-contract'
+import { minimumPortableBatchIterations } from './frozen-reference-contract'
 
 export const EXPECTED_STRUCTURAL_SUBJECT_ID = 'stopcock-structural-live-v1'
 

@@ -11,7 +11,7 @@ export const EXPECTED_COMPILER_OPERATION_CORPUS = Object.freeze({
   sha256: '5b67b126ece103aac8d9a77cc03004f60b8748377e4a41ab4b42a9f088ee8dec',
   caseNamesSha256: 'a81144aee546d1f9181c8a0da0b11dcd8ed995e9f08bf6be5a8d4c8dbbb7573c',
   targetOpsSha256: '7637a20edc7c95e2a43b594776a51d23bb58a2a882fa2ecd01408a1b045dfeb6',
-  opcodesSha256: 'a9091f79273580dff1547de73082556b75d067e1903dc833a7eefb88b3da1d62',
+  opcodesSha256: '65b0966496a03d2905fa815a2ce0b003761bf093f75b1c835317d1797a146a4e',
   categoryCounts: Object.freeze({
     element: 7,
     stateful: 7,
@@ -22,7 +22,7 @@ export const EXPECTED_COMPILER_OPERATION_CORPUS = Object.freeze({
 
 export const EXPECTED_COMPILER_OPERATION_REFERENCE = Object.freeze({
   id: 'stopcock-compiler-operation-reference-emitter-w0-v1',
-  sha256: '35b4a4ec199c35dd992b56768dbebe5aa18df3f103c702e8d8fdf8a9fc97093e',
+  sha256: '4d3359adc4ddc7025663d53293256f808e8ea706ea91de6dd443d04ba5315ce2',
 })
 
 /**

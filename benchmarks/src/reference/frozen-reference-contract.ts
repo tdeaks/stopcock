@@ -1,5 +1,8 @@
 /**
- * Reviewable identities for the portable performance comparison.
+ * Reviewable identities for the frozen corpus and reference emitter that
+ * the compiler-parity gate (and the shared batch-iteration policy below)
+ * measure against. Shared across several perf-contract files, not owned by
+ * any one gate.
  *
  * Raw SHA-256 values deliberately pin the exact checked-in bytes. A corpus or
  * reference-emitter edit must therefore update this contract in the same

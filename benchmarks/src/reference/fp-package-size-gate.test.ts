@@ -173,6 +173,40 @@ const tieredFiles = (
   ]
 }
 
+/**
+ * The shape actually shipped once Phase 0 deleted the optimizer tier: `.`,
+ * `./fusion`, and `./fusion/debug`, with no separate `./fusion/optimized`
+ * entry. Compact fusion is the optimized entry here.
+ */
+const twoTierFiles = (): readonly FpPackageRawFile[] => [
+  manifest({
+    '.': publicEntry('index'),
+    './compile': publicEntry('compile'),
+    './array': publicEntry('array'),
+    './fusion': { types: './dist/compile.d.ts', import: './dist/fusion.js' },
+    './fusion/debug': { types: './dist/compile.d.ts', import: './dist/fusion-debug.js' },
+    './package.json': './package.json',
+  }),
+  ...commonFiles(),
+  { path: 'dist/index.js', content: "export { compact as pipe } from './compact-engine.js'\n" },
+  {
+    path: 'dist/compile.js',
+    content: "export { compact as compile } from './compact-engine.js'\n",
+  },
+  { path: 'dist/array.js', content: 'export const map = (value) => value\n' },
+  {
+    path: 'dist/fusion.js',
+    content: "export { compact as pipeFused } from './compact-engine.js'\n",
+  },
+  {
+    path: 'dist/fusion-debug.js',
+    content:
+      "export { compact } from './compact-engine.js'\nexport { debug } from './debug-engine.js'\n",
+  },
+  { path: 'dist/compact-engine.js', content: "export const compact = 'compact'\n" },
+  { path: 'dist/debug-engine.js', content: "export const debug = 'debug'\n" },
+]
+
 const makeReport = (
   rawFiles: readonly FpPackageRawFile[],
   options: Readonly<{
@@ -292,6 +326,30 @@ describe('@stopcock/fp topology-neutral package-size policy', () => {
     )
     expect(report.topology.tiered?.debugExclusiveArtifacts).toContain('dist/debug-engine.js')
     expect(evaluate(report)).toEqual({ passed: true, failures: [] })
+  })
+
+  test('accepts the current no-optimizer tiered shape, treating compact as the optimized entry', () => {
+    const report = makeReport(twoTierFiles(), { sourceTarballBytes: 130_000 })
+    expect(report.topology.mode).toBe('tiered')
+    expect(report.topology.sharedRuntime.optimizedSpecifier).toBe('./fusion')
+    expect(report.topology.sharedRuntime.artifacts).toEqual(['dist/compact-engine.js'])
+    expect(report.topology.tiered?.optimizedExclusiveArtifacts).toEqual([])
+    expect(report.topology.tiered?.debugExclusiveArtifacts).toContain('dist/debug-engine.js')
+    expect(evaluate(report)).toEqual({ passed: true, failures: [] })
+  })
+
+  test('still rejects a fusion export with no debug pair in the no-optimizer shape', () => {
+    const fusionOnly = twoTierFiles()
+      .filter((file) => file.path !== 'dist/fusion-debug.js' && file.path !== 'dist/debug-engine.js')
+      .map((file) => {
+        if (file.path !== 'package.json') return file
+        const parsed = JSON.parse(file.content) as { exports: Record<string, unknown> }
+        delete parsed.exports['./fusion/debug']
+        return { path: file.path, content: `${JSON.stringify(parsed, null, 2)}\n` }
+      })
+    expect(() => deriveFpPackageTopology(createFpPackageFileEvidence(fusionOnly))).toThrow(
+      'partial fusion export topology is forbidden',
+    )
   })
 
   test('rejects partial tier exports and import paths that escape the package', () => {

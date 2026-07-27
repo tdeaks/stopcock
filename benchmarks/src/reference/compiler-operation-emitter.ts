@@ -2,13 +2,19 @@
 // supported-op surface. It is intentionally separate from emitter.ts: the
 // portable 44-case denominator and its pinned hash remain byte-for-byte
 // unchanged while this additive lane can cover compiler-only operations.
+import * as fpArray from '../../../packages/fp/src/array'
+import { pipe as fpPipe } from '../../../packages/fp/src/fusion'
 import { none as optionNone } from '../../../packages/fp/src/option'
 import {
   mergeSortAsc,
   mergeSortBy,
   mergeSortDesc,
 } from '../../../packages/fp/src/sort-kernel'
-import type { CompilerSupportedOpName } from './compiler-operation-corpus'
+import {
+  usesObservationCounter,
+  type CompilerOperationCorpusCase,
+  type CompilerSupportedOpName,
+} from './compiler-operation-corpus'
 
 export const COMPILER_OPERATION_EMITTER_ID =
   'stopcock-compiler-operation-reference-emitter-w0-v1'
@@ -19,11 +25,15 @@ const loop = (body: string): string =>
 /**
  * Emits a deliberately independent reference implementation for one pinned
  * operation case. Callback formulas and bound values mirror the reviewable
- * source expressions in compiler-operation-corpus.ts.
+ * source expressions in compiler-operation-corpus.ts. Returns `undefined`
+ * for an operation with no hand-written loop here; `compileCompilerOperationReference`
+ * falls back to the real (uncompiled) array module for those, which is the
+ * correct independent reference for a materialising boundary op: the
+ * compiler emits the same whole-array call the runtime already makes.
  */
 export const emitCompilerOperationReference = (
   targetOp: CompilerSupportedOpName,
-): string => {
+): string | undefined => {
   switch (targetOp) {
     case 'map':
       return `const out = new Array(input.length); ${loop('out[i] = input[i] * 3 + 1;')} return out;`
@@ -104,12 +114,8 @@ export const emitCompilerOperationReference = (
       return `const nested = new Array(input.length); ${loop('const x = input[i]; nested[i] = [x, x + 1];')} const out = new Array(input.length * 2); for (let i = 0; i < nested.length; i++) { out[i * 2] = nested[i][0]; out[i * 2 + 1] = nested[i][1]; } return out;`
     case 'join':
       return `return input.join('|');`
-    default: {
-      const unsupported: never = targetOp
-      throw new Error(
-        `compiler operation reference has no emitter for ${String(unsupported)}`,
-      )
-    }
+    default:
+      return undefined
   }
 }
 
@@ -123,10 +129,35 @@ const sortKernel = {
   desc: mergeSortDesc,
 }
 
-export const compileCompilerOperationReference = (
-  targetOp: CompilerSupportedOpName,
+/**
+ * Every materialising boundary operation (sort, chunk, groupBy, zip...) has
+ * no hand-written loop above: the compiler does not fuse it, it emits the
+ * exact same call the real array module already makes. The real, uncompiled
+ * `@stopcock/fp/array` module through the real, uncompiled `pipe` is
+ * therefore the independent reference for it -- independent of the
+ * compiler's transform, which is the thing under test.
+ */
+const compileRuntimeOperationReference = (
+  item: CompilerOperationCorpusCase,
 ): CompilerOperationReferenceRunner => {
-  const body = emitCompilerOperationReference(targetOp)
+  const pipeline = `pipe(input, ${item.sourceSteps.join(', ')})`
+  const body = usesObservationCounter(item)
+    ? `let __observation = 0; const value = ${pipeline}; return { value, observation: __observation };`
+    : `return ${pipeline};`
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  const factory = new Function(
+    'pipe',
+    'A',
+    `return function compilerOperationReference(input) { ${body} };`,
+  )
+  return factory(fpPipe, fpArray) as CompilerOperationReferenceRunner
+}
+
+export const compileCompilerOperationReference = (
+  item: CompilerOperationCorpusCase,
+): CompilerOperationReferenceRunner => {
+  const body = emitCompilerOperationReference(item.targetOp)
+  if (body === undefined) return compileRuntimeOperationReference(item)
   // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
   const factory = new Function(
     '__none',

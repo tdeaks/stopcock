@@ -19,6 +19,7 @@ import {
   COMPILER_OPERATION_CORPUS_ID,
   COMPILER_OPERATION_CORPUS_VERSION,
   compilerOperationCorpusProjection,
+  usesObservationCounter,
   type CompilerOperationCategory,
   type CompilerOperationCorpusCase,
   type CompilerSupportedOpName,
@@ -179,10 +180,9 @@ const sameEngine = (left: PerfEngine, right: PerfEngine): boolean =>
 
 const synthesizeOperationSource = (item: CompilerOperationCorpusCase): string => {
   const pipeline = `pipe(input, ${item.sourceSteps.join(', ')})`
-  const body =
-    item.targetOp === 'forEach'
-      ? `let __observation = 0;\nconst value = ${pipeline};\nreturn { value, observation: __observation };`
-      : `return ${pipeline};`
+  const body = usesObservationCounter(item)
+    ? `let __observation = 0;\nconst value = ${pipeline};\nreturn { value, observation: __observation };`
+    : `return ${pipeline};`
   return [
     "import { pipe } from '@stopcock/fp/fusion'",
     "import * as A from '@stopcock/fp/array'",
@@ -245,6 +245,32 @@ export const expectedOperationConsumedItems = (
 let compilerMeasurementSink: unknown
 let referenceMeasurementSink: unknown
 
+/**
+ * `shuffle` and `sample` call `Math.random` directly, and the compiled and
+ * reference paths both resolve to the exact same boundary function (neither
+ * is fused), so replaying the same deterministic sequence for each call
+ * makes the one-shot correctness comparison meaningful instead of comparing
+ * two independent random draws.
+ */
+const withDeterministicRandom = <T>(seed: number, run: () => T): T => {
+  let state = seed >>> 0 || 1
+  const original = Math.random
+  Math.random = () => {
+    state ^= state << 13
+    state ^= state >>> 17
+    state ^= state << 5
+    state >>>= 0
+    return state / 4_294_967_296
+  }
+  try {
+    return run()
+  } finally {
+    Math.random = original
+  }
+}
+
+const CORRECTNESS_CHECK_SEED = 0x2f6e2b1
+
 export const validateCompilerOperationCase = (
   item: CompilerOperationCorpusCase,
   inputOverride?: readonly number[],
@@ -259,9 +285,9 @@ export const validateCompilerOperationCase = (
       ? generateInputArray(item.inputSeed, item.size)
       : inputOverride.slice()
   const compiled = compileTransformedCompilerPerfSource(synthesizeOperationSource(item))
-  const reference = compileCompilerOperationReference(item.targetOp)
-  const compilerValue = compiled.run(input)
-  const referenceValue = reference(input)
+  const reference = compileCompilerOperationReference(item)
+  const compilerValue = withDeterministicRandom(CORRECTNESS_CHECK_SEED, () => compiled.run(input))
+  const referenceValue = withDeterministicRandom(CORRECTNESS_CHECK_SEED, () => reference(input))
   return {
     correctnessOk: compilerPerfSemanticEqual(compilerValue, referenceValue),
     transformedSiteCount: compiled.transformedSiteCount,
@@ -278,13 +304,16 @@ const measureCaseOrientation = (
   const input = generateInputArray(item.inputSeed, item.size) as readonly number[]
   const compiled = compileTransformedCompilerPerfSource(synthesizeOperationSource(item))
   const compiler = compiled.run
-  const reference = compileCompilerOperationReference(item.targetOp)
+  const reference = compileCompilerOperationReference(item)
   // Keep the timed wrappers structurally identical. A property dispatch on
   // only the compiler side gives JavaScriptCore two reciprocal optimizer
   // plateaus even for exact `return input.length` implementations.
   const compilerRun = (): unknown => compiler(input)
   const referenceRun = (): unknown => reference(input)
-  const correctnessOk = compilerPerfSemanticEqual(compilerRun(), referenceRun())
+  const correctnessOk = compilerPerfSemanticEqual(
+    withDeterministicRandom(CORRECTNESS_CHECK_SEED, compilerRun),
+    withDeterministicRandom(CORRECTNESS_CHECK_SEED, referenceRun),
+  )
   const consumedInputItems = expectedOperationConsumedItems(item, input)
   const batchIterations = minimumCompilerBatchIterations(consumedInputItems, args)
   const microBatchIterations = consumedItemsMicroBatchIterations(

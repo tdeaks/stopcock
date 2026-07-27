@@ -247,9 +247,9 @@ describe('fp-compiler operation-complete performance policy', () => {
     )
     const supportedOps = [...SUPPORTED_OP_NAMES].sort()
 
-    expect(COMPILER_OPERATION_CASES).toHaveLength(39)
+    expect(COMPILER_OPERATION_CASES).toHaveLength(140)
     expect(EXPECTED_COMPILER_OPERATION_OPTIMIZER_CANARY_OPS).toEqual(['isEmpty', 'length'])
-    expect(EXPECTED_COMPILER_OPERATION_PERFORMANCE_COUNT).toBe(37)
+    expect(EXPECTED_COMPILER_OPERATION_PERFORMANCE_COUNT).toBe(138)
     expect(
       COMPILER_OPERATION_CASES.filter((item) =>
         isCompilerOperationOptimizerCanary(item.targetOp),
@@ -284,7 +284,7 @@ describe('fp-compiler operation-complete performance policy', () => {
     expect(sha256(referenceBytes)).toBe(EXPECTED_COMPILER_OPERATION_REFERENCE.sha256)
   })
 
-  test('semantically matches the independent reference and transforms exactly one site for all 39 operations', () => {
+  test('semantically matches the independent reference and transforms exactly one site for all 140 operations', () => {
     const failures: string[] = []
     for (const item of COMPILER_OPERATION_CASES) {
       const result = validateCompilerOperationCase(item)
@@ -368,13 +368,13 @@ describe('fp-compiler operation-complete performance policy', () => {
     const report = makeReport(cases)
     const evaluation = evaluateCompilerOperationPerfReport(report)
 
-    expect(report.cases).toHaveLength(39)
-    expect(report.summary.performanceCount).toBe(37)
+    expect(report.cases).toHaveLength(140)
+    expect(report.summary.performanceCount).toBe(138)
     expect(report.summary.optimizerCanaryCount).toBe(2)
     expect(evaluation.passed).toBe(true)
     expect(evaluation.measurements).toEqual([
-      expect.objectContaining({ count: 37, actual: 1 }),
-      expect.objectContaining({ count: 37, actual: 1 }),
+      expect.objectContaining({ count: 138, actual: 1 }),
+      expect.objectContaining({ count: 138, actual: 1 }),
     ])
   })
 
@@ -462,7 +462,7 @@ describe('fp-compiler operation-complete performance policy', () => {
     expect(output).toContain('must not use --quick')
     expect(output).toContain('cannot filter')
     expect(output).toContain('every supported opcode exactly once')
-    expect(output).toContain('expected 39 rows')
+    expect(output).toContain('expected 140 rows')
     expect(output).toContain('incorrect')
     expect(output).toContain('expected one compiler-transformed site')
     expect(output).toContain('skipped')
@@ -599,7 +599,7 @@ describe('fp-compiler operation-complete performance policy', () => {
       cases[0] = makeCase(COMPILER_OPERATION_CASES[0], engineId, ratio)
       const evaluation = evaluateCompilerOperationPerfReport(makeReport(cases, engineId))
       expect(evaluation.passed).toBe(false)
-      expect(failures(evaluation)).toContain('operation/count: median ratio')
+      expect(failures(evaluation)).toContain('operation/adjust: median ratio')
       expect(failures(evaluation)).toContain('operation worst case')
       expect(evaluation.measurements[0].passed).toBe(true)
       expect(evaluation.measurements[1].passed).toBe(false)

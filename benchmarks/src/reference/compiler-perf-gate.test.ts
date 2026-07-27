@@ -20,7 +20,7 @@ import {
   INTERLEAVED_PAIRED_SAMPLER_ID,
   INTERLEAVED_PAIRED_SAMPLER_ORDER,
 } from './perf-runner'
-import { EXPECTED_FROZEN_EMITTER, EXPECTED_PORTABLE_CORPUS } from './portable-perf-contract'
+import { EXPECTED_FROZEN_EMITTER, EXPECTED_PORTABLE_CORPUS } from './frozen-reference-contract'
 
 const ENGINES: Readonly<Record<PerfEngineId, PerfEngine>> = {
   'bun-jsc': {

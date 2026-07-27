@@ -429,6 +429,16 @@ export const COMPILER_OPERATION_CASES: readonly CompilerOperationCorpusCase[] =
     ]),
   ])
 
+/**
+ * `forEach` and `forEachWithIndex` are the only operations whose source
+ * steps close over a free `__observation` counter (proving the callback
+ * actually ran, since neither op's return value does). Both the compiled
+ * and reference runners must declare that local before evaluating the
+ * pipeline, or it becomes a `ReferenceError` under strict mode.
+ */
+export const usesObservationCounter = (item: CompilerOperationCorpusCase): boolean =>
+  item.sourceSteps.some((step) => step.includes('__observation'))
+
 export const compilerOperationCorpusProjection = (): readonly Readonly<{
   name: string
   targetOp: CompilerSupportedOpName

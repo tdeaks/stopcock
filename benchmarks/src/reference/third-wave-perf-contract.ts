@@ -1,5 +1,5 @@
 import type { PerfEngine } from './perf-engine'
-import { minimumPortableBatchIterations } from './portable-perf-contract'
+import { minimumPortableBatchIterations } from './frozen-reference-contract'
 
 export const EXPECTED_THIRD_WAVE_SUBJECT_ID =
   'stopcock-third-wave-live-v1'

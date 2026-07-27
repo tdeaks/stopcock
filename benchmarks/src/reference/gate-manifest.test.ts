@@ -2,7 +2,18 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vite-plus/test'
-import { GATE_SCRIPTS, GATES } from './gate-manifest'
+import { GATE_SCRIPTS, GATES, type GateGroup } from './gate-manifest'
+
+const KNOWN_GROUPS: readonly GateGroup[] = Object.freeze([
+  'size:engine',
+  'size:consumer',
+  'parity:compiler',
+  'parity:iter',
+  'allocation',
+  'competitors',
+  'hand-loop',
+  'quality',
+])
 
 const referenceDir = dirname(fileURLToPath(import.meta.url))
 
@@ -38,6 +49,12 @@ describe('gate manifest', () => {
     for (const gate of GATES) {
       expect(gate.checks.length).toBeGreaterThan(0)
       expect(['deterministic', 'timing']).toContain(gate.kind)
+    }
+  })
+
+  test('every gate is keyed by the invariant it guards, not a ledger stage', () => {
+    for (const gate of GATES) {
+      expect(KNOWN_GROUPS).toContain(gate.group)
     }
   })
 })

@@ -1,7 +1,6 @@
 import { createUnplugin } from 'unplugin'
 import { transformStopcockPipelines } from './transform'
 import type { FilterPattern, StopcockCompilerOptions } from './types'
-import { preserveWebpackLikeSourceMaps } from './webpack-like-source-maps'
 
 // JavaScript and TypeScript module variants are ordinary compiler inputs.
 // Keep JSX/TSX support while avoiding invented extensions such as `.mtsx`.
@@ -108,10 +107,9 @@ const unplugin = createUnplugin((options: StopcockCompilerOptions | undefined = 
   }
 })
 
-export const stopcockFp: typeof unplugin = {
-  ...unplugin,
-  webpack: preserveWebpackLikeSourceMaps(unplugin.webpack, 'webpack'),
-  rspack: preserveWebpackLikeSourceMaps(unplugin.rspack, 'rspack'),
-}
+// unplugin's own built-in adapters for other bundler hosts remain available
+// on this object's properties as-is: no dedicated subpath export for them,
+// no source-map workaround. Untested by us; see the README.
+export const stopcockFp: typeof unplugin = unplugin
 
 export default stopcockFp

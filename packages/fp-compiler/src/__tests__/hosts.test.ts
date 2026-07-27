@@ -3,7 +3,6 @@
 // that the pipe() facade call is gone and generated code, not a retained
 // runtime composition engine, executes the transformed site.
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { SourceMap } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -12,9 +11,7 @@ import { transformSync } from 'esbuild'
 import { afterAll, describe, expect, it } from 'vitest'
 import { stopcockFp as stopcockEsbuild } from '../esbuild'
 import { stopcockFp as stopcockRollup } from '../rollup'
-import { stopcockFp as stopcockRspack } from '../rspack'
 import { stopcockFp as stopcockVite } from '../vite'
-import { stopcockFp as stopcockWebpack } from '../webpack'
 
 // Fixtures build in an isolated scratch dir with no node_modules of their
 // own, so both public FP entries must be pointed at the workspace build.
@@ -38,14 +35,6 @@ export const result = pipe(
 `.trimStart()
 
 const EXPECTED = [20, 40]
-const SOURCE_MAP_FIXTURE = `import { pipe } from '@stopcock/fp'
-import { map, filter } from '@stopcock/fp/array'
-const boom = (value) => {
-  if (value === 2) throw new Error('source map callback boom')
-  return value * 2
-}
-export const result = pipe([1, 2, 3], map(boom), filter((value) => value > 2))
-`
 
 const dirs: string[] = []
 
@@ -60,81 +49,6 @@ function assertCompiledExecution(bundleText: string, host: string) {
     /[^.\w]pipe\(/,
   )
   expect(bundleText, `${host} bundle should contain a generated loop`).toMatch(/for\s*\(/)
-}
-
-async function assertWebpackLikeCallbackSourceMap(
-  host: 'webpack' | 'rspack',
-): Promise<void> {
-  const dir = await scratchDir(`${host}-source-map`)
-  const entry = join(dir, 'source-map-callback.mjs')
-  const output = join(dir, 'out.mjs')
-  await writeFile(entry, SOURCE_MAP_FIXTURE)
-  const library =
-    host === 'webpack' ? await import('webpack') : await import('@rspack/core')
-  const compile = host === 'webpack' ? library.default : library.rspack
-  const plugin = host === 'webpack' ? stopcockWebpack() : stopcockRspack()
-
-  await new Promise<void>((resolve, reject) => {
-    const compiler = compile({
-      mode: 'production',
-      context: dir,
-      entry,
-      target: 'node',
-      devtool: 'source-map',
-      optimization: { minimize: false },
-      experiments: { outputModule: true },
-      output: {
-        path: dir,
-        filename: 'out.mjs',
-        module: true,
-        library: { type: 'module' },
-      },
-      resolve: {
-        alias: {
-          '@stopcock/fp$': FP_DIST_ENTRY,
-          '@stopcock/fp/array$': FP_ARRAY_DIST_ENTRY,
-        },
-      },
-      plugins: [plugin],
-    })
-    compiler.run((error, stats) => {
-      compiler.close((closeError) => {
-        if (error) return reject(error)
-        if (closeError) return reject(closeError)
-        if (stats?.hasErrors()) {
-          return reject(new Error(stats.toString({ errorDetails: true })))
-        }
-        resolve()
-      })
-    })
-  })
-
-  const code = await readFile(output, 'utf8')
-  const map = JSON.parse(await readFile(`${output}.map`, 'utf8'))
-  expect(map.sources).toEqual(
-    expect.arrayContaining([
-      expect.stringMatching(/\/provenance-[A-Za-z0-9_-]+\.js$/u),
-      expect.stringMatching(/\/source-map-callback\.mjs$/u),
-    ]),
-  )
-  expect(
-    map.sources.filter((source: string) =>
-      /^webpack:\/\/[^/]*\/(?:provenance-[A-Za-z0-9_-]+\.js|source-map-callback\.mjs)$/u.test(
-        source,
-      ),
-    ),
-  ).toEqual([])
-  const lines = code.split('\n')
-  const generatedLine = lines.findIndex((line) => line.includes('throw new Error'))
-  const generatedColumn = lines[generatedLine]?.indexOf('throw new Error') ?? -1
-  expect(generatedLine).toBeGreaterThanOrEqual(0)
-  expect(generatedColumn).toBeGreaterThanOrEqual(0)
-  const original = new SourceMap(map).findEntry(generatedLine, generatedColumn)
-  expect(original).toMatchObject({
-    originalLine: 3,
-    originalColumn: 19,
-  })
-  expect(original.originalSource).toMatch(/source-map-callback\.mjs$/u)
 }
 
 /**
@@ -168,20 +82,6 @@ const ALLOWED_CONSTRUCTION_MODULE_FRAGMENTS = [
   '/fp/dist/result-',
   '/fp/dist/sort-kernel-',
 ] as const
-
-interface StatsModuleLike {
-  readonly identifier?: string
-  readonly name?: string
-  readonly modules?: readonly StatsModuleLike[]
-}
-
-function collectStatsModuleIds(modules: readonly StatsModuleLike[]): string[] {
-  return modules.flatMap((module) => [
-    ...(module.identifier === undefined ? [] : [module.identifier]),
-    ...(module.name === undefined ? [] : [module.name]),
-    ...collectStatsModuleIds(module.modules ?? []),
-  ])
-}
 
 function assertNoRuntimeCompositionEngine(
   bundleText: string | readonly string[],
@@ -283,120 +183,6 @@ describe('real-host smoke tests', () => {
     const mod = await import(pathToFileURL(outfile).href)
     expect(mod.result).toEqual(EXPECTED)
   })
-
-  it('builds and fuses with webpack 5', async () => {
-    const dir = await scratchDir('webpack')
-    const entry = join(dir, 'fixture.mjs')
-    await writeFile(entry, FIXTURE_SOURCE)
-
-    const { default: webpack } = await import('webpack')
-    const outFileName = 'out.cjs'
-    let moduleIds: string[] = []
-
-    await new Promise<void>((resolve, reject) => {
-      const compiler = webpack({
-        // Production, because the consumer rule is about what a consumer
-        // ships. Webpack's development output carries 1,192 B of its own
-        // scaffolding for an empty module, so measuring it would be measuring
-        // webpack's debugger, not this compiler.
-        mode: 'production',
-        entry,
-        target: 'node',
-        output: {
-          path: dir,
-          filename: outFileName,
-          library: { type: 'commonjs2' },
-        },
-        resolve: {
-          alias: {
-            '@stopcock/fp$': FP_DIST_ENTRY,
-            '@stopcock/fp/array$': FP_ARRAY_DIST_ENTRY,
-          },
-        },
-        plugins: [stopcockWebpack({ diagnostics: 'verbose' })],
-      })
-      compiler.run((err, stats) => {
-        compiler.close(() => {
-          if (err) return reject(err)
-          if (stats?.hasErrors()) return reject(new Error(stats.toString({ errorDetails: true })))
-          const statsJson = stats?.toJson({
-            all: false,
-            modules: true,
-            nestedModules: true,
-          }) as { readonly modules?: readonly StatsModuleLike[] } | undefined
-          moduleIds = collectStatsModuleIds(statsJson?.modules ?? [])
-          resolve()
-        })
-      })
-    })
-
-    const outFile = join(dir, outFileName)
-    const code = await readFile(outFile, 'utf8')
-    assertCompiledExecution(code, 'webpack')
-    assertNoRuntimeCompositionEngine(code, moduleIds, 'webpack')
-
-    delete require.cache[outFile]
-    const mod = require(outFile)
-    expect(mod.result).toEqual(EXPECTED)
-  })
-
-  it('builds and fuses with Rspack', async () => {
-    const dir = await scratchDir('rspack')
-    const entry = join(dir, 'fixture.mjs')
-    await writeFile(entry, FIXTURE_SOURCE)
-
-    const { rspack } = await import('@rspack/core')
-    const outFileName = 'out.cjs'
-    let moduleIds: string[] = []
-    await new Promise<void>((resolve, reject) => {
-      const compiler = rspack({
-        mode: 'production',
-        entry,
-        target: 'node',
-        output: {
-          path: dir,
-          filename: outFileName,
-          library: { type: 'commonjs2' },
-        },
-        resolve: {
-          alias: {
-            '@stopcock/fp$': FP_DIST_ENTRY,
-            '@stopcock/fp/array$': FP_ARRAY_DIST_ENTRY,
-          },
-        },
-        plugins: [stopcockRspack({ diagnostics: 'verbose' })],
-      })
-      compiler.run((error, stats) => {
-        compiler.close(() => {
-          if (error) return reject(error)
-          if (stats?.hasErrors()) {
-            return reject(new Error(stats.toString({ errorDetails: true })))
-          }
-          const statsJson = stats?.toJson({
-            all: false,
-            modules: true,
-            nestedModules: true,
-          }) as { readonly modules?: readonly StatsModuleLike[] } | undefined
-          moduleIds = collectStatsModuleIds(statsJson?.modules ?? [])
-          resolve()
-        })
-      })
-    })
-
-    const outFile = join(dir, outFileName)
-    const code = await readFile(outFile, 'utf8')
-    assertCompiledExecution(code, 'rspack')
-    assertNoRuntimeCompositionEngine(code, moduleIds, 'rspack')
-
-    delete require.cache[outFile]
-    const mod = require(outFile)
-    expect(mod.result).toEqual(EXPECTED)
-  })
-
-  it.each(['webpack', 'rspack'] as const)(
-    'preserves exact callback source-map columns with %s',
-    assertWebpackLikeCallbackSourceMap,
-  )
 
   it('builds and fuses with Vite (vite-plus core)', async () => {
     const dir = await scratchDir('vite')
