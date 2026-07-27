@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -106,5 +107,78 @@ describe('S11R extracted matrix manifest boundary', () => {
     expect(first.harness.count).toBe(8)
     expect(first.canonical.sha256).toMatch(/^sha256:[a-f0-9]{64}$/u)
     expect(first.harness.sha256).toMatch(/^sha256:[a-f0-9]{64}$/u)
+  })
+
+  it('resolves a locked dependency whose exports hide package.json', async () => {
+    const { resolveLockedDependencyManifest } = await import(script.href)
+    const compilerRequire = createRequire(new URL('../../package.json', import.meta.url))
+    const traverseRequire = createRequire(compilerRequire.resolve('@babel/traverse/package.json'))
+    const babelRequire = createRequire(
+      resolveLockedDependencyManifest('@babel/code-frame', traverseRequire),
+    )
+    expect(() => babelRequire.resolve('js-tokens/package.json')).toThrow()
+    expect(() => resolveLockedDependencyManifest('../js-tokens', babelRequire)).toThrow(
+      /invalid package name/u,
+    )
+    const manifestPath = resolveLockedDependencyManifest('js-tokens', babelRequire)
+    expect(JSON.parse(await readFile(manifestPath, 'utf8'))).toMatchObject({
+      name: 'js-tokens',
+      version: expect.any(String),
+    })
+  })
+
+  it('does not skip an invalid first package selected by ordered lookup paths', async () => {
+    const { resolveLockedDependencyManifest } = await import(script.href)
+    const scratch = await mkdtemp(join(tmpdir(), 'stopcock-s11r-dependency-resolution-'))
+    try {
+      const first = join(scratch, 'first')
+      const second = join(scratch, 'second')
+      await mkdir(join(first, 'js-tokens'), { recursive: true })
+      await mkdir(join(second, 'js-tokens'), { recursive: true })
+      await writeFile(
+        join(first, 'js-tokens', 'package.json'),
+        JSON.stringify({ name: 'wrong-package', version: '1.0.0' }),
+      )
+      await writeFile(
+        join(second, 'js-tokens', 'package.json'),
+        JSON.stringify({ name: 'js-tokens', version: '10.0.0' }),
+      )
+      const missing = Object.assign(
+        () => {
+          throw Object.assign(new Error('not exported'), {
+            code: 'ERR_PACKAGE_PATH_NOT_EXPORTED',
+          })
+        },
+        { paths: () => [first, second] },
+      )
+      let integrityError: unknown
+      try {
+        resolveLockedDependencyManifest('js-tokens', { resolve: missing })
+      } catch (error) {
+        integrityError = error
+      }
+      expect(integrityError).toBeInstanceOf(Error)
+      expect((integrityError as Error).message).toMatch(/unexpected name wrong-package/u)
+      expect(integrityError).not.toMatchObject({
+        code: 'STOPCOCK_MISSING_LOCKED_DEPENDENCY',
+      })
+
+      const absent = Object.assign(
+        () => {
+          throw Object.assign(new Error('missing'), { code: 'MODULE_NOT_FOUND' })
+        },
+        { paths: () => [] },
+      )
+      expect(() =>
+        resolveLockedDependencyManifest('missing-optional-helper', { resolve: absent }),
+      ).toThrow(
+        expect.objectContaining({
+          code: 'STOPCOCK_MISSING_LOCKED_DEPENDENCY',
+          dependencyName: 'missing-optional-helper',
+        }),
+      )
+    } finally {
+      await rm(scratch, { recursive: true, force: true })
+    }
   })
 })

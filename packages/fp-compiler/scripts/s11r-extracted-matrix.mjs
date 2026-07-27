@@ -43,6 +43,8 @@ const TRACE_MAPPING = await import(
   pathToFileURL(TRACE_MAPPING_REQUIRE.resolve('@jridgewell/trace-mapping')).href
 )
 const SHA256 = /^sha256:[a-f0-9]{64}$/u
+const PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/u
+const MISSING_LOCKED_DEPENDENCY = 'STOPCOCK_MISSING_LOCKED_DEPENDENCY'
 const S11R_PUBLIC_COHORT_COUNT = 21
 const COMMON_CONSUMERS = Object.freeze([
   'compiler.collect.common',
@@ -81,6 +83,20 @@ const fail = (message) => {
 const assert = (condition, message) => {
   if (!condition) fail(message)
 }
+class MissingLockedDependencyError extends Error {
+  constructor(dependencyName) {
+    super(
+      `S11R extracted matrix: locked compiler dependency ${dependencyName} cannot be resolved: no matching installed manifest`,
+    )
+    this.name = 'MissingLockedDependencyError'
+    this.code = MISSING_LOCKED_DEPENDENCY
+    this.dependencyName = dependencyName
+  }
+}
+const isMissingLockedDependency = (error, dependencyName) =>
+  error instanceof MissingLockedDependencyError &&
+  error.code === MISSING_LOCKED_DEPENDENCY &&
+  error.dependencyName === dependencyName
 const stable = (value) => JSON.stringify(value, null, 2) + '\n'
 const hash = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`
 const posix = (value) => value.split(sep).join('/')
@@ -312,6 +328,89 @@ const packageClosureIdentity = (root) => {
 }
 
 /**
+ * Locate the physical manifest selected from a specific dependency's require
+ * context. Modern packages may deliberately hide `./package.json` behind
+ * `exports`, so package-json resolution cannot be the only path. Resolving the
+ * executable entry first preserves Node's version choice; searching that
+ * entry's ancestors (then the same ordered node_modules search paths for
+ * packages without a root entry) recovers only the matching package manifest.
+ */
+export const resolveLockedDependencyManifest = (name, parentRequire) => {
+  assert(PACKAGE_NAME.test(name), `locked compiler dependency has invalid package name ${name}`)
+  const readManifest = (candidate) => {
+    const physical = realpathSync(candidate)
+    const info = statSync(physical)
+    assert(info.isFile(), `locked compiler dependency ${name} manifest is not a file`)
+    let manifest
+    try {
+      manifest = JSON.parse(readFileSync(physical, 'utf8'))
+    } catch (error) {
+      fail(
+        `locked compiler dependency ${name} has an invalid manifest at ${physical}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+    return { physical, manifest }
+  }
+  const expectedResolutionFailure = (error) => {
+    const code =
+      error !== null && typeof error === 'object' && 'code' in error ? String(error.code) : ''
+    return code === 'ERR_PACKAGE_PATH_NOT_EXPORTED' || code === 'MODULE_NOT_FOUND'
+  }
+  const resolveOrAbsent = (specifier) => {
+    try {
+      return parentRequire.resolve(specifier)
+    } catch (error) {
+      if (expectedResolutionFailure(error)) return undefined
+      fail(
+        `locked compiler dependency ${name} resolution failed for ${specifier}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+  }
+
+  const direct = resolveOrAbsent(`${name}/package.json`)
+  if (direct !== undefined) {
+    const selected = readManifest(direct)
+    assert(
+      selected.manifest.name === name,
+      `resolved ${name} package manifest has unexpected name ${selected.manifest.name}`,
+    )
+    return selected.physical
+  }
+
+  const entry = resolveOrAbsent(name)
+  if (entry !== undefined) {
+    let cursor = dirname(realpathSync(entry))
+    while (cursor !== dirname(cursor)) {
+      const candidate = join(cursor, 'package.json')
+      if (existsSync(candidate)) {
+        const selected = readManifest(candidate)
+        if (selected.manifest.name === name) return selected.physical
+      }
+      cursor = dirname(cursor)
+    }
+    fail(`resolved ${name} entry has no matching package manifest`)
+  }
+
+  for (const searchRoot of parentRequire.resolve.paths(name) ?? []) {
+    const packageRoot = join(searchRoot, ...name.split('/'))
+    if (!existsSync(packageRoot)) continue
+    const manifestPath = join(packageRoot, 'package.json')
+    assert(existsSync(manifestPath), `selected compiler dependency ${name} has no package manifest`)
+    const selected = readManifest(manifestPath)
+    assert(
+      selected.manifest.name === name,
+      `resolved ${name} package manifest has unexpected name ${selected.manifest.name}`,
+    )
+    return selected.physical
+  }
+  throw new MissingLockedDependencyError(name)
+}
+
+/**
  * Recreate the compiler's runtime closure under the extraction as real files.
  * The host bundlers remain workspace tooling, but an extracted compiler must
  * never load Babel/unplugin through a workspace symlink or parent lookup.
@@ -336,10 +435,13 @@ export const copyCompilerDependencyClosure = (compilerRoot, cohortManifest) => {
   const install = (name, parentRequire, destinationParent, ancestry = new Set()) => {
     let manifestPath
     try {
-      manifestPath = parentRequire.resolve(`${name}/package.json`)
+      manifestPath = resolveLockedDependencyManifest(name, parentRequire)
     } catch (error) {
+      if (isMissingLockedDependency(error, name)) throw error
       fail(
-        `locked compiler dependency ${name} cannot be resolved: ${error instanceof Error ? error.message : String(error)}`,
+        `locked compiler dependency ${name} failed integrity validation: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       )
     }
     const source = dirname(manifestPath)
@@ -379,10 +481,7 @@ export const copyCompilerDependencyClosure = (compilerRoot, cohortManifest) => {
         const missingOptional =
           manifest.optionalDependencies &&
           dependency in manifest.optionalDependencies &&
-          error instanceof Error &&
-          error.message.startsWith(
-            `S11R extracted matrix: locked compiler dependency ${dependency} cannot be resolved:`,
-          )
+          isMissingLockedDependency(error, dependency)
         if (!missingOptional) throw error
       }
     }
@@ -404,7 +503,7 @@ export const copyCompilerDependencyClosure = (compilerRoot, cohortManifest) => {
   const directResolutions = Object.keys(compilerManifest.dependencies ?? {})
     .sort(compare)
     .map((name) => {
-      const manifestPath = COMPILER_REQUIRE.resolve(`${name}/package.json`)
+      const manifestPath = resolveLockedDependencyManifest(name, COMPILER_REQUIRE)
       const installed = JSON.parse(readFileSync(manifestPath, 'utf8'))
       const resolution = `${installed.name}@${installed.version}`
       assert(
