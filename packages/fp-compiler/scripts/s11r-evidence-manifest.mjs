@@ -76,14 +76,34 @@ const main = () => {
   const scripts = dirname(fileURLToPath(import.meta.url))
   const qualifier = ['s11r-qualify.mjs', 's11r-extracted-matrix.mjs', 's11r-extracted-layouts.mjs']
     .map((name) => fileRecord(scripts, join(scripts, name)))
-    .sort((left, right) => left.path.localeCompare(right.path))
+    .sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0))
 
   const combined = JSON.parse(readFileSync(join(cohort, 'qualification-a', 'combined.json'), 'utf8'))
+  const hosts = JSON.parse(
+    readFileSync(join(cohort, 'qualification-a', 'combined.hosts.json'), 'utf8'),
+  )
+  // The bundler and minifier versions live at the top level of the host
+  // evidence, not in the combined summary. Bind them explicitly rather than
+  // relying on the transitive binding through the host file's own digest.
+  const qualificationTools = hosts.qualificationTools ?? null
+  assert(
+    qualificationTools !== null && Object.keys(qualificationTools).length > 0,
+    'host evidence records no qualification tool versions',
+  )
+  // Bind the cohort by its manifest bytes, not only by the hash string the
+  // manifest asserts about itself, and cross-check the two.
+  const manifestSha256 = sha256(readFileSync(manifestPath))
+  assert(
+    combined.cohort?.manifestSha256 === undefined ||
+      combined.cohort.manifestSha256 === manifestSha256,
+    'qualification evidence names a different cohort manifest than the one on disk',
+  )
   const record = {
     schemaVersion: 1,
     kind: DOMAIN,
     cohort: {
       contentHash: manifest.cohortContentHash,
+      manifestSha256,
       target: manifest.target,
       mode: manifest.mode,
       publicCount: manifest.publicCount,
@@ -92,7 +112,7 @@ const main = () => {
     qualifier,
     tools: {
       node: process.version,
-      qualification: combined.hosts?.qualificationTools ?? combined.qualificationTools ?? null,
+      qualification: qualificationTools,
     },
   }
   const identity = sha256(

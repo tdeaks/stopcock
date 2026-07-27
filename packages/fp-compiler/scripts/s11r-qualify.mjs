@@ -111,7 +111,7 @@ const main = () => {
     components: componentIdentities,
     artifacts: Object.fromEntries(
       [...layoutTarballs.entries()]
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
         .map(([name, entry]) => [name, { sha256: entry.sha256, bytes: entry.bytes }]),
     ),
     fpAbi: ordinary.fpIdentity,

@@ -103,7 +103,10 @@ const isMissingLockedDependency = (error, dependencyName) =>
 const stable = (value) => JSON.stringify(value, null, 2) + '\n'
 const hash = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`
 const posix = (value) => value.replaceAll('\\', '/').split(sep).join('/')
-const compare = (left, right) => left.localeCompare(right)
+// Codepoint order, not locale collation: localeCompare resolves against the
+// runtime default locale and ICU build, so it would make this evidence
+// host-dependent.
+const compare = (left, right) => (left < right ? -1 : left > right ? 1 : 0)
 const hasControlCharacters = (value) =>
   value.includes('\0') || value.includes('\r') || value.includes('\n')
 const text = (value) => {
@@ -542,7 +545,7 @@ export const copyCompilerDependencyClosure = (compilerRoot, cohortManifest) => {
     sha256: identity.sha256,
     files: identity.files,
     packages: [...packageRecords.values()].sort((left, right) =>
-      `${left.name}\0${left.version}`.localeCompare(`${right.name}\0${right.version}`),
+      compare(`${left.name}\0${left.version}`, `${right.name}\0${right.version}`),
     ),
     inputs: {
       lockfile: lockfileIdentity,
@@ -1149,11 +1152,17 @@ export const assertPortableEmittedCode = (code, label) => {
     workspace === -1,
     `${label} emitted code leaks the workspace path near ${snippet(workspace)}`,
   )
-  const temporary = probe.indexOf(posix(tmpdir()))
-  assert(
-    temporary === -1,
-    `${label} emitted code leaks a temporary path near ${snippet(temporary)}`,
-  )
+  // tmpdir() is the logical spelling; macOS resolves it to /private/var. Probe
+  // both so a temporary path in either spelling is named.
+  const temporaryRoots = new Set([posix(tmpdir())])
+  if (existsSync(tmpdir())) temporaryRoots.add(posix(realpathSync(tmpdir())))
+  for (const root of temporaryRoots) {
+    const temporary = probe.indexOf(root)
+    assert(
+      temporary === -1,
+      `${label} emitted code leaks a temporary path near ${snippet(temporary)}`,
+    )
+  }
 }
 
 const codeIdentity = async (code, map, topology, label = 'emitted output') => {
@@ -1167,12 +1176,19 @@ const codeIdentity = async (code, map, topology, label = 'emitted output') => {
   const canonicalMinified = canonicalEmittedCode(minified.code, scratchRoot)
   assertPortableEmittedCode(canonicalCode, label)
   assertPortableEmittedCode(canonicalMinified, `${label} minified`)
+  // The denominator above is only host-independent while minification leaves no
+  // host path behind. That holds because the minifier drops comments, but it is
+  // a property of the frozen options, so prove it here instead of assuming it.
+  assert(
+    canonicalMinified === minified.code,
+    `${label} minified code carries a host path, so its gzip denominator is host-dependent`,
+  )
   const canonicalMap = map === null ? null : normalizeSourceMap(map, topology)
   return {
     code: hash(Buffer.from(canonicalCode)),
-    codeBytes: Buffer.byteLength(canonicalCode),
+    canonicalCodeBytes: Buffer.byteLength(canonicalCode),
     minifiedCode: hash(Buffer.from(canonicalMinified)),
-    minifiedCodeBytes: Buffer.byteLength(canonicalMinified),
+    minifiedCodeBytes: Buffer.byteLength(minified.code),
     sourceMap: canonicalMap === null ? null : hash(Buffer.from(canonicalMap)),
     gzipBytes,
   }
@@ -1710,7 +1726,7 @@ const runCommonMatrix = async (topology, root, validateReceiptV1, canonical, com
     }
   }
   return rows.sort((left, right) =>
-    `${left.host}\0${left.consumer}`.localeCompare(`${right.host}\0${right.consumer}`),
+    compare(`${left.host}\0${left.consumer}`, `${right.host}\0${right.consumer}`),
   )
 }
 
@@ -1881,7 +1897,7 @@ const runSourceMapMatrix = async (topology, root, validateReceiptV1, compiler) =
     }
   }
   return rows.sort((left, right) =>
-    `${left.host}\0${left.case}`.localeCompare(`${right.host}\0${right.case}`),
+    compare(`${left.host}\0${left.case}`, `${right.host}\0${right.case}`),
   )
 }
 
@@ -2293,7 +2309,7 @@ const runMixedRows = async (topology, root, validateReceiptV1, compiler) => {
     }
   }
   return rows.sort((left, right) =>
-    `${left.host}\0${left.tier}`.localeCompare(`${right.host}\0${right.tier}`),
+    compare(`${left.host}\0${left.tier}`, `${right.host}\0${right.tier}`),
   )
 }
 

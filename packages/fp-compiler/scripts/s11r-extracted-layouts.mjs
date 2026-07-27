@@ -70,7 +70,8 @@ const assert = (condition, message) => {
 }
 
 const canonicalJson = (value) => `${JSON.stringify(value, null, 2)}\n`
-const compare = (left, right) => left.localeCompare(right)
+// Codepoint order, not locale collation. See the matrix qualifier.
+const compare = (left, right) => (left < right ? -1 : left > right ? 1 : 0)
 const toPosix = (value) => value.split(sep).join('/')
 const sha256 = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`
 const cleanNodeEnvironment = () => {
