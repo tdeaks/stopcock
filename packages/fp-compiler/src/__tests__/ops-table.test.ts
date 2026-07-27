@@ -39,11 +39,25 @@ describe('ops-table snapshot', () => {
           runnerId: lowering.runnerId,
           compilerPipelineRole: lowering.compilerPipelineRole,
           compilerFinalBoundary: lowering.compilerFinalBoundary,
+          emitKind: record.emit?.kind,
+          emitIndexed: record.emit && record.emit.kind !== 'boundary' ? !!record.emit.indexed : false,
         }
       })
       .sort((left, right) => left.semanticId.localeCompare(right.semanticId))
 
-    expect(OPS_TABLE).toEqual(expected)
+    // `emit.render` is a fresh function object every time ops-table.ts is
+    // loaded (it's spliced source, not a shared reference), so it compares
+    // by shape (kind, indexed) plus "is actually a function", not identity.
+    const actual = OPS_TABLE.map(({ emit, ...rest }) => ({
+      ...rest,
+      emitKind: emit.kind,
+      emitIndexed: emit.kind !== 'boundary' && !!emit.indexed,
+    }))
+
+    expect(actual).toEqual(expected)
+    expect(
+      OPS_TABLE.every((entry) => entry.emit.kind === 'boundary' || typeof entry.emit.render === 'function'),
+    ).toBe(true)
     expect(OPS_TABLE).toHaveLength(140)
   })
 

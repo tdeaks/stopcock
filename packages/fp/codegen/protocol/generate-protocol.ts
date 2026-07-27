@@ -8,6 +8,7 @@ import {
   OPERATOR_DEFINITION_RECORDS_V1,
   OPERATOR_LOWERINGS_V1,
   OPERATOR_SEMANTICS_V1,
+  assertEmitCoverageV1,
   assertRuntimeEncodingCatalogueV1,
   runtimeRecordsInOpcodeOrderV1,
   type OperatorDefinitionRecordV1,
@@ -16,6 +17,7 @@ import {
   assertOperatorCatalogueV1,
   hashCanonical,
   type FusionRunnerDescriptorV1,
+  type OpEmit,
   type OperatorEvidenceCorpusJoinV1,
   type OperatorLoweringV1,
   type OperatorSemanticV1,
@@ -57,6 +59,7 @@ export function emitAfterProtocolCatalogueValidationV1<Result>(
   emit: () => Result,
 ): Result {
   assertRuntimeEncodingCatalogueV1(catalogue.definitions)
+  assertEmitCoverageV1(catalogue.definitions)
   assertOperatorCatalogueV1(catalogue.semantics, catalogue.lowerings, catalogue.runnerDescriptors)
   return emit()
 }
@@ -976,6 +979,7 @@ interface CompilerTableEntryV1 {
   readonly runnerId: string
   readonly compilerPipelineRole: 'element' | 'terminal' | 'boundary'
   readonly compilerFinalBoundary: boolean
+  readonly emit: OpEmit
 }
 
 function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
@@ -985,6 +989,11 @@ function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
       if (!lowering || lowering.compilerPipelineRole === 'none') {
         throw new Error(
           `protocol generation: public compiler operator ${record.semantic.semanticId} has no compiler lowering`,
+        )
+      }
+      if (!record.emit) {
+        throw new Error(
+          `protocol generation: compiler operator ${record.semantic.semanticId} has no emit template`,
         )
       }
       return {
@@ -1004,12 +1013,51 @@ function compilerEntriesV1(): readonly CompilerTableEntryV1[] {
         runnerId: lowering.runnerId,
         compilerPipelineRole: lowering.compilerPipelineRole,
         compilerFinalBoundary: lowering.compilerFinalBoundary,
+        emit: record.emit,
       }
     })
     .sort((left, right) => {
       const byId = left.semanticId.localeCompare(right.semanticId)
       return byId !== 0 ? byId : left.semanticRevision - right.semanticRevision
     })
+}
+
+/**
+ * Renders one `emit` field as real source, not JSON: a boundary op has no
+ * render function, everything else splices its `render` closure's own text
+ * in verbatim. `Function.prototype.toString()` is safe here only because
+ * every template in `operator-definitions.ts` closes over nothing but its
+ * own `ctx` parameter -- see the comment above `ELEMENT_EMIT_TEMPLATES`.
+ */
+function renderEmitFieldV1(emit: OpEmit): string {
+  if (emit.kind === 'boundary') return `{ kind: 'boundary' }`
+  const indexed = 'indexed' in emit && emit.indexed ? '\n      indexed: true,' : ''
+  return `{
+      kind: ${JSON.stringify(emit.kind)},${indexed}
+      render: ${emit.render.toString()},
+    }`
+}
+
+function renderOpsTableEntryV1(entry: CompilerTableEntryV1): string {
+  return `  {
+    name: ${JSON.stringify(entry.name)},
+    callbackArity: ${entry.callbackArity},
+    bindings: ${JSON.stringify(entry.bindings)},
+    semanticId: ${JSON.stringify(entry.semanticId)},
+    semanticRevision: ${entry.semanticRevision},
+    inputDomain: ${JSON.stringify(entry.inputDomain)},
+    outputDomain: ${JSON.stringify(entry.outputDomain)},
+    cardinality: ${JSON.stringify(entry.cardinality)},
+    streamTermination: ${entry.streamTermination},
+    fullMaterialization: ${entry.fullMaterialization},
+    domainTransition: ${entry.domainTransition},
+    loweringId: ${JSON.stringify(entry.loweringId)},
+    loweringRevision: ${entry.loweringRevision},
+    runnerId: ${JSON.stringify(entry.runnerId)},
+    compilerPipelineRole: ${JSON.stringify(entry.compilerPipelineRole)},
+    compilerFinalBoundary: ${entry.compilerFinalBoundary},
+    emit: ${renderEmitFieldV1(entry.emit)},
+  }`
 }
 
 export function renderCompilerOpsTableV1(): string {
@@ -1022,6 +1070,51 @@ export function renderCompilerOpsTableV1(): string {
   return `// GENERATED FILE -- do not edit by hand.
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
 // The compiler consumes a data-only projection; it never imports FP runtime modules.
+
+/** A callback slot: either the inlined body or a hoisted temp call. \`pre\`
+ * carries the hoisted-temp declaration (if any), \`body\` the \`use\`-produced
+ * lines, as data rather than a push onto a shared array, so a template
+ * controls exactly where the temp lands relative to its own \`pre\` lines. */
+export interface CallbackHandle {
+  readonly emit: (
+    inputVars: readonly string[],
+    use: (expr: string) => readonly string[],
+  ) => { readonly pre?: readonly string[]; readonly body: readonly string[] }
+}
+
+/** Lines a template contributes to the fused loop: \`pre\` before it, \`state\`
+ * in the per-segment state block, \`body\` inside the loop, \`close\` after it. */
+export interface EmitFragment {
+  readonly pre?: readonly string[]
+  readonly state?: readonly string[]
+  readonly body: readonly string[]
+  readonly close?: readonly string[]
+}
+
+/** Everything a template needs to render one step, as plain strings. */
+export interface ElementEmitCtx {
+  readonly index: number
+  readonly v: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly indexed: boolean
+  readonly position: string
+  readonly outerLabel: string
+  readonly sequential: boolean
+  readonly optionNone: string
+  readonly cb: CallbackHandle
+}
+
+export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
+
+export type OpEmit =
+  | {
+      readonly kind: OpEmitKind
+      readonly indexed?: true
+      readonly render: (ctx: ElementEmitCtx) => EmitFragment
+    }
+  | { readonly kind: 'boundary' }
 
 export interface OpsTableEntry {
   readonly name: string
@@ -1046,6 +1139,7 @@ export interface OpsTableEntry {
   readonly runnerId: string
   readonly compilerPipelineRole: 'element' | 'terminal' | 'boundary'
   readonly compilerFinalBoundary: boolean
+  readonly emit: OpEmit
 }
 
 export const ELEMENT_OP_NAMES = ${JSON.stringify(byRole('element'), null, 2)} as const
@@ -1053,7 +1147,9 @@ export const TERMINAL_OP_NAMES = ${JSON.stringify(byRole('terminal'), null, 2)} 
 export const BOUNDARY_OP_NAMES = ${JSON.stringify(byRole('boundary'), null, 2)} as const
 export const FINAL_BOUNDARY_OP_NAMES = ${JSON.stringify(finalBoundaries, null, 2)} as const
 
-export const OPS_TABLE: readonly OpsTableEntry[] = ${JSON.stringify(entries, null, 2)}
+export const OPS_TABLE: readonly OpsTableEntry[] = [
+${entries.map(renderOpsTableEntryV1).join(',\n')}
+]
 `
 }
 

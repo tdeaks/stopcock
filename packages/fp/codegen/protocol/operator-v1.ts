@@ -1097,3 +1097,78 @@ export function assertEvidenceJoinsCurrentV1(
   )}`
   if (evidence.evidenceId !== expectedEvidenceId) fail('evidence identity hash drift')
 }
+
+// -- Compiled emission, phase 1.1 -------------------------------------------
+//
+// `OpEmit` is the data form of what `fp-compiler/src/codegen.ts` hand-wrote
+// per op before phase 1.3. A template never touches an AST: the scaffold
+// (codegen.ts) renders bound arguments and callback bodies to text first,
+// then calls `render(ctx)` with plain strings and a `CallbackHandle`. That
+// keeps every template a closure-free function of its own parameter, which
+// is the requirement for splicing its `Function.prototype.toString()` text
+// into the generated `ops-table.ts` as real source.
+
+/** Lines produced by a callback slot: either the inlined body or a hoisted
+ * temp call, chosen by `inline.ts` at consume time. `use` receives the
+ * rendered callback expression and decides what to do with it (assign,
+ * test, break). `emit` returns the hoisted-temp declaration (if any) as
+ * `pre` and whatever statement lines `use` produced as `body` -- as data,
+ * not as a side effect on a shared array, so a template controls exactly
+ * where the temp declaration lands relative to its own `pre` lines (e.g.
+ * `reduce` needs its hoisted callback temp before the seed line, matching
+ * `reduce(fn, seed)`'s left-to-right argument evaluation; most sinks need
+ * their initial-value line before it, since it never has an observable
+ * evaluation order of its own). */
+export interface CallbackHandle {
+  readonly emit: (
+    inputVars: readonly string[],
+    use: (expr: string) => readonly string[],
+  ) => { readonly pre?: readonly string[]; readonly body: readonly string[] }
+}
+
+/** Lines a template contributes to the enclosing fused loop, split by where
+ * they land: `pre` before the loop, `state` in the per-segment state block,
+ * `body` inside the loop body, `close` after it (closing braces opened by
+ * `body`, e.g. flatMap's nested for). Only `body` is required. */
+export interface EmitFragment {
+  readonly pre?: readonly string[]
+  readonly state?: readonly string[]
+  readonly body: readonly string[]
+  readonly close?: readonly string[]
+}
+
+/** Everything a template needs to render one step, as plain strings and one
+ * callback handle -- never an AST node. `v`/`next` are the loop-local input
+ * and output variable spellings; for a terminal, `next` is the segment's
+ * result variable rather than a per-step temp. `a1`/`a2` are the bound
+ * argument spellings, already rendered and parenthesized. `position` is the
+ * element-index variable, populated only when `indexed` is true. */
+export interface ElementEmitCtx {
+  readonly index: number
+  readonly v: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly indexed: boolean
+  readonly position: string
+  readonly outerLabel: string
+  readonly sequential: boolean
+  readonly optionNone: string
+  readonly cb: CallbackHandle
+}
+
+export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
+
+/** The six emission kinds from the phase 1 plan. `expr`/`filter`/`expand`/
+ * `stateful` cover element (loop-body) ops; `sink` covers terminals; a
+ * `boundary` op has no template at all, it stays a whole-array call emitted
+ * by `emitBoundarySegment`. `indexed` marks the `withIndex` sibling of a
+ * base op (map/mapWithIndex, filter/filterWithIndex, forEach/
+ * forEachWithIndex) reusing the same `render` function. */
+export type OpEmit =
+  | {
+      readonly kind: OpEmitKind
+      readonly indexed?: true
+      readonly render: (ctx: ElementEmitCtx) => EmitFragment
+    }
+  | { readonly kind: 'boundary' }

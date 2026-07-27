@@ -15,6 +15,7 @@ import {
   type LogicalDomainV1,
   type OperatorLoweringV1,
   type OperatorSemanticV1,
+  type OpEmit,
   type OwnershipContractV1,
   type PhysicalLayoutV1,
   type ResultOwnershipV1,
@@ -60,6 +61,10 @@ export interface OperatorDefinitionRecordV1 {
   readonly publicArrayExport: boolean
   readonly compilerPipelineRole: CompilerPipelineRoleV1
   readonly compilerFinalBoundary: boolean
+  /** The compiled emission template, present iff `fusible` is true. */
+  readonly emit?: OpEmit
+  /** `false` only for the scalar/guard ops with no compiler pipeline role. */
+  readonly fusible: boolean
   readonly contradictionDisposition:
     | 'legacy-classification-retained'
     | 'compiler-streaming-terminal-is-canonical'
@@ -206,6 +211,312 @@ function op(
     publicArrayExport,
     compilerPipelineRole,
   }
+}
+
+// -- Compiled emission templates ---------------------------------------
+//
+// One `render` function per element/terminal op, keyed by public name. Each
+// mirrors the hand-written case it replaces in
+// `fp-compiler/src/codegen.ts#emitElementSegment` byte-for-byte. A template
+// body may reference only its own `ctx` parameter: it gets spliced into the
+// generated `ops-table.ts` as literal source via `Function.prototype.
+// toString()`, so any reference to an outer variable would be dangling in
+// that file. `map`/`mapWithIndex`, `filter`/`filterWithIndex`, and `forEach`/
+// `forEachWithIndex` each share one function object between their two rows,
+// distinguished by `indexed`.
+
+const mapTemplate: OpEmit = {
+  kind: 'expr',
+  render: (ctx) => {
+    const cb = ctx.cb.emit(ctx.indexed ? [ctx.v, ctx.position] : [ctx.v], (expr) => [
+      `var ${ctx.next} = ${expr};`,
+    ])
+    return { pre: cb.pre, body: cb.body }
+  },
+}
+
+const filterTemplate: OpEmit = {
+  kind: 'filter',
+  render: (ctx) => {
+    const cb = ctx.cb.emit(ctx.indexed ? [ctx.v, ctx.position] : [ctx.v], (expr) => [
+      `if (!${expr}) { continue; }`,
+    ])
+    return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${ctx.v};`] }
+  },
+}
+
+const forEachTemplate: OpEmit = {
+  kind: 'sink',
+  render: (ctx) => {
+    const cb = ctx.cb.emit(ctx.indexed ? [ctx.v, ctx.position] : [ctx.v], (expr) => [`${expr};`])
+    return { pre: [...(cb.pre ?? []), `var ${ctx.next} = undefined;`], body: cb.body }
+  },
+}
+
+const ELEMENT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
+  map: mapTemplate,
+  mapWithIndex: { ...mapTemplate, indexed: true },
+  filter: filterTemplate,
+  filterWithIndex: { ...filterTemplate, indexed: true },
+  reject: {
+    kind: 'filter',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`if (${expr}) { continue; }`])
+      return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${ctx.v};`] }
+    },
+  },
+  filterMap: {
+    kind: 'filter',
+    render: (ctx) => {
+      const tmp = `_m${ctx.index}`
+      const cb = ctx.cb.emit([ctx.v], (expr) => [
+        `var ${tmp} = ${expr};`,
+        `if (${tmp} == null) { continue; }`,
+      ])
+      return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${tmp};`] }
+    },
+  },
+  mapWhile: {
+    kind: 'stateful',
+    render: (ctx) => {
+      const tmp = `_mw${ctx.index}`
+      const cb = ctx.cb.emit([ctx.v], (expr) => [
+        `var ${tmp} = ${expr};`,
+        `if (${tmp} == null) { break ${ctx.outerLabel}; }`,
+      ])
+      return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${tmp};`] }
+    },
+  },
+  flatMap: {
+    kind: 'expand',
+    render: (ctx) => {
+      const fm = `_fm${ctx.index}`
+      const j = `_j${ctx.index}`
+      const rlen = `_rlen${ctx.index}`
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`var ${fm} = ${expr};`])
+      return {
+        pre: cb.pre,
+        body: [
+          ...cb.body,
+          `for (var ${j} = 0, ${rlen} = ${fm}.length; ${j} < ${rlen}; ${j}++) {`,
+          `var ${ctx.next} = ${fm}[${j}];`,
+        ],
+        close: ['}'],
+      }
+    },
+  },
+  take: {
+    kind: 'stateful',
+    render: (ctx) => {
+      const n = `_n${ctx.index}`
+      const take = `_take${ctx.index}`
+      const state: string[] = []
+      if (!ctx.sequential) {
+        state.push(`${n} = ${n} > 0 ? (${n} === 1 / 0 ? ${n} : ${n} - ${n} % 1) : 0;`)
+      }
+      state.push(`var ${take} = 0;`)
+      return {
+        pre: [`var ${n} = ${ctx.a1};`],
+        state,
+        body: [
+          `if (${take} >= ${n}) break ${ctx.outerLabel};`,
+          `${take}++;`,
+          `var ${ctx.next} = ${ctx.v};`,
+        ],
+      }
+    },
+  },
+  takeUntil: {
+    kind: 'stateful',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`if (${expr}) { break ${ctx.outerLabel}; }`])
+      return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${ctx.v};`] }
+    },
+  },
+  drop: {
+    kind: 'stateful',
+    render: (ctx) => {
+      const n = `_n${ctx.index}`
+      const drop = `_drop${ctx.index}`
+      const state: string[] = []
+      if (!ctx.sequential) {
+        state.push(`${n} = ${n} > 0 ? (${n} === 1 / 0 ? ${n} : ${n} - ${n} % 1) : 0;`)
+      }
+      state.push(`var ${drop} = 0;`)
+      return {
+        pre: [`var ${n} = ${ctx.a1};`],
+        state,
+        body: [`if (${drop} < ${n}) { ${drop}++; continue; }`, `var ${ctx.next} = ${ctx.v};`],
+      }
+    },
+  },
+  takeWhile: {
+    kind: 'stateful',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`if (!${expr}) break ${ctx.outerLabel};`])
+      return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${ctx.v};`] }
+    },
+  },
+  dropWhile: {
+    kind: 'stateful',
+    render: (ctx) => {
+      const dw = `_dw${ctx.index}`
+      const cb = ctx.cb.emit([ctx.v], (expr) => [
+        `if (${dw}) { if (${expr}) { continue; } ${dw} = false; }`,
+      ])
+      return {
+        state: [`var ${dw} = true;`],
+        pre: cb.pre,
+        body: [...cb.body, `var ${ctx.next} = ${ctx.v};`],
+      }
+    },
+  },
+  sum: {
+    kind: 'sink',
+    render: (ctx) => ({ pre: [`var ${ctx.next} = 0;`], body: [`${ctx.next} += ${ctx.v};`] }),
+  },
+  count: {
+    kind: 'sink',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [`if (${expr}) { ${ctx.next}++; }`])
+      return { pre: [`var ${ctx.next} = 0;`, ...(cb.pre ?? [])], body: cb.body }
+    },
+  },
+  reduce: {
+    kind: 'sink',
+    render: (ctx) => {
+      // `reduce(fn, seed)` evaluates `fn` before `seed`: a hoisted callback
+      // temp (if any) must land before the seed line, not after, so this is
+      // the one template that puts `cb.pre` ahead of its own line.
+      const cb = ctx.cb.emit([ctx.next, ctx.v], (expr) => [`${ctx.next} = ${expr};`])
+      return { pre: [...(cb.pre ?? []), `var ${ctx.next} = ${ctx.a1};`], body: cb.body }
+    },
+  },
+  forEach: forEachTemplate,
+  forEachWithIndex: { ...forEachTemplate, indexed: true },
+  find: {
+    kind: 'sink',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [
+        `if (${expr}) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; break ${ctx.outerLabel}; }`,
+      ])
+      return { pre: [`var ${ctx.next} = ${ctx.optionNone};`, ...(cb.pre ?? [])], body: cb.body }
+    },
+  },
+  findIndex: {
+    kind: 'sink',
+    render: (ctx) => {
+      const pos = `_pos${ctx.index}`
+      const cb = ctx.cb.emit([ctx.v], (expr) => [
+        `if (${expr}) { ${ctx.next} = { _tag: 1, value: ${pos} }; break ${ctx.outerLabel}; }`,
+        `${pos}++;`,
+      ])
+      return {
+        pre: [`var ${ctx.next} = ${ctx.optionNone};`, ...(cb.pre ?? [])],
+        state: [`var ${pos} = 0;`],
+        body: cb.body,
+      }
+    },
+  },
+  // The AST fast path for a `x != null ? x : undefined`-shaped callback
+  // (`planPresentConditional` in codegen.ts) inspects the callback's syntax
+  // tree, which a serializable template cannot do. This is the slow-path
+  // equivalent; codegen.ts keeps the fast path as a named override that
+  // tries first and falls back to this template.
+  findMap: {
+    kind: 'sink',
+    render: (ctx) => {
+      const tmp = `_fmv${ctx.index}`
+      const cb = ctx.cb.emit([ctx.v], (expr) => [
+        `var ${tmp} = ${expr};`,
+        `if (${tmp} != null) { ${ctx.next} = { _tag: 1, value: ${tmp} }; break ${ctx.outerLabel}; }`,
+      ])
+      return { pre: [`var ${ctx.next} = ${ctx.optionNone};`, ...(cb.pre ?? [])], body: cb.body }
+    },
+  },
+  every: {
+    kind: 'sink',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [
+        `if (!${expr}) { ${ctx.next} = false; break ${ctx.outerLabel}; }`,
+      ])
+      return { pre: [`var ${ctx.next} = true;`, ...(cb.pre ?? [])], body: cb.body }
+    },
+  },
+  some: {
+    kind: 'sink',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [
+        `if (${expr}) { ${ctx.next} = true; break ${ctx.outerLabel}; }`,
+      ])
+      return { pre: [`var ${ctx.next} = false;`, ...(cb.pre ?? [])], body: cb.body }
+    },
+  },
+  none: {
+    kind: 'sink',
+    render: (ctx) => {
+      const cb = ctx.cb.emit([ctx.v], (expr) => [
+        `if (${expr}) { ${ctx.next} = false; break ${ctx.outerLabel}; }`,
+      ])
+      return { pre: [`var ${ctx.next} = true;`, ...(cb.pre ?? [])], body: cb.body }
+    },
+  },
+  head: {
+    kind: 'sink',
+    render: (ctx) => ({
+      pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+      body: [`if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; }`],
+    }),
+  },
+  last: {
+    kind: 'sink',
+    render: (ctx) => ({
+      pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+      body: [
+        `if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; } else { ${ctx.next}.value = ${ctx.v}; }`,
+      ],
+    }),
+  },
+  length: {
+    kind: 'sink',
+    render: (ctx) => ({ pre: [`var ${ctx.next} = 0;`], body: [`${ctx.next}++;`] }),
+  },
+  isEmpty: {
+    kind: 'sink',
+    render: (ctx) => ({ pre: [`var ${ctx.next} = true;`], body: [`${ctx.next} = false;`] }),
+  },
+  min: {
+    kind: 'sink',
+    render: (ctx) => ({
+      pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+      body: [
+        `if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; } else if (${ctx.v} < ${ctx.next}.value) { ${ctx.next}.value = ${ctx.v}; }`,
+      ],
+    }),
+  },
+  max: {
+    kind: 'sink',
+    render: (ctx) => ({
+      pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+      body: [
+        `if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; } else if (${ctx.v} > ${ctx.next}.value) { ${ctx.next}.value = ${ctx.v}; }`,
+      ],
+    }),
+  },
+}
+
+const BOUNDARY_EMIT_TEMPLATE: OpEmit = { kind: 'boundary' }
+
+function emitDeclarationFor(row: LegacyRowV1): { readonly emit?: OpEmit; readonly fusible: boolean } {
+  if (row.compilerPipelineRole === null) return { fusible: false }
+  if (row.compilerPipelineRole === 'boundary') return { emit: BOUNDARY_EMIT_TEMPLATE, fusible: true }
+  const template = ELEMENT_EMIT_TEMPLATES[row.name]
+  if (!template) {
+    throw new Error(
+      `operator definitions v1: ${row.name} has compilerPipelineRole ${row.compilerPipelineRole} but no emit template`,
+    )
+  }
+  return { emit: template, fusible: true }
 }
 
 const LEGACY_ROWS = [
@@ -3665,6 +3976,7 @@ function createRecord(row: LegacyRowV1): OperatorDefinitionRecordV1 {
     publicArrayExport: row.publicArrayExport,
     compilerPipelineRole: compilerRole,
     compilerFinalBoundary: compilerFinalBoundary(row),
+    ...emitDeclarationFor(row),
     contradictionDisposition:
       row.cardinality === cardinality
         ? 'legacy-classification-retained'
@@ -3775,6 +4087,27 @@ export function assertRuntimeEncodingCatalogueV1(
   }
 }
 
+/**
+ * Invariant 4: every op has an `emit` template or is marked `fusible:
+ * false`. No third state. This is the coverage rule from phase 1.2, and it
+ * runs before any generated file is written.
+ */
+export function assertEmitCoverageV1(records: readonly OperatorDefinitionRecordV1[]): void {
+  for (const record of records) {
+    const hasEmit = record.emit !== undefined
+    if (record.fusible && !hasEmit) {
+      throw new Error(
+        `operator definitions v1: ${record.semantic.semanticId} is fusible but has no emit template`,
+      )
+    }
+    if (!record.fusible && hasEmit) {
+      throw new Error(
+        `operator definitions v1: ${record.semantic.semanticId} is fusible: false but declares an emit template`,
+      )
+    }
+  }
+}
+
 export const OPERATOR_SEMANTICS_V1: readonly OperatorSemanticV1[] = Object.freeze(
   OPERATOR_DEFINITION_RECORDS_V1.map((record) => record.semantic),
 )
@@ -3791,6 +4124,7 @@ export const FUSION_RUNNER_DESCRIPTORS_V1 = Object.freeze(
 )
 
 assertRuntimeEncodingCatalogueV1(OPERATOR_DEFINITION_RECORDS_V1)
+assertEmitCoverageV1(OPERATOR_DEFINITION_RECORDS_V1)
 assertOperatorCatalogueV1(
   OPERATOR_SEMANTICS_V1,
   OPERATOR_LOWERINGS_V1,

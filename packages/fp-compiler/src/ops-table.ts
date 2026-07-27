@@ -2,6 +2,51 @@
 // Source: packages/fp/codegen/protocol/operator-definitions.ts
 // The compiler consumes a data-only projection; it never imports FP runtime modules.
 
+/** A callback slot: either the inlined body or a hoisted temp call. `pre`
+ * carries the hoisted-temp declaration (if any), `body` the `use`-produced
+ * lines, as data rather than a push onto a shared array, so a template
+ * controls exactly where the temp lands relative to its own `pre` lines. */
+export interface CallbackHandle {
+  readonly emit: (
+    inputVars: readonly string[],
+    use: (expr: string) => readonly string[],
+  ) => { readonly pre?: readonly string[]; readonly body: readonly string[] }
+}
+
+/** Lines a template contributes to the fused loop: `pre` before it, `state`
+ * in the per-segment state block, `body` inside the loop, `close` after it. */
+export interface EmitFragment {
+  readonly pre?: readonly string[]
+  readonly state?: readonly string[]
+  readonly body: readonly string[]
+  readonly close?: readonly string[]
+}
+
+/** Everything a template needs to render one step, as plain strings. */
+export interface ElementEmitCtx {
+  readonly index: number
+  readonly v: string
+  readonly next: string
+  readonly a1: string
+  readonly a2: string
+  readonly indexed: boolean
+  readonly position: string
+  readonly outerLabel: string
+  readonly sequential: boolean
+  readonly optionNone: string
+  readonly cb: CallbackHandle
+}
+
+export type OpEmitKind = 'expr' | 'filter' | 'expand' | 'stateful' | 'sink'
+
+export type OpEmit =
+  | {
+      readonly kind: OpEmitKind
+      readonly indexed?: true
+      readonly render: (ctx: ElementEmitCtx) => EmitFragment
+    }
+  | { readonly kind: 'boundary' }
+
 export interface OpsTableEntry {
   readonly name: string
   readonly callbackArity: 0 | 1 | 2
@@ -25,6 +70,7 @@ export interface OpsTableEntry {
   readonly runnerId: string
   readonly compilerPipelineRole: 'element' | 'terminal' | 'boundary'
   readonly compilerFinalBoundary: boolean
+  readonly emit: OpEmit
 }
 
 export const ELEMENT_OP_NAMES = [
@@ -240,6 +286,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/adjust/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'aperture',
@@ -258,6 +305,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/aperture/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'append',
@@ -276,6 +324,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/append/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'arrayEndsWith',
@@ -294,6 +343,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/arrayEndsWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'arrayStartsWith',
@@ -312,6 +362,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/arrayStartsWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'chunk',
@@ -330,6 +381,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/chunk/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'collectBy',
@@ -348,6 +400,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/collectBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'concat',
@@ -366,6 +419,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/concat/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'count',
@@ -384,6 +438,13 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/count/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [`if (${expr}) { ${ctx.next}++; }`])
+        return { pre: [`var ${ctx.next} = 0;`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
   },
   {
     name: 'difference',
@@ -402,6 +463,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/difference/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'differenceBy',
@@ -420,6 +482,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/differenceBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'differenceWith',
@@ -438,6 +501,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/differenceWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'drop',
@@ -456,6 +520,22 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/drop/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'stateful',
+      render: (ctx) => {
+        const n = `_n${ctx.index}`,
+          drop = `_drop${ctx.index}`,
+          state = []
+        if (!ctx.sequential)
+          state.push(`${n} = ${n} > 0 ? (${n} === 1 / 0 ? ${n} : ${n} - ${n} % 1) : 0;`)
+        state.push(`var ${drop} = 0;`)
+        return {
+          pre: [`var ${n} = ${ctx.a1};`],
+          state,
+          body: [`if (${drop} < ${n}) { ${drop}++; continue; }`, `var ${ctx.next} = ${ctx.v};`],
+        }
+      },
+    },
   },
   {
     name: 'dropLast',
@@ -474,6 +554,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/dropLast/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'dropLastWhile',
@@ -492,6 +573,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/dropLastWhile/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'dropRepeats',
@@ -510,6 +592,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/dropRepeats/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'dropRepeatsBy',
@@ -528,6 +611,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/dropRepeatsBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'dropRepeatsWith',
@@ -546,6 +630,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/dropRepeatsWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'dropWhile',
@@ -564,6 +649,20 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/dropWhile/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'stateful',
+      render: (ctx) => {
+        const dw = `_dw${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v], (expr) => [
+            `if (${dw}) { if (${expr}) { continue; } ${dw} = false; }`,
+          ])
+        return {
+          state: [`var ${dw} = true;`],
+          pre: cb.pre,
+          body: [...cb.body, `var ${ctx.next} = ${ctx.v};`],
+        }
+      },
+    },
   },
   {
     name: 'every',
@@ -582,6 +681,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/every/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [
+          `if (!${expr}) { ${ctx.next} = false; break ${ctx.outerLabel}; }`,
+        ])
+        return { pre: [`var ${ctx.next} = true;`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
   },
   {
     name: 'filter',
@@ -600,6 +708,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/filter/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'filter',
+      render: (ctx) => {
+        const cb = ctx.cb.emit(ctx.indexed ? [ctx.v, ctx.position] : [ctx.v], (expr) => [
+          `if (!${expr}) { continue; }`,
+        ])
+        return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${ctx.v};`] }
+      },
+    },
   },
   {
     name: 'filterMap',
@@ -618,6 +735,17 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/filterMap/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'filter',
+      render: (ctx) => {
+        const tmp = `_m${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v], (expr) => [
+            `var ${tmp} = ${expr};`,
+            `if (${tmp} == null) { continue; }`,
+          ])
+        return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${tmp};`] }
+      },
+    },
   },
   {
     name: 'filterWithIndex',
@@ -636,6 +764,16 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/filterWithIndex/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'filter',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit(ctx.indexed ? [ctx.v, ctx.position] : [ctx.v], (expr) => [
+          `if (!${expr}) { continue; }`,
+        ])
+        return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${ctx.v};`] }
+      },
+    },
   },
   {
     name: 'find',
@@ -654,6 +792,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/find/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [
+          `if (${expr}) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; break ${ctx.outerLabel}; }`,
+        ])
+        return { pre: [`var ${ctx.next} = ${ctx.optionNone};`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
   },
   {
     name: 'findIndex',
@@ -672,6 +819,21 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/findIndex/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => {
+        const pos = `_pos${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v], (expr) => [
+            `if (${expr}) { ${ctx.next} = { _tag: 1, value: ${pos} }; break ${ctx.outerLabel}; }`,
+            `${pos}++;`,
+          ])
+        return {
+          pre: [`var ${ctx.next} = ${ctx.optionNone};`, ...(cb.pre ?? [])],
+          state: [`var ${pos} = 0;`],
+          body: cb.body,
+        }
+      },
+    },
   },
   {
     name: 'findIndexOrUndefined',
@@ -690,6 +852,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/findIndexOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'findLast',
@@ -708,6 +871,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/findLast/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'findLastIndex',
@@ -726,6 +890,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/findLastIndex/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'findLastIndexOrUndefined',
@@ -744,6 +909,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/findLastIndexOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'findLastOrUndefined',
@@ -762,6 +928,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/findLastOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'findMap',
@@ -780,6 +947,17 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/findMap/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => {
+        const tmp = `_fmv${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v], (expr) => [
+            `var ${tmp} = ${expr};`,
+            `if (${tmp} != null) { ${ctx.next} = { _tag: 1, value: ${tmp} }; break ${ctx.outerLabel}; }`,
+          ])
+        return { pre: [`var ${ctx.next} = ${ctx.optionNone};`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
   },
   {
     name: 'findMapOrUndefined',
@@ -798,6 +976,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/findMapOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'findOrUndefined',
@@ -816,6 +995,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/findOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'flatMap',
@@ -834,6 +1014,24 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/flatMap/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'expand',
+      render: (ctx) => {
+        const fm = `_fm${ctx.index}`,
+          j = `_j${ctx.index}`,
+          rlen = `_rlen${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v], (expr) => [`var ${fm} = ${expr};`])
+        return {
+          pre: cb.pre,
+          body: [
+            ...cb.body,
+            `for (var ${j} = 0, ${rlen} = ${fm}.length; ${j} < ${rlen}; ${j}++) {`,
+            `var ${ctx.next} = ${fm}[${j}];`,
+          ],
+          close: ['}'],
+        }
+      },
+    },
   },
   {
     name: 'flatten',
@@ -852,6 +1050,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/flatten/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'forEach',
@@ -870,6 +1069,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/forEach/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => {
+        const cb = ctx.cb.emit(ctx.indexed ? [ctx.v, ctx.position] : [ctx.v], (expr) => [
+          `${expr};`,
+        ])
+        return { pre: [...(cb.pre ?? []), `var ${ctx.next} = undefined;`], body: cb.body }
+      },
+    },
   },
   {
     name: 'forEachWithIndex',
@@ -888,6 +1096,16 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/forEachWithIndex/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit(ctx.indexed ? [ctx.v, ctx.position] : [ctx.v], (expr) => [
+          `${expr};`,
+        ])
+        return { pre: [...(cb.pre ?? []), `var ${ctx.next} = undefined;`], body: cb.body }
+      },
+    },
   },
   {
     name: 'groupBy',
@@ -906,6 +1124,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/groupBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'groupByProp',
@@ -924,6 +1143,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/groupByProp/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'groupWith',
@@ -942,6 +1162,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/groupWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'hasAtLeast',
@@ -960,6 +1181,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/hasAtLeast/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'head',
@@ -978,6 +1200,13 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/head/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => ({
+        pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+        body: [`if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; }`],
+      }),
+    },
   },
   {
     name: 'headNonEmpty',
@@ -996,6 +1225,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/headNonEmpty/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'headOrUndefined',
@@ -1014,6 +1244,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/headOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'includes',
@@ -1032,6 +1263,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/includes/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'indexBy',
@@ -1050,6 +1282,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/indexBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'indexOf',
@@ -1068,6 +1301,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/indexOf/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'indexOfOrUndefined',
@@ -1086,6 +1320,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/indexOfOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'init',
@@ -1104,6 +1339,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/init/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'insert',
@@ -1122,6 +1358,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/insert/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'insertAll',
@@ -1140,6 +1377,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/insertAll/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'intersection',
@@ -1158,6 +1396,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/intersection/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'intersectionBy',
@@ -1176,6 +1415,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/intersectionBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'intersperse',
@@ -1194,6 +1434,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/intersperse/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'isEmpty',
@@ -1212,6 +1453,10 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/isEmpty/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => ({ pre: [`var ${ctx.next} = true;`], body: [`${ctx.next} = false;`] }),
+    },
   },
   {
     name: 'join',
@@ -1230,6 +1475,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/join/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'last',
@@ -1248,6 +1494,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/last/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => ({
+        pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+        body: [
+          `if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; } else { ${ctx.next}.value = ${ctx.v}; }`,
+        ],
+      }),
+    },
   },
   {
     name: 'lastIndexOf',
@@ -1266,6 +1521,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/lastIndexOf/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'lastIndexOfOrUndefined',
@@ -1284,6 +1540,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/lastIndexOfOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'lastNonEmpty',
@@ -1302,6 +1559,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/lastNonEmpty/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'lastOrUndefined',
@@ -1320,6 +1578,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/lastOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'length',
@@ -1338,6 +1597,10 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/length/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => ({ pre: [`var ${ctx.next} = 0;`], body: [`${ctx.next}++;`] }),
+    },
   },
   {
     name: 'map',
@@ -1356,6 +1619,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/map/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'expr',
+      render: (ctx) => {
+        const cb = ctx.cb.emit(ctx.indexed ? [ctx.v, ctx.position] : [ctx.v], (expr) => [
+          `var ${ctx.next} = ${expr};`,
+        ])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
   },
   {
     name: 'mapAccum',
@@ -1374,6 +1646,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/mapAccum/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'mapAccumRight',
@@ -1392,6 +1665,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/mapAccumRight/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'mapToObj',
@@ -1410,6 +1684,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/mapToObj/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'mapWhile',
@@ -1428,6 +1703,17 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/mapWhile/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'stateful',
+      render: (ctx) => {
+        const tmp = `_mw${ctx.index}`,
+          cb = ctx.cb.emit([ctx.v], (expr) => [
+            `var ${tmp} = ${expr};`,
+            `if (${tmp} == null) { break ${ctx.outerLabel}; }`,
+          ])
+        return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${tmp};`] }
+      },
+    },
   },
   {
     name: 'mapWithIndex',
@@ -1446,6 +1732,16 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/mapWithIndex/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'expr',
+      indexed: true,
+      render: (ctx) => {
+        const cb = ctx.cb.emit(ctx.indexed ? [ctx.v, ctx.position] : [ctx.v], (expr) => [
+          `var ${ctx.next} = ${expr};`,
+        ])
+        return { pre: cb.pre, body: cb.body }
+      },
+    },
   },
   {
     name: 'max',
@@ -1464,6 +1760,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/max/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => ({
+        pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+        body: [
+          `if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; } else if (${ctx.v} > ${ctx.next}.value) { ${ctx.next}.value = ${ctx.v}; }`,
+        ],
+      }),
+    },
   },
   {
     name: 'maxNonEmpty',
@@ -1482,6 +1787,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/maxNonEmpty/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'maxOrUndefined',
@@ -1500,6 +1806,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/maxOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'meanBy',
@@ -1518,6 +1825,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/meanBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'meanByNonEmpty',
@@ -1536,6 +1844,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/meanByNonEmpty/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'meanByOrUndefined',
@@ -1554,6 +1863,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/meanByOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'mergeAll',
@@ -1572,6 +1882,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/mergeAll/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'min',
@@ -1590,6 +1901,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/min/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => ({
+        pre: [`var ${ctx.next} = ${ctx.optionNone};`],
+        body: [
+          `if (${ctx.next}._tag === 0) { ${ctx.next} = { _tag: 1, value: ${ctx.v} }; } else if (${ctx.v} < ${ctx.next}.value) { ${ctx.next}.value = ${ctx.v}; }`,
+        ],
+      }),
+    },
   },
   {
     name: 'minNonEmpty',
@@ -1608,6 +1928,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/minNonEmpty/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'minOrUndefined',
@@ -1626,6 +1947,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/minOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'none',
@@ -1644,6 +1966,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/none/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [
+          `if (${expr}) { ${ctx.next} = false; break ${ctx.outerLabel}; }`,
+        ])
+        return { pre: [`var ${ctx.next} = true;`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
   },
   {
     name: 'nth',
@@ -1662,6 +1993,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/nth/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'nthOrUndefined',
@@ -1680,6 +2012,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/nthOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'only',
@@ -1698,6 +2031,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/only/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'onlyOrUndefined',
@@ -1716,6 +2050,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/onlyOrUndefined/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'partition',
@@ -1734,6 +2069,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/partition/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'pluck',
@@ -1752,6 +2088,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/pluck/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'prepend',
@@ -1770,6 +2107,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/prepend/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'reduce',
@@ -1788,6 +2126,13 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/reduce/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.next, ctx.v], (expr) => [`${ctx.next} = ${expr};`])
+        return { pre: [...(cb.pre ?? []), `var ${ctx.next} = ${ctx.a1};`], body: cb.body }
+      },
+    },
   },
   {
     name: 'reduceBy',
@@ -1806,6 +2151,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/reduceBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'reduceRight',
@@ -1824,6 +2170,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/reduceRight/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'reduceWhile',
@@ -1842,6 +2189,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/reduceWhile/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'reject',
@@ -1860,6 +2208,13 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/reject/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'filter',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [`if (${expr}) { continue; }`])
+        return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${ctx.v};`] }
+      },
+    },
   },
   {
     name: 'remove',
@@ -1878,6 +2233,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/remove/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'reverse',
@@ -1896,6 +2252,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/reverse/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sample',
@@ -1914,6 +2271,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sample/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'scan',
@@ -1932,6 +2290,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/scan/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'shuffle',
@@ -1950,6 +2309,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/shuffle/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'slice',
@@ -1968,6 +2328,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/slice/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'slidingWindow',
@@ -1986,6 +2347,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/slidingWindow/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'some',
@@ -2004,6 +2366,15 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/some/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [
+          `if (${expr}) { ${ctx.next} = true; break ${ctx.outerLabel}; }`,
+        ])
+        return { pre: [`var ${ctx.next} = false;`, ...(cb.pre ?? [])], body: cb.body }
+      },
+    },
   },
   {
     name: 'sort',
@@ -2022,6 +2393,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sort/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sortAsc',
@@ -2040,6 +2412,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sortAsc/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sortBy',
@@ -2058,6 +2431,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sortBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sortDesc',
@@ -2076,6 +2450,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sortDesc/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sortedIndex',
@@ -2094,6 +2469,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sortedIndex/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sortedIndexBy',
@@ -2112,6 +2488,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sortedIndexBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sortedIndexWith',
@@ -2130,6 +2507,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sortedIndexWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sortedLastIndex',
@@ -2148,6 +2526,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sortedLastIndex/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sortedLastIndexBy',
@@ -2166,6 +2545,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sortedLastIndexBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'splice',
@@ -2184,6 +2564,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/splice/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'splitAt',
@@ -2202,6 +2583,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/splitAt/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'splitWhen',
@@ -2220,6 +2602,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/splitWhen/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'splitWhenever',
@@ -2238,6 +2621,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/splitWhenever/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'sum',
@@ -2256,6 +2640,10 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/terminal/sum/v1',
     compilerPipelineRole: 'terminal',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'sink',
+      render: (ctx) => ({ pre: [`var ${ctx.next} = 0;`], body: [`${ctx.next} += ${ctx.v};`] }),
+    },
   },
   {
     name: 'sumBy',
@@ -2274,6 +2662,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/sumBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'swap',
@@ -2292,6 +2681,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/swap/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'symmetricDifference',
@@ -2310,6 +2700,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/symmetricDifference/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'symmetricDifferenceBy',
@@ -2328,6 +2719,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/symmetricDifferenceBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'symmetricDifferenceWith',
@@ -2346,6 +2738,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/symmetricDifferenceWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'tail',
@@ -2364,6 +2757,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/tail/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'take',
@@ -2382,6 +2776,26 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/take/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'stateful',
+      render: (ctx) => {
+        const n = `_n${ctx.index}`,
+          take = `_take${ctx.index}`,
+          state = []
+        if (!ctx.sequential)
+          state.push(`${n} = ${n} > 0 ? (${n} === 1 / 0 ? ${n} : ${n} - ${n} % 1) : 0;`)
+        state.push(`var ${take} = 0;`)
+        return {
+          pre: [`var ${n} = ${ctx.a1};`],
+          state,
+          body: [
+            `if (${take} >= ${n}) break ${ctx.outerLabel};`,
+            `${take}++;`,
+            `var ${ctx.next} = ${ctx.v};`,
+          ],
+        }
+      },
+    },
   },
   {
     name: 'takeLast',
@@ -2400,6 +2814,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/takeLast/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'takeLastWhile',
@@ -2418,6 +2833,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/takeLastWhile/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'takeSortedBy',
@@ -2436,6 +2852,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/takeSortedBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'takeUntil',
@@ -2454,6 +2871,13 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/takeUntil/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'stateful',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [`if (${expr}) { break ${ctx.outerLabel}; }`])
+        return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${ctx.v};`] }
+      },
+    },
   },
   {
     name: 'takeWhile',
@@ -2472,6 +2896,13 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/element/takeWhile/v1',
     compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
+    emit: {
+      kind: 'stateful',
+      render: (ctx) => {
+        const cb = ctx.cb.emit([ctx.v], (expr) => [`if (!${expr}) break ${ctx.outerLabel};`])
+        return { pre: cb.pre, body: [...cb.body, `var ${ctx.next} = ${ctx.v};`] }
+      },
+    },
   },
   {
     name: 'transpose',
@@ -2490,6 +2921,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/transpose/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'union',
@@ -2508,6 +2940,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/union/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'unionBy',
@@ -2526,6 +2959,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/unionBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'unionWith',
@@ -2544,6 +2978,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/unionWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'uniq',
@@ -2562,6 +2997,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/uniq/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'uniqBy',
@@ -2580,6 +3016,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/uniqBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'uniqWith',
@@ -2598,6 +3035,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/uniqWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'unnest',
@@ -2616,6 +3054,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/unnest/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'update',
@@ -2634,6 +3073,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/update/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'without',
@@ -2652,6 +3092,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/without/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'withoutBy',
@@ -2670,6 +3111,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/withoutBy/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'xprod',
@@ -2688,6 +3130,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/xprod/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'zip',
@@ -2706,6 +3149,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/zip/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'zipObj',
@@ -2724,6 +3168,7 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/zipObj/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: true,
+    emit: { kind: 'boundary' },
   },
   {
     name: 'zipWith',
@@ -2742,5 +3187,6 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     runnerId: '@stopcock/fp-compiler/runner/boundary/zipWith/v1',
     compilerPipelineRole: 'boundary',
     compilerFinalBoundary: false,
+    emit: { kind: 'boundary' },
   },
 ]
