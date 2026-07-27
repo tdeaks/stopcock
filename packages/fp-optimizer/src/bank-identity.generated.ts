@@ -10,6 +10,6 @@ export interface OptimizerBankIdentityV1 {
 export const OPTIMIZER_BANK_IDENTITY: OptimizerBankIdentityV1 = Object.freeze({
   schemaVersion: 1,
   bankHash: 'sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4',
-  semanticManifestHash: 'sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e',
+  semanticManifestHash: 'sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe',
   runnerCount: 233,
 })

@@ -471,7 +471,9 @@ export const findOrUndefined: {
   }
   return undefined
     }
-    return _dl
+    _dl._op = 24
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 24, _a0)
   }
   const arr = _arg0, pred = _arg1
   for (let i = 0, len = arr.length; i < len; i++) {
@@ -524,7 +526,9 @@ export const findIndexOrUndefined: {
   }
   return undefined
     }
-    return _dl
+    _dl._op = 25
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 25, _a0)
   }
   const arr = _arg0, pred = _arg1
   for (let i = 0, len = arr.length; i < len; i++) {
@@ -1399,7 +1403,10 @@ export const reduceRight: {
     for (let i = arr.length - 1; i >= 0; i--) acc = f(acc, arr[i])
     return acc
     }
-    return _dl
+    _dl._op = 94
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    return registerTrustedOperator(_dl, 94, _a0, _a1)
   }
   const arr = _arg0, f = _arg1, init = _arg2
   let acc = init
@@ -1861,7 +1868,9 @@ export const findMapOrUndefined: {
   }
   return undefined
     }
-    return _dl
+    _dl._op = 26
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 26, _a0)
   }
   const arr = _arg0, f = _arg1
   for (let i = 0, len = arr.length; i < len; i++) {
@@ -1978,7 +1987,9 @@ export const append: {
   out[len] = value
   return out
     }
-    return _dl
+    _dl._op = 46
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 46, _a0)
   }
   const arr = _arg0, value = _arg1
   let len = arr.length
@@ -2007,7 +2018,9 @@ export const prepend: {
   }
   return out
     }
-    return _dl
+    _dl._op = 47
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 47, _a0)
   }
   const arr = _arg0, value = _arg1
   let len = arr.length
@@ -2067,7 +2080,9 @@ export const nth: {
       var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? optionNone : optionSome(arr[i])
     }
-    return _dl
+    _dl._op = 101
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 101, _a0)
   }
   const arr = _arg0, n = _arg1
   var i = n < 0 ? arr.length + n : n
@@ -2105,7 +2120,9 @@ export const indexOf: {
       var i = arr.indexOf(val)
   return i === -1 ? optionNone : optionSome(i)
     }
-    return _dl
+    _dl._op = 48
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 48, _a0)
   }
   const arr = _arg0, val = _arg1
   var i = arr.indexOf(val)
@@ -2143,7 +2160,9 @@ export const lastIndexOf: {
       var i = arr.lastIndexOf(val)
   return i === -1 ? optionNone : optionSome(i)
     }
-    return _dl
+    _dl._op = 49
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 49, _a0)
   }
   const arr = _arg0, val = _arg1
   var i = arr.lastIndexOf(val)
@@ -2191,7 +2210,9 @@ export const findLast: {
   }
   return optionNone
     }
-    return _dl
+    _dl._op = 92
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 92, _a0)
   }
   const arr = _arg0, pred = _arg1
   for (var i = arr.length - 1; i >= 0; i--) {
@@ -2237,7 +2258,9 @@ export const findLastIndex: {
   }
   return optionNone
     }
-    return _dl
+    _dl._op = 93
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 93, _a0)
   }
   const arr = _arg0, pred = _arg1
   for (var i = arr.length - 1; i >= 0; i--) {
@@ -2506,7 +2529,9 @@ export const pluck: {
       const arr = data, key = _a0
       return pluckRaw(arr, key)
     }
-    return _dl
+    _dl._op = 27
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 27, _a0)
   }
   const arr = _arg0, key = _arg1
   return pluckRaw(arr, key)
@@ -2617,7 +2642,9 @@ export const dropLast: {
   }
   return out
     }
-    return _dl
+    _dl._op = 28
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 28, _a0)
   }
   const arr = _arg0, n = _arg1
   let len = arr.length
@@ -2662,7 +2689,9 @@ export const dropLastWhile: {
   }
   return out
     }
-    return _dl
+    _dl._op = 44
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 44, _a0)
   }
   const arr = _arg0, pred = _arg1
   let len = arr.length
@@ -2707,7 +2736,9 @@ export const takeLast: {
   }
   return out
     }
-    return _dl
+    _dl._op = 29
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 29, _a0)
   }
   const arr = _arg0, n = _arg1
   let len = arr.length
@@ -2753,7 +2784,9 @@ export const takeLastWhile: {
   }
   return out
     }
-    return _dl
+    _dl._op = 45
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 45, _a0)
   }
   const arr = _arg0, pred = _arg1
   let len = arr.length
@@ -2788,7 +2821,9 @@ export const splitAt: {
       var i = index < 0 ? 0 : index > arr.length ? arr.length : index
   return [arr.slice(0, i), arr.slice(i)]
     }
-    return _dl
+    _dl._op = 123
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 123, _a0)
   }
   const arr = _arg0, index = _arg1
   var i = index < 0 ? 0 : index > arr.length ? arr.length : index
@@ -2816,7 +2851,9 @@ export const splitWhen: {
   }
   return splitAt(arr, i)
     }
-    return _dl
+    _dl._op = 124
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 124, _a0)
   }
   const arr = _arg0, pred = _arg1
   let len = arr.length
@@ -2859,7 +2896,9 @@ export const splitWhenever: {
   result.push(current.slice())
   return result
     }
-    return _dl
+    _dl._op = 125
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 125, _a0)
   }
   const arr = _arg0, pred = _arg1
   let len = arr.length
@@ -2924,7 +2963,9 @@ export const uniqWith: {
   }
   return result
     }
-    return _dl
+    _dl._op = 126
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 126, _a0)
   }
   const arr = _arg0, eq = _arg1
   let result = []
@@ -2972,7 +3013,9 @@ export const groupWith: {
   result.push(current.slice())
   return result
     }
-    return _dl
+    _dl._op = 127
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 127, _a0)
   }
   const arr = _arg0, eq = _arg1
   let len = arr.length
@@ -3116,7 +3159,9 @@ export const hasAtLeast: {
       const arr = data, n = _a0
       return arr.length >= n
     }
-    return _dl
+    _dl._op = 98
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 98, _a0)
   }
   const arr = _arg0, n = _arg1
   return arr.length >= n
@@ -3167,7 +3212,9 @@ export const meanBy: {
       const value = meanByOrUndefined(arr, f)
   return value === undefined ? optionNone : optionSome(value)
     }
-    return _dl
+    _dl._op = 97
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 97, _a0)
   }
   const arr = _arg0, f = _arg1
   const value = meanByOrUndefined(arr, f)
@@ -3207,7 +3254,9 @@ export const sumBy: {
   }
   return acc
     }
-    return _dl
+    _dl._op = 96
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 96, _a0)
   }
   const arr = _arg0, f = _arg1
   let len = arr.length
@@ -3310,7 +3359,9 @@ export const arrayStartsWith: {
   for (let i = 0; i < lenP; i++) if (!structEq(arr[i], prefix[i])) return false
   return true
     }
-    return _dl
+    _dl._op = 99
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 99, _a0)
   }
   const arr = _arg0, prefix = _arg1
   const lenA = arr.length
@@ -3336,7 +3387,9 @@ export const arrayEndsWith: {
   for (let i = 0; i < lenS; i++) if (!structEq(arr[offset + i], suffix[i])) return false
   return true
     }
-    return _dl
+    _dl._op = 100
+    _dl._fn = _a0
+    return registerTrustedOperator(_dl, 100, _a0)
   }
   const arr = _arg0, suffix = _arg1
   const lenA = arr.length
@@ -4166,7 +4219,11 @@ export const reduceWhile: {
   }
   return acc
     }
-    return _dl
+    _dl._op = 95
+    _dl._fn = _a0
+    _dl._a1 = _a1
+    _dl._a2 = _a2
+    return registerTrustedOperator(_dl, 95, _a0, _a1, _a2)
   }
   const arr = _arg0, pred = _arg1, f = _arg2, init = _arg3
   let len = arr.length

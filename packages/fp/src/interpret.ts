@@ -87,6 +87,33 @@ import {
   OP_XPROD,
   OP_ZIP,
   OP_ZIP_WITH,
+  OP_APPEND,
+  OP_ARRAY_ENDS_WITH,
+  OP_ARRAY_STARTS_WITH,
+  OP_DROP_LAST,
+  OP_DROP_LAST_WHILE,
+  OP_FIND_INDEX_OR_UNDEFINED,
+  OP_FIND_LAST,
+  OP_FIND_LAST_INDEX,
+  OP_FIND_MAP_OR_UNDEFINED,
+  OP_FIND_OR_UNDEFINED,
+  OP_GROUP_WITH,
+  OP_HAS_AT_LEAST,
+  OP_INDEX_OF,
+  OP_LAST_INDEX_OF,
+  OP_MEAN_BY,
+  OP_NTH,
+  OP_PLUCK,
+  OP_PREPEND,
+  OP_REDUCE_RIGHT,
+  OP_REDUCE_WHILE,
+  OP_SPLIT_AT,
+  OP_SPLIT_WHEN,
+  OP_SPLIT_WHENEVER,
+  OP_SUM_BY,
+  OP_TAKE_LAST,
+  OP_TAKE_LAST_WHILE,
+  OP_UNIQ_WITH,
 } from './opcodes'
 import type { OpCode } from './registry'
 // Cardinality comes from the compact fact table rather than the registry.
@@ -117,6 +144,33 @@ import {
   xprod,
   zip,
   zipWith,
+  append,
+  arrayEndsWith,
+  arrayStartsWith,
+  dropLast,
+  dropLastWhile,
+  findIndexOrUndefined,
+  findLast,
+  findLastIndex,
+  findMapOrUndefined,
+  findOrUndefined,
+  groupWith,
+  hasAtLeast,
+  indexOf,
+  lastIndexOf,
+  meanBy,
+  nth,
+  pluck,
+  prepend,
+  reduceRight,
+  reduceWhile,
+  splitAt,
+  splitWhen,
+  splitWhenever,
+  sumBy,
+  takeLast,
+  takeLastWhile,
+  uniqWith,
 } from './array'
 import { mergeSortAsc, mergeSortBy, mergeSortDesc } from './sort-kernel'
 import { type BoundPlan, type SegmentShape, type StepBinding } from './plan'
@@ -220,6 +274,60 @@ function runBoundary(op: OpCode, binding: StepBinding, data: readonly unknown[])
       return (insert as any)(data, binding.fn, binding.a1)
     case OP_REMOVE:
       return (remove as any)(data, binding.fn, binding.a1)
+    case OP_FIND_OR_UNDEFINED:
+      return (findOrUndefined as any)(data, binding.fn)
+    case OP_FIND_INDEX_OR_UNDEFINED:
+      return (findIndexOrUndefined as any)(data, binding.fn)
+    case OP_FIND_MAP_OR_UNDEFINED:
+      return (findMapOrUndefined as any)(data, binding.fn)
+    case OP_PLUCK:
+      return (pluck as any)(data, binding.fn)
+    case OP_DROP_LAST:
+      return (dropLast as any)(data, binding.fn)
+    case OP_TAKE_LAST:
+      return (takeLast as any)(data, binding.fn)
+    case OP_DROP_LAST_WHILE:
+      return (dropLastWhile as any)(data, binding.fn)
+    case OP_TAKE_LAST_WHILE:
+      return (takeLastWhile as any)(data, binding.fn)
+    case OP_APPEND:
+      return (append as any)(data, binding.fn)
+    case OP_PREPEND:
+      return (prepend as any)(data, binding.fn)
+    case OP_INDEX_OF:
+      return (indexOf as any)(data, binding.fn)
+    case OP_LAST_INDEX_OF:
+      return (lastIndexOf as any)(data, binding.fn)
+    case OP_FIND_LAST:
+      return (findLast as any)(data, binding.fn)
+    case OP_FIND_LAST_INDEX:
+      return (findLastIndex as any)(data, binding.fn)
+    case OP_SUM_BY:
+      return (sumBy as any)(data, binding.fn)
+    case OP_MEAN_BY:
+      return (meanBy as any)(data, binding.fn)
+    case OP_HAS_AT_LEAST:
+      return (hasAtLeast as any)(data, binding.fn)
+    case OP_ARRAY_STARTS_WITH:
+      return (arrayStartsWith as any)(data, binding.fn)
+    case OP_ARRAY_ENDS_WITH:
+      return (arrayEndsWith as any)(data, binding.fn)
+    case OP_NTH:
+      return (nth as any)(data, binding.fn)
+    case OP_SPLIT_AT:
+      return (splitAt as any)(data, binding.fn)
+    case OP_SPLIT_WHEN:
+      return (splitWhen as any)(data, binding.fn)
+    case OP_SPLIT_WHENEVER:
+      return (splitWhenever as any)(data, binding.fn)
+    case OP_UNIQ_WITH:
+      return (uniqWith as any)(data, binding.fn)
+    case OP_GROUP_WITH:
+      return (groupWith as any)(data, binding.fn)
+    case OP_REDUCE_RIGHT:
+      return (reduceRight as any)(data, binding.fn, binding.a1)
+    case OP_REDUCE_WHILE:
+      return (reduceWhile as any)(data, binding.fn, binding.a1, binding.a2)
     default:
       return unsupportedOp(op)
   }

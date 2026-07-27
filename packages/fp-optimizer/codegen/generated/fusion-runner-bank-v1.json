@@ -1,7 +1,7 @@
 {
   "protocol": "stopcock.fusion-runner-bank",
   "protocolVersion": 1,
-  "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+  "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
   "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
   "genericFallbackId": "fusion-runner/generic-exact",
   "runnerCount": 233,
@@ -9,7 +9,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1",
       "semanticSequence": [
@@ -49,7 +49,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1",
       "semanticSequence": [
@@ -90,7 +90,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1,1",
       "semanticSequence": [
@@ -132,7 +132,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1,1,3",
       "semanticSequence": [
@@ -175,7 +175,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1,14",
       "semanticSequence": [
@@ -217,7 +217,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1,14,3",
       "semanticSequence": [
@@ -260,7 +260,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1,16",
       "semanticSequence": [
@@ -302,7 +302,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1,16,3",
       "semanticSequence": [
@@ -345,7 +345,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1,2",
       "semanticSequence": [
@@ -387,7 +387,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1,2,3",
       "semanticSequence": [
@@ -430,7 +430,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,1,3",
       "semanticSequence": [
@@ -472,7 +472,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14",
       "semanticSequence": [
@@ -513,7 +513,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14,1",
       "semanticSequence": [
@@ -555,7 +555,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14,1,3",
       "semanticSequence": [
@@ -598,7 +598,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14,14",
       "semanticSequence": [
@@ -640,7 +640,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14,14,3",
       "semanticSequence": [
@@ -683,7 +683,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14,16",
       "semanticSequence": [
@@ -725,7 +725,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14,16,3",
       "semanticSequence": [
@@ -768,7 +768,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14,2",
       "semanticSequence": [
@@ -810,7 +810,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14,2,3",
       "semanticSequence": [
@@ -853,7 +853,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,14,3",
       "semanticSequence": [
@@ -895,7 +895,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16",
       "semanticSequence": [
@@ -936,7 +936,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16,1",
       "semanticSequence": [
@@ -978,7 +978,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16,1,3",
       "semanticSequence": [
@@ -1021,7 +1021,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16,14",
       "semanticSequence": [
@@ -1063,7 +1063,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16,14,3",
       "semanticSequence": [
@@ -1106,7 +1106,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16,16",
       "semanticSequence": [
@@ -1148,7 +1148,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16,16,3",
       "semanticSequence": [
@@ -1191,7 +1191,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16,2",
       "semanticSequence": [
@@ -1233,7 +1233,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16,2,3",
       "semanticSequence": [
@@ -1276,7 +1276,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,16,3",
       "semanticSequence": [
@@ -1318,7 +1318,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2",
       "semanticSequence": [
@@ -1359,7 +1359,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2,1",
       "semanticSequence": [
@@ -1401,7 +1401,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2,1,3",
       "semanticSequence": [
@@ -1444,7 +1444,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2,14",
       "semanticSequence": [
@@ -1486,7 +1486,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2,14,3",
       "semanticSequence": [
@@ -1529,7 +1529,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2,16",
       "semanticSequence": [
@@ -1571,7 +1571,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2,16,3",
       "semanticSequence": [
@@ -1614,7 +1614,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2,2",
       "semanticSequence": [
@@ -1656,7 +1656,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2,2,3",
       "semanticSequence": [
@@ -1699,7 +1699,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,2,3",
       "semanticSequence": [
@@ -1741,7 +1741,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,3",
       "semanticSequence": [
@@ -1782,7 +1782,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,7",
       "semanticSequence": [
@@ -1823,7 +1823,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/1,7,2,14",
       "semanticSequence": [
@@ -1866,7 +1866,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14",
       "semanticSequence": [
@@ -1906,7 +1906,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1",
       "semanticSequence": [
@@ -1947,7 +1947,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1,1",
       "semanticSequence": [
@@ -1989,7 +1989,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1,1,3",
       "semanticSequence": [
@@ -2032,7 +2032,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1,14",
       "semanticSequence": [
@@ -2074,7 +2074,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1,14,3",
       "semanticSequence": [
@@ -2117,7 +2117,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1,16",
       "semanticSequence": [
@@ -2159,7 +2159,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1,16,3",
       "semanticSequence": [
@@ -2202,7 +2202,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1,2",
       "semanticSequence": [
@@ -2244,7 +2244,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1,2,3",
       "semanticSequence": [
@@ -2287,7 +2287,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,1,3",
       "semanticSequence": [
@@ -2329,7 +2329,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14",
       "semanticSequence": [
@@ -2370,7 +2370,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14,1",
       "semanticSequence": [
@@ -2412,7 +2412,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14,1,3",
       "semanticSequence": [
@@ -2455,7 +2455,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14,14",
       "semanticSequence": [
@@ -2497,7 +2497,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14,14,3",
       "semanticSequence": [
@@ -2540,7 +2540,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14,16",
       "semanticSequence": [
@@ -2582,7 +2582,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14,16,3",
       "semanticSequence": [
@@ -2625,7 +2625,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14,2",
       "semanticSequence": [
@@ -2667,7 +2667,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14,2,3",
       "semanticSequence": [
@@ -2710,7 +2710,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,14,3",
       "semanticSequence": [
@@ -2752,7 +2752,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16",
       "semanticSequence": [
@@ -2793,7 +2793,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16,1",
       "semanticSequence": [
@@ -2835,7 +2835,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16,1,3",
       "semanticSequence": [
@@ -2878,7 +2878,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16,14",
       "semanticSequence": [
@@ -2920,7 +2920,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16,14,3",
       "semanticSequence": [
@@ -2963,7 +2963,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16,16",
       "semanticSequence": [
@@ -3005,7 +3005,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16,16,3",
       "semanticSequence": [
@@ -3048,7 +3048,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16,2",
       "semanticSequence": [
@@ -3090,7 +3090,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16,2,3",
       "semanticSequence": [
@@ -3133,7 +3133,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,16,3",
       "semanticSequence": [
@@ -3175,7 +3175,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2",
       "semanticSequence": [
@@ -3216,7 +3216,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2,1",
       "semanticSequence": [
@@ -3258,7 +3258,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2,1,3",
       "semanticSequence": [
@@ -3301,7 +3301,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2,14",
       "semanticSequence": [
@@ -3343,7 +3343,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2,14,3",
       "semanticSequence": [
@@ -3386,7 +3386,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2,16",
       "semanticSequence": [
@@ -3428,7 +3428,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2,16,3",
       "semanticSequence": [
@@ -3471,7 +3471,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2,2",
       "semanticSequence": [
@@ -3513,7 +3513,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2,2,3",
       "semanticSequence": [
@@ -3556,7 +3556,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,2,3",
       "semanticSequence": [
@@ -3598,7 +3598,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/14,3",
       "semanticSequence": [
@@ -3639,7 +3639,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16",
       "semanticSequence": [
@@ -3679,7 +3679,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1",
       "semanticSequence": [
@@ -3720,7 +3720,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1,1",
       "semanticSequence": [
@@ -3762,7 +3762,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1,1,3",
       "semanticSequence": [
@@ -3805,7 +3805,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1,14",
       "semanticSequence": [
@@ -3847,7 +3847,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1,14,3",
       "semanticSequence": [
@@ -3890,7 +3890,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1,16",
       "semanticSequence": [
@@ -3932,7 +3932,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1,16,3",
       "semanticSequence": [
@@ -3975,7 +3975,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1,2",
       "semanticSequence": [
@@ -4017,7 +4017,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1,2,3",
       "semanticSequence": [
@@ -4060,7 +4060,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,1,3",
       "semanticSequence": [
@@ -4102,7 +4102,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14",
       "semanticSequence": [
@@ -4143,7 +4143,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14,1",
       "semanticSequence": [
@@ -4185,7 +4185,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14,1,3",
       "semanticSequence": [
@@ -4228,7 +4228,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14,14",
       "semanticSequence": [
@@ -4270,7 +4270,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14,14,3",
       "semanticSequence": [
@@ -4313,7 +4313,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14,16",
       "semanticSequence": [
@@ -4355,7 +4355,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14,16,3",
       "semanticSequence": [
@@ -4398,7 +4398,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14,2",
       "semanticSequence": [
@@ -4440,7 +4440,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14,2,3",
       "semanticSequence": [
@@ -4483,7 +4483,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,14,3",
       "semanticSequence": [
@@ -4525,7 +4525,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16",
       "semanticSequence": [
@@ -4566,7 +4566,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16,1",
       "semanticSequence": [
@@ -4608,7 +4608,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16,1,3",
       "semanticSequence": [
@@ -4651,7 +4651,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16,14",
       "semanticSequence": [
@@ -4693,7 +4693,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16,14,3",
       "semanticSequence": [
@@ -4736,7 +4736,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16,16",
       "semanticSequence": [
@@ -4778,7 +4778,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16,16,3",
       "semanticSequence": [
@@ -4821,7 +4821,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16,2",
       "semanticSequence": [
@@ -4863,7 +4863,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16,2,3",
       "semanticSequence": [
@@ -4906,7 +4906,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,16,3",
       "semanticSequence": [
@@ -4948,7 +4948,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2",
       "semanticSequence": [
@@ -4989,7 +4989,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2,1",
       "semanticSequence": [
@@ -5031,7 +5031,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2,1,3",
       "semanticSequence": [
@@ -5074,7 +5074,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2,14",
       "semanticSequence": [
@@ -5116,7 +5116,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2,14,3",
       "semanticSequence": [
@@ -5159,7 +5159,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2,16",
       "semanticSequence": [
@@ -5201,7 +5201,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2,16,3",
       "semanticSequence": [
@@ -5244,7 +5244,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2,2",
       "semanticSequence": [
@@ -5286,7 +5286,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2,2,3",
       "semanticSequence": [
@@ -5329,7 +5329,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,2,3",
       "semanticSequence": [
@@ -5371,7 +5371,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/16,3",
       "semanticSequence": [
@@ -5412,7 +5412,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2",
       "semanticSequence": [
@@ -5452,7 +5452,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1",
       "semanticSequence": [
@@ -5493,7 +5493,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1,1",
       "semanticSequence": [
@@ -5535,7 +5535,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1,1,3",
       "semanticSequence": [
@@ -5578,7 +5578,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1,14",
       "semanticSequence": [
@@ -5620,7 +5620,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1,14,3",
       "semanticSequence": [
@@ -5663,7 +5663,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1,16",
       "semanticSequence": [
@@ -5705,7 +5705,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1,16,3",
       "semanticSequence": [
@@ -5748,7 +5748,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1,2",
       "semanticSequence": [
@@ -5790,7 +5790,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1,2,3",
       "semanticSequence": [
@@ -5833,7 +5833,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,1,3",
       "semanticSequence": [
@@ -5875,7 +5875,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14",
       "semanticSequence": [
@@ -5916,7 +5916,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14,1",
       "semanticSequence": [
@@ -5958,7 +5958,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14,1,3",
       "semanticSequence": [
@@ -6001,7 +6001,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14,14",
       "semanticSequence": [
@@ -6043,7 +6043,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14,14,3",
       "semanticSequence": [
@@ -6086,7 +6086,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14,16",
       "semanticSequence": [
@@ -6128,7 +6128,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14,16,3",
       "semanticSequence": [
@@ -6171,7 +6171,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14,2",
       "semanticSequence": [
@@ -6213,7 +6213,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14,2,3",
       "semanticSequence": [
@@ -6256,7 +6256,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,14,3",
       "semanticSequence": [
@@ -6298,7 +6298,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16",
       "semanticSequence": [
@@ -6339,7 +6339,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16,1",
       "semanticSequence": [
@@ -6381,7 +6381,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16,1,3",
       "semanticSequence": [
@@ -6424,7 +6424,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16,14",
       "semanticSequence": [
@@ -6466,7 +6466,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16,14,3",
       "semanticSequence": [
@@ -6509,7 +6509,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16,16",
       "semanticSequence": [
@@ -6551,7 +6551,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16,16,3",
       "semanticSequence": [
@@ -6594,7 +6594,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16,2",
       "semanticSequence": [
@@ -6636,7 +6636,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16,2,3",
       "semanticSequence": [
@@ -6679,7 +6679,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,16,3",
       "semanticSequence": [
@@ -6721,7 +6721,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2",
       "semanticSequence": [
@@ -6762,7 +6762,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2,1",
       "semanticSequence": [
@@ -6804,7 +6804,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2,1,3",
       "semanticSequence": [
@@ -6847,7 +6847,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2,14",
       "semanticSequence": [
@@ -6889,7 +6889,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2,14,3",
       "semanticSequence": [
@@ -6932,7 +6932,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2,16",
       "semanticSequence": [
@@ -6974,7 +6974,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2,16,3",
       "semanticSequence": [
@@ -7017,7 +7017,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2,2",
       "semanticSequence": [
@@ -7059,7 +7059,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2,2,3",
       "semanticSequence": [
@@ -7102,7 +7102,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,2,3",
       "semanticSequence": [
@@ -7144,7 +7144,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/2,3",
       "semanticSequence": [
@@ -7185,7 +7185,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/array/7",
       "semanticSequence": [
@@ -7225,7 +7225,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,10",
       "semanticSequence": [
@@ -7266,7 +7266,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,11",
       "semanticSequence": [
@@ -7307,7 +7307,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,12",
       "semanticSequence": [
@@ -7348,7 +7348,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,13",
       "semanticSequence": [
@@ -7389,7 +7389,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,17",
       "semanticSequence": [
@@ -7430,7 +7430,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,18",
       "semanticSequence": [
@@ -7471,7 +7471,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,2,10",
       "semanticSequence": [
@@ -7513,7 +7513,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,2,11",
       "semanticSequence": [
@@ -7555,7 +7555,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,2,12",
       "semanticSequence": [
@@ -7597,7 +7597,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,2,13",
       "semanticSequence": [
@@ -7639,7 +7639,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,2,17",
       "semanticSequence": [
@@ -7681,7 +7681,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,2,18",
       "semanticSequence": [
@@ -7723,7 +7723,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,2,22",
       "semanticSequence": [
@@ -7765,7 +7765,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,2,8",
       "semanticSequence": [
@@ -7808,7 +7808,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,22",
       "semanticSequence": [
@@ -7849,7 +7849,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,7,2,14,12",
       "semanticSequence": [
@@ -7893,7 +7893,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,7,2,14,8",
       "semanticSequence": [
@@ -7938,7 +7938,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1,8",
       "semanticSequence": [
@@ -7980,7 +7980,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/10",
       "semanticSequence": [
@@ -8020,7 +8020,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/11",
       "semanticSequence": [
@@ -8060,7 +8060,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/12",
       "semanticSequence": [
@@ -8100,7 +8100,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/13",
       "semanticSequence": [
@@ -8140,7 +8140,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/14,10",
       "semanticSequence": [
@@ -8181,7 +8181,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/14,11",
       "semanticSequence": [
@@ -8222,7 +8222,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/14,12",
       "semanticSequence": [
@@ -8263,7 +8263,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/14,13",
       "semanticSequence": [
@@ -8304,7 +8304,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/14,17",
       "semanticSequence": [
@@ -8345,7 +8345,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/14,18",
       "semanticSequence": [
@@ -8386,7 +8386,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/14,22",
       "semanticSequence": [
@@ -8427,7 +8427,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/14,8",
       "semanticSequence": [
@@ -8469,7 +8469,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/14>SUM",
       "semanticSequence": [
@@ -8510,7 +8510,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/16,10",
       "semanticSequence": [
@@ -8551,7 +8551,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/16,11",
       "semanticSequence": [
@@ -8592,7 +8592,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/16,12",
       "semanticSequence": [
@@ -8633,7 +8633,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/16,13",
       "semanticSequence": [
@@ -8674,7 +8674,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/16,17",
       "semanticSequence": [
@@ -8715,7 +8715,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/16,18",
       "semanticSequence": [
@@ -8756,7 +8756,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/16,22",
       "semanticSequence": [
@@ -8797,7 +8797,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/16,8",
       "semanticSequence": [
@@ -8839,7 +8839,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/16>SUM",
       "semanticSequence": [
@@ -8880,7 +8880,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/17",
       "semanticSequence": [
@@ -8920,7 +8920,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/18",
       "semanticSequence": [
@@ -8960,7 +8960,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/1>SUM",
       "semanticSequence": [
@@ -9001,7 +9001,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,10",
       "semanticSequence": [
@@ -9042,7 +9042,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,11",
       "semanticSequence": [
@@ -9083,7 +9083,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,12",
       "semanticSequence": [
@@ -9124,7 +9124,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,13",
       "semanticSequence": [
@@ -9165,7 +9165,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,14,10",
       "semanticSequence": [
@@ -9207,7 +9207,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,14,11",
       "semanticSequence": [
@@ -9249,7 +9249,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,14,12",
       "semanticSequence": [
@@ -9291,7 +9291,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,14,13",
       "semanticSequence": [
@@ -9333,7 +9333,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,14,17",
       "semanticSequence": [
@@ -9375,7 +9375,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,14,18",
       "semanticSequence": [
@@ -9417,7 +9417,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,14,22",
       "semanticSequence": [
@@ -9459,7 +9459,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,14,8",
       "semanticSequence": [
@@ -9502,7 +9502,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,17",
       "semanticSequence": [
@@ -9543,7 +9543,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,18",
       "semanticSequence": [
@@ -9584,7 +9584,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,22",
       "semanticSequence": [
@@ -9625,7 +9625,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2,8",
       "semanticSequence": [
@@ -9667,7 +9667,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/22",
       "semanticSequence": [
@@ -9707,7 +9707,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/2>SUM",
       "semanticSequence": [
@@ -9748,7 +9748,7 @@
     {
       "protocol": "stopcock.fusion-runner-descriptor",
       "protocolVersion": 1,
-      "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
+      "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
       "bankHash": "sha256:9c6a26633a128e597a3522f8d36a02aad4848bfe022abed58769776f336435e4",
       "runnerId": "fusion-runner/sink/8",
       "semanticSequence": [

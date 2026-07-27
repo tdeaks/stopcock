@@ -27,6 +27,11 @@ describe('the ABI does not leak authority', () => {
     // `isCompactRegistered`, which reads the fact table and changes nothing.
     for (const name of Object.keys(abi)) {
       if (/^(is|has|get)[A-Z]/u.test(name)) continue
+      // `OP_*` are numeric opcode constants, not entry points. Skipping them
+      // is not a loophole: the forgery property below still runs against every
+      // exported function, and `OP_FIND_OR_UNDEFINED` spells "define" only by
+      // accident.
+      if (name.startsWith('OP_')) continue
       expect(name).not.toMatch(/register|define|mint|install|addOperator/iu)
     }
   })

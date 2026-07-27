@@ -1,16 +1,16 @@
 {
   "protocol": "stopcock.operator-evidence-index",
   "protocolVersion": 1,
-  "semanticManifestHash": "sha256:c9ca7ff323fca6aac783fe25f2597a13f90b973f52e2ac8611ccbba0e3412f8e",
-  "semanticFactsHash": "sha256:e8ff1b4fdcdbb29ed57edfcdbd640d36531d4ea7367afd5f34a7f58f4e15771f",
+  "semanticManifestHash": "sha256:3d3cd3adcd625e1e8334aec8f8020af36e1bde2faf037c10e8cb42f7a62f9cbe",
+  "semanticFactsHash": "sha256:6a8f62a522eb04a50b9fd70f53a2b853ee097935008f31e91c68801d9f05be37",
   "artifactHashes": {
-    "legacy": "sha256:3f6bc9be0aeb62a97309b1db760d360e74fa5deada7bbf8dcd18a21cf7c84f17",
-    "compiler": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c"
+    "legacy": "sha256:72f9ed3c1c2f5531c3ee159ac0ae58dd1c7c3f781864361635caeb993f2c55bf",
+    "compiler": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f"
   },
   "retainedCorpora": [
     {
       "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-      "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+      "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
     }
   ],
   "entries": [
@@ -27,14 +27,14 @@
       "loweringHash": "sha256:14843eb9e20033f803b5f325ee0ec7779db2b8e47919aa6e75d02fe96d4ad1d4",
       "descriptorId": "@stopcock/fp/array/adjust/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:50e5b19f7f50703e8031223fd8417f328f98bf39bddb1aabcd9b0a0957cc40d3",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/335253a09e2a4d04fd7df36cf648925ecf01cfb1d9ab35990bdd0b08419998c4"
+      "evidenceId": "@stopcock/evidence/01158a7638238f637d9bbca7bb1e33086f5759c1605990a8edd97ca83b89b811"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -49,14 +49,80 @@
       "loweringHash": "sha256:5632c52daa4d4f16930999d7017839138afefe4f49881627809ed8f5659b0531",
       "descriptorId": "@stopcock/fp/array/aperture/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:cde7b118c44ee52a2e0a9c7f40d141efba8e7b84fbe766a4a45845980361bd27",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/302f63c78160566da236d32a8d0bd73e7eb7df2efc3862604951ca97728d6455"
+      "evidenceId": "@stopcock/evidence/0a5a36542880a886ed1b778beab1508059e44028eb73e8c9560c1e546bde6ef9"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/append",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:c925790605fc7e36362a59276beff89d29afdf8918d95a6f2a85ac9af1f49ce0"
+      },
+      "loweringId": "@stopcock/fp/array/append/lowering/compiler-aot",
+      "loweringHash": "sha256:1ef2d5b656213050a918b35749fc0b76a5a06fb9c30b50907722c96ba0d4aa15",
+      "descriptorId": "@stopcock/fp/array/append/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:2f2b6975d875b6a2e3994be4e8d9aa1697e35a1ded6d4b7963c060ad7fb85ead",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/aa6ad2a86c3ffa4f4060d8af2c45598345f99d70927ad644f224f259c1431c2c"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/arrayEndsWith",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:5eb94862d01d0d67742055760f26d479d521040e61990e90baef1a4cf0a4f387"
+      },
+      "loweringId": "@stopcock/fp/array/arrayEndsWith/lowering/compiler-aot",
+      "loweringHash": "sha256:3419a22d3734cb4bbc8b9eb71c6793d18a8e28d361c57e53984f66801c561464",
+      "descriptorId": "@stopcock/fp/array/arrayEndsWith/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:79d931594c4d6e6d450d56f5f326e86ae6dffffed069ec21020270052cf43e24",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/b891d75a45ec5928ff2a67d6080d9abc762561bcb45ae4d631901fb248e3a502"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/arrayStartsWith",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:37a7b54671d582351f7dc8a2a98760c189c420555b47a818da4a6c81bccea245"
+      },
+      "loweringId": "@stopcock/fp/array/arrayStartsWith/lowering/compiler-aot",
+      "loweringHash": "sha256:264b5d9dee7aed67458a4d887e7b3db81442eec24d230e0ea9b703b3409f0a88",
+      "descriptorId": "@stopcock/fp/array/arrayStartsWith/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:8381f7c2683983254c0e1cf29dbb6f1ef9c8a26bbad74fd4c0d0e584ae7b9958",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/89dd3cc08191bd4c93ab65bc9c6b306083e4dfe8c46f55c4cbb976ad6a465e40"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -71,14 +137,14 @@
       "loweringHash": "sha256:7b833ec98b8824a8828e0eb0f30f291f05dcf329249aa9c09d6de457ffea6af3",
       "descriptorId": "@stopcock/fp/array/chunk/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:6404a19f1ed73a0b4fdb6990d8578bb834ea5b8288f19f07f528f4313c8eb95d",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/1e67f6691bdc3e3c23ebe585b308d9306d0f244855e77a43403d80568096a506"
+      "evidenceId": "@stopcock/evidence/2c45246ef018edeeb3414d79d530e699bb84311d65748f4ee50c24a461c3c5c9"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -93,14 +159,14 @@
       "loweringHash": "sha256:8bdb309654caa4e11f26a9df6712a228a519d6bb41572e1e8354f144e304c2ed",
       "descriptorId": "@stopcock/fp/array/count/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:3bff2aaad255d5b6be8060699bd4bcb10d3fd27fc28d3edf7d365c2c77cd2db6",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/2d050ea68ae9917fbe9658245e7e902ed162015082a544445ba4648f29afb6a4"
+      "evidenceId": "@stopcock/evidence/65bf93a2ac4bcad695a263ebd259301dadf7d31d41080d58373f99aa5f982b23"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -115,14 +181,14 @@
       "loweringHash": "sha256:204f464c8e37d262147f06c9b2041884aa10c5a23fb019ee84620531b40db75a",
       "descriptorId": "@stopcock/fp/array/difference/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:6100a4afb3fe87b22415fe3c704b5dd363c82aa7ca3a5c9433135179cb92518e",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/780282a5399f2a28be6a76ec700f066eb54143dc1905f435feb7abde50e926a7"
+      "evidenceId": "@stopcock/evidence/15b2dd0a39ee7f8b8d7b332fd52a3d00801660aec5a76b8a81a16ea69abd479f"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -137,14 +203,58 @@
       "loweringHash": "sha256:304983c8e685cf418935e1b9dc9a805f816f22cb35e7f0938c5f39f7dfd6799d",
       "descriptorId": "@stopcock/fp/array/drop/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:bfaadfcabf2c1b66883312e7f96f0c93996cd4d4b92013728b92b6e732ea8baa",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/724c680fe393d8c1a0105994e2ca574e3991c5707237cafd54b15bf3e7652d35"
+      "evidenceId": "@stopcock/evidence/80cbd6c25e8098dbe4937c9075c7b7fcbd1e9889379a440a841b9e2604eff6e4"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/dropLast",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:97a24be8e189f43f2b46e46e4e861d0bdedab3905cc6aacbdb144e63701a38a4"
+      },
+      "loweringId": "@stopcock/fp/array/dropLast/lowering/compiler-aot",
+      "loweringHash": "sha256:24491c11c9392a45ce932145e41f354d907a7b7f5a3b52a33c8a0dd16077c0e2",
+      "descriptorId": "@stopcock/fp/array/dropLast/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:6d62108ea2b88395c7c5ca35be9f06c3cf446b2002f65e7aa0e5f8503f051683",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/a6ce6bf77e9474b8de96b6c58cdf738d7e4a1c85486761980c0cdf19cd9a3e36"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/dropLastWhile",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:cec6bf8d11b0825b8c24f6b3f5999f80a6b21d701629a98ee7e2789ee1f4a68a"
+      },
+      "loweringId": "@stopcock/fp/array/dropLastWhile/lowering/compiler-aot",
+      "loweringHash": "sha256:966bdf242d97867f0116e7966020e16c3f28a50dc37257bae9502cd8acb6e0a5",
+      "descriptorId": "@stopcock/fp/array/dropLastWhile/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:a633d24e36a7e79fb85a6baa66764fdbd69e17324160cd2df05787aa59a20af8",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/429467e109541c90168b1c57813663c287048cda66146af5d610b767b4517eb2"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -159,14 +269,14 @@
       "loweringHash": "sha256:e8f3b060b8d103356504b3fbc5b6b8d87ad4569848f151eadf0328a81032d20d",
       "descriptorId": "@stopcock/fp/array/dropRepeats/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:032c5562082a99ba3e8ae36fd8769e29fb7e9cc52981dad94e3ba84dbf1415c7",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/fa7d524185dd2eb1e02b9ac66858dbac5a40eecd6b9b3a8b56382f599c87724e"
+      "evidenceId": "@stopcock/evidence/d7d38f9d22633e3e7660e2b68c413bb4b882438de8013f3d2a9de69fc7f1c4f2"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -181,14 +291,14 @@
       "loweringHash": "sha256:207d3b10b2390036fb9fe8ba277f74b141368778f5dd7c9aaa2897a9a5f52704",
       "descriptorId": "@stopcock/fp/array/dropWhile/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:3f583163d5bc55a265b94b9dd5cb3f4a3ba78e70513fd6ca95c94a1490a99baf",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/8d4738fb5346cc24a11bd907ab7445225601fd019704dc623a358aa888a6d1c0"
+      "evidenceId": "@stopcock/evidence/74cb060a5a324630c92cae85dfc72d09d783a51c9474af36abab0f1f81a0ca32"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -203,14 +313,14 @@
       "loweringHash": "sha256:fd9d9bd7449f4999e298157c3f1b81b266e15f06d610f2f6816c3b348f7a89cc",
       "descriptorId": "@stopcock/fp/array/every/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:ffd95b0fde588f579d3803726142a16acadd9d45b3ac1a0ebf8692cd21b6e7a3",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/986d9228e0df68af503587337c9793e8b40333ef4d6f4c6f92313e444a1bf198"
+      "evidenceId": "@stopcock/evidence/ff81576e275e6277238972fb05baedd5d74defcdb4fa18488583a06ba8e1d854"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -225,14 +335,14 @@
       "loweringHash": "sha256:3ae9869385ccfebe7c2251b0595dc5508e9c5ad86deaff431f4e8db65dbc5c2e",
       "descriptorId": "@stopcock/fp/array/filter/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:e6272ad0cecd4dd602f43dbc9418b060fdb340a59feb6b3acdfa9b3190fd3726",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/271cc4ab3c772a527a8282604c716df39cb4ba18604ff61309d2f62c7af1bfcc"
+      "evidenceId": "@stopcock/evidence/9dd7adf1b4c9b5f5e20505aa0972c25ddd3fba40734672292f20590cf15ebc18"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -247,14 +357,14 @@
       "loweringHash": "sha256:004387899f0fdb2bfda510b3064b89e0ac104c4a5ce4482f3ef705e5da382108",
       "descriptorId": "@stopcock/fp/array/filterMap/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:d9b44e0779c8a643ee99317ba9daa9626ffb569f0f7278f560877479427a06f6",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/698c38c953a686e3df6a9ea63f79ebb07a32dbfb38ffba6aeefdf00b4cef3447"
+      "evidenceId": "@stopcock/evidence/4842571d0767d184eb9cdabcd869b411b42b9f0ef605e9e30ed38472d7cba344"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -269,14 +379,14 @@
       "loweringHash": "sha256:399f8eef192a3ecf22c021bf6f4054cfd793632eebfa50ceb5efaac3032a4b14",
       "descriptorId": "@stopcock/fp/array/find/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:8733cf0dc76cca2d440f81eba804ab4cc52d1fb66f93fe17e976cd9891096688",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/134f0a5e96cc0aed38ae05d75240b49a9cb135e772899e24231b9839053da8dd"
+      "evidenceId": "@stopcock/evidence/645744202b68d672c4152df41ed7bc476c14d90a977be7b0a15fb76103771034"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -291,14 +401,80 @@
       "loweringHash": "sha256:bcbd7c4e0fcbba2f92ba06599cacfee9c20b941c909b966c8ed9272ee1a7dc7f",
       "descriptorId": "@stopcock/fp/array/findIndex/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:afb7014c34cb5b64562f1130ee32fcd117d1ad51d54045e4f326e336e5b62200",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/e85adb8d9e0fa312ac0ae125a527ddab3e63f823d1c0fceab60d907a41c21ae4"
+      "evidenceId": "@stopcock/evidence/e2fd3820dff739a29663c34d1c8f838a3105615552bb9fae6e390371ae35fcbc"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/findIndexOrUndefined",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:fe7fbd85b34353f5a3f61a3260102a553d44e83b14e5cc1ee319c2240dab609e"
+      },
+      "loweringId": "@stopcock/fp/array/findIndexOrUndefined/lowering/compiler-aot",
+      "loweringHash": "sha256:a511441185f327c806aadc008f85d4dc89c794dcc9123119d3d3ab310b048d4a",
+      "descriptorId": "@stopcock/fp/array/findIndexOrUndefined/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:200e7cd6723b2aa2ea731fd4373a2a094a5e2ac1578f39cbf1475719887b7de9",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/adb61b0827f7621650682205ecf48a52b11a05b6b310aa1ac777fb457f6f6281"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/findLast",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:295fd99d6676dd12a10cc32be7f3030ffdd4fd173a00407196495a11406b99f8"
+      },
+      "loweringId": "@stopcock/fp/array/findLast/lowering/compiler-aot",
+      "loweringHash": "sha256:aaddbec5fa5e8a92978f0262be1c16468efb430036eda4e821fb938c555857f1",
+      "descriptorId": "@stopcock/fp/array/findLast/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:0ea9d5ea1f461f333552ef7215126b6558515977cc937d43d9d7a43eac276807",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/624a2c7b96877bea258c3f1d821a92d12df2a343475ca8fb434282989b29525b"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/findLastIndex",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:cf12b1c8de44619d422cb20f7ee54efc1a4f47aecf60c0012767baeebed4c093"
+      },
+      "loweringId": "@stopcock/fp/array/findLastIndex/lowering/compiler-aot",
+      "loweringHash": "sha256:b71337d78cc3a219f0a19b1d28cb19f083cee918611818319be83de6b9a1b2af",
+      "descriptorId": "@stopcock/fp/array/findLastIndex/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:121276bda0acb3bfe5860729f20610a390e1132a677cb40d99b28536f78ceacc",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/037f087eff45317c20b8ed6b075cbcef2f4110981ac108aa532447f34f48a001"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -313,14 +489,58 @@
       "loweringHash": "sha256:609c30845662cc044cc254ccd15dde06fbb575dfccd5ef400d30f47607215ec5",
       "descriptorId": "@stopcock/fp/array/findMap/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:fbb093a770f6d0778118219b5c51aa7d713beaed7ca5783e4517f0e6f1aee6c8",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/e94048c7b14f23e385459a49875fa7c0d306bbe0d08cc7313ea029c18c13afa1"
+      "evidenceId": "@stopcock/evidence/39a5a9f65d91d2d34bfc3ba449e047aa499437b4123c6f0ecbbd988921ae45db"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/findMapOrUndefined",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:4c22e6ed6c83b8b5673b0e6bc7020d901f0446ad6759523d45df13f466cee491"
+      },
+      "loweringId": "@stopcock/fp/array/findMapOrUndefined/lowering/compiler-aot",
+      "loweringHash": "sha256:3c77d2d9b87dd296e3e7e07387879266d21b108bf57331d502414332a38bde9a",
+      "descriptorId": "@stopcock/fp/array/findMapOrUndefined/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:6191a0d7d8f0b97cdfaed755edba2f1d585e687b4dfd4a59be180ac6c73ac134",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/f55f91d60c9472aaf921ead290cdf84905668b0c5e7f5374b728e40bae59c83d"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/findOrUndefined",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:d6e4c5542d06ee9a118dd78bbe88ebea47df0ff755c8c7a4a3972fe11b450fd2"
+      },
+      "loweringId": "@stopcock/fp/array/findOrUndefined/lowering/compiler-aot",
+      "loweringHash": "sha256:ab605be1fa820fc6e9b5a7d51b62f032ed8d717baa31bb9bc123e608f93c201c",
+      "descriptorId": "@stopcock/fp/array/findOrUndefined/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:d715efecac16ba400c62f58626470359e39986ba914591552367160cada4859c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/9681cbb45371b5b6b062dec260bc720fe5aad8bdb91abc884f00c07f9b43b34d"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -335,14 +555,14 @@
       "loweringHash": "sha256:81c720d21cb8f65878fe94cc04c26d47a518b08586aec17b8324ed376a88204a",
       "descriptorId": "@stopcock/fp/array/flatMap/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:0dcf9996991e8cdbfa7812f1abd5bc6726118a1c6508d927eba8fb329a5f550b",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/300b97466666253c7408487bb28b3133bc735fe3b22ec450cc356a624009eb50"
+      "evidenceId": "@stopcock/evidence/b6b7e65187eb3c504cd8734154c9223086916d331d4454a361351a6862cbab13"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -357,14 +577,14 @@
       "loweringHash": "sha256:1bd7c22a62bc0af7b68c68e63cd40240b2ef4af3f0b6973c4aaa40c2fe33f4c3",
       "descriptorId": "@stopcock/fp/array/flatten/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:47553e9244ebe767f421b3240e89285555ed1b79df7f826dee70ed2d652e36d3",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/670062f5e13f81e28052a0de8ea6fbb4b59c87878ed3fcb25ff8031509cd4052"
+      "evidenceId": "@stopcock/evidence/8c423a0666c126e48296e589868df8a345292956551493b7c82e7aaf004fadcb"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -379,14 +599,14 @@
       "loweringHash": "sha256:e06939feb956be84428f72ed0eb9d45d53a613a39c6bb56261e9cc0cac339b92",
       "descriptorId": "@stopcock/fp/array/forEach/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:e389d53fe2279ad7294ea5fcd6e355543b57d28c39aa869813bc302cfd234376",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/6efb9aeceac6c85a7d64771b28de6f09a7c94821941e2981fc0ad385df743493"
+      "evidenceId": "@stopcock/evidence/35d7edc9e9cf97def198272e029f247bb51f6b9d643e7cac2d6fffcee9f4925a"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -401,14 +621,58 @@
       "loweringHash": "sha256:35042ed38fbbce7facacf0a0b7b5bad9a4885b4885749c43285140d4d4aed00b",
       "descriptorId": "@stopcock/fp/array/groupBy/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:244b7226d4c7770a512e12331f088f709614e7af46908a2d396a785f7da79333",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/5cadfaf194c710dc4c749be9be6f960e8d7ae514089a37ca93d26984c1affd9b"
+      "evidenceId": "@stopcock/evidence/9ab6ec7d50e4735c686f13ec9dfa07a4df92f323eff6bfecf4fbd86740e11d86"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/groupWith",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:e0b6513035115a64970659fa802249c8088d73ddd542eb534461e16f20f20777"
+      },
+      "loweringId": "@stopcock/fp/array/groupWith/lowering/compiler-aot",
+      "loweringHash": "sha256:bc856898d424dc29428f971e00a226010ca441e0b5184cade7acfebd3339e85e",
+      "descriptorId": "@stopcock/fp/array/groupWith/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:6efe467bc74a3a5be2757d07344fb57ba66f698bc621386653208c4221b2e894",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/974492649813af9299f232d57e28eca4649b8015f7417d4191faca9b94343fb5"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/hasAtLeast",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:2aa4be4118e5d8457f7cec179270e2642f9480949ba09382e816b95a20cf6cac"
+      },
+      "loweringId": "@stopcock/fp/array/hasAtLeast/lowering/compiler-aot",
+      "loweringHash": "sha256:c47bd1e61efea9a2eac9c023121a2e9df9a4b705f13a32e76bfb631aa1cc8ace",
+      "descriptorId": "@stopcock/fp/array/hasAtLeast/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:010fb014ab4fcaef616d8ddae39ccab000d2c19144d4198627c589c20c0b7643",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/ceb50dace4cd225402bac4f732bd8d1c3377fcc839edaadc4a63c3b9a4ebfacd"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -423,14 +687,14 @@
       "loweringHash": "sha256:4a2f66a4afcbeea2e01ccefb232ae565d8182946ef998b8a2fca198c2d2fce57",
       "descriptorId": "@stopcock/fp/array/head/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:aad339a3d757d58dbbc5881f96801d06b8fe1b57334db53e204d57ba75bda0d6",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/f976a65e526499cdf4f5d10b9cf181fdf8b74aceeb74c00c69db96ba82796b98"
+      "evidenceId": "@stopcock/evidence/447cfe72c4edaa15a18e1eed10ddeee5c1388c9917b3013056252c1b1698236a"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -445,14 +709,36 @@
       "loweringHash": "sha256:7287f96476cffef70a076001bef9ddad92e95aa4a713b859329ec7a1796f6233",
       "descriptorId": "@stopcock/fp/array/includes/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:c083cd92cbbc82b20f41b4978d6f4f432f0b6e83ae2f73665210fdfeb3da2cad",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/289908b2c1dd323e3182d1efd5ed2966fd719ea670d5d34c0e41d823071b3ed5"
+      "evidenceId": "@stopcock/evidence/8d905320f70592464c6edd42fe53b880f750c2231ea2ba774d5408f59ca2978a"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/indexOf",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:b847fd07eba749817209375f909ace7091be9bbdc2808990bbf2d4dd177f9c5b"
+      },
+      "loweringId": "@stopcock/fp/array/indexOf/lowering/compiler-aot",
+      "loweringHash": "sha256:df7284ea744b71b919b074c67d6a5ad10c2d173a746d2b7b5839680b886dd1a8",
+      "descriptorId": "@stopcock/fp/array/indexOf/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:b8ff7a2f30aa3fbc7a08ecd30e53a81e471f48177783d178f1d4f08b99cc4041",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/d47a763fd45fc22315dba95f4363e834fc9a82f8f256ad4cef0d072c5d9abba4"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -467,14 +753,14 @@
       "loweringHash": "sha256:fadaf1d1eb7f9ae3b4ddf309f14cb26b5613ed8de097bac95e6f1b9f165ba2f8",
       "descriptorId": "@stopcock/fp/array/init/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:6c0edbf023ee24eb6fed6e31a352572d029bff3aae43f05940b1280dd70db362",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/ec72902aa2d6d9cfbf6bfdaf66d0ea40048982cab77183f32d1586c4750c8488"
+      "evidenceId": "@stopcock/evidence/6548240bc551f3e659eab8c2adb7a88b6151a2aae1d8400d61a965ec52a706d1"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -489,14 +775,14 @@
       "loweringHash": "sha256:ef2157557aacbf2525ba37e0cd307eff78b8c1cbc10398fa29ddd3403eb110bd",
       "descriptorId": "@stopcock/fp/array/insert/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:280e7a4c477123a6d3a331e88a458a04226a379320c884990ca84aa2665291fd",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/e754582b1fdaa7bd800dd20f522dfaa7f460d316d3f9d965eac54a13b96d176f"
+      "evidenceId": "@stopcock/evidence/6a1eada134932b813618e75edf0056d2c3a7d5c9ed55eb39368d55a7300d561c"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -511,14 +797,14 @@
       "loweringHash": "sha256:03c670dfd32a1e0dd9ec018ce81218306ae90818ca21ccdffbb1ea37c9bd22c0",
       "descriptorId": "@stopcock/fp/array/intersection/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:41dcb1dc67005695b1386f34665410083efed8774f01bdeff718dd96458fbf14",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/3e239a66d6529729a126928d40a1e778af31fecb3c425578569ed6e9d5ebcb8a"
+      "evidenceId": "@stopcock/evidence/4f8e6506abac5aa0698633b97953afb3b416b95ca48fba9e119e3d36f4980591"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -533,14 +819,14 @@
       "loweringHash": "sha256:b22a2f23c4de562655cef1b74d2d1d4be3431818bae194460c43fd6e64b475c7",
       "descriptorId": "@stopcock/fp/array/intersperse/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:50a254b3371dbd765b81b346ce62ac686830a2d90c87d14f0afec6bb91f645a8",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/7e310c82324caf7ae2fe5e31d01c6e3fbfc065f40a8769ab18f9e7a68f621e0c"
+      "evidenceId": "@stopcock/evidence/f80ff98d234ddb96067fbc6d699490570d083d501fc7aa0200a4d6873cab319f"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -555,14 +841,14 @@
       "loweringHash": "sha256:a38734e5ac6e0d1a574982520d3a3a3538d26e4fe27c2df2c875961b5050495c",
       "descriptorId": "@stopcock/fp/array/isEmpty/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:6d2b5b0e4232ac0020f20f7d73621587cffc2e949727e57321c46b187e95fd92",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/bddf82f4d0dcae440720bcaf46106ef4a55aa7a25f9eed958edc6f03205f8418"
+      "evidenceId": "@stopcock/evidence/072607558d6560096f70af45e40a99ed76504ac517220cb860820e15725a4ccd"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -577,14 +863,14 @@
       "loweringHash": "sha256:9863b9639198034ab45b67e237de5781a7db07806af2e5dc5ff092e6d0e416d6",
       "descriptorId": "@stopcock/fp/array/join/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:dc9dde19f888c1cbc196095fe8d1e5706e79c7f5c536d52c2580105723af34dc",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/9b4712e1945c86daa3a71e526bd4637953cf31b12296983165256e05bf3351c7"
+      "evidenceId": "@stopcock/evidence/562d66626fe6fea23e73273328212bc6c5e8d5cf3e7a6ed32431cde263ce8533"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -599,14 +885,36 @@
       "loweringHash": "sha256:c22cbeee66bc7e2aa5c021f66cd2b5ccf7019706d27b3be369c34ddae2346a4d",
       "descriptorId": "@stopcock/fp/array/last/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:001cf8a1211b170c3aaf4c785af4f90b19256c4ded1816f66ca525ab465dd4d5",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/1cc626186565e1ace7ac072253e94dcb0ced8a0d5a44b81ed874017d86c5d7d3"
+      "evidenceId": "@stopcock/evidence/bfd04f318054595c2935462f8e3f69660a55e02924151476761163bafb86f2c8"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/lastIndexOf",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:e5a4eb287705b2813ceca36cfd1bc75635d2c5971c672c9ae3000b023eff11fa"
+      },
+      "loweringId": "@stopcock/fp/array/lastIndexOf/lowering/compiler-aot",
+      "loweringHash": "sha256:9265cb96e39d735c672d37db6c10ccdcfbbdcba5f839229c2d6e47e252b7ec8f",
+      "descriptorId": "@stopcock/fp/array/lastIndexOf/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:629d279871071b303f0d647ef5f82a1bc0f532791a9d8b0d7f1cdcda38faf4e9",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/a5d6f0fa9500598f273348237978c6d375878d016a1b9b417fbc310a7f01ed21"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -621,14 +929,14 @@
       "loweringHash": "sha256:6bcfb1457ed6e10bfe931b1bb7f908546664d1f9d624be95e3f972f1abd55d60",
       "descriptorId": "@stopcock/fp/array/length/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:b77a7b366b3e339ee889fa62581a4ba15cca2149e47f0aabb0851d806a6ea50f",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/1d378f8eaae2a47060c9ed38863a6508aa21d1ac23bb2ad29b3b4a4ae51b0514"
+      "evidenceId": "@stopcock/evidence/71cd9e63347ab5410d93d3eef3165ebb7e92d596d7ab22134ad3484d02781ef7"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -643,14 +951,14 @@
       "loweringHash": "sha256:d42d321438813fe28ac161b0d0bb68f65b676fc99115b941d2e27819754219e6",
       "descriptorId": "@stopcock/fp/array/map/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:996b0a5dc7d27844bedf1aae61a4d773c0a0f9a323d2fe78f1cbeef3de29ea66",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/e93a1f00f257907ecbaae9c2c118256660dd0cea2bc413e4abe2d4067342eee2"
+      "evidenceId": "@stopcock/evidence/4646820a31e0d152bdd9cdb4905cd7818b53fa27fdd36794f35aa2e839da26da"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -665,14 +973,14 @@
       "loweringHash": "sha256:13e15dfa0903f2afe05b49ce2e30d6b12706ea89c4452248d2aa0a04edfbc984",
       "descriptorId": "@stopcock/fp/array/mapWhile/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:02ae5c354e1a74939133bc8c2e9c486de177aa96fcbb0cda40becb3cb18f038d",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/875e4094567ebd6fb90296338d9c0e3626daa728a37f9bcdbd487f6452236cd8"
+      "evidenceId": "@stopcock/evidence/65c99ac5844a5652e8183130e51bb2ef8ace5b5897679bf897ed079cdf8be727"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -687,14 +995,36 @@
       "loweringHash": "sha256:d06d64093a636eabef1bc079252e69cfbf0af3a738ad38ba77589db0373ee57a",
       "descriptorId": "@stopcock/fp/array/max/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:bf2b8dd5a11d46e0e6ecc0ad411110e3031b5d198627a0b394b8d782de16ed16",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/1d3862b7e35f43b91f985edc66dc040e9edb8695620db193e9554b3912134ac5"
+      "evidenceId": "@stopcock/evidence/6e052201fbbfcc5bafb68271767d48f1e4c54e1a37c9862d41827ff5f2a2613d"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/meanBy",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:ef90163069b2cceba92f3bfe92687ba8994a083789adcd109d143e1f04f8d671"
+      },
+      "loweringId": "@stopcock/fp/array/meanBy/lowering/compiler-aot",
+      "loweringHash": "sha256:fb803ced789d20771d5e01a50ceb806b67bd4e567e519e287b60ae5378da98bc",
+      "descriptorId": "@stopcock/fp/array/meanBy/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:bae773b9eef4e6306f28d86e6f9deab7f70c6cccefb53c8277e96ed67dc9b45a",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/aa29b063a45ad5f16036bf9581327730cf62a9017c5a466b3b6df3b699bade4f"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -709,14 +1039,14 @@
       "loweringHash": "sha256:b31711243871b427759256b2385b1a56f87cd0a4fa6b552d40668b260fa3ff14",
       "descriptorId": "@stopcock/fp/array/min/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:88bb4745573180b3d450eb4dd3a3279bca5f3c5aec7c436d67dcf634053762c3",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/9af8bbc8d8e0f0df523cb4251fcda89b6f76efedf88f63e2823f238634fd2961"
+      "evidenceId": "@stopcock/evidence/bb4c284894e9f83638da4618c162d099bc5506fe07f12e8bc0285972cc1200c7"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -731,14 +1061,36 @@
       "loweringHash": "sha256:52d21fbd948a54703af3c16aa67a8ed578b1fa7e3ef4dd89b8bfd91cc38f7441",
       "descriptorId": "@stopcock/fp/array/none/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:d9c7038748b7b4200f9491ecb14a6dd390dc15fa772fe451173be89c2540747e",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/768ca3db0acb80b13132b3d68bc6accca93272560024155bd6cb5a3fb6bf3634"
+      "evidenceId": "@stopcock/evidence/62181d754626cc0049d68bc6350df515d28e533d8a16da7a102522a49d8b2ca5"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/nth",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:c549f7053bbf6e8e27b83771c8f725cba2ffa94e8383e6fdbc4ddb93bfe2ec16"
+      },
+      "loweringId": "@stopcock/fp/array/nth/lowering/compiler-aot",
+      "loweringHash": "sha256:3e6097f22c1250c4b1d300aab9e90c02fb9b5bc2a3dd9604778dba4fba089730",
+      "descriptorId": "@stopcock/fp/array/nth/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:9ac2de28e75aa25ab6096c3abe98acd33a1c7b193fa0665cf38b16b7f435ee76",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/17482d3a0b19c9ab228adf1ee3991ee70ea1842bf316f3eabf54f512374099a4"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -753,14 +1105,58 @@
       "loweringHash": "sha256:3b4bacd266520adb46a58c24585fc5e25a7ad8ad9da7fd2f6440a31ed075d6b8",
       "descriptorId": "@stopcock/fp/array/partition/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:fb51b4e4574fbc952963405b194e75e4922f5e92136a7e74a12f0dd938248728",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/bdb7e9c05a9f392f600edf9c99621b53ec1da29edc014dc6d8f169bacd3c49b2"
+      "evidenceId": "@stopcock/evidence/f3cb6cf1f1fea26d031b52ef07c02e4e5d686e6b613f256c36d32d8fa4a72284"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/pluck",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:91b881bc3edefd9e82d64c0709745472868fc81a0a6972abb0341e19efd8076e"
+      },
+      "loweringId": "@stopcock/fp/array/pluck/lowering/compiler-aot",
+      "loweringHash": "sha256:693aae8f6c545a729621d1b344dff5d0003da81efdf3820f985f5333f9a703ec",
+      "descriptorId": "@stopcock/fp/array/pluck/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:332cd05164409122c3d7bddcaf7202f48e7405c660229917b76120ccfcbab65e",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/39977464a72e8d2067b835e39a14bdc7343a7c36b1668fbb1d0061300626034f"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/prepend",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:bdb753d127a18129624df71b3cefce347b1190ab9df877568067208c62b03101"
+      },
+      "loweringId": "@stopcock/fp/array/prepend/lowering/compiler-aot",
+      "loweringHash": "sha256:8804c88f29d912074331e4227d40318222f168a11923f7ba6d4b677ef76dbea8",
+      "descriptorId": "@stopcock/fp/array/prepend/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:4c684568c2279f74fb861eca4a44b6eabafd9159d1955823cc4eb9716a4a32c4",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/496b5f3b7f7b0b24bd598d6ce4f0d4f961c09099c5174ac5d97eed9f8c6aa568"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -775,14 +1171,58 @@
       "loweringHash": "sha256:7ad35a46bc82f91ef0729a843bfc299dcfeae95e831c178aac917b2a7715f128",
       "descriptorId": "@stopcock/fp/array/reduce/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:908d34aee52a7e1efa6e851cd02fe650f81be467f016e1381878b77330295bec",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/617931e6b2e5510586df13ae73a49bf4dd4f0e71de4f45e18d4d335de51045ef"
+      "evidenceId": "@stopcock/evidence/c64353d33f974c26ee6415b1620a077462335d55cf92904a4149167072ea456a"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/reduceRight",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:91e298aa7e76c23f6b95002aa8a03a9070375568d474c93bd08621965a767231"
+      },
+      "loweringId": "@stopcock/fp/array/reduceRight/lowering/compiler-aot",
+      "loweringHash": "sha256:8843824fab78ebbdf32113b4ca93e0a6bd318314d130c3618f4d03646a816e65",
+      "descriptorId": "@stopcock/fp/array/reduceRight/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:b4dda8ada7f7b1f59e22a5c27bd8089878a287805b04652edf898f0afef10555",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/83eb1efaa4845b96b4df6d92e889f6fc58ca1b96530982516dcb6a1b359631d1"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/reduceWhile",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:5457c4e6c3407f199d7cb42216df38267c267dd74637ac8ec098a683d75ea1ef"
+      },
+      "loweringId": "@stopcock/fp/array/reduceWhile/lowering/compiler-aot",
+      "loweringHash": "sha256:3e6cb0f1b018aa36cd6bc57fce6213c36fb8f0cdb11dda7e2a710045a4820c78",
+      "descriptorId": "@stopcock/fp/array/reduceWhile/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:7289b224e8d52d8bcf2f19b4cc741b89603333bba4cc9cf7c4fa0064b8e44190",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/dca14081ec353b2ae7f178ba56aa7c25d82bedad338d8aa14f30931a9f0faeb2"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -797,14 +1237,14 @@
       "loweringHash": "sha256:87c80ca41215bd7f1c6a7e9d48df4a82cb018c70cdb5cdffb884c7214678ee3c",
       "descriptorId": "@stopcock/fp/array/reject/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:e230a7d69dd7f06cdab95313c01543b2c2afc51d9eb59863b62201d7004ab49a",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/5e766baec48d696e7642992f9a038e614efbadada604dec594c65077df005e9d"
+      "evidenceId": "@stopcock/evidence/667b54ff2819bbe24b2783bb1dc0bd2adcc7ab569f56b89e652a75bb38aad8ab"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -819,14 +1259,14 @@
       "loweringHash": "sha256:a13d7d66f43ee2a719086b6e5502ea3d089f497e3712b6921ac750b613d84e1c",
       "descriptorId": "@stopcock/fp/array/remove/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:ac9e0ed0a63fa672ff1d086ad0a5610f2471ce195c2760df3f456a5c494ec2c5",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/cb31907190a5fef9185f7de7704a1041f35d264bd438f31067414ba863e37029"
+      "evidenceId": "@stopcock/evidence/ac26e23c5deea2dd6ffc43b79daef35579bfa9e8bfba4a1230b6db949e9716b0"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -841,14 +1281,14 @@
       "loweringHash": "sha256:bbd41af99bc37a458453243c4b9dc1e2fb4cd9ad350d7dd124b6f1f1c5878b00",
       "descriptorId": "@stopcock/fp/array/reverse/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:0014d17759e5e31fdb233a8141b81592f746c91388a8d8a42257dee4e82a660c",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/b0bd64cef9180732969b4b8202a9231a969188bc0e4fc943b964e44714814a6e"
+      "evidenceId": "@stopcock/evidence/800aac860e59541f1c14067381d53611ad0cc1a042a52a6d6424780c0020e2f2"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -863,14 +1303,14 @@
       "loweringHash": "sha256:37570a49968666fb96db8654f7ab228d43b9c82e9e578d18087715870513fcbb",
       "descriptorId": "@stopcock/fp/array/scan/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:7f0b9cc0ecd621d1e01c7251516d410f79fc4e785add36a2f9c6e469dccaa03b",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/8dbbd5f79f4cc2ddc19a16c97c6bf17e68d8a01ed3bee3a5e75cf9970628ad6b"
+      "evidenceId": "@stopcock/evidence/cf7ca9cf53c5a2562c0e6404d311a97aa8ace2059312cb0babee59f9c7739dd9"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -885,14 +1325,14 @@
       "loweringHash": "sha256:96cb06d34f60e0bfe3b63fac13d62ef19d8a6c4778ad418fccb01d91669ef2ef",
       "descriptorId": "@stopcock/fp/array/slidingWindow/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:fb1c4d9fb5a22b6d1b8296fcdef1d5b6c572197b7fdce08df2970563b4e0cadb",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/7dd67a837846cae97581d3b3a52e06f06fff289ac4808ebe7a352ccb1df645b7"
+      "evidenceId": "@stopcock/evidence/4fd0dd2e72e12a238e68b068d96fc352f72d71961963d0e3b1e228c737639485"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -907,14 +1347,14 @@
       "loweringHash": "sha256:9a77382fc79b09e2f8980470d5494117cd527d87d9d70b8edec3f55db178ce91",
       "descriptorId": "@stopcock/fp/array/some/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:6c739b84a8346b12d0d39750d08cf984ff88dbc2721b996ce6e53c9c02cd42b5",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/add35a9bd51a4b81234cd2ea6b5f812346c7a0b8e20f9b415693e09c3668be08"
+      "evidenceId": "@stopcock/evidence/a1d4b42c52d1ea3619eb0f9b97425dffc39403cb4392eecd121b70dd955828b4"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -929,14 +1369,14 @@
       "loweringHash": "sha256:890df50959a96cd77c7da8d7a8d01b6a6691dbf4611d74f0c2b69e20878c2a1b",
       "descriptorId": "@stopcock/fp/array/sort/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:24841292a9fc91341c58acf5f015f79c7237c3eb0658e8237daa4b1de84b9280",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/24dfd1d5282a11914ec887c89d288614cc3d2c382a4c4405a41bf4ac7adc564d"
+      "evidenceId": "@stopcock/evidence/5d41df0acd9524f4593dda60aa954ae0a0b6f15c5fe42002cd5a017a5b6c584d"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -951,14 +1391,14 @@
       "loweringHash": "sha256:d26b006681dba478ee7dfdd4f419883f082ebcc74f2d849ad94a9af26ae35eda",
       "descriptorId": "@stopcock/fp/array/sortAsc/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:ca4f1a617d32b094652374c95f6b603b8fdd5ee899ad87ac7c1b56aef9fb102c",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/6c98ab06d2920c71e3a08d9c7fd2ff1be57f4d97a63e38098aae644592a137ba"
+      "evidenceId": "@stopcock/evidence/f2d40ba5c3113c08d95bdc0087356657ae811c8460f131a0951c88ea4900a339"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -973,14 +1413,14 @@
       "loweringHash": "sha256:cc5cf305249c62406aa8575451fdc39e1012d2a6fec80409d3dc8bc25767a344",
       "descriptorId": "@stopcock/fp/array/sortBy/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:031370902d52dffb050f4bbdfc149c4797acccec4c1775f90ba4ed07e3cc4b9c",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/859b68006d2d321a4526549cd2d0cae9adb89d3f114e8ff359abcef271d77171"
+      "evidenceId": "@stopcock/evidence/dfee00668e8abfee4bf51f0ffce0de2bc6952294e752042c03bf0e55ee56f5f6"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -995,14 +1435,80 @@
       "loweringHash": "sha256:8047875e67acc73361360a432006d6d0c129172abce5a270ca7a93fed2ecbe1b",
       "descriptorId": "@stopcock/fp/array/sortDesc/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:2675d6e4164473038a88a5f0a46d0533a4f84653b6e59d61960c16d750fc93a7",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/0019a1bde3c717309906199a70af09cc11ed3114145df9fbfdc4830680071b7c"
+      "evidenceId": "@stopcock/evidence/9eca38b2e8027e304832520839fbb5980d66be354d3ab402b0d9e0a3c58c200f"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/splitAt",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:0fa1cd061369eb27e51d00b66d7d601d47dc3c3ae84656cf41e8adc533a4c6c8"
+      },
+      "loweringId": "@stopcock/fp/array/splitAt/lowering/compiler-aot",
+      "loweringHash": "sha256:62260a451f7fd95f3fee2cb8b3c61c0da0135a1356374e3eb6b109c38713aedf",
+      "descriptorId": "@stopcock/fp/array/splitAt/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:f6b09d00449c9be22318e84d1a541c98ea0000dbda4d0c31f789cb865b544f77",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/fb3dff61b0f0239e123537b684d7f7afc9acf9a3ca5bb981c079756a25d8183b"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/splitWhen",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:3414e7858e570fc1098eb862994af2a74bd445bfc7793970b93461e40d8b0c88"
+      },
+      "loweringId": "@stopcock/fp/array/splitWhen/lowering/compiler-aot",
+      "loweringHash": "sha256:4ed2832db1d8861ec0dcdd07bdd3f88e550530f3904d7b11ff407adefd57582a",
+      "descriptorId": "@stopcock/fp/array/splitWhen/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:0dfab3e44651f6bef7854ff78bae34da2008d181d0ad7c5a98bdff216143607a",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/d085688e9778afeaa542e0b08b775199c463dc853e4b3b27a351e1806aeb127c"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/splitWhenever",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:fa403741979ebb1fe384cfab6219506adffe7b9683ec6b65da00ad697d3d351e"
+      },
+      "loweringId": "@stopcock/fp/array/splitWhenever/lowering/compiler-aot",
+      "loweringHash": "sha256:576656f56072c421856f50d00819a3a777d958f00f9045a2e049e7e84d919e11",
+      "descriptorId": "@stopcock/fp/array/splitWhenever/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:102aaaa7b27bb0879dad5aa85a7afd3f32c2e0ce138c8c82e27bcbddaad9615d",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/b3deb3618c55562a828342b9d5d4fcacedc492c364e5551477adf100700d149c"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1017,14 +1523,36 @@
       "loweringHash": "sha256:bcb1db6042188591bb47efb421ae4e7f0d1f409dd29d52d5e3b09c19509bca2a",
       "descriptorId": "@stopcock/fp/array/sum/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:82435b02b886f6499432265d4cd2faf1e67d9ace76e8be68d1589a8e0db808be",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/c63c264c1fe9461128a1c73289f21e79a59161ef1e6717c275536140e9719bd8"
+      "evidenceId": "@stopcock/evidence/49b5a741f5d1ec75bbe489017309a17b2d594bae37f83f5b8931266df6e5297b"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/sumBy",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:87d5946cc9d58f9fc92f3a51005c50a58fcb12d439879ea9b2b26858d4767d88"
+      },
+      "loweringId": "@stopcock/fp/array/sumBy/lowering/compiler-aot",
+      "loweringHash": "sha256:ae90db004572526682ed16798deb2329b91c14020c0d1ef1fc252579216f30f4",
+      "descriptorId": "@stopcock/fp/array/sumBy/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:d2fdf0457f773cbd81cb3b94b5d9b27032e12a3bd4b990978185331e85331689",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/6ac7e2a2cd8fd163c9e8093bf898a666fd13305166aaf87df17054e20465bf10"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1039,14 +1567,14 @@
       "loweringHash": "sha256:c7e1cb9a05590f20849f90100c790c6df2aecbebee5694da732e3bc055e3a85d",
       "descriptorId": "@stopcock/fp/array/symmetricDifference/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:2f2d563c35125736a711aec2daa25b8de12f773658f076d8cb81eb240b659221",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/7ccd48b5f9723c84fe871c938031f29d8ac301e729d16f46b0691b21c1c943ae"
+      "evidenceId": "@stopcock/evidence/e213ea38e1f6620a784b3be7c51f3c193f3e82aa088474e5cc009d4a44acd72b"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1061,14 +1589,14 @@
       "loweringHash": "sha256:ed45f73d4cd9945f22e017e71ecfd903e86f2a6bb9ee868f5389d59df4fff6a2",
       "descriptorId": "@stopcock/fp/array/tail/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:5f2531930b78c0fd26b793ead9791949f13d764eb27d1a482a0827d65d66d604",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/a7b50a81c1b588308f8ad643f00ec696454cf3b6f30d98357b44d9e5cd9d3687"
+      "evidenceId": "@stopcock/evidence/9101b7efb8348015eedd7d6d9fdccb93416944064f9005f94f8abfb5da1079e7"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1083,14 +1611,58 @@
       "loweringHash": "sha256:c79873bd82351c97f179b03bb7f817ff81e640d9cf923dfe899f80273acbf795",
       "descriptorId": "@stopcock/fp/array/take/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:167fe21f29cefeb623f1e1bdea59bc6a809c1b2647e359c9c7d6a32ea7d55b47",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/47f51b09fd352666c9f3a7cf485ffffc0823ea45461f1f785af049bd58bdfa42"
+      "evidenceId": "@stopcock/evidence/ec74f070ee9703b4784e2f5ec13b2717526c243dcc6f4fe98cfe85813e431063"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/takeLast",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:7c5e1fab016045ce5303654fa8d03d9fcfc78c12fa2970614ccc539c95945bc0"
+      },
+      "loweringId": "@stopcock/fp/array/takeLast/lowering/compiler-aot",
+      "loweringHash": "sha256:8c807c5e03b4d56d38d46b143f3cb7b167303d4e5d4beb00b324cdfa4405171f",
+      "descriptorId": "@stopcock/fp/array/takeLast/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:96f356908d91a85df41b7733e7c617f48ee408188e1ff0372fb2b8a9255f9750",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/de6a3e42a6eefe0cf759088560af95ee7ad99c69581529d404e963f579bbbccc"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/takeLastWhile",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:bda6f7432ae13d7eac6f1ba64608bb2c589fc50362dce99c41007748795c10e3"
+      },
+      "loweringId": "@stopcock/fp/array/takeLastWhile/lowering/compiler-aot",
+      "loweringHash": "sha256:cd17de58017c558bd92f67bc87e12713176e88e27d5f63755373f30398cd850e",
+      "descriptorId": "@stopcock/fp/array/takeLastWhile/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:21ac9af0b37da2517278a28082430dec9ec91af90357dcc02498f7f9b8d53950",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/c11ab36c5285a549b42b2e947f8bfb34d24ad7ce186b744038550bdfed76fb8d"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1105,14 +1677,14 @@
       "loweringHash": "sha256:636aa1fcd957286b8a661ad70ce053c71de16793faddc0f83302aa672f51158e",
       "descriptorId": "@stopcock/fp/array/takeUntil/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:4ba01bc68abd70df146081d0e0e2c69bf56ad3b4bb88787f3ab6369cd8de32f0",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/798d5a4fa6e3de16b78e047b2f566dbe18e11e1287d7b50fc707c8db39be7b51"
+      "evidenceId": "@stopcock/evidence/6b4b981564ef4e5bbf387e037344aec6499cf70047975eab2fd9eb61c9ab996b"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1127,14 +1699,14 @@
       "loweringHash": "sha256:e48e612956005844c767ce2f8873fb31dbd26f109b3a45c6eb598186fb46a90a",
       "descriptorId": "@stopcock/fp/array/takeWhile/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:fe70b7e401142ec0b98b0d7f8e69773ccd64d6ca209e204f972ec11194cafc60",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/61dad73189e28f212df7afa036dc3e17cdcb23676e8a18afdf0ae1ebb40297f5"
+      "evidenceId": "@stopcock/evidence/06db1404c200e3daba5fbe997873338385981cb42352145974092ee845d62334"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1149,14 +1721,14 @@
       "loweringHash": "sha256:6b28df949250634e26e1992d5d366070a7d3b46ec9db0781afadc6a6faaf1dbc",
       "descriptorId": "@stopcock/fp/array/union/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:e0b79d1278349bd3d8cc68430d998d6c24e69b3b546401394adb61983df6db76",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/a815e315e8fa2b406fb0a94bd05269eb9f39b6e834000805d720a4e52beef428"
+      "evidenceId": "@stopcock/evidence/ff483972b7a542d78df480816fcf2e5fedc8b49e4f992bd1b675c87442aadf12"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1171,14 +1743,14 @@
       "loweringHash": "sha256:a2aff9ed31a01edd74b2b04e670fdc5d749d791b40e018db808e3a1b24122a25",
       "descriptorId": "@stopcock/fp/array/uniq/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:51bd6f4a4b2cac2bc53d25ad06bc33674f25ccd1a937a7d9d2fdb9c1aa25c90f",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/6eabe03bfe822e2f982f7d857155ade90901f105c7a4b9f21e3ce3b1c2ebe2cc"
+      "evidenceId": "@stopcock/evidence/0291b02fab7e23b4ae2b0eeda9d51665d5fc4ba95c25695801858fe1a38dd504"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1193,14 +1765,36 @@
       "loweringHash": "sha256:8a47da37d0f3c5a310c960b25de92f7c0facdb80dc54abf507dd0744a2c42150",
       "descriptorId": "@stopcock/fp/array/uniqBy/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:41ca421bc126e7b4c268f6fdcbeeefa1438d60f54ad6765a227e1dbec3ae9d0f",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/5b311f14ee8b0bd59f16abc59cee72bfd44bdb52fa6b641c54fcad5347f02ae1"
+      "evidenceId": "@stopcock/evidence/bc92cf1455980247761e3f31700dcf52c6e72c18196fa52f15789bb6fce54b05"
+    },
+    {
+      "protocol": "stopcock.operator-evidence",
+      "protocolVersion": 1,
+      "status": "declared",
+      "semantic": {
+        "semanticId": "@stopcock/fp/array/uniqWith",
+        "semanticRevision": 1,
+        "semanticHash": "sha256:67e3ca979552989c5cfccb885115dc3ced4291222f4b81c9573ef184d3f70f2f"
+      },
+      "loweringId": "@stopcock/fp/array/uniqWith/lowering/compiler-aot",
+      "loweringHash": "sha256:c654667d07a47c58273639fd54be17c46345418ccc130bdabc47b161d2cc877e",
+      "descriptorId": "@stopcock/fp/array/uniqWith/lowering/compiler-aot/descriptor",
+      "descriptorHash": "sha256:698ec4eeb2d61b11c92e944fa782e117b1a17043ade8a83b61c58fd057cd7a57",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
+      "corpora": [
+        {
+          "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
+        }
+      ],
+      "evidenceId": "@stopcock/evidence/c08bc5c32b4a4a410d41b3609ec408da6826feb50f294f86041b63fb3597969b"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1215,14 +1809,14 @@
       "loweringHash": "sha256:867653fb533b0abcd34eeb8ce514ea16222d2ff20f5f5b2bc3b6c6b71f18d54c",
       "descriptorId": "@stopcock/fp/array/update/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:0425976f051d8c4be70121254d8e87db9d44db0f862940f5f8048432af8043f0",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/c46667c543e23ab885c483a73e6c675f839a57fccfdf483d3ec129ecdba261fe"
+      "evidenceId": "@stopcock/evidence/d0faa98975097cfae93187efbedb02b95e1507759d4ebfc043ee0ecb9f46ddc0"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1237,14 +1831,14 @@
       "loweringHash": "sha256:eab879f6836f921aa6d80ade9b86b4ed9f5d8bd9007ca2b700dfbeb73d0b5f92",
       "descriptorId": "@stopcock/fp/array/without/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:a4ac920276b8838da3a9a53e863e0e4232d71df28aab05f1c1398d15440c982f",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/2892fe4da4732cfb837483f341c8764dde981dbafeacfa905c530ce5219e38f2"
+      "evidenceId": "@stopcock/evidence/848dbb06bb203a02e05c955191dc4d580e3a9b0b3ea65c91c6f4ab471b8028d8"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1259,14 +1853,14 @@
       "loweringHash": "sha256:7a47f67b203ff24c8f426e7a61ac679767e48e3139bd6b21128b2aa37f93e067",
       "descriptorId": "@stopcock/fp/array/xprod/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:92ef02620b3a81343a257a63760befefbdf78805a49e5a9b68dd04d388681f84",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/9307847dad4063bb7e4fbd4133ca7d5e61f9e2e20c374b0ff168a4c62c8f902a"
+      "evidenceId": "@stopcock/evidence/ad4581763f7408b91286e3bef7d71ce567c4d79b64b690a83d92754260c24c0d"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1281,14 +1875,14 @@
       "loweringHash": "sha256:7cebf7ea54db7aaca95f2c3cd5f53a3a81fb799a1834faed855bb6fd3b1509bf",
       "descriptorId": "@stopcock/fp/array/zip/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:9ac8f5a59a3bec43048b8fde7d1fbe75aa88d2344263cb5b53046e4620d2d00a",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/278d58467300a8b258d76e03853315140efb5dc829f668f2b3d1d2ec9dcd17e8"
+      "evidenceId": "@stopcock/evidence/6050075ddeb6dbf3177147faff2c8fbeec8434de58795b9da74651c09e241ab9"
     },
     {
       "protocol": "stopcock.operator-evidence",
@@ -1303,15 +1897,15 @@
       "loweringHash": "sha256:643921d88978cde03d9be6dbf7c3815974e0d381d20b6dded7ebf2261a6239c7",
       "descriptorId": "@stopcock/fp/array/zipWith/lowering/compiler-aot/descriptor",
       "descriptorHash": "sha256:2c4572bc3d0d53f38fc9a768a257a7723ead542a85d9dae2f501051c3ba37a54",
-      "emittedArtifactHash": "sha256:cd60f3974ae963850fb44ab5b8894d1856dd8daabb2592db465c2622e8311a8c",
+      "emittedArtifactHash": "sha256:c1a86e1b35866dd364321ee556289e0e4eee50e80caa336c8fe5bfd5f0e8e61f",
       "corpora": [
         {
           "corpusId": "stopcock-fp-compiler-operation-complete-w0-v1",
-          "corpusHash": "sha256:5c3013de00b77852a597bdc94c80ae72601dc2b200c471c0be0a11723e5ca849"
+          "corpusHash": "sha256:7ef5dd5896a45290c2937506fd8044ea65b48bde4ad055d7c61c684040a3d3c7"
         }
       ],
-      "evidenceId": "@stopcock/evidence/6d3174494082f184fde5ad5dc7e9c54c5c33dc1795b33234919e2b779e317365"
+      "evidenceId": "@stopcock/evidence/f20602ec180d4f750149436c632f19e3dc0c1e074a6225244f43007714f54aea"
     }
   ],
-  "evidenceIndexHash": "sha256:1a9176bf8836f9cc6234b39b4450acc0e9d6cd9f7759cdcac5732446575b859b"
+  "evidenceIndexHash": "sha256:2e8b44b71d585d115ccbe4eb78d9aa9faf26ad5362ff0c506923115fbf388827"
 }

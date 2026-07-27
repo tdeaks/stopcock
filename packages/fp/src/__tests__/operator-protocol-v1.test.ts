@@ -677,7 +677,7 @@ describe('OperatorEvidenceV1 joins', () => {
       entries: readonly OperatorEvidenceV1[]
     }
     expect(index.retainedCorpora).toEqual([RETAINED_COMPILER_OPERATION_CORPUS_V1])
-    expect(index.entries).toHaveLength(59)
+    expect(index.entries).toHaveLength(86)
     for (const evidence of index.entries) {
       expect(evidence.status).toBe('declared')
       expect(evidence.loweringId).toContain('/lowering/compiler-aot')

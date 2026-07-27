@@ -87,6 +87,33 @@ export const OP_UPDATE = 119
 export const OP_INSERT = 120
 export const OP_REMOVE = 121
 export const OP_INCLUDES = 122
+export const OP_FIND_OR_UNDEFINED = 24
+export const OP_FIND_INDEX_OR_UNDEFINED = 25
+export const OP_FIND_MAP_OR_UNDEFINED = 26
+export const OP_PLUCK = 27
+export const OP_DROP_LAST = 28
+export const OP_TAKE_LAST = 29
+export const OP_DROP_LAST_WHILE = 44
+export const OP_TAKE_LAST_WHILE = 45
+export const OP_APPEND = 46
+export const OP_PREPEND = 47
+export const OP_INDEX_OF = 48
+export const OP_LAST_INDEX_OF = 49
+export const OP_FIND_LAST = 92
+export const OP_FIND_LAST_INDEX = 93
+export const OP_REDUCE_RIGHT = 94
+export const OP_REDUCE_WHILE = 95
+export const OP_SUM_BY = 96
+export const OP_MEAN_BY = 97
+export const OP_HAS_AT_LEAST = 98
+export const OP_ARRAY_STARTS_WITH = 99
+export const OP_ARRAY_ENDS_WITH = 100
+export const OP_NTH = 101
+export const OP_SPLIT_AT = 123
+export const OP_SPLIT_WHEN = 124
+export const OP_SPLIT_WHENEVER = 125
+export const OP_UNIQ_WITH = 126
+export const OP_GROUP_WITH = 127
 
 export const OP_NON_FUSEABLE = 0
 
@@ -175,6 +202,33 @@ export const OP_CODES: Record<string, number> = {
   insert: OP_INSERT,
   remove: OP_REMOVE,
   includes: OP_INCLUDES,
+  findOrUndefined: OP_FIND_OR_UNDEFINED,
+  findIndexOrUndefined: OP_FIND_INDEX_OR_UNDEFINED,
+  findMapOrUndefined: OP_FIND_MAP_OR_UNDEFINED,
+  pluck: OP_PLUCK,
+  dropLast: OP_DROP_LAST,
+  takeLast: OP_TAKE_LAST,
+  dropLastWhile: OP_DROP_LAST_WHILE,
+  takeLastWhile: OP_TAKE_LAST_WHILE,
+  append: OP_APPEND,
+  prepend: OP_PREPEND,
+  indexOf: OP_INDEX_OF,
+  lastIndexOf: OP_LAST_INDEX_OF,
+  findLast: OP_FIND_LAST,
+  findLastIndex: OP_FIND_LAST_INDEX,
+  reduceRight: OP_REDUCE_RIGHT,
+  reduceWhile: OP_REDUCE_WHILE,
+  sumBy: OP_SUM_BY,
+  meanBy: OP_MEAN_BY,
+  hasAtLeast: OP_HAS_AT_LEAST,
+  arrayStartsWith: OP_ARRAY_STARTS_WITH,
+  arrayEndsWith: OP_ARRAY_ENDS_WITH,
+  nth: OP_NTH,
+  splitAt: OP_SPLIT_AT,
+  splitWhen: OP_SPLIT_WHEN,
+  splitWhenever: OP_SPLIT_WHENEVER,
+  uniqWith: OP_UNIQ_WITH,
+  groupWith: OP_GROUP_WITH,
 }
 
 export const isFuseableOp = (op: number): boolean =>

@@ -553,3 +553,128 @@ describe('boundary operators preserve evaluation order', () => {
     expect(result.compiled.value).toEqual(result.original.value)
   })
 })
+
+/**
+ * The rest of this wave: index-free lookups, the OrUndefined finders, the
+ * end-anchored slices, and the split family. All lowered the same way -- the
+ * upstream stage fuses into one loop, then the real operator runs on its
+ * result -- so every fixture is compared against the uncompiled program.
+ */
+const EXTRA_IMPORTS = `import { pipe } from '@stopcock/fp'\nimport { map, append, arrayEndsWith, arrayStartsWith, dropLast, dropLastWhile, findIndexOrUndefined, findLast, findLastIndex, findMapOrUndefined, findOrUndefined, groupWith, hasAtLeast, indexOf, lastIndexOf, meanBy, nth, pluck, prepend, reduceRight, reduceWhile, splitAt, splitWhen, splitWhenever, sumBy, takeLast, takeLastWhile, uniqWith } from '@stopcock/fp/array'`
+
+const EXTRA_LOCALS = Object.fromEntries(
+  [
+  'pipe', 'map',
+  'append',
+  'arrayEndsWith',
+  'arrayStartsWith',
+  'dropLast',
+  'dropLastWhile',
+  'findIndexOrUndefined',
+  'findLast',
+  'findLastIndex',
+  'findMapOrUndefined',
+  'findOrUndefined',
+  'groupWith',
+  'hasAtLeast',
+  'indexOf',
+  'lastIndexOf',
+  'meanBy',
+  'nth',
+  'pluck',
+  'prepend',
+  'reduceRight',
+  'reduceWhile',
+  'splitAt',
+  'splitWhen',
+  'splitWhenever',
+  'sumBy',
+  'takeLast',
+  'takeLastWhile',
+  'uniqWith',
+].map((name) => [name, name]),
+)
+
+const extraFixture = (name: string, body: string): Fixture => ({
+  name,
+  imports: EXTRA_IMPORTS,
+  locals: EXTRA_LOCALS,
+  body,
+  expectTransformed: true,
+})
+
+const EXTRA_BOUNDARY_VALUES: readonly (readonly [string, string])[] = [
+  ['append', `return pipe(${SRC}, map((x) => x + 1), append(9))`],
+  ['arrayEndsWith', `return pipe(${SRC}, map((x) => x + 1), arrayEndsWith([7]))`],
+  ['arrayStartsWith', `return pipe(${SRC}, map((x) => x + 1), arrayStartsWith([4]))`],
+  ['dropLast', `return pipe(${SRC}, map((x) => x + 1), dropLast(3))`],
+  ['dropLastWhile', `return pipe(${SRC}, map((x) => x + 1), dropLastWhile((x) => x > 5))`],
+  ['findIndexOrUndefined', `return pipe(${SRC}, map((x) => x + 1), findIndexOrUndefined((x) => x > 4))`],
+  ['findLast', `return pipe(${SRC}, map((x) => x + 1), findLast((x) => x > 4))`],
+  ['findLastIndex', `return pipe(${SRC}, map((x) => x + 1), findLastIndex((x) => x > 4))`],
+  ['findMapOrUndefined', `return pipe(${SRC}, map((x) => x + 1), findMapOrUndefined((x) => x > 4 ? x * 2 : undefined))`],
+  ['findOrUndefined', `return pipe(${SRC}, map((x) => x + 1), findOrUndefined((x) => x > 4))`],
+  ['groupWith', `return pipe(${SRC}, map((x) => x + 1), groupWith((a, b) => a === b))`],
+  ['hasAtLeast', `return pipe(${SRC}, map((x) => x + 1), hasAtLeast(4))`],
+  ['indexOf', `return pipe(${SRC}, map((x) => x + 1), indexOf(5))`],
+  ['lastIndexOf', `return pipe(${SRC}, map((x) => x + 1), lastIndexOf(2))`],
+  ['meanBy', `return pipe(${SRC}, map((x) => x + 1), meanBy((x) => x * 2))`],
+  ['nth', `return pipe(${SRC}, map((x) => x + 1), nth(3))`],
+  ['pluck', `return pipe(${SRC}, map((x) => ({ v: x })), pluck('v'))`],
+  ['prepend', `return pipe(${SRC}, map((x) => x + 1), prepend(9))`],
+  ['reduceRight', `return pipe(${SRC}, map((x) => x + 1), reduceRight((a, x) => a + ',' + x, ''))`],
+  ['reduceWhile', `return pipe(${SRC}, map((x) => x + 1), reduceWhile((a) => a < 12, (a, x) => a + x, 0))`],
+  ['splitAt', `return pipe(${SRC}, map((x) => x + 1), splitAt(3))`],
+  ['splitWhen', `return pipe(${SRC}, map((x) => x + 1), splitWhen((x) => x > 4))`],
+  ['splitWhenever', `return pipe(${SRC}, map((x) => x + 1), splitWhenever((x) => x % 2 === 0))`],
+  ['sumBy', `return pipe(${SRC}, map((x) => x + 1), sumBy((x) => x * 2))`],
+  ['takeLast', `return pipe(${SRC}, map((x) => x + 1), takeLast(3))`],
+  ['takeLastWhile', `return pipe(${SRC}, map((x) => x + 1), takeLastWhile((x) => x > 5))`],
+  ['uniqWith', `return pipe(${SRC}, map((x) => x + 1), uniqWith((a, b) => a === b))`],
+]
+
+describe('the remaining wave-two operators keep their runtime meaning', () => {
+  it.each(EXTRA_BOUNDARY_VALUES)('%s', (name, body) => {
+    const result = runFixture(extraFixture(name, body))
+    expect(result.map).not.toBeNull()
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual(result.original.value)
+  })
+
+  it('runs a scalar boundary callback after the whole upstream stage', () => {
+    const result = runFixture(
+      extraFixture(
+        'scalar-boundary-order',
+        `const r = pipe([1,2,3], map((x) => { log.push('m' + x); return x }), sumBy((x) => { log.push('s' + x); return x })); return [r, log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3,s1,s2,s3')
+  })
+
+  it('walks a right-to-left boundary backwards, after the forward stage', () => {
+    const result = runFixture(
+      extraFixture(
+        'reverse-boundary-order',
+        `const r = pipe([1,2,3], map((x) => { log.push('m' + x); return x }), findLast((x) => { log.push('f' + x); return x < 2 })); return [String(r && r.value), log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3,f3,f2,f1')
+  })
+
+  it('stops an early-exiting boundary at its match', () => {
+    const result = runFixture(
+      extraFixture(
+        'early-exit-boundary',
+        `const r = pipe([1,2,3,4], map((x) => { log.push('m' + x); return x }), findOrUndefined((x) => { log.push('f' + x); return x === 2 })); return [r, log.join(',')]`,
+      ),
+      () => ({ log: [] as unknown[] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect((result.compiled.value as unknown[])[1]).toBe('m1,m2,m3,m4,f1,f2')
+  })
+})

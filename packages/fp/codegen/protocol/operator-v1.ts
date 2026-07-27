@@ -40,7 +40,7 @@ export interface CallbackContractV1 {
   readonly arguments: readonly ('value' | 'accumulator' | 'left' | 'right')[]
   readonly index: 'not-passed'
   readonly count: 'once-per-consumed-value' | 'once-per-stable-merge-comparison' | 'not-applicable'
-  readonly order: 'left-to-right' | 'stable-merge-sort-order'
+  readonly order: 'left-to-right' | 'right-to-left' | 'stable-merge-sort-order'
   readonly evaluationPoint:
     | 'during-element-consumption'
     | 'during-full-materialization'
@@ -491,7 +491,11 @@ function assertCallback(value: unknown): asserts value is CallbackContractV1 {
     ['once-per-consumed-value', 'once-per-stable-merge-comparison', 'not-applicable'],
     'callback.count',
   )
-  assertEnum(value.order, ['left-to-right', 'stable-merge-sort-order'], 'callback.order')
+  assertEnum(
+    value.order,
+    ['left-to-right', 'right-to-left', 'stable-merge-sort-order'],
+    'callback.order',
+  )
   assertEnum(
     value.evaluationPoint,
     ['during-element-consumption', 'during-full-materialization', 'not-applicable'],
@@ -509,7 +513,7 @@ function assertCallback(value: unknown): asserts value is CallbackContractV1 {
     (value.arity > 0 &&
       !comparator &&
       (value.count !== 'once-per-consumed-value' ||
-        value.order !== 'left-to-right' ||
+        (value.order !== 'left-to-right' && value.order !== 'right-to-left') ||
         value.evaluationPoint !== 'during-element-consumption'))
   ) {
     fail('callback count/evaluation point contradicts callback arity')

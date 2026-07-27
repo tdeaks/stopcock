@@ -349,7 +349,9 @@ export const findOrUndefined: {
     if (pred(v)) return v
   }
   return undefined
-})
+},
+  { op: 'findOrUndefined' },
+)
 
 export const find: {
   <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): Option<B>
@@ -376,7 +378,9 @@ export const findIndexOrUndefined: {
     if (pred(arr[i])) return i
   }
   return undefined
-})
+},
+  { op: 'findIndexOrUndefined' },
+)
 
 export const findIndex: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
@@ -873,6 +877,7 @@ export const reduceRight: {
     return acc
   },
   { op: 'reduceRight' },
+  { op: 'reduceRight' },
 )
 
 export const zip: {
@@ -1137,7 +1142,9 @@ export const findMapOrUndefined: {
     if (mapped != null) return mapped
   }
   return undefined
-})
+},
+  { op: 'findMapOrUndefined' },
+)
 
 export const findMap: {
   <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): Option<NonNullable<B>>
@@ -1200,7 +1207,9 @@ export const append: {
   }
   out[len] = value
   return out
-})
+},
+  { op: 'append' },
+)
 
 export const prepend: {
   <A>(arr: readonly A[], value: A): A[]
@@ -1213,7 +1222,9 @@ export const prepend: {
     out[(i + 1) | 0] = arr[i]
   }
   return out
-})
+},
+  { op: 'prepend' },
+)
 
 export const concat: {
   <A>(a: readonly A[], b: readonly A[]): A[]
@@ -1236,7 +1247,9 @@ export const nth: {
 } = dual(2, (arr: any, n: any) => {
   var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? optionNone : optionSome(arr[i])
-})
+},
+  { op: 'nth' },
+)
 
 export const indexOfOrUndefined: {
   <A>(arr: readonly A[], value: A): number | undefined
@@ -1252,7 +1265,9 @@ export const indexOf: {
 } = dual(2, (arr: any, val: any) => {
   var i = arr.indexOf(val)
   return i === -1 ? optionNone : optionSome(i)
-})
+},
+  { op: 'indexOf' },
+)
 
 export const lastIndexOfOrUndefined: {
   <A>(arr: readonly A[], value: A): number | undefined
@@ -1268,7 +1283,9 @@ export const lastIndexOf: {
 } = dual(2, (arr: any, val: any) => {
   var i = arr.lastIndexOf(val)
   return i === -1 ? optionNone : optionSome(i)
-})
+},
+  { op: 'lastIndexOf' },
+)
 
 export const findLastOrUndefined: {
   <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): B | undefined
@@ -1292,7 +1309,9 @@ export const findLast: {
     if (pred(arr[i])) return optionSome(arr[i])
   }
   return optionNone
-})
+},
+  { op: 'findLast' },
+)
 
 export const findLastIndexOrUndefined: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
@@ -1312,7 +1331,9 @@ export const findLastIndex: {
     if (pred(arr[i])) return optionSome(i)
   }
   return optionNone
-})
+},
+  { op: 'findLastIndex' },
+)
 
 const withoutCopyRaw = (arr: any): any[] => {
   const len = arr.length
@@ -1560,7 +1581,9 @@ export const pluck: {
   ): <A extends Readonly<Record<K, unknown>>>(arr: readonly A[]) => A[K][]
 } = dual(2, (arr: any, key: any) => {
   return pluckRaw(arr, key)
-})
+},
+  { op: 'pluck' },
+)
 
 export const dropRepeatsBy: {
   <A, B>(arr: readonly A[], f: (a: A) => B): A[]
@@ -1617,7 +1640,9 @@ export const dropLast: {
     out[i] = arr[i]
   }
   return out
-})
+},
+  { op: 'dropLast' },
+)
 
 export const dropLastWhile: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
@@ -1640,7 +1665,9 @@ export const dropLastWhile: {
     out[j] = arr[j]
   }
   return out
-})
+},
+  { op: 'dropLastWhile' },
+)
 
 export const takeLast: {
   <A>(arr: readonly A[], n: number): A[]
@@ -1659,7 +1686,9 @@ export const takeLast: {
     out[i] = arr[(start + i) | 0]
   }
   return out
-})
+},
+  { op: 'takeLast' },
+)
 
 export const takeLastWhile: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
@@ -1683,7 +1712,9 @@ export const takeLastWhile: {
     out[j] = arr[(start + j) | 0]
   }
   return out
-})
+},
+  { op: 'takeLastWhile' },
+)
 
 export const splitAt: {
   <A>(arr: readonly A[], index: number): [A[], A[]]
@@ -1691,7 +1722,9 @@ export const splitAt: {
 } = dual(2, (arr: any, index: any) => {
   var i = index < 0 ? 0 : index > arr.length ? arr.length : index
   return [arr.slice(0, i), arr.slice(i)]
-})
+},
+  { op: 'splitAt' },
+)
 
 export const splitWhen: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): [A[], A[]]
@@ -1708,7 +1741,9 @@ export const splitWhen: {
     }
   }
   return splitAt(arr, i)
-})
+},
+  { op: 'splitWhen' },
+)
 
 export const splitWhenever: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): A[][]
@@ -1731,7 +1766,9 @@ export const splitWhenever: {
   }
   result.push(current.slice())
   return result
-})
+},
+  { op: 'splitWhenever' },
+)
 
 export const join: {
   (arr: readonly string[], sep: string): string
@@ -1760,7 +1797,9 @@ export const uniqWith: {
     }
   }
   return result
-})
+},
+  { op: 'uniqWith' },
+)
 
 export const groupWith: {
   <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[][]
@@ -1783,7 +1822,9 @@ export const groupWith: {
   }
   result.push(current.slice())
   return result
-})
+},
+  { op: 'groupWith' },
+)
 
 export const indexBy: {
   <A>(arr: readonly A[], f: (a: A) => string): Dict<A>
@@ -1841,7 +1882,9 @@ export const hasAtLeast: {
   (n: number): <A>(arr: readonly A[]) => boolean
 } = dual(2, (arr: any, n: any) => {
   return arr.length >= n
-})
+},
+  { op: 'hasAtLeast' },
+)
 
 export const meanByOrUndefined: {
   <A>(arr: readonly A[], f: (a: A) => number): number | undefined
@@ -1864,7 +1907,9 @@ export const meanBy: {
 } = dual(2, (arr: any, f: any) => {
   const value = meanByOrUndefined(arr, f)
   return value === undefined ? optionNone : optionSome(value)
-})
+},
+  { op: 'meanBy' },
+)
 
 export const meanByNonEmpty: {
   <A>(arr: readonly [A, ...A[]], f: (a: A) => number): number
@@ -1881,7 +1926,9 @@ export const sumBy: {
     acc = acc + f(arr[i])
   }
   return acc
-})
+},
+  { op: 'sumBy' },
+)
 
 export const mapToObj: {
   <A, B>(arr: readonly A[], f: (a: A) => [string, B]): Dict<B>
@@ -1926,7 +1973,9 @@ export const arrayStartsWith: {
   if (lenP > lenA) return false
   for (let i = 0; i < lenP; i++) if (!structEq(arr[i], prefix[i])) return false
   return true
-})
+},
+  { op: 'arrayStartsWith' },
+)
 
 export const arrayEndsWith: {
   <A>(arr: readonly A[], suffix: readonly A[]): boolean
@@ -1938,7 +1987,9 @@ export const arrayEndsWith: {
   const offset = lenA - lenS
   for (let i = 0; i < lenS; i++) if (!structEq(arr[offset + i], suffix[i])) return false
   return true
-})
+},
+  { op: 'arrayEndsWith' },
+)
 
 export const sortedIndex: (arr: readonly number[], value: number) => number = (
   arr: any,
@@ -2348,7 +2399,9 @@ export const reduceWhile: {
     }
   }
   return acc
-})
+},
+  { op: 'reduceWhile' },
+)
 
 export const splice: {
   <A>(arr: readonly A[], start: number, deleteCount: number, items: readonly A[]): A[]
