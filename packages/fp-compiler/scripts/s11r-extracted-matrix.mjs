@@ -102,7 +102,7 @@ const isMissingLockedDependency = (error, dependencyName) =>
   error.dependencyName === dependencyName
 const stable = (value) => JSON.stringify(value, null, 2) + '\n'
 const hash = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`
-const posix = (value) => value.split(sep).join('/')
+const posix = (value) => value.replaceAll('\\', '/').split(sep).join('/')
 const compare = (left, right) => left.localeCompare(right)
 const text = (value) => {
   if (typeof value === 'string') return value
@@ -839,12 +839,230 @@ const assertCompiledGraph = (topology, moduleGraph, label) => {
   return { constructionLeaves }
 }
 
-const rawSourceMap = (map, label) => {
+const parsedSourceMap = (map, label) => {
   const parsed = JSON.parse(map)
   assert(
     Array.isArray(parsed.sources) && parsed.sources.length > 0,
     `${label} source map has no sources`,
   )
+  for (const source of parsed.sources) {
+    assert(typeof source === 'string', `${label} source map has a non-string source`)
+  }
+  assert(
+    typeof parsed.mappings === 'string' && parsed.mappings.length > 0,
+    `${label} source map has no mappings`,
+  )
+  if (parsed.sourcesContent !== undefined) {
+    assert(
+      Array.isArray(parsed.sourcesContent) &&
+        parsed.sourcesContent.length === parsed.sources.length &&
+        parsed.sourcesContent.every((source) => source === null || typeof source === 'string'),
+      `${label} source map has invalid sourcesContent`,
+    )
+  }
+  return parsed
+}
+
+const virtualSourceMapId = (value, label) => {
+  const portable = posix(value)
+  const segments = portable.split('/')
+  assert(
+    !/stopcock/iu.test(portable) &&
+      segments.every(
+        (segment) =>
+          segment !== '' &&
+          segment !== '.' &&
+          segment !== '..' &&
+          /^[A-Za-z0-9 _().-]+$/u.test(segment),
+      ),
+    `${label} has an unsafe virtual source ${value}`,
+  )
+  assert(
+    /^webpack\/(?:bootstrap|runtime(?:\/.*)?|before-startup|startup|after-startup)$/u.test(
+      portable,
+    ),
+    `${label} has an unknown virtual source ${value}`,
+  )
+  return `virtual/${portable
+    .split('/')
+    .map((segment) => segment.replace(/[^A-Za-z0-9._-]/gu, '_').slice(0, 96) || 'virtual')
+    .join('/')}`
+}
+
+const decodeSourceMapPath = (value, label) => {
+  try {
+    return decodeURIComponent(value)
+  } catch (error) {
+    fail(
+      `${label} has an invalid encoded source path ${value}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
+  }
+}
+
+const scratchSourcePath = (topology, value, candidates, label) => {
+  const portable = posix(value)
+  const scratchName = basename(dirname(topology.consumer))
+  assert(
+    /^stopcock-s11r-extracted-[A-Za-z0-9_-]+$/u.test(scratchName),
+    `${label} topology has an invalid scratch identity`,
+  )
+  const marker = `${scratchName}/`
+  const offset = portable.lastIndexOf(marker)
+  if (offset === -1 || (offset > 0 && portable[offset - 1] !== '/')) return null
+  const suffix = portable.slice(offset + marker.length)
+  const roots = [
+    ['consumer/', topology.consumer],
+    ...[...topology.packages].map(([name, root]) => [
+      `extracted/${name.replace('@stopcock/', '')}/`,
+      root,
+    ]),
+  ]
+  const selected = roots.find(([prefix]) => suffix.startsWith(prefix))
+  assert(selected !== undefined, `${label} scratch source is outside the selected topology: ${value}`)
+  const relativeSource = suffix.slice(selected[0].length)
+  const segments = relativeSource.split('/')
+  assert(
+    relativeSource.length > 0 &&
+      segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..'),
+    `${label} scratch source has an unsafe relative path: ${value}`,
+  )
+  const selectedPath = join(selected[1], ...segments)
+  assert(
+    existsSync(selectedPath) && statSync(selectedPath).isFile(),
+    `${label} selected scratch source is not a regular file: ${value}`,
+  )
+  const selectedPhysicalPath = realpathSync(selectedPath)
+  const matchingCandidate = candidates.find(
+    (candidate) =>
+      existsSync(candidate) &&
+      statSync(candidate).isFile() &&
+      realpathSync(candidate) === selectedPhysicalPath,
+  )
+  assert(
+    matchingCandidate !== undefined,
+    `${label} scratch spelling does not resolve to the selected physical source: ${value}`,
+  )
+  return selectedPath
+}
+
+const canonicalPhysicalSource = (topology, path, label, source) => {
+  assert(existsSync(path), `${label} source does not exist: ${source}`)
+  assert(statSync(path).isFile(), `${label} source is not a regular file: ${source}`)
+  const canonical = normalizeModule(topology, path)
+  assert(
+    !canonical.startsWith('external/'),
+    `${label} physical source escapes the selected topology: ${source}`,
+  )
+  return canonical
+}
+
+const canonicalPhysicalSourceCandidates = (topology, value, candidates, label) => {
+  const selectedScratchPath = scratchSourcePath(topology, value, candidates, label)
+  if (selectedScratchPath !== null) {
+    return canonicalPhysicalSource(topology, selectedScratchPath, label, value)
+  }
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return canonicalPhysicalSource(topology, candidate, label, value)
+  }
+  fail(`${label} source does not exist in an allowed resolution base: ${value}`)
+}
+
+const canonicalSourceMapSource = ({
+  source,
+  sourceRoot,
+  output,
+  topology,
+  label,
+}) => {
+  assert(!/[\0\r\n]/u.test(source), `${label} has a source path containing control characters`)
+  let rooted = source
+  if (typeof sourceRoot === 'string' && sourceRoot.length > 0) {
+    rooted = sourceRoot.endsWith('/') ? `${sourceRoot}${source}` : `${sourceRoot}/${source}`
+  }
+  if (rooted.startsWith('webpack://')) {
+    const match = /^webpack:\/\/([^/]*)\/(.*)$/u.exec(rooted)
+    assert(match !== null, `${label} has an invalid Webpack source ${rooted}`)
+    const resource = decodeSourceMapPath(match[2], label)
+    if (resource.startsWith('./') || resource.startsWith('../')) {
+      return canonicalPhysicalSourceCandidates(
+        topology,
+        resource,
+        [
+          resolve(topology.consumer, resource),
+          resolve(REPOSITORY_ROOT, resource),
+          resolve(dirname(output), resource),
+        ],
+        label,
+      )
+    }
+    return virtualSourceMapId(resource, label)
+  }
+  if (rooted.startsWith('file:')) {
+    let path
+    try {
+      path = fileURLToPath(rooted)
+    } catch (error) {
+      fail(
+        `${label} has an invalid file source ${rooted}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+    return canonicalPhysicalSource(topology, path, label, rooted)
+  }
+  const decoded = decodeSourceMapPath(rooted, label)
+  assert(!/[\0\r\n]/u.test(decoded), `${label} has a decoded path containing control characters`)
+  const windowsAbsolute = /^[A-Za-z]:[\\/]/u.test(decoded)
+  if (windowsAbsolute && process.platform !== 'win32') {
+    fail(`${label} has an unresolvable Windows absolute source ${decoded}`)
+  }
+  if (decoded.startsWith('/') || windowsAbsolute) {
+    return canonicalPhysicalSource(topology, decoded, label, decoded)
+  }
+  assert(
+    !/^[A-Za-z][A-Za-z0-9+.-]*:/u.test(decoded),
+    `${label} has an unsupported source-map scheme ${decoded}`,
+  )
+  const path = decoded.split(/[?#]/u, 1)[0]
+  return canonicalPhysicalSourceCandidates(
+    topology,
+    decoded,
+    [resolve(REPOSITORY_ROOT, path), resolve(dirname(output), path)],
+    label,
+  )
+}
+
+export const sanitizeSourceMap = (map, topology, output, label = 'source map') => {
+  const parsed = parsedSourceMap(map, label)
+  const sourceRoot = typeof parsed.sourceRoot === 'string' ? parsed.sourceRoot : ''
+  assert(
+    parsed.sourceRoot === undefined || typeof parsed.sourceRoot === 'string',
+    `${label} source map has a non-string sourceRoot`,
+  )
+  assert(
+    parsed.file === undefined || typeof parsed.file === 'string',
+    `${label} source map has a non-string file`,
+  )
+  assert(
+    Array.isArray(parsed.sourcesContent) &&
+      parsed.sourcesContent.length === parsed.sources.length &&
+      parsed.sourcesContent.every((source) => typeof source === 'string'),
+    `${label} source map must embed every source`,
+  )
+  parsed.sources = parsed.sources.map((source) =>
+    canonicalSourceMapSource({ source, sourceRoot, output, topology, label }),
+  )
+  parsed.sourceRoot = 'stopcock:///'
+  parsed.file = basename(output)
+  const sanitized = JSON.stringify(parsed)
+  rawSourceMap(sanitized, label)
+  return sanitized
+}
+
+const rawSourceMap = (map, label) => {
+  const parsed = parsedSourceMap(map, label)
   const rawFields = [
     ...parsed.sources,
     ...(typeof parsed.sourceRoot === 'string' ? [parsed.sourceRoot] : []),
@@ -866,10 +1084,6 @@ const rawSourceMap = (map, label) => {
       `${label} raw source map leaks scratch path ${value}`,
     )
   }
-  assert(
-    typeof parsed.mappings === 'string' && parsed.mappings.length > 0,
-    `${label} source map has no mappings`,
-  )
   return parsed
 }
 
@@ -1069,6 +1283,16 @@ const adapter = (packages, host) =>
 const writeExternalSourceMapOutput = (output, code, map) => {
   const withoutDirective = code.replace(/\n?\/\/[#@]\s*sourceMappingURL=.*?(?:\n|$)/gu, '\n')
   const mappedCode = `${withoutDirective.replace(/\s*$/u, '')}\n//# sourceMappingURL=${basename(output)}.map\n`
+  const directives = [
+    ...mappedCode.matchAll(
+      /(?:\/\/[#@]\s*sourceMappingURL=([^\s]+)|\/\*[#@]\s*sourceMappingURL=([^\s*]+)\s*\*\/)/gu,
+    ),
+  ]
+  assert(
+    directives.length === 1 &&
+      (directives[0][1] ?? directives[0][2]) === `${basename(output)}.map`,
+    `${output} does not link exactly one colocated external source map`,
+  )
   mkdirSync(dirname(output), { recursive: true })
   writeFileSync(output, mappedCode)
   writeFileSync(`${output}.map`, map)
@@ -1102,9 +1326,10 @@ const runRollup = async ({
   const mapAsset = generated.output.find(
     (item) => item.type === 'asset' && item.fileName.endsWith('.map'),
   )
-  const map = text(chunk.map) ?? text(mapAsset?.source)
-  assert(map !== null, 'rollup did not emit a source map')
+  const rawMap = text(chunk.map) ?? text(mapAsset?.source)
+  assert(rawMap !== null, 'rollup did not emit a source map')
   const output = join(out, 'out.mjs')
+  const map = sanitizeSourceMap(rawMap, topology, output, 'rollup source map')
   const code = writeExternalSourceMapOutput(output, chunk.code, map)
   if (execute) await executeEsm(output, expected, 'rollup')
   return { code, map, moduleGraph: canonicalGraph(topology, [...audited]) }
@@ -1133,8 +1358,14 @@ const runEsbuild = async ({
     metafile: true,
     plugins: [stopcockFp(pluginOptions(topology, receipts, strict, compilerOptions))],
   })
-  const code = readFileSync(output, 'utf8')
-  const map = readFileSync(`${output}.map`, 'utf8')
+  const rawCode = readFileSync(output, 'utf8')
+  const map = sanitizeSourceMap(
+    readFileSync(`${output}.map`, 'utf8'),
+    topology,
+    output,
+    'esbuild source map',
+  )
+  const code = writeExternalSourceMapOutput(output, rawCode, map)
   if (execute) await executeEsm(output, expected, 'esbuild')
   return {
     code,
@@ -1202,8 +1433,14 @@ const runWebpackLike = async ({
     },
     `${host} output`,
   )
-  const code = readFileSync(output, 'utf8')
-  const map = readFileSync(`${output}.map`, 'utf8')
+  const rawCode = readFileSync(output, 'utf8')
+  const map = sanitizeSourceMap(
+    readFileSync(`${output}.map`, 'utf8'),
+    topology,
+    output,
+    `${host} source map`,
+  )
+  const code = writeExternalSourceMapOutput(output, rawCode, map)
   if (execute) executeCjs(output, expected, host)
   return {
     code,
@@ -1241,8 +1478,14 @@ const runVite = async ({
     },
   })
   const output = join(out, 'out.mjs')
-  const code = readFileSync(output, 'utf8')
-  const map = readFileSync(`${output}.map`, 'utf8')
+  const rawCode = readFileSync(output, 'utf8')
+  const map = sanitizeSourceMap(
+    readFileSync(`${output}.map`, 'utf8'),
+    topology,
+    output,
+    'vite source map',
+  )
+  const code = writeExternalSourceMapOutput(output, rawCode, map)
   if (execute) await executeEsm(output, expected, 'vite')
   return { code, map, moduleGraph: canonicalGraph(topology, [...audited]) }
 }
@@ -1503,6 +1746,17 @@ const assertRuntimeMappedThrow = (output, topology, testCase, label) => {
   assert(
     Number(match[1]) === testCase.runtime.column,
     `${label} runtime stack column ${match[1]} differs from ${testCase.runtime.column}`,
+  )
+  assert(
+    new RegExp(
+      `stopcock:\\/{1,3}consumer/src/${regexEscape(source)}:${testCase.runtime.line}:`,
+      'u',
+    ).test(result.stderr),
+    `${label} runtime stack does not use the canonical source identity: ${result.stderr}`,
+  )
+  assert(
+    !/stopcock-s11r-extracted-[^/\s]+/u.test(result.stderr),
+    `${label} runtime stack leaks its extracted scratch identity: ${result.stderr}`,
   )
   const materializationRoot = dirname(topology.consumer)
   const normalized = result.stderr

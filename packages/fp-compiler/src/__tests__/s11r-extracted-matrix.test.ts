@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join, relative } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -239,6 +239,156 @@ describe('S11R extracted matrix manifest boundary', () => {
           [pathToFileURL(alias).href],
         ),
       ).toThrow(/points into repository/u)
+    } finally {
+      await rm(scratch, { recursive: true, force: true })
+    }
+  })
+
+  it('canonicalizes emitted source-map paths without changing mappings or source content', async () => {
+    const { sanitizeSourceMap } = await import(script.href)
+    const scratch = await mkdtemp(join(tmpdir(), 'stopcock-s11r-extracted-source-map-'))
+    try {
+      const repositoryRoot = dirname(dirname(dirname(dirname(fileURLToPath(script)))))
+      const consumer = join(scratch, 'consumer')
+      const fp = join(scratch, 'extracted', 'fp')
+      const entry = join(consumer, 'src', 'entry.mjs')
+      const construction = join(fp, 'dist', 'array-generated.js')
+      const output = join(scratch, 'qualification', 'vite', 'out.mjs')
+      await mkdir(dirname(entry), { recursive: true })
+      await mkdir(dirname(construction), { recursive: true })
+      await mkdir(dirname(output), { recursive: true })
+      await writeFile(entry, 'export const result = 1\n')
+      await writeFile(construction, 'export const map = () => undefined\n')
+      const mappings = 'AAAA'
+      const names = ['result', 'map']
+      const sourcesContent = [
+        await readFile(construction, 'utf8'),
+        await readFile(entry, 'utf8'),
+        await readFile(construction, 'utf8'),
+        await readFile(entry, 'utf8'),
+        '// webpack bootstrap\n',
+      ]
+      const sanitized = JSON.parse(
+        sanitizeSourceMap(
+          JSON.stringify({
+            version: 3,
+            file: join(scratch, 'raw-out.mjs'),
+            sources: [
+              relative(dirname(output), construction),
+              relative(repositoryRoot, entry),
+              `webpack:///${relative(repositoryRoot, construction).replaceAll('\\', '/')}`,
+              'webpack://consumer/./src/entry.mjs',
+              'webpack://consumer/webpack/bootstrap',
+            ],
+            sourcesContent,
+            mappings,
+            names,
+          }),
+          {
+            consumer,
+            packages: new Map([['@stopcock/fp', fp]]),
+          },
+          output,
+          'fixture source map',
+        ),
+      )
+
+      expect(sanitized).toMatchObject({
+        file: 'out.mjs',
+        sources: [
+          '@stopcock/fp/dist/array-generated.js',
+          'consumer/src/entry.mjs',
+          '@stopcock/fp/dist/array-generated.js',
+          'consumer/src/entry.mjs',
+          'virtual/webpack/bootstrap',
+        ],
+        sourceRoot: 'stopcock:///',
+        sourcesContent,
+        mappings,
+        names,
+      })
+      expect(JSON.stringify(sanitized)).not.toContain(scratch)
+
+      const foreign = join(scratch, 'foreign', 'stopcock-engine.js')
+      await mkdir(dirname(foreign), { recursive: true })
+      await writeFile(foreign, 'export const engine = true\n')
+      expect(() =>
+        sanitizeSourceMap(
+          JSON.stringify({
+            version: 3,
+            sources: [relative(dirname(output), foreign)],
+            sourcesContent: ['export const engine = true\n'],
+            mappings,
+          }),
+          {
+            consumer,
+            packages: new Map([['@stopcock/fp', fp]]),
+          },
+          output,
+          'foreign source map',
+        ),
+      ).toThrow(/unknown Stopcock module identity/u)
+
+      const spoofEntry = join(
+        scratch,
+        'foreign',
+        basename(scratch),
+        'consumer',
+        'src',
+        'entry.mjs',
+      )
+      await mkdir(dirname(spoofEntry), { recursive: true })
+      await writeFile(spoofEntry, 'export const result = "foreign"\n')
+      expect(() =>
+        sanitizeSourceMap(
+          JSON.stringify({
+            version: 3,
+            sources: [relative(repositoryRoot, spoofEntry)],
+            sourcesContent: ['export const result = "foreign"\n'],
+            mappings,
+          }),
+          {
+            consumer,
+            packages: new Map([['@stopcock/fp', fp]]),
+          },
+          output,
+          'spoofed scratch source map',
+        ),
+      ).toThrow(/does not resolve to the selected physical source/u)
+
+      expect(() =>
+        sanitizeSourceMap(
+          JSON.stringify({
+            version: 3,
+            sources: ['webpack://consumer/webpack/runtime/../../@stopcock/fp/dist/index.js'],
+            sourcesContent: ['hidden stopcock source'],
+            mappings,
+          }),
+          {
+            consumer,
+            packages: new Map([['@stopcock/fp', fp]]),
+          },
+          output,
+          'traversing virtual source map',
+        ),
+      ).toThrow(/unsafe virtual source/u)
+
+      expect(() =>
+        sanitizeSourceMap(
+          JSON.stringify({
+            version: 3,
+            sources: [relative(dirname(output), dirname(construction))],
+            sourcesContent: ['directory'],
+            mappings,
+          }),
+          {
+            consumer,
+            packages: new Map([['@stopcock/fp', fp]]),
+          },
+          output,
+          'directory source map',
+        ),
+      ).toThrow(/not a regular file/u)
     } finally {
       await rm(scratch, { recursive: true, force: true })
     }
