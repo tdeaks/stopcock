@@ -6,6 +6,10 @@
  */
 import { sequentialFlow } from './internal/sequential'
 
+const composeSequentially = sequentialFlow as (
+  ...rest: readonly never[]
+) => (a: unknown) => unknown
+
 export function flow<A, B>(f1: (a: A) => B): (a: A) => B
 export function flow<A, B, C>(f1: (a: A) => B, f2: (b: B) => C): (a: A) => C
 export function flow<A, B, C, D>(f1: (a: A) => B, f2: (b: B) => C, f3: (c: C) => D): (a: A) => D
@@ -249,5 +253,5 @@ export function flow<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,
 ): (a: A) => U
 export function flow(...fns: readonly unknown[]): (a: unknown) => unknown {
   if (fns.length === 1) return fns[0] as (a: unknown) => unknown
-  return sequentialFlow(...(fns as readonly never[])) as (a: unknown) => unknown
+  return composeSequentially(...(fns as readonly never[]))
 }

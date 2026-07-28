@@ -19,7 +19,8 @@
  * counts and order are not. It matters only for effectful callbacks, and the
  * compiler's README documents it.
  */
-import { sequentialPipe } from './internal/sequential'
+
+type Fn = (value: unknown) => unknown
 
 export function pipe<A, B>(a: A, f1: (a: A) => B): B
 export function pipe<A, B, C>(a: A, f1: (a: A) => B, f2: (b: B) => C): C
@@ -279,10 +280,19 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,
   f19: (s: S) => T,
   f20: (t: T) => U,
 ): U
-export function pipe(a?: unknown, ...steps: readonly unknown[]): unknown {
+export function pipe(a?: unknown, ...steps: readonly Fn[]): unknown {
+  // A real rest parameter, not `arguments`: the engine builds this array
+  // with define, not set, semantics, so a step's own construction can't be
+  // hijacked by an inherited accessor on Array.prototype (see
+  // internal/sequential.ts's header). Declared directly here, and applied
+  // with its own loop, rather than forwarding to sequentialPipe through a
+  // second rest-collect and spread call -- that double allocation is what
+  // made this slower than the frozen pre-hot-identity dispatch baseline
+  // before. `steps[i](value)` is a property-access call on purpose, never
+  // hoisted into a local first, so an opaque step still observes the step
+  // vector itself as `this`, matching @stopcock/fp-compiler's own codegen.
   if (steps.length === 0) return a
-  return (sequentialPipe as (value: unknown, ...rest: readonly never[]) => unknown)(
-    a,
-    ...(steps as readonly never[]),
-  )
+  let current = steps[0](a)
+  for (let i = 1; i < steps.length; i++) current = steps[i](current)
+  return current
 }

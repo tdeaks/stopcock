@@ -1,59 +1,26 @@
 /**
  * Static pipeline diagnostics.
  *
- * Nothing here executes a pipeline. `segmentExecutors` reports `generic` for
- * every segment, because that is what this package executes: the generic
- * exact executor, with no specialized runner bank behind it.
+ * Nothing here executes a pipeline, and nothing here is fused: this package
+ * has no runtime fusion engine any more. `explain`/`explainPure` describe
+ * what running the given steps through `pipe` does right now, which is
+ * always `'sequential'`. `'compiled site'` exists in the return type for the
+ * one case this function cannot observe from inside itself: when
+ * `@stopcock/fp-compiler` recognises a literal `pipe`/`flow`/`compile` call
+ * in source, it replaces that call with a fused loop at build time, before
+ * this function -- or the steps it would have closed over -- ever runs. A
+ * truly compiled site never calls `explain()`; there is nothing left here to
+ * ask it.
  */
-import type { PlanShape, SegmentShape } from '../plan'
-import type { OpDomain } from '../registry'
-import { buildCompactPlan } from './compact/plan'
-import { boundaryIndexes, domainsOf, pureRewrites, type PureRewrite } from './plan-analysis'
 
-export interface PipelineExplanation {
-  readonly version: 1
-  readonly domains: readonly OpDomain[]
-  readonly segments: readonly SegmentShape[]
-  readonly materializationBoundaries: readonly number[]
-  readonly semanticMode: 'exact' | 'pure'
-  readonly executor: 'portable'
-  readonly segmentExecutors: readonly ('template' | 'generic')[]
-  readonly rewrites: readonly PureRewrite[]
-  readonly runtimeCodeGeneration: false
-  readonly aotRecommended: true
-}
-
-/**
- * Executor kind per segment. Compact fusion runs every segment through the
- * generic exact executor, so this is uniformly `generic` for an FP-only
- * install.
- */
-export function segmentExecutorKinds(shape: PlanShape): readonly ('template' | 'generic')[] {
-  return shape.segments.map(() => 'generic' as const)
-}
-
-function explainInternal(pure: boolean, steps: readonly unknown[]): PipelineExplanation {
-  const plan = buildCompactPlan(steps)
-  return Object.freeze({
-    version: 1,
-    domains: Object.freeze([...domainsOf(plan.shape)]),
-    segments: Object.freeze([...plan.shape.segments]),
-    materializationBoundaries: Object.freeze(boundaryIndexes(plan.shape)),
-    semanticMode: pure ? 'pure' : 'exact',
-    executor: 'portable',
-    segmentExecutors: Object.freeze(segmentExecutorKinds(plan.shape)),
-    rewrites: pure ? pureRewrites(plan.shape) : Object.freeze([]),
-    runtimeCodeGeneration: false,
-    aotRecommended: true,
-  } as const)
-}
+export type PipelineExplanation = 'sequential' | 'compiled site'
 
 export function explain(...steps: readonly unknown[]): PipelineExplanation {
-  return explainInternal(false, steps)
+  void steps
+  return 'sequential'
 }
 
 export function explainPure(...steps: readonly unknown[]): PipelineExplanation {
-  return explainInternal(true, steps)
+  void steps
+  return 'sequential'
 }
-
-export type { PureRewrite }

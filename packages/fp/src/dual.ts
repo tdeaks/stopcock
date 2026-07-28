@@ -1,5 +1,3 @@
-import { OP_CODES, OP_NON_FUSEABLE } from './opcodes'
-
 export interface DualTag {
   readonly op: string
 }
@@ -61,6 +59,17 @@ type AtLeastFiveParameters<Body extends AnyFunction> =
     ? unknown
     : never
 
+/**
+ * Data-first/data-last arity dispatch.
+ *
+ * The `tag` parameter is accepted for source compatibility with callers
+ * written against the old tagged form (a fused runtime engine once read
+ * `_op`/`_fn`/`_a1`/`_a2` off the returned data-last closure to recognise a
+ * trusted operator). That engine is gone: nothing in this package or its
+ * build-time compiler reads those fields any more, so `tag` is now inert.
+ * The typed overloads below still describe a tagged operator's shape for
+ * any caller still typed against it; the runtime just never populates it.
+ */
 export function dual<Body extends AnyFunction>(
   arity: 1 & ArityMatch<Body, 1>,
   body: Body,
@@ -106,54 +115,8 @@ export function dual<Body extends AnyFunction>(
   arity: Parameters<Body>['length'] & AtLeastFiveParameters<Body>,
   body: Body,
 ): DualOperation<DataParameter<Body>, RemainingParameters<Body>, ReturnType<Body>>
-export function dual(arity: number, body: Function, tag?: DualTag): unknown {
-  const opcode = tag ? (OP_CODES[tag.op] ?? OP_NON_FUSEABLE) : 0
-
-  if (tag) {
-    if (arity <= 1) {
-      // Arity-1 tagged: tag the body directly, skip wrapper
-      ;(body as any)._op = opcode
-      return body
-    }
-    if (arity === 2) {
-      return function () {
-        if (arguments.length >= 2) return body(arguments[0], arguments[1])
-        const a0 = arguments[0]
-        const dataLast = (data: any) => body(data, a0)
-        dataLast._op = opcode
-        dataLast._fn = a0
-        // No _args allocation. Fusion engine reads _fn directly
-        return dataLast
-      }
-    }
-    if (arity === 3) {
-      return function () {
-        if (arguments.length >= 3) return body(arguments[0], arguments[1], arguments[2])
-        const a0 = arguments[0],
-          a1 = arguments[1]
-        const dataLast = (data: any) => body(data, a0, a1)
-        dataLast._op = opcode
-        dataLast._fn = a0
-        dataLast._a1 = a1 // direct property, no array allocation
-        return dataLast
-      }
-    }
-    if (arity === 4) {
-      return function () {
-        if (arguments.length >= 4)
-          return body(arguments[0], arguments[1], arguments[2], arguments[3])
-        const a0 = arguments[0],
-          a1 = arguments[1],
-          a2 = arguments[2]
-        const dataLast = (data: any) => body(data, a0, a1, a2)
-        dataLast._op = opcode
-        dataLast._fn = a0
-        dataLast._a1 = a1
-        dataLast._a2 = a2
-        return dataLast
-      }
-    }
-  }
+export function dual(arity: number, body: Function, _tag?: DualTag): unknown {
+  if (arity <= 1) return body
 
   if (arity === 2) {
     return function () {
@@ -183,19 +146,8 @@ export function dual(arity: number, body: Function, tag?: DualTag): unknown {
   }
 
   // Generic fallback (arity 5+)
-  const wrapper = function (...args: any[]) {
+  return function (...args: any[]) {
     if (args.length >= arity) return (body as any)(...args)
-    const dataLast = (data: any) => (body as any)(data, ...args)
-    if (tag) {
-      dataLast._op = opcode
-      dataLast._fn = args[0]
-      dataLast._a1 = args[1]
-      dataLast._a2 = args[2]
-    }
-    return dataLast
+    return (data: any) => (body as any)(data, ...args)
   }
-  if (tag && arity <= 1) {
-    wrapper._op = opcode
-  }
-  return wrapper
 }

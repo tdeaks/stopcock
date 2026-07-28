@@ -1,14 +1,16 @@
 /**
  * Deprecated compatibility entry.
  *
- * Resolves to compact fusion: `compile` preserves exact callback order and
- * counts; `compilePure` opts into the documented pure rewrites reported by
- * `explainPure`.
+ * `compile` and `compilePure` are markers `@stopcock/fp-compiler` recognises
+ * at build time; a compiled call site never runs this file. Uncompiled, both
+ * alias plain left-to-right application over `pipe` -- there is no separate
+ * runtime engine any more, so there is nothing left for `compilePure` to opt
+ * into that `compile` does not already do. Preserves exact callback order and
+ * counts, same as every other tier.
  *
- * @deprecated Import `@stopcock/fp/fusion` for compact fusion.
+ * @deprecated Import `@stopcock/fp/fusion` for the explicit fusion entry.
  */
-import { compactCompile } from './internal/compact-runtime'
-import { compactCompilePure } from './internal/compact-pure-runtime'
+import { sequentialPipe } from './internal/sequential'
 import type { Runner } from './fusion'
 
 type AnyUnary = (input: never) => unknown
@@ -45,10 +47,13 @@ interface Compile {
   (...steps: readonly Runner[]): Runner
 }
 
+const applySequentially = sequentialPipe as (value: unknown, ...rest: readonly never[]) => unknown
+
 const compileExact = (...steps: readonly unknown[]): Runner => {
-  return compactCompile(...steps)
+  if (steps.length === 0) return (value: unknown) => value
+  return (value: unknown) => applySequentially(value, ...(steps as never[]))
 }
 
 export const compile = compileExact as Compile
-export const compilePure = compactCompilePure as Compile
+export const compilePure = compileExact as Compile
 export type { Runner }

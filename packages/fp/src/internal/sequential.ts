@@ -3,45 +3,43 @@
  *
  * Left to right, one call per step, nothing else: no plan, no registry, no
  * provenance, no caches. It imports nothing, so a consumer that only uses this
- * retains none of the fusion engine.
+ * retains none of the fusion engine -- because there is no fusion engine left
+ * to retain. `pipe.ts`, `flow.ts`, `fusion.ts`, and `compile.ts` all own their
+ * public overload surface and delegate the runtime work here.
  *
- * Deliberately not connected to root yet. S8 makes root `pipe`/`flow` use it,
- * and owns the public overload surface at that point; this module is here so
- * that change is a rewire rather than a rewrite.
+ * Every step is invoked as `steps[i](value)` -- a property-access call, never
+ * hoisted into a local first -- so an opaque step observes the step vector
+ * itself as `this`, exactly as `@stopcock/fp-compiler`'s own codegen for an
+ * unrecognized ("opaque") tail step does (see fp-compiler's
+ * prefix-residual.test.ts).
+ *
+ * `steps` is a real rest parameter, not a manually-built array read off
+ * `arguments`: a rest parameter is populated with define, not set,
+ * semantics, so building it can't be hijacked by an inherited accessor an
+ * adversarial (or just instrumented) caller planted on `Array.prototype` --
+ * `arr[i] = value` would silently call that accessor's setter instead of
+ * storing the step, corrupting the pipeline with no error until the missing
+ * step is later called as `undefined(...)`. `pipe.ts` declares this same
+ * rest parameter directly and applies it with its own loop, rather than
+ * forwarding here through a second rest-collect and spread call, which is
+ * what made root `pipe` slower than the frozen pre-hot-identity dispatch
+ * baseline before.
  */
 
-type AnyStep = (value: never) => unknown
+type Fn = (value: unknown) => unknown
 
-const applyAll = (value: unknown, steps: readonly AnyStep[]): unknown => {
-  let current = value
-  for (let i = 0; i < steps.length; i++) {
-    current = (steps[i] as (input: unknown) => unknown)(current)
-  }
+export function sequentialPipe(value: unknown, ...steps: readonly Fn[]): unknown {
+  if (steps.length === 0) return value
+  let current = steps[0](value)
+  for (let i = 1; i < steps.length; i++) current = steps[i](current)
   return current
 }
 
-export function sequentialPipe(value: unknown, ...steps: readonly AnyStep[]): unknown {
-  // Arity dispatch for the common lengths avoids the loop and the rest-array
-  // allocation, matching what the fusion engine does for its own fast paths.
-  switch (steps.length) {
-    case 0:
-      return value
-    case 1:
-      return (steps[0] as (input: unknown) => unknown)(value)
-    case 2:
-      return (steps[1] as (input: unknown) => unknown)(
-        (steps[0] as (input: unknown) => unknown)(value),
-      )
-    case 3:
-      return (steps[2] as (input: unknown) => unknown)(
-        (steps[1] as (input: unknown) => unknown)((steps[0] as (input: unknown) => unknown)(value)),
-      )
-    default:
-      return applyAll(value, steps)
+export function sequentialFlow(...steps: readonly Fn[]): (value: unknown) => unknown {
+  if (steps.length === 1) return steps[0]
+  return (value: unknown): unknown => {
+    let current = steps[0](value)
+    for (let i = 1; i < steps.length; i++) current = steps[i](current)
+    return current
   }
-}
-
-export function sequentialFlow(...steps: readonly AnyStep[]): (value: unknown) => unknown {
-  if (steps.length === 1) return steps[0] as (value: unknown) => unknown
-  return (value: unknown) => applyAll(value, steps)
 }
