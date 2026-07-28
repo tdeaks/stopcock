@@ -258,7 +258,7 @@ export function history<S extends object = any>(options?: HistoryOptions): Histo
       redos.push(p)
       const inverted = invert(p)
       silent = true
-      store.replace(applyUnsafe(store.get(), inverted) as S)
+      store.replace(applyUnsafe(inverted)(store.get()) as S)
       silent = false
     },
     redo(store: Store<S>) {
@@ -266,7 +266,7 @@ export function history<S extends object = any>(options?: HistoryOptions): Histo
       if (!p) return
       undos.push(p)
       silent = true
-      store.replace(applyUnsafe(store.get(), p) as S)
+      store.replace(applyUnsafe(p)(store.get()) as S)
       silent = false
     },
     get canUndo() {

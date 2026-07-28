@@ -13,9 +13,9 @@ describe('compiled optic integration', () => {
     const compiled = compile<typeof source, string>((state) => state.users[1].name)
 
     expect(compiled.path).toEqual(['users', 1, 'name'])
-    expect(view(compiled.lens, source)).toBe('Grace')
+    expect(view(compiled.lens)(source)).toBe('Grace')
 
-    const updated = set(compiled.lens, source, 'Hopper')
+    const updated = set(compiled.lens, 'Hopper')(source)
     expect(updated).toEqual({
       users: [
         { name: 'Ada', active: true },
@@ -29,8 +29,8 @@ describe('compiled optic integration', () => {
     const source = { settings: { retries: 2 } }
     const compiled = compile<typeof source, number>((state) => state.settings.retries)
 
-    expect(view(compiled.lens, source)).toBe(compiled.get(source))
-    expect(set(compiled.lens, source, 4)).toEqual(compiled.set(source, 4))
+    expect(view(compiled.lens)(source)).toBe(compiled.get(source))
+    expect(set(compiled.lens, 4)(source)).toEqual(compiled.set(source, 4))
     clearCache()
   })
 })

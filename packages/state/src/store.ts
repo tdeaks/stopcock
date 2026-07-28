@@ -259,7 +259,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         const p = replacePatch(c.path, old, value)
         const final = runMiddleware(p, prev)
         if (!final || final.ops.length === 0) return
-        state = final === p ? next : applyUnsafe(prev, final)
+        state = final === p ? next : applyUnsafe(final)(prev)
         const s = state
         guardedNotify(() => {
           notifyPath(prev, s, c.path)
@@ -293,7 +293,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         const p = replacePatch(c.path, old, val)
         const final = runMiddleware(p, prev)
         if (!final || final.ops.length === 0) return
-        state = final === p ? next : applyUnsafe(prev, final)
+        state = final === p ? next : applyUnsafe(final)(prev)
         const s = state
         guardedNotify(() => {
           notifyPath(prev, s, c.path)
@@ -320,13 +320,13 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         if (p.ops.length === 0) return
         if (batchDepth > 0) {
           if (hasMw) batchPatches!.push(p)
-          state = applyUnsafe(state, p)
+          state = applyUnsafe(p)(state)
           return
         }
         const final = hasMw ? runMiddleware(p, state) : p
         if (!final || final.ops.length === 0) return
         const prev = state
-        state = applyUnsafe(prev, final)
+        state = applyUnsafe(final)(prev)
         const s = state
         guardedNotify(() => {
           notify(prev, s, final)
@@ -339,13 +339,13 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         if (p.ops.length === 0) return
         if (batchDepth > 0) {
           if (hasMw) batchPatches!.push(p)
-          state = applyUnsafe(state, p)
+          state = applyUnsafe(p)(state)
           return
         }
         const final = hasMw ? runMiddleware(p, state) : p
         if (!final || final.ops.length === 0) return
         const prev = state
-        state = applyUnsafe(prev, final)
+        state = applyUnsafe(final)(prev)
         const s = state
         guardedNotify(() => {
           notify(prev, s, final)
@@ -357,9 +357,9 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
     replace(next: S) {
       if (next === state) return
       if (batchDepth > 0) {
-        const p = diff(state, next)
+        const p = diff(next)(state)
         if (hasMw) batchPatches!.push(p)
-        state = applyUnsafe(state, p)
+        state = applyUnsafe(p)(state)
         return
       }
       if (!hasMw) {
@@ -369,16 +369,16 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         const s = state
         guardedNotify(() => {
           notifyAll(prev, s)
-          if (onCommit) onCommit(diff(prev, s), prev, s)
+          if (onCommit) onCommit(diff(s)(prev), prev, s)
         })
         return
       }
-      const p = diff(state, next)
+      const p = diff(next)(state)
       if (p.ops.length === 0) return
       const final = runMiddleware(p, state)
       if (!final || final.ops.length === 0) return
       const prev = state
-      state = applyUnsafe(prev, final)
+      state = applyUnsafe(final)(prev)
       const s = state
       guardedNotify(() => {
         notify(prev, s, final)
@@ -399,7 +399,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         if (p.ops.length === 0) return
         const final = runMiddleware(p, prev)
         if (!final || final.ops.length === 0) return
-        state = final === p ? next : applyUnsafe(prev, final)
+        state = final === p ? next : applyUnsafe(final)(prev)
         const s = state
         guardedNotify(() => {
           notify(prev, s, final)
@@ -448,7 +448,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         const s = state
         guardedNotify(() => {
           notifyAll(prev, s)
-          if (onCommit) onCommit(diff(prev, s), prev, s)
+          if (onCommit) onCommit(diff(s)(prev), prev, s)
         })
         return
       }
@@ -459,7 +459,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         state = prev
         return
       }
-      const composed = patches.length === 1 ? patches[0] : patches.reduce((a, b) => compose(a, b))
+      const composed = patches.length === 1 ? patches[0] : patches.reduce((a, b) => compose(b)(a))
       if (composed.ops.length === 0) {
         state = prev
         return
@@ -469,7 +469,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
         state = prev
         return
       }
-      if (final !== composed) state = applyUnsafe(prev, final)
+      if (final !== composed) state = applyUnsafe(final)(prev)
       const s = state
       guardedNotify(() => {
         notify(prev, s, final)
@@ -500,7 +500,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
             const p = replacePatch(path, old, value)
             const final = runMiddleware(p, prev)
             if (!final || final.ops.length === 0) return
-            state = final === p ? next : applyUnsafe(prev, final)
+            state = final === p ? next : applyUnsafe(final)(prev)
             const s = state
             guardedNotify(() => {
               notifyPath(prev, s, path)
@@ -529,7 +529,7 @@ export function create<S extends object>(initial: S, options?: StoreOptions<S>):
             const p = replacePatch(path, old, val)
             const final = runMiddleware(p, prev)
             if (!final || final.ops.length === 0) return
-            state = final === p ? next : applyUnsafe(prev, final)
+            state = final === p ? next : applyUnsafe(final)(prev)
             const s = state
             guardedNotify(() => {
               notifyPath(prev, s, path)
