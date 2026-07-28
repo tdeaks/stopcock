@@ -12,7 +12,7 @@ export const EXPECTED_DATA_FUNCTIONAL_SUBJECT_FILES = Object.freeze([
 ] as const)
 
 export const EXPECTED_DATA_FUNCTIONAL_SUBJECT_SHA256 =
-  'fe7abace982739820fce1497e12c1eb2f480216668dcb15053ac2770976c1648'
+  'f4f409facb32c796ad7ee10f9c521f1a3cb2a5bb09a89c7087d57ee29f006003'
 
 export const EXPECTED_DATA_FUNCTIONAL_BASELINE = Object.freeze({
   id: 'stopcock-data-functional-frozen-before-v1',

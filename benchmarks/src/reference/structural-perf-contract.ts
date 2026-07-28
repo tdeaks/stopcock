@@ -11,7 +11,7 @@ export const EXPECTED_STRUCTURAL_SUBJECT_FILES = Object.freeze([
 ] as const)
 
 export const EXPECTED_STRUCTURAL_SUBJECT_SHA256 =
-  'eeda6e1bad1af8d5498058e856b414be5ab907622337c61dfe13f8327eb0ab03'
+  '1b93382360bdeea7dd36b32d4caf15bbceb8ec40ac38577a1ff619f2432e0033'
 
 export const EXPECTED_STRUCTURAL_BASELINE = Object.freeze({
   id: 'stopcock-structural-frozen-before-v1',

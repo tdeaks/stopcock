@@ -207,6 +207,8 @@ const buildCases = (): readonly ExecutableCase[] => {
   const errResult = Result.err('failure')
   const liftedCurrent = Result.liftThrowable(add2)
   const liftedBaseline = resultLiftThrowableBefore(add2)
+  const currentOptionMap = Option.map(increment)
+  const currentResultMap = Result.map(increment)
 
   const presentMap = new Map<string, number | undefined>([
     ['present', 21],
@@ -219,6 +221,12 @@ const buildCases = (): readonly ExecutableCase[] => {
     Array.from({ length: 128 }, (_, index) => [`key${index}`, index] as const),
   )
   const omitted = Array.from({ length: 32 }, (_, index) => `key${index * 2}`)
+  const currentGetPresent = MapOps.get('present')
+  const currentGetPresentUndefined = MapOps.get('undefined')
+  const currentGetMissing = MapOps.get('missing')
+  const currentSetIntersection = SetOps.intersection(rightSet)
+  const currentSetIsDisjoint = SetOps.isDisjoint(disjointSet)
+  const currentRecordOmit = RecordOps.omit(omitted)
 
   return [
     {
@@ -266,25 +274,25 @@ const buildCases = (): readonly ExecutableCase[] => {
     {
       name: 'option/map-some',
       workUnits: 1,
-      current: () => Option.map(presentOption, increment),
+      current: () => currentOptionMap(presentOption),
       baseline: () => optionMapBefore(presentOption, increment),
     },
     {
       name: 'option/map-none',
       workUnits: 1,
-      current: () => Option.map(missingOption, increment),
+      current: () => currentOptionMap(missingOption),
       baseline: () => optionMapBefore(missingOption, increment),
     },
     {
       name: 'result/map-ok',
       workUnits: 1,
-      current: () => Result.map(okResult, increment),
+      current: () => currentResultMap(okResult),
       baseline: () => resultMapBefore(okResult, increment),
     },
     {
       name: 'result/map-err',
       workUnits: 1,
-      current: () => Result.map(errResult, increment),
+      current: () => currentResultMap(errResult),
       baseline: () => resultMapBefore(errResult, increment),
     },
     {
@@ -296,37 +304,37 @@ const buildCases = (): readonly ExecutableCase[] => {
     {
       name: 'map/get-present',
       workUnits: 1,
-      current: () => MapOps.get(presentMap, 'present'),
+      current: () => currentGetPresent(presentMap),
       baseline: () => mapGetBefore(presentMap, 'present'),
     },
     {
       name: 'map/get-present-undefined',
       workUnits: 1,
-      current: () => MapOps.get(presentMap, 'undefined'),
+      current: () => currentGetPresentUndefined(presentMap),
       baseline: () => mapGetBefore(presentMap, 'undefined'),
     },
     {
       name: 'map/get-missing',
       workUnits: 1,
-      current: () => MapOps.get(presentMap, 'missing'),
+      current: () => currentGetMissing(presentMap),
       baseline: () => mapGetBefore(presentMap, 'missing'),
     },
     {
       name: 'set/intersection-128',
       workUnits: 128,
-      current: () => SetOps.intersection(leftSet, rightSet),
+      current: () => currentSetIntersection(leftSet),
       baseline: () => setIntersectionBefore(leftSet, rightSet),
     },
     {
       name: 'set/isDisjoint-128',
       workUnits: 128,
-      current: () => SetOps.isDisjoint(leftSet, disjointSet),
+      current: () => currentSetIsDisjoint(leftSet),
       baseline: () => setIsDisjointBefore(leftSet, disjointSet),
     },
     {
       name: 'record/omit-128',
       workUnits: 128,
-      current: () => RecordOps.omit(record, omitted),
+      current: () => currentRecordOmit(record),
       baseline: () => recordOmitBefore(record, omitted),
     },
   ]

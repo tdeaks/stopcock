@@ -188,7 +188,7 @@ const buildCases = (): readonly ExecutableCase[] => {
     {
       name: 'number/gcd-large',
       workUnits: 1,
-      current: () => NumberOps.gcd(1_836_311_903, 1_134_903_170),
+      current: () => NumberOps.gcd(1_134_903_170)(1_836_311_903),
       baseline: () => gcdBefore(1_836_311_903, 1_134_903_170),
     },
     {

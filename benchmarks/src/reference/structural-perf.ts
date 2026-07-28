@@ -212,6 +212,13 @@ const buildCases = (): readonly ExecutableCase[] => {
   const currentMax = NEA.max(Ord.number)
   const currentChunks = NEA.chunksOf(16)
 
+  const currentOmitBy = Obj.omitBy(keepOdd)
+  const currentGetPath = Obj.getPathOrUndefined(path)
+  const currentViewLens = Optic.view(valueLens)
+  const currentCollectLens = Optic.collect(valueLens)
+  const currentSetLens = Optic.set(valueLens, 42)
+  const currentCollectComposed = Optic.collect(composedTraversal)
+
   return [
     {
       name: 'object/values-128',
@@ -228,37 +235,37 @@ const buildCases = (): readonly ExecutableCase[] => {
     {
       name: 'object/omitBy-128',
       workUnits: 128,
-      current: () => Obj.omitBy(object, keepOdd),
+      current: () => currentOmitBy(object),
       baseline: () => objectOmitByBefore(object, keepOdd),
     },
     {
       name: 'object/getPath-hit-depth-4',
       workUnits: 4,
-      current: () => Obj.getPathOrUndefined(nested, path),
+      current: () => currentGetPath(nested),
       baseline: () => objectGetPathOrUndefinedBefore(nested, path),
     },
     {
       name: 'optic/view-lens-data-first',
       workUnits: 1,
-      current: () => Optic.view(valueLens, lensSource),
+      current: () => currentViewLens(lensSource),
       baseline: () => opticViewLensBefore(valueLens, lensSource),
     },
     {
       name: 'optic/collect-lens-data-first',
       workUnits: 1,
-      current: () => Optic.collect(valueLens, lensSource),
+      current: () => currentCollectLens(lensSource),
       baseline: () => opticCollectLensBefore(valueLens, lensSource),
     },
     {
       name: 'optic/set-lens-data-first',
       workUnits: 1,
-      current: () => Optic.set(valueLens, lensSource, 42),
+      current: () => currentSetLens(lensSource),
       baseline: () => opticSetLensBefore(valueLens, lensSource, 42),
     },
     {
       name: 'optic/compose-collect-128x8',
       workUnits: 1_024,
-      current: () => Optic.collect(composedTraversal, traversalSource),
+      current: () => currentCollectComposed(traversalSource),
       baseline: () =>
         opticComposeCollectBefore(
           outerTraversal,

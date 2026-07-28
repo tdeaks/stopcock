@@ -13,7 +13,7 @@ export const EXPECTED_CORE_UTILITIES_SUBJECT_FILES = Object.freeze([
 ] as const)
 
 export const EXPECTED_CORE_UTILITIES_SUBJECT_SHA256 =
-  '995d1384d0fe2bed89146efbe9f8e241adce22b0676990912c3a60f5ba89fa69'
+  'f46a8c57f7ab698bc08def867e28683f9711678eb4fd62201eadaa1f38ca5815'
 
 export const EXPECTED_CORE_UTILITIES_BASELINE = Object.freeze({
   id: 'stopcock-core-utilities-frozen-before-v1',
