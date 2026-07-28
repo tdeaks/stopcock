@@ -14,10 +14,8 @@
 
 import * as A from '../../../packages/fp/src/array'
 import * as AX from '../../../packages/fp/src/array-extra'
-import * as C from '../../../packages/fp/src/collector'
 import * as Iter from '../../../packages/fp/src/iter'
 import * as O from '../../../packages/fp/src/option'
-import * as T from '../../../packages/fp/src/transducer'
 import * as TA from '../../../packages/fp/src/typed-array'
 import { compile } from '../../../packages/fp/src/compile'
 import { pipe } from '../../../packages/fp/src/fusion'
@@ -73,14 +71,11 @@ export interface AllocationTarget {
 }
 
 const compiledMapFilter = compile(A.map(double), A.filter(isEven))
-const mapFilterTransducer = T.compose(T.map(double), T.filter(isEven))
 
 const arrayTarget: number[] = []
 const filterTarget: number[] = []
 const typedTarget = new Float64Array(SIZE)
 const iterTarget: number[] = []
-const transducerTarget: number[] = []
-const collectorTarget: number[] = []
 
 const referenceArrayTarget: number[] = []
 const referenceFilterTarget: number[] = []
@@ -235,28 +230,6 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
     },
   },
   {
-    id: 'collector.array',
-    familyId: 'collector-transducer',
-    elements: SIZE,
-    reusesTarget: false,
-    description: 'The array collector over an array source.',
-    subject: () => C.collect(input, C.array<number>()),
-    reference: () => {
-      const out: number[] = []
-      for (let i = 0; i < input.length; i++) out.push(input[i])
-      return out
-    },
-  },
-  {
-    id: 'transducer.intoArray.map-filter',
-    familyId: 'collector-transducer',
-    elements: SIZE,
-    reusesTarget: false,
-    description: 'A composed map/filter transducer into a fresh array.',
-    subject: () => T.intoArray(input, mapFilterTransducer),
-    reference: mapFilterReference,
-  },
-  {
     id: 'array.mapInto',
     familyId: 'writable-target',
     elements: SIZE,
@@ -318,41 +291,6 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
         const value = input[i] * 2
         if ((value & 1) === 0) referenceFilterTarget.push(value)
       }
-      return referenceFilterTarget
-    },
-  },
-  {
-    id: 'transducer.intoArrayInto',
-    familyId: 'writable-target',
-    elements: SIZE,
-    reusesTarget: true,
-    description: 'T.intoArrayInto reducing into one caller-owned array.',
-    subject: () => {
-      transducerTarget.length = 0
-      return T.intoArrayInto(input, mapFilterTransducer, transducerTarget)
-    },
-    reference: () => {
-      referenceFilterTarget.length = 0
-      for (let i = 0; i < input.length; i++) {
-        const value = input[i] * 2
-        if ((value & 1) === 0) referenceFilterTarget.push(value)
-      }
-      return referenceFilterTarget
-    },
-  },
-  {
-    id: 'collector.arrayInto',
-    familyId: 'writable-target',
-    elements: SIZE,
-    reusesTarget: true,
-    description: 'C.arrayInto collecting into one caller-owned array.',
-    subject: () => {
-      collectorTarget.length = 0
-      return C.collect(input, C.arrayInto(collectorTarget))
-    },
-    reference: () => {
-      referenceFilterTarget.length = 0
-      for (let i = 0; i < input.length; i++) referenceFilterTarget.push(input[i])
       return referenceFilterTarget
     },
   },

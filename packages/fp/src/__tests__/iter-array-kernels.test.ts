@@ -3,10 +3,11 @@ import * as Iter from '../iter'
 import { none, some, type Option } from '../option'
 
 /**
- * A plain Array source runs a generated indexed kernel; anything else runs the
- * generic executor. The generic executor is the oracle: for every shipped
- * (shape, terminal) pair both paths must agree on the result and on the exact
- * (value, index) arguments each stage callback saw.
+ * A plain Array source runs the hand-written indexed fast plan
+ * (`ArrayPlanIterator`/`executeArrayFastPlan`/`collectFastPlan`); anything
+ * else runs the generic executor. For every (shape, terminal) pair both
+ * paths must agree on the result and on the exact (value, index) arguments
+ * each stage callback saw.
  */
 
 type Call = readonly [stage: string, value: unknown, index: number]
@@ -161,7 +162,7 @@ const INPUTS: readonly (readonly number[])[] = [
   Array.from({ length: 33 }, (_, index) => index + 1),
 ]
 
-describe('generated Array kernels match the generic executor', () => {
+describe('the Array fast plan matches the generic executor', () => {
   for (const [shapeId, build] of Object.entries(SHAPES)) {
     for (const [terminalId, makeTerminal] of Object.entries(TERMINALS)) {
       test(`${shapeId} / ${terminalId}`, () => {
@@ -266,7 +267,7 @@ describe('kernel-adjacent semantics', () => {
     expect(calls).toBe(0)
   })
 
-  test('a kernel stops reading the source at its early exit', () => {
+  test('an early-exit terminal stops reading the source', () => {
     const reads: number[] = []
     const source = [1, 2, 3, 4, 5]
     const plan = Iter.map(source, (value, index) => {
@@ -302,7 +303,7 @@ describe('kernel-adjacent semantics', () => {
     expect(indexes).toEqual([0, 1, 2, 0, 1, 2])
   })
 
-  test('public iteration is unchanged by kernel selection', () => {
+  test('public iteration is unchanged by fast-plan selection', () => {
     const plan = Iter.filter(
       Iter.map([1, 2, 3, 4], (value) => value * 2),
       (value) => value > 2,

@@ -56,8 +56,6 @@ export const PUBLIC_MODULES = [
   },
   { subpath: './optic', entry: 'src/optic.ts' },
   { subpath: './match', entry: 'src/match.ts' },
-  { subpath: './transducer', entry: 'src/transducer.ts' },
-  { subpath: './collector', entry: 'src/collector.ts' },
   { subpath: './reader', entry: 'src/reader.ts' },
   { subpath: './state-fn', entry: 'src/state-fn.ts' },
   { subpath: './writer', entry: 'src/writer.ts' },

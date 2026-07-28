@@ -68,7 +68,7 @@ Collections and iteration:
 
 - `array`, `readonly-array`, `non-empty-array`, `tuple`
 - `record`, `map`, `set`, `typed-array`, `indexed`
-- `iter`, `transducer`, `collector`
+- `iter`
 
 Data and validation:
 
@@ -145,7 +145,7 @@ faster for that row. Geomeans from different contracts must not be combined.
 | Build compiler, operation-complete | Frozen operation emitter, 37 timed + 2 optimizer canaries |   1.105× / 0.866× |   1.181× / 0.924× |
 | Direct `Iter` terminal             | Hand-written early-exit loop, 3                           |   0.991× / 0.963× |   0.731× / 0.661× |
 | Broad `Iter` surface               | Frozen executor, 14                                       |   1.941× / 1.047× |   2.159× / 0.999× |
-| Transducers, collectors, `without` | Frozen implementations, 45                                |   1.762× / 0.993× |   1.597× / 0.993× |
+| `Array.without`                    | Frozen implementations, 27                                |   2.002× / 0.988× |                  — |
 | Typed arrays                       | Frozen implementations, 48                                |   8.879× / 0.973× |   2.272× / 0.814× |
 | Typed arrays                       | Native typed-array equivalents, 48                        |   1.149× / 0.716× |   1.211× / 0.869× |
 | Callback-identity churn            | Frozen compile contract, 4                                |   2.254× / 1.013× |   1.615× / 0.985× |

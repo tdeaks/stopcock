@@ -165,14 +165,6 @@
       "types": "./dist/match.d.ts",
       "import": "./dist/match.js"
     },
-    "./transducer": {
-      "types": "./dist/transducer.d.ts",
-      "import": "./dist/transducer.js"
-    },
-    "./collector": {
-      "types": "./dist/collector.d.ts",
-      "import": "./dist/collector.js"
-    },
     "./reader": {
       "types": "./dist/reader.d.ts",
       "import": "./dist/reader.js"

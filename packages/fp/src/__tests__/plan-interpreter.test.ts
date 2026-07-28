@@ -6,7 +6,7 @@ import { pipe } from '../fusion'
 import * as A from '../array'
 import * as S from '../string'
 import { buildPlan } from '../plan'
-import { interpret } from '../interpret'
+import { interpret } from '../internal/compact-runtime'
 
 // Wraps a user callback to count invocations and record the order/args it
 // was called with, without changing its behavior. Used to assert that the

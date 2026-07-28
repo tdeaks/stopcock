@@ -1,9 +1,7 @@
 import { expectTypeOf, test } from 'vite-plus/test'
 import * as ArrayOps from '../array'
-import * as Collector from '../collector'
 import * as Indexed from '../indexed'
 import * as Iter from '../iter'
-import * as Transducer from '../transducer'
 import * as Tuple from '../tuple'
 
 type Value = string | number
@@ -17,14 +15,6 @@ class TextBucket extends Array<string> {
 
 class NumberBucket extends Array<number> {
   readonly kind = 'number' as const
-}
-
-class TextSet extends Set<string> {
-  readonly kind = 'text-set' as const
-}
-
-class CountMap extends Map<string, number> {
-  readonly kind = 'count-map' as const
 }
 
 test('array Into operations preserve their target and allow proven refinements', () => {
@@ -136,18 +126,14 @@ test('Tuple.mapInto preserves broad mutable targets without accepting narrow one
   Tuple.mapInto([1] as const, fixedTarget, String)
 })
 
-test('iterable and transducer Into terminals preserve and validate exact targets', () => {
+test('iterable Into terminals preserve and validate exact targets', () => {
   const textTarget = new TextBucket()
   const values = ['one', 2] as readonly Value[]
-  const stringify = Transducer.map((value: Value) => String(value))
 
   expectTypeOf(Iter.toArrayInto(['one', 'two'], textTarget)).toEqualTypeOf<TextBucket>()
-  expectTypeOf(Transducer.intoArrayInto(values, stringify, textTarget)).toEqualTypeOf<TextBucket>()
   const commonTarget = [] as string[] | Value[]
   // @ts-expect-error mutable target unions are intentionally rejected.
   Iter.toArrayInto(['one', 'two'], commonTarget)
-  // @ts-expect-error transducer destinations use the same conservative union rule.
-  Transducer.intoArrayInto(values, stringify, commonTarget)
 
   // @ts-expect-error every iterable source value must fit the target.
   Iter.toArrayInto(values, textTarget)
@@ -155,14 +141,10 @@ test('iterable and transducer Into terminals preserve and validate exact targets
   const splitTarget = [] as string[] | number[]
   // @ts-expect-error every possible iterable target must accept the source union.
   Iter.toArrayInto(values, splitTarget)
-  // @ts-expect-error every possible transducer target must accept its output union.
-  Transducer.intoArrayInto(values, Transducer.identity<Value>(), splitTarget)
 
   const fixedTarget = ['existing'] as [string]
   // @ts-expect-error appending into a tuple invalidates its fixed length.
   Iter.toArrayInto(['value'], fixedTarget)
-  // @ts-expect-error transducer destinations must also have dynamic length.
-  Transducer.intoArrayInto(['value'], Transducer.identity<string>(), fixedTarget)
 })
 
 test('toArrayInto reads the element type through an inline lazy pipeline', () => {
@@ -189,95 +171,4 @@ test('toArrayInto reads the element type through an inline lazy pipeline', () =>
 
   // @ts-expect-error the mapped element type still has to fit the target.
   Iter.toArrayInto(Iter.map(Iter.from(input), double), texts)
-})
-
-test('collector target factories derive input capacity and preserve exact targets', () => {
-  const arrayTarget = new TextBucket()
-  const setTarget = new TextSet()
-  const mapTarget = new CountMap()
-  const recordTarget = Object.create(null) as Collector.MutableRecord<string>
-
-  const arrayCollector = Collector.arrayInto(arrayTarget)
-  const setCollector = Collector.setInto(setTarget)
-  const mapCollector = Collector.mapInto(mapTarget)
-  const recordCollector = Collector.recordInto(recordTarget)
-
-  expectTypeOf(arrayCollector).toEqualTypeOf<Collector.Collector<string, TextBucket>>()
-  expectTypeOf(setCollector).toEqualTypeOf<Collector.Collector<string, TextSet>>()
-  expectTypeOf(mapCollector).toEqualTypeOf<
-    Collector.Collector<readonly [string, number], CountMap>
-  >()
-  expectTypeOf(recordCollector).toEqualTypeOf<
-    Collector.Collector<readonly [PropertyKey, string], Collector.MutableRecord<string>>
-  >()
-  expectTypeOf(Collector.collect(['one'], arrayCollector)).toEqualTypeOf<TextBucket>()
-  expectTypeOf(Collector.collect(['one'], setCollector)).toEqualTypeOf<TextSet>()
-  expectTypeOf(Collector.collect([['one', 1] as const], mapCollector)).toEqualTypeOf<CountMap>()
-  expectTypeOf(Collector.collect([['one', 'value'] as const], recordCollector)).toEqualTypeOf<
-    Collector.MutableRecord<string>
-  >()
-
-  // @ts-expect-error the array target alone fixes the collector input type.
-  Collector.collect([1], arrayCollector)
-  // @ts-expect-error the set target alone fixes the collector input type.
-  Collector.collect([1], setCollector)
-  // @ts-expect-error map keys must fit the concrete target.
-  Collector.collect([[Symbol.iterator, 1] as const], mapCollector)
-  // @ts-expect-error map values must fit the concrete target.
-  Collector.collect([['one', 'value'] as const], mapCollector)
-  // @ts-expect-error record values must fit the homogeneous target capacity.
-  Collector.collect([['one', 1] as const], recordCollector)
-})
-
-test('collector and reducer factories reject unions, tuples, and refined records', () => {
-  const arrayUnion = [] as string[] | Value[]
-  const setUnion = new Set<string>() as Set<string> | Set<Value>
-  const mapUnion = new Map<string, number>() as Map<string, number> | Map<PropertyKey, Value>
-  const recordUnion = Object.create(null) as
-    | Collector.MutableRecord<string>
-    | Collector.MutableRecord<Value>
-  const fixedTuple = ['value'] as [string]
-
-  // @ts-expect-error mutable array target unions are rejected even when capacities overlap.
-  Collector.arrayInto(arrayUnion)
-  // @ts-expect-error mutable Set target unions are rejected conservatively.
-  Collector.setInto(setUnion)
-  // @ts-expect-error mutable Map target unions are rejected conservatively.
-  Collector.mapInto(mapUnion)
-  // @ts-expect-error mutable record target unions are rejected conservatively.
-  Collector.recordInto(recordUnion)
-  // @ts-expect-error appending would invalidate the tuple's fixed length.
-  Collector.arrayInto(fixedTuple)
-  // @ts-expect-error array reducers also reject mutable target unions.
-  Transducer.arrayReducerInto(arrayUnion)
-  // @ts-expect-error array reducers also reject fixed tuples.
-  Transducer.arrayReducerInto(fixedTuple)
-
-  type RefinedRecord = Collector.MutableRecord<Value> & {
-    readonly marker: 'refined'
-  }
-  type HeterogeneousRecord = Collector.MutableRecord<Value> & {
-    readonly count: number
-  }
-  const refined = Object.create(null) as RefinedRecord
-  const heterogeneous = Object.create(null) as HeterogeneousRecord
-
-  // @ts-expect-error arbitrary refinements cannot be preserved after writes to any key.
-  Collector.recordInto(refined)
-  // @ts-expect-error heterogeneous property refinements are not homogeneous record targets.
-  Collector.recordInto(heterogeneous)
-  // @ts-expect-error finite objects do not provide the required string and symbol index capacity.
-  Collector.recordInto({ known: 'value' })
-})
-
-test('arrayReducerInto preserves the concrete target in state and output', () => {
-  const target = new TextBucket()
-  const reducer = Transducer.arrayReducerInto(target)
-
-  expectTypeOf(reducer).toEqualTypeOf<Transducer.Reducer<string, TextBucket>>()
-  expectTypeOf(reducer.init()).toEqualTypeOf<TextBucket>()
-  expectTypeOf(reducer.complete(target)).toEqualTypeOf<TextBucket>()
-
-  // @ts-expect-error reducer input is derived from the target element type.
-  reducer.step(target, 1)
 })

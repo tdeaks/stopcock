@@ -3,7 +3,7 @@ import * as F from '../index'
 import * as A from '../array'
 import * as Iter from '../iter'
 import { compile } from '../fusion'
-import { interpret } from '../interpret'
+import { interpret } from '../internal/compact-runtime'
 import { buildPlan } from '../plan'
 import {
   V2_EAGER_FLAT_MAP_EXPECTATIONS,

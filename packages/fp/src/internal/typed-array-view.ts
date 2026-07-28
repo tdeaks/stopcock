@@ -10,6 +10,11 @@
  *
  * Private on purpose. It exists so a caller can authenticate a view without
  * importing the public typed-array entry, and it holds no policy of its own.
+ *
+ * `isCanonicalView` and `hasIntrinsicIteration` used to also back Iter's
+ * typed-array kernel admission (`internal/typed-array-source.ts`); that
+ * kernel family is gone (phase 6), so this module now carries only what
+ * `typed-array.ts` itself needs.
  */
 
 export type TypedArrayFamily =
@@ -68,11 +73,6 @@ if (optionalFloat16 !== undefined) {
   canonicalViews.set(optionalFloat16.prototype, view('float16', false, 2))
 }
 
-/** The families this realm actually has, in table order. */
-export const CANONICAL_FAMILIES: readonly TypedArrayFamily[] = Object.freeze(
-  [...canonicalViews.values()].map((entry) => entry.family),
-)
-
 const getPrototypeOf = Object.getPrototypeOf
 const hasOwn = Object.hasOwn
 
@@ -85,29 +85,3 @@ const hasOwn = Object.hasOwn
  */
 export const inspectCanonicalView = (value: object): CanonicalView | undefined =>
   hasOwn(value, 'constructor') ? undefined : canonicalViews.get(getPrototypeOf(value))
-
-/** Cheaper form for callers that only need the yes/no. */
-export const isCanonicalView = (value: object): boolean =>
-  !hasOwn(value, 'constructor') && canonicalViews.has(getPrototypeOf(value))
-
-const typedArrayPrototype = getPrototypeOf(Uint8Array.prototype) as object
-const intrinsicIterator = Reflect.get(typedArrayPrototype, Symbol.iterator) as unknown
-
-/**
- * Whether iterating this value would reach `%TypedArrayPrototype%[@@iterator]`.
- *
- * A canonical view can still shadow iteration with an own property, and the
- * shared prototype method itself can be replaced after this module loads, so
- * both are checked against the intrinsic captured at load. Callers that intend
- * to replace iteration with indexed access need this; callers that only
- * allocate do not, which is why it is separate from `inspectCanonicalView`.
- */
-/**
- * Resolves the method the value would actually iterate with, rather than
- * checking only its own property and the shared %TypedArray%.prototype. The
- * family prototype sits between those two: overriding
- * `Uint8Array.prototype[Symbol.iterator]` used to leave this answering true
- * while iteration was entirely custom.
- */
-export const hasIntrinsicIteration = (value: object): boolean =>
-  !hasOwn(value, Symbol.iterator) && Reflect.get(value, Symbol.iterator) === intrinsicIterator

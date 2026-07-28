@@ -17,7 +17,7 @@ export const EXPECTED_PORTABLE_CORPUS = Object.freeze({
 
 export const EXPECTED_FROZEN_EMITTER = Object.freeze({
   id: 'stopcock-reference-emitter-w0a-v1',
-  sha256: '2010e33a2e61657b3f9d1e728fa66a6c18412966274154207a2c21514220ff71',
+  sha256: '92d755aab0e5fc60b14f0c6d18029340fcb3e9a40a7f7aaf61bf559c95d8c8c7',
 })
 
 /**
@@ -31,7 +31,6 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
     'packages/fp/src/array.ts',
     'packages/fp/src/compile.ts',
     'packages/fp/src/dual.ts',
-    'packages/fp/src/interpret.ts',
     // The compact tier's plan builder and cache: the exact executor the
     // corpus actually measures, now that fp is the only runtime package.
     'packages/fp/src/internal/compact-runtime.ts',
@@ -47,7 +46,7 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
     'packages/fp/src/registry.ts',
     'packages/fp/src/sort-kernel.ts',
   ] as const),
-  sha256: '63545d51d9b18ecc116b8baef0f43ba9fa1fca69759cd44e76369e38e8773386',
+  sha256: '50be3b76910da3d1d30141b5489e1d37d4181b3ccba02cd62bc51959b3a578e6',
 })
 
 export interface PortableBatchPolicy {

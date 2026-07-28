@@ -524,7 +524,7 @@ describe('W6: expanded compiler coverage and clean unsupported diagnostics', () 
 // actually is at that point -- which, sitting between two array stages, is
 // the whole array the upstream stage produced, not one of its elements. Both
 // reference executors agree: root `pipe`'s plain `step(current)` and
-// `@stopcock/fp/fusion`'s compact engine (`interpret.ts#runScalarSegment`)
+// `@stopcock/fp/fusion`'s compact engine (`internal/compact-runtime.ts#runScalarSegment`)
 // apply a scalar op to the whole current value. A scalar function fed a
 // whole array does whatever plain JS does with that (numeric coercion,
 // `TypeError` for a missing method, ...): matching that exactly, including a

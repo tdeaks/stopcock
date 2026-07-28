@@ -549,8 +549,9 @@ const ELEMENT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
   // per-element loop by `segmentSteps`/`segmentsFromPlan` -- that would
   // apply it once per array element instead of once to the pipe's whole
   // current value, which is what both reference executors do (root
-  // `pipe`/`sequentialPipe`'s plain `step(current)` and
-  // `interpret.ts#runScalarSegment`, whose cases this mirrors exactly).
+  // `pipe`/`sequentialPipe`'s plain `step(current)` and compact's
+  // `internal/compact-runtime.ts#runScalarSegment`, whose cases this mirrors
+  // exactly).
   // `compilerFinalBoundary` below is taught that a `'scalar'`-input boundary
   // is never final, so these compile mid-pipeline like `map -> uniq -> sum`
   // already does for the array-domain boundaries. Codegen still gets to

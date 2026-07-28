@@ -1,15 +1,21 @@
-// W0a correctness fuzzing: seeded pipelines run through the reference
-// interpreter, the real pipe() engine, and the frozen reference emitter.
-// Outputs and callback invocation logs (order, argument, step index) must
-// agree across all three. On failure the pipeline shrinks automatically
-// (drop trailing ops, then halve input) to a minimal repro, which gets
-// appended to pinned-corpus.json so it never regresses silently again.
+// W0a correctness fuzzing: seeded pipelines run through the compact engine's
+// generic executor (direct buildPlan+interpret, bypassing the plan cache),
+// the real fused pipe() engine (which goes through that same executor via
+// the cache), and the frozen reference emitter. Outputs and callback
+// invocation logs (order, argument, step index) must agree across all three.
+// interpret() and pipe() are deliberately the same executor reached two
+// ways -- a naive per-step sequential comparator would disagree on early-exit
+// callback counts by design (fusion runs one pass; sequential materializes
+// each step), so it is not a valid third lane here. On failure the pipeline
+// shrinks automatically (drop trailing ops, then halve input) to a minimal
+// repro, which gets appended to pinned-corpus.json so it never regresses
+// silently again.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
 import { buildPlan } from '../../../packages/fp/src/plan'
-import { interpret } from '../../../packages/fp/src/interpret'
+import { interpret } from '../../../packages/fp/src/internal/compact-runtime'
 import { pipe } from '../../../packages/fp/src/fusion'
 import { compileEmittedPipeline } from './emitter'
 import {

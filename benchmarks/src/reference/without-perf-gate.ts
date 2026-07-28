@@ -4,8 +4,6 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as A from '../../../packages/fp/src/array'
-import * as Collector from '../../../packages/fp/src/collector'
-import * as Transducer from '../../../packages/fp/src/transducer'
 import { currentPerfEngine, expectedEngineName, type PerfEngine } from './perf-engine'
 import {
   consumedItemsMicroBatchIterations,
@@ -18,25 +16,14 @@ import {
 
 const EXCLUSION_SIZES = Object.freeze([0, 1, 4, 8, 9, 16, 32, 33, 128] as const)
 const WITHOUT_SOURCE_SIZES = Object.freeze([64, 1_024, 16_384] as const)
-const SOURCE_KINDS = Object.freeze(['array', 'set', 'generator'] as const)
 
 export const HOT_PATH_WORKER_MARKER = 'HOT_PATH_PERF_RESULT_JSON:'
 
-export const HOT_PATH_CASE_IDS = Object.freeze([
-  ...SOURCE_KINDS.flatMap((kind) => [
-    `transduce/${kind}/map-filter-take`,
-    `intoArray/${kind}/map-filter-take`,
-    `intoArrayInto/${kind}/map-filter-take`,
-    `collect/${kind}/array`,
-    `collectTransduced/${kind}/map-filter-take`,
-  ]),
-  'transduce/array/stateful',
-  'transduce/generator/stateful',
-  'intoArray/generator/early-close',
-  ...WITHOUT_SOURCE_SIZES.flatMap((sourceSize) =>
+export const HOT_PATH_CASE_IDS = Object.freeze(
+  WITHOUT_SOURCE_SIZES.flatMap((sourceSize) =>
     EXCLUSION_SIZES.map((exclusionSize) => `without/n=${sourceSize}/m=${exclusionSize}`),
   ),
-] as const)
+)
 
 export interface HotPathPerfPolicy {
   readonly minimumRounds: number
@@ -398,44 +385,6 @@ export const evaluateHotPathPerfReport = (
   return { passed: failures.length === 0, failures: Object.freeze(failures) }
 }
 
-const frozenTransduce = <A, B, State, Output>(
-  source: Iterable<A>,
-  transducer: Transducer.Transducer<A, B>,
-  reducer: Transducer.Reducer<B, State, Output>,
-): Output => {
-  const transformed = transducer(reducer)
-  const iterator = source[Symbol.iterator]()
-  let state = transformed.init()
-  let sourceDone = false
-  try {
-    while (!transformed.isDone?.()) {
-      const item = iterator.next()
-      if (item.done) {
-        sourceDone = true
-        break
-      }
-      const result = transformed.step(state, item.value)
-      state = Transducer.unreduced(result)
-      if (Transducer.isReduced(result)) break
-    }
-  } finally {
-    if (!sourceDone) iterator.return?.()
-  }
-  return transformed.complete(state)
-}
-
-const frozenCollect = <Input, State, Output>(
-  source: Iterable<Input>,
-  collector: Collector.Collector<Input, State, Output>,
-): Output => {
-  let state = collector.init()
-  for (const input of source) {
-    state = collector.add(state, input)
-    if (collector.isDone?.(state)) break
-  }
-  return collector.finish(state)
-}
-
 const sameValueZero = (left: unknown, right: unknown): boolean =>
   left === right || (left !== left && right !== right)
 
@@ -623,104 +572,8 @@ interface CaseSpec {
   readonly frozen: () => unknown
 }
 
-const sourceOf = (
-  kind: (typeof SOURCE_KINDS)[number],
-  values: readonly number[],
-): Iterable<number> => {
-  if (kind === 'array') return values
-  if (kind === 'set') return new Set(values)
-  return {
-    *[Symbol.iterator]() {
-      yield* values
-    },
-  }
-}
-
 const makeCases = (): readonly CaseSpec[] => {
-  const values = Array.from({ length: 4_096 }, (_, index) => index)
-  const transform = Transducer.compose(
-    Transducer.map((value: number) => value * 2 + 1),
-    Transducer.filter((value: number) => value % 3 !== 0),
-    Transducer.take<number>(128),
-  )
   const cases: CaseSpec[] = []
-  const consumed = 192
-  for (const kind of SOURCE_KINDS) {
-    const source = sourceOf(kind, values)
-    cases.push(
-      {
-        id: `transduce/${kind}/map-filter-take`,
-        consumedInputItems: consumed,
-        current: () => Transducer.transduce(source, transform, Transducer.arrayReducer()),
-        frozen: () => frozenTransduce(source, transform, Transducer.arrayReducer()),
-      },
-      {
-        id: `intoArray/${kind}/map-filter-take`,
-        consumedInputItems: consumed,
-        current: () => Transducer.intoArray(source, transform),
-        frozen: () => frozenTransduce(source, transform, Transducer.arrayReducer()),
-      },
-      {
-        id: `intoArrayInto/${kind}/map-filter-take`,
-        consumedInputItems: consumed,
-        current: () => Transducer.intoArrayInto(source, transform, [-1]),
-        frozen: () => frozenTransduce(source, transform, Transducer.arrayReducerInto([-1])),
-      },
-      {
-        id: `collect/${kind}/array`,
-        consumedInputItems: values.length,
-        current: () => Collector.collect(source, Collector.array()),
-        frozen: () => frozenCollect(source, Collector.array()),
-      },
-      {
-        id: `collectTransduced/${kind}/map-filter-take`,
-        consumedInputItems: consumed,
-        current: () => Collector.collectTransduced(source, transform, Collector.array()),
-        frozen: () => frozenTransduce(source, transform, Collector.toReducer(Collector.array())),
-      },
-    )
-  }
-
-  const stateful = Transducer.compose(
-    Transducer.dropWhile((value: number) => value < 100),
-    Transducer.distinct<number>(),
-    Transducer.take<number>(128),
-  )
-  for (const kind of ['array', 'generator'] as const) {
-    const source = sourceOf(kind, values)
-    cases.push({
-      id: `transduce/${kind}/stateful`,
-      consumedInputItems: 228,
-      current: () => Transducer.intoArray(source, stateful),
-      frozen: () => frozenTransduce(source, stateful, Transducer.arrayReducer()),
-    })
-  }
-  cases.push({
-    id: 'intoArray/generator/early-close',
-    consumedInputItems: consumed,
-    current: () => {
-      let closed = 0
-      const source = (function* () {
-        try {
-          yield* values
-        } finally {
-          closed++
-        }
-      })()
-      return [Transducer.intoArray(source, transform), closed]
-    },
-    frozen: () => {
-      let closed = 0
-      const source = (function* () {
-        try {
-          yield* values
-        } finally {
-          closed++
-        }
-      })()
-      return [frozenTransduce(source, transform, Transducer.arrayReducer()), closed]
-    },
-  })
 
   for (const sourceSize of WITHOUT_SOURCE_SIZES) {
     const source = Array.from({ length: sourceSize }, (_, index) =>
@@ -970,11 +823,11 @@ const main = async (): Promise<void> => {
     process.env.PERF_ARTIFACT_DIR ?? join(tmpdir(), 'stopcock-fp-performance'),
   )
   await mkdir(directory, { recursive: true })
-  const reportPath = join(directory, `transducer-collector-without-${engine.id}.json`)
+  const reportPath = join(directory, `without-${engine.id}.json`)
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`)
   const evaluation = evaluateHotPathPerfReport(report)
 
-  console.log(`\nTransducer, collector, and without gate (${engine.name})\n`)
+  console.log(`\nArray.without gate (${engine.name})\n`)
   console.log(['case', 'batch', 'median', 'RME', 'correct'].join('\t'))
   for (const item of reports) {
     console.log(

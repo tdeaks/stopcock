@@ -1,5 +1,5 @@
-// Plan IR: the shared representation portable compile, JIT, and the
-// reference interpreter all lower from. See docs/superpowers/plans/
+// Plan IR: the shared representation portable compile, JIT, and compact's
+// executor all lower from. See docs/superpowers/plans/
 // 2026-07-21-stopcock-fp-absolute-performance-implementation.md,
 // "Canonical optimizer architecture".
 import { trustedOperatorEntry, type TrustedOperatorEntry } from './internal/provenance'

@@ -1,11 +1,6 @@
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vite-plus/test'
-import {
-  CANONICAL_FAMILIES,
-  hasIntrinsicIteration,
-  inspectCanonicalView,
-  isCanonicalView,
-} from '../internal/typed-array-view'
+import { inspectCanonicalView } from '../internal/typed-array-view'
 
 const optionalFloat16 = Reflect.get(globalThis, 'Float16Array') as typeof Float32Array | undefined
 
@@ -27,23 +22,16 @@ describe('canonical view inspection', () => {
 
     for (const [value, family, bigint, bytesPerElement] of expected) {
       expect(inspectCanonicalView(value)).toEqual({ family, bigint, bytesPerElement })
-      expect(isCanonicalView(value)).toBe(true)
     }
   })
 
-  it('covers Float16Array when the engine has it and stays silent when it does not', () => {
-    expect(CANONICAL_FAMILIES.includes('float16')).toBe(optionalFloat16 !== undefined)
+  it('covers Float16Array when the engine has it', () => {
     if (optionalFloat16 === undefined) return
     expect(inspectCanonicalView(new optionalFloat16(1))).toEqual({
       family: 'float16',
       bigint: false,
       bytesPerElement: 2,
     })
-  })
-
-  it('lists every family this realm has, without duplicates', () => {
-    expect(new Set(CANONICAL_FAMILIES).size).toBe(CANONICAL_FAMILIES.length)
-    expect(CANONICAL_FAMILIES.length).toBe(optionalFloat16 === undefined ? 11 : 12)
   })
 
   it('rejects subclasses, own constructors and cross-realm views', () => {
@@ -88,74 +76,5 @@ describe('canonical view inspection', () => {
     expect(inspectCanonicalView({ length: 4, 0: 1 })).toBeUndefined()
     expect(inspectCanonicalView([1, 2, 3])).toBeUndefined()
     expect(inspectCanonicalView(Object.create(null) as object)).toBeUndefined()
-  })
-})
-
-describe('intrinsic iteration', () => {
-  it('accepts a plain view and rejects an own iterator override', () => {
-    expect(hasIntrinsicIteration(new Uint8Array(2))).toBe(true)
-
-    const shadowed = new Uint8Array(2)
-    Object.defineProperty(shadowed, Symbol.iterator, {
-      configurable: true,
-      value: function* () {
-        yield 99
-      },
-    })
-    expect(hasIntrinsicIteration(shadowed)).toBe(false)
-  })
-
-  it('rejects every view once the shared prototype method is replaced', () => {
-    const typedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype) as object
-    const original = Object.getOwnPropertyDescriptor(typedArrayPrototype, Symbol.iterator)
-    expect(original).toBeDefined()
-    try {
-      Object.defineProperty(typedArrayPrototype, Symbol.iterator, {
-        configurable: true,
-        value: function* () {
-          yield 99
-        },
-      })
-      expect(hasIntrinsicIteration(new Uint8Array(2))).toBe(false)
-      expect(hasIntrinsicIteration(new Float64Array(2))).toBe(false)
-    } finally {
-      Object.defineProperty(typedArrayPrototype, Symbol.iterator, original as PropertyDescriptor)
-    }
-    expect(hasIntrinsicIteration(new Uint8Array(2))).toBe(true)
-  })
-})
-
-describe('iteration authenticity', () => {
-  it('rejects an override on the family prototype', () => {
-    // The hole this closes: the check looked at the value's own property and
-    // the shared %TypedArray%.prototype, and missed the family prototype
-    // sitting between them.
-    const source = new Uint8Array([1, 2, 3])
-    const original = Object.getOwnPropertyDescriptor(Uint8Array.prototype, Symbol.iterator)
-    Object.defineProperty(Uint8Array.prototype, Symbol.iterator, {
-      value: function* () {
-        yield 99
-      },
-      configurable: true,
-    })
-    try {
-      expect([...source]).toEqual([99])
-      expect(hasIntrinsicIteration(source)).toBe(false)
-    } finally {
-      if (original === undefined) delete (Uint8Array.prototype as never)[Symbol.iterator]
-      else Object.defineProperty(Uint8Array.prototype, Symbol.iterator, original)
-    }
-    expect(hasIntrinsicIteration(new Uint8Array([1]))).toBe(true)
-  })
-
-  it('rejects an override on the value itself', () => {
-    const source = new Uint8Array([1])
-    Object.defineProperty(source, Symbol.iterator, {
-      value: function* () {
-        yield 1
-      },
-      configurable: true,
-    })
-    expect(hasIntrinsicIteration(source)).toBe(false)
   })
 })

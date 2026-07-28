@@ -4,7 +4,7 @@
  * Kept outside compact-runtime.ts so importing exact `/fusion` cannot retain
  * pure analysis or rewrite code. `/compile` opts into this module explicitly.
  */
-import { interpret } from '../interpret'
+import { interpret } from './compact-runtime'
 import type { BoundPlan, SegmentShape } from '../plan'
 import { findElidableMapBeforeLength } from './plan-analysis'
 import { buildCompactPlan } from './compact/plan'

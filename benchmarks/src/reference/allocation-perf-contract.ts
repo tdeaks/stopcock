@@ -26,7 +26,6 @@ export type AllocationFamilyId =
   | 'compiled-option'
   | 'iter-terminal'
   | 'typed-array'
-  | 'collector-transducer'
   | 'writable-target'
 
 export interface AllocationFamily {
@@ -67,11 +66,6 @@ export const ALLOCATION_FAMILIES: readonly AllocationFamily[] = Object.freeze([
     id: 'typed-array',
     ownerStage: 'P2',
     description: 'Typed-array operations that allocate a fresh typed output.',
-  }),
-  Object.freeze({
-    id: 'collector-transducer',
-    ownerStage: 'P3B',
-    description: 'Collector and transducer terminals over an array source.',
   }),
   Object.freeze({
     id: 'writable-target',

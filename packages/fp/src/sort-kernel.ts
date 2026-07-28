@@ -1,5 +1,5 @@
 // Hand-written stable sorts, shared by every tier (array.ts data-first ops,
-// lower.ts boundaries, interpret.ts oracle). Array.prototype.sort pays generic
+// lower.ts boundaries, compact-runtime.ts's executor). Array.prototype.sort pays generic
 // comparator dispatch on every element pair; a plain JS merge sort gets its
 // comparator monomorphized and inlined, which is the whole reason ts-belt
 // (Belt.SortArray, same algorithm out of the ReScript compiler) beat us on the

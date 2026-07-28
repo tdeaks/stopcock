@@ -11,7 +11,7 @@
 // as sinks; sort, sortBy, sortAsc, sortDesc, reverse, uniq, sum as boundary
 // ops. This intentionally follows the registry's classification rather than
 // the "sum is a sink" intuition: OP_SUM's cardinality in registry.ts is
-// 'materializer', and interpret.ts runs it in runBoundary (its own pass
+// 'materializer', and compact-runtime.ts runs it in runBoundary (its own pass
 // over the fully materialized array), not fused into runStreamSegment's
 // per-item switch. The emitter mirrors that, not the informal grammar
 // description that groups sum with count/reduce/etc as if it were fused.
@@ -331,7 +331,7 @@ function emitStreamSegment(seg: StreamSegment): string[] {
   // walking the chain after it with the phantom value, run in descending
   // position order before the main loop -- a later scan's own phantom must
   // fire before an earlier scan's phantom reaches it (matches
-  // interpret.ts's runScanArrayInits / lower.ts's ordering exactly).
+  // compact-runtime.ts's scan pre-pass / lower.ts's ordering exactly).
   // `outer` labels the enclosing block, not the loop itself, so `break
   // outer` from inside a phantom pass skips the real loop entirely, while
   // unlabeled `continue` inside a pass (a do-while with a false condition)

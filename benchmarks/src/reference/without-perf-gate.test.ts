@@ -13,7 +13,7 @@ import {
   validateHotPathImplementations,
   type HotPathPerfCase,
   type HotPathPerfReport,
-} from './transducer-collector-without-perf-gate'
+} from './without-perf-gate'
 
 const ENGINES: Readonly<Record<PerfEngineId, PerfEngine>> = {
   'bun-jsc': {
@@ -113,7 +113,7 @@ const makeReport = (
   }
 }
 
-describe('transducer, collector, and without performance policy', () => {
+describe('Array.without performance policy', () => {
   test('accepts one matching worker envelope and rejects marker, case, and runtime substitution', () => {
     const result = makeCases()[0]
     const success = {
@@ -226,7 +226,7 @@ describe('transducer, collector, and without performance policy', () => {
       }),
     )
     const failures = evaluation.failures.join('\n')
-    expect(failures).toContain('expected 45')
+    expect(failures).toContain('expected 27')
     expect(failures).toContain('skipped')
     expect(failures).toContain('incorrect output')
     expect(failures).toContain('insufficient consumed input')

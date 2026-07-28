@@ -104,18 +104,6 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'the exact packed optimizer footprint and the S10J topology decision it implies',
   }),
   Object.freeze({
-    script: 'iter-array-kernel-gate.ts',
-    kind: 'timing',
-    group: 'parity:iter',
-    checks: 'shipped Iter kernels against hand loops, and the subpath size exception',
-  }),
-  Object.freeze({
-    script: 'iter-typed-array-kernel-gate.ts',
-    kind: 'timing',
-    group: 'parity:iter',
-    checks: 'shipped typed-array Iter kernels against hand-written indexed loops',
-  }),
-  Object.freeze({
     script: 'pipe-dispatch-gate.ts',
     kind: 'timing',
     group: 'hand-loop',
@@ -188,10 +176,10 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'the third-wave corpus and its pinned row projection',
   }),
   Object.freeze({
-    script: 'transducer-collector-without-perf-gate.ts',
+    script: 'without-perf-gate.ts',
     kind: 'timing',
     group: 'quality',
-    checks: 'transducer and collector hot paths',
+    checks: 'Array.without hot path',
   }),
   Object.freeze({
     script: 'allocation-perf-gate.ts',

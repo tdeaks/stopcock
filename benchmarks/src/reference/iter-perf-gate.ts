@@ -39,14 +39,20 @@ export interface IterPerfPolicy {
   readonly maximumRme: number
 }
 
+// Phase 6: the generated Iter array kernels are gone, so this chain runs the
+// plain lazy generator path against the hand-written loop unconditionally.
+// Floors dropped from the kernel-assisted 0.84/0.82 to a sanity floor over
+// plain generator speed, measured post-deletion at geomean 0.70, min 0.69
+// (Bun 1.3.14, this box) with headroom for this box's documented timing
+// noise (Phase 0 ledger: shared-box geomeans 1.4-2.2x, early-exit tails dip).
 export const ITER_PERF_POLICIES = Object.freeze({
   'bun-jsc': Object.freeze({
     sizes: ITER_SIZES,
     minimumRounds: 60,
     minimumBatchIterations: 20_000,
     warmupRounds: 5,
-    minimumGlobalGeomean: 0.84,
-    minimumCaseRatio: 0.82,
+    minimumGlobalGeomean: 0.55,
+    minimumCaseRatio: 0.5,
     maximumRme: 6,
   }),
   'node-v8': Object.freeze({
