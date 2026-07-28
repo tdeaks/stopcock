@@ -11,7 +11,7 @@ const fn = (acc: number, x: number) => acc + x
 describe.each([100, 1_000, 10_000, 100_000])('reduceRight — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
 
-  bench('stopcock', () => A.reduceRight(data, fn, 0))
+  bench('stopcock', () => A.reduceRight(fn, 0)(data))
   bench('remeda', () => R.reduceRight(data, fn, 0))
   bench('rambda', () => Rb.reduceRight(fn, 0)(data))
   bench('ramda', () => Ra.reduceRight(fn, 0, data))
@@ -21,6 +21,6 @@ describe.each([100, 1_000, 10_000, 100_000])('reduceRight — n=%i', (n) => {
 describe.each([100, 1_000, 10_000])('scan — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
 
-  bench('stopcock', () => A.scan(data, fn, 0))
+  bench('stopcock', () => A.scan(fn, 0)(data))
   bench('ramda', () => Ra.scan(fn, 0, data))
 })
