@@ -133,7 +133,10 @@ describe('static-prefix residual lowering', () => {
       2,
       true,
       'function',
-      'number',
+      // No fused runtime engine left to tag `A.map`'s result with `_op`
+      // (one-runtime-path plan); the step vector's first element is a plain
+      // closure now.
+      'undefined',
       'seen',
       '2:3',
     ])
@@ -173,29 +176,31 @@ describe('static-prefix residual lowering', () => {
     expect(result.compiled.value).toEqual(['bound', '2:3'])
   })
 
-  it('does not trust a whole step public binding after later argument evaluation mutates it', () => {
+  // One-runtime-path plan: the fused engine this defended against is gone,
+  // and with it the `_op`/`_fn` public tag it used to read off a constructed
+  // operator. There is no more provenance system for a forged public
+  // binding to fool, tagged or not: the compiler resolves `A.map` by import
+  // name at the AST level and never reads any field off the runtime object.
+  // A hostile global `_op` setter is therefore just dead weight now -- it
+  // never fires, because nothing assigns `.{_op}` any more -- but poisoning
+  // `Function.prototype` still must not change what the pipe evaluates to,
+  // compiled or not.
+  it('is unaffected by a hostile Function.prototype._op setter (now dead: nothing assigns _op any more)', () => {
     const result = runFixture(
       fixture(
         'prefix-residual-forged-public-binding',
-        `let constructed
-         const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op')
+        `const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op')
+         let setterCalls = 0
          Object.defineProperty(Function.prototype, '_op', {
            configurable: true,
-           set(value) {
-             constructed = this
-             Object.defineProperty(this, '_op', {
-               configurable: true,
-               writable: true,
-               value,
-             })
+           set() {
+             setterCalls++
            },
          })
          try {
-           const makeTail = () => {
-             constructed._fn = () => 1000
-             return (xs) => xs
-           }
-           return pipe([1,2], A.map((x) => x + 1), makeTail())
+           const makeTail = () => (xs) => xs
+           const value = pipe([1, 2], A.map((x) => x + 1), makeTail())
+           return [value, setterCalls]
          } finally {
            if (previous === undefined) delete Function.prototype._op
            else Object.defineProperty(Function.prototype, '_op', previous)
@@ -203,7 +208,7 @@ describe('static-prefix residual lowering', () => {
       ),
     )
     expect(result.compiled.value).toEqual(result.original.value)
-    expect(result.compiled.value).toEqual([2, 3])
+    expect(result.compiled.value).toEqual([[2, 3], 0])
   })
 
   it('keeps this and arguments in the original lexical function', () => {
