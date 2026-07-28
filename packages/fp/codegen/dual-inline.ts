@@ -19,7 +19,7 @@
  */
 
 import { type Parser, type ParseResult, seq, map, string as pStr, char, run } from './parse'
-import { readFileSync, writeFileSync } from 'fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
@@ -584,6 +584,7 @@ const processModule = (mod: GeneratedModule) => {
   const transformed = transformModuleV1(src, mod)
   const output = mod === 'array' ? `${transformed}\n\nexport * from './array-extra'\n` : transformed
   const dualCount = (src.match(/= dual\(/g) || []).length
+  mkdirSync(SRC_DIR, { recursive: true })
   writeFileSync(join(SRC_DIR, `${mod}.ts`), output)
   console.log(`  ${mod}.ts: ${dualCount} dual() calls`)
   return dualCount
