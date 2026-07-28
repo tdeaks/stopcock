@@ -713,7 +713,7 @@ const runCurrent = (plan: Iterable<unknown>, terminal: Terminal): number => {
     case 'collect':
       return checksum(Iter.toArray(plan))
     case 'toArrayInto':
-      return checksum(Iter.toArrayInto(plan, [-7]))
+      return checksum(Iter.toArrayInto([-7] as unknown[])(plan))
     case 'reduce':
       return Iter.reduce((total: number, value: unknown) => total + Number(value), 0)(plan)
     case 'find-absent':

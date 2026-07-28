@@ -46,11 +46,9 @@ type EveryArrayTargetIsConcrete<Target extends unknown[]> =
 
 /**
  * Shape rules the target must satisfy. Whether the target *accepts* the source
- * element type is not checked here: a conditional type in a rest parameter is
- * evaluated before an overloaded call in an earlier argument has been resolved,
- * so `Iter.toArrayInto(Iter.map(...), target)` saw an unresolved element type
- * and rejected every target. That rule lives on the source parameter instead,
- * where it is plain assignability and needs no inference ordering.
+ * element type is not checked here: that rule lives on the source parameter of
+ * the returned function, where it is plain assignability and needs no
+ * inference ordering.
  */
 type ArrayTargetCapacity<Target extends unknown[]> = EveryArrayTargetHasDynamicLength<Target> &
   EveryArrayTargetIsConcrete<Target>
@@ -1405,14 +1403,15 @@ const toArrayIntoImpl = <A, Target extends unknown[]>(
 }
 
 interface ToArrayIntoOperation {
-  <A, const Target extends unknown[]>(
-    source: Iterable<A> & Iterable<Target[number]>,
+  <const Target extends unknown[]>(
     target: Target,
     ..._capacity: [] & ArrayTargetCapacity<Target>
-  ): Target
+  ): (source: Iterable<Target[number]>) => Target
 }
 
-export const toArrayInto = toArrayIntoImpl as unknown as ToArrayIntoOperation
+export const toArrayInto = ((target: unknown[]) =>
+  (source: Iterable<unknown>): unknown[] =>
+    toArrayIntoImpl(source, target)) as unknown as ToArrayIntoOperation
 
 const reduceImpl = <A, B>(
   source: Iterable<A>,

@@ -181,7 +181,7 @@ describe('Iter', () => {
   it('appends into an existing destination without counting its existing values toward take', () => {
     const target = [0]
     expect(
-      Iter.toArrayInto(Iter.take(2)(Iter.map((value) => value * 2)([1, 2, 3])), target),
+      Iter.toArrayInto(target)(Iter.take(2)(Iter.map((value) => value * 2)([1, 2, 3]))),
     ).toBe(target)
     expect(target).toEqual([0, 2, 4])
   })
@@ -627,7 +627,7 @@ describe('Iter', () => {
     type Terminal = (values: Iterable<number>, events: string[]) => unknown
     const terminals: ReadonlyArray<readonly [string, Terminal]> = [
       ['toArray', (values) => Iter.toArray(values)],
-      ['toArrayInto', (values) => Iter.toArrayInto(values, [-1])],
+      ['toArrayInto', (values) => Iter.toArrayInto([-1])(values)],
       [
         'reduce',
         (values, events) =>

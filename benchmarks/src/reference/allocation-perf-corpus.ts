@@ -88,6 +88,7 @@ const arrayMapOp = A.map(double)
 const arrayFilterOp = A.filter(isEven)
 const iterMapOp = Iter.map(double)
 const iterFilterOp = Iter.filter(isEven)
+const iterToArrayIntoOp = Iter.toArrayInto(iterTarget)
 const typedArrayMapOp = TA.map(double)
 const arrayMapIntoOp = AX.mapInto(arrayTarget, double)
 const arrayFilterIntoOp = AX.filterInto(filterTarget, isEven)
@@ -288,13 +289,7 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
     description: 'Iter.toArrayInto draining a pipeline into one caller-owned array.',
     subject: () => {
       iterTarget.length = 0
-      // Annotated deliberately. `toArrayInto` does not infer its element type
-      // from a mapped `Iter`: the target-capacity constraint resolves against
-      // an uninferred element and rejects a call that is plainly well typed.
-      // Reported as a P1A/P1B typing defect; nothing here works around it at
-      // runtime.
-      const source: Iterable<number> = iterFilterOp(iterMapOp(Iter.from(input)))
-      return Iter.toArrayInto(source, iterTarget)
+      return iterToArrayIntoOp(iterFilterOp(iterMapOp(Iter.from(input))))
     },
     reference: () => {
       referenceFilterTarget.length = 0

@@ -56,7 +56,7 @@ interface TerminalRun {
 
 const TERMINALS: Readonly<Record<string, () => TerminalRun>> = {
   toArray: () => ({ calls: [], run: (plan) => Iter.toArray(plan) }),
-  toArrayInto: () => ({ calls: [], run: (plan) => Iter.toArrayInto(plan, ['seed'] as unknown[]) }),
+  toArrayInto: () => ({ calls: [], run: (plan) => Iter.toArrayInto(['seed'] as unknown[])(plan) }),
   reduce: () => {
     const calls: Call[] = []
     return {

@@ -41,7 +41,7 @@ describe('writable-target collection helpers', () => {
   it('preserves exact targets for iterable Into terminals', () => {
     const iterTarget = new NumberBucket()
 
-    expect(Iter.toArrayInto([1, 2], iterTarget)).toBe(iterTarget)
+    expect(Iter.toArrayInto(iterTarget)([1, 2])).toBe(iterTarget)
     expect([...iterTarget]).toEqual([1, 2])
   })
 })
