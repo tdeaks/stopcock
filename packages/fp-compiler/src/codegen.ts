@@ -2194,6 +2194,46 @@ const captureExpression = (
   return rendered
 }
 
+/**
+ * A fully-lowered whole-step capture whose factory call is never retained
+ * (see `retainedWholeSteps` below) never needs the real operator object. No
+ * caller reads it, so the call that would build it is dead work: closure
+ * allocation, `_op` tagging, and provenance bookkeeping all disappear.
+ * Elision keeps every non-inline argument's evaluation (assigned to its
+ * capture local, exactly as `captureExpression` would place it inside the
+ * real call) but never invokes the callee itself. An inline callback
+ * argument is skipped entirely: it is spliced straight into the loop body
+ * elsewhere, and being a plain-parameter arrow-function literal, its mere
+ * evaluation as a closure has no observable effect. Returns `undefined` when
+ * `capture` isn't a recognized operator call site (the caller then falls
+ * back to real construction), or `''` when the step has nothing to evaluate
+ * (an empty statement should be omitted).
+ */
+const elidedConstructionStatement = (
+  capture: PlanCapture,
+  plan: StaticCompilerPlanV1,
+  captures: ReadonlyMap<number, PlanCapture>,
+  sourceCaptureId: number | undefined,
+  tracker: SourceFragmentTracker,
+): string | undefined => {
+  if (capture.kind !== 'whole-step' || capture.stepIndex === undefined) return undefined
+  const step = plan.steps.find((candidate) => candidate.index === capture.stepIndex)
+  if (step === undefined || step.kind !== 'operator' || !t.isCallExpression(step.node)) {
+    return undefined
+  }
+  const evaluated: string[] = []
+  for (const binding of step.bindings) {
+    if (binding.kind === 'inline') continue
+    const bindingCapture = captures.get(binding.captureId)
+    if (bindingCapture === undefined || bindingCapture.kind !== 'binding') {
+      throw new Error('fp-compiler: whole-step plan references a missing binding capture')
+    }
+    const local = captureLocal(bindingCapture, sourceCaptureId)
+    evaluated.push(`(${local} = (${tracker.node(bindingCapture.node)}))`)
+  }
+  return evaluated.length === 0 ? '' : `${evaluated.join(', ')};`
+}
+
 const constructionLinesForPlan = (
   plan: StaticCompilerPlanV1,
   captures: ReadonlyMap<number, PlanCapture>,
@@ -2224,25 +2264,29 @@ const constructionLinesForPlan = (
 
   return [...plan.captures]
     .sort((left, right) => left.evaluationOrder - right.evaluationOrder)
-    .map((capture) => {
+    .flatMap((capture) => {
       const local = captureLocal(capture, sourceCaptureId)
       if (capture.kind === 'binding' && assignedInsideWholeStep.has(capture.id)) {
-        return `var ${local};`
+        return [`var ${local};`]
       }
       if (
         capture.kind === 'whole-step' &&
         capture.stepIndex !== undefined &&
         !retainedWholeSteps.has(capture.stepIndex)
       ) {
-        return `${captureExpression(capture, plan, captures, sourceCaptureId, tracker)};`
+        const elided = elidedConstructionStatement(capture, plan, captures, sourceCaptureId, tracker)
+        if (elided !== undefined) return elided === '' ? [] : [elided]
+        return [`${captureExpression(capture, plan, captures, sourceCaptureId, tracker)};`]
       }
-      return `var ${local} = (${captureExpression(
-        capture,
-        plan,
-        captures,
-        sourceCaptureId,
-        tracker,
-      )});`
+      return [
+        `var ${local} = (${captureExpression(
+          capture,
+          plan,
+          captures,
+          sourceCaptureId,
+          tracker,
+        )});`,
+      ]
     })
 }
 

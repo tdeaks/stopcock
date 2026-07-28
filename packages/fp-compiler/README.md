@@ -46,8 +46,10 @@ failure.
 The transform understands namespace, named, aliased, and custom wrapper-package
 imports. Lexically shadowed bindings are left untouched. Exact semantics are
 the default. `assumePure: true` permits only documented pure execution
-rewrites; it still evaluates source expressions and official operator
-factories exactly once.
+rewrites; it still evaluates every argument expression exactly once, and a
+residual or otherwise non-fully-lowered site still constructs the real
+operator factory too (see "Tier-preserving lowering" below for the exact
+construction-elision contract).
 
 ## Options
 
@@ -58,7 +60,7 @@ factories exactly once.
 | `importSources`        | Package roots that export `pipe`, `flow`, and `compile`. Defaults to `@stopcock/fp`.                                              |
 | `arrayImportSources`   | Exact package entries that export array operators. Derived as `${importSource}/array` by default.                                 |
 | `compileImportSources` | Specialist entries that export `compile` and `compilePure`. Derived as `${importSource}/compile` in addition to the package root. |
-| `assumePure`           | Enables proven pure execution rewrites. Source and operator construction remain observable and exactly-once.                     |
+| `assumePure`           | Enables proven pure execution rewrites. Argument expressions still evaluate exactly once; operator construction stays observable only at a residual or otherwise non-fully-lowered site. |
 | `diagnostics`          | `false`, `summary`, `verbose`, or `error`. Defaults to `false`.                                                                   |
 
 `diagnostics: 'error'` fails the transform when a recognized pipeline cannot
@@ -108,12 +110,24 @@ unsupported site never silently changes runtime tier.
 
 Every accepted site is first represented as a versioned static Plan IR whose
 ordered captures, generated S2 operator facts, boundaries, terminal, semantic
-mode, and source tier are authoritative for emission. Operator expressions are
-evaluated exactly once at their original construction point, including in pure
-mode; caches, provenance, inherited setters, and thrown errors are not erased.
-The generated execution loop does not retain a root dispatcher, compiler,
-fusion planner, or optimizer engine. Exact construction leaves may remain
-because their observable JavaScript behavior is part of the source program.
+mode, and source tier are authoritative for emission. Every argument
+expression passed to an operator still evaluates exactly once, in its original
+order, at its original construction point, including in pure mode. A
+side-effectful argument such as `A.take(computeCount())` still runs
+`computeCount()`, and a callback expression such as `A.map(makeCallback())`
+still runs `makeCallback()`. What happens to the operator factory call itself
+depends on whether the site is fully lowered. At a **fully-lowered static
+site** (every step compiled, with no residual), the factory call is elided:
+`A.map`/`A.take`/etc. are never invoked, so their caches, provenance,
+inherited setters, and thrown errors are never observable, only the argument
+evaluation is. At a **residual, dynamic, or boundary/step-vector retained
+site**, the factory call remains fully observable: it still runs for real,
+exactly once at its original construction point, with its caches, provenance,
+inherited setters, and thrown errors intact, because the real construction
+result is genuinely used. The generated execution loop does not retain a root
+dispatcher, compiler, fusion planner, or optimizer engine. Retained
+construction leaves may remain because their observable JavaScript behavior
+is part of the source program.
 
 `compilePure` and `assumePure: true` may remove per-element work only for a
 proven rewrite. This release includes `map ... map -> length` callback

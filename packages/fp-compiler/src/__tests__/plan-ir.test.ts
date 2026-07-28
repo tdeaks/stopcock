@@ -142,6 +142,9 @@ describe('StaticCompilerPlanV1', () => {
     expect(plan.loweringId).toBe(PREFIX_RESIDUAL_STEP_VECTOR_LOWERING_ID)
     expect(plan.sourceTier).toBe('sequential')
     expect(plan.executionLayout).toBe('sequential-stages')
+    // The step-vector residual consumes the real constructed operators, so
+    // neither factory call is elided.
+    expect(plan.operatorConstruction).toBe('observable')
   })
 
   it('keeps deferred construction captures outside a source-less runner and preserves pure mode', () => {
@@ -166,7 +169,10 @@ describe('StaticCompilerPlanV1', () => {
     expect(exactPlan).toMatchObject({
       result: 'runner',
       mode: 'exact',
-      operatorConstruction: 'observable',
+      // Neither step is boundary/step-vector retained, so this fully-lowered
+      // runner elides both factory calls; captures still record their
+      // construction point and argument evaluation order.
+      operatorConstruction: 'elided',
       executionLayout: 'fused-streams',
       loweringId: FULL_RUNNER_LOWERING_ID,
     })
@@ -187,7 +193,7 @@ describe('StaticCompilerPlanV1', () => {
       siteKind: 'compilePure',
       result: 'runner',
       mode: 'pure',
-      operatorConstruction: 'observable',
+      operatorConstruction: 'elided',
     })
     expect(purePlan.captures.filter((capture) => capture.kind === 'whole-step')).toHaveLength(2)
     expect(purePlan.mode).not.toBe(exactPlan.mode)

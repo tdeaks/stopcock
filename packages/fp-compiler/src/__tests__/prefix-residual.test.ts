@@ -349,12 +349,14 @@ describe('residual imports and fallback tiers', () => {
   it('retains operator imports when the root step vector must contain actual step values', () => {
     const source = `import { pipe } from '@stopcock/fp'
 import { map } from '@stopcock/fp/array'
-const tail = (values) => values
+function tail(values) { return values }
 export const result = pipe([1,2], map((x) => x + 1), tail)
 `
     const result = transformStopcockPipelines(source, 'residual-import.ts', {
       diagnostics: 'verbose',
     })
+    // A plain function residual on the root facade takes the step-vector
+    // ABI, which genuinely constructs and consumes the map operator.
     expect(result.code).toContain("import { map } from '@stopcock/fp/array'")
     expect(result.code).not.toContain("from '@stopcock/fp'")
   })
@@ -371,7 +373,10 @@ export const result = pipe([1,2], map((x) => x + 1), (xs) => xs.join(':'))
       transformed: true,
       reasonCodes: ['opaque-callback'],
     })
-    expect(result.code).toContain('@stopcock/fp/array')
+    // An arrow residual is receiver-insensitive, not a step-vector ABI, so
+    // it doesn't retain map's construction either; this site is fully
+    // elided and the array import has nothing left to reference.
+    expect(result.code).not.toContain('@stopcock/fp/array')
   })
 
   it('declines an ordinary-function residual on a facade with a path-dependent receiver', () => {
@@ -402,7 +407,10 @@ export const result = FP.pipe([1,2], map(Number), (xs) => <FP.Widget xs={xs} />)
     })
     expect(result.code).toContain("import * as FP from '@stopcock/fp'")
     expect(result.code).toContain('<FP.Widget')
-    expect(result.code).toContain("import { map }")
+    // The JSX arrow residual is receiver-insensitive, so map's construction
+    // is elided and its import is pruned; only the JSX-referenced namespace
+    // import survives.
+    expect(result.code).not.toContain("import { map }")
   })
 
   it('reports an opaque-segment site with a lowering identity', () => {

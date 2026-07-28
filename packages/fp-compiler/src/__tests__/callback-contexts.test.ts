@@ -329,13 +329,15 @@ export const r = pipe([1, 2, 3], map(boom), filter((x) => x > 2))
     expect(originalLineFor(out.map as never, generated, lines[generated].indexOf('_cb0'))).toBe(6)
   })
 
-  it('still produces a map when the pipeline import is pruned but the factory remains', () => {
+  it('still produces a map when both pipeline and factory imports are pruned', () => {
     const out = run(`import { pipe } from '${FP}'
 import { map } from '${ARRAY}'
 export const r = pipe([1, 2], map((x) => x * 2))
 `)
     expect(out.code).not.toContain('import { pipe }')
-    expect(out.code).toContain(ARRAY)
+    // Fully lowered: map's factory call is elided, so nothing in the output
+    // references the array import either.
+    expect(out.code).not.toContain(ARRAY)
     expect(out.map).not.toBeNull()
     const lines = out.code.split('\n')
     const body = lines.findIndex((line) => line.includes('* 2'))

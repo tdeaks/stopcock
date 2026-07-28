@@ -9,6 +9,7 @@ export type CompilerSiteKind = 'pipe' | 'flow' | 'compile' | 'compilePure'
 export type PlanResultKind = 'value' | 'runner'
 export type OpaqueReceiverAbi = 'receiver-insensitive' | 'step-vector'
 export type PlanExecutionLayout = 'sequential-stages' | 'fused-streams'
+export type OperatorConstructionMode = 'observable' | 'elided'
 export type CaptureId = number
 
 export interface Step {
@@ -87,11 +88,17 @@ export interface StaticCompilerPlanV1 {
    */
   readonly executionLayout: PlanExecutionLayout
   /**
-   * Every source operator expression is observable construction-time code,
-   * including in pure mode. Pure rewrites may remove per-element callback
-   * execution, but never the JavaScript expressions passed to pipe/compile.
+   * Whether an official operator factory invocation remains observable
+   * JavaScript at this site. A residual, dynamic, or boundary/step-vector
+   * retained construction stays `'observable'`: the real factory call still
+   * runs, in original order, with its caches, provenance, inherited setters,
+   * and thrown errors intact. A fully-lowered static site elides the
+   * factory call itself (`'elided'`): every argument expression still
+   * evaluates exactly once, in original order, but the call that would
+   * construct the operator object never executes, so nothing about that
+   * factory, including a hostile inherited setter, is observable.
    */
-  readonly operatorConstruction: 'observable'
+  readonly operatorConstruction: OperatorConstructionMode
   readonly result: PlanResultKind
   readonly call: SourceSpan
   readonly source?: PlanValueRef
@@ -424,10 +431,16 @@ export function createStaticCompilerPlan(input: StaticCompilerPlanInput): Static
       bindings.push({ kind: 'capture', captureId: binding.id })
     })
     /*
-     * Always evaluate the official operator expression exactly once at its
-     * original construction point. Pure mode changes only eligible execution
-     * semantics after construction; it cannot erase argument evaluation,
-     * factory caches/provenance, inherited setters, or thrown errors.
+     * Mark the original construction point of the operator expression. Every
+     * argument expression this step captures still evaluates exactly once,
+     * in original order, regardless of what emission later does with the
+     * factory call itself. A residual/boundary/step-vector retained site
+     * still runs the real factory call at this point (pure mode changes only
+     * eligible execution semantics after construction, never argument
+     * evaluation, factory caches/provenance, inherited setters, or thrown
+     * errors); a fully-lowered site elides the call and keeps only the
+     * argument evaluation (see `operatorConstruction` and
+     * `constructionLinesForPlan` in codegen.ts).
      */
     capture('whole-step', step.node, index)
     planSteps.push({
@@ -462,9 +475,10 @@ export function createStaticCompilerPlan(input: StaticCompilerPlanInput): Static
   let executionSteps = planSteps
   const pureRewrites: readonly PlanRewrite[] = findPlanRewrites(planSteps, input.mode)
   /*
-   * Factory construction remains in `captures`, so argument/factory
-   * evaluation still happens once at runner construction. Execution removes
-   * only a complete maps-only stream immediately consumed by length; prefix
+   * Factory construction remains in `captures`, so argument evaluation (and,
+   * at a residual/boundary/step-vector retained site, the real factory call)
+   * still happens once at runner construction. Execution removes only a
+   * complete maps-only stream immediately consumed by length; prefix
    * boundaries and a following residual remain in their original order.
    */
   const pureMapLength = pureRewrites.find(
@@ -476,13 +490,31 @@ export function createStaticCompilerPlan(input: StaticCompilerPlanInput): Static
     executionSteps = planSteps.filter((step) => !elided.has(step.index))
   }
   const segments = segmentPlan(executionSteps, executionLayout, input.sourceTier)
+  /*
+   * A whole-step's factory call is only genuinely retained when a following
+   * step-vector residual consumes the constructed operator objects, or the
+   * step's own role is `'boundary'` (its real return value feeds subsequent
+   * code). Mirrors `retainedWholeSteps` in codegen.ts's
+   * `constructionLinesForPlan`; the two must stay in lockstep.
+   */
+  const stepVectorRetained = planSteps.some(
+    (step) => step.kind === 'opaque' && step.receiver === 'step-vector',
+  )
+  const operatorConstruction: OperatorConstructionMode = planSteps.some(
+    (step) =>
+      step.kind === 'operator' &&
+      !stepVectorRetained &&
+      step.fact.compilerPipelineRole !== 'boundary',
+  )
+    ? 'elided'
+    : 'observable'
   return {
     irVersion: 1,
     siteKind: input.siteKind,
     mode: input.mode,
     sourceTier: input.sourceTier,
     executionLayout,
-    operatorConstruction: 'observable',
+    operatorConstruction,
     result: input.siteKind === 'pipe' ? 'value' : 'runner',
     call: spanOf(input.call),
     ...(sourceRef === undefined ? {} : { source: sourceRef }),

@@ -162,9 +162,9 @@ export const run = (input) =>
     const result = transformStopcockPipelines(source, 'filter-map-direct.ts')
     expect(result.code).toContain('_d0.push((_v0 * 2 + 1));')
     expect(result.code).not.toContain('var _m0')
-    // The official factory call remains observable; only the generated loop
-    // specializes the conditional away.
-    expect(result.code.match(/\?/gu)).toHaveLength(1)
+    // This site is fully lowered, so the factory call is elided entirely;
+    // the ternary only ever appears once, specialized away by the loop.
+    expect(result.code.match(/\?/gu)).toBeNull()
   })
 
   expectSame('filterMap respects a lexical undefined binding', {
@@ -635,7 +635,8 @@ export const run = (input) =>
     const result = transformStopcockPipelines(source, 'find-map-direct.ts')
     expect(result.code).toContain('value: (_v0 * 2 + 1) }; break _outer;')
     expect(result.code).not.toContain('var _fmv0')
-    expect(result.code.match(/\?/gu)).toHaveLength(1)
+    // Fully lowered: the factory call is elided, so the ternary never appears.
+    expect(result.code.match(/\?/gu)).toBeNull()
   })
 
   expectSame('none true (no element matches)', {
@@ -784,7 +785,8 @@ export const run = (input) =>
     expect(result.code).toContain('if (!((_v0 < 10))) break;')
     expect(result.code).toContain('_d0.push((_v0 * 2 + 1));')
     expect(result.code).not.toContain('var _mw0')
-    expect(result.code.match(/\?/gu)).toHaveLength(1)
+    // Fully lowered: the factory call is elided, so the ternary never appears.
+    expect(result.code.match(/\?/gu)).toBeNull()
   })
 
   expectSame('takeUntil fuses and excludes the matching element', {
@@ -1222,87 +1224,149 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
-  expectSame('fully static lowering still executes each official operator factory once', {
-    name: 'full-static-factory-observability',
-    imports: STD_IMPORTS,
-    locals: { pipe: 'pipe', A: 'A' },
-    body: `
-      let writes = 0;
-      const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
-      Object.defineProperty(Function.prototype, '_op', {
-        configurable: true,
-        set(value) {
-          writes++;
-          Object.defineProperty(this, '_op', {
-            configurable: true,
-            writable: true,
-            value,
-          });
-        },
-      });
-      try {
+  it('fully static lowering never lets a hostile inherited factory setter observe construction', () => {
+    const result = runFixture({
+      name: 'full-static-factory-observability',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        let writes = 0;
+        const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
+        Object.defineProperty(Function.prototype, '_op', {
+          configurable: true,
+          set(value) {
+            writes++;
+            Object.defineProperty(this, '_op', {
+              configurable: true,
+              writable: true,
+              value,
+            });
+          },
+        });
+        try {
+          const result = pipe(
+            [1, 2, 3],
+            A.map((x) => x + 1),
+            A.filter((x) => x > 2),
+          );
+          return [result, writes];
+        } finally {
+          if (previous === undefined) delete Function.prototype._op;
+          else Object.defineProperty(Function.prototype, '_op', previous);
+        }
+      `,
+      expectTransformed: true,
+    })
+    expect(result.transformed).toBe(true)
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    const [originalValue, originalWrites] = result.original.value as [unknown, number]
+    const [compiledValue, compiledWrites] = result.compiled.value as [unknown, number]
+    // The map/filter data pipeline is unaffected either way.
+    expect(compiledValue).toEqual(originalValue)
+    // The interpreted path really constructs both operators; the fully
+    // lowered compiled path never calls either factory, so pollution planted
+    // on Function.prototype is simply never observed.
+    expect(originalWrites).toBeGreaterThan(0)
+    expect(compiledWrites).toBe(0)
+  })
+
+  it('fully static lowering never triggers a throwing inherited factory setter', () => {
+    const result = runFixture({
+      name: 'full-static-factory-throw',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
+        Object.defineProperty(Function.prototype, '_op', {
+          configurable: true,
+          set() { throw new Error('factory tag rejected') },
+        });
+        try {
+          return pipe([1, 2], A.map((x) => x + 1));
+        } finally {
+          if (previous === undefined) delete Function.prototype._op;
+          else Object.defineProperty(Function.prototype, '_op', previous);
+        }
+      `,
+      expectTransformed: true,
+    })
+    expect(result.transformed).toBe(true)
+    // Interpreted: the real factory call runs and the setter throws.
+    expect(result.original.error).toBeDefined()
+    expect((result.original.error as Error).message).toBe('factory tag rejected')
+    // Compiled: construction is elided, so the setter never runs.
+    expect(result.compiled.error).toBeUndefined()
+    expect(result.compiled.value).toEqual([2, 3])
+  })
+
+  it('fully static lowering never retains an operator leaf for later use', () => {
+    const result = runFixture({
+      name: 'full-static-retained-operator-leaf',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        let retained;
+        const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
+        Object.defineProperty(Function.prototype, '_op', {
+          configurable: true,
+          set(value) {
+            retained = this;
+            Object.defineProperty(this, '_op', {
+              configurable: true,
+              writable: true,
+              value,
+            });
+          },
+        });
+        try {
+          const compiledResult = pipe([1, 2, 3], A.map((x) => x + 1));
+          const retainedResult = retained([10, 20]);
+          return [compiledResult, retainedResult];
+        } finally {
+          if (previous === undefined) delete Function.prototype._op;
+          else Object.defineProperty(Function.prototype, '_op', previous);
+        }
+      `,
+      expectTransformed: true,
+    })
+    expect(result.transformed).toBe(true)
+    // Interpreted: the real map operator gets constructed and tagged, so a
+    // side channel that captures `this` off the setter can call it again.
+    expect(result.original.error).toBeUndefined()
+    expect(result.original.value).toEqual([[2, 3, 4], [11, 21]])
+    // Compiled: nothing is ever constructed, so `retained` stays undefined
+    // and calling it throws instead of quietly returning a stale operator.
+    expect(result.compiled.error).toBeDefined()
+    expect((result.compiled.error as Error).message).toMatch(/retained is not a function/u)
+  })
+
+  it('elides construction but still evaluates argument expressions once, in order', () => {
+    const result = runFixture({
+      name: 'full-static-argument-evaluation-order',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const log = [];
+        const computeK = () => { log.push('k'); return 2; };
+        const logAndReturnFn = () => { log.push('fn'); return (x) => x + 1; };
         const result = pipe(
           [1, 2, 3],
-          A.map((x) => x + 1),
-          A.filter((x) => x > 2),
+          A.map(logAndReturnFn()),
+          A.take(computeK()),
         );
-        return [result, writes];
-      } finally {
-        if (previous === undefined) delete Function.prototype._op;
-        else Object.defineProperty(Function.prototype, '_op', previous);
-      }
-    `,
-    expectTransformed: true,
-  })
-
-  expectSame('fully static lowering preserves a throwing inherited factory setter', {
-    name: 'full-static-factory-throw',
-    imports: STD_IMPORTS,
-    locals: { pipe: 'pipe', A: 'A' },
-    body: `
-      const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
-      Object.defineProperty(Function.prototype, '_op', {
-        configurable: true,
-        set() { throw new Error('factory tag rejected') },
-      });
-      try {
-        return pipe([1, 2], A.map((x) => x + 1));
-      } finally {
-        if (previous === undefined) delete Function.prototype._op;
-        else Object.defineProperty(Function.prototype, '_op', previous);
-      }
-    `,
-    expectTransformed: true,
-  })
-
-  expectSame('fully static lowering preserves and never executes a retained operator leaf', {
-    name: 'full-static-retained-operator-leaf',
-    imports: STD_IMPORTS,
-    locals: { pipe: 'pipe', A: 'A' },
-    body: `
-      let retained;
-      const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
-      Object.defineProperty(Function.prototype, '_op', {
-        configurable: true,
-        set(value) {
-          retained = this;
-          Object.defineProperty(this, '_op', {
-            configurable: true,
-            writable: true,
-            value,
-          });
-        },
-      });
-      try {
-        const compiledResult = pipe([1, 2, 3], A.map((x) => x + 1));
-        const retainedResult = retained([10, 20]);
-        return [compiledResult, retainedResult];
-      } finally {
-        if (previous === undefined) delete Function.prototype._op;
-        else Object.defineProperty(Function.prototype, '_op', previous);
-      }
-    `,
-    expectTransformed: true,
+        return [result, log];
+      `,
+      expectTransformed: true,
+    })
+    expect(result.transformed).toBe(true)
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    // Both argument expressions still run, exactly once each, in their
+    // original left-to-right order. Only the discarded factory calls that
+    // would have wrapped them are gone.
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect(result.compiled.value).toEqual([[2, 3], ['fn', 'k']])
   })
 
   expectSame('boundary lowering never trusts later mutations of public binding fields', {
@@ -1474,37 +1538,49 @@ import * as A from '@stopcock/fp/array'`,
     expectTransformed: true,
   })
 
-  expectSame('compilePure preserves operator construction while eliding map execution', {
-    name: 'compile-pure-construction-observable',
-    imports: `import { compilePure } from '@stopcock/fp/compile'
+  it('compilePure elides map construction along with its per-element execution', () => {
+    const result = runFixture({
+      name: 'compile-pure-construction-observable',
+      imports: `import { compilePure } from '@stopcock/fp/compile'
 import * as A from '@stopcock/fp/array'`,
-    locals: { compilePure: 'compilePure', A: 'A' },
-    body: `
-      let writes = 0;
-      const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
-      Object.defineProperty(Function.prototype, '_op', {
-        configurable: true,
-        set(value) {
-          writes++;
-          Object.defineProperty(this, '_op', {
-            configurable: true,
-            writable: true,
-            value,
-          });
-        },
-      });
-      try {
-        const run = compilePure(
-          A.map((x) => x + 1),
-          A.length,
-        );
-        return [run([1, 2, 3]), writes];
-      } finally {
-        if (previous === undefined) delete Function.prototype._op;
-        else Object.defineProperty(Function.prototype, '_op', previous);
-      }
-    `,
-    expectTransformed: true,
+      locals: { compilePure: 'compilePure', A: 'A' },
+      body: `
+        let writes = 0;
+        const previous = Object.getOwnPropertyDescriptor(Function.prototype, '_op');
+        Object.defineProperty(Function.prototype, '_op', {
+          configurable: true,
+          set(value) {
+            writes++;
+            Object.defineProperty(this, '_op', {
+              configurable: true,
+              writable: true,
+              value,
+            });
+          },
+        });
+        try {
+          const run = compilePure(
+            A.map((x) => x + 1),
+            A.length,
+          );
+          return [run([1, 2, 3]), writes];
+        } finally {
+          if (previous === undefined) delete Function.prototype._op;
+          else Object.defineProperty(Function.prototype, '_op', previous);
+        }
+      `,
+      expectTransformed: true,
+    })
+    expect(result.transformed).toBe(true)
+    expect(result.original.error).toBeUndefined()
+    expect(result.compiled.error).toBeUndefined()
+    // Interpreted: A.map really constructs (one write); A.length is a bare
+    // accessor reference, never a call, so it never triggers the setter.
+    expect(result.original.value).toEqual([3, 1])
+    // Compiled: this site is fully lowered (map -> length elides the
+    // per-element callback already), and the map factory call is now elided
+    // too, so the setter is never triggered at all.
+    expect(result.compiled.value).toEqual([3, 0])
   })
 
   it('compiles pure sort/take as an exact boundary followed by a fused stream', () => {
@@ -1650,8 +1726,10 @@ export const out = run([1, 2, 3])
     })
     expect(result.code).toContain('var _pureLength1 = _src.length;')
     expect(result.code).toContain('var _d0 = _pureLength1;')
-    expect(result.code).toContain('A.map')
-    expect(result.code).toContain('x + 1')
+    // Fully lowered: map's factory call is elided along with its callback,
+    // so neither the call nor the callback body survives in the output.
+    expect(result.code).not.toContain('A.map')
+    expect(result.code).not.toContain('x + 1')
     expect(result.code).toContain('for (var _i = 0; _i < _pureLength1; _i++)')
     expect(result.code).toContain('void _src[_i];')
   })
@@ -2595,24 +2673,42 @@ describe('dead import pruning', () => {
   const run = (source: string) =>
     transformStopcockPipelines(source, '/repo/src/a.ts', { diagnostics: 'summary' }).code
 
-  it('removes the consumed facade import while retaining observable factories', () => {
+  it('removes both the consumed facade import and the elided factory import', () => {
     const out = run(`import { pipe } from '@stopcock/fp'
 import { filter, map } from '@stopcock/fp/array'
 export const r = pipe([1,2,3], map((x) => x * 2), filter((x) => x > 2))
 `)
-    expect(out).toContain('@stopcock/fp/array')
+    // Fully lowered: neither factory call survives, so the array import is
+    // dead code too.
+    expect(out).not.toContain('@stopcock/fp/array')
     expect(out).not.toContain("from '@stopcock/fp'")
   })
 
-  it('retains every factory used by full and prefix-residual sites', () => {
+  it('prunes the factory import from full and receiver-insensitive residual sites alike', () => {
     const out = run(`import { pipe } from '@stopcock/fp'
 import { filter, map } from '@stopcock/fp/array'
 export const a = pipe([1,2,3], map((x) => x * 2), filter((x) => x > 2))
 export const b = pipe([1,2,3], map((x) => x * 2), (xs) => xs)
 `)
-    expect(out).toContain('@stopcock/fp/array')
+    // `b`'s arrow tail is receiver-insensitive, not a step-vector residual,
+    // so it does not retain map's construction either. Both sites are
+    // fully elided and the array import has nothing left to reference.
+    expect(out).not.toContain('@stopcock/fp/array')
     expect(out).not.toContain("from '@stopcock/fp'")
-    expect(out).toContain('filter')
+    expect(out).not.toContain('filter')
+  })
+
+  it('retains the factory import a step-vector residual genuinely constructs', () => {
+    const out = run(`import { pipe } from '@stopcock/fp'
+import { map } from '@stopcock/fp/array'
+function tail(xs) { return xs }
+export const r = pipe([1,2,3], map((x) => x * 2), tail)
+`)
+    // A plain function residual on the root facade takes the step-vector
+    // ABI, which genuinely consumes the constructed map operator. Its
+    // construction is observable, so the import must stay.
+    expect(out).toContain("import { map } from '@stopcock/fp/array'")
+    expect(out).toContain('_c1 = (map((x) => x * 2))')
   })
 
   it('leaves a type-only import alone', () => {
