@@ -107,8 +107,15 @@ export const values = <A>(source: ReadonlyRecord<A>): A[] => {
 }
 
 export const entries = <A>(source: ReadonlyRecord<A>): Array<readonly [PropertyKey, A]> => {
-  const result: Array<readonly [PropertyKey, A]> = []
-  for (const key of enumerableKeys(source)) result.push([key, source[key]])
+  // `Object.entries` is the same single-pass intrinsic as `Object.keys`, key
+  // and value read together -- same trade as `enumerableKeys`, symbols
+  // appended after.
+  const result = Object.entries(source as Record<string, A>) as Array<[PropertyKey, A]>
+  const symbols = Object.getOwnPropertySymbols(source)
+  for (let index = 0; index < symbols.length; index++) {
+    const symbol = symbols[index]!
+    if (Object.prototype.propertyIsEnumerable.call(source, symbol)) result.push([symbol, source[symbol]])
+  }
   return result
 }
 
