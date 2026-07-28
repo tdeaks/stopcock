@@ -426,23 +426,31 @@ fixpoint iteration. Expected delta: +~300 lines.
 Objective: two runtimes remain. Do this only after Phases 1-4, because
 the compiler now covers what the deleted fast paths used to accelerate.
 
-- [ ] Delete `interpret.ts` (538 lines). Sequential is the oracle;
+- [x] Delete `interpret.ts` (538 lines). Sequential is the oracle;
       anything that imported the reference interpreter for tests now
       runs the sequential tier.
-- [ ] Measure, then delete `iter-kernels.ts` (1,697) and the typed-array
+- [x] Measure, then delete `iter-kernels.ts` (1,697) and the typed-array
       kernel family (`typed-array-source.ts`, `typed-array-view.ts`,
       kernel branches in `iter.ts`). Record the no-bundler regression in
       this file next to the checkbox (expected: interpreted Iter chains
       revert to plain generator speed; bundler users keep compiled
       loops). If the recorded delta is unacceptable to you, the kernels
       stay and this box gets a WONTFIX note. (D3)
-- [ ] Delete or fold `transducer.ts` (518) and `collector.ts` (426):
+      MEASURED (c958f84, bun, shared box, within-run ratios): geomean
+      regression across 17 uncompiled rows 1.217x. Outliers: map-filter
+      reduce 8.26x slower (1.511 -> 0.183 vs hand loop), map-filter
+      find-absent 4.24x (1.470 -> 0.347); ~15 rows unaffected (never
+      kernel-eligible). iter-perf-gate geomean 0.755 -> 0.699. Compiled
+      rows improved: iter-compiled-perf-gate 1.74x -> 2.05x, fully green.
+      dist/iter.js gzip 10,563 -> 6,206 B. Deleted.
+- [x] Delete or fold `transducer.ts` (518) and `collector.ts` (426):
       public subpaths with zero internal consumers. v2 is pre-release;
       remove the subpath exports and the modules. If either has a real
       external user by then, keep the module and drop this box.
-- [ ] Collapse `dual.ts`/`dual-internal.ts` to the plain tagged form
-      (started in Phase 2; finish here).
-- [ ] Re-run the full gate set; update the size gate's recorded engine
+- [x] WONTFIX: Collapse `dual.ts`/`dual-internal.ts` to the plain tagged
+      form. Ledger Phase 2 evidence: tagged dual drags OP_CODES, 216B ->
+      1471B vs the 922B ceiling. dual-untagged.ts stays.
+- [x] Re-run the full gate set; update the size gate's recorded engine
       bytes (should drop).
 
 Gate: full suite, `perf:gates`, packed smoke. Expected delta: -~4k
@@ -505,6 +513,15 @@ Phase 2 landed at 094b029.
 Phase 3 landed at 50be26a.
 Phase 4 landed at a085506.
 Phase 5 landed at d29c30f (rewrites.ts, 139 lines).
+Phase 6 landed at c958f84 (net -10,326 lines).
+Phase 6 notes: interpret.ts was the compact-tier executor, not a test-only
+oracle (compact-runtime.ts called it); merged into internal/compact-runtime
+rather than repointed to naive sequential (that repoint provably breaks 661
+corpus tests; fused vs per-step semantics differ by design). fuzz lane
+unchanged semantically. transducer-collector gate survived as
+without-perf-gate (27 Array.without cases; it guarded three unrelated
+things). Engine 2958 gzip B unchanged. Suite 2933 tests green, packed
+smoke green, all parity:iter and size gates green.
 Phase 5 notes: map|>map dropped (fusion already single-loops it; AST
 composition buys nothing). sortBy|>take dropped on correctness despite a
 measured 17-25x win: takeSortedBy's quickselect is not tie-stable relative
