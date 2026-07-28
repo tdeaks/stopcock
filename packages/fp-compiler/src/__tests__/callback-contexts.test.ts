@@ -191,6 +191,116 @@ export const r = [out, seen]
   })
 })
 
+/** Same as `execute`, but with transform options (`assumePure`) forwarded. */
+const executeWith = async (source: string, options: Record<string, unknown>): Promise<unknown> => {
+  const out = transformStopcockPipelines(source, '/repo/src/a.ts', {
+    diagnostics: 'summary',
+    ...options,
+  })
+  const fpDist = new URL('../../../fp/dist/index.js', import.meta.url).href
+  const arrayDist = new URL('../../../fp/dist/array.js', import.meta.url).href
+  const code = out.code
+    .split(`'${ARRAY}'`)
+    .join(`'${arrayDist}'`)
+    .split(`'${FP}'`)
+    .join(`'${fpDist}'`)
+  const encoded = Buffer.from(code).toString('base64')
+  const module = (await import(`data:text/javascript;base64,${encoded}`)) as { r: unknown }
+  return module.r
+}
+
+describe('phase 5 rewrite: map |> length under assumePure', () => {
+  const source = `import { pipe } from '${FP}'
+import { map, length } from '${ARRAY}'
+const seen = []
+const out = pipe([1, 2, 3, 4], map((x) => { seen.push(x); return x * 2 }), length)
+export const r = [out, seen]
+`
+
+  it('skips the map callback entirely once assumePure opts in', async () => {
+    expect(await executeWith(source, { assumePure: true })).toEqual([4, []])
+  })
+
+  it('calls the map callback for every element without assumePure (exact, default)', async () => {
+    expect(await executeWith(source, {})).toEqual([4, [1, 2, 3, 4]])
+  })
+
+  it('skips an opaque, non-inlined map callback too once assumePure opts in', async () => {
+    expect(
+      await executeWith(
+        `import { pipe } from '${FP}'
+import { map, length } from '${ARRAY}'
+let calls = 0
+function cb(x) { calls++; return x * 2 }
+const out = pipe([1, 2, 3], map(cb), length)
+export const r = [out, calls]
+`,
+        { assumePure: true },
+      ),
+    ).toEqual([3, 0])
+  })
+
+  it('still reads every source element under assumePure, preserving a getter side effect', async () => {
+    expect(
+      await executeWith(
+        `import { pipe } from '${FP}'
+import { map, length } from '${ARRAY}'
+const reads = []
+const src = new Proxy([1, 2, 3], {
+  get(target, prop, receiver) {
+    if (typeof prop === 'string' && /^[0-9]+$/.test(prop)) reads.push(Number(prop))
+    return Reflect.get(target, prop, receiver)
+  },
+})
+const out = pipe(src, map((x) => x * 2), length)
+export const r = [out, reads]
+`,
+        { assumePure: true },
+      ),
+    ).toEqual([3, [0, 1, 2]])
+  })
+})
+
+describe('phase 5 rewrite: filter |> length counting loop', () => {
+  it('counts with no output array, same predicate call count and order as sequential', async () => {
+    const source = `import { pipe } from '${FP}'
+import { filter, length } from '${ARRAY}'
+const seen = []
+const out = pipe([1, 2, 3, 4, 5], filter((x) => { seen.push(x); return x % 2 === 0 }), length)
+export const r = [out, seen]
+`
+    const transformed = transformStopcockPipelines(source, '/repo/src/a.ts', {
+      diagnostics: 'summary',
+    })
+    expect(transformed.code).toContain('_d0++')
+    expect(transformed.code).not.toContain('_d0 = []')
+    expect(await executeWith(source, {})).toEqual([2, [1, 2, 3, 4, 5]])
+  })
+
+  it('does not fuse (still materializes) when filter is not directly before length', async () => {
+    const source = `import { pipe } from '${FP}'
+import { filter, map, length } from '${ARRAY}'
+const seen = []
+const out = pipe([1, 2, 3, 4, 5], filter((x) => { seen.push('f' + x); return x % 2 === 0 }), map((x) => { seen.push('m' + x); return x }), length)
+export const r = [out, seen]
+`
+    expect(await executeWith(source, {})).toEqual([
+      2,
+      ['f1', 'f2', 'f3', 'f4', 'f5', 'm2', 'm4'],
+    ])
+  })
+
+  it('fires under an explicit assumePure call too (unconditional, not purity-gated)', async () => {
+    const source = `import { pipe } from '${FP}'
+import { filter, length } from '${ARRAY}'
+const seen = []
+const out = pipe([1, 2, 3], filter((x) => { seen.push(x); return x > 1 }), length)
+export const r = [out, seen]
+`
+    expect(await executeWith(source, { assumePure: true })).toEqual([2, [1, 2, 3]])
+  })
+})
+
 describe('source maps resolve to original locations', () => {
   const source = `import { pipe } from '${FP}'
 import { filter, map } from '${ARRAY}'

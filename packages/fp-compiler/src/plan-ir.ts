@@ -3,6 +3,7 @@ import { planInline } from './inline'
 import type { CompilerOperatorFact } from './ops'
 import type { CompilerFallbackTier, CompilerSegmentKind, CompilerSemantics } from './types'
 import type { SourceSpan } from './mapped-code'
+import { findPlanRewrites, type PlanRewrite } from './rewrites'
 
 export type CompilerSiteKind = 'pipe' | 'flow' | 'compile' | 'compilePure'
 export type PlanResultKind = 'value' | 'runner'
@@ -71,12 +72,9 @@ export interface PlanSegment {
   readonly sourceTierBoundary?: true
 }
 
-export interface PlanPureRewrite {
-  readonly kind: 'elide-unused-map'
-  /** Map steps whose values cannot affect the following length terminal. */
-  readonly elidedStepIndexes: readonly number[]
-  readonly terminalIndex: number
-}
+// The rewrite list itself (`PlanRewrite`, its matchers) lives in
+// `rewrites.ts` -- phase 5 keeps every peephole and its justification in
+// one file. This module only calls in and applies the result.
 
 export interface StaticCompilerPlanV1 {
   readonly irVersion: 1
@@ -101,8 +99,11 @@ export interface StaticCompilerPlanV1 {
   readonly steps: readonly PlanStep[]
   readonly segments: readonly PlanSegment[]
   readonly segmentKinds: readonly CompilerSegmentKind[]
-  /** Explicit pure-only rewrites selected before emitter segmentation. */
-  readonly pureRewrites: readonly PlanPureRewrite[]
+  /** Explicit pure-only rewrites selected before emitter segmentation (see
+   * `rewrites.ts`; the `filter |> length` rewrite is unconditional and
+   * needs no plan-level record, so it never appears here -- codegen finds
+   * it directly by inspecting adjacent segments). */
+  readonly pureRewrites: readonly PlanRewrite[]
   readonly operatorFacts: readonly CompilerOperatorFact[]
   readonly loweringId: string
 }
@@ -352,41 +353,6 @@ const segmentPlan = (
   return segments
 }
 
-const findPureMapLengthRewrite = (steps: readonly PlanStep[]): PlanPureRewrite | undefined => {
-  // Pure eligibility follows compact topology even though compiler facts
-  // model length as a terminal: since the previous real boundary, the
-  // complete element stream consumed by length must contain maps only.
-  for (let terminalPosition = 1; terminalPosition < steps.length; terminalPosition++) {
-    const terminalStep = steps[terminalPosition]
-    if (terminalStep.kind !== 'operator' || terminalStep.fact.name !== 'length') continue
-    let streamStart = terminalPosition
-    while (streamStart > 0) {
-      const previous = steps[streamStart - 1]
-      if (previous.kind !== 'operator' || previous.fact.compilerPipelineRole !== 'element') {
-        break
-      }
-      streamStart--
-    }
-    const elidedStepIndexes: number[] = []
-    for (let position = streamStart; position < terminalPosition; position++) {
-      const step = steps[position]
-      if (step.kind !== 'operator' || step.fact.name !== 'map') {
-        elidedStepIndexes.length = 0
-        break
-      }
-      elidedStepIndexes.push(step.index)
-    }
-    if (elidedStepIndexes.length > 0) {
-      return {
-        kind: 'elide-unused-map',
-        elidedStepIndexes,
-        terminalIndex: terminalStep.index,
-      }
-    }
-  }
-  return undefined
-}
-
 export interface StaticCompilerPlanInput {
   readonly siteKind: CompilerSiteKind
   readonly mode: CompilerSemantics
@@ -494,16 +460,18 @@ export function createStaticCompilerPlan(input: StaticCompilerPlanInput): Static
   const executionLayout: PlanExecutionLayout =
     input.sourceTier === 'sequential' ? 'sequential-stages' : 'fused-streams'
   let executionSteps = planSteps
-  let pureRewrites: readonly PlanPureRewrite[] = []
+  const pureRewrites: readonly PlanRewrite[] = findPlanRewrites(planSteps, input.mode)
   /*
    * Factory construction remains in `captures`, so argument/factory
    * evaluation still happens once at runner construction. Execution removes
    * only a complete maps-only stream immediately consumed by length; prefix
    * boundaries and a following residual remain in their original order.
    */
-  const pureMapLength = input.mode === 'pure' ? findPureMapLengthRewrite(planSteps) : undefined
+  const pureMapLength = pureRewrites.find(
+    (rewrite): rewrite is Extract<PlanRewrite, { kind: 'elide-unused-map' }> =>
+      rewrite.kind === 'elide-unused-map',
+  )
   if (pureMapLength !== undefined) {
-    pureRewrites = [pureMapLength]
     const elided = new Set(pureMapLength.elidedStepIndexes)
     executionSteps = planSteps.filter((step) => !elided.has(step.index))
   }

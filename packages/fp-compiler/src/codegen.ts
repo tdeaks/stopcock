@@ -10,6 +10,7 @@ import type {
   OptionEmitCtx,
 } from './ops-table'
 import { planInline, renderDirectInlineExpressionMapped, renderDirectInlineMapped } from './inline'
+import { emitElideUnusedMap, fuseFilterLength } from './rewrites'
 import {
   FULL_ARRAY_LOWERING_ID,
   FULL_RUNNER_LOWERING_ID,
@@ -1849,17 +1850,6 @@ function emitInlineBoundaryStep(
   return [...fragment.body]
 }
 
-function emitPureMapLengthBoundary(stepIndex: number, curData: string, nextData: string): string[] {
-  const length = `_pureLength${stepIndex}`
-  return [
-    `var ${length} = ${curData}.length;`,
-    `for (var _i = 0; _i < ${length}; _i++) {`,
-    `void ${curData}[_i];`,
-    '}',
-    `var ${nextData} = ${length};`,
-  ]
-}
-
 /**
  * Builds the statements for a fused pipeline over a validated step list --
  * everything except how the result is consumed and where the source value
@@ -1929,8 +1919,46 @@ function generateSegmentedBodyInternal(
 
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const seg = segments[segmentIndex]
+    const next = segments[segmentIndex + 1]
+    // Phase 5's `filter |> length` rewrite: under the `'sequential-stages'`
+    // layout (a bare pipe()/flow() call) every op gets its own segment, so a
+    // solo `filter` immediately followed by a solo `length` terminal would
+    // otherwise materialize the filtered array just to read `.length` off
+    // it. Splicing them into one segment hands them to the exact
+    // element+terminal path that already emits a counting loop with no
+    // array for this pair under full fusion (`compile`/`compilePure`).
+    const fused =
+      seg.kind === 'element' && next?.kind === 'element' ? fuseFilterLength(seg, next) : undefined
 
     const nextData = `_d${counter++}`
+    if (fused !== undefined) {
+      const mergedSegment: ElementSegment = {
+        kind: 'element',
+        steps: fused.steps as readonly IndexedStep[],
+        terminal: fused.terminal as IndexedStep,
+      }
+      blockLines.push(
+        ...emitElementSegment(
+          mergedSegment,
+          curData,
+          nextData,
+          code,
+          preLines,
+          optionNoneLocal,
+          inlineCallbacks,
+          renderExpression,
+          renderSource,
+          arrayConstructorExpression,
+          globalUndefinedIsUnbound,
+          outerLabel,
+          !allowCrossSegmentFolding,
+        ),
+      )
+      curData = nextData
+      curDataIsArray = false
+      segmentIndex++
+      continue
+    }
     if (seg.kind === 'boundary') {
       // A *segment* of kind `'boundary'` is not the same thing as an op whose
       // *own* `compilerPipelineRole` is `'boundary'`: `sum`/`min`/`max`/`head`/
@@ -1947,7 +1975,7 @@ function generateSegmentedBodyInternal(
           ? opEmitFor(seg.step.step.name)
           : undefined
       if (pureMapLengthTerminalIndexes.has(seg.step.index)) {
-        blockLines.push(...emitPureMapLengthBoundary(seg.step.index, curData, nextData))
+        blockLines.push(...emitElideUnusedMap(seg.step.index, curData, nextData))
       } else if (
         inlineEmit !== undefined &&
         inlineEmit.kind !== 'boundary' &&
@@ -2030,7 +2058,7 @@ function generateSegmentedBodyInternal(
       seg.terminal !== undefined &&
       pureMapLengthTerminalIndexes.has(seg.terminal.index)
     ) {
-      blockLines.push(...emitPureMapLengthBoundary(seg.terminal.index, curData, nextData))
+      blockLines.push(...emitElideUnusedMap(seg.terminal.index, curData, nextData))
     } else {
       blockLines.push(
         ...emitElementSegment(
