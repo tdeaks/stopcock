@@ -84,29 +84,56 @@ order, lexical bindings, thrown errors, the canonical `Option.none` singleton,
 runner-construction timing, reusable reducer seeds, and array semantics for
 accepted sites.
 
-### Tier-preserving lowering
+### What fusing changes
 
-The compiler preserves the execution tier selected by the public import:
+Compiling a pipeline fuses it into one loop, and fusing is observable if your
+callbacks have side effects. The result is always the same. How many times
+your callbacks run, and in what order, is not:
 
-| Source                         | Recognized facade exports                                      | Compiled layout / fallback |
-| ------------------------------ | -------------------------------------------------------------- | -------------------------- |
-| `@stopcock/fp`                 | `pipe`, `flow`                                                 | sequential stages          |
-| `@stopcock/fp/compile`         | `compile`, `compilePure`                                       | compact fusion             |
-| `@stopcock/fp/fusion`          | `pipe`, `fusedPipe`, `flow`, `fusedFlow`, `compile`            | compact fusion             |
-| `@stopcock/fp-optimizer`       | `pipe`, `fusedPipe`, `flow`, `fusedFlow`, `compile`, `compilePure` | optimized fusion        |
-| configured wrapper source      | configured facade exports                                      | declared tier or visible compiler fallback |
+```ts
+pipe([1, 2, 3], map(log), filter(big))
+// uncompiled (any entry, at runtime): log 1, log 2, log 3, then the filters
+// compiled   (this plugin, fused):    log 1, filter, log 2, filter, log 3, filter
 
-Root `pipe` therefore keeps stage-by-stage callback order and materialization.
-Explicit fusion and optimizer imports keep their interleaved/early-exit
-semantics for eligible shapes. Root sequential `take` and `drop` stages retain
-their native stage-by-stage behavior, including dynamic and coercible counts.
-For compact or optimized fusion, the compiler lowers `take` and `drop` only
-when the count expression is statically known to produce a primitive number;
-the emitted loop applies the same one-time quota normalization as the runtime.
-Dynamic or coercible fused counts stay on the source-selected runtime fallback.
-`dropWhile` remains eligible in both layouts, and fused `take` keeps the
-established one-item lookahead at its lexical position. An unsafe or
-unsupported site never silently changes runtime tier.
+pipe([1, 2, 3, 4], map(log), find((x) => x === 2))
+// uncompiled (any entry, at runtime): log runs 4 times
+// compiled   (this plugin, fused):    log runs 2 times, then stops
+```
+
+This is the one-runtime-path plan's D1: callback interleaving and count are
+unspecified across tiers. There is no runtime fusion engine any more --
+`pipe`/`flow` from the package root, `@stopcock/fp/fusion`, and
+`compile`/`compilePure` are all the same plain, sequential, left-to-right
+application (see `packages/fp/src/pipe.ts`). The only fusion left is what this
+plugin does at build time. Results are guaranteed identical either way;
+callback order and count are not, and are not going to be pinned down, because
+doing so would mean giving up fusing.
+
+Pure callbacks are unaffected. If yours are not and you depend on
+stage-by-stage order, keep those pipelines out of the compiler (an unsupported
+operator or a dynamic step leaves the site as a runtime call), or write them
+as explicit loops.
+
+### Recognized facade entries
+
+`@stopcock/fp`, `@stopcock/fp/fusion`, and `@stopcock/fp/compile` are all
+recognized by default (`importSources`/`compileImportSources`); a configured
+wrapper source can expose the same facade exports under its own name. These
+entries exist so a call site can say "I mean fusion" (`@stopcock/fp/fusion`)
+or "compile me" (`compile`/`compilePure`) by name and keep working whether or
+not a build actually compiles it -- they no longer select a different runtime
+engine, since there is only the one. The compiler still emits a slightly
+different fallback shape per entry for a few boundary ops (e.g. `reverse`) to
+keep previously-compiled output byte-stable across versions; that is an
+internal compatibility detail, not a user-visible semantics difference.
+
+`take` and `drop` are lowered only when the count expression is statically
+known to produce a primitive number; the emitted loop applies the same
+one-time quota normalization the runtime does. A dynamic or coercible count
+stays a runtime call. `dropWhile` is always eligible, and a lowered `take`
+keeps the established one-item lookahead at its lexical position. An unsafe
+or unsupported site never silently changes behavior; it stays a real call to
+the runtime operator.
 
 Every accepted site is first represented as a versioned static Plan IR whose
 ordered captures, generated S2 operator facts, boundaries, terminal, semantic

@@ -82,20 +82,26 @@ Algebra and functions:
 
 Composition and programs:
 
-- `dual`, `compile`, `optic`, `match`
+- `compile`, `optic`, `match`
 - `reader`, `state-fn`, `writer`, `recursion`
 
-Every dual API supports data-first and data-last calls:
+Every operator has one form: curried, data-last.
 
 ```ts
-A.take(values, 5)
 pipe(values, A.take(5))
 ```
 
-## Portable compilation
+`dual` is a separate export, a helper for authoring your own data-first/
+data-last operator (`dual(2, (data, n) => ..., { op: 'myOp' })`); no module in
+this package uses it to build its own operators any more.
 
-Tagged pipelines share a bounded, callback-free shape cache and lower to
-portable loops. Runtime behavior never changes after warm-up.
+## Compiling pipelines
+
+There is one runtime path: `pipe`, `flow`, `compile`, and `compilePure` are
+all the same plain, left-to-right, sequential application. `compile` exists
+so a call site can say "this is a pipeline I intend to compile" by name;
+uncompiled, it behaves exactly like `pipe`, including callback order and
+early-exit counts.
 
 ```ts
 const summarize = compile(
@@ -103,64 +109,82 @@ const summarize = compile(
   A.map((value) => value * 2),
   A.sum,
 )
+```
 
+The actual fusion is `@stopcock/fp-compiler`: a build-time transform that
+recognizes a `pipe`/`flow`/`compile` call over these operators and replaces
+it with an inlined, single-pass loop, so the runtime engine above never runs
+for that call at all. See its own README for what it supports and what
+fusing changes about callback order and count.
+
+```ts
 const explanation = explain(
   A.filter((value: number) => value > 0),
   A.map((value) => value * 2),
   A.sum,
 )
-// explanation.executor === 'portable'
-// explanation.runtimeCodeGeneration === false
+// explanation === 'sequential', always -- explain() runs at runtime, and a
+// call the compiler actually fused never reaches this code to be explained.
 ```
 
-Compact and optimized pipelines admit `take` and `drop` to streaming fusion
-only when their quota is already a primitive number. The trusted private
-binding stores its normalized integer value; the public `_fn` diagnostic still
-shows the original argument. `dropWhile` remains a fused streaming operator.
-Fused `take` preserves the established one-item lookahead at its lexical
-position. Object, symbol, bigint, and other coercible quotas fail closed to the
-real public callable after the upstream segment materializes, preserving
-native `slice`, Array species, repeated coercions, and thrown-error timing.
+`compilePure` exists for source parity with the compiler's `assumePure`
+option; at runtime it is `compile` under a different name. `explainPure` is
+`explain` under a different name for the same reason.
 
-`compilePure` can apply opt-in rewrites such as unused-map elision before
-`length`. `explainPure`, imported from `@stopcock/fp/fusion/debug`, reports the
-actual rewrites before you choose pure semantics. `sort -> take` deliberately
-performs the full sort boundary before the selected tier's ordinary `take`;
-the retired bounded top-k implementation could not preserve changing-length
-Proxies or custom snapshot mutation and errors without a stronger, explicit
-input contract.
+Uncompiled `pipe` is already at or near hand-loop speed for most chains (see
+"Performance tiers" below) -- you do not need the compiler to get reasonable
+performance. Reach for `@stopcock/fp-compiler` for pipelines you've actually
+measured as hot: add the plugin for your bundler, then run `stopcock check`
+(the package's own CLI) to see which sites it recognized and which it didn't,
+without changing any code:
 
-For build-time source specialization, use `@stopcock/fp-compiler`.
+```bash
+stopcock check --strict src
+```
+
+A bailed site is not broken, it just runs the uncompiled path; the report
+tells you why (an unsupported operator, a dynamic step, ambiguous imports)
+so you can decide whether to restructure it or leave it alone.
 
 ## Performance tiers
 
-FP 2.0 measures separate contracts with different comparators. A ratio is
-reference time divided by Stopcock time, so greater than 1 means Stopcock was
-faster for that row. Geomeans from different contracts must not be combined.
+Each row is its own contract with its own reference and its own cases;
+geomeans from different rows must not be combined. A ratio is reference time
+divided by Stopcock time, so greater than 1 means Stopcock was faster for
+that row.
 
-| Contract                           | Paired reference and cases                                | Bun/JSC geo / min | Node/V8 geo / min |
-| ---------------------------------- | --------------------------------------------------------- | ----------------: | ----------------: |
-| Portable `compile`                 | Frozen loop emitter, 44                                   |   1.677× / 0.943× |   1.379× / 0.973× |
-| Build compiler, stratified         | Frozen loop emitter, 44                                   |   2.044× / 0.906× |   1.572× / 0.997× |
-| Build compiler, operation-complete | Frozen operation emitter, 37 timed + 2 optimizer canaries |   1.105× / 0.866× |   1.181× / 0.924× |
-| Direct `Iter` terminal             | Hand-written early-exit loop, 3                           |   0.991× / 0.963× |   0.731× / 0.661× |
-| Broad `Iter` surface               | Frozen executor, 14                                       |   1.941× / 1.047× |   2.159× / 0.999× |
-| `Array.without`                    | Frozen implementations, 27                                |   2.002× / 0.988× |                  — |
-| Typed arrays                       | Frozen implementations, 48                                |   8.879× / 0.973× |   2.272× / 0.814× |
-| Typed arrays                       | Native typed-array equivalents, 48                        |   1.149× / 0.716× |   1.211× / 0.869× |
-| Callback-identity churn            | Frozen compile contract, 4                                |   2.254× / 1.013× |   1.615× / 0.985× |
-| `pipe` dispatch                    | Frozen dispatcher, 4                                      |   1.097× / 1.025× |   1.072× / 1.033× |
-| Core utilities                     | Frozen implementations, 18                                |   3.452× / 0.669× |   2.272× / 0.728× |
-| Data and functional modules        | Frozen implementations, 11                                |   2.353× / 0.790× |   1.454× / 0.861× |
-| Structural modules                 | Frozen implementations, 15                                |   1.813× / 0.967× |   2.113× / 0.847× |
-| Scalar, text, and hash             | Frozen implementations, 11                                |   2.031× / 0.985× |   1.344× / 0.928× |
-| Recursion, match, schema, writer   | Frozen implementations, 11                                |   3.229× / 0.988× |   4.345× / 0.946× |
+| Contract                           | Paired reference and cases                                 | Bun/JSC geo / min |
+| ----------------------------------- | ----------------------------------------------------------- | -----------------: |
+| Build compiler, stratified          | Frozen loop emitter, 44                                     |   1.785× / 0.839× |
+| Build compiler, operation-complete  | Frozen operation emitter, 138 timed + 2 optimizer canaries  |   1.049× / 0.158× |
+| Uncompiled `pipe` floor (invariant) | ramda, 10                                                   |   1.848× / 1.193× |
+| Direct `Iter` terminal              | Hand-written early-exit loop, 3                             |   0.834× / 0.787× |
+| Broad `Iter` surface                | Frozen executor, 14                                         |   1.509× / 0.182× |
+| `Array.without`                     | Frozen implementations, 27                                  |   1.974× / 0.938× |
+| Typed arrays                        | Frozen implementations, 48                                  |   8.653× / 0.373× |
+| Typed arrays                        | Native typed-array equivalents, 48                          |   1.072× / 0.690× |
+| `pipe` dispatch                     | Frozen dispatcher, 4                                        |   1.081× / 1.018× |
+| Core utilities                      | Frozen implementations, 18                                  |   5.135× / 0.748× |
+| Data and functional modules         | Frozen implementations, 11                                  |   2.311× / 0.786× |
+| Structural modules                  | Frozen implementations, 15                                  |   2.317× / 0.999× |
+| Scalar, text, and hash              | Frozen implementations, 11                                  |   2.008× / 0.988× |
+| Recursion, match, schema, writer    | Frozen implementations, 11                                  |   1.816× / 0.464× |
 
-These are final paired local measurements from 23 July 2026 on Darwin arm64
-using Bun 1.3.14/JavaScriptCore and Node 24.18.0/V8 13.6. Raw minima are shown
-even when a pinned contract documents an unavoidable semantic or native-call
-trade-off; gates apply explicit engine and case policies rather than hiding
-those rows.
+Measured 28 July 2026 on Darwin arm64, Bun 1.3.14/JavaScriptCore, ambient
+load (no attempt made to get a quiet machine -- these gates are designed to
+pass under normal development load, and re-run repeatedly to confirm it).
+Node/V8 isn't in this table: this pass didn't have a working Node+tsx
+toolchain to measure it with, so rather than carry forward an old Node
+number next to a fresh Bun one, it's left out.
+
+A handful of rows carry a documented, evidenced floor below the shared
+default for specific cases -- an early-exit or expansion shape that the
+runtime engine's removal (see "Compiling pipelines" above) intentionally
+stopped optimizing at the runtime level, a genuinely bimodal case across
+process runs, or an architectural gap against one frozen reference's
+strategy -- rather than every case in that row clearing one blanket bar.
+See the comments in each gate under `benchmarks/src/reference/` for the
+specific reasoning and evidence behind each one.
 
 Each gate validates provenance, population, semantics, sampling shape, raw
 samples, recomputed statistics, confidence bounds, and performance floors.
@@ -171,11 +195,10 @@ fixed-input repetitions to counter-loop work; they are not presented as
 standalone latency measurements. CI reruns the contracts with Bun 1.3.14 and
 Node 22 on Linux x64 and macOS arm64 and retains raw plus evaluated artifacts.
 
-The portable runtime and fused `Iter` tier remain compatible with CSP policies
-that omit `unsafe-eval`: the public runtime graph contains no `eval`,
-`new Function`, function-source parsing, or dynamically loaded JIT. The
-optional compiler transforms source during the build and is not imported by
-the emitted application at runtime.
+The package stays compatible with CSP policies that omit `unsafe-eval`: the
+public runtime graph contains no `eval`, `new Function`, function-source
+parsing, or dynamically loaded JIT. The optional compiler transforms source
+during the build and is not imported by the emitted application at runtime.
 
 ## Lazy iteration
 
