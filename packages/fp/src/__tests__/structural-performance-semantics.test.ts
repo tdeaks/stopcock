@@ -119,10 +119,10 @@ describe('structural object fast paths', () => {
       },
     })
 
-    const result = Obj.omitBy(source, (value, key) => {
+    const result = Obj.omitBy((value: number, key: PropertyKey) => {
       events.push(`predicate:${keyLabel(key)}:${value}`)
       return key === 'second'
-    })
+    })(source)
     expect(Reflect.ownKeys(result)).toEqual(['first', symbol])
     expect(result).toEqual({ first: 1, [symbol]: 3 })
     expect(Object.getPrototypeOf(result)).toBeNull()
@@ -153,12 +153,12 @@ describe('structural object fast paths', () => {
         }
       },
     })
-    expect(Obj.getPathOrUndefined(callable, [key, 'leaf'])).toBeUndefined()
+    expect(Obj.getPathOrUndefined([key, 'leaf'] as const)(callable)).toBeUndefined()
     expect(events).toEqual(['get:symbol', 'get:leaf'])
 
     const inherited = Object.create({ leaf: 1 }) as { leaf: number }
-    expect(Obj.getPathOrUndefined(inherited, ['leaf'])).toBeUndefined()
-    expect(Obj.getPathOrUndefined({ nested: { leaf: 2 } }, ['nested', 'leaf'])).toBe(2)
+    expect(Obj.getPathOrUndefined(['leaf'] as const)(inherited)).toBeUndefined()
+    expect(Obj.getPathOrUndefined(['nested', 'leaf'] as const)({ nested: { leaf: 2 } })).toBe(2)
   })
 })
 
@@ -178,13 +178,13 @@ describe('structural optic fast paths', () => {
     )
     const items = Optic.fold((source: readonly number[]) => source)
 
-    expect(Optic.view(valueLens, { value: 1 })).toBe(1)
+    expect(Optic.view(valueLens)({ value: 1 })).toBe(1)
     expect(Optic.view(valueLens)({ value: 2 })).toBe(2)
-    expect(Optic.preview(present, 3)).toEqual(some(3))
+    expect(Optic.preview(present)(3)).toEqual(some(3))
     expect(Optic.preview(present)(null)).toBe(none)
-    expect(Optic.collect(valueLens, { value: 4 })).toEqual([4])
+    expect(Optic.collect(valueLens)({ value: 4 })).toEqual([4])
     expect(Optic.collect(valueLens)({ value: 5 })).toEqual([5])
-    expect(Optic.collect(items, [1, 2])).toEqual([1, 2])
+    expect(Optic.collect(items)([1, 2])).toEqual([1, 2])
     expect(events).toEqual(['lens:get', 'lens:get', 'lens:get', 'lens:get'])
   })
 
@@ -210,11 +210,11 @@ describe('structural optic fast paths', () => {
         return String(value)
       },
     )
-    expect(Optic.set(valueLens, { value: 1 }, 2)).toEqual({ value: 2 })
+    expect(Optic.set(valueLens, 2)({ value: 1 })).toEqual({ value: 2 })
     expect(Optic.set(valueLens, 3)({ value: 2 })).toEqual({ value: 3 })
-    expect(Optic.set(textNumber, '1', 4)).toBe('4')
-    expect(Optic.set(Optic.some<number>(), none, 1)).toBe(none)
-    expect(() => Optic.set(Optic.getter((value: number) => value), 1, 2)).toThrow(
+    expect(Optic.set(textNumber, 4)('1')).toBe('4')
+    expect(Optic.set(Optic.some<number>(), 1)(none)).toBe(none)
+    expect(() => Optic.set(Optic.getter((value: number) => value), 2)(1)).toThrow(
       'Cannot modify a read-only Getter',
     )
     expect(events).toEqual(['replace:1:2', 'replace:2:3', 'from:4'])
@@ -227,7 +227,7 @@ describe('structural optic fast paths', () => {
       (source: number) => source,
     )
     const nested = Optic.compose(Optic.each<number>(), inner)
-    const result = Optic.collect(nested, [0, 1])
+    const result = Optic.collect(nested)([0, 1])
     expect(result).toHaveLength(width * 2)
     expect(result[0]).toBe(0)
     expect(result[width - 1]).toBe(width - 1)
@@ -248,7 +248,7 @@ describe('structural optic fast paths', () => {
       (source: number) => source,
     )
     const nested = Optic.compose(Optic.each<number>(), inner)
-    expect(Optic.collect(nested, [1, 4])).toEqual([3, 2, 1, 6, 5, 4])
+    expect(Optic.collect(nested)([1, 4])).toEqual([3, 2, 1, 6, 5, 4])
   })
 })
 

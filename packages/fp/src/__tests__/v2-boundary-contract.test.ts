@@ -21,10 +21,6 @@ interface EagerSurface {
 
 const happyPathArraySurfaces: readonly EagerSurface[] = [
   {
-    id: 'direct-data-first',
-    run: (input, callback) => A.flatMap(input, callback),
-  },
-  {
     id: 'generated-data-last',
     run: (input, callback) => A.flatMap(callback)(input),
   },
@@ -46,7 +42,7 @@ const happyPathArraySurfaces: readonly EagerSurface[] = [
   },
 ]
 
-const directEagerSurfaces = happyPathArraySurfaces.slice(0, 2)
+const directEagerSurfaces = happyPathArraySurfaces.slice(0, 1)
 
 const divergentArraySurfaces: readonly EagerSurface[] = [
   {
@@ -120,7 +116,6 @@ describe('Stopcock 2.0 root migration snapshot', () => {
 describe('eager Array.flatMap 2.0 contract', () => {
   it('records one intended contract and an explicit oracle status for every execution surface', () => {
     expect(V2_EAGER_FLAT_MAP_SURFACES.map(({ id }) => id)).toEqual([
-      'direct-data-first',
       'generated-data-last',
       'reference-interpreter',
       'portable-lowering',
@@ -287,10 +282,10 @@ describe('eager Array.flatMap 2.0 contract', () => {
 describe('lazy Iter.flatMap 2.0 contract', () => {
   it('accepts arbitrary iterables lazily with an independent outer index', () => {
     const calls: Array<[number, number]> = []
-    const values = Iter.flatMap([2, 4], (value, index) => {
+    const values = Iter.flatMap((value: number, index: number) => {
       calls.push([value, index])
       return new Set([value, value + index + 1])
-    })
+    })([2, 4])
 
     expect(calls).toEqual([])
     expect(Iter.toArray(values)).toEqual([2, 3, 4, 6])
@@ -311,7 +306,7 @@ describe('lazy Iter.flatMap 2.0 contract', () => {
         events.push('source:close')
       }
     })()
-    const expanded = Iter.flatMap(source, (value) =>
+    const expanded = Iter.flatMap((value: number) =>
       (function* () {
         try {
           yield value * 10
@@ -320,9 +315,9 @@ describe('lazy Iter.flatMap 2.0 contract', () => {
           events.push(`nested:${value}:close`)
         }
       })(),
-    )
+    )(source)
 
-    expect(Iter.toArray(Iter.take(expanded, 1))).toEqual([10])
+    expect(Iter.toArray(Iter.take(1)(expanded))).toEqual([10])
     expect(events).toEqual(['nested:1:close', 'source:close'])
   })
 })

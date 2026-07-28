@@ -31,23 +31,23 @@ describe('optic', () => {
     const city = Optic.prop<User['address'], 'city'>('city')
     const userCity = Optic.compose(address, city)
 
-    expect(Optic.view(userCity, user)).toBe('London')
-    expect(Optic.set(userCity, user, 'Manchester')).toEqual({
+    expect(Optic.view(userCity)(user)).toBe('London')
+    expect(Optic.set(userCity, 'Manchester')(user)).toEqual({
       name: 'Ada',
       address: { city: 'Manchester' },
     })
     expect(user.address.city).toBe('London')
-    expect(Optic.set(Optic.prop<User, 'name'>('name'), user, 'Ada')).toBe(user)
+    expect(Optic.set(Optic.prop<User, 'name'>('name'), 'Ada')(user)).toBe(user)
   })
 
   it('models partial and multi-focus updates explicitly', () => {
     const missing = Optic.index<number>(5)
-    expect(isNone(Optic.preview(missing, [1, 2]))).toBe(true)
-    expect(Optic.set(missing, [1, 2], 9)).toEqual([1, 2])
+    expect(isNone(Optic.preview(missing)([1, 2]))).toBe(true)
+    expect(Optic.set(missing, 9)([1, 2])).toEqual([1, 2])
 
     const even = Optic.filtered<number>((value) => value % 2 === 0)
-    expect(Optic.collect(even, [1, 2, 3, 4])).toEqual([2, 4])
-    expect(Optic.modify(even, [1, 2, 3, 4], (value) => value * 10)).toEqual([
+    expect(Optic.collect(even)([1, 2, 3, 4])).toEqual([2, 4])
+    expect(Optic.modify(even, (value) => value * 10)([1, 2, 3, 4])).toEqual([
       1,
       20,
       3,
@@ -57,42 +57,41 @@ describe('optic', () => {
 
   it('supports keyed At optics and the fluent builder', () => {
     const theme = Optic.atKey<'theme', string>('theme')
-    const current = Optic.view(theme, { theme: 'dark' })
+    const current = Optic.view(theme)({ theme: 'dark' })
     expect(isSome(current) && current.value).toBe('dark')
 
     const city = Optic.optic<User>().prop('address').prop('city').value
-    expect(Optic.view(city as Optic.Lens<User, string>, user)).toBe('London')
+    expect(Optic.view(city as Optic.Lens<User, string>)(user)).toBe('London')
   })
 
   it('provides Option, Result, predicate, and nullable prisms', () => {
     const present = Optic.some<number>()
-    expect(Optic.preview(present, optionSome(2))).toEqual(optionSome(2))
-    expect(Optic.preview(present, none as Option<number>)).toBe(none)
+    expect(Optic.preview(present)(optionSome(2))).toEqual(optionSome(2))
+    expect(Optic.preview(present)(none as Option<number>)).toBe(none)
     expect(
-      Optic.modify(present, optionSome(2), (value) => value * 3),
+      Optic.modify(present, (value: number) => value * 3)(optionSome(2)),
     ).toEqual(optionSome(6))
-    expect(Optic.set(present, none as Option<number>, 6)).toBe(none)
+    expect(Optic.set(present, 6)(none as Option<number>)).toBe(none)
 
     const success = Optic.ok<number, string>()
     const failure = Optic.err<number, string>()
     expect(
-      Optic.set(success, resultOk(2) as Result<number, string>, 3),
+      Optic.set(success, 3)(resultOk(2) as Result<number, string>),
     ).toEqual(resultOk(3))
     expect(
-      Optic.set(success, resultErr('no') as Result<number, string>, 3),
+      Optic.set(success, 3)(resultErr('no') as Result<number, string>),
     ).toEqual(resultErr('no'))
     expect(
       Optic.modify(
         failure,
-        resultErr('no') as Result<number, string>,
-        (error) => error.toUpperCase(),
-      ),
+        (error: string) => error.toUpperCase(),
+      )(resultErr('no') as Result<number, string>),
     ).toEqual(resultErr('NO'))
 
     const positive = Optic.fromPredicate<number>((value) => value > 0)
-    expect(Optic.preview(positive, 1)).toEqual(optionSome(1))
-    expect(Optic.preview(positive, -1)).toBe(none)
-    expect(Optic.preview(Optic.nonNullable<number>(), null)).toBe(none)
+    expect(Optic.preview(positive)(1)).toEqual(optionSome(1))
+    expect(Optic.preview(positive)(-1)).toBe(none)
+    expect(Optic.preview(Optic.nonNullable<number>())(null)).toBe(none)
   })
 
   it('round-trips reversible isomorphisms', () => {
@@ -101,9 +100,9 @@ describe('optic', () => {
       (value: number) => String(value),
     )
     const numberText = Optic.reverse(textNumber)
-    expect(Optic.view(textNumber, '42')).toBe(42)
-    expect(Optic.view(numberText, 42)).toBe('42')
-    expect(Optic.set(numberText, 42, '7')).toBe(7)
+    expect(Optic.view(textNumber)('42')).toBe(42)
+    expect(Optic.view(numberText)(42)).toBe('42')
+    expect(Optic.set(numberText, '7')(42)).toBe(7)
   })
 
   it('composes traversals and partial focuses without losing updates', () => {
@@ -111,9 +110,9 @@ describe('optic', () => {
       Optic.each<readonly number[]>(),
       Optic.each<number>(),
     )
-    expect(Optic.collect(nested, [[1, 2], [3]])).toEqual([1, 2, 3])
+    expect(Optic.collect(nested)([[1, 2], [3]])).toEqual([1, 2, 3])
     expect(
-      Optic.modify(nested, [[1, 2], [3]], (value) => value + 10),
+      Optic.modify(nested, (value: number) => value + 10)([[1, 2], [3]]),
     ).toEqual([[11, 12], [13]])
 
     const optionAddress = Optic.compose(
@@ -121,10 +120,10 @@ describe('optic', () => {
       Optic.prop<User, 'address'>('address'),
     )
     expect(
-      Optic.modify(optionAddress, optionSome(user), (address) => ({
+      Optic.modify(optionAddress, (address: User['address']) => ({
         ...address,
         city: 'Paris',
-      })),
+      }))(optionSome(user)),
     ).toEqual(optionSome({ ...user, address: { city: 'Paris' } }))
   })
 

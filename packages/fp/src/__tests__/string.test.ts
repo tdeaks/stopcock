@@ -62,20 +62,16 @@ describe('string', () => {
     })
   })
 
-  describe('arity 2 dual wrappers', () => {
-    it('startsWith data-first', () => expect(S.startsWith('hello', 'he')).toBe(true))
-    it('startsWith data-last', () => expect(pipe('hello', S.startsWith('he'))).toBe(true))
+  describe('arity 2 operators', () => {
+    it('startsWith', () => expect(pipe('hello', S.startsWith('he'))).toBe(true))
 
-    it('endsWith data-first', () => expect(S.endsWith('hello', 'lo')).toBe(true))
-    it('endsWith data-last', () => expect(pipe('hello', S.endsWith('lo'))).toBe(true))
+    it('endsWith', () => expect(pipe('hello', S.endsWith('lo'))).toBe(true))
 
-    it('includes data-first', () => expect(S.includes('hello', 'ell')).toBe(true))
-    it('includes data-last', () => expect(pipe('hello', S.includes('ell'))).toBe(true))
+    it('includes', () => expect(pipe('hello', S.includes('ell'))).toBe(true))
 
-    it('split data-first', () => expect(S.split('a,b,c', ',')).toEqual(['a', 'b', 'c']))
-    it('split data-last', () => expect(pipe('a,b,c', S.split(','))).toEqual(['a', 'b', 'c']))
+    it('split', () => expect(pipe('a,b,c', S.split(','))).toEqual(['a', 'b', 'c']))
 
-    it('split data-last carries compatible public metadata and private provenance', () => {
+    it('split carries compatible public metadata and private provenance', () => {
       const separator = /,/u
       const operator = S.split(separator)
       expect((operator as { readonly _op?: number })._op).toBe(OP_STR_SPLIT)
@@ -88,22 +84,19 @@ describe('string', () => {
       })
     })
 
-    it('preserves the tagged binary wrapper reflection contract', () => {
-      expect(S.split.name).toBe('')
-      expect(S.split.length).toBe(0)
-      expect(Object.prototype.hasOwnProperty.call(S.split, 'prototype')).toBe(true)
+    it('preserves the tagged operator reflection contract', () => {
+      expect(S.split.name).toBe('split')
+      expect(S.split.length).toBe(1)
+      expect(Object.prototype.hasOwnProperty.call(S.split, 'prototype')).toBe(false)
     })
 
-    it('repeat data-first', () => expect(S.repeat('ab', 3)).toBe('ababab'))
-    it('repeat data-last', () => expect(pipe('ab', S.repeat(3))).toBe('ababab'))
+    it('repeat', () => expect(pipe('ab', S.repeat(3))).toBe('ababab'))
   })
 
-  describe('arity 3 dual wrappers', () => {
-    it('slice data-first', () => expect(S.slice('hello', 1, 3)).toBe('el'))
-    it('slice data-last', () => expect(pipe('hello', S.slice(1, 3))).toBe('el'))
+  describe('arity 3 operators', () => {
+    it('slice', () => expect(pipe('hello', S.slice(1, 3))).toBe('el'))
 
-    it('replaceAll data-first', () => expect(S.replaceAll('aabbcc', 'b', 'x')).toBe('aaxxcc'))
-    it('replaceAll data-last', () => expect(pipe('aabbcc', S.replaceAll('b', 'x'))).toBe('aaxxcc'))
+    it('replaceAll', () => expect(pipe('aabbcc', S.replaceAll('b', 'x'))).toBe('aaxxcc'))
   })
 
   describe('pipe composition', () => {

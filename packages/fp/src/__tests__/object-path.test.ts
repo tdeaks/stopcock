@@ -7,8 +7,10 @@ describe('object path writes', () => {
     const source = { count: 1 }
     const replacement = { count: 2 }
 
-    expect(Obj.setPath(source, [], replacement)).toBe(replacement)
-    expect(Obj.modifyPath(source, [], (current) => ({ count: current.count + 1 }))).toEqual({
+    expect(Obj.setPath([], replacement)(source)).toBe(replacement)
+    expect(
+      Obj.modifyPath([], (current: { count: number }) => ({ count: current.count + 1 }))(source),
+    ).toEqual({
       count: 2,
     })
     expect(source).toEqual({ count: 1 })
@@ -23,10 +25,10 @@ describe('object path writes', () => {
     const source: User = {}
     const observed: Array<string | undefined> = []
 
-    const result = Obj.modifyPath(source, ['profile', 'name'], (name) => {
+    const result = Obj.modifyPath(['profile', 'name'], (name: string | undefined) => {
       observed.push(name)
       return name ?? 'anonymous'
-    })
+    })(source)
 
     expect(observed).toEqual([undefined])
     expect(result).toEqual({ profile: { name: 'anonymous' } })
@@ -45,7 +47,12 @@ describe('object path writes', () => {
       ],
     }
 
-    const result = Obj.setPath(source, ['rows', 1, 0], 'changed')
+    // IsPathConstructible treats a dynamic array's index as possibly missing, so
+    // writing through it into a fixed 2-tuple looks like it could omit the
+    // tuple's other required element -- pre-existing limitation of the path
+    // types (also present, unexercised, on the old data-first overload), not
+    // something this conversion introduced. The cast documents the gap.
+    const result = (Obj.setPath(['rows', 1, 0], 'changed') as (value: State) => State)(source)
 
     expect(result).toEqual({
       rows: [
@@ -64,10 +71,10 @@ describe('object path writes', () => {
     const source: Readonly<{ values: readonly number[] }> = { values: [1] }
     const observed: Array<number | undefined> = []
 
-    const result = Obj.modifyPath(source, ['values', 2], (value) => {
+    const result = Obj.modifyPath(['values', 2], (value: number | undefined) => {
       observed.push(value)
       return (value ?? 0) + 3
-    })
+    })(source)
 
     expect(observed).toEqual([undefined])
     expect(result.values).toEqual([1, , 3])
@@ -77,8 +84,10 @@ describe('object path writes', () => {
   it('updates frozen array indices before restoring their non-writable length', () => {
     const source: readonly number[] = Object.freeze([1])
 
-    const setExisting = Obj.setPath(source, [0], 2)
-    const modifyMissing = Obj.modifyPath(source, [2], (value) => (value ?? 0) + 3)
+    const setExisting = Obj.setPath([0], 2)(source)
+    const modifyMissing = Obj.modifyPath([2], (value: number | undefined) => (value ?? 0) + 3)(
+      source,
+    )
 
     expect(setExisting).toEqual([2])
     expect(Object.getOwnPropertyDescriptor(setExisting, '0')).toEqual({
@@ -102,7 +111,7 @@ describe('object path writes', () => {
   it('removes an optional frozen tuple index without changing its locked length', () => {
     const source: readonly [string, number?] = Object.freeze(['ready', 2])
 
-    const result = Obj.removePath(source, [1])
+    const result = Obj.removePath([1])(source)
 
     expect(result).toHaveLength(2)
     expect(result[0]).toBe('ready')
@@ -126,8 +135,8 @@ describe('object path writes', () => {
     const absent: State = {}
     const present: State = { profile: { name: 'Ada', nickname: 'ace' } }
 
-    expect(Obj.removePath(absent, ['profile', 'nickname'])).toBe(absent)
-    const removed = Obj.removePath(present, ['profile', 'nickname'])
+    expect(Obj.removePath(['profile', 'nickname'])(absent)).toBe(absent)
+    const removed = Obj.removePath(['profile', 'nickname'])(present)
     expect(removed).toEqual({ profile: { name: 'Ada' } })
     expect(removed).not.toBe(present)
     expect(removed.profile).not.toBe(present.profile)
@@ -141,8 +150,8 @@ describe('object path writes', () => {
     const counter = new Counter(1)
     const structurallyTyped: { count: number } = counter
 
-    expect(() => Obj.setPath(structurallyTyped, ['count'], 2)).toThrow(TypeError)
-    expect(() => Obj.modifyPath(structurallyTyped, ['count'], (count) => count + 1)).toThrow(
+    expect(() => Obj.setPath(['count'], 2)(structurallyTyped)).toThrow(TypeError)
+    expect(() => Obj.modifyPath(['count'], (count: number) => count + 1)(structurallyTyped)).toThrow(
       TypeError,
     )
     expect(counter.count).toBe(1)
@@ -168,7 +177,7 @@ describe('object path writes', () => {
     })
     const source = { values }
 
-    const result = Obj.setPath(source, ['values', 1], 20)
+    const result = Obj.setPath(['values', 1], 20)(source)
 
     expect(result.values).toEqual([1, 20, 3])
     expect(result.values).not.toBe(values)
@@ -204,7 +213,7 @@ describe('object path writes', () => {
       writable: false,
     })
 
-    const result = Obj.setPath(source, ['target'], 2)
+    const result = Obj.setPath(['target'], 2)(source)
 
     expect(reads).toBe(0)
     expect(result.target).toBe(2)
@@ -229,11 +238,13 @@ describe('object path writes', () => {
       },
     })
 
-    const result = Obj.setPath(source, ['value'], 2)
+    const result = Obj.setPath(['value'], 2)(source)
 
     expect(result.value).toBe(2)
     expect(reads).toBe(0)
-    expect(() => Obj.modifyPath(source, ['value'], (value) => value + 1)).toThrow('leaf read')
+    expect(() => Obj.modifyPath(['value'], (value: number) => value + 1)(source)).toThrow(
+      'leaf read',
+    )
     expect(reads).toBe(1)
   })
 
@@ -245,8 +256,8 @@ describe('object path writes', () => {
     const structurallyTyped: readonly number[] = subclass
     const unsafeKey: string = '__proto__'
 
-    expect(() => Obj.setPath({ values: structurallyTyped }, ['values', 0], 2)).toThrow(TypeError)
-    expect(() => Obj.setPath({} as Readonly<Record<string, number>>, [unsafeKey], 1)).toThrow(
+    expect(() => Obj.setPath(['values', 0], 2)({ values: structurallyTyped })).toThrow(TypeError)
+    expect(() => Obj.setPath([unsafeKey], 1)({} as Readonly<Record<string, number>>)).toThrow(
       TypeError,
     )
   })
@@ -263,8 +274,10 @@ describe('object path writes', () => {
       'new (class Numbers extends Array {})(1, 2)',
     ) as number[]
 
-    const objectResult = Obj.setPath(foreignObject, ['nested', 'value'], 2)
-    const arrayResult = Obj.modifyPath(foreignArray, [1], (value) => (value ?? 0) + 2)
+    const objectResult = Obj.setPath(['nested', 'value'], 2)(foreignObject)
+    const arrayResult = Obj.modifyPath([1], (value: number | undefined) => (value ?? 0) + 2)(
+      foreignArray,
+    )
 
     expect(objectResult).toEqual({ nested: { value: 2 } })
     expect(Object.getPrototypeOf(objectResult)).toBe(Object.getPrototypeOf(foreignObject))
@@ -273,7 +286,7 @@ describe('object path writes', () => {
     )
     expect(arrayResult).toEqual([1, 4])
     expect(Object.getPrototypeOf(arrayResult)).toBe(Object.getPrototypeOf(foreignArray))
-    expect(() => Obj.setPath(foreignClass, ['count'], 2)).toThrow(TypeError)
-    expect(() => Obj.setPath(foreignArraySubclass, [0], 2)).toThrow(TypeError)
+    expect(() => Obj.setPath(['count'], 2)(foreignClass)).toThrow(TypeError)
+    expect(() => Obj.setPath([0], 2)(foreignArraySubclass)).toThrow(TypeError)
   })
 })

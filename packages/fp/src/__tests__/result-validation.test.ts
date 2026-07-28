@@ -4,30 +4,26 @@ import * as V from '../validation'
 import { isString } from '../guard'
 
 describe('Result validation and composition', () => {
-  it('fromPredicate supports both forms, refinements, and lazy errors', () => {
+  it('fromPredicate refines and constructs lazy errors', () => {
     const rejected: unknown[] = []
     const onFalse = (value: unknown) => {
       rejected.push(value)
       return { value }
     }
 
-    expect(R.fromPredicate('ok' as unknown, isString, onFalse)).toEqual(R.ok('ok'))
     expect(R.fromPredicate(isString, onFalse)('ok')).toEqual(R.ok('ok'))
     expect(rejected).toEqual([])
 
     const value = 42
-    expect(R.fromPredicate(value, isString, onFalse)).toEqual(R.err({ value }))
     expect(R.fromPredicate(isString, onFalse)(value)).toEqual(R.err({ value }))
-    expect(rejected).toEqual([value, value])
+    expect(rejected).toEqual([value])
   })
 
-  it('filterOrElse validates Ok values in both forms', () => {
+  it('filterOrElse validates Ok values', () => {
     const positive = (value: number) => value > 0
     const onFalse = (value: number) => `not positive: ${value}`
 
-    expect(R.filterOrElse(R.ok(1), positive, onFalse)).toEqual(R.ok(1))
     expect(R.filterOrElse(positive, onFalse)(R.ok(1))).toEqual(R.ok(1))
-    expect(R.filterOrElse(R.ok(-1), positive, onFalse)).toEqual(R.err('not positive: -1'))
     expect(R.filterOrElse(positive, onFalse)(R.ok(-1))).toEqual(R.err('not positive: -1'))
   })
 
@@ -44,11 +40,9 @@ describe('Result validation and composition', () => {
       return 'new'
     }
 
-    const dataFirst = R.filterOrElse(existing, predicate, onFalse)
-    const dataLast = R.filterOrElse(predicate, onFalse)(existing)
+    const result = R.filterOrElse(predicate, onFalse)(existing)
 
-    expect(dataFirst).toBe(existing)
-    expect(dataLast).toBe(existing)
+    expect(result).toBe(existing)
     expect(predicates).toBe(0)
     expect(failures).toBe(0)
   })
@@ -65,19 +59,16 @@ describe('Result validation and composition', () => {
     expect(R.sequence([])).toEqual(R.ok([]))
   })
 
-  it('traverse is left-to-right, supports both forms, and stops after the first error', () => {
-    const dataFirstSeen: number[] = []
-    const dataLastSeen: number[] = []
+  it('traverse is left-to-right and stops after the first error', () => {
+    const seen: number[] = []
     const decodeWith = (seen: number[]) => (value: number) => {
       seen.push(value)
       return value < 3 ? R.ok(String(value)) : R.err(`bad:${value}`)
     }
 
-    expect(R.traverse([1, 2, 3, 4], decodeWith(dataFirstSeen))).toEqual(R.err('bad:3'))
-    expect(R.traverse(decodeWith(dataLastSeen))([1, 2, 3, 4])).toEqual(R.err('bad:3'))
-    expect(dataFirstSeen).toEqual([1, 2, 3])
-    expect(dataLastSeen).toEqual([1, 2, 3])
-    expect(R.traverse([], decodeWith([]))).toEqual(R.ok([]))
+    expect(R.traverse(decodeWith(seen))([1, 2, 3, 4])).toEqual(R.err('bad:3'))
+    expect(seen).toEqual([1, 2, 3])
+    expect(R.traverse(decodeWith([]))([])).toEqual(R.ok([]))
   })
 
   it('optional bypasses only undefined and nullable bypasses only null', () => {
@@ -92,17 +83,13 @@ describe('Result validation and composition', () => {
       return R.ok(value)
     }
 
-    expect(R.optional(undefined, optionalDecode)).toEqual(R.ok(undefined))
     expect(R.optional(optionalDecode)(undefined)).toEqual(R.ok(undefined))
-    expect(R.optional(null, optionalDecode)).toEqual(R.ok(null))
     expect(R.optional(optionalDecode)(null)).toEqual(R.ok(null))
-    expect(optionalSeen).toEqual([null, null])
+    expect(optionalSeen).toEqual([null])
 
-    expect(R.nullable(null, nullableDecode)).toEqual(R.ok(null))
     expect(R.nullable(nullableDecode)(null)).toEqual(R.ok(null))
-    expect(R.nullable(undefined, nullableDecode)).toEqual(R.ok(undefined))
     expect(R.nullable(nullableDecode)(undefined)).toEqual(R.ok(undefined))
-    expect(nullableSeen).toEqual([undefined, undefined])
+    expect(nullableSeen).toEqual([undefined])
   })
 })
 
@@ -114,19 +101,17 @@ describe('Validation', () => {
     expect(V.fromResult(R.err('broken'))).toEqual(V.invalid('broken'))
   })
 
-  it('fromPredicate supports both forms and lazy error construction', () => {
+  it('fromPredicate constructs lazy errors', () => {
     let failures = 0
     const onFalse = (value: unknown) => {
       failures++
       return { value }
     }
 
-    expect(V.fromPredicate('ok' as unknown, isString, onFalse)).toEqual(V.valid('ok'))
     expect(V.fromPredicate(isString, onFalse)('ok')).toEqual(V.valid('ok'))
     expect(failures).toBe(0)
-    expect(V.fromPredicate(1 as unknown, isString, onFalse)).toEqual(V.invalid({ value: 1 }))
     expect(V.fromPredicate(isString, onFalse)(1)).toEqual(V.invalid({ value: 1 }))
-    expect(failures).toBe(2)
+    expect(failures).toBe(1)
   })
 
   it('all accumulates and flattens errors in stable input order', () => {
@@ -139,19 +124,16 @@ describe('Validation', () => {
     expect(V.all([])).toEqual(V.valid([]))
   })
 
-  it('traverse validates every input and accumulates errors in both forms', () => {
-    const dataFirstSeen: number[] = []
-    const dataLastSeen: number[] = []
+  it('traverse validates every input and accumulates errors', () => {
+    const seen: number[] = []
     const validateWith = (seen: number[]) => (value: number) => {
       seen.push(value)
       return value % 2 === 0 ? V.valid(value * 2) : V.invalid(`odd:${value}`)
     }
 
-    expect(V.traverse([1, 2, 3, 4], validateWith(dataFirstSeen))).toEqual(R.err(['odd:1', 'odd:3']))
-    expect(V.traverse(validateWith(dataLastSeen))([1, 2, 3, 4])).toEqual(R.err(['odd:1', 'odd:3']))
-    expect(dataFirstSeen).toEqual([1, 2, 3, 4])
-    expect(dataLastSeen).toEqual([1, 2, 3, 4])
-    expect(V.traverse([], validateWith([]))).toEqual(V.valid([]))
+    expect(V.traverse(validateWith(seen))([1, 2, 3, 4])).toEqual(R.err(['odd:1', 'odd:3']))
+    expect(seen).toEqual([1, 2, 3, 4])
+    expect(V.traverse(validateWith([]))([])).toEqual(V.valid([]))
   })
 
   it('remains compatible with Result transforms and extraction', () => {

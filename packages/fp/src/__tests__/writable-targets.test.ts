@@ -9,11 +9,11 @@ class NumberBucket extends Array<number> {
 }
 
 describe('writable-target collection helpers', () => {
-  it('returns the exact array target in both array invocation styles', () => {
+  it('returns the exact array target for mapInto and filterInto', () => {
     const direct = new NumberBucket()
     const curried = new NumberBucket()
 
-    expect(ArrayOps.mapInto([1, 2], direct, (value) => value * 2)).toBe(direct)
+    expect(ArrayOps.mapInto(direct, (value: number) => value * 2)([1, 2])).toBe(direct)
     expect([...direct]).toEqual([2, 4])
     expect(ArrayOps.filterInto(curried, (value: number) => value > 1)([1, 2, 3])).toBe(curried)
     expect([...curried]).toEqual([2, 3])

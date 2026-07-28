@@ -33,13 +33,10 @@ test('compiled paths keep the generic path inference', () => {
   Obj.compilePathOf<User>()('profile' as string)
 })
 
-test('Map.getOrElse widens to the fallback in both forms', () => {
+test('Map.getOrElse widens to the fallback', () => {
   const source = new Map<string, number>()
 
-  expectTypeOf(MapOps.getOrElse(source, 'key', () => 0)).toEqualTypeOf<number>()
-  expectTypeOf(MapOps.getOrElse(source, 'key', () => 'none' as const)).toEqualTypeOf<
-    number | 'none'
-  >()
+  expectTypeOf(MapOps.getOrElse('key', () => 0)(source)).toEqualTypeOf<number>()
   expectTypeOf(MapOps.getOrElse('key', () => 'none' as const)(source)).toEqualTypeOf<
     number | 'none'
   >()
@@ -47,9 +44,9 @@ test('Map.getOrElse widens to the fallback in both forms', () => {
   const unionKeySource = new Map<string | number, number>()
   expectTypeOf(MapOps.getOrElse('key', () => 0)(unionKeySource)).toEqualTypeOf<number>()
 
-  // @ts-expect-error the data-last form rejects a source whose keys cannot accept the key.
+  // @ts-expect-error rejects a source whose keys cannot accept the key.
   MapOps.getOrElse('key', () => 0)(new Map<number, number>())
 
   // @ts-expect-error the fallback is lazy, not a value.
-  MapOps.getOrElse(source, 'key', 0)
+  MapOps.getOrElse('key', 0)(source)
 })

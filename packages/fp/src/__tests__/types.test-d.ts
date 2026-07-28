@@ -54,17 +54,19 @@ test('pipe and flow preserve multi-stage inference', () => {
 
 test('array APIs support data-first, data-last, refinements, and tuples', () => {
   const values: readonly (string | number)[] = ['one', 2]
-  expectTypeOf(A.filter(values, G.isString)).toEqualTypeOf<string[]>()
+  expectTypeOf(A.filter(G.isString)(values)).toEqualTypeOf<string[]>()
   expectTypeOf(A.map((value: number) => String(value))).toEqualTypeOf<
     (arr: readonly number[]) => string[]
   >()
   expectTypeOf(A.head([1, 2])).toEqualTypeOf<O.Option<number>>()
   expectTypeOf(A.headOrUndefined([1, 2])).toEqualTypeOf<number | undefined>()
   expectTypeOf(A.headNonEmpty([1, 2])).toEqualTypeOf<number>()
-  expectTypeOf(A.find(values, G.isString)).toEqualTypeOf<O.Option<string>>()
-  expectTypeOf(A.findOrUndefined(values, G.isString)).toEqualTypeOf<string | undefined>()
+  expectTypeOf(A.find(G.isString)(values)).toEqualTypeOf<O.Option<string>>()
+  expectTypeOf(A.findOrUndefined(G.isString)(values)).toEqualTypeOf<string | undefined>()
   expectTypeOf(
-    A.partitionMap(values, (value) => (typeof value === 'string' ? R.ok(value) : R.err(value))),
+    A.partitionMap((value: string | number) =>
+      typeof value === 'string' ? R.ok(value) : R.err(value),
+    )(values),
   ).toEqualTypeOf<readonly [number[], string[]]>()
   const sequenced: R.Result<[number, string], never> = A.sequence([R.ok(1), R.ok('two')] as const)
   expectTypeOf(sequenced).toMatchTypeOf<R.Result<[number, string], never>>()
@@ -91,10 +93,10 @@ test('Option composition preserves value inference', () => {
 
 test('Result composition preserves value and error unions', () => {
   const decoded = null as unknown as R.Result<number, 'decode'>
-  const flatMapped = R.flatMap(decoded, (value: number) =>
-    value > 0 ? R.ok(String(value)) : R.err('negative' as const),
-  )
-  const output = R.map(flatMapped, (value: string) => value.length)
+  const decodeStep: (value: number) => R.Result<string, 'negative'> = (value) =>
+    value > 0 ? R.ok(String(value)) : R.err('negative' as const)
+  const flatMapped = R.flatMap<number, typeof decodeStep>(decodeStep)(decoded)
+  const output = R.map((value: string) => value.length)(flatMapped)
   const checkedOutput: R.Result<number, 'decode' | 'negative'> = output
   expectTypeOf(checkedOutput).toMatchTypeOf<R.Result<number, 'decode' | 'negative'>>()
   const allResults: R.Result<[number, string], 'first' | 'second'> = R.all([
@@ -128,10 +130,9 @@ test('Validation accumulates a typed non-empty error collection', () => {
   >()
   expectTypeOf(
     V.traverse(
-      ['a'],
-      (value): V.Validation<number, 'empty'> =>
+      (value: string): V.Validation<number, 'empty'> =>
         value.length > 0 ? V.valid(value.length) : V.invalid('empty'),
-    ),
+    )(['a']),
   ).toEqualTypeOf<V.Validation<number[], 'empty'>>()
 })
 
@@ -156,9 +157,9 @@ test('tuple paths preserve nested values and reject invalid paths', () => {
   }
   const user = {} as User
   const namePath = Obj.pathOf<User>()('profile', 'name')
-  expectTypeOf(Obj.getPath(user, namePath)).toEqualTypeOf<O.Option<string | undefined>>()
-  expectTypeOf(Obj.getPathOrUndefined(user, namePath)).toEqualTypeOf<string | undefined>()
-  expectTypeOf(Obj.setPath(user, ['profile', 'name'], 'Ada')).toEqualTypeOf<User>()
+  expectTypeOf(Obj.getPath(namePath)(user)).toEqualTypeOf<O.Option<string | undefined>>()
+  expectTypeOf(Obj.getPathOrUndefined(namePath)(user)).toEqualTypeOf<string | undefined>()
+  expectTypeOf(Obj.setPath(['profile', 'name'], 'Ada')(user)).toEqualTypeOf<User>()
 
   // @ts-expect-error path builders reject keys that do not exist.
   Obj.pathOf<User>()('missing')
@@ -170,9 +171,9 @@ test('polymorphic optics preserve source and focus types', () => {
   const name = Optic.prop<User['profile'], 'name'>('name')
   const userName = Optic.compose(profile, name)
   const user: User = { profile: { name: 'Ada' } }
-  expectTypeOf(Optic.view(userName, user)).toEqualTypeOf<string>()
-  expectTypeOf(Optic.set(userName, user, 'Grace')).toEqualTypeOf<User>()
-  expectTypeOf(Optic.preview(Optic.index<number>(0), [1, 2])).toEqualTypeOf<O.Option<number>>()
+  expectTypeOf(Optic.view(userName)(user)).toEqualTypeOf<string>()
+  expectTypeOf(Optic.set(userName, 'Grace')(user)).toEqualTypeOf<User>()
+  expectTypeOf(Optic.preview(Optic.index<number>(0))([1, 2])).toEqualTypeOf<O.Option<number>>()
 })
 
 test('Iter pipelines remain lazy in their types', () => {
@@ -192,17 +193,17 @@ test('Iter pipelines remain lazy in their types', () => {
 test('partial collection and statistical APIs expose Option by default', () => {
   const map = new Map<string, number | undefined>()
   const record = {} as RecordOps.ReadonlyRecord<number | undefined>
-  expectTypeOf(MapOps.get(map, 'key')).toEqualTypeOf<O.Option<number | undefined>>()
-  expectTypeOf(MapOps.getOrUndefined(map, 'key')).toEqualTypeOf<number | undefined>()
-  expectTypeOf(RecordOps.get(record, 'key')).toEqualTypeOf<O.Option<number | undefined>>()
+  expectTypeOf(MapOps.get('key')(map)).toEqualTypeOf<O.Option<number | undefined>>()
+  expectTypeOf(MapOps.getOrUndefined('key')(map)).toEqualTypeOf<number | undefined>()
+  expectTypeOf(RecordOps.get('key')(record)).toEqualTypeOf<O.Option<number | undefined>>()
   expectTypeOf(Indexed.at([1, 2], 0)).toEqualTypeOf<O.Option<number>>()
   expectTypeOf(Indexed.atOrUndefined([1, 2], 0)).toEqualTypeOf<number | undefined>()
-  expectTypeOf(TypedArray.at(new Uint8Array(), 0)).toEqualTypeOf<O.Option<number>>()
+  expectTypeOf(TypedArray.at(0)(new Uint8Array())).toEqualTypeOf<O.Option<number>>()
   expectTypeOf(
-    TypedArray.filter(new Uint16Array(), (value) => value > 0),
+    TypedArray.filter((value: number) => value > 0)(new Uint16Array()),
   ).toMatchTypeOf<Uint16Array>()
   expectTypeOf(
-    TypedArray.filter(new BigInt64Array(), (value) => value > 0n),
+    TypedArray.filter((value: bigint) => value > 0n)(new BigInt64Array()),
   ).toMatchTypeOf<BigInt64Array>()
   expectTypeOf(
     TypedArray.copyInto(new Uint8Array(), new Float64Array()),
@@ -247,7 +248,7 @@ test('Standard Schema adapters infer transformed outputs', () => {
   )
   const label = Schema.map(positive, (value) => `n:${value}`)
   expectTypeOf<Schema.StandardSchemaV1.InferOutput<typeof label>>().toEqualTypeOf<string>()
-  expectTypeOf(Schema.validateSync(1, label)).toEqualTypeOf<
+  expectTypeOf(Schema.validateSync(label)(1)).toEqualTypeOf<
     R.Result<string, readonly Schema.Issue[]>
   >()
   expectTypeOf(Schema.validate(label)).toEqualTypeOf<

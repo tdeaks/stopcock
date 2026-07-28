@@ -290,13 +290,13 @@ describe('P4 plain-data write tier', () => {
 
         if (expectedError !== undefined) {
           expect(
-            () => Obj.setPath(shape as never, path as never, 'written' as never),
+            () => Obj.setPath(path as never, 'written' as never)(shape as never),
             where,
           ).toThrow((expectedError as Error).constructor as never)
           continue
         }
         expectIndistinguishable(
-          Obj.setPath(shape as never, path as never, 'written' as never),
+          Obj.setPath(path as never, 'written' as never)(shape as never),
           expected,
           where,
         )
@@ -307,17 +307,17 @@ describe('P4 plain-data write tier', () => {
   it('leaves the source untouched', () => {
     const source = { a: 1, inner: { c: 3 } }
     const snapshot = structuredClone(source)
-    Obj.setPath(source, ['inner', 'c'] as never, 9 as never)
+    Obj.setPath(['inner', 'c'] as never, 9 as never)(source)
     expect(source).toEqual(snapshot)
   })
 
   it('still rejects unsafe write keys', () => {
     const source = { a: 1 }
     for (const key of ['__proto__', 'constructor', 'prototype']) {
-      expect(() => Obj.setPath(source, [key] as never, 1 as never)).toThrow(TypeError)
-      expect(() => Obj.modifyPath(source, [key] as never, (() => 1) as never)).toThrow(TypeError)
+      expect(() => Obj.setPath([key] as never, 1 as never)(source)).toThrow(TypeError)
+      expect(() => Obj.modifyPath([key] as never, (() => 1) as never)(source)).toThrow(TypeError)
     }
-    expect(Object.getPrototypeOf(Obj.setPath(source, ['a'] as never, 1 as never))).toBe(
+    expect(Object.getPrototypeOf(Obj.setPath(['a'] as never, 1 as never)(source))).toBe(
       Object.prototype,
     )
   })
@@ -339,7 +339,7 @@ describe('P4 plain-data write tier', () => {
         return Reflect.ownKeys(object)
       },
     })
-    Obj.setPath(source, ['a'] as never, 9 as never)
+    Obj.setPath(['a'] as never, 9 as never)(source)
     expect(traps.some((trap) => trap.startsWith('get:'))).toBe(false)
   })
 
@@ -355,16 +355,16 @@ describe('P4 plain-data write tier', () => {
         configurable: true,
       }),
     }
-    Obj.setPath(source, ['inner', 'c'] as never, 9 as never)
+    Obj.setPath(['inner', 'c'] as never, 9 as never)(source)
     expect(reads).toBe(0)
   })
 
   it('rejects class instances and callables as before', () => {
     expect(() =>
-      Obj.setPath({ inner: new Instance({ c: 1 }) }, ['inner', 'c'] as never, 2 as never),
+      Obj.setPath(['inner', 'c'] as never, 2 as never)({ inner: new Instance({ c: 1 }) }),
     ).toThrow(TypeError)
     expect(() =>
-      Obj.setPath({ inner: () => 1 } as never, ['inner', 'c'] as never, 2 as never),
+      Obj.setPath(['inner', 'c'] as never, 2 as never)({ inner: () => 1 } as never),
     ).toThrow(TypeError)
   })
 })
@@ -395,9 +395,9 @@ describe('P4 compiled paths', () => {
       Obj.compilePathOf<User>()('profile', 'nickname'),
     ]
     for (const compiled of cases) {
-      expect(compiled.get(user)).toEqual(Obj.getPath(user, compiled.path))
-      expect(compiled.getOrUndefined(user)).toEqual(Obj.getPathOrUndefined(user, compiled.path))
-      expect(compiled.has(user)).toBe(Obj.hasPath(user, compiled.path))
+      expect(compiled.get(user)).toEqual(Obj.getPath(compiled.path)(user))
+      expect(compiled.getOrUndefined(user)).toEqual(Obj.getPathOrUndefined(compiled.path)(user))
+      expect(compiled.has(user)).toBe(Obj.hasPath(compiled.path)(user))
     }
   })
 
@@ -443,10 +443,10 @@ describe('P4 Map.getOrElse', () => {
   it('returns a present value without consulting the fallback', () => {
     let calls = 0
     expect(
-      MapOps.getOrElse(source, 'present', () => {
+      MapOps.getOrElse('present', () => {
         calls += 1
         return -1
-      }),
+      })(source),
     ).toBe(1)
     expect(calls).toBe(0)
   })
@@ -454,10 +454,10 @@ describe('P4 Map.getOrElse', () => {
   it('treats a stored undefined as present', () => {
     let calls = 0
     expect(
-      MapOps.getOrElse(source, 'undefined', () => {
+      MapOps.getOrElse('undefined', () => {
         calls += 1
         return -1
-      }),
+      })(source),
     ).toBeUndefined()
     expect(calls).toBe(0)
   })
@@ -465,10 +465,10 @@ describe('P4 Map.getOrElse', () => {
   it('invokes the fallback exactly once for a missing key', () => {
     let calls = 0
     expect(
-      MapOps.getOrElse(source, 'missing', () => {
+      MapOps.getOrElse('missing', () => {
         calls += 1
         return -1
-      }),
+      })(source),
     ).toBe(-1)
     expect(calls).toBe(1)
   })
@@ -487,30 +487,30 @@ describe('P4 Map.getOrElse', () => {
         },
       }) as unknown as ReadonlyMap<K, V>
 
-    MapOps.getOrElse(traced(new Map([['k', 1]])), 'k', () => 0)
+    MapOps.getOrElse('k', () => 0)(traced(new Map([['k', 1]])))
     expect(order).toEqual(['get'])
 
     order.length = 0
-    MapOps.getOrElse(traced(new Map<string, number>()), 'k', () => 0)
+    MapOps.getOrElse('k', () => 0)(traced(new Map<string, number>()))
     expect(order).toEqual(['get', 'has'])
 
     order.length = 0
-    MapOps.getOrElse(traced(new Map([['k', undefined]])), 'k', () => 0)
+    MapOps.getOrElse('k', () => 0)(traced(new Map([['k', undefined]])))
     expect(order).toEqual(['get', 'has'])
   })
 
   it('propagates a throwing fallback', () => {
     expect(() =>
-      MapOps.getOrElse(source, 'missing', () => {
+      MapOps.getOrElse('missing', () => {
         throw new RangeError('no default')
-      }),
+      })(source),
     ).toThrow(RangeError)
   })
 
   it('supports a reentrant fallback', () => {
     const inner = new Map<string, number>([['fallback', 42]])
     expect(
-      MapOps.getOrElse(source, 'missing', () => MapOps.getOrElse(inner, 'fallback', () => 0)),
+      MapOps.getOrElse('missing', () => MapOps.getOrElse('fallback', () => 0)(inner))(source),
     ).toBe(42)
   })
 
@@ -525,16 +525,12 @@ describe('P4 Map.getOrElse', () => {
     expect(calls).toBe(1)
     expect(operator(source)).toBe(-1)
     expect(calls).toBe(2)
-
-    expect(MapOps.getOrElse('present', () => -1)(source)).toBe(
-      MapOps.getOrElse(source, 'present', () => -1),
-    )
   })
 
   it('leaves get, getOrUndefined, and the source unchanged', () => {
-    expect(MapOps.get(source, 'undefined')).toEqual(some(undefined))
-    expect(MapOps.get(source, 'missing')).toEqual(none)
-    expect(MapOps.getOrUndefined(source, 'missing')).toBeUndefined()
+    expect(MapOps.get('undefined')(source)).toEqual(some(undefined))
+    expect(MapOps.get('missing')(source)).toEqual(none)
+    expect(MapOps.getOrUndefined('missing')(source)).toBeUndefined()
     expect(source.size).toBe(2)
   })
 })

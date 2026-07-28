@@ -3,24 +3,20 @@ import * as G from '../guard'
 import * as O from '../option'
 
 describe('Option predicate combinators', () => {
-  it('fromPredicate supports data-first and data-last forms', () => {
+  it('fromPredicate constructs Some or None from a predicate', () => {
     const positive = (value: number) => value > 0
 
-    expect(O.fromPredicate(1, positive)).toEqual(O.some(1))
     expect(O.fromPredicate(positive)(1)).toEqual(O.some(1))
-    expect(O.fromPredicate(-1, positive)).toBe(O.none)
     expect(O.fromPredicate(positive)(-1)).toBe(O.none)
   })
 
-  it('filter supports both forms without changing runtime identity behavior', () => {
+  it('filter does not change runtime identity behavior', () => {
     const value = O.some(2)
     const even = (input: number) => input % 2 === 0
 
-    expect(O.filter(value, even)).toBe(value)
     expect(O.filter(even)(value)).toBe(value)
-    expect(O.filter(O.some(1), even)).toBe(O.none)
     expect(O.filter(even)(O.some(1))).toBe(O.none)
-    expect(O.filter(O.none, even)).toBe(O.none)
+    expect(O.filter(even)(O.none)).toBe(O.none)
   })
 })
 

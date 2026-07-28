@@ -28,39 +28,39 @@ describe('TypedArray number families', () => {
 
       expect(TypedArray.from(Constructor, [1, 2, 3])).toBeInstanceOf(Constructor)
       expect(TypedArray.clone(source)).toBeInstanceOf(Constructor)
-      expect(TypedArray.map(source, (value) => value + 1)).toBeInstanceOf(Constructor)
-      expect(TypedArray.filter(source, (value) => value % 2 === 0)).toBeInstanceOf(Constructor)
-      expect(TypedArray.slice(source, 1, 3)).toBeInstanceOf(Constructor)
+      expect(TypedArray.map((value) => value + 1)(source)).toBeInstanceOf(Constructor)
+      expect(TypedArray.filter((value) => value % 2 === 0)(source)).toBeInstanceOf(Constructor)
+      expect(TypedArray.slice(1, 3)(source)).toBeInstanceOf(Constructor)
       expect(TypedArray.concat(source, new Constructor([5, 6]))).toBeInstanceOf(Constructor)
       expect(TypedArray.reverse(source)).toBeInstanceOf(Constructor)
-      expect(TypedArray.sort(source)).toBeInstanceOf(Constructor)
+      expect(TypedArray.sort()(source)).toBeInstanceOf(Constructor)
 
       expect(Array.from(TypedArray.clone(source))).toEqual([3, 1, 2, 4])
-      expect(Array.from(TypedArray.map(source, (value, index) => value + index))).toEqual([
+      expect(Array.from(TypedArray.map((value, index) => value + index)(source))).toEqual([
         3, 2, 4, 7,
       ])
-      expect(Array.from(TypedArray.filter(source, (value) => value % 2 === 0))).toEqual([2, 4])
-      expect(Array.from(TypedArray.slice(source, 1, 3))).toEqual([1, 2])
+      expect(Array.from(TypedArray.filter((value) => value % 2 === 0)(source))).toEqual([2, 4])
+      expect(Array.from(TypedArray.slice(1, 3)(source))).toEqual([1, 2])
       expect(Array.from(TypedArray.concat(source, new Constructor([5, 6])))).toEqual([
         3, 1, 2, 4, 5, 6,
       ])
       expect(Array.from(TypedArray.reverse(source))).toEqual([4, 2, 1, 3])
-      expect(Array.from(TypedArray.sort(source))).toEqual([1, 2, 3, 4])
+      expect(Array.from(TypedArray.sort()(source))).toEqual([1, 2, 3, 4])
       expect(Array.from(source)).toEqual([3, 1, 2, 4])
     })
   }
 
   it('preserves NaN, signed zero, SameValueZero lookup, and stable sort ties', () => {
     const source = new Float64Array([3, Number.NaN, -0, 0, 1, Number.NaN])
-    const filtered = TypedArray.filter(source, () => true)
-    const sorted = TypedArray.sort(source)
+    const filtered = TypedArray.filter(() => true)(source)
+    const sorted = TypedArray.sort()(source)
 
     expect(Number.isNaN(filtered[1])).toBe(true)
     expect(Object.is(filtered[2], -0)).toBe(true)
-    expect(TypedArray.includes(source, Number.NaN)).toBe(true)
-    expect(TypedArray.indexOfOrUndefined(source, Number.NaN)).toBe(1)
-    expect(TypedArray.indexOf(source, -0)).toEqual(some(2))
-    expect(TypedArray.indexOf(source, 99)).toBe(none)
+    expect(TypedArray.includes(Number.NaN)(source)).toBe(true)
+    expect(TypedArray.indexOfOrUndefined(Number.NaN)(source)).toBe(1)
+    expect(TypedArray.indexOf(-0)(source)).toEqual(some(2))
+    expect(TypedArray.indexOf(99)(source)).toBe(none)
 
     const expected = Array.from(source)
       .map((value, index) => ({ value, index }))
@@ -93,12 +93,12 @@ describe('TypedArray number families', () => {
     shared.set([3, 1, 2, 4])
     const allocated = [
       TypedArray.clone(shared),
-      TypedArray.map(shared, (value) => value),
-      TypedArray.filter(shared, () => true),
-      TypedArray.slice(shared),
+      TypedArray.map((value) => value)(shared),
+      TypedArray.filter(() => true)(shared),
+      TypedArray.slice()(shared),
       TypedArray.concat(shared),
       TypedArray.reverse(shared),
-      TypedArray.sort(shared),
+      TypedArray.sort()(shared),
     ]
 
     for (const result of allocated) {
@@ -111,7 +111,7 @@ describe('TypedArray number families', () => {
     }
     const custom = new CustomBytes(4)
     expect(TypedArray.clone(custom)).toBeInstanceOf(CustomBytes)
-    expect(TypedArray.map(custom, (value) => value)).toBeInstanceOf(CustomBytes)
+    expect(TypedArray.map((value) => value)(custom)).toBeInstanceOf(CustomBytes)
   })
 })
 
@@ -121,15 +121,15 @@ describe('TypedArray bigint families', () => {
       const source = new Constructor([3n, 1n, 2n, 4n])
 
       expect(Array.from(TypedArray.clone(source))).toEqual([3n, 1n, 2n, 4n])
-      expect(Array.from(TypedArray.filter(source, (value) => value % 2n === 0n))).toEqual([2n, 4n])
-      expect(Array.from(TypedArray.sort(source))).toEqual([1n, 2n, 3n, 4n])
+      expect(Array.from(TypedArray.filter((value) => value % 2n === 0n)(source))).toEqual([2n, 4n])
+      expect(Array.from(TypedArray.sort()(source))).toEqual([1n, 2n, 3n, 4n])
       expect(Array.from(TypedArray.reverse(source))).toEqual([4n, 2n, 1n, 3n])
-      expect(TypedArray.includes(source, 2n)).toBe(true)
-      expect(TypedArray.indexOfOrUndefined(source, 4n)).toBe(3)
+      expect(TypedArray.includes(2n)(source)).toBe(true)
+      expect(TypedArray.indexOfOrUndefined(4n)(source)).toBe(3)
 
       expect(TypedArray.clone(source)).toBeInstanceOf(Constructor)
-      expect(TypedArray.filter(source, () => true)).toBeInstanceOf(Constructor)
-      expect(TypedArray.sort(source)).toBeInstanceOf(Constructor)
+      expect(TypedArray.filter(() => true)(source)).toBeInstanceOf(Constructor)
+      expect(TypedArray.sort()(source)).toBeInstanceOf(Constructor)
     })
   }
 
@@ -137,15 +137,15 @@ describe('TypedArray bigint families', () => {
     const signed = new BigInt64Array([-(2n ** 63n), -1n, 0n, 2n ** 63n - 1n])
     const unsigned = new BigUint64Array([2n ** 64n - 1n, 0n, 2n ** 63n, 1n])
 
-    expect(Array.from(TypedArray.filter(signed, () => true))).toEqual(Array.from(signed))
-    expect(Array.from(TypedArray.filter(unsigned, () => true))).toEqual(Array.from(unsigned))
-    expect(Array.from(TypedArray.sort(signed))).toEqual([-(2n ** 63n), -1n, 0n, 2n ** 63n - 1n])
-    expect(Array.from(TypedArray.sort(unsigned))).toEqual([0n, 1n, 2n ** 63n, 2n ** 64n - 1n])
+    expect(Array.from(TypedArray.filter(() => true)(signed))).toEqual(Array.from(signed))
+    expect(Array.from(TypedArray.filter(() => true)(unsigned))).toEqual(Array.from(unsigned))
+    expect(Array.from(TypedArray.sort()(signed))).toEqual([-(2n ** 63n), -1n, 0n, 2n ** 63n - 1n])
+    expect(Array.from(TypedArray.sort()(unsigned))).toEqual([0n, 1n, 2n ** 63n, 2n ** 64n - 1n])
   })
 
   it('uses the large BigInt filter path without changing values or constructor', () => {
     const source = BigInt64Array.from({ length: 256 }, (_, index) => BigInt(index - 128))
-    const result = TypedArray.filter(source, (value) => (value & 1n) === 0n)
+    const result = TypedArray.filter((value) => (value & 1n) === 0n)(source)
 
     expect(result).toBeInstanceOf(BigInt64Array)
     expect(Array.from(result)).toEqual(Array.from(source).filter((value) => (value & 1n) === 0n))
@@ -180,8 +180,8 @@ describe('TypedArray bulk copy semantics', () => {
     structuredClone(detached.buffer, { transfer: [detached.buffer] })
     expect(() => TypedArray.clone(detached)).toThrow(TypeError)
     expect(() => TypedArray.copyInto(detached, new Uint8Array(0))).toThrow(TypeError)
-    expect(() => TypedArray.includes(detached, 1)).toThrow(TypeError)
-    expect(() => TypedArray.indexOfOrUndefined(detached, 1)).toThrow(TypeError)
+    expect(() => TypedArray.includes(1)(detached)).toThrow(TypeError)
+    expect(() => TypedArray.indexOfOrUndefined(1)(detached)).toThrow(TypeError)
   })
 })
 
@@ -197,12 +197,12 @@ describe('TypedArray callback and subclass contracts', () => {
     const source = new SpeciesChangingUint8Array([3, 1, 2])
     const results = [
       TypedArray.clone(source),
-      TypedArray.map(source, (value) => value + 1),
-      TypedArray.filter(source, () => true),
-      TypedArray.slice(source),
+      TypedArray.map((value) => value + 1)(source),
+      TypedArray.filter(() => true)(source),
+      TypedArray.slice()(source),
       TypedArray.concat(source, new SpeciesChangingUint8Array([4])),
       TypedArray.reverse(source),
-      TypedArray.sort(source),
+      TypedArray.sort()(source),
     ]
 
     for (const result of results) {
@@ -227,7 +227,7 @@ describe('TypedArray callback and subclass contracts', () => {
       events.push(`predicate:${index}`)
       return value % 2 === 0
     })
-    const result = TypedArray.filter(source, predicate)
+    const result = TypedArray.filter(predicate)(source)
 
     expect(Array.from(result)).toEqual([2, 4])
     expect(predicate).toHaveBeenCalledTimes(4)
@@ -252,10 +252,10 @@ describe('TypedArray callback and subclass contracts', () => {
 
     const source = new ObservedUint8Array([4, 1, 3, 2])
     observeConstruction = true
-    const result = TypedArray.sort(source, (left, right) => {
+    const result = TypedArray.sort((left, right) => {
       events.push('compare')
       return (left % 2) - (right % 2)
-    })
+    })(source)
 
     expect(Array.from(result)).toEqual([4, 2, 1, 3])
     expect(events.at(-1)).toBe('construct')
@@ -278,7 +278,7 @@ describe('TypedArray callback and subclass contracts', () => {
         },
       },
     })
-    expect(Array.from(TypedArray.sort(ownMethods))).toEqual([1, 2, 3])
+    expect(Array.from(TypedArray.sort()(ownMethods))).toEqual([1, 2, 3])
 
     const sliceDescriptor = Object.getOwnPropertyDescriptor(Float64Array.prototype, 'slice')
     const sortDescriptor = Object.getOwnPropertyDescriptor(Float64Array.prototype, 'sort')
@@ -297,7 +297,7 @@ describe('TypedArray callback and subclass contracts', () => {
           },
         },
       })
-      expect(Array.from(TypedArray.sort(new Float64Array([4, 2, 3, 1])))).toEqual([1, 2, 3, 4])
+      expect(Array.from(TypedArray.sort()(new Float64Array([4, 2, 3, 1])))).toEqual([1, 2, 3, 4])
     } finally {
       if (sliceDescriptor !== undefined) {
         Object.defineProperty(Float64Array.prototype, 'slice', sliceDescriptor)
@@ -319,14 +319,14 @@ describe('TypedArray callback and subclass contracts', () => {
     const source = new Uint8Array(buffer)
     source.fill(1)
     let grew = false
-    const result = TypedArray.filter(source, (_value, index) => {
+    const result = TypedArray.filter((_value, index) => {
       if (index === 0) {
         buffer.resize(256)
         source.fill(2, 128)
         grew = true
       }
       return true
-    })
+    })(source)
 
     expect(grew).toBe(true)
     expect(result.length).toBe(256)
@@ -353,14 +353,14 @@ describe('TypedArray callback and subclass contracts', () => {
 
         expect(Array.from(TypedArray.clone(view))).toEqual(expected)
         expect(Array.from(TypedArray.reverse(view))).toEqual([...expected].reverse())
-        expect(Array.from(TypedArray.slice(view))).toEqual(expected)
-        expect(Array.from(TypedArray.slice(view, 1, length))).toEqual(expected.slice(1))
-        expect(Array.from(TypedArray.slice(view, -3))).toEqual(expected.slice(-3))
+        expect(Array.from(TypedArray.slice()(view))).toEqual(expected)
+        expect(Array.from(TypedArray.slice(1, length)(view))).toEqual(expected.slice(1))
+        expect(Array.from(TypedArray.slice(-3)(view))).toEqual(expected.slice(-3))
         expect(Array.from(TypedArray.concat(view, view))).toEqual([...expected, ...expected])
         for (const result of [
           TypedArray.clone(view),
           TypedArray.reverse(view),
-          TypedArray.slice(view),
+          TypedArray.slice()(view),
           TypedArray.concat(view, view),
         ]) {
           expect(result).toBeInstanceOf(Constructor)

@@ -13,8 +13,8 @@ describe('Standard Schema interop', () => {
     expect(positive['~standard'].vendor).toBe('@stopcock/fp')
     expect(Schema.isStandardSchema(positive)).toBe(true)
 
-    const valid = Schema.validateSync(2, positive)
-    const invalid = Schema.validateSync(-1, positive)
+    const valid = Schema.validateSync(positive)(2)
+    const invalid = Schema.validateSync(positive)(-1)
     expect(isOk(valid) && valid.value).toBe(2)
     expect(isErr(invalid) && invalid.error[0]).toEqual({
       message: 'Expected a positive number',
@@ -33,18 +33,18 @@ describe('Standard Schema interop', () => {
     const schema = Schema.make(async (value) =>
       typeof value === 'string' ? ok(value.length) : err('Expected a string'),
     )
-    expect(await Schema.validate('four', schema)).toEqual(ok(4))
-    expect(isErr(await Schema.validate(4, schema))).toBe(true)
-    expect(() => Schema.validateSync('four', schema)).toThrow(TypeError)
+    expect(await Schema.validate(schema)('four')).toEqual(ok(4))
+    expect(isErr(await Schema.validate(schema)(4))).toBe(true)
+    expect(() => Schema.validateSync(schema)('four')).toThrow(TypeError)
   })
 
   it('maps output and models optional and nullable boundaries without making sync schemas async', async () => {
     const labelled = Schema.map(positive, (value) => `n:${value}`)
-    expect(Schema.validateSync(2, labelled)).toEqual(ok('n:2'))
-    expect(Schema.validateSync(undefined, Schema.optional(positive))).toEqual(ok(undefined))
-    expect(Schema.validateSync(null, Schema.nullable(positive))).toEqual(ok(null))
-    expect(await Schema.validate(2, labelled)).toEqual(ok('n:2'))
-    expect(await Schema.validate(undefined, Schema.optional(positive))).toEqual(ok(undefined))
-    expect(await Schema.validate(null, Schema.nullable(positive))).toEqual(ok(null))
+    expect(Schema.validateSync(labelled)(2)).toEqual(ok('n:2'))
+    expect(Schema.validateSync(Schema.optional(positive))(undefined)).toEqual(ok(undefined))
+    expect(Schema.validateSync(Schema.nullable(positive))(null)).toEqual(ok(null))
+    expect(await Schema.validate(labelled)(2)).toEqual(ok('n:2'))
+    expect(await Schema.validate(Schema.optional(positive))(undefined)).toEqual(ok(undefined))
+    expect(await Schema.validate(Schema.nullable(positive))(null)).toEqual(ok(null))
   })
 })

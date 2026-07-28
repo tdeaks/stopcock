@@ -22,7 +22,7 @@ describe('compact compilePure', () => {
     ] as const
 
     expect(compilePure(...steps)(input)).toEqual(
-      A.map(A.reverse(A.take(A.sortBy(A.reverse(input), compare), 3)), (value) => value.id),
+      A.map((value) => value.id)(A.reverse(A.take(3)(A.sortBy(compare)(A.reverse(input))))),
     )
     expect(compilePure(...steps)(input)).toEqual(['c', 'b', 'd'])
   })
@@ -40,12 +40,11 @@ describe('compact compilePure', () => {
     )
 
     const result = pure(input)
-    const expected = A.take(
-      A.sortBy(input, (left, right) => {
+    const expected = A.take(1)(
+      A.sortBy((left: number, right: number) => {
         exactCalls++
         return left - right
-      }),
-      1,
+      })(input),
     )
 
     expect(result).toEqual(expected)
@@ -90,12 +89,11 @@ describe('compact compilePure', () => {
     )(input)
 
     expect(result).toEqual([10])
-    A.take(
-      A.sortBy(input, (left, right) => {
+    A.take(1)(
+      A.sortBy((left: number, right: number) => {
         exactCalls++
         return left - right
-      }),
-      1,
+      })(input),
     )
     expect(pureCalls).toBe(exactCalls)
   })
@@ -126,7 +124,7 @@ describe('compact compilePure', () => {
     const directEvents: string[] = []
     const pureEvents: string[] = []
 
-    const direct = A.take(A.sort(makeSource(directEvents)), 2)
+    const direct = A.take(2)(A.sort(makeSource(directEvents)))
     const pure = compilePure(A.sort, A.take(2))(makeSource(pureEvents))
 
     expect(pure).toEqual(direct)
@@ -140,16 +138,14 @@ describe('compact compilePure', () => {
         slice: () => Object.freeze([3, 1, 2]),
       })
 
-    expect(() => A.take(A.sort(makeSource()), 1)).toThrow(TypeError)
+    expect(() => A.take(1)(A.sort(makeSource()))).toThrow(TypeError)
     expect(() => compile(A.sort, A.take(1))(makeSource())).toThrow(TypeError)
     expect(() => compilePure(A.sort, A.take(1))(makeSource())).toThrow(TypeError)
   })
 
   it('matches the descending numeric stable sort', () => {
     const input = [3, Number.NaN, -0, 2, 2, 1]
-    expect(compilePure(A.sortDesc, A.take(4))(input)).toEqual(
-      A.take(A.sortDesc(input), 4),
-    )
+    expect(compilePure(A.sortDesc, A.take(4))(input)).toEqual(A.take(4)(A.sortDesc(input)))
   })
 
   it('elides every unused map callback before length and still runs before/after segments', () => {
@@ -291,7 +287,7 @@ describe('compact compilePure', () => {
     ['nan', Number.NaN],
   ])('matches sequential sort/take for %s limits', (_label, count) => {
     const input = [3, Number.NaN, -0, 2, 2, 1]
-    const expected = A.take(A.sort(input), count)
+    const expected = A.take(count)(A.sort(input))
     expect(compile(A.sort, A.take(count))(input)).toEqual(expected)
     expect(compilePure(A.sort, A.take(count))(input)).toEqual(expected)
   })
@@ -304,8 +300,8 @@ describe('compact compilePure', () => {
   ])('normalizes primitive %s quotas symmetrically for fused take and drop', (_label, count) => {
     const input = [1, 2, 3, 4]
     for (const build of [compile, compilePure]) {
-      expect(build(A.take(count))(input)).toEqual(A.take(input, count))
-      expect(build(A.drop(count))(input)).toEqual(A.drop(input, count))
+      expect(build(A.take(count))(input)).toEqual(A.take(count)(input))
+      expect(build(A.drop(count))(input)).toEqual(A.drop(count)(input))
     }
   })
 
@@ -347,15 +343,15 @@ describe('compact compilePure', () => {
           return 2.75
         },
       }
-      const mapped = A.map(source, (value) => {
+      const mapped = A.map((value: number) => {
         events.push(`prefix:${value}`)
         return value * 2
-      })
-      const taken = A.take(mapped, count as unknown as number)
-      const result = A.map(taken, (value) => {
+      })(source)
+      const taken = A.take(count as unknown as number)(mapped)
+      const result = A.map((value: number) => {
         events.push(`suffix:${value}`)
         return value + 1
-      })
+      })(taken)
       return { result, events }
     }
 
@@ -415,12 +411,12 @@ describe('compact compilePure', () => {
         },
       }
       if (build === undefined) {
-        const prefix = A.map(source, (value) => {
+        const prefix = A.map((value: number) => {
           events.push(`prefix:${value}`)
           return value * 2
-        })
+        })(source)
         return {
-          result: A.drop(prefix, count as unknown as number),
+          result: A.drop(count as unknown as number)(prefix),
           events,
         }
       }
@@ -470,12 +466,11 @@ describe('compact compilePure', () => {
       let thrown: unknown
       try {
         if (build === undefined) {
-          A.take(
-            A.map(source, (value) => {
+          A.take(count as unknown as number)(
+            A.map((value: number) => {
               events.push(`prefix:${value}`)
               return value
-            }),
-            count as unknown as number,
+            })(source),
           )
         } else {
           build(
@@ -505,7 +500,7 @@ describe('compact compilePure', () => {
     const input = Array<number>(1)
     const result = compilePure(A.sort, A.take(1))(input) as number[]
     const expected = compile(A.sort, A.take(1))(input) as number[]
-    const direct = A.take(A.sort(input), 1)
+    const direct = A.take(1)(A.sort(input))
 
     expect(result).toEqual(expected)
     expect(result).toEqual(direct)

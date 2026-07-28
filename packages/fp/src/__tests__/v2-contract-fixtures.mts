@@ -160,12 +160,6 @@ export const V2_ROOT_MIGRATION = [
 
 export const V2_EAGER_FLAT_MAP_SURFACES = [
   {
-    id: 'direct-data-first',
-    expectedContract: 'indexed-returned-array',
-    currentStatus: 'conformant',
-    oracleEligible: true,
-  },
-  {
     id: 'generated-data-last',
     expectedContract: 'indexed-returned-array',
     currentStatus: 'conformant',

@@ -11,7 +11,7 @@ import * as TypedArray from '../typed-array'
 describe('Iter', () => {
   it('is lazy, re-iterable, and supports data-first and data-last transforms', () => {
     const effect = vi.fn((value: number) => value * 2)
-    const values = Iter.map(Iter.range(0, 4), effect)
+    const values = Iter.map(effect)(Iter.range(0, 4))
     expect(effect).not.toHaveBeenCalled()
     expect(Iter.toArray(values)).toEqual([0, 2, 4, 6])
     expect(Iter.toArray(Iter.map((value: number) => value + 1)(values))).toEqual([1, 3, 5, 7])
@@ -19,7 +19,7 @@ describe('Iter', () => {
   })
 
   it('keeps planned source, callback, and plan metadata opaque', () => {
-    const values = Iter.map([1, 2, 3], (value) => value * 2)
+    const values = Iter.map((value) => value * 2)([1, 2, 3])
 
     expect(Object.keys(values)).toEqual([])
     expect(Reflect.ownKeys(values)).toEqual([])
@@ -49,22 +49,22 @@ describe('Iter', () => {
     )
 
     expect(Iter.toArray(source)).toEqual([1, 2])
-    expect(Iter.toArray(Iter.map(source, (value) => value * 10))).toEqual([10, 20])
+    expect(Iter.toArray(Iter.map((value) => value * 10)(source))).toEqual([10, 20])
     expect(hostileSymbolReads).toBe(0)
   })
 
   it('uses Option for partial terminals', () => {
     expect(Iter.first(Iter.empty())).toEqual(none)
     expect(Iter.first(Iter.of(undefined))).toEqual(some(undefined))
-    expect(Iter.find(Iter.range(0, 5), (value) => value > 2)).toEqual(some(3))
-    expect(Iter.nth(Iter.range(0, 5), 10)).toEqual(none)
+    expect(Iter.find((value) => value > 2)(Iter.range(0, 5))).toEqual(some(3))
+    expect(Iter.nth(10)(Iter.range(0, 5))).toEqual(none)
   })
 
   it('makes undefined-returning terminal variants explicit', () => {
     expect(Iter.firstOrUndefined(Iter.empty())).toBeUndefined()
     expect(Iter.lastOrUndefined(Iter.range(0, 3))).toBe(2)
-    expect(Iter.findOrUndefined(Iter.range(0, 5), (value) => value > 2)).toBe(3)
-    expect(Iter.nthOrUndefined(Iter.range(0, 5), 10)).toBeUndefined()
+    expect(Iter.findOrUndefined((value) => value > 2)(Iter.range(0, 5))).toBe(3)
+    expect(Iter.nthOrUndefined(10)(Iter.range(0, 5))).toBeUndefined()
   })
 
   it('closes a source immediately when take reaches its limit', () => {
@@ -79,7 +79,7 @@ describe('Iter', () => {
       }
     })()
 
-    const iterator = Iter.take(source, 2)[Symbol.iterator]()
+    const iterator = Iter.take(2)(source)[Symbol.iterator]()
     expect(iterator.next()).toEqual({ done: false, value: 1 })
     expect(iterator.next()).toEqual({ done: false, value: 2 })
     expect(closed).toHaveBeenCalledOnce()
@@ -104,7 +104,7 @@ describe('Iter', () => {
       }
     })()
 
-    expect(Iter.toArray(Iter.zip(left, right))).toEqual([[1, 'a']])
+    expect(Iter.toArray(Iter.zip(right)(left))).toEqual([[1, 'a']])
     expect(leftClosed).toHaveBeenCalledOnce()
     expect(rightClosed).toHaveBeenCalledOnce()
   })
@@ -112,30 +112,28 @@ describe('Iter', () => {
   it('fuses planned transforms into every terminal without changing indexes', () => {
     const mappedIndexes: number[] = []
     const filteredIndexes: number[] = []
-    const values = Iter.take(
-      Iter.filter(
-        Iter.map([1, 2, 3, 4], (value, index) => {
+    const values = Iter.take(2)(
+      Iter.filter((value, index) => {
+        filteredIndexes.push(index)
+        return value > 2
+      })(
+        Iter.map((value, index) => {
           mappedIndexes.push(index)
           return value * 2
-        }),
-        (value, index) => {
-          filteredIndexes.push(index)
-          return value > 2
-        },
+        })([1, 2, 3, 4]),
       ),
-      2,
     )
 
     expect(Iter.toArray(values)).toEqual([4, 6])
     expect(mappedIndexes).toEqual([0, 1, 2])
     expect(filteredIndexes).toEqual([0, 1, 2])
-    expect(Iter.reduce(values, (total, value) => total + value, 0)).toBe(10)
+    expect(Iter.reduce((total, value) => total + value, 0)(values)).toBe(10)
     expect(Iter.first(values)).toEqual(some(4))
     expect(Iter.last(values)).toEqual(some(6))
-    expect(Iter.find(values, (value) => value === 6)).toEqual(some(6))
-    expect(Iter.nth(values, 1)).toEqual(some(6))
-    expect(Iter.some(values, (value) => value === 6)).toBe(true)
-    expect(Iter.every(values, (value) => value % 2 === 0)).toBe(true)
+    expect(Iter.find((value) => value === 6)(values)).toEqual(some(6))
+    expect(Iter.nth(1)(values)).toEqual(some(6))
+    expect(Iter.some((value) => value === 6)(values)).toBe(true)
+    expect(Iter.every((value) => value % 2 === 0)(values)).toBe(true)
     expect(Iter.count(values)).toBe(2)
   })
 
@@ -150,16 +148,15 @@ describe('Iter', () => {
         closed()
       }
     })()
-    const values = Iter.take(
+    const values = Iter.take(2)(
       Iter.scan(
-        Iter.filterMap(
-          Iter.flatMap(source, (value) => [value, value + 10]),
-          (value) => (value % 2 === 0 ? some(value) : none),
-        ),
         (total, value) => total + value,
         0,
+      )(
+        Iter.filterMap((value) => (value % 2 === 0 ? some(value) : none))(
+          Iter.flatMap((value) => [value, value + 10])(source),
+        ),
       ),
-      2,
     )
 
     expect(Iter.toArray(values)).toEqual([2, 14])
@@ -176,7 +173,7 @@ describe('Iter', () => {
       },
     }
 
-    expect(Iter.toArray(Iter.take(Iter.map(source, mapped), 0))).toEqual([])
+    expect(Iter.toArray(Iter.take(0)(Iter.map(mapped)(source)))).toEqual([])
     expect(opened).not.toHaveBeenCalled()
     expect(mapped).not.toHaveBeenCalled()
   })
@@ -184,13 +181,7 @@ describe('Iter', () => {
   it('appends into an existing destination without counting its existing values toward take', () => {
     const target = [0]
     expect(
-      Iter.toArrayInto(
-        Iter.take(
-          Iter.map([1, 2, 3], (value) => value * 2),
-          2,
-        ),
-        target,
-      ),
+      Iter.toArrayInto(Iter.take(2)(Iter.map((value) => value * 2)([1, 2, 3])), target),
     ).toBe(target)
     expect(target).toEqual([0, 2, 4])
   })
@@ -203,27 +194,26 @@ describe('Iter', () => {
       },
     })
     const run = (source: Iterable<number>, events: string[]): number[] => {
-      const dropped = Iter.dropWhile(source, (value, index) => {
+      const dropped = Iter.dropWhile((value, index) => {
         events.push(`dropWhile:${value}:${index}`)
         return value < 3
-      })
-      const bounded = Iter.takeWhile(dropped, (value, index) => {
+      })(source)
+      const bounded = Iter.takeWhile((value, index) => {
         events.push(`takeWhile:${value}:${index}`)
         return value < 6
-      })
+      })(dropped)
       const scanned = Iter.scan(
-        bounded,
         (total, value, index) => {
           events.push(`scan:${value}:${index}`)
           return total + value
         },
         0,
-      )
+      )(bounded)
       return Iter.toArray(
-        Iter.filterMap(scanned, (value, index) => {
+        Iter.filterMap((value, index) => {
           events.push(`filterMap:${value}:${index}`)
           return value % 2 === 1 ? some(value * 10) : none
-        }),
+        })(scanned),
       )
     }
 
@@ -234,21 +224,19 @@ describe('Iter', () => {
 
     const flatMapRun = (source: Iterable<number>, events: string[]): number[] =>
       Iter.toArray(
-        Iter.filter(
-          Iter.map(
-            Iter.flatMap(source, (value, index) => {
+        Iter.filter((value, index) => {
+          events.push(`filter:${value}:${index}`)
+          return (value + index) % 3 !== 0
+        })(
+          Iter.map((value, index) => {
+            events.push(`map:${value}:${index}`)
+            return value + index
+          })(
+            Iter.flatMap((value, index) => {
               events.push(`flatMap:${value}:${index}`)
               return [value, value + 10]
-            }),
-            (value, index) => {
-              events.push(`map:${value}:${index}`)
-              return value + index
-            },
+            })(source),
           ),
-          (value, index) => {
-            events.push(`filter:${value}:${index}`)
-            return (value + index) % 3 !== 0
-          },
         ),
       )
     const expectedFlatMapEvents: string[] = []
@@ -265,8 +253,8 @@ describe('Iter', () => {
       for (let stage = 0; stage < 12; stage++) {
         values =
           stage % 3 === 1
-            ? Iter.filter(values, (value, index) => (value + index + stage) % 5 !== 0)
-            : Iter.map(values, (value, index) => value + ((index + stage) % 3))
+            ? Iter.filter((value, index) => (value + index + stage) % 5 !== 0)(values)
+            : Iter.map((value, index) => value + ((index + stage) % 3))(values)
       }
       return values
     }
@@ -279,26 +267,24 @@ describe('Iter', () => {
 
     expect(Iter.toArray(generatorPlan)).toEqual(expected)
     expect(Iter.toArray(generatorPlan)).toEqual(expected)
-    expect(Iter.reduce(generatorPlan, (total, value) => total + value, 0)).toBe(
+    expect(Iter.reduce((total, value) => total + value, 0)(generatorPlan)).toBe(
       expected.reduce((total, value) => total + value, 0),
     )
-    expect(Iter.find(generatorPlan, () => false)).toEqual(none)
+    expect(Iter.find(() => false)(generatorPlan)).toEqual(none)
   })
 
   it('direct array iteration stays lazy and preserves stage-local callback indexes', () => {
     const events: string[] = []
-    const values = Iter.take(
-      Iter.filter(
-        Iter.map([1, 2, 3, 4], (value, index) => {
+    const values = Iter.take(2)(
+      Iter.filter((value, index) => {
+        events.push(`filter:${value}:${index}`)
+        return value > 2
+      })(
+        Iter.map((value, index) => {
           events.push(`map:${value}:${index}`)
           return value * 2
-        }),
-        (value, index) => {
-          events.push(`filter:${value}:${index}`)
-          return value > 2
-        },
+        })([1, 2, 3, 4]),
       ),
-      2,
     )
     const iterator = values[Symbol.iterator]()
 
@@ -329,7 +315,7 @@ describe('Iter', () => {
       }
     })()
 
-    expect(Iter.toArray(Iter.takeWhile(takeWhileSource, (value) => value < 2))).toEqual([1])
+    expect(Iter.toArray(Iter.takeWhile((value) => value < 2)(takeWhileSource))).toEqual([1])
     expect(takeWhileEvents).toEqual(['source:close'])
 
     const flatMapEvents: string[] = []
@@ -341,9 +327,9 @@ describe('Iter', () => {
         flatMapEvents.push('source:close')
       }
     })()
-    const values = Iter.filter(
-      Iter.map(
-        Iter.flatMap(flatMapSource, (value) =>
+    const values = Iter.filter(() => true)(
+      Iter.map((value) => value)(
+        Iter.flatMap((value) =>
           (function* () {
             try {
               yield value * 10
@@ -352,10 +338,8 @@ describe('Iter', () => {
               flatMapEvents.push(`nested:${value}:close`)
             }
           })(),
-        ),
-        (value) => value,
+        )(flatMapSource),
       ),
-      () => true,
     )
 
     expect(Iter.first(values)).toEqual(some(10))
@@ -371,7 +355,7 @@ describe('Iter', () => {
       },
     })
 
-    expect(Iter.toArray(Iter.map(source, (value) => value * 10))).toEqual([30, 10])
+    expect(Iter.toArray(Iter.map((value) => value * 10)(source))).toEqual([30, 10])
   })
 
   it('reads an Array proxy iterator once and preserves its custom values', () => {
@@ -391,7 +375,7 @@ describe('Iter', () => {
         return Reflect.getOwnPropertyDescriptor(target, key)
       },
     })
-    const values = Iter.map(source, (value) => value)
+    const values = Iter.map((value) => value)(source)
 
     expect(Array.from(values)).toEqual([99])
     expect(iteratorReads).toBe(1)
@@ -400,7 +384,7 @@ describe('Iter', () => {
     expect(iteratorReads).toBe(1)
 
     iteratorReads = 0
-    expect(Iter.toArray(Iter.take(values, 1))).toEqual([99])
+    expect(Iter.toArray(Iter.take(1)(values))).toEqual([99])
     expect(iteratorReads).toBe(1)
   })
 
@@ -421,18 +405,16 @@ describe('Iter', () => {
         }
       },
     }
-    const values = Iter.map(
-      Iter.take(
-        Iter.map(source, (value) => {
+    const values = Iter.map((value) => {
+      events.push('after-take')
+      return value
+    })(
+      Iter.take(1)(
+        Iter.map((value) => {
           events.push('before-take')
           return value
-        }),
-        1,
+        })(source),
       ),
-      (value) => {
-        events.push('after-take')
-        return value
-      },
     )
 
     expect(Iter.toArray(values)).toEqual([1])
@@ -441,49 +423,47 @@ describe('Iter', () => {
 
   it('observes array growth while a specialized take pipeline is running', () => {
     const source = [1]
-    const values = Iter.take(
-      Iter.map(source, (value) => {
+    const values = Iter.take(3)(
+      Iter.map((value) => {
         if (source.length < 3) source.push(source.length + 1)
         return value
-      }),
-      3,
+      })(source),
     )
 
     expect(Iter.toArray(values)).toEqual([1, 2, 3])
 
     const terminalSource = [1]
     const seen: number[] = []
-    Iter.forEach(Iter.take(terminalSource, 3), (value) => {
+    Iter.forEach((value) => {
       seen.push(value)
       if (terminalSource.length < 3) terminalSource.push(terminalSource.length + 1)
-    })
+    })(Iter.take(3)(terminalSource))
     expect(seen).toEqual([1, 2, 3])
   })
 
   it('invokes planned callbacks with the same undefined receiver as generators', () => {
     const receivers: unknown[] = []
     const values = Iter.scan(
-      Iter.dropWhile(
-        Iter.filterMap(
-          Iter.map([1, 2, 3], function (value) {
-            receivers.push(this)
-            return value * 2
-          }),
-          function (value) {
-            receivers.push(this)
-            return some(value)
-          },
-        ),
-        function () {
-          receivers.push(this)
-          return false
-        },
-      ),
       function (total, value) {
         receivers.push(this)
         return total + value
       },
       0,
+    )(
+      Iter.dropWhile(function () {
+        receivers.push(this)
+        return false
+      })(
+        Iter.filterMap(function (value) {
+          receivers.push(this)
+          return some(value)
+        })(
+          Iter.map(function (value) {
+            receivers.push(this)
+            return value * 2
+          })([1, 2, 3]),
+        ),
+      ),
     )
 
     expect(Iter.toArray(values)).toEqual([2, 6, 12])
@@ -504,7 +484,7 @@ describe('Iter', () => {
           return { done: true, value: undefined }
         },
       })
-      result = Iter.first(Iter.map([1, 2, 3], (value) => value * 2))
+      result = Iter.first(Iter.map((value) => value * 2)([1, 2, 3]))
     } finally {
       if (previous) Object.defineProperty(iteratorPrototype, 'return', previous)
       else Reflect.deleteProperty(iteratorPrototype, 'return')
@@ -515,7 +495,7 @@ describe('Iter', () => {
   })
 
   it('ignores malformed filterMap tags just like the public generator path', () => {
-    const values = Iter.filterMap([1, 2], () => ({ _tag: 2, value: 99 }) as never)
+    const values = Iter.filterMap(() => ({ _tag: 2, value: 99 }) as never)([1, 2])
     expect(Array.from(values)).toEqual([])
     expect(Iter.toArray(values)).toEqual([])
   })
@@ -566,56 +546,55 @@ describe('Iter', () => {
         const kind = kinds[position]
         switch (kind) {
           case 'map':
-            values = Iter.map(values, (value, index) => {
+            values = Iter.map((value, index) => {
               events.push(`${position}:map:${value}:${index}`)
               return value * 2 + index
-            })
+            })(values)
             break
           case 'filter':
-            values = Iter.filter(values, (value, index) => {
+            values = Iter.filter((value, index) => {
               events.push(`${position}:filter:${value}:${index}`)
               return (value + index + position) % 3 !== 0
-            })
+            })(values)
             break
           case 'filterMap':
-            values = Iter.filterMap(values, (value, index) => {
+            values = Iter.filterMap((value, index) => {
               events.push(`${position}:filterMap:${value}:${index}`)
               return (value + index + position) % 2 === 0 ? some(value - index) : none
-            })
+            })(values)
             break
           case 'flatMap':
-            values = Iter.flatMap(values, (value, index) => {
+            values = Iter.flatMap((value, index) => {
               events.push(`${position}:flatMap:${value}:${index}`)
               return [value, value + index + 1]
-            })
+            })(values)
             break
           case 'take':
-            values = Iter.take(values, [2, 1, 3][position] ?? 2)
+            values = Iter.take([2, 1, 3][position] ?? 2)(values)
             break
           case 'drop':
-            values = Iter.drop(values, position % 2)
+            values = Iter.drop(position % 2)(values)
             break
           case 'takeWhile':
-            values = Iter.takeWhile(values, (value, index) => {
+            values = Iter.takeWhile((value, index) => {
               events.push(`${position}:takeWhile:${value}:${index}`)
               return value + index < 12 + position
-            })
+            })(values)
             break
           case 'dropWhile':
-            values = Iter.dropWhile(values, (value, index) => {
+            values = Iter.dropWhile((value, index) => {
               events.push(`${position}:dropWhile:${value}:${index}`)
               return value + index < 3 + position
-            })
+            })(values)
             break
           case 'scan':
             values = Iter.scan(
-              values,
               (total, value, index) => {
                 events.push(`${position}:scan:${value}:${index}`)
                 return total + value + index
               },
               position,
-            )
+            )(values)
             break
         }
       }
@@ -653,13 +632,12 @@ describe('Iter', () => {
         'reduce',
         (values, events) =>
           Iter.reduce(
-            values,
             (total, value, index) => {
               events.push(`terminal:reduce:${value}:${index}`)
               return total + value
             },
             0,
-          ),
+          )(values),
       ],
       ['firstOrUndefined', (values) => Iter.firstOrUndefined(values)],
       ['first', (values) => Iter.first(values)],
@@ -668,46 +646,46 @@ describe('Iter', () => {
       [
         'findOrUndefined',
         (values, events) =>
-          Iter.findOrUndefined(values, (value, index) => {
+          Iter.findOrUndefined((value, index) => {
             events.push(`terminal:findOrUndefined:${value}:${index}`)
             return value > 10
-          }),
+          })(values),
       ],
       [
         'find',
         (values, events) =>
-          Iter.find(values, (value, index) => {
+          Iter.find((value, index) => {
             events.push(`terminal:find:${value}:${index}`)
             return value > 10
-          }),
+          })(values),
       ],
-      ['nthOrUndefined', (values) => Iter.nthOrUndefined(values, 2)],
-      ['nth', (values) => Iter.nth(values, 2)],
+      ['nthOrUndefined', (values) => Iter.nthOrUndefined(2)(values)],
+      ['nth', (values) => Iter.nth(2)(values)],
       [
         'some',
         (values, events) =>
-          Iter.some(values, (value, index) => {
+          Iter.some((value, index) => {
             events.push(`terminal:some:${value}:${index}`)
             return value > 10
-          }),
+          })(values),
       ],
       [
         'every',
         (values, events) =>
-          Iter.every(values, (value, index) => {
+          Iter.every((value, index) => {
             events.push(`terminal:every:${value}:${index}`)
             return value < 20
-          }),
+          })(values),
       ],
       ['count', (values) => Iter.count(values)],
       [
         'forEach',
         (values, events) => {
           const output: number[] = []
-          Iter.forEach(values, (value, index) => {
+          Iter.forEach((value, index) => {
             events.push(`terminal:forEach:${value}:${index}`)
             output.push(value)
-          })
+          })(values)
           return output
         },
       ],
@@ -735,40 +713,37 @@ describe('Iter', () => {
               },
             }
 
-      return Iter.takeWhile(
+      return Iter.takeWhile((value, index) => {
+        events.push(`takeWhile:${value}:${index}`)
+        return value < 40
+      })(
         Iter.scan(
-          Iter.dropWhile(
-            Iter.flatMap(
-              Iter.filterMap(
-                Iter.map(source, (value, index) => {
-                  events.push(`map:${value}:${index}`)
-                  return value * 3
-                }),
-                (value, index) => {
-                  events.push(`filterMap:${value}:${index}`)
-                  return index % 2 === 0 ? some(value + index) : none
-                },
-              ),
-              (value, index) => {
-                events.push(`flatMap:${value}:${index}`)
-                return [value, value + index + 1]
-              },
-            ),
-            (value, index) => {
-              events.push(`dropWhile:${value}:${index}`)
-              return value < 4
-            },
-          ),
           (total, value, index) => {
             events.push(`scan:${value}:${index}`)
             return total + value
           },
           0,
+        )(
+          Iter.dropWhile((value, index) => {
+            events.push(`dropWhile:${value}:${index}`)
+            return value < 4
+          })(
+            Iter.flatMap((value, index) => {
+              events.push(`flatMap:${value}:${index}`)
+              return [value, value + index + 1]
+            })(
+              Iter.filterMap((value, index) => {
+                events.push(`filterMap:${value}:${index}`)
+                return index % 2 === 0 ? some(value + index) : none
+              })(
+                Iter.map((value, index) => {
+                  events.push(`map:${value}:${index}`)
+                  return value * 3
+                })(source),
+              ),
+            ),
+          ),
         ),
-        (value, index) => {
-          events.push(`takeWhile:${value}:${index}`)
-          return value < 40
-        },
       )
     }
 
@@ -807,8 +782,8 @@ describe('Iter', () => {
           }
         },
       }
-      return Iter.map(
-        Iter.flatMap(source, (outer) => ({
+      return Iter.map((value) => value)(
+        Iter.flatMap((outer) => ({
           [Symbol.iterator](): Iterator<number> {
             let index = 0
             return {
@@ -824,8 +799,7 @@ describe('Iter', () => {
               },
             }
           },
-        })),
-        (value) => value,
+        }))(source),
       )
     }
 
@@ -841,9 +815,9 @@ describe('Iter', () => {
     const errorEvents: string[] = []
     const error = new Error('terminal failed')
     expect(() =>
-      Iter.forEach(makeValues(errorEvents), () => {
+      Iter.forEach(() => {
         throw error
-      }),
+      })(makeValues(errorEvents)),
     ).toThrow(error)
     expect(errorEvents).toEqual([
       'source:next:0',
@@ -873,15 +847,14 @@ describe('Iter', () => {
     })
 
     const beforeEvents: string[] = []
-    const before = Iter.map(
-      Iter.flatMap(Iter.take(makeSource(beforeEvents), 1), (value) => {
+    const before = Iter.map((value) => {
+      beforeEvents.push(`downstream:${value}`)
+      return value
+    })(
+      Iter.flatMap((value) => {
         beforeEvents.push('flatMap')
         return [value, value + 1]
-      }),
-      (value) => {
-        beforeEvents.push(`downstream:${value}`)
-        return value
-      },
+      })(Iter.take(1)(makeSource(beforeEvents))),
     )
     expect(Iter.toArray(before)).toEqual([1, 2])
     expect(beforeEvents).toEqual([
@@ -893,9 +866,12 @@ describe('Iter', () => {
     ])
 
     const afterEvents: string[] = []
-    const after = Iter.map(
-      Iter.take(
-        Iter.flatMap(makeSource(afterEvents), () => ({
+    const after = Iter.map((value) => {
+      afterEvents.push('downstream')
+      return value
+    })(
+      Iter.take(1)(
+        Iter.flatMap(() => ({
           [Symbol.iterator](): Iterator<number> {
             let emitted = false
             return {
@@ -911,13 +887,8 @@ describe('Iter', () => {
               },
             }
           },
-        })),
-        1,
+        }))(makeSource(afterEvents)),
       ),
-      (value) => {
-        afterEvents.push('downstream')
-        return value
-      },
     )
     expect(Iter.toArray(after)).toEqual([10])
     expect(afterEvents).toEqual([
@@ -929,9 +900,12 @@ describe('Iter', () => {
     ])
 
     const arrayEvents: string[] = []
-    const afterArray = Iter.map(
-      Iter.take(
-        Iter.flatMap([1], () => ({
+    const afterArray = Iter.map((value) => {
+      arrayEvents.push('downstream')
+      return value
+    })(
+      Iter.take(1)(
+        Iter.flatMap(() => ({
           [Symbol.iterator](): Iterator<number> {
             return {
               next() {
@@ -944,13 +918,8 @@ describe('Iter', () => {
               },
             }
           },
-        })),
-        1,
+        }))([1]),
       ),
-      (value) => {
-        arrayEvents.push('downstream')
-        return value
-      },
     )
     expect(Iter.toArray(afterArray)).toEqual([10])
     expect(arrayEvents).toEqual(['inner:next', 'inner:close', 'downstream'])
@@ -991,25 +960,25 @@ describe('Iter', () => {
       let values: Iterable<unknown>
       switch (stage) {
         case 'map':
-          values = Iter.map(source, fail)
+          values = Iter.map(fail)(source)
           break
         case 'filter':
-          values = Iter.filter(source, fail)
+          values = Iter.filter(fail)(source)
           break
         case 'filterMap':
-          values = Iter.filterMap(source, fail)
+          values = Iter.filterMap(fail)(source)
           break
         case 'flatMap':
-          values = Iter.flatMap(source, fail)
+          values = Iter.flatMap(fail)(source)
           break
         case 'takeWhile':
-          values = Iter.takeWhile(source, fail)
+          values = Iter.takeWhile(fail)(source)
           break
         case 'dropWhile':
-          values = Iter.dropWhile(source, fail)
+          values = Iter.dropWhile(fail)(source)
           break
         case 'scan':
-          values = Iter.scan(source, fail, 0)
+          values = Iter.scan(fail, 0)(source)
           break
       }
 
@@ -1029,10 +998,9 @@ describe('Iter', () => {
       }
     })()
     const values = Iter.scan(
-      Iter.flatMap(source, (value) => [value, value * 10]),
       (total, value) => total + value,
       0,
-    )
+    )(Iter.flatMap((value) => [value, value * 10])(source))
 
     expect(Iter.toArray(values)).toEqual([1, 11, 13, 33])
     expect(Iter.toArray(values)).toEqual([])
@@ -1041,35 +1009,30 @@ describe('Iter', () => {
 
   it('keeps the fused terminal executor differential with the public iterator', () => {
     const sources: Array<Iter.Iter<number>> = [
-      Iter.map([1, 2, 3, 4, 5], (value, index) => value + index),
-      Iter.take(
-        Iter.drop(
-          Iter.filter(
-            Iter.map([1, 2, 3, 4, 5], (value) => value * 3),
-            (value) => value % 2 === 0,
+      Iter.map((value, index) => value + index)([1, 2, 3, 4, 5]),
+      Iter.take(2)(
+        Iter.drop(1)(
+          Iter.filter((value) => value % 2 === 0)(
+            Iter.map((value) => value * 3)([1, 2, 3, 4, 5]),
           ),
-          1,
         ),
-        2,
       ),
-      Iter.takeWhile(
-        Iter.dropWhile([1, 2, 3, 4, 5], (value) => value < 3),
-        (value) => value < 5,
+      Iter.takeWhile((value) => value < 5)(
+        Iter.dropWhile((value) => value < 3)([1, 2, 3, 4, 5]),
       ),
       Iter.scan(
-        Iter.flatMap([1, 2, 3], (value) => [value, value + 10]),
         (total, value) => total + value,
         0,
-      ),
-      Iter.filterMap([0, 1, 2, 3], (value) => (value % 2 === 0 ? some(value * 10) : none)),
+      )(Iter.flatMap((value) => [value, value + 10])([1, 2, 3])),
+      Iter.filterMap((value) => (value % 2 === 0 ? some(value * 10) : none))([0, 1, 2, 3]),
     ]
 
     for (const source of sources) {
       const expected = Array.from(source)
       expect(Iter.toArray(source)).toEqual(expected)
-      expect(Iter.reduce(source, (output, value) => [...output, value], [] as number[])).toEqual(
-        expected,
-      )
+      expect(
+        Iter.reduce((output, value) => [...output, value], [] as number[])(source),
+      ).toEqual(expected)
       expect(Iter.count(source)).toBe(expected.length)
       expect(Iter.first(source)).toEqual(expected.length === 0 ? none : some(expected[0]))
       expect(Iter.last(source)).toEqual(
@@ -1083,7 +1046,7 @@ describe('Record', () => {
   it('creates null-prototype immutable results and preserves symbol keys', () => {
     const symbol = Symbol('value')
     const source = { a: 1, [symbol]: 2 }
-    const mapped = RecordOps.map(source, (value) => value * 10)
+    const mapped = RecordOps.map((value) => value * 10)(source)
 
     expect(Object.getPrototypeOf(mapped)).toBeNull()
     expect(mapped.a).toBe(10)
@@ -1097,12 +1060,12 @@ describe('Record', () => {
       [1, 2],
     ])
     expect(Object.getPrototypeOf(record)).toBeNull()
-    expect(RecordOps.get(record, '__proto__')).toEqual(some(1))
-    expect(RecordOps.getOrUndefined(record, '__proto__')).toBe(1)
-    expect(RecordOps.getOrUndefined(record, 'missing')).toBeUndefined()
+    expect(RecordOps.get('__proto__')(record)).toEqual(some(1))
+    expect(RecordOps.getOrUndefined('__proto__')(record)).toBe(1)
+    expect(RecordOps.getOrUndefined('missing')(record)).toBeUndefined()
     const presentUndefined = RecordOps.fromEntries([['present', undefined]])
-    expect(RecordOps.get(presentUndefined, 'present')).toEqual(some(undefined))
-    expect(RecordOps.remove(record, 1)).not.toHaveProperty('1')
+    expect(RecordOps.get('present')(presentUndefined)).toEqual(some(undefined))
+    expect(RecordOps.remove(1)(record)).not.toHaveProperty('1')
   })
 
   it('preserves enumerable key order while excluding non-enumerable strings and symbols', () => {
@@ -1145,7 +1108,7 @@ describe('Record', () => {
     expect(keys).not.toContain('hidden')
     expect(keys).not.toContain(excluded)
 
-    const mapped = RecordOps.map(source, (value, key) => `${String(key)}:${value}`)
+    const mapped = RecordOps.map((value, key) => `${String(key)}:${value}`)(source)
     expect(Object.getPrototypeOf(mapped)).toBeNull()
     expect(mapped.key69).toBe('key69:69')
     expect(mapped[included]).toBe(`${String(included)}:70`)
@@ -1175,22 +1138,20 @@ describe('Record', () => {
 describe('Map and Set', () => {
   it('inherits SameValueZero key semantics without mutating inputs', () => {
     const source = new Map<number, string>([[Number.NaN, 'nan']])
-    const updated = MapOps.set(source, 1, 'one')
-    expect(MapOps.get(source, Number.NaN)).toEqual(some('nan'))
-    expect(MapOps.getOrUndefined(source, Number.NaN)).toBe('nan')
-    expect(MapOps.getOrUndefined(source, 2)).toBeUndefined()
-    expect(MapOps.get(new Map([['present', undefined]]), 'present')).toEqual(some(undefined))
-    expect(MapOps.get(new Map<string, undefined>(), 'missing')).toEqual(none)
+    const updated = MapOps.set(1, 'one')(source)
+    expect(MapOps.get(Number.NaN)(source)).toEqual(some('nan'))
+    expect(MapOps.getOrUndefined(Number.NaN)(source)).toBe('nan')
+    expect(MapOps.getOrUndefined(2)(source)).toBeUndefined()
+    expect(MapOps.get('present')(new Map([['present', undefined]]))).toEqual(some(undefined))
+    expect(MapOps.get('missing')(new Map<string, undefined>())).toEqual(none)
     expect(
-      MapOps.equals(
-        new Map<string, number | undefined>([['present', undefined]]),
+      MapOps.equals(new Map<string, number | undefined>([['present', undefined]]))(
         new Map<string, number | undefined>([['present', undefined]]),
       ),
     ).toBe(true)
     expect(
-      MapOps.equals(
+      MapOps.equals(new Map<string, number | undefined>([['different', undefined]]))(
         new Map<string, number | undefined>([['present', undefined]]),
-        new Map<string, number | undefined>([['different', undefined]]),
       ),
     ).toBe(false)
     expect(source.has(1)).toBe(false)
@@ -1203,10 +1164,10 @@ describe('Map and Set', () => {
 
   it('deduplicates NaN and implements immutable set algebra', () => {
     const source = SetOps.fromIterable([Number.NaN, Number.NaN, 1])
-    const union = SetOps.union(source, new Set([2]))
+    const union = SetOps.union(new Set([2]))(source)
     expect(source.size).toBe(2)
-    expect(SetOps.equals(union, new Set([Number.NaN, 1, 2]))).toBe(true)
-    expect(SetOps.intersection(union, new Set([2, 3]))).toEqual(new Set([2]))
+    expect(SetOps.equals(new Set([Number.NaN, 1, 2]))(union)).toBe(true)
+    expect(SetOps.intersection(new Set([2, 3]))(union)).toEqual(new Set([2]))
   })
 })
 
@@ -1254,18 +1215,18 @@ describe('TypedArray', () => {
   it('preserves the concrete constructor and invokes filter predicates once', () => {
     const source = new Float32Array([1, Number.NaN, 3])
     const predicate = vi.fn((value: number) => Number.isNaN(value) || value > 2)
-    const filtered = TypedArray.filter(source, predicate)
+    const filtered = TypedArray.filter(predicate)(source)
 
     expect(filtered).toBeInstanceOf(Float32Array)
     expect(Array.from(filtered)).toEqual([Number.NaN, 3])
     expect(predicate).toHaveBeenCalledTimes(3)
-    expect(TypedArray.indexOf(source, Number.NaN)).toEqual(some(1))
-    expect(TypedArray.atOrUndefined(source, 0)).toBe(1)
+    expect(TypedArray.indexOf(Number.NaN)(source)).toEqual(some(1))
+    expect(TypedArray.atOrUndefined(0)(source)).toBe(1)
     expect(TypedArray.head(source)).toEqual(some(1))
     expect(TypedArray.last(source)).toEqual(some(3))
     expect(TypedArray.headOrUndefined(new Float32Array())).toBeUndefined()
-    expect(TypedArray.indexOfOrUndefined(source, 99)).toBeUndefined()
-    expect(TypedArray.equals(source, new Float32Array([1, Number.NaN, 3]))).toBe(true)
+    expect(TypedArray.indexOfOrUndefined(99)(source)).toBeUndefined()
+    expect(TypedArray.equals(new Float32Array([1, Number.NaN, 3]))(source)).toBe(true)
   })
 
   it('maps into caller-owned typed storage with capacity checks', () => {

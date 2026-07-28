@@ -134,33 +134,20 @@ describe('match direct dispatch', () => {
       },
     )
 
-  it('preserves lookup and receiver order for data-first and curried discriminants', () => {
-    const dataFirstEvents: string[] = []
-    expect(
-      Match.discriminant(
-        'kind',
-        observedShape(dataFirstEvents),
-        observedHandlers(dataFirstEvents),
-      ),
-    ).toBe(2)
-    expect(dataFirstEvents).toEqual([
+  it('preserves lookup and receiver order for curried discriminants', () => {
+    const curriedEvents: string[] = []
+    const run = Match.discriminant('kind', observedHandlers(curriedEvents))
+    expect(curriedEvents).toEqual([])
+    expect(run(observedShape(curriedEvents))).toBe(2)
+    expect(curriedEvents).toEqual([
       'value:kind',
       'handlers:circle',
       'handler:true',
       'value:radius',
     ])
-
-    const curriedEvents: string[] = []
-    const run = Match.discriminant(
-      'kind',
-      observedHandlers(curriedEvents),
-    )
-    expect(curriedEvents).toEqual([])
-    expect(run(observedShape(curriedEvents))).toBe(2)
-    expect(curriedEvents).toEqual(dataFirstEvents)
   })
 
-  it('keeps tagged data-first and curried dispatch equivalent', () => {
+  it('dispatches tagged unions through curried Match.tag', () => {
     type Value =
       | { readonly _tag: 'Left'; readonly value: number }
       | { readonly _tag: 'Right'; readonly value: number }
@@ -169,7 +156,6 @@ describe('match direct dispatch', () => {
       Right: (value) => value.value,
     }
     const input: Value = { _tag: 'Right', value: 3 }
-    expect(Match.tag(input, handlers)).toBe(3)
     expect(Match.tag(handlers)(input)).toBe(3)
   })
 })
@@ -186,8 +172,8 @@ describe('schema mapped validation', () => {
       return value * 2
     })
 
-    expect(Schema.validateSync(2, mapped)).toEqual(ok(4))
-    expect(Schema.validateSync('no', mapped)).toEqual(
+    expect(Schema.validateSync(mapped)(2)).toEqual(ok(4))
+    expect(Schema.validateSync(mapped)('no')).toEqual(
       err([{ message: 'number required' }]),
     )
     expect(events).toEqual(['decode:2', 'transform:2', 'decode:no'])
@@ -204,7 +190,7 @@ describe('schema mapped validation', () => {
       return value + 1
     })
 
-    const pending = Schema.validate(2, mapped)
+    const pending = Schema.validate(mapped)(2)
     expect(events).toEqual(['decode:2'])
     expect(await pending).toEqual(ok(3))
     expect(events).toEqual(['decode:2', 'transform:2'])
@@ -332,11 +318,11 @@ describe('Option traversal optimization boundaries', () => {
         return Reflect.get(target, key, receiver)
       },
     })
-    const result = Option.traverse(source, (value, index) => {
+    const result = Option.traverse((value: number, index: number) => {
       events.push(`callback:${index}:${value}`)
       if (index === 0) values.push(2)
       return some(value * 10)
-    })
+    })(source)
     expect(result).toEqual(some([10, 20]))
     expect(events).toEqual([
       'get:length',
@@ -350,9 +336,9 @@ describe('Option traversal optimization boundaries', () => {
 
     const sparse = new Array<number | undefined>(2)
     sparse[1] = 2
-    expect(
-      Option.traverse(sparse, (value) => some(value ?? 0)),
-    ).toEqual(some([0, 2]))
+    expect(Option.traverse((value: number | undefined) => some(value ?? 0))(sparse)).toEqual(
+      some([0, 2]),
+    )
   })
 
   it('stops without a trailing length read and preserves exotic lengths', () => {
@@ -366,10 +352,10 @@ describe('Option traversal optimization boundaries', () => {
       },
     })
     expect(
-      Option.traverse(source, (value, index) => {
+      Option.traverse((value: number, index: number) => {
         events.push(`callback:${index}:${value}`)
         return none
-      }),
+      })(source),
     ).toBe(none)
     expect(events).toEqual(['get:length', 'get:0', 'callback:0:1'])
 
@@ -381,9 +367,7 @@ describe('Option traversal optimization boundaries', () => {
         return undefined
       },
     })
-    expect(
-      Option.traverse(fractional, (value) => some(value)),
-    ).toEqual(some([3, 4]))
+    expect(Option.traverse((value: number) => some(value))(fractional)).toEqual(some([3, 4]))
   })
 
   it('leaves all on iterator semantics and closes custom iterators', () => {
@@ -421,9 +405,7 @@ describe('Option traversal optimization boundaries', () => {
     }
     let result: Option.Option<number[]> | undefined
     try {
-      result = Option.traverse([1, 2], (value) =>
-        some(value * 2),
-      )
+      result = Option.traverse((value: number) => some(value * 2))([1, 2])
     } finally {
       Array.prototype.push = original
     }

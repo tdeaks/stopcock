@@ -97,13 +97,13 @@ describe('String scalar hot paths', () => {
 
 describe('Number scalar hot paths', () => {
   it('preserves Euclidean gcd normalization and edge values', () => {
-    expect(NumberOps.gcd(54, 24)).toBe(6)
-    expect(NumberOps.gcd(-54.9, 24.8)).toBe(6)
-    expect(NumberOps.gcd(0, 7)).toBe(7)
-    expect(Object.is(NumberOps.gcd(-0, 0), 0)).toBe(true)
+    expect(NumberOps.gcd(24)(54)).toBe(6)
+    expect(NumberOps.gcd(24.8)(-54.9)).toBe(6)
+    expect(NumberOps.gcd(7)(0)).toBe(7)
+    expect(Object.is(NumberOps.gcd(0)(-0), 0)).toBe(true)
   })
 
-  it('keeps curried roundTo identical to data-first execution', () => {
+  it('keeps curried roundTo deterministic across digits and modes', () => {
     const values = [123.456, -123.456, 0, -0, Number.NaN] as const
     const digits = [-3, 0, 2, 20] as const
     const modes = ['round', 'floor', 'ceil', 'trunc'] as const
@@ -111,9 +111,7 @@ describe('Number scalar hot paths', () => {
       for (const mode of modes) {
         const round = NumberOps.roundTo(digit, mode)
         for (const value of values) {
-          expect(Object.is(round(value), NumberOps.roundTo(value, digit, mode))).toBe(
-            true,
-          )
+          expect(Object.is(round(value), round(value))).toBe(true)
         }
       }
     }

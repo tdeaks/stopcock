@@ -170,9 +170,8 @@ describe('Validation hot paths preserve Array iteration semantics', () => {
 
     expect(
       Validation.traverse(
-        values,
         validate as (value: number) => Validation.Validation<number, never>,
-      ),
+      )(values),
     ).toEqual({ _tag: 1, value: [1, 2] })
     expect(calls).toEqual([
       [undefined, 1, 0, true],
@@ -184,10 +183,10 @@ describe('Validation hot paths preserve Array iteration semantics', () => {
     sparse[2] = 2
     const sparseCalls: number[] = []
     expect(() =>
-      Validation.traverse(sparse, (value, index) => {
+      Validation.traverse((value: number, index: number) => {
         sparseCalls.push(index)
         return Validation.valid(value)
-      }),
+      })(sparse),
     ).toThrow(TypeError)
     expect(sparseCalls).toEqual([1, 2])
   })

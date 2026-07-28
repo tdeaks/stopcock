@@ -39,14 +39,14 @@ const stages = (): Stages => {
 }
 
 const SHAPES = {
-  map: (source: Iterable<unknown>, s: Stages) => Iter.map(source, s.double),
-  filter: (source: Iterable<unknown>, s: Stages) => Iter.filter(source, s.keep),
+  map: (source: Iterable<unknown>, s: Stages) => Iter.map(s.double)(source),
+  filter: (source: Iterable<unknown>, s: Stages) => Iter.filter(s.keep)(source),
   'map-filter': (source: Iterable<unknown>, s: Stages) =>
-    Iter.filter(Iter.map(source, s.double), s.keep),
+    Iter.filter(s.keep)(Iter.map(s.double)(source)),
   'map-filter-take': (source: Iterable<unknown>, s: Stages) =>
-    Iter.take(Iter.filter(Iter.map(source, s.double), s.keep), 3),
+    Iter.take(3)(Iter.filter(s.keep)(Iter.map(s.double)(source))),
   'filterMap-take': (source: Iterable<unknown>, s: Stages) =>
-    Iter.take(Iter.filterMap(source, s.halve), 3),
+    Iter.take(3)(Iter.filterMap(s.halve)(source)),
 } as const
 
 interface TerminalRun {
@@ -63,13 +63,12 @@ const TERMINALS: Readonly<Record<string, () => TerminalRun>> = {
       calls,
       run: (plan) =>
         Iter.reduce(
-          plan,
           (state: string, value, index) => {
             calls.push(['reduce', value, index])
             return `${state}|${String(value)}`
           },
           'seed',
-        ),
+        )(plan),
     }
   },
   find: () => {
@@ -77,10 +76,10 @@ const TERMINALS: Readonly<Record<string, () => TerminalRun>> = {
     return {
       calls,
       run: (plan) =>
-        Iter.find(plan, (value, index) => {
+        Iter.find((value, index) => {
           calls.push(['find', value, index])
           return index === 1
-        }),
+        })(plan),
     }
   },
   findOrUndefined: () => {
@@ -88,10 +87,10 @@ const TERMINALS: Readonly<Record<string, () => TerminalRun>> = {
     return {
       calls,
       run: (plan) =>
-        Iter.findOrUndefined(plan, (value, index) => {
+        Iter.findOrUndefined((value, index) => {
           calls.push(['find', value, index])
           return index === 1
-        }),
+        })(plan),
     }
   },
   findAbsent: () => {
@@ -99,10 +98,10 @@ const TERMINALS: Readonly<Record<string, () => TerminalRun>> = {
     return {
       calls,
       run: (plan) =>
-        Iter.findOrUndefined(plan, (value, index) => {
+        Iter.findOrUndefined((value, index) => {
           calls.push(['find', value, index])
           return false
-        }),
+        })(plan),
     }
   },
   some: () => {
@@ -110,10 +109,10 @@ const TERMINALS: Readonly<Record<string, () => TerminalRun>> = {
     return {
       calls,
       run: (plan) =>
-        Iter.some(plan, (value, index) => {
+        Iter.some((value, index) => {
           calls.push(['some', value, index])
           return index === 1
-        }),
+        })(plan),
     }
   },
   every: () => {
@@ -121,10 +120,10 @@ const TERMINALS: Readonly<Record<string, () => TerminalRun>> = {
     return {
       calls,
       run: (plan) =>
-        Iter.every(plan, (value, index) => {
+        Iter.every((value, index) => {
           calls.push(['every', value, index])
           return index < 1
-        }),
+        })(plan),
     }
   },
   count: () => ({ calls: [], run: (plan) => Iter.count(plan) }),
@@ -133,9 +132,9 @@ const TERMINALS: Readonly<Record<string, () => TerminalRun>> = {
     return {
       calls,
       run: (plan) => {
-        Iter.forEach(plan, (value, index) => {
+        Iter.forEach((value, index) => {
           calls.push(['forEach', value, index])
-        })
+        })(plan)
         return undefined
       },
     }
@@ -144,9 +143,9 @@ const TERMINALS: Readonly<Record<string, () => TerminalRun>> = {
   firstOrUndefined: () => ({ calls: [], run: (plan) => Iter.firstOrUndefined(plan) }),
   last: () => ({ calls: [], run: (plan) => Iter.last(plan) }),
   lastOrUndefined: () => ({ calls: [], run: (plan) => Iter.lastOrUndefined(plan) }),
-  nth: () => ({ calls: [], run: (plan) => Iter.nth(plan, 1) }),
-  nthOrUndefined: () => ({ calls: [], run: (plan) => Iter.nthOrUndefined(plan, 1) }),
-  nthBeyond: () => ({ calls: [], run: (plan) => Iter.nthOrUndefined(plan, 99) }),
+  nth: () => ({ calls: [], run: (plan) => Iter.nth(1)(plan) }),
+  nthOrUndefined: () => ({ calls: [], run: (plan) => Iter.nthOrUndefined(1)(plan) }),
+  nthBeyond: () => ({ calls: [], run: (plan) => Iter.nthOrUndefined(99)(plan) }),
 }
 
 const generic = (values: readonly unknown[]): Iterable<unknown> => ({
@@ -187,17 +186,14 @@ describe('the Array fast plan matches the generic executor', () => {
 describe('Array admission', () => {
   test('reads holes as undefined and re-reads the live length', () => {
     const sparse = [1, , 3] as unknown[]
-    expect(Iter.toArray(Iter.map(sparse, (value) => value))).toEqual([1, undefined, 3])
+    expect(Iter.toArray(Iter.map((value) => value)(sparse))).toEqual([1, undefined, 3])
 
     const growing = [1, 2]
     const seen: number[] = []
-    Iter.forEach(
-      Iter.map(growing, (value) => value),
-      (value) => {
-        seen.push(value)
-        if (growing.length < 4) growing.push(growing.length + 1)
-      },
-    )
+    Iter.forEach((value) => {
+      seen.push(value)
+      if (growing.length < 4) growing.push(growing.length + 1)
+    })(Iter.map((value) => value)(growing))
     expect(seen).toEqual([1, 2, 3, 4])
   })
 
@@ -209,7 +205,7 @@ describe('Array admission', () => {
         return Reflect.get(target, property, receiver)
       },
     })
-    expect(Iter.toArray(Iter.map(proxy, (value) => (value as number) * 2))).toEqual([2, 4, 6])
+    expect(Iter.toArray(Iter.map((value) => (value as number) * 2)(proxy))).toEqual([2, 4, 6])
     expect(calls).toContain('Symbol(Symbol.iterator)')
   })
 
@@ -219,47 +215,35 @@ describe('Array admission', () => {
       yield 9
       yield 8
     }
-    expect(Iter.toArray(Iter.map(shadowed, (value) => value * 2))).toEqual([18, 16])
+    expect(Iter.toArray(Iter.map((value) => value * 2)(shadowed))).toEqual([18, 16])
   })
 
   test('runs an Array subclass on the indexed path with identical results', () => {
     class Bag extends Array<number> {}
     const bag = Bag.from([1, 2, 3]) as Bag
     expect(
-      Iter.toArray(
-        Iter.filter(
-          Iter.map(bag, (value) => value * 2),
-          (value) => value > 2,
-        ),
-      ),
+      Iter.toArray(Iter.filter((value) => value > 2)(Iter.map((value) => value * 2)(bag))),
     ).toEqual([4, 6])
   })
 
   test('falls back for Set and generator sources', () => {
     expect(
-      Iter.count(
-        Iter.filter(
-          Iter.map(new Set([1, 2, 3]), (value) => value * 2),
-          () => true,
-        ),
-      ),
+      Iter.count(Iter.filter(() => true)(Iter.map((value) => value * 2)(new Set([1, 2, 3])))),
     ).toBe(3)
-    expect(Iter.toArray(Iter.map(generic([1, 2]), (value) => value))).toEqual([1, 2])
+    expect(Iter.toArray(Iter.map((value) => value)(generic([1, 2])))).toEqual([1, 2])
   })
 })
 
 describe('kernel-adjacent semantics', () => {
   test('take(0) never evaluates its upstream', () => {
     let calls = 0
-    const plan = Iter.take(
-      Iter.filter(
-        Iter.map([1, 2, 3], (value) => {
+    const plan = Iter.take(0)(
+      Iter.filter(() => true)(
+        Iter.map((value) => {
           calls++
           return value
-        }),
-        () => true,
+        })([1, 2, 3]),
       ),
-      0,
     )
     expect(Iter.toArray(plan)).toEqual([])
     expect(Iter.count(plan)).toBe(0)
@@ -270,44 +254,41 @@ describe('kernel-adjacent semantics', () => {
   test('an early-exit terminal stops reading the source', () => {
     const reads: number[] = []
     const source = [1, 2, 3, 4, 5]
-    const plan = Iter.map(source, (value, index) => {
+    const plan = Iter.map((value, index) => {
       reads.push(index)
       return (value as number) * 2
-    })
+    })(source)
     expect(Iter.firstOrUndefined(plan)).toBe(2)
     expect(reads).toEqual([0])
 
     reads.length = 0
-    expect(Iter.nthOrUndefined(plan, 2)).toBe(6)
+    expect(Iter.nthOrUndefined(2)(plan)).toBe(6)
     expect(reads).toEqual([0, 1, 2])
   })
 
   test('a throwing callback propagates and leaves no state behind', () => {
     const boom = new Error('boom')
-    const plan = Iter.filter([1, 2, 3], (value) => {
+    const plan = Iter.filter((value) => {
       if (value === 2) throw boom
       return true
-    })
+    })([1, 2, 3])
     expect(() => Iter.toArray(plan)).toThrow(boom)
     expect(() => Iter.toArray(plan)).toThrow(boom)
   })
 
   test('repeated terminals on one plan restart every stage index', () => {
     const indexes: number[] = []
-    const plan = Iter.map([1, 2, 3], (value, index) => {
+    const plan = Iter.map((value, index) => {
       indexes.push(index)
       return value
-    })
+    })([1, 2, 3])
     expect(Iter.toArray(plan)).toEqual([1, 2, 3])
     expect(Iter.toArray(plan)).toEqual([1, 2, 3])
     expect(indexes).toEqual([0, 1, 2, 0, 1, 2])
   })
 
   test('public iteration is unchanged by fast-plan selection', () => {
-    const plan = Iter.filter(
-      Iter.map([1, 2, 3, 4], (value) => value * 2),
-      (value) => value > 2,
-    )
+    const plan = Iter.filter((value) => value > 2)(Iter.map((value) => value * 2)([1, 2, 3, 4]))
     const iterator = plan[Symbol.iterator]()
     expect(iterator.next()).toEqual({ done: false, value: 4 })
     expect(iterator.return?.()).toEqual({ done: true, value: undefined })
@@ -330,9 +311,8 @@ describe('kernel-adjacent semantics', () => {
         } as Iterator<number>
       },
     })
-    const plan = Iter.filter(
-      Iter.map(Iter.flatMap([1, 2], nested), (value) => value * 10),
-      () => true,
+    const plan = Iter.filter(() => true)(
+      Iter.map((value) => value * 10)(Iter.flatMap(nested)([1, 2])),
     )
     expect(Iter.firstOrUndefined(plan)).toBe(10)
     expect(closed).toBe(1)

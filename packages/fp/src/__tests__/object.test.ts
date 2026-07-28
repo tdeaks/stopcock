@@ -11,12 +11,12 @@ const user = {
 
 describe('object', () => {
   it('picks, omits, associates, and dissociates without mutating input', () => {
-    expect(Obj.pick(user, ['name', 'age'])).toEqual({ name: 'Alice', age: 30 })
+    expect(Obj.pick(['name', 'age'])(user)).toEqual({ name: 'Alice', age: 30 })
     expect(pipe(user, Obj.omit(['age']))).toEqual({
       name: 'Alice',
       address: user.address,
     })
-    expect(Obj.assoc({ a: 1 }, 'b', 2)).toEqual({ a: 1, b: 2 })
+    expect(Obj.assoc('b', 2)({ a: 1 })).toEqual({ a: 1, b: 2 })
     expect(pipe({ a: 1, b: 2 }, Obj.dissoc('a'))).toEqual({ b: 2 })
     expect(user).toEqual({
       name: 'Alice',
@@ -29,25 +29,27 @@ describe('object', () => {
     const symbol = Symbol('value')
     const source = { visible: 1, [symbol]: 2 }
     expect(Obj.keys(source)).toEqual(['visible', symbol])
-    expect(Obj.pick(source, [symbol])).toEqual({ [symbol]: 2 })
-    expect(() => Obj.assoc(source, '__proto__', 1)).toThrow(TypeError)
+    expect(Obj.pick([symbol])(source)).toEqual({ [symbol]: 2 })
+    expect(() => Obj.assoc('__proto__', 1)(source)).toThrow(TypeError)
   })
 
   it('maps and filters keys and values into null-prototype records', () => {
-    const mapped = Obj.mapValues({ a: 1, b: 2 }, (value) => value * 2)
+    const mapped = pipe(
+      { a: 1, b: 2 },
+      Obj.mapValues((value) => value * 2),
+    )
     expect(mapped).toEqual({ a: 2, b: 4 })
     expect(Object.getPrototypeOf(mapped)).toBeNull()
-    expect(Obj.mapKeys({ a: 1 }, (key) => `x_${String(key)}`)).toEqual({ x_a: 1 })
-    expect(Obj.pickBy({ a: 1, b: 2 }, (value) => value > 1)).toEqual({ b: 2 })
-    expect(Obj.omitBy({ a: 1, b: 2 }, (value) => value > 1)).toEqual({ a: 1 })
+    expect(pipe({ a: 1 }, Obj.mapKeys((key) => `x_${String(key)}`))).toEqual({ x_a: 1 })
+    expect(pipe({ a: 1, b: 2 }, Obj.pickBy((value) => value > 1))).toEqual({ b: 2 })
+    expect(pipe({ a: 1, b: 2 }, Obj.omitBy((value) => value > 1))).toEqual({ a: 1 })
   })
 
   it('merges with an explicit resolver', () => {
     expect(
-      Obj.mergeWith(
+      pipe(
         { a: 1, b: 2 },
-        { a: 10, b: 20, c: 30 },
-        (left, right) => Number(left) + Number(right),
+        Obj.mergeWith({ a: 10, b: 20, c: 30 }, (left, right) => Number(left) + Number(right)),
       ),
     ).toEqual({ a: 11, b: 22, c: 30 })
   })
@@ -55,7 +57,7 @@ describe('object', () => {
   it('deep-merges with explicit bias and array policy', () => {
     const left = { x: { a: 1, b: 2 }, y: 3, values: [1, 2] }
     const right = { x: { a: 10, c: 30 }, y: 30, values: [3] }
-    expect(Obj.mergeDeep(left, right, { bias: 'left' })).toEqual({
+    expect(Obj.mergeDeep(right, { bias: 'left' })(left)).toEqual({
       x: { a: 1, b: 2, c: 30 },
       y: 3,
       values: [1, 2],
@@ -68,25 +70,28 @@ describe('object', () => {
   })
 
   it('reads tuple paths and exposes Option for nullable or absent values', () => {
-    expect(Obj.getPath(user, ['name'])).toEqual(some('Alice'))
+    expect(Obj.getPath(['name'])(user)).toEqual(some('Alice'))
     expect(pipe(user, Obj.getPath(['address', 'zip']))).toEqual(some('SW1'))
-    expect(Obj.getPath({} as typeof user, ['address', 'city'])).toEqual(none)
-    expect(Obj.getPathOrUndefined(user, ['address', 'city'])).toBe('London')
-    expect(Obj.getPathOrUndefined({} as typeof user, ['address', 'city'])).toBeUndefined()
-    expect(Obj.getPath({ present: undefined }, ['present'])).toEqual(some(undefined))
-    expect(Obj.hasPath(user, ['address', 'city'])).toBe(true)
-    expect(Obj.hasPath(user, ['address', 'missing'])).toBe(false)
+    expect(Obj.getPath(['address', 'city'])({} as typeof user)).toEqual(none)
+    expect(Obj.getPathOrUndefined(['address', 'city'])(user)).toBe('London')
+    expect(Obj.getPathOrUndefined(['address', 'city'])({} as typeof user)).toBeUndefined()
+    expect(Obj.getPath(['present'])({ present: undefined })).toEqual(some(undefined))
+    expect(Obj.hasPath(['address', 'city'])(user)).toBe(true)
+    expect(Obj.hasPath(['address', 'missing'])(user)).toBe(false)
   })
 
   it('sets, modifies, and removes paths immutably', () => {
-    const changed = Obj.setPath(user, ['address', 'city'], 'York')
-    const modified = Obj.modifyPath(changed, ['age'], (age) => Number(age) + 1)
+    const changed = Obj.setPath(['address', 'city'], 'York')(user)
+    const modified = pipe(
+      changed,
+      Obj.modifyPath(['age'], (age) => Number(age) + 1),
+    )
     const removable: {
       name: string
       age: number
       address: { city: string; zip?: string }
     } = modified
-    const removed = Obj.removePath(removable, ['address', 'zip'])
+    const removed = Obj.removePath(['address', 'zip'])(removable)
     expect(removed).toEqual({
       name: 'Alice',
       age: 31,
@@ -97,12 +102,15 @@ describe('object', () => {
 
   it('builds typed reusable paths and evolves selected fields', () => {
     const city = Obj.pathOf<typeof user>()('address', 'city')
-    expect(Obj.getPath(user, city)).toEqual(some('London'))
+    expect(Obj.getPath(city)(user)).toEqual(some('London'))
     expect(
-      Obj.evolve(user, {
-        name: (name) => name.toUpperCase(),
-        age: (age) => age + 1,
-      }),
+      pipe(
+        user,
+        Obj.evolve({
+          name: (name) => name.toUpperCase(),
+          age: (age) => age + 1,
+        }),
+      ),
     ).toEqual({ ...user, name: 'ALICE', age: 31 })
   })
 })

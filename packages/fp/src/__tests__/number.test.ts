@@ -8,12 +8,12 @@ describe('number', () => {
     it('isEven', () => expect(N.isEven(4)).toBe(true))
     it('isOdd', () => expect(N.isOdd(3)).toBe(true))
 
-    it('clamp data-first', () => {
-      expect(N.clamp(5, 0, 10)).toBe(5)
-      expect(N.clamp(-1, 0, 10)).toBe(0)
-      expect(N.clamp(15, 0, 10)).toBe(10)
+    it('clamp', () => {
+      expect(N.clamp(0, 10)(5)).toBe(5)
+      expect(N.clamp(0, 10)(-1)).toBe(0)
+      expect(N.clamp(0, 10)(15)).toBe(10)
     })
-    it('clamp data-last', () => expect(pipe(5, N.clamp(0, 10))).toBe(5))
+    it('clamp via pipe', () => expect(pipe(5, N.clamp(0, 10))).toBe(5))
   })
 
   describe('sum', () => {
@@ -64,10 +64,9 @@ describe('number', () => {
   })
 
   describe('percentile', () => {
-    it('0th → min', () => expect(N.percentile([1, 2, 3, 4, 5], 0)).toEqual(some(1)))
-    it('100th → max', () => expect(N.percentile([1, 2, 3, 4, 5], 100)).toEqual(some(5)))
-    it('50th ≈ median', () => expect(N.percentile([1, 2, 3, 4, 5], 50)).toEqual(some(3)))
-    it('data-last', () => expect(pipe([1, 2, 3, 4, 5], N.percentile(50))).toEqual(some(3)))
+    it('0th → min', () => expect(N.percentile(0)([1, 2, 3, 4, 5])).toEqual(some(1)))
+    it('100th → max', () => expect(N.percentile(100)([1, 2, 3, 4, 5])).toEqual(some(5)))
+    it('50th ≈ median', () => expect(pipe([1, 2, 3, 4, 5], N.percentile(50))).toEqual(some(3)))
   })
 
   describe('min / max / minMax', () => {
@@ -92,19 +91,18 @@ describe('number', () => {
 
   describe('weightedMean', () => {
     it('returns Option and reserves undefined for the explicit escape hatch', () => {
-      expect(N.weightedMean([10, 20], [1, 3])).toEqual(some(17.5))
-      expect(N.weightedMean([10], [0])).toEqual(none)
-      expect(N.weightedMeanOrUndefined([10], [0])).toBeUndefined()
+      expect(N.weightedMean([1, 3])([10, 20])).toEqual(some(17.5))
+      expect(N.weightedMean([0])([10])).toEqual(none)
+      expect(N.weightedMeanOrUndefined([0])([10])).toBeUndefined()
     })
   })
 
   describe('dotProduct', () => {
-    it('basic', () => expect(N.dotProduct([1, 2, 3], [4, 5, 6])).toBe(32))
+    it('basic', () => expect(pipe([1, 2, 3], N.dotProduct([4, 5, 6]))).toBe(32))
     it('different lengths throw', () =>
-      expect(() => N.dotProduct([1, 2, 3], [4, 5])).toThrow(RangeError))
+      expect(() => N.dotProduct([4, 5])([1, 2, 3])).toThrow(RangeError))
     it('explicit truncate variant uses the shorter length', () =>
-      expect(N.dotProductTruncate([1, 2, 3], [4, 5])).toBe(14))
-    it('empty → 0', () => expect(N.dotProduct([], [])).toBe(0))
-    it('data-last', () => expect(pipe([1, 2, 3], N.dotProduct([4, 5, 6]))).toBe(32))
+      expect(N.dotProductTruncate([4, 5])([1, 2, 3])).toBe(14))
+    it('empty → 0', () => expect(N.dotProduct([])([])).toBe(0))
   })
 })

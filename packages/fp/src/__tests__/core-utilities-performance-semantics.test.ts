@@ -132,8 +132,8 @@ describe('core utility fast paths preserve public semantics', () => {
       },
     )
 
-    expect(optionMap(option, (value) => value + 1)).toEqual(some(3))
-    expect(Result.map(result, (value) => value + 1)).toEqual(Result.ok(4))
+    expect(optionMap((value: number) => value + 1)(option)).toEqual(some(3))
+    expect(Result.map((value: number) => value + 1)(result)).toEqual(Result.ok(4))
     expect(events).toEqual([
       'option:_tag',
       'option:value',
@@ -171,19 +171,19 @@ describe('core utility fast paths preserve public semantics', () => {
 
   it('keeps Map.get present-undefined and missing keys distinct', () => {
     const present = new Map<string, number | undefined>([['value', undefined]])
-    expect(MapOps.get(present, 'value')).toEqual(some(undefined))
-    expect(MapOps.get(present, 'missing')).toBe(none)
-    expect(MapOps.getOrUndefined(present, 'value')).toBeUndefined()
+    expect(MapOps.get('value')(present)).toEqual(some(undefined))
+    expect(MapOps.get('missing')(present)).toBe(none)
+    expect(MapOps.getOrUndefined('value')(present)).toBeUndefined()
   })
 
   it('keeps Set intersection order, smaller-side selection, and disjointness exact', () => {
     const left = new Set([3, 2, 1])
     const right = new Set([2, 3])
-    expect([...SetOps.intersection(left, right)]).toEqual([2, 3])
-    expect([...SetOps.intersection(right, left)]).toEqual([2, 3])
-    expect(SetOps.isDisjoint(left, new Set([4, 5]))).toBe(true)
-    expect(SetOps.isDisjoint(left, new Set([5, 2]))).toBe(false)
-    expect(SetOps.intersection(new Set([Number.NaN]), new Set([Number.NaN]))).toEqual(
+    expect([...SetOps.intersection(right)(left)]).toEqual([2, 3])
+    expect([...SetOps.intersection(left)(right)]).toEqual([2, 3])
+    expect(SetOps.isDisjoint(new Set([4, 5]))(left)).toBe(true)
+    expect(SetOps.isDisjoint(new Set([5, 2]))(left)).toBe(false)
+    expect(SetOps.intersection(new Set([Number.NaN]))(new Set([Number.NaN]))).toEqual(
       new Set([Number.NaN]),
     )
   })
@@ -208,7 +208,7 @@ describe('core utility fast paths preserve public semantics', () => {
       },
     }
 
-    const result = RecordOps.omit(source, omitted)
+    const result = RecordOps.omit(omitted)(source)
     expect(iterations).toBe(1)
     expect(Object.getPrototypeOf(result)).toBeNull()
     expect(Reflect.ownKeys(result)).toEqual(['safe', symbol])
