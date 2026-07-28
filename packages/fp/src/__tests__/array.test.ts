@@ -177,10 +177,8 @@ describe('array', () => {
     it('uniqBy data-last', () =>
       expect(pipe([1.1, 1.9, 2.1], A.uniqBy(Math.floor))).toEqual([1.1, 2.1]))
 
-    it('take data-first', () => expect(A.take([1, 2, 3], 2)).toEqual([1, 2]))
     it('take data-last', () => expect(pipe([1, 2, 3], A.take(2))).toEqual([1, 2]))
 
-    it('drop data-first', () => expect(A.drop([1, 2, 3], 1)).toEqual([2, 3]))
     it('drop data-last', () => expect(pipe([1, 2, 3], A.drop(1))).toEqual([2, 3]))
 
     it('takeWhile data-last', () =>

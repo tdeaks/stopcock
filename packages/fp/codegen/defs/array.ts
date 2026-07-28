@@ -517,36 +517,25 @@ export const uniqBy: {
 export const take: {
   <A>(arr: readonly A[], n: number): A[]
   (n: number): <A>(arr: readonly A[]) => A[]
-} = function take(_arg0?: any, _arg1?: any) {
-  if (arguments.length >= 2) {
-    const arr = _arg0
-    const n = _arg1
+} = dual(
+  2,
+  (arr: any, n: any) => {
     let len = arr.length
     if (n <= 0) {
       return []
     } else {
       return arr.slice(0, n > len ? len : n)
     }
-  }
-  const n = _arg0
-  const _dl: any = function (arr: any) {
-    let len = arr.length
-    if (n <= 0) {
-      return []
-    } else {
-      return arr.slice(0, n > len ? len : n)
-    }
-  }
-  return _dl
-} as any
+  },
+  { op: 'take' },
+)
 
 export const drop: {
   <A>(arr: readonly A[], n: number): A[]
   (n: number): <A>(arr: readonly A[]) => A[]
-} = function drop(_arg0?: any, _arg1?: any) {
-  if (arguments.length >= 2) {
-    const arr = _arg0
-    const n = _arg1
+} = dual(
+  2,
+  (arr: any, n: any) => {
     let len = arr.length
     if (n <= 0) {
       return arr.slice()
@@ -555,20 +544,9 @@ export const drop: {
     } else {
       return arr.slice(n)
     }
-  }
-  const n = _arg0
-  const _dl: any = function (arr: any) {
-    let len = arr.length
-    if (n <= 0) {
-      return arr.slice()
-    } else if (n >= len) {
-      return []
-    } else {
-      return arr.slice(n)
-    }
-  }
-  return _dl
-} as any
+  },
+  { op: 'drop' },
+)
 
 export const takeWhile: {
   <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
