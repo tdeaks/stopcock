@@ -22,10 +22,8 @@ function run(relativeScript: string): void {
 }
 
 generateProtocolViewsV1()
-run('codegen/compact-facts.ts')
 run('codegen/dual-inline.ts')
 run('scripts/sync-module-manifest.ts')
 formatGeneratedProtocolTypeScriptV1()
-formatGeneratedProtocolTypeScriptV1(['packages/fp/src/internal/compact/facts.generated.ts'])
 
 console.log('canonical codegen complete')

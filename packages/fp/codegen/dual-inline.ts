@@ -8,17 +8,19 @@
  *
  * Every generated op is `op(...args) => (data) => result`. There is no
  * `arguments.length` dispatch and no data-first call form -- one runtime
- * path, matching packages/fp/src/internal/__prototype__data-last.ts (the
- * measured reference for this shape). The `dual()` bodies in codegen/defs/
- * stay data-first (`(data, ...args) => result`) purely as the authoring
- * convention; this generator flips them at build time.
+ * path. The `dual()` bodies in codegen/defs/ stay data-first
+ * (`(data, ...args) => result`) purely as the authoring convention; this
+ * generator flips them at build time.
+ *
+ * Generated factories carry no runtime tag any more (no `_op`/`_fn`/`_a1`/
+ * `_a2`, no `registerTrustedOperator`): the fused runtime engine that tag
+ * machinery existed for is gone, and `@stopcock/fp-compiler` recognises
+ * operators by import name at build time, never by a runtime marker.
  */
 
 import { type Parser, type ParseResult, seq, map, string as pStr, char, run } from './parse'
 import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
-import { generatedPureAnnotationV1, type GeneratedInitializerSiteV1 } from './purity'
-import { findRuntimeOpcodeByNameV1 } from './protocol/operator-definitions'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const DEFS_DIR = join(ROOT, 'codegen', 'defs')
@@ -360,38 +362,7 @@ function typeDecl(name: string, annotation: string): string {
   return annotation ? `export const ${name}: ${annotation}` : `export const ${name}`
 }
 
-function generateArity1Tagged(dc: DualCall, moduleName: GeneratedModule): string {
-  const opcode = dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0
-  const decl = typeDecl(dc.name, dc.typeAnnotation)
-  const bodyKind: GeneratedInitializerSiteV1['bodyKind'] = dc.bodyIsRef ? 'reference' : 'inline'
-  const pure =
-    moduleName === 'array' || moduleName === 'math'
-      ? generatedPureAnnotationV1({
-          module: moduleName,
-          name: dc.name,
-          bodyKind,
-        })
-      : ''
-
-  if (dc.bodyIsRef) {
-    return `${decl} = ${pure}(() => {
-  const _f: any = ${dc.bodyStr}
-  _f._op = ${opcode}
-  return registerTrustedOperator(_f, ${opcode})
-})()\n`
-  }
-
-  const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
-  const bodyCode = isExpression ? `return ${bodyText}` : bodyText
-
-  return `${decl} = ${pure}(() => {
-  const _f: any = function ${dc.name}(${params.join(': any, ')}: any) { ${bodyCode} }
-  _f._op = ${opcode}
-  return registerTrustedOperator(_f, ${opcode})
-})()\n`
-}
-
-function generateArity1Untagged(dc: DualCall): string {
+function generateArity1(dc: DualCall): string {
   const decl = typeDecl(dc.name, dc.typeAnnotation)
   if (dc.bodyIsRef) {
     return `${decl} = ${dc.bodyStr}\n`
@@ -494,51 +465,26 @@ function singleFormAnnotation(annotation: string): string {
   return `{\n  ${kept.map((s) => s.trim()).join('\n  ')}\n}`
 }
 
-function tagProps(opcode: number, factoryParams: readonly string[], n: number): string {
-  let props = `\n    _dl._op = ${opcode}`
-  props += `\n    _dl._fn = ${factoryParams[0]}`
-  if (n >= 3) props += `\n    _dl._a1 = ${factoryParams[1]}`
-  if (n >= 4) props += `\n    _dl._a2 = ${factoryParams[2]}`
-  return props
-}
-
 function generateArityN(dc: DualCall): string {
-  const n = dc.arity
-  const opcode = dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0
-  const hasTag = dc.tag !== null && opcode > 0
-
-  if (dc.bodyIsRef) {
-    return generateArityNRef(dc, n, opcode, hasTag)
-  }
-  return generateArityNInline(dc, n, opcode, hasTag)
+  if (dc.bodyIsRef) return generateArityNRef(dc, dc.arity)
+  return generateArityNInline(dc)
 }
 
-function generateArityNRef(dc: DualCall, n: number, opcode: number, hasTag: boolean): string {
+function generateArityNRef(dc: DualCall, n: number): string {
   const ref = dc.bodyStr
   const decl = typeDecl(dc.name, singleFormAnnotation(dc.typeAnnotation))
   const factoryParams = Array.from({ length: n - 1 }, (_, i) => `_a${i}`)
   const factoryArgs = factoryParams.map((p) => `${p}: any`).join(', ')
   const callArgs = ['data', ...factoryParams].join(', ')
 
-  if (!hasTag) {
-    return `${decl} = function ${dc.name}(${factoryArgs}) {
+  return `${decl} = function ${dc.name}(${factoryArgs}) {
   return function (data: any) {
     return ${ref}(${callArgs})
   }
 } as any\n`
-  }
-
-  const closureProps = tagProps(opcode, factoryParams, n)
-  const registerArgs = ['_dl', String(opcode), ...factoryParams].join(', ')
-  return `${decl} = function ${dc.name}(${factoryArgs}) {
-  const _dl: any = function (data: any) {
-    return ${ref}(${callArgs})
-  }${closureProps}
-  return registerTrustedOperator(${registerArgs})
-} as any\n`
 }
 
-function generateArityNInline(dc: DualCall, n: number, opcode: number, hasTag: boolean): string {
+function generateArityNInline(dc: DualCall): string {
   const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
   const bodyCode = isExpression ? `return ${bodyText}` : bodyText
   const decl = typeDecl(dc.name, singleFormAnnotation(dc.typeAnnotation))
@@ -547,42 +493,28 @@ function generateArityNInline(dc: DualCall, n: number, opcode: number, hasTag: b
   const factoryParams = params.slice(1)
   const factoryArgs = factoryParams.map((p) => `${p}: any`).join(', ')
 
-  if (!hasTag) {
-    return `${decl} = function ${dc.name}(${factoryArgs}) {
+  return `${decl} = function ${dc.name}(${factoryArgs}) {
   return function (${dataParam}: any) {
     ${bodyCode}
   }
 } as any\n`
-  }
-
-  const closureProps = tagProps(opcode, factoryParams, n)
-  const registerArgs = ['_dl', String(opcode), ...factoryParams].join(', ')
-  return `${decl} = function ${dc.name}(${factoryArgs}) {
-  const _dl: any = function (${dataParam}: any) {
-    ${bodyCode}
-  }${closureProps}
-  return registerTrustedOperator(${registerArgs})
-} as any\n`
 }
 
-function generateDecl(dc: DualCall, moduleName: GeneratedModule): string {
-  if (dc.arity <= 1) {
-    return dc.tag ? generateArity1Tagged(dc, moduleName) : generateArity1Untagged(dc)
-  }
+function generateDecl(dc: DualCall): string {
+  if (dc.arity <= 1) return generateArity1(dc)
   return generateArityN(dc)
 }
 
 // --- Module Transformer ---
 
 export function transformModuleV1(src: string, moduleName: GeneratedModule): string {
+  void moduleName
   const lines = src.split('\n')
   const outputLines: string[] = []
 
   // Add header
   outputLines.push('// Auto-generated by codegen/dual-inline.ts. Do not edit')
   outputLines.push('// Source of truth: codegen/defs/')
-  outputLines.push('')
-  outputLines.push("import { registerTrustedOperator } from './internal/provenance'")
   outputLines.push('')
 
   let i = 0
@@ -608,7 +540,7 @@ export function transformModuleV1(src: string, moduleName: GeneratedModule): str
       if (declText.includes('= dual(')) {
         const dc = tryParse(dualCallP, declText)
         if (dc) {
-          outputLines.push(generateDecl(dc, moduleName))
+          outputLines.push(generateDecl(dc))
           i = j
           continue
         }

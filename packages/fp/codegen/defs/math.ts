@@ -1,6 +1,6 @@
 import { dual } from './dual'
 
-// Arity 1. Tagged for scalar JIT
+// Arity 1
 export const inc: (n: number) => number = dual(1, (n: any) => {
   return n + 1.0;
 }, { op: 'inc' })
@@ -17,7 +17,7 @@ export const product: (arr: number[]) => number = (arr: any) => {
   return acc
 }
 
-// Arity 2. Tagged for scalar JIT (v=v+n, v=v*n, etc.)
+// Arity 2
 export const add: {
   (a: number, b: number): number
   (b: number): (a: number) => number

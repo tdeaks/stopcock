@@ -12,8 +12,6 @@ import {
 import { none as optionNone, some as optionSome, type Option } from './option'
 import { mergeSortBy, mergeSortAsc, mergeSortDesc } from './sort-kernel'
 
-const NON_FUSEABLE_OPCODE = 0
-
 // Structural equality (deep, arrays/dates/plain-objects), used where entries need
 // value comparison rather than reference identity
 function structEq(a: any, b: any): boolean {
@@ -539,15 +537,7 @@ export const take: {
       return arr.slice(0, n > len ? len : n)
     }
   }
-  // Coercible objects, symbols, and bigints can expose repeated native
-  // comparison/slice coercions. Only a primitive number is admitted to the
-  // streaming fusion contract; every other value keeps the real callable as
-  // an opaque stage.
-  _dl._op = 3
-  _dl._fn = n
-  if (typeof n !== 'number') return registerTrustedOperator(_dl, NON_FUSEABLE_OPCODE, n)
-  const fusedCount = n > 0 ? (n === 1 / 0 ? n : n - (n % 1)) : 0
-  return registerTrustedOperator(_dl, 3, fusedCount)
+  return _dl
 } as any
 
 export const drop: {
@@ -577,11 +567,7 @@ export const drop: {
       return arr.slice(n)
     }
   }
-  _dl._op = 4
-  _dl._fn = n
-  if (typeof n !== 'number') return registerTrustedOperator(_dl, NON_FUSEABLE_OPCODE, n)
-  const fusedCount = n > 0 ? (n === 1 / 0 ? n : n - (n % 1)) : 0
-  return registerTrustedOperator(_dl, 4, fusedCount)
+  return _dl
 } as any
 
 export const takeWhile: {
@@ -1629,9 +1615,8 @@ const withoutDispatchRaw = (arr: any, values: any): any[] => {
   }
 }
 
-// values is a single array-valued argument here, not variadic -- fits the
-// registry's fn binding cleanly (see opcodes.ts's OP_WITHOUT comment). Both
-// call styles share the same size-specialized dispatcher.
+// values is a single array-valued argument here, not variadic. Both call
+// styles share the same size-specialized dispatcher.
 export const without: {
   <A>(arr: readonly A[], values: readonly A[]): A[]
   <A>(values: readonly A[]): (arr: readonly A[]) => A[]

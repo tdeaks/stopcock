@@ -2,13 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  MANUAL_DENIED_PURE_INITIALIZERS_V1,
   MANUAL_PURE_DUAL_INITIALIZERS_V1,
   MANUAL_PURE_FREEZE_INITIALIZERS_V1,
-  MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1,
-  MANUAL_PURE_REGISTERED_INITIALIZERS_V1,
-  generatedDeniedInitializerKeysV1,
-  generatedPureInitializerKeysV1,
   validatePureInitializerSourcePolicyV1,
   type PureInitializerSourceModuleV1,
 } from '../codegen/purity'
@@ -62,35 +57,6 @@ function assertSourcePolicy(): void {
     }
   }
 
-  for (const [moduleName, names] of Object.entries(MANUAL_PURE_REGISTERED_INITIALIZERS_V1)) {
-    const source = readFileSync(join(sourceRoot, `${moduleName}.ts`), 'utf8')
-    for (const name of names) {
-      const initializer = declaration(source, name)
-      if (!initializer.includes('= /* @__PURE__ */ taggedUnary(')) {
-        fail(`${moduleName}.${name} is missing its reviewed registered initializer`)
-      }
-    }
-  }
-
-  for (const [moduleName, names] of Object.entries(MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1)) {
-    const source = readFileSync(join(sourceRoot, `${moduleName}.ts`), 'utf8')
-    for (const name of names) {
-      const initializer = declaration(source, name)
-      if (!initializer.includes('= /* @__PURE__ */ (() =>')) {
-        fail(`${moduleName}.${name} is missing its reviewed registered dual initializer`)
-      }
-    }
-  }
-
-  for (const [moduleName, names] of Object.entries(MANUAL_DENIED_PURE_INITIALIZERS_V1)) {
-    const source = readFileSync(join(sourceRoot, `${moduleName}.ts`), 'utf8')
-    for (const name of names) {
-      if (declaration(source, name).includes('@__PURE__')) {
-        fail(`${moduleName}.${name} is explicitly denied a pure annotation`)
-      }
-    }
-  }
-
   for (const [moduleName, names] of Object.entries(MANUAL_PURE_FREEZE_INITIALIZERS_V1)) {
     const source = readFileSync(join(sourceRoot, `${moduleName}.ts`), 'utf8')
     for (const name of names) {
@@ -136,34 +102,6 @@ function escapeRegExp(value: string): string {
 }
 
 function assertBuiltPolicy(): void {
-  const generatedRegions = new Map([
-    ['array', builtModuleRegion('array')],
-    ['math', builtModuleRegion('math')],
-  ])
-  for (const key of generatedPureInitializerKeysV1()) {
-    const [moduleName, name] = key.split('.')
-    const region = generatedRegions.get(moduleName)
-    if (
-      region === undefined ||
-      !new RegExp(
-        `const\\s+${escapeRegExp(name)}\\s*=\\s*/\\* @__PURE__ \\*/\\s*\\(\\(\\)\\s*=>`,
-        'u',
-      ).test(region)
-    ) {
-      fail(`built ${key} lost its generated pure initializer marker`)
-    }
-  }
-  for (const key of generatedDeniedInitializerKeysV1()) {
-    const [moduleName, name] = key.split('.')
-    const region = generatedRegions.get(moduleName)
-    if (
-      region !== undefined &&
-      new RegExp(`const\\s+${escapeRegExp(name)}\\s*=\\s*/\\* @__PURE__ \\*/`, 'u').test(region)
-    ) {
-      fail(`built ${key} retained a denied pure initializer marker`)
-    }
-  }
-
   for (const [moduleName, names] of Object.entries(MANUAL_PURE_DUAL_INITIALIZERS_V1)) {
     const region = builtModuleRegion(moduleName)
     for (const name of names) {
@@ -174,34 +112,6 @@ function assertBuiltPolicy(): void {
         ).test(region)
       ) {
         fail(`built ${moduleName}.${name} lost its manual pure initializer marker`)
-      }
-    }
-  }
-
-  for (const [moduleName, names] of Object.entries(MANUAL_PURE_REGISTERED_INITIALIZERS_V1)) {
-    const region = builtModuleRegion(moduleName)
-    for (const name of names) {
-      if (
-        !new RegExp(
-          `const\\s+${escapeRegExp(name)}\\s*=\\s*/\\* @__PURE__ \\*/\\s*[A-Za-z_$][\\w$]*\\(`,
-          'u',
-        ).test(region)
-      ) {
-        fail(`built ${moduleName}.${name} lost its registered initializer marker`)
-      }
-    }
-  }
-
-  for (const [moduleName, names] of Object.entries(MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1)) {
-    const region = builtModuleRegion(moduleName)
-    for (const name of names) {
-      if (
-        !new RegExp(
-          `const\\s+${escapeRegExp(name)}\\s*=\\s*/\\* @__PURE__ \\*/\\s*\\(\\(\\)\\s*=>`,
-          'u',
-        ).test(region)
-      ) {
-        fail(`built ${moduleName}.${name} lost its registered dual initializer marker`)
       }
     }
   }
@@ -219,14 +129,6 @@ function assertBuiltPolicy(): void {
       }
     }
   }
-  const string = builtModuleRegion('string')
-  for (const name of MANUAL_DENIED_PURE_INITIALIZERS_V1.string) {
-    if (
-      new RegExp(`const\\s+${escapeRegExp(name)}\\s*=\\s*/\\* @__PURE__ \\*/`, 'u').test(string)
-    ) {
-      fail(`built string.${name} retained a denied pure initializer marker`)
-    }
-  }
 }
 
 assertSourcePolicy()
@@ -236,18 +138,10 @@ const manualCount = Object.values(MANUAL_PURE_DUAL_INITIALIZERS_V1).reduce(
   (count, names) => count + names.length,
   0,
 )
-const registeredCount = Object.values(MANUAL_PURE_REGISTERED_INITIALIZERS_V1).reduce(
-  (count, names) => count + names.length,
-  0,
-)
-const registeredDualCount = Object.values(MANUAL_PURE_REGISTERED_DUAL_INITIALIZERS_V1).reduce(
-  (count, names) => count + names.length,
-  0,
-)
 const immutableCount = Object.values(MANUAL_PURE_FREEZE_INITIALIZERS_V1).reduce(
   (count, names) => count + names.length,
   0,
 )
 console.log(
-  `built purity contract: ${generatedPureInitializerKeysV1().length} generated, ${registeredCount} registered unary, ${registeredDualCount} registered dual, ${manualCount} manual dual, and ${immutableCount} immutable initializer markers verified`,
+  `built purity contract: ${manualCount} manual dual and ${immutableCount} immutable initializer markers verified`,
 )
