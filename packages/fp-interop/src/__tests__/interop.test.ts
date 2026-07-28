@@ -247,14 +247,14 @@ describe('Standard Schema delegation', () => {
       () => 'Expected a positive number',
     )
     expect(isStandardSchemaV1(positive)).toBe(true)
-    expect(decodeStandardSchemaSync(1, positive)).toEqual(Result.ok(1))
-    expect((await decodeStandardSchema(-1, positive))._tag).toBe(0)
+    expect(decodeStandardSchemaSync(positive)(1)).toEqual(Result.ok(1))
+    expect((await decodeStandardSchema(positive)(-1))._tag).toBe(0)
 
     const asynchronous = Schema.make(async (value) => Result.ok(String(value)))
-    await expect(decodeStandardSchema(1, asynchronous)).resolves.toEqual(
+    await expect(decodeStandardSchema(asynchronous)(1)).resolves.toEqual(
       Result.ok('1'),
     )
-    expect(() => decodeStandardSchemaSync(1, asynchronous)).toThrow(
+    expect(() => decodeStandardSchemaSync(asynchronous)(1)).toThrow(
       'schema validation returned a Promise',
     )
   })
