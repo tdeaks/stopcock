@@ -619,11 +619,12 @@ const ELEMENT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
     kind: 'expr',
     render: (ctx) => ({ body: [`var ${ctx.next} = (${ctx.v} === '');`] }),
   },
-  // Matches `record.ts#isEmpty` exactly, not `Object.keys(...).length === 0`:
-  // that would miss an enumerable symbol key, which `record.ts`'s
-  // `Reflect.ownKeys` + `propertyIsEnumerable` early-exit loop counts as
-  // non-empty. See the phase 3 note on `DICT_EMIT_TEMPLATES` for why this is
-  // inlined rather than importing the runtime helper.
+  // Matches `record.ts#isEmpty` exactly: an `Object.keys(...).length === 0`
+  // early exit (a symbol-only record is not empty, so that alone can't decide
+  // `true`), then a `getOwnPropertySymbols` + `propertyIsEnumerable` pass only
+  // when the string prefix was empty. See the phase 3 note on
+  // `DICT_EMIT_TEMPLATES` for why this is inlined rather than importing the
+  // runtime helper.
   dictIsEmpty: {
     kind: 'expr',
     render: (ctx) => {
@@ -631,10 +632,12 @@ const ELEMENT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
       const i = `_dei${ctx.index}`
       return {
         body: [
-          `var ${ctx.next} = true;`,
-          `var ${keys} = Reflect.ownKeys(${ctx.v});`,
+          `var ${ctx.next} = (Object.keys(${ctx.v}).length === 0);`,
+          `if (${ctx.next}) {`,
+          `var ${keys} = Object.getOwnPropertySymbols(${ctx.v});`,
           `for (var ${i} = 0; ${i} < ${keys}.length; ${i}++) {`,
           `if (Object.prototype.propertyIsEnumerable.call(${ctx.v}, ${keys}[${i}])) { ${ctx.next} = false; break; }`,
+          '}',
           '}',
         ],
       }
@@ -1091,17 +1094,16 @@ const OPTION_RESULT_ROWS: readonly OptionResultRowV1[] = [
 // `reduce`), exactly like an Option terminal populates `OptionEmitCtx.next`.
 //
 // Scaffold choice (documented here, applied in codegen.ts): the record loop
-// header inlines `Reflect.ownKeys` + `propertyIsEnumerable` compaction
-// directly rather than importing `record.ts`'s private `enumerableKeys`
-// helper. `enumerableKeys` is not a public export, and every other compiled
-// domain (Option/Result's `{ _tag, value }` object literals, the array
-// terminals' `{ _tag: 1, value }` shapes) already inlines the runtime's
-// shape rather than calling into it, so a generated site stays a
-// self-contained function with no new runtime import wiring. This is
-// semantically exact -- both compute `Reflect.ownKeys` once, then keep only
-// the keys `Object.prototype.propertyIsEnumerable` accepts, in the same
-// order -- and keeps the generated loop as one allocation (the key array)
-// with no extra call frame per element.
+// header inlines `record.ts#enumerableKeys`'s hybrid directly (`Object.keys`
+// for the string prefix, `getOwnPropertySymbols` + `propertyIsEnumerable` for
+// symbols) rather than importing the private helper. `enumerableKeys` is not
+// a public export, and every other compiled domain (Option/Result's
+// `{ _tag, value }` object literals, the array terminals' `{ _tag: 1, value
+// }` shapes) already inlines the runtime's shape rather than calling into
+// it, so a generated site stays self-contained with no new runtime import
+// wiring. Same key order and result as `enumerableKeys` for every input; a
+// stateful Proxy `ownKeys` trap now observes two invocations here instead of
+// one, matching the runtime.
 const dictMapTemplate: OpEmit = {
   kind: 'dictStep',
   render: (ctx) => {

@@ -17,17 +17,15 @@ const isEnumerable = (value: object, key: PropertyKey): boolean =>
   Object.prototype.propertyIsEnumerable.call(value, key)
 
 const enumerableKeys = (value: object): PropertyKey[] => {
-  const result = Reflect.ownKeys(value)
-  let write = 0
-  for (let read = 0; read < result.length; read += 1) {
-    const key = result[read]!
-    if (isEnumerable(value, key)) {
-      result[write] = key
-      write += 1
-    }
+  // Native `Object.keys` for the string prefix, symbols filtered explicitly
+  // after -- see `record.ts#enumerableKeys`, same trade.
+  const keys = Object.keys(value) as PropertyKey[]
+  const symbols = Object.getOwnPropertySymbols(value)
+  for (let index = 0; index < symbols.length; index += 1) {
+    const symbol = symbols[index]!
+    if (isEnumerable(value, symbol)) keys.push(symbol)
   }
-  result.length = write
-  return result
+  return keys
 }
 
 const isUnsafeKey = (key: PropertyKey): boolean =>

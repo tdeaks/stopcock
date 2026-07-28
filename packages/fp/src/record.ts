@@ -37,17 +37,18 @@ type CompatibleRecordTarget<Value, Target extends MutableRecord<unknown>> = Targ
 const create = <A>(): MutableRecord<A> => Object.create(null) as MutableRecord<A>
 
 const enumerableKeys = (source: object): PropertyKey[] => {
-  const ownKeys = Reflect.ownKeys(source)
-  // Compact the one key snapshot in place. Calling Object.keys as a large
-  // record shortcut would enumerate a Proxy twice and can observe a different
-  // key set when its ownKeys trap is stateful.
-  let written = 0
-  for (let index = 0; index < ownKeys.length; index++) {
-    const key = ownKeys[index]
-    if (Object.prototype.propertyIsEnumerable.call(source, key)) ownKeys[written++] = key
+  // Native `Object.keys` covers the whole string prefix in one call. Symbols
+  // never carry an enumerable-string shortcut, so they still need an explicit
+  // `propertyIsEnumerable` pass, appended after -- same order as
+  // `Reflect.ownKeys` would give (strings, then symbols, each in their own
+  // insertion order).
+  const keys = Object.keys(source) as PropertyKey[]
+  const symbols = Object.getOwnPropertySymbols(source)
+  for (let index = 0; index < symbols.length; index++) {
+    const symbol = symbols[index]!
+    if (Object.prototype.propertyIsEnumerable.call(source, symbol)) keys.push(symbol)
   }
-  ownKeys.length = written
-  return ownKeys
+  return keys
 }
 
 const normalizeKey = (key: PropertyKey): string | symbol =>
@@ -66,14 +67,12 @@ const writeOwn = (target: MutableRecord<unknown>, key: PropertyKey, value: unkno
   target[key] = value
 }
 
+// `Object.assign` copies exactly the same own-enumerable string+symbol keys
+// `enumerableKeys` would, in one native call, straight assignment semantics.
 const copyInto = <A, Target extends MutableRecord<unknown>>(
   source: ReadonlyRecord<A>,
   target: Target,
-): Target => {
-  const output = target as MutableRecord<unknown>
-  for (const key of enumerableKeys(source)) output[key] = source[key]
-  return target
-}
+): Target => Object.assign(target, source)
 
 export const empty = <A = never>(): MutableRecord<A> => create()
 
@@ -116,8 +115,10 @@ export const entries = <A>(source: ReadonlyRecord<A>): Array<readonly [PropertyK
 export const size = (source: object): number => enumerableKeys(source).length
 
 export const isEmpty = (source: object): boolean => {
-  for (const key of Reflect.ownKeys(source)) {
-    if (Object.prototype.propertyIsEnumerable.call(source, key)) return false
+  if (Object.keys(source).length > 0) return false
+  const symbols = Object.getOwnPropertySymbols(source)
+  for (let index = 0; index < symbols.length; index++) {
+    if (Object.prototype.propertyIsEnumerable.call(source, symbols[index])) return false
   }
   return true
 }
@@ -457,12 +458,7 @@ export function mapKeys<A>(
 const mergeImpl = <A, B>(
   source: ReadonlyRecord<A>,
   other: ReadonlyRecord<B>,
-): MutableRecord<A | B> => {
-  const result = create<A | B>()
-  copyInto(source, result)
-  copyInto(other, result)
-  return result
-}
+): MutableRecord<A | B> => Object.assign(create<A | B>(), source, other)
 
 export function merge<A, B>(
   source: ReadonlyRecord<A>,

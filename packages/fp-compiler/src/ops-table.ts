@@ -4592,10 +4592,12 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
           i = `_dei${ctx.index}`
         return {
           body: [
-            `var ${ctx.next} = true;`,
-            `var ${keys} = Reflect.ownKeys(${ctx.v});`,
+            `var ${ctx.next} = (Object.keys(${ctx.v}).length === 0);`,
+            `if (${ctx.next}) {`,
+            `var ${keys} = Object.getOwnPropertySymbols(${ctx.v});`,
             `for (var ${i} = 0; ${i} < ${keys}.length; ${i}++) {`,
             `if (Object.prototype.propertyIsEnumerable.call(${ctx.v}, ${keys}[${i}])) { ${ctx.next} = false; break; }`,
+            '}',
             '}',
           ],
         }

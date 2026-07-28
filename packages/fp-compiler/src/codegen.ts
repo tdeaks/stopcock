@@ -1277,24 +1277,22 @@ function emitDictSegment(
 
   let loopOpen: string
   if (domain === 'record') {
-    // Reproduces `record.ts#enumerableKeys` exactly: one `Reflect.ownKeys`
-    // snapshot (a stateful Proxy `ownKeys` trap must be enumerated once),
-    // compacted in place to the keys `propertyIsEnumerable` accepts --
-    // including symbol keys, and in `Reflect.ownKeys`'s own order
-    // (integer-like string keys ascending, then other strings by insertion,
-    // then symbols), not `Object.keys`/`for...in`/`Object.hasOwn`.
+    // Reproduces `record.ts#enumerableKeys`: `Object.keys` (native) for the
+    // string prefix, then `getOwnPropertySymbols` + `propertyIsEnumerable`
+    // appended for symbols. Same key order as before; a stateful Proxy
+    // `ownKeys` trap now runs twice here instead of once, matching the
+    // runtime.
     const keys = `_dkeys${startIndex}`
+    const symbols = `_dsyms${startIndex}`
     const scan = `_dscan${startIndex}`
-    const write = `_dwrite${startIndex}`
     const scanKey = `_dskey${startIndex}`
     stateLines.push(
-      `var ${keys} = Reflect.ownKeys(${curData});`,
-      `var ${write} = 0;`,
-      `for (var ${scan} = 0; ${scan} < ${keys}.length; ${scan}++) {`,
-      `var ${scanKey} = ${keys}[${scan}];`,
-      `if (Object.prototype.propertyIsEnumerable.call(${curData}, ${scanKey})) { ${keys}[${write}++] = ${scanKey}; }`,
+      `var ${keys} = Object.keys(${curData});`,
+      `var ${symbols} = Object.getOwnPropertySymbols(${curData});`,
+      `for (var ${scan} = 0; ${scan} < ${symbols}.length; ${scan}++) {`,
+      `var ${scanKey} = ${symbols}[${scan}];`,
+      `if (Object.prototype.propertyIsEnumerable.call(${curData}, ${scanKey})) { ${keys}.push(${scanKey}); }`,
       '}',
-      `${keys}.length = ${write};`,
     )
     const ri = `_dri${startIndex}`
     loopOpen = `for (var ${ri} = 0; ${ri} < ${keys}.length; ${ri}++) {`

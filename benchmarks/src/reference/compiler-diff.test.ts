@@ -1055,7 +1055,12 @@ describe('phase 3: Record ops compile, agreeing with the real runtime', () => {
     expect(compiled.__proto__).toBe(1)
   })
 
-  it('a stateful Proxy ownKeys trap is enumerated exactly once per compiled call', () => {
+  // Hybrid enumeration (`Object.keys` for strings, `getOwnPropertySymbols`
+  // for symbols) trades the old single `Reflect.ownKeys` snapshot for two
+  // native calls, so a stateful `ownKeys` trap now fires twice per
+  // enumeration instead of once. Matches `record.ts#enumerableKeys` exactly,
+  // and the runtime and compiled paths agree on the count.
+  it('a stateful Proxy ownKeys trap is enumerated a fixed number of times per compiled call', () => {
     let ownKeysCalls = 0
     const target = { a: 1, b: 2 }
     const proxy = new Proxy(target, {
@@ -1066,7 +1071,7 @@ describe('phase 3: Record ops compile, agreeing with the real runtime', () => {
     })
     const compiled = runTransformedDict(`return pipe(input, Rec.map((v) => v * 2));`, proxy, [])
     expect(compiled).toEqual({ a: 2, b: 4 })
-    expect(ownKeysCalls).toBe(1)
+    expect(ownKeysCalls).toBe(2)
   })
 
   it('dict -> array -> dict roundtrip (entries -> array ops -> fromEntries) compiles as one site', () => {

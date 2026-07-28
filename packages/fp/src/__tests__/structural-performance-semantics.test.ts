@@ -51,6 +51,12 @@ const observedObject = () => {
 }
 
 describe('structural object fast paths', () => {
+  // Hybrid enumeration (`Object.keys` for the string prefix, then
+  // `getOwnPropertySymbols` + `propertyIsEnumerable` for symbols) calls the
+  // `ownKeys` trap twice instead of once: the string descriptor checks land
+  // between the two, since `Object.keys`'s own enumerable check runs before
+  // `getOwnPropertySymbols` is ever called. The read order (and the result)
+  // is unchanged.
   it('finishes enumeration checks before ordered getter reads', () => {
     const valuesCase = observedObject()
     expect(Obj.values(valuesCase.value)).toEqual([2, 1, 3])
@@ -59,6 +65,7 @@ describe('structural object fast paths', () => {
       'descriptor:2',
       'descriptor:alpha',
       'descriptor:hidden',
+      'ownKeys',
       'descriptor:symbol:value',
       'get:2',
       'getter:2',
@@ -74,11 +81,12 @@ describe('structural object fast paths', () => {
       ['alpha', 1],
       [entriesCase.symbol, 3],
     ])
-    expect(entriesCase.events.slice(0, 5)).toEqual([
+    expect(entriesCase.events.slice(0, 6)).toEqual([
       'ownKeys',
       'descriptor:2',
       'descriptor:alpha',
       'descriptor:hidden',
+      'ownKeys',
       'descriptor:symbol:value',
     ])
   })
