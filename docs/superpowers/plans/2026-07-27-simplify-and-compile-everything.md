@@ -407,13 +407,13 @@ unchanged under `assumePure` and that the rewrite does NOT fire without
 `assumePure` when it could be observed (callback identity, invocation
 counts).
 
-- [ ] `map |> length` -> `length` (exists in codegen today as
+- [x] `map |> length` -> `length` (exists in codegen today as
       `emitPureMapLengthBoundary`; port here, delete the special case).
-- [ ] `map(f) |> map(g)` -> `map(g o f)` when both inline; degenerate
+- [x] DROPPED: `map(f) |> map(g)` -> `map(g o f)` when both inline; degenerate
       given fusion already avoids the intermediate array, so keep ONLY
       if it simplifies emitted text, else drop the item.
-- [ ] `filter |> length` -> counting loop with no output array.
-- [ ] `sortBy |> take(k)` -> bounded selection. Bench first; land only
+- [x] `filter |> length` -> counting loop with no output array.
+- [x] DROPPED: `sortBy |> take(k)` -> bounded selection. Bench first; land only
       with a measured win at realistic n and k.
 
 Hard cap: the file stays a switch. No pattern DSL, no cost model, no
@@ -504,6 +504,14 @@ Phase 1 landed at 287409e (1.1+1.2), 56917e3 (1.3), 784cda2 (1.4).
 Phase 2 landed at 094b029.
 Phase 3 landed at 50be26a.
 Phase 4 landed at a085506.
+Phase 5 landed at d29c30f (rewrites.ts, 139 lines).
+Phase 5 notes: map|>map dropped (fusion already single-loops it; AST
+composition buys nothing). sortBy|>take dropped on correctness despite a
+measured 17-25x win: takeSortedBy's quickselect is not tie-stable relative
+to stable sortBy|>take, concrete mismatch demonstrated. filter|>length was
+already fused under compile(); the rewrite closes the bare pipe()/flow()
+sequential-stages gap. Purity gate reused: assumePure -> semantics 'pure',
+the only gate that exists. Suite 2997 tests green, geomean 1.456.
 Phase 4 notes: 20 iterable ops. toArrayInto dropped: it is a bare type cast
 with no data-last form, pipe(src, I.toArrayInto(t)) is broken in uncompiled
 code too (runtime bug, tracked separately). No-terminal chains emit one
