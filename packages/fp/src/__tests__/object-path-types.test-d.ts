@@ -20,133 +20,133 @@ const model = {} as Model
 declare const tupleBrand: unique symbol
 
 test('setPath is type-preserving for objects, optional intermediates, and the root', () => {
-  expectTypeOf(Obj.setPath(model, ['version'], 2)).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.setPath(model, ['profile', 'name'], 'Ada')).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.setPath(model, ['preferences', 'nickname'], 'alias')).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.setPath(model, ['explicitlyUndefined'], undefined)).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.setPath(model, [], model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.setPath(['version'], 2)(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.setPath(['profile', 'name'], 'Ada')(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.setPath(['preferences', 'nickname'], 'alias')(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.setPath(['explicitlyUndefined'], undefined)(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.setPath([], model)(model)).toEqualTypeOf<Model>()
 
   // @ts-expect-error a replacement cannot change the focused property type.
-  Obj.setPath(model, ['profile', 'name'], 42)
+  Obj.setPath(['profile', 'name'], 42)(model)
   // @ts-expect-error an optional intermediate does not make its required leaf writable as undefined.
-  Obj.setPath(model, ['profile', 'name'], undefined)
+  Obj.setPath(['profile', 'name'], undefined)(model)
   // @ts-expect-error optional property syntax does not make undefined a writable leaf value.
-  Obj.setPath(model, ['preferences', 'nickname'], undefined)
+  Obj.setPath(['preferences', 'nickname'], undefined)(model)
   // @ts-expect-error constructing profile through nickname would omit required sibling name.
-  Obj.setPath(model, ['profile', 'nickname'], 'alias')
+  Obj.setPath(['profile', 'nickname'], 'alias')(model)
   // @ts-expect-error the empty path focuses the complete source value.
-  Obj.setPath(model, [], { version: 2 })
+  Obj.setPath([], { version: 2 })(model)
   // @ts-expect-error tuple paths reject keys absent from the source.
-  Obj.setPath(model, ['profile', 'missing'], 'value')
+  Obj.setPath(['profile', 'missing'], 'value')(model)
 
   const mixedReplacement = 'Ada' as string | number
   // @ts-expect-error every member of a replacement union must fit the focus.
-  Obj.setPath(model, ['profile', 'name'], mixedReplacement)
+  Obj.setPath(['profile', 'name'], mixedReplacement)(model)
 
   const maybeInvalidPath = ['version'] as const as readonly ['version'] | readonly ['missing']
   // @ts-expect-error every member of a path union must be valid for the source.
-  Obj.setPath(model, maybeInvalidPath, 2)
+  Obj.setPath(maybeInvalidPath, 2)(model)
 
   const correlatedPath = ['version'] as const as readonly ['version'] | readonly ['profile', 'name']
   const correlatedReplacement = 2 as number | string
   // @ts-expect-error unions of valid paths cannot preserve focus/replacement correlation.
-  Obj.setPath(model, correlatedPath, correlatedReplacement)
+  Obj.setPath(correlatedPath, correlatedReplacement)(model)
 
   const unionSegment = ['version' as 'version' | 'profile'] as const
   // @ts-expect-error a union within one tuple segment is not a single literal path.
-  Obj.setPath(model, unionSegment, 2)
+  Obj.setPath(unionSegment, 2)(model)
 
   const dynamicPath: PathSegments = ['version']
   // @ts-expect-error broad runtime path arrays are not statically sound write paths.
-  Obj.setPath(model, dynamicPath, 2)
+  Obj.setPath(dynamicPath, 2)(model)
 })
 
 test('setPath understands readonly arrays and fixed tuples', () => {
   const index: number = 10
-  expectTypeOf(Obj.setPath(model, ['scores', 10], 42)).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.setPath(model, ['scores', index], 42)).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.setPath(model, ['pair', 0, 'label'], 'right')).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.setPath(model, ['pair', 1], 2)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.setPath(['scores', 10], 42)(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.setPath(['scores', index], 42)(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.setPath(['pair', 0, 'label'], 'right')(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.setPath(['pair', 1], 2)(model)).toEqualTypeOf<Model>()
 
   // @ts-expect-error array elements retain their declared value type.
-  Obj.setPath(model, ['scores', 0], 'zero')
+  Obj.setPath(['scores', 0], 'zero')(model)
   // @ts-expect-error tuple indices outside the declared tuple are invalid.
-  Obj.setPath(model, ['pair', 2], 2)
+  Obj.setPath(['pair', 2], 2)(model)
   // @ts-expect-error tuple fields retain their declared value type.
-  Obj.setPath(model, ['pair', 0, 'label'], false)
+  Obj.setPath(['pair', 0, 'label'], false)(model)
   // @ts-expect-error optional tuple syntax does not make undefined a writable element value.
-  Obj.setPath(model, ['pair', 1], undefined)
+  Obj.setPath(['pair', 1], undefined)(model)
 })
 
 test('modifyPath infers the observable focus and preserves the declared write type', () => {
   expectTypeOf(
-    Obj.modifyPath(model, ['version'], (version) => {
+    Obj.modifyPath(['version'], (version: number) => {
       expectTypeOf(version).toEqualTypeOf<number>()
       return version + 1
-    }),
+    })(model),
   ).toEqualTypeOf<Model>()
 
   expectTypeOf(
-    Obj.modifyPath(model, ['profile', 'name'], (name) => {
+    Obj.modifyPath(['profile', 'name'], (name: string | undefined) => {
       expectTypeOf(name).toEqualTypeOf<string | undefined>()
       return (name ?? 'anonymous').toUpperCase()
-    }),
+    })(model),
   ).toEqualTypeOf<Model>()
 
   expectTypeOf(
-    Obj.modifyPath(model, ['preferences', 'nickname'], (nickname) => {
+    Obj.modifyPath(['preferences', 'nickname'], (nickname: string | undefined) => {
       expectTypeOf(nickname).toEqualTypeOf<string | undefined>()
       return nickname?.trim() ?? ''
-    }),
+    })(model),
   ).toEqualTypeOf<Model>()
 
   expectTypeOf(
-    Obj.modifyPath(model, [], (current) => {
+    Obj.modifyPath([], (current: Model) => {
       expectTypeOf(current).toEqualTypeOf<Model>()
       return { ...current, version: current.version + 1 }
-    }),
+    })(model),
   ).toEqualTypeOf<Model>()
 
   // @ts-expect-error a modifier cannot change the focused property type.
-  Obj.modifyPath(model, ['version'], () => 'two')
+  Obj.modifyPath(['version'], () => 'two')(model)
   // @ts-expect-error a modifier through an optional intermediate must restore the required leaf.
-  Obj.modifyPath(model, ['profile', 'name'], (name) => name?.trim())
+  Obj.modifyPath(['profile', 'name'], (name: string | undefined) => name?.trim())(model)
   // @ts-expect-error an optional leaf modifier must restore its declared non-undefined value.
-  Obj.modifyPath(model, ['preferences', 'nickname'], (nickname) => nickname?.trim())
+  Obj.modifyPath(['preferences', 'nickname'], (nickname: string | undefined) => nickname?.trim())(model)
   // @ts-expect-error constructing profile through nickname would omit required sibling name.
-  Obj.modifyPath(model, ['profile', 'nickname'], () => 'alias')
+  Obj.modifyPath(['profile', 'nickname'], () => 'alias')(model)
   // @ts-expect-error the root modifier must return the complete source type.
-  Obj.modifyPath(model, [], () => ({ version: 2 }))
+  Obj.modifyPath([], () => ({ version: 2 }))(model)
   // @ts-expect-error invalid paths are rejected before the callback is accepted.
-  Obj.modifyPath(model, ['profile', 'missing'], () => 'value')
+  Obj.modifyPath(['profile', 'missing'], () => 'value')(model)
 
   const correlatedPath = ['version'] as const as readonly ['version'] | readonly ['profile', 'name']
-  // @ts-expect-error a data-first modifier cannot safely correlate a union path and focus.
-  Obj.modifyPath(model, correlatedPath, (value: number | string | undefined) => value)
+  // @ts-expect-error a data-last modifier cannot safely correlate a union path and focus.
+  Obj.modifyPath(correlatedPath, (value: number | string | undefined) => value)(model)
 
   const unionSegment = ['version' as 'version' | 'profile'] as const
-  // @ts-expect-error a data-first modifier rejects a union-valued segment.
-  Obj.modifyPath(model, unionSegment, (value: unknown) => value)
+  // @ts-expect-error a data-last modifier rejects a union-valued segment.
+  Obj.modifyPath(unionSegment, (value: unknown) => value)(model)
 
   const dynamicPath: PathSegments = ['version']
   // @ts-expect-error broad runtime path arrays are not statically sound write paths.
-  Obj.modifyPath(model, dynamicPath, (value: unknown) => value)
+  Obj.modifyPath(dynamicPath, (value: unknown) => value)(model)
 })
 
 test('modifyPath models unchecked arrays separately from known tuple positions', () => {
   const index: number = 0
   expectTypeOf(
-    Obj.modifyPath(model, ['scores', index], (score) => {
+    Obj.modifyPath(['scores', index], (score: number | undefined) => {
       expectTypeOf(score).toEqualTypeOf<number | undefined>()
       return (score ?? 0) + 1
-    }),
+    })(model),
   ).toEqualTypeOf<Model>()
 
   expectTypeOf(
-    Obj.modifyPath(model, ['pair', 0, 'label'], (label) => {
+    Obj.modifyPath(['pair', 0, 'label'], (label: string) => {
       expectTypeOf(label).toEqualTypeOf<string>()
       return label.toUpperCase()
-    }),
+    })(model),
   ).toEqualTypeOf<Model>()
 })
 
@@ -186,19 +186,21 @@ test('missing intermediates are writable only when the created shape is complete
   const unsafeBranch = {} as UnsafeBranch
   const nullableUnsafeBranch = {} as NullableUnsafeBranch
   const unionBranch = {} as UnionBranch
-  expectTypeOf(Obj.setPath(safeBranch, ['branch', 'target'], 'ready')).toEqualTypeOf<SafeBranch>()
+  expectTypeOf(Obj.setPath(['branch', 'target'], 'ready')(safeBranch)).toEqualTypeOf<SafeBranch>()
   expectTypeOf(
-    Obj.modifyPath(safeBranch, ['branch', 'target'], (target) => target?.trim() ?? ''),
+    Obj.modifyPath(['branch', 'target'], (target: string | undefined) => target?.trim() ?? '')(
+      safeBranch,
+    ),
   ).toEqualTypeOf<SafeBranch>()
 
   // @ts-expect-error constructing branch would omit required sibling.
-  Obj.setPath(unsafeBranch, ['branch', 'target'], 'ready')
+  Obj.setPath(['branch', 'target'], 'ready')(unsafeBranch)
   // @ts-expect-error modifiers cannot construct a branch that omits required sibling.
-  Obj.modifyPath(unsafeBranch, ['branch', 'target'], () => 'ready')
+  Obj.modifyPath(['branch', 'target'], () => 'ready')(unsafeBranch)
   // @ts-expect-error the same required-sibling rule applies to nullable containers.
-  Obj.setPath(nullableUnsafeBranch, ['branch', 'target'], 'ready')
+  Obj.setPath(['branch', 'target'], 'ready')(nullableUnsafeBranch)
   // @ts-expect-error every union member must be independently constructible.
-  Obj.setPath(unionBranch, ['branch', 'target'], 'ready')
+  Obj.setPath(['branch', 'target'], 'ready')(unionBranch)
 
   const setUnsafeTarget = Obj.setPath(['branch', 'target'], 'ready')
   // @ts-expect-error data-last set validates constructibility against the eventual source.
@@ -222,13 +224,15 @@ test('nullish, indexed, nominal, callable, and stateful containers remain sound'
   const undefinedSafe = {} as UndefinedSafe
 
   expectTypeOf(
-    Obj.setPath(nullableSafe, ['branch', 'target'], 'ready'),
+    Obj.setPath(['branch', 'target'], 'ready')(nullableSafe),
   ).toEqualTypeOf<NullableSafe>()
   expectTypeOf(
-    Obj.modifyPath(nullableSafe, ['branch', 'target'], (target) => target?.trim() ?? ''),
+    Obj.modifyPath(['branch', 'target'], (target: string | undefined) => target?.trim() ?? '')(
+      nullableSafe,
+    ),
   ).toEqualTypeOf<NullableSafe>()
   expectTypeOf(
-    Obj.setPath(undefinedSafe, ['branch', 'target'], 'ready'),
+    Obj.setPath(['branch', 'target'], 'ready')(undefinedSafe),
   ).toEqualTypeOf<UndefinedSafe>()
   expectTypeOf(
     Obj.setPath(['branch', 'target'], 'ready')(nullableSafe),
@@ -240,17 +244,13 @@ test('nullish, indexed, nominal, callable, and stateful containers remain sound'
   const indexed = {} as Indexed
   const indexKey: string = 'missing'
   expectTypeOf(
-    Obj.modifyPath(indexed, ['values', indexKey, 'target'], (target) => {
+    Obj.modifyPath(['values', indexKey, 'target'], (target: string | undefined) => {
       expectTypeOf(target).toEqualTypeOf<string | undefined>()
       return target?.trim() ?? ''
-    }),
+    })(indexed),
   ).toEqualTypeOf<Indexed>()
-  Obj.modifyPath(
-    indexed,
-    ['values', indexKey, 'target'],
-    // @ts-expect-error an unchecked index cannot promise a present callback focus.
-    (target: string): string => target.trim(),
-  )
+  // @ts-expect-error an unchecked index cannot promise a present callback focus.
+  Obj.modifyPath(['values', indexKey, 'target'], (target: string): string => target.trim())(indexed)
 
   type IndexedWithSibling = {
     readonly [key: string]: unknown
@@ -259,7 +259,7 @@ test('nullish, indexed, nominal, callable, and stateful containers remain sound'
   }
   const indexedSibling = {} as { readonly branch?: IndexedWithSibling }
   // @ts-expect-error an index signature does not make required explicit siblings constructible.
-  Obj.setPath(indexedSibling, ['branch', 'target'], 'ready')
+  Obj.setPath(['branch', 'target'], 'ready')(indexedSibling)
 
   class Counter {
     readonly #brand = true
@@ -272,28 +272,25 @@ test('nullish, indexed, nominal, callable, and stateful containers remain sound'
   const presentCallable = {} as { readonly callable: Callable }
   const counter = {} as Counter
   // @ts-expect-error a missing nominal instance cannot be synthesized as a plain object.
-  Obj.setPath(nominal, ['counter', 'count'], 2)
+  Obj.setPath(['counter', 'count'], 2)(nominal)
   // @ts-expect-error a missing callable cannot be synthesized as a plain object.
-  Obj.setPath(callable, ['callable', 'count'], 2)
+  Obj.setPath(['callable', 'count'], 2)(callable)
   // @ts-expect-error nominal instances are guaranteed to fail the plain-container runtime check.
-  Obj.setPath(counter, ['count'], 2)
+  Obj.setPath(['count'], 2)(counter)
   // @ts-expect-error nested nominal instances cannot be traversed either.
-  Obj.modifyPath(presentNominal, ['counter', 'count'], (count) => count + 1)
+  Obj.modifyPath(['counter', 'count'], (count: number) => count + 1)(presentNominal)
   // @ts-expect-error callable objects are not supported path containers.
-  Obj.setPath(presentCallable, ['callable', 'count'], 2)
+  Obj.setPath(['callable', 'count'], 2)(presentCallable)
   // @ts-expect-error removal cannot traverse a callable object.
-  Obj.removePath({} as { readonly callable: Callable & { readonly nickname?: string } }, [
-    'callable',
-    'nickname',
-  ])
+  Obj.removePath(['callable', 'nickname'])({} as { readonly callable: Callable & { readonly nickname?: string } })
 
   type StatefulArray = readonly number[] & { readonly state: string }
   const stateful = {} as { readonly values?: StatefulArray }
   const presentStateful = {} as { readonly values: StatefulArray }
   const dynamicIndex: number = 0
   // @ts-expect-error constructing an array would omit its required intersection state.
-  Obj.setPath(stateful, ['values', dynamicIndex], 1)
-  expectTypeOf(Obj.setPath(presentStateful, ['values', dynamicIndex], 1)).toEqualTypeOf<{
+  Obj.setPath(['values', dynamicIndex], 1)(stateful)
+  expectTypeOf(Obj.setPath(['values', dynamicIndex], 1)(presentStateful)).toEqualTypeOf<{
     readonly values: StatefulArray
   }>()
 
@@ -302,7 +299,7 @@ test('nullish, indexed, nominal, callable, and stateful containers remain sound'
   }
   const privateArray = {} as { readonly values: PrivateArray }
   // @ts-expect-error array subclasses with private state cannot be immutably cloned.
-  Obj.setPath(privateArray, ['values', dynamicIndex], 1)
+  Obj.setPath(['values', dynamicIndex], 1)(privateArray)
 })
 
 test('unchecked collections validate the shape of values they may need to create', () => {
@@ -320,12 +317,14 @@ test('unchecked collections validate the shape of values they may need to create
   const row: number = 3
   const key: string = 'missing'
 
-  expectTypeOf(Obj.setPath(safeRows, ['rows', row, 'target'], 'ready')).toEqualTypeOf<SafeRows>()
+  expectTypeOf(Obj.setPath(['rows', row, 'target'], 'ready')(safeRows)).toEqualTypeOf<SafeRows>()
   expectTypeOf(
-    Obj.modifyPath(safeRows, ['rows', row, 'target'], (target) => target?.trim() ?? ''),
+    Obj.modifyPath(['rows', row, 'target'], (target: string | undefined) => target?.trim() ?? '')(
+      safeRows,
+    ),
   ).toEqualTypeOf<SafeRows>()
   expectTypeOf(
-    Obj.setPath(safeIndex, ['entries', key, 'target'], 'ready'),
+    Obj.setPath(['entries', key, 'target'], 'ready')(safeIndex),
   ).toEqualTypeOf<SafeIndex>()
 
   const setRowTarget = Obj.setPath(['rows', row, 'target'], 'ready')
@@ -341,13 +340,13 @@ test('unchecked collections validate the shape of values they may need to create
   modifyEntryTarget(unsafeIndex)
 
   // @ts-expect-error a missing array element cannot be created without required sibling.
-  Obj.setPath(unsafeRows, ['rows', row, 'target'], 'ready')
+  Obj.setPath(['rows', row, 'target'], 'ready')(unsafeRows)
   // @ts-expect-error the same array constructibility rule applies to modify.
-  Obj.modifyPath(unsafeRows, ['rows', row, 'target'], () => 'ready')
+  Obj.modifyPath(['rows', row, 'target'], () => 'ready')(unsafeRows)
   // @ts-expect-error a missing index-signature entry cannot omit required sibling.
-  Obj.setPath(unsafeIndex, ['entries', key, 'target'], 'ready')
+  Obj.setPath(['entries', key, 'target'], 'ready')(unsafeIndex)
   // @ts-expect-error the same index-signature constructibility rule applies to modify.
-  Obj.modifyPath(unsafeIndex, ['entries', key, 'target'], () => 'ready')
+  Obj.modifyPath(['entries', key, 'target'], () => 'ready')(unsafeIndex)
 })
 
 test('missing fixed tuples require every sibling index promised by the tuple', () => {
@@ -356,28 +355,30 @@ test('missing fixed tuples require every sibling index promised by the tuple', (
   }
   const tupleState = {} as TupleState
 
-  expectTypeOf(Obj.setPath(tupleState, ['pair', 0, 'target'], 'ready')).toEqualTypeOf<TupleState>()
+  expectTypeOf(Obj.setPath(['pair', 0, 'target'], 'ready')(tupleState)).toEqualTypeOf<TupleState>()
   expectTypeOf(
-    Obj.modifyPath(tupleState, ['pair', 0, 'target'], (target) => target?.trim() ?? ''),
+    Obj.modifyPath(['pair', 0, 'target'], (target: string | undefined) => target?.trim() ?? '')(
+      tupleState,
+    ),
   ).toEqualTypeOf<TupleState>()
 
   // @ts-expect-error constructing optional index 1 would omit required tuple index 0.
-  Obj.setPath(tupleState, ['pair', 1], 2)
+  Obj.setPath(['pair', 1], 2)(tupleState)
   // @ts-expect-error modify has the same required-index constructibility rule.
-  Obj.modifyPath(tupleState, ['pair', 1], () => 2)
+  Obj.modifyPath(['pair', 1], () => 2)(tupleState)
 
   type VariadicState = {
     readonly items?: readonly [{ readonly target: string }, ...number[]]
   }
   const variadicState = {} as VariadicState
   expectTypeOf(
-    Obj.setPath(variadicState, ['items', 0, 'target'], 'ready'),
+    Obj.setPath(['items', 0, 'target'], 'ready')(variadicState),
   ).toEqualTypeOf<VariadicState>()
   // @ts-expect-error a rest index cannot construct a tuple while omitting required index 0.
-  Obj.setPath(variadicState, ['items', 1], 2)
+  Obj.setPath(['items', 1], 2)(variadicState)
   const dynamicIndex: number = 0
   // @ts-expect-error a dynamic index cannot guarantee it supplies required tuple index 0.
-  Obj.setPath(variadicState, ['items', dynamicIndex], 2)
+  Obj.setPath(['items', dynamicIndex], 2)(variadicState)
 
   type StatefulTuple = readonly [{ readonly target: string }, number?] & {
     readonly state: string
@@ -391,15 +392,15 @@ test('missing fixed tuples require every sibling index promised by the tuple', (
   const missingBranded = {} as { readonly pair?: BrandedTuple }
   const presentStateful = {} as { readonly pair: StatefulTuple }
 
-  expectTypeOf(Obj.setPath(presentStateful, ['pair', 0, 'target'], 'ready')).toEqualTypeOf<{
+  expectTypeOf(Obj.setPath(['pair', 0, 'target'], 'ready')(presentStateful)).toEqualTypeOf<{
     readonly pair: StatefulTuple
   }>()
   // @ts-expect-error synthesizing a fixed tuple would omit its required intersection state.
-  Obj.setPath(missingStateful, ['pair', 0, 'target'], 'ready')
+  Obj.setPath(['pair', 0, 'target'], 'ready')(missingStateful)
   // @ts-expect-error a synthesized fixed tuple cannot reproduce a call signature.
-  Obj.setPath(missingCallable, ['pair', 0, 'target'], 'ready')
+  Obj.setPath(['pair', 0, 'target'], 'ready')(missingCallable)
   // @ts-expect-error a synthesized fixed tuple cannot reproduce required branded state.
-  Obj.setPath(missingBranded, ['pair', 0, 'target'], 'ready')
+  Obj.setPath(['pair', 0, 'target'], 'ready')(missingBranded)
 })
 
 test('union sources expose only write focuses safe for every member', () => {
@@ -424,33 +425,33 @@ test('union sources expose only write focuses safe for every member', () => {
   const shared = {} as Shared
   const correlated = {} as Correlated
   const nested = {} as Nested
-  expectTypeOf(Obj.setPath(shared, ['value'], 2)).toEqualTypeOf<Shared>()
-  expectTypeOf(Obj.modifyPath(shared, ['value'], (value) => value + 1)).toEqualTypeOf<Shared>()
+  expectTypeOf(Obj.setPath(['value'], 2)(shared)).toEqualTypeOf<Shared>()
+  expectTypeOf(Obj.modifyPath(['value'], (value: number) => value + 1)(shared)).toEqualTypeOf<Shared>()
 
   // @ts-expect-error changing a discriminant is unsafe for at least one union member.
-  Obj.setPath(shared, ['kind'], 'a')
+  Obj.setPath(['kind'], 'a')(shared)
   // @ts-expect-error correlated member focus types intersect to no safe replacement.
-  Obj.setPath(correlated, ['value'], 'changed')
+  Obj.setPath(['value'], 'changed')(correlated)
   // @ts-expect-error modifiers must return a focus safe for every correlated member.
-  Obj.modifyPath(correlated, ['value'], () => 'changed')
+  Obj.modifyPath(['value'], () => 'changed')(correlated)
   // @ts-expect-error nested structural unions retain the same correlation protection.
-  Obj.setPath(nested, ['payload', 'value'], 'changed')
+  Obj.setPath(['payload', 'value'], 'changed')(nested)
 })
 
 test('removePath preserves T only for optional leaves', () => {
-  expectTypeOf(Obj.removePath(model, [])).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.removePath(model, ['preferences', 'nickname'])).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.removePath(model, ['profile'])).toEqualTypeOf<Model>()
-  expectTypeOf(Obj.removePath(model, ['pair', 1])).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.removePath([])(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.removePath(['preferences', 'nickname'])(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.removePath(['profile'])(model)).toEqualTypeOf<Model>()
+  expectTypeOf(Obj.removePath(['pair', 1])(model)).toEqualTypeOf<Model>()
 
   // @ts-expect-error required object properties cannot be deleted while returning T.
-  Obj.removePath(model, ['version'])
+  Obj.removePath(['version'])(model)
   // @ts-expect-error required nested properties cannot be deleted while returning T.
-  Obj.removePath(model, ['profile', 'name'])
+  Obj.removePath(['profile', 'name'])(model)
   // @ts-expect-error deleting an array index creates a hole not represented by its element type.
-  Obj.removePath(model, ['scores', 0])
+  Obj.removePath(['scores', 0])(model)
   // @ts-expect-error required tuple elements cannot be deleted while returning the tuple type.
-  Obj.removePath(model, ['pair', 0])
+  Obj.removePath(['pair', 0])(model)
 
   const removeNickname = Obj.removePath(['preferences', 'nickname'])
   expectTypeOf(removeNickname(model)).toEqualTypeOf<Model>()
@@ -461,7 +462,7 @@ test('removePath preserves T only for optional leaves', () => {
 
   const pathUnion = ['profile'] as const as readonly ['profile'] | readonly ['version']
   // @ts-expect-error removals also reject unions of paths.
-  Obj.removePath(model, pathUnion)
+  Obj.removePath(pathUnion)(model)
   // @ts-expect-error data-last removals reject unions before accepting a source.
   Obj.removePath(pathUnion)
 
@@ -473,16 +474,16 @@ test('removePath preserves T only for optional leaves', () => {
     | { readonly kind: 'b'; readonly removable: number }
   const optionalInBoth = {} as OptionalInBoth
   const requiredInOne = {} as RequiredInOne
-  expectTypeOf(Obj.removePath(optionalInBoth, ['removable'])).toEqualTypeOf<OptionalInBoth>()
+  expectTypeOf(Obj.removePath(['removable'])(optionalInBoth)).toEqualTypeOf<OptionalInBoth>()
   // @ts-expect-error a removable union focus must be optional in every member.
-  Obj.removePath(requiredInOne, ['removable'])
+  Obj.removePath(['removable'])(requiredInOne)
 
   const indexed = {} as Readonly<Record<string, number>>
   const dynamicKey: string = 'dynamic'
-  expectTypeOf(Obj.removePath(indexed, ['literal'])).toEqualTypeOf<
+  expectTypeOf(Obj.removePath(['literal'])(indexed)).toEqualTypeOf<
     Readonly<Record<string, number>>
   >()
-  expectTypeOf(Obj.removePath(indexed, [dynamicKey])).toEqualTypeOf<
+  expectTypeOf(Obj.removePath([dynamicKey])(indexed)).toEqualTypeOf<
     Readonly<Record<string, number>>
   >()
 })
@@ -589,17 +590,17 @@ test('path helper types distinguish observed values from writable values', () =>
 
   const indexed = {} as Readonly<Record<string, number>>
   const broadKey: string = 'runtime-key'
-  expectTypeOf(Obj.setPath(indexed, [broadKey], 1)).toEqualTypeOf<
+  expectTypeOf(Obj.setPath([broadKey], 1)(indexed)).toEqualTypeOf<
     Readonly<Record<string, number>>
   >()
   // @ts-expect-error unsafe literal mutation keys are rejected before runtime.
-  Obj.setPath(indexed, ['__proto__'], 1)
+  Obj.setPath(['__proto__'], 1)(indexed)
   // @ts-expect-error unsafe literal mutation keys are rejected in data-last form too.
   Obj.modifyPath(['constructor'], (_value: number | undefined) => 1)
   // @ts-expect-error unsafe literal mutation keys cannot be captured with pathOf.
   Obj.pathOf<Readonly<Record<string, number>>>()('prototype')
   // @ts-expect-error removal rejects unsafe literal mutation keys.
-  Obj.removePath(indexed, ['__proto__'])
+  Obj.removePath(['__proto__'])(indexed)
   void invalidKey
   void invalidTupleIndex
 })

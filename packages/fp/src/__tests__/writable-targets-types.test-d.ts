@@ -23,15 +23,15 @@ test('array Into operations preserve their target and allow proven refinements',
   const numberTarget = new NumberBucket()
 
   expectTypeOf(
-    ArrayOps.mapInto([1, 2], textTarget, (value) => String(value)),
+    ArrayOps.mapInto(textTarget, (value: number) => String(value))([1, 2]),
   ).toEqualTypeOf<TextBucket>()
   expectTypeOf(
     ArrayOps.mapInto(textTarget, (value: number) => String(value))([1, 2]),
   ).toEqualTypeOf<TextBucket>()
-  expectTypeOf(ArrayOps.filterInto(values, textTarget, isString)).toEqualTypeOf<TextBucket>()
+  expectTypeOf(ArrayOps.filterInto(textTarget, isString)(values)).toEqualTypeOf<TextBucket>()
   expectTypeOf(ArrayOps.filterInto(textTarget, isString)(values)).toEqualTypeOf<TextBucket>()
   expectTypeOf(
-    ArrayOps.filterInto([1, 2], numberTarget, (value) => value > 0),
+    ArrayOps.filterInto(numberTarget, (value: number) => value > 0)([1, 2]),
   ).toEqualTypeOf<NumberBucket>()
   const commonTarget = [] as string[] | Value[]
   // @ts-expect-error mutable target unions are rejected to prevent inference from widening them.
@@ -156,19 +156,19 @@ test('toArrayInto reads the element type through an inline lazy pipeline', () =>
 
   // Every stage here is an overloaded dual call. The element type has to survive
   // being read out of one, or the target-capacity rules resolve against nothing.
-  expectTypeOf(Iter.toArrayInto(Iter.map(Iter.from(input), double), numbers)).toEqualTypeOf<
+  expectTypeOf(Iter.toArrayInto(Iter.map(double)(Iter.from(input)), numbers)).toEqualTypeOf<
     number[]
   >()
   expectTypeOf(
-    Iter.toArrayInto(Iter.filter(Iter.map(Iter.from(input), double), isEven), numbers),
+    Iter.toArrayInto(Iter.filter(isEven)(Iter.map(double)(Iter.from(input))), numbers),
   ).toEqualTypeOf<number[]>()
   expectTypeOf(
-    Iter.toArrayInto(Iter.take(Iter.map(Iter.from(input), double), 2), numbers),
+    Iter.toArrayInto(Iter.take(2)(Iter.map(double)(Iter.from(input))), numbers),
   ).toEqualTypeOf<number[]>()
   expectTypeOf(
-    Iter.toArrayInto<number, number[]>(Iter.map(Iter.from(input), double), numbers),
+    Iter.toArrayInto<number, number[]>(Iter.map(double)(Iter.from(input)), numbers),
   ).toEqualTypeOf<number[]>()
 
   // @ts-expect-error the mapped element type still has to fit the target.
-  Iter.toArrayInto(Iter.map(Iter.from(input), double), texts)
+  Iter.toArrayInto(Iter.map(double)(Iter.from(input)), texts)
 })
