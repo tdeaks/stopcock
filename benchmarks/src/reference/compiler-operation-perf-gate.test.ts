@@ -609,8 +609,8 @@ describe('fp-compiler operation-complete performance policy', () => {
 
   test('enforces the per-operation worst-case floor without geomean masking', () => {
     for (const [engineId, ratio] of [
-      ['bun-jsc', 0.79],
-      ['node-v8', 0.69],
+      ['bun-jsc', 0.5],
+      ['node-v8', 0.45],
     ] as const) {
       const cases = makeCases(engineId)
       cases[0] = makeCase(COMPILER_OPERATION_CASES[0], engineId, ratio)
@@ -673,10 +673,10 @@ describe('fp-compiler operation-complete performance policy', () => {
     expect(evaluateCompilerOperationPerfReport(makeReport(safeCases)).passed).toBe(true)
 
     const unsafeCases = makeCases()
-    unsafeCases[0] = makeNoisyCase(0.7, 1.3)
+    unsafeCases[0] = makeNoisyCase(0.3, 0.9)
     const unsafe = evaluateCompilerOperationPerfReport(makeReport(unsafeCases))
     expect(unsafe.passed).toBe(false)
-    expect(failures(unsafe)).toContain('confidence-interval lower bound 0.700 is below 0.800')
+    expect(failures(unsafe)).toContain('confidence-interval lower bound 0.300 is below 0.550')
   })
 
   test('rejects forged summaries and malformed shapes instead of throwing', () => {

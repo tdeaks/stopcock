@@ -347,9 +347,21 @@ export interface CompilerPerfPolicy {
  * both engines, with no case below 0.80 on Bun/JSC or 0.70 on Node/V8.
  * This contract strengthens measurement quality around those same floors.
  */
+// bun-jsc's minimumRounds was 40 through Phase 2. One-runtime-path plan
+// Phase 3: compiler-operation-perf-gate.ts's 140-case corpus (a strict
+// superset of the load this policy governs) kept producing a different
+// single case exceeding 6% RME or dipping under its floor on almost every
+// isolated re-run under ambient load -- nine different cases across ten
+// re-runs, never the same one twice running. Raising rounds tightens the
+// per-case confidence interval directly (RME falls roughly with 1/sqrt(n)),
+// attacking the actual cause instead of adding an eleventh per-case floor
+// exception for whichever case is unlucky on a future run. compiler-perf-
+// gate.ts's own 44-case corpus was never the flaky one (0.898-0.979 min
+// across three re-runs at 40 rounds, comfortably inside 0.8) so this only
+// costs it time, not margin.
 export const COMPILER_PERF_POLICIES = Object.freeze({
   'bun-jsc': Object.freeze({
-    minimumRounds: 40,
+    minimumRounds: 100,
     minimumWarmupRounds: 30,
     minimumBatchInputItems: 100_000,
     targetConsumedItemsPerMicroBatch: 10_000,

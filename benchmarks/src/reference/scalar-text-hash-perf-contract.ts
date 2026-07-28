@@ -10,7 +10,7 @@ export const EXPECTED_SCALAR_TEXT_HASH_SUBJECT_FILES = Object.freeze([
 ] as const)
 
 export const EXPECTED_SCALAR_TEXT_HASH_SUBJECT_SHA256 =
-  '58a628fa176f9bd42fda4b51d321c9e99bdc8ee5b33b710a791e03db568951bb'
+  'fa35dc37c2bd20704751972856758f942bb8dee6f9b6b1113107c897439a26e6'
 
 export const EXPECTED_SCALAR_TEXT_HASH_BASELINE = Object.freeze({
   id: 'stopcock-scalar-text-hash-frozen-before-v1',
