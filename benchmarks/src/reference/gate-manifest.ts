@@ -23,8 +23,6 @@ export type GateKind =
   | 'timing'
 
 export type GateGroup =
-  /** The compact fusion engine itself stays under its gzip ceiling. */
-  | 'size:engine'
   /** What a consumer's bundle carries: packed topology, root and untagged paths. */
   | 'size:consumer'
   /** Compiled output against the frozen reference emitter. */
@@ -74,16 +72,17 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'root pipe and flow stay small and drag no optimizer in',
   }),
   Object.freeze({
-    script: 's9-compact-size-gate.ts',
-    kind: 'deterministic',
-    group: 'size:engine',
-    checks: 'compact fusion stays under its hard gate and carries no debug or registry',
-  }),
-  Object.freeze({
     script: 's3b-untagged-size-gate.ts',
     kind: 'deterministic',
     group: 'size:consumer',
     checks: 'non-fusible flows keep the opcode table out of consumer bundles',
+  }),
+  Object.freeze({
+    script: 'pipe-floor-gate.ts',
+    kind: 'timing',
+    group: 'competitors',
+    checks:
+      'invariant 4: plain (uncompiled) pipe chains stay within 1.2x of ramda on the decision suite\'s eager shapes -- there is no runtime fusion engine left, so this is the floor the compiler earns its keep against',
   }),
   Object.freeze({
     script: 'compiler-perf-sessions-gate.ts',

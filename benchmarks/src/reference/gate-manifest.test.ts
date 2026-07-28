@@ -5,7 +5,6 @@ import { describe, expect, test } from 'vite-plus/test'
 import { GATE_SCRIPTS, GATES, type GateGroup } from './gate-manifest'
 
 const KNOWN_GROUPS: readonly GateGroup[] = Object.freeze([
-  'size:engine',
   'size:consumer',
   'parity:compiler',
   'parity:iter',
