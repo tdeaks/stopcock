@@ -45,7 +45,7 @@ describe('scalar/text/hash frozen-output parity', () => {
       [-0, 0],
       [1_836_311_903, 1_134_903_170],
     ] as const) {
-      expect(Object.is(NumberOps.gcd(left, right), gcdBefore(left, right))).toBe(
+      expect(Object.is(NumberOps.gcd(right)(left), gcdBefore(left, right))).toBe(
         true,
       )
     }

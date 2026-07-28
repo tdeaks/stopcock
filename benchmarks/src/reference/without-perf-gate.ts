@@ -586,7 +586,7 @@ const makeCases = (): readonly CaseSpec[] => {
       cases.push({
         id: `without/n=${sourceSize}/m=${exclusionSize}`,
         consumedInputItems: sourceSize,
-        current: () => A.without(source, exclusions),
+        current: () => A.without(exclusions)(source),
         frozen: () => frozenWithout(source, exclusions),
       })
     }
