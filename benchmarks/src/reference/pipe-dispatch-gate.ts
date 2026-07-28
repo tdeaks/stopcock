@@ -3,7 +3,11 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as A from '../../../packages/fp/src/array'
-import { pipe } from '../../../packages/fp/src/fusion'
+// Root pipe, not the fusion entry: there is no separate fused engine any
+// more (one-runtime-path plan), and `@stopcock/fp/fusion`'s `pipe` is the
+// literal same function as this one. This gate measures current dispatch,
+// which is now just root pipe, against the frozen pre-hot-identity baseline.
+import { pipe } from '../../../packages/fp/src/pipe'
 import { baselinePipe } from './pipe-dispatch-baseline'
 import { currentPerfEngine, expectedEngineName, type PerfEngine } from './perf-engine'
 import { geomean, runPaired } from './perf-runner'

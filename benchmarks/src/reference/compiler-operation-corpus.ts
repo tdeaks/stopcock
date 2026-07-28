@@ -3,7 +3,54 @@ import type {
   TerminalOpName,
   BoundaryOpName,
 } from '../../../packages/fp-compiler/src/ops'
-import { OP_CODES } from '../../../packages/fp/src/opcodes'
+
+/**
+ * Frozen snapshot of `packages/fp/src/opcodes.ts`'s `OP_CODES` map, taken
+ * before that file was deleted by the one-runtime-path plan (the runtime
+ * engine that read these numbers is gone; `@stopcock/fp-compiler` never
+ * needed them, matching operators by import name instead). Kept here, and
+ * only here, purely so `opcode` stays a stable per-op identifier this
+ * corpus's pinned hashes (see compiler-operation-perf-contract.ts) were
+ * computed against -- never regenerate this from a live import.
+ */
+const OP_CODES: Record<string, number> = {
+  map: 1, filter: 2, take: 3, drop: 4, takeWhile: 5, dropWhile: 6, flatMap: 7,
+  reject: 16, filterMap: 14, mapWhile: 15, takeUntil: 19, reduce: 8, forEach: 9,
+  every: 10, some: 11, find: 12, findIndex: 13, none: 17, count: 18, findMap: 22,
+  head: 30, last: 31, length: 32, isEmpty: 33, tail: 34, init: 35, reverse: 36,
+  uniq: 38, join: 39, flatten: 40, sum: 41, min: 42, max: 43, scan: 102,
+  without: 103, sort: 21, sortBy: 20, sortAsc: 90, sortDesc: 91, trim: 50,
+  toLowerCase: 51, toUpperCase: 52, trimStart: 53, trimEnd: 54, split: 55,
+  strLength: 56, strIsEmpty: 57, keys: 60, values: 61, dictIsEmpty: 62, add: 70,
+  subtract: 71, multiply: 72, divide: 73, negate: 74, inc: 75, dec: 76,
+  isNumber: 80, isString: 81, isBoolean: 82, isNil: 83, isArray: 84,
+  isObject: 85, isFunction: 86, dropRepeats: 23, chunk: 104, slidingWindow: 105,
+  aperture: 106, intersperse: 107, uniqBy: 108, groupBy: 109, partition: 110,
+  zip: 111, zipWith: 112, xprod: 113, intersection: 114, union: 115,
+  difference: 116, symmetricDifference: 117, adjust: 118, update: 119,
+  insert: 120, remove: 121, includes: 122, findOrUndefined: 24,
+  findIndexOrUndefined: 25, findMapOrUndefined: 26, pluck: 27, dropLast: 28,
+  takeLast: 29, dropLastWhile: 44, takeLastWhile: 45, append: 46, prepend: 47,
+  indexOf: 48, lastIndexOf: 49, findLast: 92, findLastIndex: 93, reduceRight: 94,
+  reduceWhile: 95, sumBy: 96, meanBy: 97, hasAtLeast: 98, arrayStartsWith: 99,
+  arrayEndsWith: 100, nth: 101, splitAt: 123, splitWhen: 124, splitWhenever: 125,
+  uniqWith: 126, groupWith: 127, concat: 128, indexBy: 129, collectBy: 130,
+  dropRepeatsBy: 131, dropRepeatsWith: 132, mapToObj: 133, zipObj: 134,
+  groupByProp: 135, slice: 136, swap: 137, insertAll: 138, splice: 139,
+  unionBy: 140, unionWith: 141, intersectionBy: 142, differenceBy: 143,
+  differenceWith: 144, symmetricDifferenceBy: 145, symmetricDifferenceWith: 146,
+  withoutBy: 147, mapAccum: 148, mapAccumRight: 149, reduceBy: 150,
+  takeSortedBy: 151, sortedIndexBy: 152, sortedIndexWith: 153,
+  sortedLastIndexBy: 154, nthOrUndefined: 155, indexOfOrUndefined: 156,
+  lastIndexOfOrUndefined: 157, findLastOrUndefined: 158,
+  findLastIndexOrUndefined: 159, meanByOrUndefined: 160, meanByNonEmpty: 161,
+  headOrUndefined: 162, headNonEmpty: 163, lastOrUndefined: 164,
+  lastNonEmpty: 165, minOrUndefined: 166, minNonEmpty: 167, maxOrUndefined: 168,
+  maxNonEmpty: 169, onlyOrUndefined: 170, only: 171, mergeAll: 172,
+  transpose: 173, unnest: 174, mapWithIndex: 175, filterWithIndex: 176,
+  forEachWithIndex: 177, shuffle: 178, sample: 179, sortedIndex: 180,
+  sortedLastIndex: 181,
+}
 
 export const COMPILER_OPERATION_CORPUS_ID =
   'stopcock-fp-compiler-operation-complete-w0-v1'

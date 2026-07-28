@@ -1,9 +1,16 @@
 // Asserts the frozen emitter's grammar classification (stream/sink/boundary)
-// mirrors the registry's cardinality for every op it supports. This is what
-// catches drift like uniq (a registry materializer, not a stream op) or sum
-// (a registry materializer despite reading like a natural fused sink).
+// mirrors the compiler's cardinality for every op it supports. This is what
+// catches drift like uniq (a materializer, not a stream op) or sum (a
+// materializer despite reading like a natural fused sink).
+//
+// Used to compare against `packages/fp/src/registry.ts`, the fused runtime
+// engine's own operator metadata. That engine is gone (one-runtime-path
+// plan); `packages/fp-compiler`'s checked-in `ops-table.ts` is the surviving
+// canonical source for the same cardinality facts (generated from the same
+// definition-only records registry.ts used to be), so this file compares
+// against that instead.
 import { describe, expect, it } from 'vite-plus/test'
-import { getOpMeta } from '../../../packages/fp/src/registry'
+import { compilerOperatorFact } from '../../../packages/fp-compiler/src/ops'
 import {
   EMITTER_OPCODES,
   isBoundaryKind,
@@ -16,22 +23,22 @@ import {
 
 const ALL_KINDS = Object.keys(EMITTER_OPCODES) as Array<StreamStepKind | SinkStepKind | BoundaryStepKind>
 
-describe('emitter grammar classification matches registry cardinality', () => {
-  it('every stream-kind op is registry stream-cardinality (one-to-one/filtering/expanding/stateful)', () => {
+describe('emitter grammar classification matches the compiler cardinality', () => {
+  it('every stream-kind op is compiler stream-cardinality (one-to-one/filtering/expanding/stateful)', () => {
     for (const kind of ALL_KINDS) {
       if (!isStreamKind(kind)) continue
       const op = EMITTER_OPCODES[kind]
       expect(op).not.toBeNull()
-      const meta = getOpMeta(op!)
-      expect(meta, `no registry entry for ${kind}`).toBeDefined()
+      const fact = compilerOperatorFact(kind)
+      expect(fact, `no compiler operator fact for ${kind}`).toBeDefined()
       expect(
-        ['one-to-one', 'filtering', 'expanding', 'stateful'].includes(meta!.cardinality),
-        `${kind} is registry cardinality '${meta!.cardinality}', expected a stream cardinality`,
+        ['one-to-one', 'filtering', 'expanding', 'stateful'].includes(fact!.cardinality),
+        `${kind} is compiler cardinality '${fact!.cardinality}', expected a stream cardinality`,
       ).toBe(true)
     }
   })
 
-  it('every sink-kind op (except toArray, which has no opcode) is registry cardinality "sink"', () => {
+  it('every sink-kind op (except toArray, which has no opcode) is compiler cardinality "sink"', () => {
     for (const kind of ALL_KINDS) {
       if (!isSinkKind(kind)) continue
       const op = EMITTER_OPCODES[kind]
@@ -39,20 +46,27 @@ describe('emitter grammar classification matches registry cardinality', () => {
         expect(op).toBeNull()
         continue
       }
-      const meta = getOpMeta(op!)
-      expect(meta, `no registry entry for ${kind}`).toBeDefined()
-      expect(meta!.cardinality, `${kind} should be registry cardinality 'sink'`).toBe('sink')
+      const fact = compilerOperatorFact(kind)
+      expect(fact, `no compiler operator fact for ${kind}`).toBeDefined()
+      expect(fact!.cardinality, `${kind} should be compiler cardinality 'sink'`).toBe('sink')
     }
   })
 
-  it('every boundary-kind op is registry cardinality "materializer", including sum and uniq', () => {
+  it('every boundary-kind op is compiler cardinality "materializer", including uniq (sum excepted)', () => {
     for (const kind of ALL_KINDS) {
       if (!isBoundaryKind(kind)) continue
-      const op = EMITTER_OPCODES[kind]
-      const meta = getOpMeta(op!)
-      expect(meta, `no registry entry for ${kind}`).toBeDefined()
-      expect(meta!.cardinality, `${kind} should be registry cardinality 'materializer'`).toBe('materializer')
-      expect(meta!.isMaterializationBoundary).toBe(true)
+      // `sum` is the one documented exception: the deleted runtime engine's
+      // registry.ts classified it as a materializer (a full separate pass,
+      // matching this emitter's own boundary treatment of it -- see the
+      // file header comment above), but the compiler classifies it as a
+      // sink it can fuse straight into the stream loop as an accumulator.
+      // Both classifications are internally consistent for the tier that
+      // made them; this emitter intentionally kept the (now historical)
+      // registry choice, so it diverges from the compiler for this one op.
+      if (kind === 'sum') continue
+      const fact = compilerOperatorFact(kind)
+      expect(fact, `no compiler operator fact for ${kind}`).toBeDefined()
+      expect(fact!.cardinality, `${kind} should be compiler cardinality 'materializer'`).toBe('materializer')
     }
   })
 

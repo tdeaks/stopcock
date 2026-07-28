@@ -28,33 +28,40 @@
 // flatMap fans out with an indexed inner loop. This keeps reassignment by
 // downstream map/filterMap/scan stages explicit and gives the frozen emitter
 // a portable, engine-independent correctness baseline.
-import {
-  OP_COUNT,
-  OP_DROP,
-  OP_DROP_WHILE,
-  OP_EVERY,
-  OP_FILTER,
-  OP_FILTER_MAP,
-  OP_FIND,
-  OP_FLAT_MAP,
-  OP_FOR_EACH,
-  OP_MAP,
-  OP_REDUCE,
-  OP_REJECT,
-  OP_REVERSE,
-  OP_SCAN,
-  OP_SOME,
-  OP_SORT,
-  OP_SORT_ASC,
-  OP_SORT_BY,
-  OP_SORT_DESC,
-  OP_SUM,
-  OP_TAKE,
-  OP_TAKE_WHILE,
-  OP_UNIQ_INLINE,
-  OP_WITHOUT,
-} from '../../../packages/fp/src/opcodes'
 import { mergeSortAsc, mergeSortBy, mergeSortDesc } from '../../../packages/fp/src/sort-kernel'
+
+// Frozen snapshot of the numeric opcodes `packages/fp/src/opcodes.ts` used to
+// export, taken before that file was deleted by the one-runtime-path plan
+// (the runtime engine that read these numbers is gone; this emitter only
+// ever used them as its own internal pipeline-description labels, never
+// read from any runtime tag). Kept here, and only here, so this frozen
+// emitter's sha256 identity (see frozen-reference-contract.ts) stays a
+// function of this file's own logic -- never regenerate this from a live
+// import.
+const OP_MAP = 1
+const OP_FILTER = 2
+const OP_TAKE = 3
+const OP_DROP = 4
+const OP_TAKE_WHILE = 5
+const OP_DROP_WHILE = 6
+const OP_FLAT_MAP = 7
+const OP_REDUCE = 8
+const OP_FOR_EACH = 9
+const OP_EVERY = 10
+const OP_SOME = 11
+const OP_FIND = 12
+const OP_FILTER_MAP = 14
+const OP_REJECT = 16
+const OP_COUNT = 18
+const OP_SORT_BY = 20
+const OP_SORT = 21
+const OP_REVERSE = 36
+const OP_UNIQ_INLINE = 38
+const OP_SUM = 41
+const OP_SORT_ASC = 90
+const OP_SORT_DESC = 91
+const OP_SCAN = 102
+const OP_WITHOUT = 103
 
 /**
  * Stable identity for the benchmark-only reference implementation.

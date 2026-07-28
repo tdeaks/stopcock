@@ -17,13 +17,21 @@ export const EXPECTED_PORTABLE_CORPUS = Object.freeze({
 
 export const EXPECTED_FROZEN_EMITTER = Object.freeze({
   id: 'stopcock-reference-emitter-w0a-v1',
-  sha256: '92d755aab0e5fc60b14f0c6d18029340fcb3e9a40a7f7aaf61bf559c95d8c8c7',
+  // Re-pinned: emitter.ts's opcodes import (packages/fp/src/opcodes.ts,
+  // deleted by the one-runtime-path plan) became a local frozen snapshot of
+  // the same numbers. The emitter's own logic is unchanged.
+  sha256: '2e4166aab334b2b208ec86d18ab2952b91cdc8ca856543cfa3d9acdeae496a59',
 })
 
 /**
  * Candidate runtime provenance. The digest is computed by hashing each
  * repository-relative path, a NUL separator, its bytes, and another NUL
  * separator in this exact order.
+ *
+ * One-runtime-path plan: the compact fusion engine (plan builder, cache,
+ * pure-rewrite analysis, provenance, opcodes, registry) is gone. `compile()`
+ * is now a plain alias over `internal/sequential.ts`, which is the exact
+ * executor the corpus measures today.
  */
 export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
   id: 'stopcock-portable-runtime-source-v1',
@@ -31,22 +39,12 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
     'packages/fp/src/array.ts',
     'packages/fp/src/compile.ts',
     'packages/fp/src/dual.ts',
-    // The compact tier's plan builder and cache: the exact executor the
-    // corpus actually measures, now that fp is the only runtime package.
-    'packages/fp/src/internal/compact-runtime.ts',
-    'packages/fp/src/internal/compact/plan.ts',
-    // Rewrite policy that compile.ts used to hold inline. Part of the executed
-    // runtime, so the frozen subject has to cover it.
-    'packages/fp/src/internal/plan-analysis.ts',
-    'packages/fp/src/internal/provenance.ts',
+    'packages/fp/src/internal/sequential.ts',
     'packages/fp/src/number.ts',
-    'packages/fp/src/opcodes.ts',
     'packages/fp/src/option.ts',
-    'packages/fp/src/plan.ts',
-    'packages/fp/src/registry.ts',
     'packages/fp/src/sort-kernel.ts',
   ] as const),
-  sha256: '50be3b76910da3d1d30141b5489e1d37d4181b3ccba02cd62bc51959b3a578e6',
+  sha256: '54458e66db1dd4eeed78a39d047d558f7f87d7b801c4e134a88e4e8740a1d093',
 })
 
 export interface PortableBatchPolicy {

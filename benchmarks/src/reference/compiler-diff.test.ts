@@ -49,6 +49,17 @@ interface Fixture {
   readonly trackedStepIndex?: number
   /** Overrides INPUT, e.g. for uniq fixtures that need duplicates to be meaningful. */
   readonly input?: readonly number[]
+  /**
+   * D1 (one-runtime-path plan): callback interleaving across tiers is
+   * unspecified. `pipe`/`flow` imported here from `@stopcock/fp/fusion` are
+   * now the same sequential functions as root -- for a pipeline shaped so
+   * an early-exit terminal (find/take/...) can stop mid-expansion, the
+   * fused compiled/emitted tiers call fewer callbacks than a sequential
+   * pass over the whole array does. Set only on fixtures where that's
+   * true, to the sequential tier's own pinned count; omitted fixtures keep
+   * asserting all three tiers call back the same number of times.
+   */
+  readonly originalLogLength?: number
 }
 
 function probeSource(source: string): string {
@@ -105,6 +116,10 @@ const fixtures: Fixture[] = [
     source: `return pipe(input, A.map((x) => (track(x), x)), A.take(4));`,
     desc: { steps: [{ kind: 'map' }, { kind: 'take' }] },
     bindings: [{ fn: (x: number) => x }, { fn: 4 }],
+    // D1: sequential map runs over the whole INPUT before take ever sees a
+    // value; the fused compiled/emitted tiers stop as soon as take's quota
+    // is satisfied.
+    originalLogLength: INPUT.length,
   },
   {
     name: 'drop',
@@ -168,6 +183,10 @@ const fixtures: Fixture[] = [
   },
   {
     name: 'map -> filter -> take -> reduce',
+    // D1: sequential map runs over the whole INPUT before filter/take/reduce
+    // ever run; the fused compiled/emitted tiers stop once take's quota is
+    // satisfied.
+    originalLogLength: INPUT.length,
     source: `return pipe(
       input,
       A.map((x) => (track(x), x + 1)),
@@ -218,8 +237,8 @@ describe('W0a: emitter output diffs clean against fp-compiler (compiler-supporte
 
       expect(transformedValue).toEqual(originalValue)
       expect(emittedValue).toEqual(originalValue)
-      expect(transformedLog.length).toBe(originalLog.length)
-      expect(emittedLog.length).toBe(originalLog.length)
+      expect(originalLog.length).toBe(fixture.originalLogLength ?? transformedLog.length)
+      expect(transformedLog.length).toBe(emittedLog.length)
     })
   }
 })
@@ -235,6 +254,10 @@ const boundaryFixtures: Fixture[] = [
   },
   {
     name: 'flatMap -> filter -> take (early exit through the inner loop)',
+    // D1: sequential flatMap expands the whole INPUT before filter/take
+    // ever run; the fused compiled/emitted tiers stop once take's quota is
+    // satisfied, partway through one outer element's inner expansion.
+    originalLogLength: INPUT.length,
     source: `return pipe(
       input,
       A.flatMap((x) => (track(x), [x, x + 1, x + 2])),
@@ -257,6 +280,10 @@ const boundaryFixtures: Fixture[] = [
     );`,
     desc: { steps: [{ kind: 'flatMap' }, { kind: 'find' }] },
     bindings: [{ fn: (x: number) => [x, x * 10] }, { fn: (x: number) => x > 50 }],
+    // Sequential flatMap expands the whole 15-element INPUT before find
+    // ever runs (D1); the fused compiled/emitted tiers still stop as soon
+    // as find matches, 3 outer calls in.
+    originalLogLength: INPUT.length,
   },
   {
     name: 'sort boundary',
@@ -337,8 +364,8 @@ describe('W6: flatMap and boundary ops diff clean against fp-compiler', () => {
 
       expect(transformedValue).toEqual(originalValue)
       expect(emittedValue).toEqual(originalValue)
-      expect(transformedLog.length).toBe(originalLog.length)
-      expect(emittedLog.length).toBe(originalLog.length)
+      expect(originalLog.length).toBe(fixture.originalLogLength ?? transformedLog.length)
+      expect(transformedLog.length).toBe(emittedLog.length)
     })
   }
 })
@@ -402,6 +429,10 @@ const deferredFixtures: Fixture[] = [
     source: `const run = flow(A.map((x) => (track(x), x + 1)), A.filter((x) => x % 2 === 0), A.take(3)); return run(input);`,
     desc: { steps: [{ kind: 'map' }, { kind: 'filter' }, { kind: 'take' }] },
     bindings: [{ fn: (x: number) => x + 1 }, { fn: (x: number) => x % 2 === 0 }, { fn: 3 }],
+    // Sequential flow() maps the whole 15-element INPUT before filter/take
+    // ever run (D1); the fused compiled/emitted tiers stop 5 source
+    // elements in, once take's quota of 3 accepted items is satisfied.
+    originalLogLength: INPUT.length,
   },
   {
     name: 'compile() runner reused across multiple calls',
@@ -453,8 +484,8 @@ describe('W6: flow()/compile() with >= 2 steps diff clean against fp-compiler', 
 
       expect(transformedValue).toEqual(originalValue)
       expect(emittedValue).toEqual(originalValue)
-      expect(transformedLog.length).toBe(originalLog.length)
-      expect(emittedLog.length).toBe(originalLog.length)
+      expect(originalLog.length).toBe(fixture.originalLogLength ?? transformedLog.length)
+      expect(transformedLog.length).toBe(emittedLog.length)
     })
   }
 })
