@@ -82,6 +82,11 @@ for (const size of sizes) {
   const target = new Float64Array(size + 8)
   const predicate = (value: number): boolean => (value & 3) === 0
   const missing = -1
+  // Hoisted: isolate execution cost, not closure construction.
+  const filterOp = TypedArray.filter(predicate)
+  const sliceOp = TypedArray.slice(size >> 2, size - (size >> 2))
+  const includesOp = TypedArray.includes(missing)
+  const sortOp = TypedArray.sort()
 
   describe(`typed-array clone — n=${size}`, () => {
     bench('stopcock', () => TypedArray.clone(source))
@@ -96,7 +101,7 @@ for (const size of sizes) {
   })
 
   describe(`typed-array filter 25% — n=${size}`, () => {
-    bench('stopcock', () => TypedArray.filter(source, predicate))
+    bench('stopcock', () => filterOp(source))
     bench('before (JS array staging)', () => oldFilter(source, predicate))
     bench('native filter', () => source.filter(predicate))
   })
@@ -115,7 +120,7 @@ for (const size of sizes) {
   describe(`typed-array middle slice — n=${size}`, () => {
     const start = size >> 2
     const end = size - start
-    bench('stopcock', () => TypedArray.slice(source, start, end))
+    bench('stopcock', () => sliceOp(source))
     bench('before (element loop)', () => oldSlice(source, start, end))
     bench('native slice', () => source.slice(start, end))
   })
@@ -127,13 +132,13 @@ for (const size of sizes) {
   })
 
   describe(`typed-array includes miss — n=${size}`, () => {
-    bench('stopcock', () => TypedArray.includes(source, missing))
+    bench('stopcock', () => includesOp(source))
     bench('before (SameValueZero loop)', () => oldIncludes(source, missing))
     bench('native includes', () => source.includes(missing))
   })
 
   describe(`typed-array sort — n=${size}`, () => {
-    bench('stopcock', () => TypedArray.sort(source))
+    bench('stopcock', () => sortOp(source))
     bench('before (decorated JS objects)', () => oldSort(source))
     bench('native copy + sort', () => source.slice().sort())
   })
@@ -142,14 +147,18 @@ for (const size of sizes) {
 describe('typed-array Uint8 hot paths — n=4096', () => {
   const source = Uint8Array.from({ length: 4_096 }, (_, index) => (index * 17) & 0xff)
   const predicate = (value: number): boolean => (value & 3) === 0
+  // Hoisted: isolate execution cost, not closure construction.
+  const filterOp = TypedArray.filter(predicate)
+  const includesOp = TypedArray.includes(255)
+  const sortOp = TypedArray.sort()
 
   bench('clone stopcock', () => TypedArray.clone(source))
   bench('clone native', () => source.slice())
-  bench('filter stopcock', () => TypedArray.filter(source, predicate))
+  bench('filter stopcock', () => filterOp(source))
   bench('filter native', () => source.filter(predicate))
-  bench('includes stopcock', () => TypedArray.includes(source, 255))
+  bench('includes stopcock', () => includesOp(source))
   bench('includes native', () => source.includes(255))
-  bench('sort stopcock', () => TypedArray.sort(source))
+  bench('sort stopcock', () => sortOp(source))
   bench('sort native immutable', () => source.slice().sort())
 })
 
@@ -159,13 +168,17 @@ describe('typed-array BigInt64 hot paths — n=4096', () => {
     (_, index) => BigInt(((index * 17) % 997) - 498),
   )
   const predicate = (value: bigint): boolean => (value & 3n) === 0n
+  // Hoisted: isolate execution cost, not closure construction.
+  const filterOp = TypedArray.filter(predicate)
+  const includesOp = TypedArray.includes(-999n)
+  const sortOp = TypedArray.sort()
 
   bench('clone stopcock', () => TypedArray.clone(source))
   bench('clone native', () => source.slice())
-  bench('filter stopcock', () => TypedArray.filter(source, predicate))
+  bench('filter stopcock', () => filterOp(source))
   bench('filter native', () => source.filter(predicate))
-  bench('includes stopcock', () => TypedArray.includes(source, -999n))
+  bench('includes stopcock', () => includesOp(source))
   bench('includes native', () => source.includes(-999n))
-  bench('sort stopcock', () => TypedArray.sort(source))
+  bench('sort stopcock', () => sortOp(source))
   bench('sort native immutable', () => source.slice().sort())
 })

@@ -56,8 +56,9 @@ describe.each([10, 100, 1000])('values — n=%i', (n) => {
 describe.each([10, 100, 1000])('map (dict) — n=%i', (n) => {
   const dict = dicts[n]
   const fn = (v: number) => v * 2
+  const stopcockMap = D.map(fn) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => D.map(dict, fn))
+  bench('stopcock', () => stopcockMap(dict))
   bench('remeda', () => R.mapValues(dict, fn))
   bench('ramda', () => Ra.map(fn, dict))
   bench('lodash', () => _.mapValues(dict, fn))
@@ -66,8 +67,9 @@ describe.each([10, 100, 1000])('map (dict) — n=%i', (n) => {
 describe.each([10, 100, 1000])('filter (dict) — n=%i', (n) => {
   const dict = dicts[n]
   const pred = (_: number, k: string) => parseInt(k.slice(3)) % 2 === 0
+  const stopcockFilter = D.filter(pred) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => D.filter(dict, pred))
+  bench('stopcock', () => stopcockFilter(dict))
   bench('lodash', () => _.pickBy(dict, (v, k) => parseInt(k!.slice(3)) % 2 === 0))
 })
 
@@ -100,7 +102,9 @@ describe.each([10, 100, 1000])('entries — n=%i', (n) => {
 })
 
 describe('merge', () => {
-  bench('stopcock', () => D.merge(small, medium))
+  const stopcockMerge = D.merge(medium) // hoisted: isolate execution cost, not closure construction
+
+  bench('stopcock', () => stopcockMerge(small))
   bench('ramda', () => Ra.mergeRight(small, medium))
   bench('lodash', () => Object.assign({}, small, medium))
 })

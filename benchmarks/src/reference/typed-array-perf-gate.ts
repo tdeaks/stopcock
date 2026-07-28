@@ -428,6 +428,12 @@ const makeNumberRunners = (operation: TypedArrayOperation, size: number): CaseRu
     }
     return false
   }
+  // Hoisted: these lanes measure the candidate call, not closure
+  // construction (the frozen/native comparators never pay that cost either).
+  const filterOp = TypedArray.filter(predicate)
+  const sliceOp = TypedArray.slice(start, end)
+  const includesOp = TypedArray.includes(missing)
+  const sortOp = TypedArray.sort()
 
   switch (operation) {
     case 'clone':
@@ -444,7 +450,7 @@ const makeNumberRunners = (operation: TypedArrayOperation, size: number): CaseRu
       }
     case 'filter':
       return {
-        candidate: () => TypedArray.filter(source, predicate),
+        candidate: () => filterOp(source),
         frozen: () => frozenFilter(source, predicate),
         native: () => nativeFilter(source, predicate),
       }
@@ -456,7 +462,7 @@ const makeNumberRunners = (operation: TypedArrayOperation, size: number): CaseRu
       }
     case 'slice':
       return {
-        candidate: () => TypedArray.slice(source, start, end),
+        candidate: () => sliceOp(source),
         frozen: () => frozenSlice(source, start, end),
         native: () => nativeSlice(source, start, end),
       }
@@ -468,13 +474,13 @@ const makeNumberRunners = (operation: TypedArrayOperation, size: number): CaseRu
       }
     case 'includes':
       return {
-        candidate: () => TypedArray.includes(source, missing),
+        candidate: () => includesOp(source),
         frozen: frozenIncludesRun,
         native: () => source.includes(missing),
       }
     case 'sort':
       return {
-        candidate: () => TypedArray.sort(source),
+        candidate: () => sortOp(source),
         frozen: () => frozenSort(source),
         native: () => nativeSort(source),
       }
@@ -503,6 +509,12 @@ const makeBigIntRunners = (operation: TypedArrayOperation, size: number): CaseRu
     }
     return false
   }
+  // Hoisted: these lanes measure the candidate call, not closure
+  // construction (the frozen/native comparators never pay that cost either).
+  const filterOp = TypedArray.filter(predicate)
+  const sliceOp = TypedArray.slice(start, end)
+  const includesOp = TypedArray.includes(missing)
+  const sortOp = TypedArray.sort()
 
   switch (operation) {
     case 'clone':
@@ -519,7 +531,7 @@ const makeBigIntRunners = (operation: TypedArrayOperation, size: number): CaseRu
       }
     case 'filter':
       return {
-        candidate: () => TypedArray.filter(source, predicate),
+        candidate: () => filterOp(source),
         frozen: () => frozenFilter(source, predicate),
         native: () => nativeFilter(source, predicate),
       }
@@ -531,7 +543,7 @@ const makeBigIntRunners = (operation: TypedArrayOperation, size: number): CaseRu
       }
     case 'slice':
       return {
-        candidate: () => TypedArray.slice(source, start, end),
+        candidate: () => sliceOp(source),
         frozen: () => frozenSlice(source, start, end),
         native: () => nativeSlice(source, start, end),
       }
@@ -543,13 +555,13 @@ const makeBigIntRunners = (operation: TypedArrayOperation, size: number): CaseRu
       }
     case 'includes':
       return {
-        candidate: () => TypedArray.includes(source, missing),
+        candidate: () => includesOp(source),
         frozen: frozenIncludesRun,
         native: () => source.includes(missing),
       }
     case 'sort':
       return {
-        candidate: () => TypedArray.sort(source),
+        candidate: () => sortOp(source),
         frozen: () => frozenSort(source),
         native: () => nativeSort(source),
       }

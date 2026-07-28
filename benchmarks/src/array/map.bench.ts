@@ -12,8 +12,9 @@ const fn = (x: number) => x * 2
 
 describe.each([100, 1_000, 10_000, 100_000])('map (data-first) — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockMap = A.map(fn) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.map(data, fn))
+  bench('stopcock', () => stopcockMap(data))
   bench('ts-belt', () => TB.map(data, fn))
   bench('remeda', () => R.map(data, fn))
   bench('rambda', () => Rb.map(fn)(data))

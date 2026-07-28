@@ -57,11 +57,20 @@ interface TimingCase {
 
 const compiledPipeline = compile(A.map(double), A.filter(isEven))
 
+// Hoisted: these lanes measure the direct call's cost, not closure
+// construction, matching how allocation-perf-corpus.ts isolates the same
+// thing.
+const arrayMapOp = A.map(double)
+const arrayFilterOp = A.filter(isEven)
+const iterMapOp = Iter.map(double)
+const iterFilterOp = Iter.filter(isEven)
+const typedArrayMapOp = TA.map(double)
+
 const TIMING_CASES: readonly TimingCase[] = [
   {
     laneId: 'direct',
     caseId: 'array.map',
-    subject: () => A.map(input, double),
+    subject: () => arrayMapOp(input),
     reference: () => {
       const out = new Array<number>(input.length)
       for (let i = 0; i < input.length; i++) out[i] = input[i] * 2
@@ -71,7 +80,7 @@ const TIMING_CASES: readonly TimingCase[] = [
   {
     laneId: 'direct',
     caseId: 'array.filter',
-    subject: () => A.filter(input, isEven),
+    subject: () => arrayFilterOp(input),
     reference: () => {
       const out: number[] = []
       for (let i = 0; i < input.length; i++) if ((input[i] & 1) === 0) out.push(input[i])
@@ -107,7 +116,7 @@ const TIMING_CASES: readonly TimingCase[] = [
   {
     laneId: 'iter',
     caseId: 'iter.map-filter-toArray',
-    subject: () => Iter.toArray(Iter.filter(Iter.map(Iter.from(input), double), isEven)),
+    subject: () => Iter.toArray(iterFilterOp(iterMapOp(Iter.from(input)))),
     reference: () => {
       const out: number[] = []
       for (let i = 0; i < input.length; i++) {
@@ -120,7 +129,7 @@ const TIMING_CASES: readonly TimingCase[] = [
   {
     laneId: 'typed-array',
     caseId: 'typed-array.map',
-    subject: () => TA.map(typedInput, double),
+    subject: () => typedArrayMapOp(typedInput),
     reference: () => {
       const out = new Float64Array(typedInput.length)
       for (let i = 0; i < typedInput.length; i++) out[i] = typedInput[i] * 2

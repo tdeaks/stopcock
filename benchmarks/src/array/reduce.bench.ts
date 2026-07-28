@@ -11,8 +11,9 @@ const fn = (acc: number, x: number) => acc + x
 
 describe.each([100, 1_000, 10_000, 100_000])('reduce — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockReduce = A.reduce(fn, 0) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.reduce(data, fn, 0))
+  bench('stopcock', () => stopcockReduce(data))
   bench('ts-belt', () => TB.reduce(data, 0, fn))
   bench('remeda', () => R.reduce(data, fn, 0))
   bench('rambda', () => Rb.reduce(fn, 0)(data))

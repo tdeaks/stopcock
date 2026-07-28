@@ -632,37 +632,35 @@ const buildCurrent = (source: Iterable<number>, steps: readonly Step[]): Iterabl
   for (const step of steps) {
     switch (step.kind) {
       case 'map':
-        values = Iter.map(values, step.fn)
+        values = Iter.map(step.fn)(values)
         break
       case 'filter':
-        values = Iter.filter(values, step.fn)
+        values = Iter.filter(step.fn)(values)
         break
       case 'filterMap':
         values = Iter.filterMap(
-          values,
           step.fn as (value: unknown, index: number) => Option<unknown>,
-        )
+        )(values)
         break
       case 'flatMap':
         values = Iter.flatMap(
-          values,
           step.fn as (value: unknown, index: number) => Iterable<unknown>,
-        )
+        )(values)
         break
       case 'take':
-        values = Iter.take(values, step.count)
+        values = Iter.take(step.count)(values)
         break
       case 'drop':
-        values = Iter.drop(values, step.count)
+        values = Iter.drop(step.count)(values)
         break
       case 'takeWhile':
-        values = Iter.takeWhile(values, step.fn)
+        values = Iter.takeWhile(step.fn)(values)
         break
       case 'dropWhile':
-        values = Iter.dropWhile(values, step.fn)
+        values = Iter.dropWhile(step.fn)(values)
         break
       case 'scan':
-        values = Iter.scan(values, step.fn, step.initial)
+        values = Iter.scan(step.fn, step.initial)(values)
         break
     }
   }
@@ -717,9 +715,9 @@ const runCurrent = (plan: Iterable<unknown>, terminal: Terminal): number => {
     case 'toArrayInto':
       return checksum(Iter.toArrayInto(plan, [-7]))
     case 'reduce':
-      return Iter.reduce(plan, (total, value) => total + Number(value), 0)
+      return Iter.reduce((total: number, value: unknown) => total + Number(value), 0)(plan)
     case 'find-absent':
-      return Iter.find(plan, (value) => Number(value) === -1)._tag
+      return Iter.find((value: unknown) => Number(value) === -1)(plan)._tag
     case 'iterate': {
       let total = 0
       for (const value of plan) total += Number(value)

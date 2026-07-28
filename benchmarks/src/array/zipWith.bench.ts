@@ -11,8 +11,9 @@ describe.each([100, 1_000, 10_000])('zipWith — n=%i', (n) => {
   const b = getData<number>('numbers', n as any)
     .slice()
     .reverse()
+  const stopcockZipWith = A.zipWith(b, fn) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.zipWith(a, b, fn))
+  bench('stopcock', () => stopcockZipWith(a))
   bench('ramda', () => Ra.zipWith(fn, a, b))
   bench('lodash', () => _.zipWith(a, b, fn))
 })

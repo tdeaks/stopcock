@@ -56,7 +56,7 @@ describe('source-equivalent FP subpath tree-shaking smoke', () => {
       import { filter, map, take } from ${JSON.stringify(arraySource)}
 
       const data = [1, 2, 3, 4]
-      console.log(take(map(filter(data, (x) => x > 1), (x) => x * 2), 2))
+      console.log(take(2)(map((x) => x * 2)(filter((x) => x > 1)(data))))
     `,
     )
 
@@ -66,7 +66,7 @@ describe('source-equivalent FP subpath tree-shaking smoke', () => {
       import { A } from ${JSON.stringify(rootSource)}
 
       const data = [1, 2, 3, 4]
-      console.log(A.take(A.map(A.filter(data, (x) => x > 1), (x) => x * 2), 2))
+      console.log(A.take(2)(A.map((x) => x * 2)(A.filter((x) => x > 1)(data))))
     `,
     )
 

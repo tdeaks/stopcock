@@ -74,14 +74,19 @@ for (const size of [100, 1_000]) {
     repeated(batch, () => RecordOps.keys(source)),
     repeated(batch, () => oldEnumerableKeys(source)),
   )
+  // Hoisted: constructing the operator inside `repeated`'s closure would
+  // charge every one of the `batch` iterations for closure construction,
+  // which `oldMap`/`oldFilter` never pay.
+  const recordMapOp = RecordOps.map(mapValue)
+  const recordFilterOp = RecordOps.filter(keepEven)
   report(
     `Record.map n=${size}`,
-    repeated(batch, () => RecordOps.map(source, mapValue)),
+    repeated(batch, () => recordMapOp(source)),
     repeated(batch, () => oldMap(source, mapValue)),
   )
   report(
     `Record.filter n=${size}`,
-    repeated(batch, () => RecordOps.filter(source, keepEven)),
+    repeated(batch, () => recordFilterOp(source)),
     repeated(batch, () => oldFilter(source, keepEven)),
   )
 }

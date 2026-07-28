@@ -18,7 +18,7 @@ const add = (acc: number, x: number) => acc + x
 describe('correctness: all libraries produce identical output', () => {
   it('map', () => {
     const expected = nums.map(dbl)
-    expect(A.map(nums, dbl)).toEqual(expected)
+    expect(A.map(dbl)(nums)).toEqual(expected)
     expect(TB.map(nums, dbl)).toEqual(expected)
     expect(R.map(nums, dbl)).toEqual(expected)
     expect(Rb.map(dbl)(nums)).toEqual(expected)
@@ -28,7 +28,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('filter', () => {
     const expected = nums.filter(pred)
-    expect(A.filter(nums, pred)).toEqual(expected)
+    expect(A.filter(pred)(nums)).toEqual(expected)
     expect(TB.filter(nums, pred)).toEqual(expected)
     expect(R.filter(nums, pred)).toEqual(expected)
     expect(Rb.filter(pred)(nums)).toEqual(expected)
@@ -38,7 +38,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('sort', () => {
     const expected = [...nums].sort(cmp)
-    expect(A.sortBy(nums, cmp)).toEqual(expected)
+    expect(A.sortBy(cmp)(nums)).toEqual(expected)
     expect(TB.sort(nums, cmp)).toEqual(expected)
     expect(R.sort(nums, cmp)).toEqual(expected)
     expect(Ra.sort(cmp, nums)).toEqual(expected)
@@ -57,7 +57,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('take', () => {
     const expected = nums.slice(0, 3)
-    expect(A.take(nums, 3)).toEqual(expected)
+    expect(A.take(3)(nums)).toEqual(expected)
     expect(TB.take(nums, 3)).toEqual(expected)
     expect(R.take(nums, 3)).toEqual(expected)
     expect(Rb.take(3)(nums)).toEqual(expected)
@@ -67,7 +67,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('drop', () => {
     const expected = nums.slice(3)
-    expect(A.drop(nums, 3)).toEqual(expected)
+    expect(A.drop(3)(nums)).toEqual(expected)
     expect(TB.drop(nums, 3)).toEqual(expected)
     expect(R.drop(nums, 3)).toEqual(expected)
     expect(Rb.drop(3)(nums)).toEqual(expected)
@@ -77,7 +77,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('reduce', () => {
     const expected = nums.reduce(add, 0)
-    expect(A.reduce(nums, add, 0)).toBe(expected)
+    expect(A.reduce(add, 0)(nums)).toBe(expected)
     expect(TB.reduce(nums, 0, add)).toBe(expected)
     expect(R.reduce(nums, add, 0)).toBe(expected)
     expect(Rb.reduce(add, 0)(nums)).toBe(expected)
@@ -87,7 +87,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('find', () => {
     const expected = nums.find(pred)
-    expect(A.findOrUndefined(nums, pred)).toBe(expected)
+    expect(A.findOrUndefined(pred)(nums)).toBe(expected)
     expect(TB.getBy(nums, pred)).toBe(expected)
     expect(R.find(nums, pred)).toBe(expected)
     expect(Rb.find(pred)(nums)).toBe(expected)
@@ -97,7 +97,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('findIndex', () => {
     const idx = nums.findIndex(pred)
-    expect(A.findIndexOrUndefined(nums, pred)).toBe(idx)
+    expect(A.findIndexOrUndefined(pred)(nums)).toBe(idx)
     expect(Rb.findIndex(pred)(nums)).toBe(idx)
     expect(Ra.findIndex(pred, nums)).toBe(idx)
     expect(_.findIndex(nums, pred)).toBe(idx)
@@ -105,7 +105,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('every', () => {
     const allPos = (x: number) => x > 0
-    expect(A.every(nums, allPos)).toBe(true)
+    expect(A.every(allPos)(nums)).toBe(true)
     expect(TB.every(nums, allPos)).toBe(true)
     expect(Rb.all(allPos)(nums)).toBe(true)
     expect(Ra.all(allPos, nums)).toBe(true)
@@ -113,7 +113,7 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('some', () => {
-    expect(A.some(nums, pred)).toBe(true)
+    expect(A.some(pred)(nums)).toBe(true)
     expect(TB.some(nums, pred)).toBe(true)
     expect(Rb.any(pred)(nums)).toBe(true)
     expect(Ra.any(pred, nums)).toBe(true)
@@ -142,7 +142,7 @@ describe('correctness: all libraries produce identical output', () => {
   it('flatMap', () => {
     const f = (x: number) => [x, x * 2]
     const expected = nums.flatMap(f)
-    expect(A.flatMap(nums, f)).toEqual(expected)
+    expect(A.flatMap(f)(nums)).toEqual(expected)
     expect(Ra.chain(f, nums)).toEqual(expected)
     expect(_.flatMap(nums, f)).toEqual(expected)
   })
@@ -180,8 +180,8 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('includes', () => {
-    expect(A.includes(nums, 8)).toBe(true)
-    expect(A.includes(nums, 99)).toBe(false)
+    expect(A.includes(8)(nums)).toBe(true)
+    expect(A.includes(99)(nums)).toBe(false)
     expect(Ra.includes(8, nums)).toBe(true)
     expect(_.includes(nums, 8)).toBe(true)
   })
@@ -190,7 +190,7 @@ describe('correctness: all libraries produce identical output', () => {
     const nmOut: number[] = [],
       raOut: number[] = [],
       ldOut: number[] = []
-    A.forEach(nums, (x) => nmOut.push(x))
+    A.forEach((x: number) => nmOut.push(x))(nums)
     Ra.forEach((x) => raOut.push(x), nums)
     _.forEach(nums, (x) => ldOut.push(x))
     expect(nmOut).toEqual(nums)
@@ -202,7 +202,7 @@ describe('correctness: all libraries produce identical output', () => {
     const a = [1, 2, 3, 4, 5],
       b = [3, 4, 5, 6, 7]
     const expected = [3, 4, 5]
-    expect(A.intersection(a, b)).toEqual(expected)
+    expect(A.intersection(b)(a)).toEqual(expected)
     expect(Rb.intersection(a)(b)).toEqual(expected)
     expect(Ra.intersection(a, b)).toEqual(expected)
     expect(_.intersection(a, b)).toEqual(expected)
@@ -212,7 +212,7 @@ describe('correctness: all libraries produce identical output', () => {
     const a = [1, 2, 3, 4, 5],
       b = [3, 4, 5, 6, 7]
     const expected = [1, 2]
-    expect(A.difference(a, b)).toEqual(expected)
+    expect(A.difference(b)(a)).toEqual(expected)
     expect(Ra.difference(a, b)).toEqual(expected)
     expect(_.difference(a, b)).toEqual(expected)
   })
@@ -221,7 +221,7 @@ describe('correctness: all libraries produce identical output', () => {
     const a = [1, 2, 3, 4, 5],
       b = [3, 4, 5, 6, 7]
     const expected = [1, 2, 3, 4, 5, 6, 7]
-    expect(A.union(a, b)).toEqual(expected)
+    expect(A.union(b)(a)).toEqual(expected)
     expect(Ra.union(a, b)).toEqual(expected)
     expect(_.union(a, b)).toEqual(expected)
   })
@@ -230,7 +230,7 @@ describe('correctness: all libraries produce identical output', () => {
     const a = [1, 2, 3, 4, 5],
       b = [3, 4, 5, 6, 7]
     const expected = [1, 2, 6, 7]
-    expect(A.symmetricDifference(a, b)).toEqual(expected)
+    expect(A.symmetricDifference(b)(a)).toEqual(expected)
     expect(_.xor(a, b)).toEqual(expected)
   })
 
@@ -242,20 +242,20 @@ describe('correctness: all libraries produce identical output', () => {
       [2, 'b'],
       [3, 'c'],
     ]
-    expect(A.zip(a, b)).toEqual(expected)
+    expect(A.zip(b)(a)).toEqual(expected)
     expect(R.zip(a, b)).toEqual(expected)
     expect(Rb.zip(a)(b)).toEqual(expected)
   })
 
   it('partition', () => {
-    const [pass, fail] = A.partition(nums, pred)
+    const [pass, fail] = A.partition(pred)(nums)
     expect(pass).toEqual(nums.filter(pred))
     expect(fail).toEqual(nums.filter((x) => !pred(x)))
   })
 
   it('chunk', () => {
     const expected = [[5, 3, 8], [1, 9, 2], [7, 4, 6], [10]]
-    expect(A.chunk(nums, 3)).toEqual(expected)
+    expect(A.chunk(3)(nums)).toEqual(expected)
     expect(_.chunk(nums, 3)).toEqual(expected)
   })
 
@@ -263,7 +263,7 @@ describe('correctness: all libraries produce identical output', () => {
     const input = [2, 4, 6, 1, 3, 5]
     const p = (x: number) => x % 2 === 0
     const expected = [2, 4, 6]
-    expect(A.takeWhile(input, p)).toEqual(expected)
+    expect(A.takeWhile(p)(input)).toEqual(expected)
     expect(Rb.takeWhile(p)(input)).toEqual(expected)
     expect(Ra.takeWhile(p, input)).toEqual(expected)
     expect(_.takeWhile(input, p)).toEqual(expected)
@@ -273,7 +273,7 @@ describe('correctness: all libraries produce identical output', () => {
     const input = [2, 4, 6, 1, 3, 5]
     const p = (x: number) => x % 2 === 0
     const expected = [1, 3, 5]
-    expect(A.dropWhile(input, p)).toEqual(expected)
+    expect(A.dropWhile(p)(input)).toEqual(expected)
     expect(Rb.dropWhile(p)(input)).toEqual(expected)
     expect(Ra.dropWhile(p, input)).toEqual(expected)
     expect(_.dropWhile(input, p)).toEqual(expected)
@@ -283,14 +283,14 @@ describe('correctness: all libraries produce identical output', () => {
     const input = [1, 2, 3, 4, 5, 6]
     const f = (x: number) => (x % 2 === 0 ? 'even' : 'odd')
     const expected = { odd: [1, 3, 5], even: [2, 4, 6] }
-    expect(A.groupBy(input, f)).toEqual(expected)
+    expect(A.groupBy(f)(input)).toEqual(expected)
     expect(Rb.groupBy(f)(input)).toEqual(expected)
     expect(Ra.groupBy(f, input)).toEqual(expected)
     expect(_.groupBy(input, f)).toEqual(expected)
   })
 
   it('join', () => {
-    expect(A.join(['a', 'b', 'c'], ',')).toBe('a,b,c')
+    expect(A.join(',')(['a', 'b', 'c'])).toBe('a,b,c')
     expect(Rb.join(',')(['a', 'b', 'c'])).toBe('a,b,c')
     expect(Ra.join(',', ['a', 'b', 'c'])).toBe('a,b,c')
     expect(_.join(['a', 'b', 'c'], ',')).toBe('a,b,c')
@@ -298,7 +298,7 @@ describe('correctness: all libraries produce identical output', () => {
 
   it('reject', () => {
     const expected = nums.filter((x) => !pred(x))
-    expect(A.reject(nums, pred)).toEqual(expected)
+    expect(A.reject(pred)(nums)).toEqual(expected)
     expect(Rb.reject(pred)(nums)).toEqual(expected)
     expect(Ra.reject(pred, nums)).toEqual(expected)
     expect(_.reject(nums, pred)).toEqual(expected)
@@ -311,7 +311,7 @@ describe('correctness: all libraries produce identical output', () => {
       { id: 1, n: 'c' },
     ]
     const f = (x: any) => x.id
-    const result = A.uniqBy(input, f)
+    const result = A.uniqBy(f)(input)
     expect(result).toHaveLength(2)
     expect(result[0]).toEqual({ id: 1, n: 'a' })
     expect(result[1]).toEqual({ id: 2, n: 'b' })
@@ -347,29 +347,29 @@ describe('correctness: all libraries produce identical output', () => {
   })
 
   it('D.merge', () => {
-    expect(D.merge({ a: 1 }, { b: 2 })).toEqual({ a: 1, b: 2 })
-    expect(D.merge({ a: 1 }, { a: 2 })).toEqual({ a: 2 })
+    expect(D.merge({ b: 2 })({ a: 1 })).toEqual({ a: 1, b: 2 })
+    expect(D.merge({ a: 2 })({ a: 1 })).toEqual({ a: 2 })
   })
 
   // Object operations
   it('Obj.pick', () => {
     const obj = { a: 1, b: 2, c: 3 }
-    expect(Obj.pick(obj, ['a', 'c'])).toEqual({ a: 1, c: 3 })
+    expect(Obj.pick(['a', 'c'])(obj)).toEqual({ a: 1, c: 3 })
     expect(Ra.pick(['a', 'c'], obj)).toEqual({ a: 1, c: 3 })
     expect(_.pick(obj, ['a', 'c'])).toEqual({ a: 1, c: 3 })
   })
 
   it('Obj.omit', () => {
     const obj = { a: 1, b: 2, c: 3 }
-    expect(Obj.omit(obj, ['b'])).toEqual({ a: 1, c: 3 })
+    expect(Obj.omit(['b'])(obj)).toEqual({ a: 1, c: 3 })
     expect(Ra.omit(['b'], obj)).toEqual({ a: 1, c: 3 })
     expect(_.omit(obj, ['b'])).toEqual({ a: 1, c: 3 })
   })
 
   it('Obj.getPath', () => {
     const obj = { user: { address: { city: 'London' } } }
-    expect(Obj.getPathOrUndefined(obj, ['user', 'address', 'city'])).toBe('London')
-    expect(Obj.getPathOrUndefined(obj, ['user', 'nope', 'city'])).toBeUndefined()
+    expect(Obj.getPathOrUndefined(['user', 'address', 'city'])(obj)).toBe('London')
+    expect(Obj.getPathOrUndefined(['user', 'nope', 'city'])(obj)).toBeUndefined()
   })
 
   // Pipe fusion

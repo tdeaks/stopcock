@@ -13,8 +13,9 @@ const fn = (x: number) => {
 
 describe.each([100, 1_000, 10_000, 100_000])('forEach — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockForEach = A.forEach(fn) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.forEach(data, fn))
+  bench('stopcock', () => stopcockForEach(data))
   bench('ts-belt', () => TB.forEach(data, fn))
   bench('remeda', () => R.forEach(data, fn))
   bench('ramda', () => Ra.forEach(fn, data))

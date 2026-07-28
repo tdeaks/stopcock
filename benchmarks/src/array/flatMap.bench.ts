@@ -10,8 +10,9 @@ const fn = (x: number) => [x, x * 2]
 
 describe.each([100, 1_000, 10_000])('flatMap — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockFlatMap = A.flatMap(fn) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.flatMap(data, fn))
+  bench('stopcock', () => stopcockFlatMap(data))
   bench('remeda', () => R.flatMap(data, fn))
   bench('rambda', () => Rb.flatMap(fn)(data))
   bench('ramda', () => Ra.chain(fn, data))

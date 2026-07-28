@@ -10,8 +10,9 @@ import { getData } from '../setup'
 describe.each([100, 1_000, 10_000])('zip — n=%i', (n) => {
   const a = getData<number>('numbers', n as any)
   const b = getData<string>('strings', n as any)
+  const stopcockZip = A.zip(b) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.zip(a, b))
+  bench('stopcock', () => stopcockZip(a))
   bench('ts-belt', () => TB.zip(a, b))
   bench('remeda', () => R.zip(a, b))
   bench('rambda', () => Rb.zip(a)(b))

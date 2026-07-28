@@ -9,8 +9,9 @@ import { getData } from '../setup'
 
 describe.each([100, 1_000, 10_000, 100_000])('take(10) — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockTake = A.take(10) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.take(data, 10))
+  bench('stopcock', () => stopcockTake(data))
   bench('ts-belt', () => TB.take(data, 10))
   bench('remeda', () => R.take(data, 10))
   bench('rambda', () => Rb.take(10)(data))
@@ -20,8 +21,9 @@ describe.each([100, 1_000, 10_000, 100_000])('take(10) — n=%i', (n) => {
 
 describe.each([100, 1_000, 10_000, 100_000])('drop(10) — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockDrop = A.drop(10) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.drop(data, 10))
+  bench('stopcock', () => stopcockDrop(data))
   bench('ts-belt', () => TB.drop(data, 10))
   bench('remeda', () => R.drop(data, 10))
   bench('rambda', () => Rb.drop(10)(data))

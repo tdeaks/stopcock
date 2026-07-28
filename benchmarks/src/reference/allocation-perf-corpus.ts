@@ -81,6 +81,17 @@ const referenceArrayTarget: number[] = []
 const referenceFilterTarget: number[] = []
 const referenceTypedTarget = new Float64Array(SIZE)
 
+// Hoisted: the operator itself is not the subject here, its allocation is.
+// Constructing it inside `subject` would attribute the closure allocation to
+// the operator's per-call cost this corpus exists to isolate.
+const arrayMapOp = A.map(double)
+const arrayFilterOp = A.filter(isEven)
+const iterMapOp = Iter.map(double)
+const iterFilterOp = Iter.filter(isEven)
+const typedArrayMapOp = TA.map(double)
+const arrayMapIntoOp = AX.mapInto(arrayTarget, double)
+const arrayFilterIntoOp = AX.filterInto(filterTarget, isEven)
+
 const mapReference = (): number[] => {
   const out = new Array<number>(input.length)
   for (let i = 0; i < input.length; i++) out[i] = input[i] * 2
@@ -155,7 +166,7 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
     elements: SIZE,
     reusesTarget: false,
     description: 'A.map allocating a fresh dense output.',
-    subject: () => A.map(input, double),
+    subject: () => arrayMapOp(input),
     reference: mapReference,
   },
   {
@@ -164,7 +175,7 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
     elements: SIZE,
     reusesTarget: false,
     description: 'A.filter growing a fresh output.',
-    subject: () => A.filter(input, isEven),
+    subject: () => arrayFilterOp(input),
     reference: () => {
       const out: number[] = []
       for (let i = 0; i < input.length; i++) if ((input[i] & 1) === 0) out.push(input[i])
@@ -213,7 +224,7 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
     elements: SIZE,
     reusesTarget: false,
     description: 'Iter map/filter drained through the array terminal.',
-    subject: () => Iter.toArray(Iter.filter(Iter.map(Iter.from(input), double), isEven)),
+    subject: () => Iter.toArray(iterFilterOp(iterMapOp(Iter.from(input)))),
     reference: mapFilterReference,
   },
   {
@@ -222,7 +233,7 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
     elements: SIZE,
     reusesTarget: false,
     description: 'TA.map allocating a fresh Float64Array.',
-    subject: () => TA.map(typedInput, double),
+    subject: () => typedArrayMapOp(typedInput),
     reference: () => {
       const out = new Float64Array(typedInput.length)
       for (let i = 0; i < typedInput.length; i++) out[i] = typedInput[i] * 2
@@ -235,7 +246,7 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
     elements: SIZE,
     reusesTarget: true,
     description: 'AX.mapInto writing into one caller-owned array across every call.',
-    subject: () => AX.mapInto(input, arrayTarget, double),
+    subject: () => arrayMapIntoOp(input),
     reference: () => {
       referenceArrayTarget.length = input.length
       for (let i = 0; i < input.length; i++) referenceArrayTarget[i] = input[i] * 2
@@ -248,7 +259,7 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
     elements: SIZE,
     reusesTarget: true,
     description: 'AX.filterInto writing into one caller-owned array across every call.',
-    subject: () => AX.filterInto(input, filterTarget, isEven),
+    subject: () => arrayFilterIntoOp(input),
     reference: () => {
       referenceFilterTarget.length = 0
       for (let i = 0; i < input.length; i++) {
@@ -282,7 +293,7 @@ export const ALLOCATION_TARGETS: readonly AllocationTarget[] = Object.freeze([
       // an uninferred element and rejects a call that is plainly well typed.
       // Reported as a P1A/P1B typing defect; nothing here works around it at
       // runtime.
-      const source: Iterable<number> = Iter.filter(Iter.map(Iter.from(input), double), isEven)
+      const source: Iterable<number> = iterFilterOp(iterMapOp(Iter.from(input)))
       return Iter.toArrayInto(source, iterTarget)
     },
     reference: () => {

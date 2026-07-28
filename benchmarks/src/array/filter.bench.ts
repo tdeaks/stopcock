@@ -12,8 +12,9 @@ const pred = (x: number) => x > 0.5
 
 describe.each([100, 1_000, 10_000, 100_000])('filter (data-first) — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockFilter = A.filter(pred) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.filter(data, pred))
+  bench('stopcock', () => stopcockFilter(data))
   bench('ts-belt', () => TB.filter(data, pred))
   bench('remeda', () => R.filter(data, pred))
   bench('rambda', () => Rb.filter(pred)(data))

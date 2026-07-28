@@ -69,11 +69,11 @@ const warmHistory = (id: HistoryId): void => {
     for (const input of inputs) {
       switch (id) {
         case 'mixed-forms':
-          if (round % 2 === 0) A.map(input, double)
+          if (round % 2 === 0) A.map(double)(input)
           else A.map(double)(input)
           break
         case 'fresh-callbacks':
-          A.map(input, (x: number) => x * 2)
+          A.map((x: number) => x * 2)(input)
           break
         case 'stable-callback':
           A.map(double)(input)
@@ -82,7 +82,7 @@ const warmHistory = (id: HistoryId): void => {
           pipe(input, A.map(double))
           break
         default:
-          A.map(input, double)
+          A.map(double)(input)
       }
     }
   }
@@ -123,7 +123,7 @@ export const measureHistory = (id: HistoryId, rounds = 60): HistorySample => {
   for (let round = 0; round < rounds; round++) {
     const mapCallback = fresh ? (x: number) => x * 2 : double
     const mapStarted = process.hrtime.bigint()
-    A.map(input, mapCallback)
+    A.map(mapCallback)(input)
     mapSamples.push(Number(process.hrtime.bigint() - mapStarted))
 
     const controlCallback = fresh ? (x: number) => x * 2 : double

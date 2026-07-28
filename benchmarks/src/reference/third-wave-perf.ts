@@ -279,7 +279,7 @@ const buildCases = (): readonly ExecutableCase[] => {
     {
       name: 'match/discriminant-data-first',
       workUnits: 1,
-      current: () => Match.discriminant('kind', shape, handlers),
+      current: () => Match.discriminant('kind', handlers)(shape),
       baseline: () =>
         matchDiscriminantBefore('kind', shape, handlers),
     },
@@ -292,7 +292,7 @@ const buildCases = (): readonly ExecutableCase[] => {
     {
       name: 'match/tag-data-first',
       workUnits: 1,
-      current: () => Match.tag(tagged, taggedHandlers),
+      current: () => Match.tag(taggedHandlers)(tagged),
       baseline: () => matchTagBefore(tagged, taggedHandlers),
     },
     {
@@ -304,8 +304,8 @@ const buildCases = (): readonly ExecutableCase[] => {
     {
       name: 'schema/map-sync-success',
       workUnits: 1,
-      current: () => Schema.validateSync(21, currentSchema),
-      baseline: () => Schema.validateSync(21, baselineSchema),
+      current: () => Schema.validateSync(currentSchema)(21),
+      baseline: () => Schema.validateSync(baselineSchema)(21),
     },
     {
       name: 'writer/zip',
