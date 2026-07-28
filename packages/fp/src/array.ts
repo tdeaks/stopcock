@@ -207,61 +207,29 @@ export const transpose: <A>(arr: readonly A[][]) => A[][] = /* @__PURE__ */ (() 
 })()
 
 
-export const repeat: {
-  <A>(value: A, n: number): A[]
-  <A>(n: number): (value: A) => A[]
-} = function repeat(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const value = data, n = _a0
-      if (n <= 0) return []
+export const repeat: <A>(n: number) => (value: A) => A[] = function repeat(n: any) {
+  return function (value: any) {
+    if (n <= 0) return []
     const out = new Array(n)
     for (let i = 0; i < n; i++) out[i] = value
     return out
-    }
-    return _dl
   }
-  const value = _arg0, n = _arg1
-  if (n <= 0) return []
-    const out = new Array(n)
-    for (let i = 0; i < n; i++) out[i] = value
-    return out
 } as any
 
 
-export const times: {
-  <A>(f: (i: number) => A, n: number): A[]
-  (n: number): <A>(f: (i: number) => A) => A[]
-} = function times(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const f = data, n = _a0
-      if (n <= 0) return []
+export const times: (n: number) => <A>(f: (i: number) => A) => A[] = function times(n: any) {
+  return function (f: any) {
+    if (n <= 0) return []
     const out = new Array(n)
     for (let i = 0; i < n; i++) out[i] = f(i)
     return out
-    }
-    return _dl
   }
-  const f = _arg0, n = _arg1
-  if (n <= 0) return []
-    const out = new Array(n)
-    for (let i = 0; i < n; i++) out[i] = f(i)
-    return out
 } as any
 
 
-export const unfold: {
-  <A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
-  <A, B>(seed: B): (f: (seed: B) => [A, B] | undefined) => A[]
-} = function unfold(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const f = data, seed = _a0
-      const result: any[] = []
+export const unfold: <A, B>(seed: B) => (f: (seed: B) => [A, B] | undefined) => A[] = function unfold(seed: any) {
+  return function (f: any) {
+    const result: any[] = []
     let s = seed
     while (true) {
       const match = f(s)
@@ -270,31 +238,13 @@ export const unfold: {
       s = match[1]
     }
     return result
-    }
-    return _dl
   }
-  const f = _arg0, seed = _arg1
-  const result: any[] = []
-    let s = seed
-    while (true) {
-      const match = f(s)
-      if (match === undefined) break
-      result.push(match[0])
-      s = match[1]
-    }
-    return result
 } as any
 
 
-export const xprod: {
-  <A, B>(a: readonly A[], b: readonly B[]): [A, B][]
-  <B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
-} = function xprod(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      let lenA = a.length
+export const xprod: <B>(b: readonly B[]) => <A>(a: readonly A[]) => [A, B][] = function xprod(b: any) {
+  const _dl: any = function (a: any) {
+    let lenA = a.length
     let lenB = b.length
     let total = (lenA * lenB) | 0
     if (total === 0) {
@@ -307,386 +257,200 @@ export const xprod: {
       }
     }
     return out
-    }
+  }
     _dl._op = 113
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 113, _a0)
-  }
-  const a = _arg0, b = _arg1
-  let lenA = a.length
-    let lenB = b.length
-    let total = (lenA * lenB) | 0
-    if (total === 0) {
-      return []
-    }
-    let out = new Array(total)
-    for (let i = 0; i < lenA; ++i) {
-      for (let j = 0; j < lenB; ++j) {
-        out[(((i * lenB) | 0) + j) | 0] = [a[i], b[j]]
-      }
-    }
-    return out
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 113, b)
 } as any
 
 
 // Arity 2
-//
-// map is the S4 direct-leaf pilot: codegen splits it into an isolated
-// execution leaf and an isolated curried constructor. See
-// codegen/direct-leaf.ts.
-function runMap(arr: any, f: any): any {
-  const len = arr.length,
+export const map: <A, B>(f: (a: A) => B) => (arr: readonly A[]) => B[] = function map(f: any) {
+  const _dl: any = function (arr: any) {
+    const len = arr.length,
       out = new Array(len)
     for (let i = 0; i < len; i++) out[i] = f(arr[i])
     return out
-}
-
-const constructMapCache = new WeakMap<object, any>()
-
-export const map: {
-  <A, B>(arr: readonly A[], f: (a: A) => B): B[]
-  <A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
-} = function map(): any {
-  if (arguments.length >= 2) {
-    const _a0 = arguments[0]
-    const _a1 = arguments[1]
-    return runMap(_a0, _a1)
   }
-  const _a0 = arguments[0]
-  const _hit = typeof _a0 === 'function' ? constructMapCache.get(_a0) : undefined
-  if (_hit !== undefined) return _hit
-  const _dl: any = function (data: any) {
-    return runMap(data, _a0)
-  }
-  _dl._op = 1
-  _dl._fn = _a0
-  registerTrustedOperator(_dl, 1, _a0)
-  if (typeof _a0 === 'function') constructMapCache.set(_a0, _dl)
-  return _dl
+    _dl._op = 1
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 1, f)
 } as any
 
 
-export const mapWithIndex: {
-  <A, B>(arr: readonly A[], f: (a: A, i: number) => B): B[]
-  <A, B>(f: (a: A, i: number) => B): (arr: readonly A[]) => B[]
-} = function mapWithIndex(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      const len = arr.length,
+export const mapWithIndex: <A, B>(f: (a: A, i: number) => B) => (arr: readonly A[]) => B[] = function mapWithIndex(f: any) {
+  const _dl: any = function (arr: any) {
+    const len = arr.length,
       out = new Array(len)
     for (let i = 0; i < len; i++) out[i] = f(arr[i], i)
     return out
-    }
-    _dl._op = 175
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 175, _a0)
   }
-  const arr = _arg0, f = _arg1
-  const len = arr.length,
-      out = new Array(len)
-    for (let i = 0; i < len; i++) out[i] = f(arr[i], i)
-    return out
+    _dl._op = 175
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 175, f)
 } as any
 
 
 export const filter: {
-  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): B[]
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => B[]
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = function filter(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      const out: any[] = []
+} = function filter(pred: any) {
+  const _dl: any = function (arr: any) {
+    const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
       const v = arr[i]
       if (pred(v)) out.push(v)
     }
     return out
-    }
-    _dl._op = 2
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 2, _a0)
   }
-  const arr = _arg0, pred = _arg1
-  const out: any[] = []
-    for (let i = 0, len = arr.length; i < len; i++) {
-      const v = arr[i]
-      if (pred(v)) out.push(v)
-    }
-    return out
+    _dl._op = 2
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 2, pred)
 } as any
 
 
 export const filterWithIndex: {
-  <A, B extends A>(arr: readonly A[], pred: (a: A, i: number) => a is B): B[]
-  <A>(arr: readonly A[], pred: (a: A, i: number) => boolean): A[]
   <A, B extends A>(pred: (a: A, i: number) => a is B): (arr: readonly A[]) => B[]
   <A>(pred: (a: A, i: number) => boolean): (arr: readonly A[]) => A[]
-} = function filterWithIndex(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      const out: any[] = []
+} = function filterWithIndex(pred: any) {
+  const _dl: any = function (arr: any) {
+    const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
       const v = arr[i]
       if (pred(v, i)) out.push(v)
     }
     return out
-    }
-    _dl._op = 176
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 176, _a0)
   }
-  const arr = _arg0, pred = _arg1
-  const out: any[] = []
-    for (let i = 0, len = arr.length; i < len; i++) {
-      const v = arr[i]
-      if (pred(v, i)) out.push(v)
-    }
-    return out
+    _dl._op = 176
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 176, pred)
 } as any
 
 
-export const flatMap: {
-  <A, B>(arr: readonly A[], f: (a: A) => B[]): B[]
-  <A, B>(f: (a: A) => B[]): (arr: readonly A[]) => B[]
-} = function flatMap(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      const out: any[] = []
+export const flatMap: <A, B>(f: (a: A) => B[]) => (arr: readonly A[]) => B[] = function flatMap(f: any) {
+  const _dl: any = function (arr: any) {
+    const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
       const r = f(arr[i])
       for (let j = 0, rlen = r.length; j < rlen; j++) out.push(r[j])
     }
     return out
-    }
-    _dl._op = 7
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 7, _a0)
   }
-  const arr = _arg0, f = _arg1
-  const out: any[] = []
-    for (let i = 0, len = arr.length; i < len; i++) {
-      const r = f(arr[i])
-      for (let j = 0, rlen = r.length; j < rlen; j++) out.push(r[j])
-    }
-    return out
+    _dl._op = 7
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 7, f)
 } as any
 
 
 export const findOrUndefined: {
-  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): B | undefined
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => B | undefined
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
-} = function findOrUndefined(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (let i = 0, len = arr.length; i < len; i++) {
+} = function findOrUndefined(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) {
     const v = arr[i]
     if (pred(v)) return v
   }
   return undefined
-    }
+  }
     _dl._op = 24
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 24, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const v = arr[i]
-    if (pred(v)) return v
-  }
-  return undefined
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 24, pred)
 } as any
 
 
 export const find: {
-  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): Option<B>
-  <A>(arr: readonly A[], pred: (a: A) => boolean): Option<A>
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => Option<B>
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<A>
-} = function find(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (let i = 0, len = arr.length; i < len; i++) {
+} = function find(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) {
       const v = arr[i]
       if (pred(v)) return optionSome(v)
     }
     return optionNone
-    }
+  }
     _dl._op = 12
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 12, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) {
-      const v = arr[i]
-      if (pred(v)) return optionSome(v)
-    }
-    return optionNone
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 12, pred)
 } as any
 
 
-export const findIndexOrUndefined: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
-} = function findIndexOrUndefined(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (let i = 0, len = arr.length; i < len; i++) {
+export const findIndexOrUndefined: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => number | undefined = function findIndexOrUndefined(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) {
     if (pred(arr[i])) return i
   }
   return undefined
-    }
+  }
     _dl._op = 25
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 25, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) {
-    if (pred(arr[i])) return i
-  }
-  return undefined
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 25, pred)
 } as any
 
 
-export const findIndex: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<number>
-} = function findIndex(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (let i = 0, len = arr.length; i < len; i++) {
+export const findIndex: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => Option<number> = function findIndex(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) {
       if (pred(arr[i])) return optionSome(i)
     }
     return optionNone
-    }
+  }
     _dl._op = 13
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 13, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) {
-      if (pred(arr[i])) return optionSome(i)
-    }
-    return optionNone
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 13, pred)
 } as any
 
 
-export const every: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
-} = function every(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (let i = 0, len = arr.length; i < len; i++) {
+export const every: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => boolean = function every(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) {
       if (!pred(arr[i])) return false
     }
     return true
-    }
+  }
     _dl._op = 10
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 10, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) {
-      if (!pred(arr[i])) return false
-    }
-    return true
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 10, pred)
 } as any
 
 
-export const some: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
-} = function some(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (let i = 0, len = arr.length; i < len; i++) {
+export const some: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => boolean = function some(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) {
       if (pred(arr[i])) return true
     }
     return false
-    }
+  }
     _dl._op = 11
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 11, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) {
-      if (pred(arr[i])) return true
-    }
-    return false
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 11, pred)
 } as any
 
 
-export const includes: {
-  <A>(arr: readonly A[], value: A): boolean
-  <A>(value: A): (arr: readonly A[]) => boolean
-} = function includes(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, value = _a0
-      return arr.includes(value)
-    }
+export const includes: <A>(value: A) => (arr: readonly A[]) => boolean = function includes(value: any) {
+  const _dl: any = function (arr: any) {
+    return arr.includes(value)
+  }
     _dl._op = 122
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 122, _a0)
-  }
-  const arr = _arg0, value = _arg1
-  return arr.includes(value)
+    _dl._fn = value
+  return registerTrustedOperator(_dl, 122, value)
 } as any
 
 
-export const sortBy: {
-  <A>(arr: readonly A[], cmp: (a: A, b: A) => number): A[]
-  <A>(cmp: (a: A, b: A) => number): (arr: readonly A[]) => A[]
-} = function sortBy(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, cmp = _a0
-      return mergeSortBy(arr, cmp)
-    }
+export const sortBy: <A>(cmp: (a: A, b: A) => number) => (arr: readonly A[]) => A[] = function sortBy(cmp: any) {
+  const _dl: any = function (arr: any) {
+    return mergeSortBy(arr, cmp)
+  }
     _dl._op = 20
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 20, _a0)
-  }
-  const arr = _arg0, cmp = _arg1
-  return mergeSortBy(arr, cmp)
+    _dl._fn = cmp
+  return registerTrustedOperator(_dl, 20, cmp)
 } as any
 
 
-export const takeSortedBy: {
-  <A>(arr: readonly A[], k: number, cmp: (a: A, b: A) => number): A[]
-  <A>(k: number, cmp: (a: A, b: A) => number): (arr: readonly A[]) => A[]
-} = function takeSortedBy(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, k = _a0, cmp = _a1
-      var n = arr.length
+export const takeSortedBy: <A>(k: number, cmp: (a: A, b: A) => number) => (arr: readonly A[]) => A[] = function takeSortedBy(k: any, cmp: any) {
+  const _dl: any = function (arr: any) {
+    var n = arr.length
   if (k <= 0) return []
   if (k >= n) return mergeSortBy(arr, cmp)
   // Copy to avoid mutating input
@@ -715,42 +479,11 @@ export const takeSortedBy: {
   }
   // Extract first k and sort them
   return mergeSortBy(work.slice(0, k), cmp)
-    }
+  }
     _dl._op = 151
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 151, _a0, _a1)
-  }
-  const arr = _arg0, k = _arg1, cmp = _arg2
-  var n = arr.length
-  if (k <= 0) return []
-  if (k >= n) return mergeSortBy(arr, cmp)
-  // Copy to avoid mutating input
-  var work = arr.slice()
-  // Quickselect: partition work so that work[0..k-1] contains the k smallest
-  var lo = 0,
-    hi = n - 1
-  while (lo < hi) {
-    var pivot = work[lo + ((hi - lo) >> 1)]
-    var i = lo,
-      j = hi
-    while (i <= j) {
-      while (cmp(work[i], pivot) < 0) i++
-      while (cmp(work[j], pivot) > 0) j--
-      if (i <= j) {
-        var tmp = work[i]
-        work[i] = work[j]
-        work[j] = tmp
-        i++
-        j--
-      }
-    }
-    if (j < k - 1) lo = i
-    else if (i > k - 1) hi = j
-    else break
-  }
-  // Extract first k and sort them
-  return mergeSortBy(work.slice(0, k), cmp)
+    _dl._fn = k
+    _dl._a1 = cmp
+  return registerTrustedOperator(_dl, 151, k, cmp)
 } as any
 
 
@@ -761,15 +494,9 @@ export const uniq: <A>(arr: readonly A[]) => A[] = /* @__PURE__ */ (() => {
 })()
 
 
-export const uniqBy: {
-  <A, B>(arr: readonly A[], f: (a: A) => B): A[]
-  <A, B>(f: (a: A) => B): (arr: readonly A[]) => A[]
-} = function uniqBy(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      var seen = new Set(),
+export const uniqBy: <A, B>(f: (a: A) => B) => (arr: readonly A[]) => A[] = function uniqBy(f: any) {
+  const _dl: any = function (arr: any) {
+    var seen = new Set(),
       out = []
     for (var i = 0, len = arr.length; i < len; i++) {
       var x = arr[i],
@@ -780,23 +507,10 @@ export const uniqBy: {
       }
     }
     return out
-    }
-    _dl._op = 108
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 108, _a0)
   }
-  const arr = _arg0, f = _arg1
-  var seen = new Set(),
-      out = []
-    for (var i = 0, len = arr.length; i < len; i++) {
-      var x = arr[i],
-        key = f(x)
-      if (!seen.has(key)) {
-        seen.add(key)
-        out.push(x)
-      }
-    }
-    return out
+    _dl._op = 108
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 108, f)
 } as any
 
 
@@ -868,69 +582,37 @@ export const drop: {
   return registerTrustedOperator(_dl, 4, fusedCount)
 } as any
 
-export const takeWhile: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = function takeWhile(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      var out = []
+export const takeWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function takeWhile(pred: any) {
+  const _dl: any = function (arr: any) {
+    var out = []
     for (var i = 0, len = arr.length; i < len; i++) {
       if (!pred(arr[i])) break
       out.push(arr[i])
     }
     return out
-    }
+  }
     _dl._op = 5
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 5, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  var out = []
-    for (var i = 0, len = arr.length; i < len; i++) {
-      if (!pred(arr[i])) break
-      out.push(arr[i])
-    }
-    return out
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 5, pred)
 } as any
 
 
-export const dropWhile: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = function dropWhile(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (var i = 0, len = arr.length; i < len; i++) {
+export const dropWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function dropWhile(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (var i = 0, len = arr.length; i < len; i++) {
       if (!pred(arr[i])) return arr.slice(i)
     }
     return []
-    }
+  }
     _dl._op = 6
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 6, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (var i = 0, len = arr.length; i < len; i++) {
-      if (!pred(arr[i])) return arr.slice(i)
-    }
-    return []
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 6, pred)
 } as any
 
 
-export const chunk: {
-  <A>(arr: readonly A[], n: number): A[][]
-  (n: number): <A>(arr: readonly A[]) => A[][]
-} = function chunk(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, n = _a0
-      var len = arr.length
+export const chunk: (n: number) => <A>(arr: readonly A[]) => A[][] = function chunk(n: any) {
+  const _dl: any = function (arr: any) {
+    var len = arr.length
     if (n <= 0 || len === 0) return []
     var numChunks = ((len + n - 1) / n) | 0
     var out = new Array(numChunks)
@@ -938,32 +620,16 @@ export const chunk: {
       out[i] = arr.slice(i * n, i * n + n)
     }
     return out
-    }
+  }
     _dl._op = 104
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 104, _a0)
-  }
-  const arr = _arg0, n = _arg1
-  var len = arr.length
-    if (n <= 0 || len === 0) return []
-    var numChunks = ((len + n - 1) / n) | 0
-    var out = new Array(numChunks)
-    for (var i = 0; i < numChunks; i++) {
-      out[i] = arr.slice(i * n, i * n + n)
-    }
-    return out
+    _dl._fn = n
+  return registerTrustedOperator(_dl, 104, n)
 } as any
 
 
-export const slidingWindow: {
-  <A>(arr: readonly A[], n: number): A[][]
-  (n: number): <A>(arr: readonly A[]) => A[][]
-} = function slidingWindow(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, n = _a0
-      let len = arr.length
+export const slidingWindow: (n: number) => <A>(arr: readonly A[]) => A[][] = function slidingWindow(n: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
     if (n <= 0 || n > len) {
       return []
     }
@@ -977,38 +643,16 @@ export const slidingWindow: {
       out[wi] = win
     }
     return out
-    }
+  }
     _dl._op = 105
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 105, _a0)
-  }
-  const arr = _arg0, n = _arg1
-  let len = arr.length
-    if (n <= 0 || n > len) {
-      return []
-    }
-    let numWindows = (((len - n) | 0) + 1) | 0
-    let out = new Array(numWindows)
-    for (let wi = 0; wi < numWindows; ++wi) {
-      let win = new Array(n)
-      for (let j = 0; j < n; ++j) {
-        win[j] = arr[(wi + j) | 0]
-      }
-      out[wi] = win
-    }
-    return out
+    _dl._fn = n
+  return registerTrustedOperator(_dl, 105, n)
 } as any
 
 
-export const intersperse: {
-  <A>(arr: readonly A[], sep: A): A[]
-  <A>(sep: A): (arr: readonly A[]) => A[]
-} = function intersperse(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, sep = _a0
-      let len = arr.length
+export const intersperse: <A>(sep: A) => (arr: readonly A[]) => A[] = function intersperse(sep: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
     if (len <= 1) {
       return arr.slice(0)
     }
@@ -1021,75 +665,36 @@ export const intersperse: {
       }
     }
     return out
-    }
+  }
     _dl._op = 107
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 107, _a0)
-  }
-  const arr = _arg0, sep = _arg1
-  let len = arr.length
-    if (len <= 1) {
-      return arr.slice(0)
-    }
-    let outLen = ((len << 1) - 1) | 0
-    let out = new Array(outLen)
-    for (let i = 0; i < len; ++i) {
-      out[i << 1] = arr[i]
-      if (i < ((len - 1) | 0)) {
-        out[((i << 1) + 1) | 0] = sep
-      }
-    }
-    return out
+    _dl._fn = sep
+  return registerTrustedOperator(_dl, 107, sep)
 } as any
 
 
-export const forEach: {
-  <A>(arr: readonly A[], f: (a: A) => void): void
-  <A>(f: (a: A) => void): (arr: readonly A[]) => void
-} = function forEach(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      for (let i = 0, len = arr.length; i < len; i++) f(arr[i])
-    }
+export const forEach: <A>(f: (a: A) => void) => (arr: readonly A[]) => void = function forEach(f: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) f(arr[i])
+  }
     _dl._op = 9
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 9, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) f(arr[i])
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 9, f)
 } as any
 
 
-export const forEachWithIndex: {
-  <A>(arr: readonly A[], f: (a: A, i: number) => void): void
-  <A>(f: (a: A, i: number) => void): (arr: readonly A[]) => void
-} = function forEachWithIndex(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      for (let i = 0, len = arr.length; i < len; i++) f(arr[i], i)
-    }
+export const forEachWithIndex: <A>(f: (a: A, i: number) => void) => (arr: readonly A[]) => void = function forEachWithIndex(f: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) f(arr[i], i)
+  }
     _dl._op = 177
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 177, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) f(arr[i], i)
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 177, f)
 } as any
 
 
-export const groupBy: {
-  <A>(arr: readonly A[], f: (a: A) => string): Dict<A[]>
-  <A>(f: (a: A) => string): (arr: readonly A[]) => Dict<A[]>
-} = function groupBy(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      var out: Dict<any[]> = {}
+export const groupBy: <A>(f: (a: A) => string) => (arr: readonly A[]) => Dict<A[]> = function groupBy(f: any) {
+  const _dl: any = function (arr: any) {
+    var out: Dict<any[]> = {}
     for (var i = 0, len = arr.length; i < len; i++) {
       var x = arr[i],
         key = f(x)
@@ -1098,33 +703,16 @@ export const groupBy: {
       else out[key] = [x]
     }
     return out
-    }
+  }
     _dl._op = 109
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 109, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  var out: Dict<any[]> = {}
-    for (var i = 0, len = arr.length; i < len; i++) {
-      var x = arr[i],
-        key = f(x)
-      var existing = out[key]
-      if (existing !== undefined) existing.push(x)
-      else out[key] = [x]
-    }
-    return out
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 109, f)
 } as any
 
 
-export const partition: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): [A[], A[]]
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => [A[], A[]]
-} = function partition(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      let len = arr.length
+export const partition: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => [A[], A[]] = function partition(pred: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
     let pass = new Array(len)
     let fail = new Array(len)
     let pi = 0
@@ -1142,42 +730,16 @@ export const partition: {
     truncate(pass, pi)
     truncate(fail, fi)
     return [pass, fail]
-    }
+  }
     _dl._op = 110
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 110, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  let len = arr.length
-    let pass = new Array(len)
-    let fail = new Array(len)
-    let pi = 0
-    let fi = 0
-    for (let i = 0; i < len; ++i) {
-      let x = arr[i]
-      if (pred(x)) {
-        pass[pi] = x
-        pi = (pi + 1) | 0
-      } else {
-        fail[fi] = x
-        fi = (fi + 1) | 0
-      }
-    }
-    truncate(pass, pi)
-    truncate(fail, fi)
-    return [pass, fail]
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 110, pred)
 } as any
 
 
-export const aperture: {
-  <A>(arr: readonly A[], n: number): A[][]
-  (n: number): <A>(arr: readonly A[]) => A[][]
-} = function aperture(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, n = _a0
-      let len = arr.length
+export const aperture: (n: number) => <A>(arr: readonly A[]) => A[][] = function aperture(n: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
     if (n <= 0 || n > len) {
       return []
     }
@@ -1191,38 +753,16 @@ export const aperture: {
       out[wi] = win
     }
     return out
-    }
+  }
     _dl._op = 106
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 106, _a0)
-  }
-  const arr = _arg0, n = _arg1
-  let len = arr.length
-    if (n <= 0 || n > len) {
-      return []
-    }
-    let numWindows = (((len - n) | 0) + 1) | 0
-    let out = new Array(numWindows)
-    for (let wi = 0; wi < numWindows; ++wi) {
-      let win = new Array(n)
-      for (let j = 0; j < n; ++j) {
-        win[j] = arr[(wi + j) | 0]
-      }
-      out[wi] = win
-    }
-    return out
+    _dl._fn = n
+  return registerTrustedOperator(_dl, 106, n)
 } as any
 
 
-export const intersection: {
-  <A>(a: readonly A[], b: readonly A[]): A[]
-  <A>(b: readonly A[]): (a: readonly A[]) => A[]
-} = function intersection(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      const included = new Set(b)
+export const intersection: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function intersection(b: any) {
+  const _dl: any = function (a: any) {
+    const included = new Set(b)
     const emitted = new Set()
     const out = []
     for (let i = 0; i < a.length; i++) {
@@ -1233,35 +773,16 @@ export const intersection: {
       }
     }
     return out
-    }
+  }
     _dl._op = 114
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 114, _a0)
-  }
-  const a = _arg0, b = _arg1
-  const included = new Set(b)
-    const emitted = new Set()
-    const out = []
-    for (let i = 0; i < a.length; i++) {
-      const value = a[i]
-      if (included.has(value) && !emitted.has(value)) {
-        emitted.add(value)
-        out.push(value)
-      }
-    }
-    return out
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 114, b)
 } as any
 
 
-export const union: {
-  <A>(a: readonly A[], b: readonly A[]): A[]
-  <A>(b: readonly A[]): (a: readonly A[]) => A[]
-} = function union(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      const seen = new Set()
+export const union: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function union(b: any) {
+  const _dl: any = function (a: any) {
+    const seen = new Set()
     const out = []
     for (let i = 0; i < a.length; i++) {
       const value = a[i]
@@ -1278,41 +799,16 @@ export const union: {
       }
     }
     return out
-    }
+  }
     _dl._op = 115
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 115, _a0)
-  }
-  const a = _arg0, b = _arg1
-  const seen = new Set()
-    const out = []
-    for (let i = 0; i < a.length; i++) {
-      const value = a[i]
-      if (!seen.has(value)) {
-        seen.add(value)
-        out.push(value)
-      }
-    }
-    for (let i = 0; i < b.length; i++) {
-      const value = b[i]
-      if (!seen.has(value)) {
-        seen.add(value)
-        out.push(value)
-      }
-    }
-    return out
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 115, b)
 } as any
 
 
-export const difference: {
-  <A>(a: readonly A[], b: readonly A[]): A[]
-  <A>(b: readonly A[]): (a: readonly A[]) => A[]
-} = function difference(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      const excluded = new Set(b)
+export const difference: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function difference(b: any) {
+  const _dl: any = function (a: any) {
+    const excluded = new Set(b)
     const emitted = new Set()
     const out = []
     for (let i = 0; i < a.length; i++) {
@@ -1323,35 +819,16 @@ export const difference: {
       }
     }
     return out
-    }
+  }
     _dl._op = 116
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 116, _a0)
-  }
-  const a = _arg0, b = _arg1
-  const excluded = new Set(b)
-    const emitted = new Set()
-    const out = []
-    for (let i = 0; i < a.length; i++) {
-      const value = a[i]
-      if (!excluded.has(value) && !emitted.has(value)) {
-        emitted.add(value)
-        out.push(value)
-      }
-    }
-    return out
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 116, b)
 } as any
 
 
-export const symmetricDifference: {
-  <A>(a: readonly A[], b: readonly A[]): A[]
-  <A>(b: readonly A[]): (a: readonly A[]) => A[]
-} = function symmetricDifference(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      const setA = new Set(a)
+export const symmetricDifference: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function symmetricDifference(b: any) {
+  const _dl: any = function (a: any) {
+    const setA = new Set(a)
     const setB = new Set(b)
     const emitted = new Set()
     const out = []
@@ -1370,92 +847,43 @@ export const symmetricDifference: {
       }
     }
     return out
-    }
-    _dl._op = 117
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 117, _a0)
   }
-  const a = _arg0, b = _arg1
-  const setA = new Set(a)
-    const setB = new Set(b)
-    const emitted = new Set()
-    const out = []
-    for (let i = 0; i < a.length; i++) {
-      const value = a[i]
-      if (!setB.has(value) && !emitted.has(value)) {
-        emitted.add(value)
-        out.push(value)
-      }
-    }
-    for (let i = 0; i < b.length; i++) {
-      const value = b[i]
-      if (!setA.has(value) && !emitted.has(value)) {
-        emitted.add(value)
-        out.push(value)
-      }
-    }
-    return out
+    _dl._op = 117
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 117, b)
 } as any
 
 
 // Arity 3
-export const reduce: {
-  <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
-  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
-} = function reduce(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0, init = _a1
-      let acc = init
+export const reduce: <A, B>(f: (acc: B, a: A) => B, init: B) => (arr: readonly A[]) => B = function reduce(f: any, init: any) {
+  const _dl: any = function (arr: any) {
+    let acc = init
     for (let i = 0, len = arr.length; i < len; i++) acc = f(acc, arr[i])
     return acc
-    }
+  }
     _dl._op = 8
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 8, _a0, _a1)
-  }
-  const arr = _arg0, f = _arg1, init = _arg2
-  let acc = init
-    for (let i = 0, len = arr.length; i < len; i++) acc = f(acc, arr[i])
-    return acc
+    _dl._fn = f
+    _dl._a1 = init
+  return registerTrustedOperator(_dl, 8, f, init)
 } as any
 
 
-export const reduceRight: {
-  <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
-  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
-} = function reduceRight(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0, init = _a1
-      let acc = init
+export const reduceRight: <A, B>(f: (acc: B, a: A) => B, init: B) => (arr: readonly A[]) => B = function reduceRight(f: any, init: any) {
+  const _dl: any = function (arr: any) {
+    let acc = init
     for (let i = arr.length - 1; i >= 0; i--) acc = f(acc, arr[i])
     return acc
-    }
+  }
     _dl._op = 94
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 94, _a0, _a1)
-  }
-  const arr = _arg0, f = _arg1, init = _arg2
-  let acc = init
-    for (let i = arr.length - 1; i >= 0; i--) acc = f(acc, arr[i])
-    return acc
+    _dl._fn = f
+    _dl._a1 = init
+  return registerTrustedOperator(_dl, 94, f, init)
 } as any
 
 
-export const zip: {
-  <A, B>(a: readonly A[], b: readonly B[]): [A, B][]
-  <B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
-} = function zip(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      var len = a.length < b.length ? a.length : b.length
+export const zip: <B>(b: readonly B[]) => <A>(a: readonly A[]) => [A, B][] = function zip(b: any) {
+  const _dl: any = function (a: any) {
+    var len = a.length < b.length ? a.length : b.length
     var out = new Array(len),
       i = 0
     while (i < len) {
@@ -1463,32 +891,16 @@ export const zip: {
       i++
     }
     return out
-    }
+  }
     _dl._op = 111
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 111, _a0)
-  }
-  const a = _arg0, b = _arg1
-  var len = a.length < b.length ? a.length : b.length
-    var out = new Array(len),
-      i = 0
-    while (i < len) {
-      out[i] = [a[i], b[i]]
-      i++
-    }
-    return out
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 111, b)
 } as any
 
 
-export const zipWith: {
-  <A, B, C>(a: readonly A[], b: readonly B[], f: (a: A, b: B) => C): C[]
-  <A, B, C>(b: readonly B[], f: (a: A, b: B) => C): (a: readonly A[]) => C[]
-} = function zipWith(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0, f = _a1
-      let lenA = a.length
+export const zipWith: <A, B, C>(b: readonly B[], f: (a: A, b: B) => C) => (a: readonly A[]) => C[] = function zipWith(b: any, f: any) {
+  const _dl: any = function (a: any) {
+    let lenA = a.length
     let lenB = b.length
     let len = lenA < lenB ? lenA : lenB
     let out = new Array(len)
@@ -1496,93 +908,49 @@ export const zipWith: {
       out[i] = f(a[i], b[i])
     }
     return out
-    }
+  }
     _dl._op = 112
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 112, _a0, _a1)
-  }
-  const a = _arg0, b = _arg1, f = _arg2
-  let lenA = a.length
-    let lenB = b.length
-    let len = lenA < lenB ? lenA : lenB
-    let out = new Array(len)
-    for (let i = 0; i < len; ++i) {
-      out[i] = f(a[i], b[i])
-    }
-    return out
+    _dl._fn = b
+    _dl._a1 = f
+  return registerTrustedOperator(_dl, 112, b, f)
 } as any
 
 
-export const adjust: {
-  <A>(arr: readonly A[], index: number, f: (a: A) => A): A[]
-  <A>(index: number, f: (a: A) => A): (arr: readonly A[]) => A[]
-} = function adjust(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, index = _a0, f = _a1
-      let len = arr.length
+export const adjust: <A>(index: number, f: (a: A) => A) => (arr: readonly A[]) => A[] = function adjust(index: any, f: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
     if (index < 0 || index >= len) {
       return arr.slice(0)
     }
     let out = arr.slice(0)
     out[index] = f(arr[index])
     return out
-    }
+  }
     _dl._op = 118
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 118, _a0, _a1)
-  }
-  const arr = _arg0, index = _arg1, f = _arg2
-  let len = arr.length
-    if (index < 0 || index >= len) {
-      return arr.slice(0)
-    }
-    let out = arr.slice(0)
-    out[index] = f(arr[index])
-    return out
+    _dl._fn = index
+    _dl._a1 = f
+  return registerTrustedOperator(_dl, 118, index, f)
 } as any
 
 
-export const update: {
-  <A>(arr: readonly A[], index: number, value: A): A[]
-  <A>(index: number, value: A): (arr: readonly A[]) => A[]
-} = function update(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, index = _a0, value = _a1
-      var len = arr.length
+export const update: <A>(index: number, value: A) => (arr: readonly A[]) => A[] = function update(index: any, value: any) {
+  const _dl: any = function (arr: any) {
+    var len = arr.length
     if (index < 0 || index >= len) return arr.slice()
     var out = arr.slice()
     out[index] = value
     return out
-    }
+  }
     _dl._op = 119
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 119, _a0, _a1)
-  }
-  const arr = _arg0, index = _arg1, value = _arg2
-  var len = arr.length
-    if (index < 0 || index >= len) return arr.slice()
-    var out = arr.slice()
-    out[index] = value
-    return out
+    _dl._fn = index
+    _dl._a1 = value
+  return registerTrustedOperator(_dl, 119, index, value)
 } as any
 
 
-export const insert: {
-  <A>(arr: readonly A[], index: number, value: A): A[]
-  <A>(index: number, value: A): (arr: readonly A[]) => A[]
-} = function insert(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, index = _a0, value = _a1
-      let len = arr.length
+export const insert: <A>(index: number, value: A) => (arr: readonly A[]) => A[] = function insert(index: any, value: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
     let idx = index < 0 ? 0 : index > len ? len : index
     let out = new Array((len + 1) | 0)
     for (let i = 0; i < idx; ++i) {
@@ -1593,36 +961,17 @@ export const insert: {
       out[(i$1 + 1) | 0] = arr[i$1]
     }
     return out
-    }
+  }
     _dl._op = 120
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 120, _a0, _a1)
-  }
-  const arr = _arg0, index = _arg1, value = _arg2
-  let len = arr.length
-    let idx = index < 0 ? 0 : index > len ? len : index
-    let out = new Array((len + 1) | 0)
-    for (let i = 0; i < idx; ++i) {
-      out[i] = arr[i]
-    }
-    out[idx] = value
-    for (let i$1 = idx; i$1 < len; ++i$1) {
-      out[(i$1 + 1) | 0] = arr[i$1]
-    }
-    return out
+    _dl._fn = index
+    _dl._a1 = value
+  return registerTrustedOperator(_dl, 120, index, value)
 } as any
 
 
-export const remove: {
-  <A>(arr: readonly A[], index: number, count: number): A[]
-  (index: number, count: number): <A>(arr: readonly A[]) => A[]
-} = function remove(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, index = _a0, count = _a1
-      let len = arr.length
+export const remove: (index: number, count: number) => <A>(arr: readonly A[]) => A[] = function remove(index: any, count: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
     if (index < 0 || index >= len || count <= 0) {
       return arr.slice(0)
     }
@@ -1636,39 +985,17 @@ export const remove: {
       out[(i$1 - actual) | 0] = arr[i$1]
     }
     return out
-    }
+  }
     _dl._op = 121
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 121, _a0, _a1)
-  }
-  const arr = _arg0, index = _arg1, count = _arg2
-  let len = arr.length
-    if (index < 0 || index >= len || count <= 0) {
-      return arr.slice(0)
-    }
-    let actual = ((index + count) | 0) > len ? (len - index) | 0 : count
-    let newLen = (len - actual) | 0
-    let out = new Array(newLen)
-    for (let i = 0; i < index; ++i) {
-      out[i] = arr[i]
-    }
-    for (let i$1 = (index + actual) | 0; i$1 < len; ++i$1) {
-      out[(i$1 - actual) | 0] = arr[i$1]
-    }
-    return out
+    _dl._fn = index
+    _dl._a1 = count
+  return registerTrustedOperator(_dl, 121, index, count)
 } as any
 
 
-export const scan: {
-  <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B[]
-  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B[]
-} = function scan(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0, init = _a1
-      let len = arr.length
+export const scan: <A, B>(f: (acc: B, a: A) => B, init: B) => (arr: readonly A[]) => B[] = function scan(f: any, init: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
     let out = new Array((len + 1) | 0)
     let acc = init
     out[0] = init
@@ -1677,22 +1004,11 @@ export const scan: {
       out[(i + 1) | 0] = acc
     }
     return out
-    }
-    _dl._op = 102
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 102, _a0, _a1)
   }
-  const arr = _arg0, f = _arg1, init = _arg2
-  let len = arr.length
-    let out = new Array((len + 1) | 0)
-    let acc = init
-    out[0] = init
-    for (let i = 0; i < len; ++i) {
-      acc = f(acc, arr[i])
-      out[(i + 1) | 0] = acc
-    }
-    return out
+    _dl._op = 102
+    _dl._fn = f
+    _dl._a1 = init
+  return registerTrustedOperator(_dl, 102, f, init)
 } as any
 
 
@@ -1809,71 +1125,38 @@ export const unnest: <A>(arr: readonly A[][]) => A[] = /* @__PURE__ */ (() => {
 
 
 // Arity 2. Fuseable
-export const reject: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = function reject(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      const len = arr.length
+export const reject: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function reject(pred: any) {
+  const _dl: any = function (arr: any) {
+    const len = arr.length
     var out = []
     for (var i = 0; i < len; i++) {
       if (!pred(arr[i])) out.push(arr[i])
     }
     return out
-    }
+  }
     _dl._op = 16
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 16, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  const len = arr.length
-    var out = []
-    for (var i = 0; i < len; i++) {
-      if (!pred(arr[i])) out.push(arr[i])
-    }
-    return out
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 16, pred)
 } as any
 
 
-export const none: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
-} = function none(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      const len = arr.length
+export const none: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => boolean = function none(pred: any) {
+  const _dl: any = function (arr: any) {
+    const len = arr.length
     for (var i = 0; i < len; i++) {
       if (pred(arr[i])) return false
     }
     return true
-    }
+  }
     _dl._op = 17
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 17, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  const len = arr.length
-    for (var i = 0; i < len; i++) {
-      if (pred(arr[i])) return false
-    }
-    return true
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 17, pred)
 } as any
 
 
-export const count: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): number
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number
-} = function count(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      let len = arr.length
+export const count: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => number = function count(pred: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
     let c = 0
     for (let i = 0; i < len; ++i) {
       if (pred(arr[i])) {
@@ -1881,477 +1164,252 @@ export const count: {
       }
     }
     return c
-    }
+  }
     _dl._op = 18
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 18, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  let len = arr.length
-    let c = 0
-    for (let i = 0; i < len; ++i) {
-      if (pred(arr[i])) {
-        c = (c + 1) | 0
-      }
-    }
-    return c
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 18, pred)
 } as any
 
 
-export const filterMap: {
-  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
-  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
-} = function filterMap(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      const out: any[] = []
+export const filterMap: <A, B>(f: (a: A) => B | null | undefined) => (arr: readonly A[]) => B[] = function filterMap(f: any) {
+  const _dl: any = function (arr: any) {
+    const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
       const mapped = f(arr[i])
       if (mapped != null) out.push(mapped)
     }
     return out
-    }
+  }
     _dl._op = 14
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 14, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  const out: any[] = []
-    for (let i = 0, len = arr.length; i < len; i++) {
-      const mapped = f(arr[i])
-      if (mapped != null) out.push(mapped)
-    }
-    return out
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 14, f)
 } as any
 
 
-export const findMapOrUndefined: {
-  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B | undefined
-  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B | undefined
-} = function findMapOrUndefined(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      for (let i = 0, len = arr.length; i < len; i++) {
+export const findMapOrUndefined: <A, B>(f: (a: A) => B | null | undefined) => (arr: readonly A[]) => B | undefined = function findMapOrUndefined(f: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) {
     const mapped = f(arr[i])
     if (mapped != null) return mapped
   }
   return undefined
-    }
+  }
     _dl._op = 26
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 26, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) {
-    const mapped = f(arr[i])
-    if (mapped != null) return mapped
-  }
-  return undefined
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 26, f)
 } as any
 
 
-export const findMap: {
-  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): Option<NonNullable<B>>
-  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => Option<NonNullable<B>>
-} = function findMap(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      for (let i = 0, len = arr.length; i < len; i++) {
+export const findMap: <A, B>(f: (a: A) => B | null | undefined) => (arr: readonly A[]) => Option<NonNullable<B>> = function findMap(f: any) {
+  const _dl: any = function (arr: any) {
+    for (let i = 0, len = arr.length; i < len; i++) {
       const mapped = f(arr[i])
       if (mapped != null) return optionSome(mapped)
     }
     return optionNone
-    }
+  }
     _dl._op = 22
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 22, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  for (let i = 0, len = arr.length; i < len; i++) {
-      const mapped = f(arr[i])
-      if (mapped != null) return optionSome(mapped)
-    }
-    return optionNone
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 22, f)
 } as any
 
 
-export const mapWhile: {
-  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
-  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
-} = function mapWhile(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      const out: any[] = []
+export const mapWhile: <A, B>(f: (a: A) => B | null | undefined) => (arr: readonly A[]) => B[] = function mapWhile(f: any) {
+  const _dl: any = function (arr: any) {
+    const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
       const mapped = f(arr[i])
       if (mapped == null) break
       out.push(mapped)
     }
     return out
-    }
+  }
     _dl._op = 15
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 15, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  const out: any[] = []
-    for (let i = 0, len = arr.length; i < len; i++) {
-      const mapped = f(arr[i])
-      if (mapped == null) break
-      out.push(mapped)
-    }
-    return out
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 15, f)
 } as any
 
 
-export const takeUntil: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = function takeUntil(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      const out: any[] = []
+export const takeUntil: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function takeUntil(pred: any) {
+  const _dl: any = function (arr: any) {
+    const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
       const value = arr[i]
       if (pred(value)) break
       out.push(value)
     }
     return out
-    }
-    _dl._op = 19
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 19, _a0)
   }
-  const arr = _arg0, pred = _arg1
-  const out: any[] = []
-    for (let i = 0, len = arr.length; i < len; i++) {
-      const value = arr[i]
-      if (pred(value)) break
-      out.push(value)
-    }
-    return out
+    _dl._op = 19
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 19, pred)
 } as any
 
 
 // Arity 2. Non-fuseable
-export const append: {
-  <A>(arr: readonly A[], value: A): A[]
-  <A>(value: A): (arr: readonly A[]) => A[]
-} = function append(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, value = _a0
-      let len = arr.length
+export const append: <A>(value: A) => (arr: readonly A[]) => A[] = function append(value: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let out = new Array((len + 1) | 0)
   for (let i = 0; i < len; ++i) {
     out[i] = arr[i]
   }
   out[len] = value
   return out
-    }
+  }
     _dl._op = 46
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 46, _a0)
-  }
-  const arr = _arg0, value = _arg1
-  let len = arr.length
-  let out = new Array((len + 1) | 0)
-  for (let i = 0; i < len; ++i) {
-    out[i] = arr[i]
-  }
-  out[len] = value
-  return out
+    _dl._fn = value
+  return registerTrustedOperator(_dl, 46, value)
 } as any
 
 
-export const prepend: {
-  <A>(arr: readonly A[], value: A): A[]
-  <A>(value: A): (arr: readonly A[]) => A[]
-} = function prepend(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, value = _a0
-      let len = arr.length
+export const prepend: <A>(value: A) => (arr: readonly A[]) => A[] = function prepend(value: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let out = new Array((len + 1) | 0)
   out[0] = value
   for (let i = 0; i < len; ++i) {
     out[(i + 1) | 0] = arr[i]
   }
   return out
-    }
+  }
     _dl._op = 47
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 47, _a0)
-  }
-  const arr = _arg0, value = _arg1
-  let len = arr.length
-  let out = new Array((len + 1) | 0)
-  out[0] = value
-  for (let i = 0; i < len; ++i) {
-    out[(i + 1) | 0] = arr[i]
-  }
-  return out
+    _dl._fn = value
+  return registerTrustedOperator(_dl, 47, value)
 } as any
 
 
-export const concat: {
-  <A>(a: readonly A[], b: readonly A[]): A[]
-  <A>(b: readonly A[]): (a: readonly A[]) => A[]
-} = function concat(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      return a.concat(b)
-    }
+export const concat: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function concat(b: any) {
+  const _dl: any = function (a: any) {
+    return a.concat(b)
+  }
     _dl._op = 128
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 128, _a0)
-  }
-  const a = _arg0, b = _arg1
-  return a.concat(b)
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 128, b)
 } as any
 
 
-export const nthOrUndefined: {
-  <A>(arr: readonly A[], index: number): A | undefined
-  (index: number): <A>(arr: readonly A[]) => A | undefined
-} = function nthOrUndefined(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, n = _a0
-      var i = n < 0 ? arr.length + n : n
+export const nthOrUndefined: (index: number) => <A>(arr: readonly A[]) => A | undefined = function nthOrUndefined(n: any) {
+  const _dl: any = function (arr: any) {
+    var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? undefined : arr[i]
-    }
+  }
     _dl._op = 155
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 155, _a0)
-  }
-  const arr = _arg0, n = _arg1
-  var i = n < 0 ? arr.length + n : n
-  return i < 0 || i >= arr.length ? undefined : arr[i]
+    _dl._fn = n
+  return registerTrustedOperator(_dl, 155, n)
 } as any
 
 
-export const nth: {
-  <A>(arr: readonly A[], index: number): Option<A>
-  (index: number): <A>(arr: readonly A[]) => Option<A>
-} = function nth(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, n = _a0
-      var i = n < 0 ? arr.length + n : n
+export const nth: (index: number) => <A>(arr: readonly A[]) => Option<A> = function nth(n: any) {
+  const _dl: any = function (arr: any) {
+    var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? optionNone : optionSome(arr[i])
-    }
+  }
     _dl._op = 101
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 101, _a0)
-  }
-  const arr = _arg0, n = _arg1
-  var i = n < 0 ? arr.length + n : n
-  return i < 0 || i >= arr.length ? optionNone : optionSome(arr[i])
+    _dl._fn = n
+  return registerTrustedOperator(_dl, 101, n)
 } as any
 
 
-export const indexOfOrUndefined: {
-  <A>(arr: readonly A[], value: A): number | undefined
-  <A>(value: A): (arr: readonly A[]) => number | undefined
-} = function indexOfOrUndefined(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, val = _a0
-      var i = arr.indexOf(val)
+export const indexOfOrUndefined: <A>(value: A) => (arr: readonly A[]) => number | undefined = function indexOfOrUndefined(val: any) {
+  const _dl: any = function (arr: any) {
+    var i = arr.indexOf(val)
   return i === -1 ? undefined : i
-    }
+  }
     _dl._op = 156
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 156, _a0)
-  }
-  const arr = _arg0, val = _arg1
-  var i = arr.indexOf(val)
-  return i === -1 ? undefined : i
+    _dl._fn = val
+  return registerTrustedOperator(_dl, 156, val)
 } as any
 
 
-export const indexOf: {
-  <A>(arr: readonly A[], value: A): Option<number>
-  <A>(value: A): (arr: readonly A[]) => Option<number>
-} = function indexOf(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, val = _a0
-      var i = arr.indexOf(val)
+export const indexOf: <A>(value: A) => (arr: readonly A[]) => Option<number> = function indexOf(val: any) {
+  const _dl: any = function (arr: any) {
+    var i = arr.indexOf(val)
   return i === -1 ? optionNone : optionSome(i)
-    }
+  }
     _dl._op = 48
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 48, _a0)
-  }
-  const arr = _arg0, val = _arg1
-  var i = arr.indexOf(val)
-  return i === -1 ? optionNone : optionSome(i)
+    _dl._fn = val
+  return registerTrustedOperator(_dl, 48, val)
 } as any
 
 
-export const lastIndexOfOrUndefined: {
-  <A>(arr: readonly A[], value: A): number | undefined
-  <A>(value: A): (arr: readonly A[]) => number | undefined
-} = function lastIndexOfOrUndefined(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, val = _a0
-      var i = arr.lastIndexOf(val)
+export const lastIndexOfOrUndefined: <A>(value: A) => (arr: readonly A[]) => number | undefined = function lastIndexOfOrUndefined(val: any) {
+  const _dl: any = function (arr: any) {
+    var i = arr.lastIndexOf(val)
   return i === -1 ? undefined : i
-    }
+  }
     _dl._op = 157
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 157, _a0)
-  }
-  const arr = _arg0, val = _arg1
-  var i = arr.lastIndexOf(val)
-  return i === -1 ? undefined : i
+    _dl._fn = val
+  return registerTrustedOperator(_dl, 157, val)
 } as any
 
 
-export const lastIndexOf: {
-  <A>(arr: readonly A[], value: A): Option<number>
-  <A>(value: A): (arr: readonly A[]) => Option<number>
-} = function lastIndexOf(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, val = _a0
-      var i = arr.lastIndexOf(val)
+export const lastIndexOf: <A>(value: A) => (arr: readonly A[]) => Option<number> = function lastIndexOf(val: any) {
+  const _dl: any = function (arr: any) {
+    var i = arr.lastIndexOf(val)
   return i === -1 ? optionNone : optionSome(i)
-    }
-    _dl._op = 49
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 49, _a0)
   }
-  const arr = _arg0, val = _arg1
-  var i = arr.lastIndexOf(val)
-  return i === -1 ? optionNone : optionSome(i)
+    _dl._op = 49
+    _dl._fn = val
+  return registerTrustedOperator(_dl, 49, val)
 } as any
 
 
 export const findLastOrUndefined: {
-  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): B | undefined
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => B | undefined
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
-} = function findLastOrUndefined(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (var i = arr.length - 1; i >= 0; i--) {
+} = function findLastOrUndefined(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (var i = arr.length - 1; i >= 0; i--) {
     if (pred(arr[i])) return arr[i]
   }
   return undefined
-    }
+  }
     _dl._op = 158
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 158, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (var i = arr.length - 1; i >= 0; i--) {
-    if (pred(arr[i])) return arr[i]
-  }
-  return undefined
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 158, pred)
 } as any
 
 
 export const findLast: {
-  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): Option<B>
-  <A>(arr: readonly A[], pred: (a: A) => boolean): Option<A>
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => Option<B>
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<A>
-} = function findLast(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (var i = arr.length - 1; i >= 0; i--) {
+} = function findLast(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (var i = arr.length - 1; i >= 0; i--) {
     if (pred(arr[i])) return optionSome(arr[i])
   }
   return optionNone
-    }
+  }
     _dl._op = 92
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 92, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (var i = arr.length - 1; i >= 0; i--) {
-    if (pred(arr[i])) return optionSome(arr[i])
-  }
-  return optionNone
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 92, pred)
 } as any
 
 
-export const findLastIndexOrUndefined: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
-} = function findLastIndexOrUndefined(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (var i = arr.length - 1; i >= 0; i--) {
+export const findLastIndexOrUndefined: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => number | undefined = function findLastIndexOrUndefined(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (var i = arr.length - 1; i >= 0; i--) {
     if (pred(arr[i])) return i
   }
   return undefined
-    }
+  }
     _dl._op = 159
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 159, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (var i = arr.length - 1; i >= 0; i--) {
-    if (pred(arr[i])) return i
-  }
-  return undefined
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 159, pred)
 } as any
 
 
-export const findLastIndex: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<number>
-} = function findLastIndex(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      for (var i = arr.length - 1; i >= 0; i--) {
+export const findLastIndex: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => Option<number> = function findLastIndex(pred: any) {
+  const _dl: any = function (arr: any) {
+    for (var i = arr.length - 1; i >= 0; i--) {
     if (pred(arr[i])) return optionSome(i)
   }
   return optionNone
-    }
+  }
     _dl._op = 93
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 93, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  for (var i = arr.length - 1; i >= 0; i--) {
-    if (pred(arr[i])) return optionSome(i)
-  }
-  return optionNone
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 93, pred)
 } as any
 
 
@@ -2589,49 +1647,31 @@ const withoutDispatchRaw = (arr: any, values: any): any[] => {
 // values is a single array-valued argument here, not variadic -- fits the
 // registry's fn binding cleanly (see opcodes.ts's OP_WITHOUT comment). Both
 // call styles share the same size-specialized dispatcher.
-export const without: {
-  <A>(arr: readonly A[], values: readonly A[]): A[]
-  <A>(values: readonly A[]): (arr: readonly A[]) => A[]
-} = function without(_arg0?: any, _arg1?: any) {
-  if (arguments.length >= 2) return withoutDispatchRaw(_arg0, _arg1)
-  const _a0 = _arg0
-  const _dl: any = (data: any) => withoutDispatchRaw(data, _a0)
+export const without: <A>(values: readonly A[]) => (arr: readonly A[]) => A[] = function without(_a0: any) {
+  const _dl: any = function (data: any) {
+    return withoutDispatchRaw(data, _a0)
+  }
     _dl._op = 103
     _dl._fn = _a0
   return registerTrustedOperator(_dl, 103, _a0)
 } as any
 
 
-export const pluck: {
-  <A, K extends keyof A>(arr: readonly A[], key: K): A[K][]
-  <K extends PropertyKey>(
+export const pluck: <K extends PropertyKey>(
     key: K,
-  ): <A extends Readonly<Record<K, unknown>>>(arr: readonly A[]) => A[K][]
-} = function pluck(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, key = _a0
-      return pluckRaw(arr, key)
-    }
+  ) => <A extends Readonly<Record<K, unknown>>>(arr: readonly A[]) => A[K][] = function pluck(key: any) {
+  const _dl: any = function (arr: any) {
+    return pluckRaw(arr, key)
+  }
     _dl._op = 27
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 27, _a0)
-  }
-  const arr = _arg0, key = _arg1
-  return pluckRaw(arr, key)
+    _dl._fn = key
+  return registerTrustedOperator(_dl, 27, key)
 } as any
 
 
-export const dropRepeatsBy: {
-  <A, B>(arr: readonly A[], f: (a: A) => B): A[]
-  <A, B>(f: (a: A) => B): (arr: readonly A[]) => A[]
-} = function dropRepeatsBy(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      const len = arr.length
+export const dropRepeatsBy: <A, B>(f: (a: A) => B) => (arr: readonly A[]) => A[] = function dropRepeatsBy(f: any) {
+  const _dl: any = function (arr: any) {
+    const len = arr.length
   if (len === 0) return []
   const first = arr[0]
   const result = [first]
@@ -2645,38 +1685,16 @@ export const dropRepeatsBy: {
     }
   }
   return result
-    }
+  }
     _dl._op = 131
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 131, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  const len = arr.length
-  if (len === 0) return []
-  const first = arr[0]
-  const result = [first]
-  let lastKey = f(first)
-  for (let i = 1; i < len; i++) {
-    const x = arr[i]
-    const key = f(x)
-    if (!structEq(key, lastKey)) {
-      result.push(x)
-      lastKey = key
-    }
-  }
-  return result
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 131, f)
 } as any
 
 
-export const dropRepeatsWith: {
-  <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(eq: (a: A, b: A) => boolean): (arr: readonly A[]) => A[]
-} = function dropRepeatsWith(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, eq = _a0
-      let len = arr.length
+export const dropRepeatsWith: <A>(eq: (a: A, b: A) => boolean) => (arr: readonly A[]) => A[] = function dropRepeatsWith(eq: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   if (len === 0) {
     return []
   }
@@ -2688,36 +1706,16 @@ export const dropRepeatsWith: {
     }
   }
   return result
-    }
+  }
     _dl._op = 132
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 132, _a0)
-  }
-  const arr = _arg0, eq = _arg1
-  let len = arr.length
-  if (len === 0) {
-    return []
-  }
-  let result = [arr[0]]
-  for (let i = 1; i < len; ++i) {
-    let x = arr[i]
-    if (!eq(arr[(i - 1) | 0], x)) {
-      result.push(x)
-    }
-  }
-  return result
+    _dl._fn = eq
+  return registerTrustedOperator(_dl, 132, eq)
 } as any
 
 
-export const dropLast: {
-  <A>(arr: readonly A[], n: number): A[]
-  (n: number): <A>(arr: readonly A[]) => A[]
-} = function dropLast(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, n = _a0
-      let len = arr.length
+export const dropLast: (n: number) => <A>(arr: readonly A[]) => A[] = function dropLast(n: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   if (n <= 0) {
     return arr.slice(0)
   }
@@ -2730,37 +1728,16 @@ export const dropLast: {
     out[i] = arr[i]
   }
   return out
-    }
+  }
     _dl._op = 28
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 28, _a0)
-  }
-  const arr = _arg0, n = _arg1
-  let len = arr.length
-  if (n <= 0) {
-    return arr.slice(0)
-  }
-  if (n >= len) {
-    return []
-  }
-  let count = (len - n) | 0
-  let out = new Array(count)
-  for (let i = 0; i < count; ++i) {
-    out[i] = arr[i]
-  }
-  return out
+    _dl._fn = n
+  return registerTrustedOperator(_dl, 28, n)
 } as any
 
 
-export const dropLastWhile: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = function dropLastWhile(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      let len = arr.length
+export const dropLastWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function dropLastWhile(pred: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let i = (len - 1) | 0
   while (i >= 0 && pred(arr[i])) {
     i = (i - 1) | 0
@@ -2777,41 +1754,16 @@ export const dropLastWhile: {
     out[j] = arr[j]
   }
   return out
-    }
+  }
     _dl._op = 44
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 44, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  let len = arr.length
-  let i = (len - 1) | 0
-  while (i >= 0 && pred(arr[i])) {
-    i = (i - 1) | 0
-  }
-  let count = (i + 1) | 0
-  if (count === len) {
-    return arr.slice(0)
-  }
-  if (count <= 0) {
-    return []
-  }
-  let out = new Array(count)
-  for (let j = 0; j < count; ++j) {
-    out[j] = arr[j]
-  }
-  return out
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 44, pred)
 } as any
 
 
-export const takeLast: {
-  <A>(arr: readonly A[], n: number): A[]
-  (n: number): <A>(arr: readonly A[]) => A[]
-} = function takeLast(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, n = _a0
-      let len = arr.length
+export const takeLast: (n: number) => <A>(arr: readonly A[]) => A[] = function takeLast(n: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   if (n <= 0) {
     return []
   }
@@ -2824,37 +1776,16 @@ export const takeLast: {
     out[i] = arr[(start + i) | 0]
   }
   return out
-    }
+  }
     _dl._op = 29
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 29, _a0)
-  }
-  const arr = _arg0, n = _arg1
-  let len = arr.length
-  if (n <= 0) {
-    return []
-  }
-  if (n >= len) {
-    return arr.slice(0)
-  }
-  let start = (len - n) | 0
-  let out = new Array(n)
-  for (let i = 0; i < n; ++i) {
-    out[i] = arr[(start + i) | 0]
-  }
-  return out
+    _dl._fn = n
+  return registerTrustedOperator(_dl, 29, n)
 } as any
 
 
-export const takeLastWhile: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = function takeLastWhile(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      let len = arr.length
+export const takeLastWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function takeLastWhile(pred: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let i = (len - 1) | 0
   while (i >= 0 && pred(arr[i])) {
     i = (i - 1) | 0
@@ -2872,63 +1803,27 @@ export const takeLastWhile: {
     out[j] = arr[(start + j) | 0]
   }
   return out
-    }
+  }
     _dl._op = 45
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 45, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  let len = arr.length
-  let i = (len - 1) | 0
-  while (i >= 0 && pred(arr[i])) {
-    i = (i - 1) | 0
-  }
-  let start = (i + 1) | 0
-  let count = (len - start) | 0
-  if (count <= 0) {
-    return []
-  }
-  if (count === len) {
-    return arr.slice(0)
-  }
-  let out = new Array(count)
-  for (let j = 0; j < count; ++j) {
-    out[j] = arr[(start + j) | 0]
-  }
-  return out
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 45, pred)
 } as any
 
 
-export const splitAt: {
-  <A>(arr: readonly A[], index: number): [A[], A[]]
-  (index: number): <A>(arr: readonly A[]) => [A[], A[]]
-} = function splitAt(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, index = _a0
-      var i = index < 0 ? 0 : index > arr.length ? arr.length : index
+export const splitAt: (index: number) => <A>(arr: readonly A[]) => [A[], A[]] = function splitAt(index: any) {
+  const _dl: any = function (arr: any) {
+    var i = index < 0 ? 0 : index > arr.length ? arr.length : index
   return [arr.slice(0, i), arr.slice(i)]
-    }
+  }
     _dl._op = 123
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 123, _a0)
-  }
-  const arr = _arg0, index = _arg1
-  var i = index < 0 ? 0 : index > arr.length ? arr.length : index
-  return [arr.slice(0, i), arr.slice(i)]
+    _dl._fn = index
+  return registerTrustedOperator(_dl, 123, index)
 } as any
 
 
-export const splitWhen: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): [A[], A[]]
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => [A[], A[]]
-} = function splitWhen(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      let len = arr.length
+export const splitWhen: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => [A[], A[]] = function splitWhen(pred: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let i = 0
   let found = false
   while (i < len && !found) {
@@ -2938,36 +1833,17 @@ export const splitWhen: {
       i = (i + 1) | 0
     }
   }
-  return splitAt(arr, i)
-    }
+  return splitAt(i)(arr)
+  }
     _dl._op = 124
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 124, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  let len = arr.length
-  let i = 0
-  let found = false
-  while (i < len && !found) {
-    if (pred(arr[i])) {
-      found = true
-    } else {
-      i = (i + 1) | 0
-    }
-  }
-  return splitAt(arr, i)
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 124, pred)
 } as any
 
 
-export const splitWhenever: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): A[][]
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[][]
-} = function splitWhenever(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      let len = arr.length
+export const splitWhenever: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[][] = function splitWhenever(pred: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   if (len === 0) {
     return []
   }
@@ -2984,58 +1860,23 @@ export const splitWhenever: {
   }
   result.push(current.slice())
   return result
-    }
+  }
     _dl._op = 125
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 125, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  let len = arr.length
-  if (len === 0) {
-    return []
-  }
-  let result = []
-  let current = []
-  for (let i = 0; i < len; ++i) {
-    let x = arr[i]
-    if (pred(x)) {
-      result.push(current.slice())
-      current.splice(0, current.length)
-    } else {
-      current.push(x)
-    }
-  }
-  result.push(current.slice())
-  return result
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 125, pred)
 } as any
 
 
-export const join: {
-  (arr: readonly string[], sep: string): string
-  (sep: string): (arr: readonly string[]) => string
-} = function join(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, sep = _a0
-      return arr.join(sep)
-    }
-    return _dl
+export const join: (sep: string) => (arr: readonly string[]) => string = function join(sep: any) {
+  return function (arr: any) {
+    return arr.join(sep)
   }
-  const arr = _arg0, sep = _arg1
-  return arr.join(sep)
 } as any
 
 
-export const uniqWith: {
-  <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(eq: (a: A, b: A) => boolean): (arr: readonly A[]) => A[]
-} = function uniqWith(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, eq = _a0
-      let result = []
+export const uniqWith: <A>(eq: (a: A, b: A) => boolean) => (arr: readonly A[]) => A[] = function uniqWith(eq: any) {
+  const _dl: any = function (arr: any) {
+    let result = []
   for (let i = 0, i_finish = arr.length; i < i_finish; ++i) {
     let x = arr[i]
     let dup = false
@@ -3051,40 +1892,16 @@ export const uniqWith: {
     }
   }
   return result
-    }
+  }
     _dl._op = 126
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 126, _a0)
-  }
-  const arr = _arg0, eq = _arg1
-  let result = []
-  for (let i = 0, i_finish = arr.length; i < i_finish; ++i) {
-    let x = arr[i]
-    let dup = false
-    let j = 0
-    while (j < result.length && !dup) {
-      if (eq(result[j], x)) {
-        dup = true
-      }
-      j = (j + 1) | 0
-    }
-    if (!dup) {
-      result.push(x)
-    }
-  }
-  return result
+    _dl._fn = eq
+  return registerTrustedOperator(_dl, 126, eq)
 } as any
 
 
-export const groupWith: {
-  <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[][]
-  <A>(eq: (a: A, b: A) => boolean): (arr: readonly A[]) => A[][]
-} = function groupWith(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, eq = _a0
-      let len = arr.length
+export const groupWith: <A>(eq: (a: A, b: A) => boolean) => (arr: readonly A[]) => A[][] = function groupWith(eq: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   if (len === 0) {
     return []
   }
@@ -3101,72 +1918,32 @@ export const groupWith: {
   }
   result.push(current.slice())
   return result
-    }
+  }
     _dl._op = 127
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 127, _a0)
-  }
-  const arr = _arg0, eq = _arg1
-  let len = arr.length
-  if (len === 0) {
-    return []
-  }
-  let result = []
-  let current = [arr[0]]
-  for (let i = 1; i < len; ++i) {
-    let x = arr[i]
-    if (eq(arr[(i - 1) | 0], x)) {
-      current.push(x)
-    } else {
-      result.push(current.slice())
-      current.splice(0, current.length, x)
-    }
-  }
-  result.push(current.slice())
-  return result
+    _dl._fn = eq
+  return registerTrustedOperator(_dl, 127, eq)
 } as any
 
 
-export const indexBy: {
-  <A>(arr: readonly A[], f: (a: A) => string): Dict<A>
-  <A>(f: (a: A) => string): (arr: readonly A[]) => Dict<A>
-} = function indexBy(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      let len = arr.length
+export const indexBy: <A>(f: (a: A) => string) => (arr: readonly A[]) => Dict<A> = function indexBy(f: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let dict: Dict<any> = {}
   for (let i = 0; i < len; ++i) {
     let x = arr[i]
     dict[f(x)] = x
   }
   return dict
-    }
+  }
     _dl._op = 129
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 129, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  let len = arr.length
-  let dict: Dict<any> = {}
-  for (let i = 0; i < len; ++i) {
-    let x = arr[i]
-    dict[f(x)] = x
-  }
-  return dict
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 129, f)
 } as any
 
 
-export const collectBy: {
-  <A>(arr: readonly A[], f: (a: A) => string): A[][]
-  <A>(f: (a: A) => string): (arr: readonly A[]) => A[][]
-} = function collectBy(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      let len = arr.length
+export const collectBy: <A>(f: (a: A) => string) => (arr: readonly A[]) => A[][] = function collectBy(f: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let dict: Dict<any[]> = {}
   let keys: string[] = []
   for (let i = 0; i < len; ++i) {
@@ -3191,87 +1968,36 @@ export const collectBy: {
     }
   }
   return out
-    }
+  }
     _dl._op = 130
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 130, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  let len = arr.length
-  let dict: Dict<any[]> = {}
-  let keys: string[] = []
-  for (let i = 0; i < len; ++i) {
-    let x = arr[i]
-    let key = f(x)
-    let group = dict[key]
-    if (group !== undefined) {
-      group.push(x)
-    } else {
-      dict[key] = [x]
-      keys.push(key)
-    }
-  }
-  let kLen = keys.length
-  let out = new Array(kLen)
-  for (let i$1 = 0; i$1 < kLen; ++i$1) {
-    let group$1 = dict[keys[i$1]]
-    if (group$1 !== undefined) {
-      out[i$1] = group$1
-    } else {
-      out[i$1] = []
-    }
-  }
-  return out
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 130, f)
 } as any
 
 
-export const sample: {
-  <A>(arr: readonly A[], n: number): A[]
-  (n: number): <A>(arr: readonly A[]) => A[]
-} = function sample(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, n = _a0
-      return sampleRaw(arr, n)
-    }
+export const sample: (n: number) => <A>(arr: readonly A[]) => A[] = function sample(n: any) {
+  const _dl: any = function (arr: any) {
+    return sampleRaw(arr, n)
+  }
     _dl._op = 179
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 179, _a0)
-  }
-  const arr = _arg0, n = _arg1
-  return sampleRaw(arr, n)
+    _dl._fn = n
+  return registerTrustedOperator(_dl, 179, n)
 } as any
 
 
-export const hasAtLeast: {
-  <A>(arr: readonly A[], n: number): boolean
-  (n: number): <A>(arr: readonly A[]) => boolean
-} = function hasAtLeast(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, n = _a0
-      return arr.length >= n
-    }
+export const hasAtLeast: (n: number) => <A>(arr: readonly A[]) => boolean = function hasAtLeast(n: any) {
+  const _dl: any = function (arr: any) {
+    return arr.length >= n
+  }
     _dl._op = 98
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 98, _a0)
-  }
-  const arr = _arg0, n = _arg1
-  return arr.length >= n
+    _dl._fn = n
+  return registerTrustedOperator(_dl, 98, n)
 } as any
 
 
-export const meanByOrUndefined: {
-  <A>(arr: readonly A[], f: (a: A) => number): number | undefined
-  <A>(f: (a: A) => number): (arr: readonly A[]) => number | undefined
-} = function meanByOrUndefined(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      let len = arr.length
+export const meanByOrUndefined: <A>(f: (a: A) => number) => (arr: readonly A[]) => number | undefined = function meanByOrUndefined(f: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   if (len === 0) {
     return undefined
   }
@@ -3280,133 +2006,68 @@ export const meanByOrUndefined: {
     acc = acc + f(arr[i])
   }
   return acc / len
-    }
+  }
     _dl._op = 160
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 160, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  let len = arr.length
-  if (len === 0) {
-    return undefined
-  }
-  let acc = 0.0
-  for (let i = 0; i < len; ++i) {
-    acc = acc + f(arr[i])
-  }
-  return acc / len
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 160, f)
 } as any
 
 
-export const meanBy: {
-  <A>(arr: readonly A[], f: (a: A) => number): Option<number>
-  <A>(f: (a: A) => number): (arr: readonly A[]) => Option<number>
-} = function meanBy(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      const value = meanByOrUndefined(arr, f)
+export const meanBy: <A>(f: (a: A) => number) => (arr: readonly A[]) => Option<number> = function meanBy(f: any) {
+  const _dl: any = function (arr: any) {
+    const value = meanByOrUndefined(f)(arr)
   return value === undefined ? optionNone : optionSome(value)
-    }
+  }
     _dl._op = 97
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 97, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  const value = meanByOrUndefined(arr, f)
-  return value === undefined ? optionNone : optionSome(value)
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 97, f)
 } as any
 
 
-export const meanByNonEmpty: {
-  <A>(arr: readonly [A, ...A[]], f: (a: A) => number): number
-  <A>(f: (a: A) => number): (arr: readonly [A, ...A[]]) => number
-} = function meanByNonEmpty(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      return meanByOrUndefined(arr, f) as number
-    }
+export const meanByNonEmpty: <A>(f: (a: A) => number) => (arr: readonly [A, ...A[]]) => number = function meanByNonEmpty(f: any) {
+  const _dl: any = function (arr: any) {
+    return meanByOrUndefined(f)(arr) as number
+  }
     _dl._op = 161
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 161, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  return meanByOrUndefined(arr, f) as number
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 161, f)
 } as any
 
 
-export const sumBy: {
-  <A>(arr: readonly A[], f: (a: A) => number): number
-  <A>(f: (a: A) => number): (arr: readonly A[]) => number
-} = function sumBy(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      let len = arr.length
+export const sumBy: <A>(f: (a: A) => number) => (arr: readonly A[]) => number = function sumBy(f: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let acc = 0.0
   for (let i = 0; i < len; ++i) {
     acc = acc + f(arr[i])
   }
   return acc
-    }
+  }
     _dl._op = 96
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 96, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  let len = arr.length
-  let acc = 0.0
-  for (let i = 0; i < len; ++i) {
-    acc = acc + f(arr[i])
-  }
-  return acc
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 96, f)
 } as any
 
 
-export const mapToObj: {
-  <A, B>(arr: readonly A[], f: (a: A) => [string, B]): Dict<B>
-  <A, B>(f: (a: A) => [string, B]): (arr: readonly A[]) => Dict<B>
-} = function mapToObj(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0
-      let len = arr.length
+export const mapToObj: <A, B>(f: (a: A) => [string, B]) => (arr: readonly A[]) => Dict<B> = function mapToObj(f: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let dict: Dict<any> = {}
   for (let i = 0; i < len; ++i) {
     let match = f(arr[i])
     dict[match[0]] = match[1]
   }
   return dict
-    }
+  }
     _dl._op = 133
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 133, _a0)
-  }
-  const arr = _arg0, f = _arg1
-  let len = arr.length
-  let dict: Dict<any> = {}
-  for (let i = 0; i < len; ++i) {
-    let match = f(arr[i])
-    dict[match[0]] = match[1]
-  }
-  return dict
+    _dl._fn = f
+  return registerTrustedOperator(_dl, 133, f)
 } as any
 
 
-export const zipObj: {
-  <A>(keys: readonly string[], values: readonly A[]): Dict<A>
-  <A>(values: readonly A[]): (keys: readonly string[]) => Dict<A>
-} = function zipObj(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const keys = data, values = _a0
-      let lenK = keys.length
+export const zipObj: <A>(values: readonly A[]) => (keys: readonly string[]) => Dict<A> = function zipObj(values: any) {
+  const _dl: any = function (keys: any) {
+    let lenK = keys.length
   let lenV = values.length
   let len = lenK < lenV ? lenK : lenV
   let dict: Dict<any> = {}
@@ -3414,107 +2075,55 @@ export const zipObj: {
     dict[keys[i]] = values[i]
   }
   return dict
-    }
+  }
     _dl._op = 134
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 134, _a0)
-  }
-  const keys = _arg0, values = _arg1
-  let lenK = keys.length
-  let lenV = values.length
-  let len = lenK < lenV ? lenK : lenV
-  let dict: Dict<any> = {}
-  for (let i = 0; i < len; ++i) {
-    dict[keys[i]] = values[i]
-  }
-  return dict
+    _dl._fn = values
+  return registerTrustedOperator(_dl, 134, values)
 } as any
 
 
-export const groupByProp: {
-  <A>(arr: readonly A[], prop: string): Dict<A[]>
-  (prop: string): <A>(arr: readonly A[]) => Dict<A[]>
-} = function groupByProp(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, prop = _a0
-      return groupByPropRaw(arr, prop)
-    }
+export const groupByProp: (prop: string) => <A>(arr: readonly A[]) => Dict<A[]> = function groupByProp(prop: any) {
+  const _dl: any = function (arr: any) {
+    return groupByPropRaw(arr, prop)
+  }
     _dl._op = 135
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 135, _a0)
-  }
-  const arr = _arg0, prop = _arg1
-  return groupByPropRaw(arr, prop)
+    _dl._fn = prop
+  return registerTrustedOperator(_dl, 135, prop)
 } as any
 
 
-export const arrayStartsWith: {
-  <A>(arr: readonly A[], prefix: readonly A[]): boolean
-  <A>(prefix: readonly A[]): (arr: readonly A[]) => boolean
-} = function arrayStartsWith(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, prefix = _a0
-      const lenA = arr.length
+export const arrayStartsWith: <A>(prefix: readonly A[]) => (arr: readonly A[]) => boolean = function arrayStartsWith(prefix: any) {
+  const _dl: any = function (arr: any) {
+    const lenA = arr.length
   const lenP = prefix.length
   if (lenP > lenA) return false
   for (let i = 0; i < lenP; i++) if (!structEq(arr[i], prefix[i])) return false
   return true
-    }
+  }
     _dl._op = 99
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 99, _a0)
-  }
-  const arr = _arg0, prefix = _arg1
-  const lenA = arr.length
-  const lenP = prefix.length
-  if (lenP > lenA) return false
-  for (let i = 0; i < lenP; i++) if (!structEq(arr[i], prefix[i])) return false
-  return true
+    _dl._fn = prefix
+  return registerTrustedOperator(_dl, 99, prefix)
 } as any
 
 
-export const arrayEndsWith: {
-  <A>(arr: readonly A[], suffix: readonly A[]): boolean
-  <A>(suffix: readonly A[]): (arr: readonly A[]) => boolean
-} = function arrayEndsWith(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, suffix = _a0
-      const lenA = arr.length
+export const arrayEndsWith: <A>(suffix: readonly A[]) => (arr: readonly A[]) => boolean = function arrayEndsWith(suffix: any) {
+  const _dl: any = function (arr: any) {
+    const lenA = arr.length
   const lenS = suffix.length
   if (lenS > lenA) return false
   const offset = lenA - lenS
   for (let i = 0; i < lenS; i++) if (!structEq(arr[offset + i], suffix[i])) return false
   return true
-    }
+  }
     _dl._op = 100
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 100, _a0)
-  }
-  const arr = _arg0, suffix = _arg1
-  const lenA = arr.length
-  const lenS = suffix.length
-  if (lenS > lenA) return false
-  const offset = lenA - lenS
-  for (let i = 0; i < lenS; i++) if (!structEq(arr[offset + i], suffix[i])) return false
-  return true
+    _dl._fn = suffix
+  return registerTrustedOperator(_dl, 100, suffix)
 } as any
 
 
-export const sortedIndex: {
-  (arr: readonly number[], value: number): number
-  (value: number): (arr: readonly number[]) => number
-} = function sortedIndex(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, value = _a0
-      let lo = 0,
+export const sortedIndex: (value: number) => (arr: readonly number[]) => number = function sortedIndex(value: any) {
+  const _dl: any = function (arr: any) {
+    let lo = 0,
       hi = arr.length
     while (lo < hi) {
       const mid = (lo + hi) >> 1
@@ -3522,32 +2131,16 @@ export const sortedIndex: {
       else hi = mid
     }
     return lo
-    }
+  }
     _dl._op = 180
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 180, _a0)
-  }
-  const arr = _arg0, value = _arg1
-  let lo = 0,
-      hi = arr.length
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1
-      if (arr[mid] < value) lo = mid + 1
-      else hi = mid
-    }
-    return lo
+    _dl._fn = value
+  return registerTrustedOperator(_dl, 180, value)
 } as any
 
 
-export const sortedLastIndex: {
-  (arr: readonly number[], value: number): number
-  (value: number): (arr: readonly number[]) => number
-} = function sortedLastIndex(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, value = _a0
-      let lo = 0,
+export const sortedLastIndex: (value: number) => (arr: readonly number[]) => number = function sortedLastIndex(value: any) {
+  const _dl: any = function (arr: any) {
+    let lo = 0,
       hi = arr.length
     while (lo < hi) {
       const mid = (lo + hi) >> 1
@@ -3555,35 +2148,19 @@ export const sortedLastIndex: {
       else hi = mid
     }
     return lo
-    }
-    _dl._op = 181
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 181, _a0)
   }
-  const arr = _arg0, value = _arg1
-  let lo = 0,
-      hi = arr.length
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1
-      if (arr[mid] <= value) lo = mid + 1
-      else hi = mid
-    }
-    return lo
+    _dl._op = 181
+    _dl._fn = value
+  return registerTrustedOperator(_dl, 181, value)
 } as any
 
 
 export const pair: <A, B>(a: A, b: B) => [A, B] = (a: any, b: any) => [a, b]
 
 // Arity 3
-export const withoutBy: {
-  <A>(arr: readonly A[], values: readonly A[], f: (a: A) => string): A[]
-  <A>(values: readonly A[], f: (a: A) => string): (arr: readonly A[]) => A[]
-} = function withoutBy(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, values = _a0, f = _a1
-      let exclude = new Set()
+export const withoutBy: <A>(values: readonly A[], f: (a: A) => string) => (arr: readonly A[]) => A[] = function withoutBy(values: any, f: any) {
+  const _dl: any = function (arr: any) {
+    let exclude = new Set()
   for (let i = 0, i_finish = values.length; i < i_finish; ++i) {
     exclude.add(f(values[i]))
   }
@@ -3595,37 +2172,17 @@ export const withoutBy: {
     }
   }
   return result
-    }
+  }
     _dl._op = 147
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 147, _a0, _a1)
-  }
-  const arr = _arg0, values = _arg1, f = _arg2
-  let exclude = new Set()
-  for (let i = 0, i_finish = values.length; i < i_finish; ++i) {
-    exclude.add(f(values[i]))
-  }
-  let result = []
-  for (let i$1 = 0, i_finish$1 = arr.length; i$1 < i_finish$1; ++i$1) {
-    let x = arr[i$1]
-    if (!exclude.has(f(x))) {
-      result.push(x)
-    }
-  }
-  return result
+    _dl._fn = values
+    _dl._a1 = f
+  return registerTrustedOperator(_dl, 147, values, f)
 } as any
 
 
-export const slice: {
-  <A>(arr: readonly A[], start: number, end: number): A[]
-  (start: number, end: number): <A>(arr: readonly A[]) => A[]
-} = function slice(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, start = _a0, end_ = _a1
-      let len = arr.length
+export const slice: (start: number, end: number) => <A>(arr: readonly A[]) => A[] = function slice(start: any, end_: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let s = start < 0 ? (((len + start) | 0) > 0 ? (len + start) | 0 : 0) : start < len ? start : len
   let e = end_ < 0 ? (((len + end_) | 0) > 0 ? (len + end_) | 0 : 0) : end_ < len ? end_ : len
   if (s >= e) {
@@ -3637,37 +2194,17 @@ export const slice: {
     out[i] = arr[(s + i) | 0]
   }
   return out
-    }
+  }
     _dl._op = 136
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 136, _a0, _a1)
-  }
-  const arr = _arg0, start = _arg1, end_ = _arg2
-  let len = arr.length
-  let s = start < 0 ? (((len + start) | 0) > 0 ? (len + start) | 0 : 0) : start < len ? start : len
-  let e = end_ < 0 ? (((len + end_) | 0) > 0 ? (len + end_) | 0 : 0) : end_ < len ? end_ : len
-  if (s >= e) {
-    return []
-  }
-  let count = (e - s) | 0
-  let out = new Array(count)
-  for (let i = 0; i < count; ++i) {
-    out[i] = arr[(s + i) | 0]
-  }
-  return out
+    _dl._fn = start
+    _dl._a1 = end_
+  return registerTrustedOperator(_dl, 136, start, end_)
 } as any
 
 
-export const swap: {
-  <A>(arr: readonly A[], i: number, j: number): A[]
-  (i: number, j: number): <A>(arr: readonly A[]) => A[]
-} = function swap(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, i = _a0, j = _a1
-      let len = arr.length
+export const swap: (i: number, j: number) => <A>(arr: readonly A[]) => A[] = function swap(i: any, j: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   if (i < 0 || i >= len || j < 0 || j >= len) {
     return arr.slice(0)
   }
@@ -3675,33 +2212,17 @@ export const swap: {
   out[i] = arr[j]
   out[j] = arr[i]
   return out
-    }
+  }
     _dl._op = 137
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 137, _a0, _a1)
-  }
-  const arr = _arg0, i = _arg1, j = _arg2
-  let len = arr.length
-  if (i < 0 || i >= len || j < 0 || j >= len) {
-    return arr.slice(0)
-  }
-  let out = arr.slice(0)
-  out[i] = arr[j]
-  out[j] = arr[i]
-  return out
+    _dl._fn = i
+    _dl._a1 = j
+  return registerTrustedOperator(_dl, 137, i, j)
 } as any
 
 
-export const insertAll: {
-  <A>(arr: readonly A[], index: number, values: readonly A[]): A[]
-  <A>(index: number, values: readonly A[]): (arr: readonly A[]) => A[]
-} = function insertAll(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, index = _a0, values = _a1
-      let len = arr.length
+export const insertAll: <A>(index: number, values: readonly A[]) => (arr: readonly A[]) => A[] = function insertAll(index: any, values: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let vLen = values.length
   let idx = index < 0 ? 0 : index > len ? len : index
   let out = new Array((len + vLen) | 0)
@@ -3715,39 +2236,17 @@ export const insertAll: {
     out[(i$2 + vLen) | 0] = arr[i$2]
   }
   return out
-    }
+  }
     _dl._op = 138
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 138, _a0, _a1)
-  }
-  const arr = _arg0, index = _arg1, values = _arg2
-  let len = arr.length
-  let vLen = values.length
-  let idx = index < 0 ? 0 : index > len ? len : index
-  let out = new Array((len + vLen) | 0)
-  for (let i = 0; i < idx; ++i) {
-    out[i] = arr[i]
-  }
-  for (let i$1 = 0; i$1 < vLen; ++i$1) {
-    out[(idx + i$1) | 0] = values[i$1]
-  }
-  for (let i$2 = idx; i$2 < len; ++i$2) {
-    out[(i$2 + vLen) | 0] = arr[i$2]
-  }
-  return out
+    _dl._fn = index
+    _dl._a1 = values
+  return registerTrustedOperator(_dl, 138, index, values)
 } as any
 
 
-export const unionBy: {
-  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
-  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
-} = function unionBy(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0, f = _a1
-      let seen = new Set()
+export const unionBy: <A>(b: readonly A[], f: (a: A) => string) => (a: readonly A[]) => A[] = function unionBy(b: any, f: any) {
+  const _dl: any = function (a: any) {
+    let seen = new Set()
   let result = []
   for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
     let x = a[i]
@@ -3766,44 +2265,17 @@ export const unionBy: {
     }
   }
   return result
-    }
+  }
     _dl._op = 140
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 140, _a0, _a1)
-  }
-  const a = _arg0, b = _arg1, f = _arg2
-  let seen = new Set()
-  let result = []
-  for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
-    let x = a[i]
-    let k = f(x)
-    if (!seen.has(k)) {
-      seen.add(k)
-      result.push(x)
-    }
-  }
-  for (let i$1 = 0, i_finish$1 = b.length; i$1 < i_finish$1; ++i$1) {
-    let x$1 = b[i$1]
-    let k$1 = f(x$1)
-    if (!seen.has(k$1)) {
-      seen.add(k$1)
-      result.push(x$1)
-    }
-  }
-  return result
+    _dl._fn = b
+    _dl._a1 = f
+  return registerTrustedOperator(_dl, 140, b, f)
 } as any
 
 
-export const unionWith: {
-  <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(b: readonly A[], eq: (a: A, b: A) => boolean): (a: readonly A[]) => A[]
-} = function unionWith(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0, eq = _a1
-      let result: any[] = []
+export const unionWith: <A>(b: readonly A[], eq: (a: A, b: A) => boolean) => (a: readonly A[]) => A[] = function unionWith(b: any, eq: any) {
+  const _dl: any = function (a: any) {
+    let result: any[] = []
   let addIfNew = (x: any): void => {
     let dup = false
     let j = 0
@@ -3825,47 +2297,17 @@ export const unionWith: {
     addIfNew(b[i$1])
   }
   return result
-    }
+  }
     _dl._op = 141
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 141, _a0, _a1)
-  }
-  const a = _arg0, b = _arg1, eq = _arg2
-  let result: any[] = []
-  let addIfNew = (x: any): void => {
-    let dup = false
-    let j = 0
-    while (j < result.length && !dup) {
-      if (eq(result[j], x)) {
-        dup = true
-      }
-      j = (j + 1) | 0
-    }
-    if (!dup) {
-      result.push(x)
-      return
-    }
-  }
-  for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
-    addIfNew(a[i])
-  }
-  for (let i$1 = 0, i_finish$1 = b.length; i$1 < i_finish$1; ++i$1) {
-    addIfNew(b[i$1])
-  }
-  return result
+    _dl._fn = b
+    _dl._a1 = eq
+  return registerTrustedOperator(_dl, 141, b, eq)
 } as any
 
 
-export const intersectionBy: {
-  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
-  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
-} = function intersectionBy(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0, f = _a1
-      let setB = new Set()
+export const intersectionBy: <A>(b: readonly A[], f: (a: A) => string) => (a: readonly A[]) => A[] = function intersectionBy(b: any, f: any) {
+  const _dl: any = function (a: any) {
+    let setB = new Set()
   for (let i = 0, i_finish = b.length; i < i_finish; ++i) {
     setB.add(f(b[i]))
   }
@@ -3880,40 +2322,17 @@ export const intersectionBy: {
     }
   }
   return result
-    }
+  }
     _dl._op = 142
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 142, _a0, _a1)
-  }
-  const a = _arg0, b = _arg1, f = _arg2
-  let setB = new Set()
-  for (let i = 0, i_finish = b.length; i < i_finish; ++i) {
-    setB.add(f(b[i]))
-  }
-  let seen = new Set()
-  let result = []
-  for (let i$1 = 0, i_finish$1 = a.length; i$1 < i_finish$1; ++i$1) {
-    let x = a[i$1]
-    let k = f(x)
-    if (setB.has(k) && !seen.has(k)) {
-      seen.add(k)
-      result.push(x)
-    }
-  }
-  return result
+    _dl._fn = b
+    _dl._a1 = f
+  return registerTrustedOperator(_dl, 142, b, f)
 } as any
 
 
-export const differenceBy: {
-  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
-  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
-} = function differenceBy(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0, f = _a1
-      let setB = new Set()
+export const differenceBy: <A>(b: readonly A[], f: (a: A) => string) => (a: readonly A[]) => A[] = function differenceBy(b: any, f: any) {
+  const _dl: any = function (a: any) {
+    let setB = new Set()
   for (let i = 0, i_finish = b.length; i < i_finish; ++i) {
     setB.add(f(b[i]))
   }
@@ -3928,40 +2347,17 @@ export const differenceBy: {
     }
   }
   return result
-    }
+  }
     _dl._op = 143
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 143, _a0, _a1)
-  }
-  const a = _arg0, b = _arg1, f = _arg2
-  let setB = new Set()
-  for (let i = 0, i_finish = b.length; i < i_finish; ++i) {
-    setB.add(f(b[i]))
-  }
-  let seen = new Set()
-  let result = []
-  for (let i$1 = 0, i_finish$1 = a.length; i$1 < i_finish$1; ++i$1) {
-    let x = a[i$1]
-    let k = f(x)
-    if (!setB.has(k) && !seen.has(k)) {
-      seen.add(k)
-      result.push(x)
-    }
-  }
-  return result
+    _dl._fn = b
+    _dl._a1 = f
+  return registerTrustedOperator(_dl, 143, b, f)
 } as any
 
 
-export const differenceWith: {
-  <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(b: readonly A[], eq: (a: A, b: A) => boolean): (a: readonly A[]) => A[]
-} = function differenceWith(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0, eq = _a1
-      let result = []
+export const differenceWith: <A>(b: readonly A[], eq: (a: A, b: A) => boolean) => (a: readonly A[]) => A[] = function differenceWith(b: any, eq: any) {
+  const _dl: any = function (a: any) {
+    let result = []
   for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
     let x = a[i]
     let found = false
@@ -3977,41 +2373,17 @@ export const differenceWith: {
     }
   }
   return result
-    }
+  }
     _dl._op = 144
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 144, _a0, _a1)
-  }
-  const a = _arg0, b = _arg1, eq = _arg2
-  let result = []
-  for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
-    let x = a[i]
-    let found = false
-    let j = 0
-    while (j < b.length && !found) {
-      if (eq(x, b[j])) {
-        found = true
-      }
-      j = (j + 1) | 0
-    }
-    if (!found) {
-      result.push(x)
-    }
-  }
-  return result
+    _dl._fn = b
+    _dl._a1 = eq
+  return registerTrustedOperator(_dl, 144, b, eq)
 } as any
 
 
-export const symmetricDifferenceBy: {
-  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
-  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
-} = function symmetricDifferenceBy(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0, f = _a1
-      let setA = new Set()
+export const symmetricDifferenceBy: <A>(b: readonly A[], f: (a: A) => string) => (a: readonly A[]) => A[] = function symmetricDifferenceBy(b: any, f: any) {
+  const _dl: any = function (a: any) {
+    let setA = new Set()
   let setB = new Set()
   for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
     setA.add(f(a[i]))
@@ -4038,52 +2410,17 @@ export const symmetricDifferenceBy: {
     }
   }
   return result
-    }
+  }
     _dl._op = 145
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 145, _a0, _a1)
-  }
-  const a = _arg0, b = _arg1, f = _arg2
-  let setA = new Set()
-  let setB = new Set()
-  for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
-    setA.add(f(a[i]))
-  }
-  for (let i$1 = 0, i_finish$1 = b.length; i$1 < i_finish$1; ++i$1) {
-    setB.add(f(b[i$1]))
-  }
-  let seen = new Set()
-  let result = []
-  for (let i$2 = 0, i_finish$2 = a.length; i$2 < i_finish$2; ++i$2) {
-    let x = a[i$2]
-    let k = f(x)
-    if (!setB.has(k) && !seen.has(k)) {
-      seen.add(k)
-      result.push(x)
-    }
-  }
-  for (let i$3 = 0, i_finish$3 = b.length; i$3 < i_finish$3; ++i$3) {
-    let x$1 = b[i$3]
-    let k$1 = f(x$1)
-    if (!setA.has(k$1) && !seen.has(k$1)) {
-      seen.add(k$1)
-      result.push(x$1)
-    }
-  }
-  return result
+    _dl._fn = b
+    _dl._a1 = f
+  return registerTrustedOperator(_dl, 145, b, f)
 } as any
 
 
-export const symmetricDifferenceWith: {
-  <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
-  <A>(b: readonly A[], eq: (a: A, b: A) => boolean): (a: readonly A[]) => A[]
-} = function symmetricDifferenceWith(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0, eq = _a1
-      let result = []
+export const symmetricDifferenceWith: <A>(b: readonly A[], eq: (a: A, b: A) => boolean) => (a: readonly A[]) => A[] = function symmetricDifferenceWith(b: any, eq: any) {
+  const _dl: any = function (a: any) {
+    let result = []
   for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
     let x = a[i]
     let found = false
@@ -4113,55 +2450,17 @@ export const symmetricDifferenceWith: {
     }
   }
   return result
-    }
+  }
     _dl._op = 146
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 146, _a0, _a1)
-  }
-  const a = _arg0, b = _arg1, eq = _arg2
-  let result = []
-  for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
-    let x = a[i]
-    let found = false
-    let j = 0
-    while (j < b.length && !found) {
-      if (eq(x, b[j])) {
-        found = true
-      }
-      j = (j + 1) | 0
-    }
-    if (!found) {
-      result.push(x)
-    }
-  }
-  for (let i$1 = 0, i_finish$1 = b.length; i$1 < i_finish$1; ++i$1) {
-    let x$1 = b[i$1]
-    let found$1 = false
-    let j$1 = 0
-    while (j$1 < a.length && !found$1) {
-      if (eq(x$1, a[j$1])) {
-        found$1 = true
-      }
-      j$1 = (j$1 + 1) | 0
-    }
-    if (!found$1) {
-      result.push(x$1)
-    }
-  }
-  return result
+    _dl._fn = b
+    _dl._a1 = eq
+  return registerTrustedOperator(_dl, 146, b, eq)
 } as any
 
 
-export const sortedIndexBy: {
-  <A>(arr: readonly A[], value: A, f: (a: A) => number): number
-  <A>(value: A, f: (a: A) => number): (arr: readonly A[]) => number
-} = function sortedIndexBy(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, value = _a0, f = _a1
-      let target = f(value)
+export const sortedIndexBy: <A>(value: A, f: (a: A) => number) => (arr: readonly A[]) => number = function sortedIndexBy(value: any, f: any) {
+  const _dl: any = function (arr: any) {
+    let target = f(value)
   let lo = 0
   let hi = arr.length
   while (lo < hi) {
@@ -4173,37 +2472,17 @@ export const sortedIndexBy: {
     }
   }
   return lo
-    }
+  }
     _dl._op = 152
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 152, _a0, _a1)
-  }
-  const arr = _arg0, value = _arg1, f = _arg2
-  let target = f(value)
-  let lo = 0
-  let hi = arr.length
-  while (lo < hi) {
-    let mid = (((lo + hi) | 0) / 2) | 0
-    if (f(arr[mid]) < target) {
-      lo = (mid + 1) | 0
-    } else {
-      hi = mid
-    }
-  }
-  return lo
+    _dl._fn = value
+    _dl._a1 = f
+  return registerTrustedOperator(_dl, 152, value, f)
 } as any
 
 
-export const sortedIndexWith: {
-  <A>(arr: readonly A[], pred: (a: A) => boolean): number
-  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number
-} = function sortedIndexWith(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0
-      let lo = 0
+export const sortedIndexWith: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => number = function sortedIndexWith(pred: any) {
+  const _dl: any = function (arr: any) {
+    let lo = 0
   let hi = arr.length
   while (lo < hi) {
     let mid = (((lo + hi) | 0) / 2) | 0
@@ -4214,35 +2493,16 @@ export const sortedIndexWith: {
     }
   }
   return lo
-    }
+  }
     _dl._op = 153
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 153, _a0)
-  }
-  const arr = _arg0, pred = _arg1
-  let lo = 0
-  let hi = arr.length
-  while (lo < hi) {
-    let mid = (((lo + hi) | 0) / 2) | 0
-    if (pred(arr[mid])) {
-      hi = mid
-    } else {
-      lo = (mid + 1) | 0
-    }
-  }
-  return lo
+    _dl._fn = pred
+  return registerTrustedOperator(_dl, 153, pred)
 } as any
 
 
-export const sortedLastIndexBy: {
-  <A>(arr: readonly A[], value: A, f: (a: A) => number): number
-  <A>(value: A, f: (a: A) => number): (arr: readonly A[]) => number
-} = function sortedLastIndexBy(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, value = _a0, f = _a1
-      let target = f(value)
+export const sortedLastIndexBy: <A>(value: A, f: (a: A) => number) => (arr: readonly A[]) => number = function sortedLastIndexBy(value: any, f: any) {
+  const _dl: any = function (arr: any) {
+    let target = f(value)
   let lo = 0
   let hi = arr.length
   while (lo < hi) {
@@ -4254,37 +2514,17 @@ export const sortedLastIndexBy: {
     }
   }
   return lo
-    }
+  }
     _dl._op = 154
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 154, _a0, _a1)
-  }
-  const arr = _arg0, value = _arg1, f = _arg2
-  let target = f(value)
-  let lo = 0
-  let hi = arr.length
-  while (lo < hi) {
-    let mid = (((lo + hi) | 0) / 2) | 0
-    if (f(arr[mid]) <= target) {
-      lo = (mid + 1) | 0
-    } else {
-      hi = mid
-    }
-  }
-  return lo
+    _dl._fn = value
+    _dl._a1 = f
+  return registerTrustedOperator(_dl, 154, value, f)
 } as any
 
 
-export const mapAccum: {
-  <A, B, C>(arr: readonly A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
-  <A, B, C>(f: (acc: B, a: A) => [B, C], init: B): (arr: readonly A[]) => [B, C[]]
-} = function mapAccum(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0, init = _a1
-      let len = arr.length
+export const mapAccum: <A, B, C>(f: (acc: B, a: A) => [B, C], init: B) => (arr: readonly A[]) => [B, C[]] = function mapAccum(f: any, init: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let out = new Array(len)
   let acc = init
   for (let i = 0; i < len; ++i) {
@@ -4293,34 +2533,17 @@ export const mapAccum: {
     out[i] = match[1]
   }
   return [acc, out]
-    }
+  }
     _dl._op = 148
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 148, _a0, _a1)
-  }
-  const arr = _arg0, f = _arg1, init = _arg2
-  let len = arr.length
-  let out = new Array(len)
-  let acc = init
-  for (let i = 0; i < len; ++i) {
-    let match = f(acc, arr[i])
-    acc = match[0]
-    out[i] = match[1]
-  }
-  return [acc, out]
+    _dl._fn = f
+    _dl._a1 = init
+  return registerTrustedOperator(_dl, 148, f, init)
 } as any
 
 
-export const mapAccumRight: {
-  <A, B, C>(arr: readonly A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
-  <A, B, C>(f: (acc: B, a: A) => [B, C], init: B): (arr: readonly A[]) => [B, C[]]
-} = function mapAccumRight(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const arr = data, f = _a0, init = _a1
-      let len = arr.length
+export const mapAccumRight: <A, B, C>(f: (acc: B, a: A) => [B, C], init: B) => (arr: readonly A[]) => [B, C[]] = function mapAccumRight(f: any, init: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let out = new Array(len)
   let acc = init
   for (let i = 0; i < len; ++i) {
@@ -4330,40 +2553,22 @@ export const mapAccumRight: {
     out[j] = match[1]
   }
   return [acc, out]
-    }
+  }
     _dl._op = 149
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    return registerTrustedOperator(_dl, 149, _a0, _a1)
-  }
-  const arr = _arg0, f = _arg1, init = _arg2
-  let len = arr.length
-  let out = new Array(len)
-  let acc = init
-  for (let i = 0; i < len; ++i) {
-    let j = (((len - 1) | 0) - i) | 0
-    let match = f(acc, arr[j])
-    acc = match[0]
-    out[j] = match[1]
-  }
-  return [acc, out]
+    _dl._fn = f
+    _dl._a1 = init
+  return registerTrustedOperator(_dl, 149, f, init)
 } as any
 
 
 // Arity 4
-export const reduceBy: {
-  <A, B>(arr: readonly A[], keyFn: (a: A) => string, reducer: (acc: B, a: A) => B, init: B): Dict<B>
-  <A, B>(
+export const reduceBy: <A, B>(
     keyFn: (a: A) => string,
     reducer: (acc: B, a: A) => B,
     init: B,
-  ): (arr: readonly A[]) => Dict<B>
-} = function reduceBy(_arg0?: any, _arg1?: any, _arg2?: any, _arg3?: any) {
-  if (arguments.length < 4) {
-    const _a0 = _arg0; const _a1 = _arg1; const _a2 = _arg2
-    const _dl: any = function(data: any) {
-      const arr = data, keyFn = _a0, reducer = _a1, init = _a2
-      const dict: Record<string, any> = {}
+  ) => (arr: readonly A[]) => Dict<B> = function reduceBy(keyFn: any, reducer: any, init: any) {
+  const _dl: any = function (arr: any) {
+    const dict: Record<string, any> = {}
   for (let i = 0; i < arr.length; i++) {
     const x = arr[i]
     const key = keyFn(x)
@@ -4371,34 +2576,18 @@ export const reduceBy: {
     dict[key] = reducer(acc, x)
   }
   return dict
-    }
+  }
     _dl._op = 150
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    _dl._a2 = _a2
-    return registerTrustedOperator(_dl, 150, _a0, _a1, _a2)
-  }
-  const arr = _arg0, keyFn = _arg1, reducer = _arg2, init = _arg3
-  const dict: Record<string, any> = {}
-  for (let i = 0; i < arr.length; i++) {
-    const x = arr[i]
-    const key = keyFn(x)
-    const acc = dict[key] !== undefined ? dict[key] : init
-    dict[key] = reducer(acc, x)
-  }
-  return dict
+    _dl._fn = keyFn
+    _dl._a1 = reducer
+    _dl._a2 = init
+  return registerTrustedOperator(_dl, 150, keyFn, reducer, init)
 } as any
 
 
-export const reduceWhile: {
-  <A, B>(arr: readonly A[], pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B): B
-  <A, B>(pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
-} = function reduceWhile(_arg0?: any, _arg1?: any, _arg2?: any, _arg3?: any) {
-  if (arguments.length < 4) {
-    const _a0 = _arg0; const _a1 = _arg1; const _a2 = _arg2
-    const _dl: any = function(data: any) {
-      const arr = data, pred = _a0, f = _a1, init = _a2
-      let len = arr.length
+export const reduceWhile: <A, B>(pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B) => (arr: readonly A[]) => B = function reduceWhile(pred: any, f: any, init: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let acc = init
   let i = 0
   let continue_ = true
@@ -4412,40 +2601,18 @@ export const reduceWhile: {
     }
   }
   return acc
-    }
+  }
     _dl._op = 95
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    _dl._a2 = _a2
-    return registerTrustedOperator(_dl, 95, _a0, _a1, _a2)
-  }
-  const arr = _arg0, pred = _arg1, f = _arg2, init = _arg3
-  let len = arr.length
-  let acc = init
-  let i = 0
-  let continue_ = true
-  while (i < len && continue_) {
-    let x = arr[i]
-    if (pred(acc, x)) {
-      acc = f(acc, x)
-      i = (i + 1) | 0
-    } else {
-      continue_ = false
-    }
-  }
-  return acc
+    _dl._fn = pred
+    _dl._a1 = f
+    _dl._a2 = init
+  return registerTrustedOperator(_dl, 95, pred, f, init)
 } as any
 
 
-export const splice: {
-  <A>(arr: readonly A[], start: number, deleteCount: number, items: readonly A[]): A[]
-  <A>(start: number, deleteCount: number, items: readonly A[]): (arr: readonly A[]) => A[]
-} = function splice(_arg0?: any, _arg1?: any, _arg2?: any, _arg3?: any) {
-  if (arguments.length < 4) {
-    const _a0 = _arg0; const _a1 = _arg1; const _a2 = _arg2
-    const _dl: any = function(data: any) {
-      const arr = data, start = _a0, deleteCount = _a1, items = _a2
-      let len = arr.length
+export const splice: <A>(start: number, deleteCount: number, items: readonly A[]) => (arr: readonly A[]) => A[] = function splice(start: any, deleteCount: any, items: any) {
+  const _dl: any = function (arr: any) {
+    let len = arr.length
   let s = start < 0 ? (((len + start) | 0) > 0 ? (len + start) | 0 : 0) : start < len ? start : len
   let dc = deleteCount < 0 ? 0 : ((s + deleteCount) | 0) > len ? (len - s) | 0 : deleteCount
   let itemsLen = items.length
@@ -4461,30 +2628,12 @@ export const splice: {
     out[(((s + itemsLen) | 0) + ((((i$2 - s) | 0) - dc) | 0)) | 0] = arr[i$2]
   }
   return out
-    }
+  }
     _dl._op = 139
-    _dl._fn = _a0
-    _dl._a1 = _a1
-    _dl._a2 = _a2
-    return registerTrustedOperator(_dl, 139, _a0, _a1, _a2)
-  }
-  const arr = _arg0, start = _arg1, deleteCount = _arg2, items = _arg3
-  let len = arr.length
-  let s = start < 0 ? (((len + start) | 0) > 0 ? (len + start) | 0 : 0) : start < len ? start : len
-  let dc = deleteCount < 0 ? 0 : ((s + deleteCount) | 0) > len ? (len - s) | 0 : deleteCount
-  let itemsLen = items.length
-  let newLen = (((len - dc) | 0) + itemsLen) | 0
-  let out = new Array(newLen)
-  for (let i = 0; i < s; ++i) {
-    out[i] = arr[i]
-  }
-  for (let i$1 = 0; i$1 < itemsLen; ++i$1) {
-    out[(s + i$1) | 0] = items[i$1]
-  }
-  for (let i$2 = (s + dc) | 0; i$2 < len; ++i$2) {
-    out[(((s + itemsLen) | 0) + ((((i$2 - s) | 0) - dc) | 0)) | 0] = arr[i$2]
-  }
-  return out
+    _dl._fn = start
+    _dl._a1 = deleteCount
+    _dl._a2 = items
+  return registerTrustedOperator(_dl, 139, start, deleteCount, items)
 } as any
 
 

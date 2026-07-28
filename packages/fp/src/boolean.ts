@@ -8,78 +8,36 @@ import { registerTrustedOperator } from './internal/provenance'
 export const not_: (a: boolean) => boolean = (a: any) => !a
 
 // Arity 2
-export const and_: {
-  (a: boolean, b: boolean): boolean
-  (b: boolean): (a: boolean) => boolean
-} = function and_(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      if (a) {
+export const and_: (b: boolean) => (a: boolean) => boolean = function and_(b: any) {
+  return function (a: any) {
+    if (a) {
     return b;
   } else {
     return false;
   }
-    }
-    return _dl
-  }
-  const a = _arg0, b = _arg1
-  if (a) {
-    return b;
-  } else {
-    return false;
   }
 } as any
 
 
-export const or_: {
-  (a: boolean, b: boolean): boolean
-  (b: boolean): (a: boolean) => boolean
-} = function or_(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      if (a) {
+export const or_: (b: boolean) => (a: boolean) => boolean = function or_(b: any) {
+  return function (a: any) {
+    if (a) {
     return true;
   } else {
     return b;
   }
-    }
-    return _dl
-  }
-  const a = _arg0, b = _arg1
-  if (a) {
-    return true;
-  } else {
-    return b;
   }
 } as any
 
 
 // Arity 3
-export const ifElse: {
-  <A>(cond: boolean, onTrue: () => A, onFalse: () => A): A
-  <A>(onTrue: () => A, onFalse: () => A): (cond: boolean) => A
-} = function ifElse(_arg0?: any, _arg1?: any, _arg2?: any) {
-  if (arguments.length < 3) {
-    const _a0 = _arg0; const _a1 = _arg1
-    const _dl: any = function(data: any) {
-      const cond = data, onTrue = _a0, onFalse = _a1
-      if (cond) {
+export const ifElse: <A>(onTrue: () => A, onFalse: () => A) => (cond: boolean) => A = function ifElse(onTrue: any, onFalse: any) {
+  return function (cond: any) {
+    if (cond) {
     return onTrue();
   } else {
     return onFalse();
   }
-    }
-    return _dl
-  }
-  const cond = _arg0, onTrue = _arg1, onFalse = _arg2
-  if (cond) {
-    return onTrue();
-  } else {
-    return onFalse();
   }
 } as any
 

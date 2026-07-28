@@ -274,10 +274,6 @@ export const xprod: {
 )
 
 // Arity 2
-//
-// map is the S4 direct-leaf pilot: codegen splits it into an isolated
-// execution leaf and an isolated curried constructor. See
-// codegen/direct-leaf.ts.
 export const map: {
   <A, B>(arr: readonly A[], f: (a: A) => B): B[]
   <A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
@@ -1811,7 +1807,7 @@ export const splitWhen: {
       i = (i + 1) | 0
     }
   }
-  return splitAt(arr, i)
+  return splitAt(i)(arr)
 },
   { op: 'splitWhen' },
 )
@@ -1984,7 +1980,7 @@ export const meanBy: {
   <A>(arr: readonly A[], f: (a: A) => number): Option<number>
   <A>(f: (a: A) => number): (arr: readonly A[]) => Option<number>
 } = dual(2, (arr: any, f: any) => {
-  const value = meanByOrUndefined(arr, f)
+  const value = meanByOrUndefined(f)(arr)
   return value === undefined ? optionNone : optionSome(value)
 },
   { op: 'meanBy' },
@@ -1993,7 +1989,7 @@ export const meanBy: {
 export const meanByNonEmpty: {
   <A>(arr: readonly [A, ...A[]], f: (a: A) => number): number
   <A>(f: (a: A) => number): (arr: readonly [A, ...A[]]) => number
-} = dual(2, (arr: any, f: any) => meanByOrUndefined(arr, f) as number,
+} = dual(2, (arr: any, f: any) => meanByOrUndefined(f)(arr) as number,
   { op: 'meanByNonEmpty' },
 )
 

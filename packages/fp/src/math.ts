@@ -31,95 +31,49 @@ export const product: (arr: number[]) => number = (arr: any) => {
 }
 
 // Arity 2. Tagged for scalar JIT (v=v+n, v=v*n, etc.)
-export const add: {
-  (a: number, b: number): number
-  (b: number): (a: number) => number
-} = function add(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      return a + b;
-    }
+export const add: (b: number) => (a: number) => number = function add(b: any) {
+  const _dl: any = function (a: any) {
+    return a + b;
+  }
     _dl._op = 70
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 70, _a0)
-  }
-  const a = _arg0, b = _arg1
-  return a + b;
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 70, b)
 } as any
 
 
-export const subtract: {
-  (a: number, b: number): number
-  (b: number): (a: number) => number
-} = function subtract(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      return a - b;
-    }
+export const subtract: (b: number) => (a: number) => number = function subtract(b: any) {
+  const _dl: any = function (a: any) {
+    return a - b;
+  }
     _dl._op = 71
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 71, _a0)
-  }
-  const a = _arg0, b = _arg1
-  return a - b;
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 71, b)
 } as any
 
 
-export const multiply: {
-  (a: number, b: number): number
-  (b: number): (a: number) => number
-} = function multiply(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      return a * b;
-    }
+export const multiply: (b: number) => (a: number) => number = function multiply(b: any) {
+  const _dl: any = function (a: any) {
+    return a * b;
+  }
     _dl._op = 72
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 72, _a0)
-  }
-  const a = _arg0, b = _arg1
-  return a * b;
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 72, b)
 } as any
 
 
-export const divide: {
-  (a: number, b: number): number
-  (b: number): (a: number) => number
-} = function divide(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      return a / b;
-    }
+export const divide: (b: number) => (a: number) => number = function divide(b: any) {
+  const _dl: any = function (a: any) {
+    return a / b;
+  }
     _dl._op = 73
-    _dl._fn = _a0
-    return registerTrustedOperator(_dl, 73, _a0)
-  }
-  const a = _arg0, b = _arg1
-  return a / b;
+    _dl._fn = b
+  return registerTrustedOperator(_dl, 73, b)
 } as any
 
 
-export const modulo: {
-  (a: number, b: number): number
-  (b: number): (a: number) => number
-} = function modulo(_arg0?: any, _arg1?: any) {
-  if (arguments.length < 2) {
-    const _a0 = _arg0
-    const _dl: any = function(data: any) {
-      const a = data, b = _a0
-      return a % b;
-    }
-    return _dl
+export const modulo: (b: number) => (a: number) => number = function modulo(b: any) {
+  return function (a: any) {
+    return a % b;
   }
-  const a = _arg0, b = _arg1
-  return a % b;
 } as any
 

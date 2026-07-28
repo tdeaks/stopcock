@@ -1,9 +1,17 @@
 /**
- * Dual Inliner. Eliminates runtime dual() dispatch by inlining bodies at build time.
+ * Dual Inliner. Emits single-form (data-last only) factories from bodies
+ * written against dual()'s data-first shape.
  *
  * Usage: bun run codegen/dual-inline.ts
  * Input:  codegen/defs/*.ts   (human-written, uses dual())
- * Output: src/*.ts            (generated, body inlined into dispatch functions)
+ * Output: src/*.ts            (generated, single-form factory per op)
+ *
+ * Every generated op is `op(...args) => (data) => result`. There is no
+ * `arguments.length` dispatch and no data-first call form -- one runtime
+ * path, matching packages/fp/src/internal/__prototype__data-last.ts (the
+ * measured reference for this shape). The `dual()` bodies in codegen/defs/
+ * stay data-first (`(data, ...args) => result`) purely as the authoring
+ * convention; this generator flips them at build time.
  */
 
 import { type Parser, type ParseResult, seq, map, string as pStr, char, run } from './parse'
@@ -11,7 +19,6 @@ import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { generatedPureAnnotationV1, type GeneratedInitializerSiteV1 } from './purity'
 import { findRuntimeOpcodeByNameV1 } from './protocol/operator-definitions'
-import { directLeafPolicyForV1, renderDirectLeafV1 } from './direct-leaf'
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const DEFS_DIR = join(ROOT, 'codegen', 'defs')
@@ -353,22 +360,6 @@ function typeDecl(name: string, annotation: string): string {
   return annotation ? `export const ${name}: ${annotation}` : `export const ${name}`
 }
 
-/**
- * Registration call for a constructed data-last operator. The opcode is
- * resolved here, at generation time, and the bindings come from the captured
- * arguments, so nothing a caller supplies reaches the private table.
- */
-function registration(opcode: number, arity: number): string {
-  const args = ['_dl', String(opcode), '_a0']
-  if (arity >= 3) args.push('_a1')
-  if (arity >= 4) args.push('_a2')
-  return `registerTrustedOperator(${args.join(', ')})`
-}
-
-function implementationParams(arity: number): string {
-  return Array.from({ length: arity }, (_, index) => `_arg${index}?: any`).join(', ')
-}
-
 function generateArity1Tagged(dc: DualCall, moduleName: GeneratedModule): string {
   const opcode = dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0
   const decl = typeDecl(dc.name, dc.typeAnnotation)
@@ -410,6 +401,107 @@ function generateArity1Untagged(dc: DualCall): string {
   return `${decl} = function ${dc.name}(${params.join(': any, ')}: any) { ${bodyCode} } as any\n`
 }
 
+// --- Single-form (data-last only) signature rewriting ---
+//
+// codegen/defs/*.ts writes each arity>=2 op's type as a two-branch (or, for
+// refinement-narrowing ops, four-branch) call-signature object: the
+// data-first branch(es) first, the data-last (curried) branch(es) last. The
+// single-form world keeps only the curried branches. One kept branch
+// collapses to a plain arrow function type; more than one stays as an
+// object-of-call-signatures block (overloads on a const still need that
+// shape) with the discarded branches removed.
+
+function splitSignatureLines(inner: string): string[] {
+  const rawLines = inner.split('\n')
+  const sigs: string[] = []
+  let current: string[] = []
+  for (const raw of rawLines) {
+    const trimmed = raw.trim()
+    if (!trimmed) continue
+    if ((trimmed.startsWith('<') || trimmed.startsWith('(')) && current.length > 0) {
+      sigs.push(current.join('\n'))
+      current = [raw]
+    } else {
+      current.push(raw)
+    }
+  }
+  if (current.length) sigs.push(current.join('\n'))
+  return sigs
+}
+
+/** A signature `<G>(params): Ret` is data-last iff Ret is itself a function type. */
+function isDataLastSignature(sig: string): boolean {
+  const trimmed = sig.trim()
+  let i = 0
+  if (trimmed[i] === '<') {
+    const r = angleBlock(trimmed, i)
+    if (!r.success) return false
+    i = r.position
+  }
+  while (i < trimmed.length && /\s/.test(trimmed[i])) i++
+  if (trimmed[i] !== '(') return false
+  const end = findMatchingClose(trimmed, i)
+  let j = end + 1
+  while (j < trimmed.length && /\s/.test(trimmed[j])) j++
+  if (trimmed[j] !== ':') return false
+  j++
+  while (j < trimmed.length && /\s/.test(trimmed[j])) j++
+  // Return type may itself open with a generic prefix before its own params,
+  // e.g. `<A extends ...>(arr) => A[K][]` (pluck's data-last branch).
+  if (trimmed[j] === '<') {
+    const r = angleBlock(trimmed, j)
+    if (!r.success) return false
+    j = r.position
+    while (j < trimmed.length && /\s/.test(trimmed[j])) j++
+  }
+  return trimmed[j] === '('
+}
+
+/** Rewrites one call signature `<G>(params): Ret` into a standalone arrow type `<G>(params) => Ret`. */
+function arrowFormOf(sig: string): string {
+  const trimmed = sig.trim()
+  let i = 0
+  let generics = ''
+  if (trimmed[i] === '<') {
+    const r = angleBlock(trimmed, i)
+    if (r.success) {
+      generics = `<${r.value}>`
+      i = r.position
+    }
+  }
+  while (i < trimmed.length && /\s/.test(trimmed[i])) i++
+  const parenStart = i
+  const end = findMatchingClose(trimmed, i)
+  const params = trimmed.slice(parenStart, end + 1)
+  let j = end + 1
+  while (j < trimmed.length && /\s/.test(trimmed[j])) j++
+  j++ // skip ':'
+  while (j < trimmed.length && /\s/.test(trimmed[j])) j++
+  const ret = trimmed.slice(j).trim()
+  return `${generics}${params} => ${ret}`
+}
+
+/** Filters a dual() type annotation down to its data-last branch(es) only. */
+function singleFormAnnotation(annotation: string): string {
+  const trimmed = annotation.trim()
+  if (!trimmed.startsWith('{')) return trimmed
+  const closeBrace = trimmed.lastIndexOf('}')
+  const inner = trimmed.slice(1, closeBrace)
+  const sigs = splitSignatureLines(inner)
+  const kept = sigs.filter(isDataLastSignature)
+  if (kept.length === 0) return trimmed
+  if (kept.length === 1) return arrowFormOf(kept[0])
+  return `{\n  ${kept.map((s) => s.trim()).join('\n  ')}\n}`
+}
+
+function tagProps(opcode: number, factoryParams: readonly string[], n: number): string {
+  let props = `\n    _dl._op = ${opcode}`
+  props += `\n    _dl._fn = ${factoryParams[0]}`
+  if (n >= 3) props += `\n    _dl._a1 = ${factoryParams[1]}`
+  if (n >= 4) props += `\n    _dl._a2 = ${factoryParams[2]}`
+  return props
+}
+
 function generateArityN(dc: DualCall): string {
   const n = dc.arity
   const opcode = dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0
@@ -423,82 +515,57 @@ function generateArityN(dc: DualCall): string {
 
 function generateArityNRef(dc: DualCall, n: number, opcode: number, hasTag: boolean): string {
   const ref = dc.bodyStr
-  const argsList = Array.from({ length: n }, (_, i) => `_arg${i}`).join(', ')
-  const curryCapture = Array.from({ length: n - 1 }, (_, i) => `const _a${i} = _arg${i}`).join('; ')
-  const curryCall = `${ref}(data, ${Array.from({ length: n - 1 }, (_, i) => `_a${i}`).join(', ')})`
-  const decl = typeDecl(dc.name, dc.typeAnnotation)
+  const decl = typeDecl(dc.name, singleFormAnnotation(dc.typeAnnotation))
+  const factoryParams = Array.from({ length: n - 1 }, (_, i) => `_a${i}`)
+  const factoryArgs = factoryParams.map((p) => `${p}: any`).join(', ')
+  const callArgs = ['data', ...factoryParams].join(', ')
 
-  let closureProps = ''
-  if (hasTag) {
-    closureProps = `\n    _dl._op = ${opcode}`
-    closureProps += `\n    _dl._fn = _a0`
-    if (n >= 3) closureProps += `\n    _dl._a1 = _a1`
-    if (n >= 4) closureProps += `\n    _dl._a2 = _a2`
+  if (!hasTag) {
+    return `${decl} = function ${dc.name}(${factoryArgs}) {
+  return function (data: any) {
+    return ${ref}(${callArgs})
   }
-  const returnLine = hasTag ? `return ${registration(opcode, n)}` : 'return _dl'
+} as any\n`
+  }
 
-  return `${decl} = function ${dc.name}(${implementationParams(n)}) {
-  if (arguments.length >= ${n}) return ${ref}(${argsList})
-  ${curryCapture}
-  const _dl: any = (data: any) => ${curryCall}${closureProps}
-  ${returnLine}
+  const closureProps = tagProps(opcode, factoryParams, n)
+  const registerArgs = ['_dl', String(opcode), ...factoryParams].join(', ')
+  return `${decl} = function ${dc.name}(${factoryArgs}) {
+  const _dl: any = function (data: any) {
+    return ${ref}(${callArgs})
+  }${closureProps}
+  return registerTrustedOperator(${registerArgs})
 } as any\n`
 }
 
 function generateArityNInline(dc: DualCall, n: number, opcode: number, hasTag: boolean): string {
   const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
   const bodyCode = isExpression ? `return ${bodyText}` : bodyText
-  const decl = typeDecl(dc.name, dc.typeAnnotation)
+  const decl = typeDecl(dc.name, singleFormAnnotation(dc.typeAnnotation))
 
-  // Data-first path: const param0 = _arg0, param1 = _arg1, ...
-  const dfAssign = params.map((p, i) => `${p} = _arg${i}`).join(', ')
+  const dataParam = params[0]
+  const factoryParams = params.slice(1)
+  const factoryArgs = factoryParams.map((p) => `${p}: any`).join(', ')
 
-  // Data-last path: capture curried args, closure receives data as first param
-  const curryAssign = params
-    .slice(1)
-    .map((p, i) => `${p} = _a${i}`)
-    .join(', ')
-  const captureLines = params
-    .slice(1)
-    .map((p, i) => `const _a${i} = _arg${i}`)
-    .join('; ')
-  const dlAssign = `const ${params[0]} = data, ${curryAssign}`
-
-  let closureProps = ''
-  if (hasTag) {
-    closureProps += `\n    _dl._op = ${opcode}`
-    closureProps += `\n    _dl._fn = _a0`
-    if (n >= 3) closureProps += `\n    _dl._a1 = _a1`
-    if (n >= 4) closureProps += `\n    _dl._a2 = _a2`
+  if (!hasTag) {
+    return `${decl} = function ${dc.name}(${factoryArgs}) {
+  return function (${dataParam}: any) {
+    ${bodyCode}
   }
-  const returnLine = hasTag ? `return ${registration(opcode, n)}` : 'return _dl'
-
-  return `${decl} = function ${dc.name}(${implementationParams(n)}) {
-  if (arguments.length < ${n}) {
-    ${captureLines}
-    const _dl: any = function(data: any) {
-      ${dlAssign}
-      ${bodyCode}
-    }${closureProps}
-    ${returnLine}
+} as any\n`
   }
-  const ${dfAssign}
-  ${bodyCode}
+
+  const closureProps = tagProps(opcode, factoryParams, n)
+  const registerArgs = ['_dl', String(opcode), ...factoryParams].join(', ')
+  return `${decl} = function ${dc.name}(${factoryArgs}) {
+  const _dl: any = function (${dataParam}: any) {
+    ${bodyCode}
+  }${closureProps}
+  return registerTrustedOperator(${registerArgs})
 } as any\n`
 }
 
 function generateDecl(dc: DualCall, moduleName: GeneratedModule): string {
-  const directLeaf = directLeafPolicyForV1(moduleName, dc.name)
-  if (directLeaf !== undefined && dc.arity === directLeaf.arity && !dc.bodyIsRef) {
-    const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
-    return renderDirectLeafV1({
-      policy: directLeaf,
-      declaration: typeDecl(dc.name, dc.typeAnnotation),
-      opcode: dc.tag ? (findRuntimeOpcodeByNameV1(dc.tag) ?? 0) : 0,
-      params,
-      bodyCode: isExpression ? `return ${bodyText}` : bodyText,
-    })
-  }
   if (dc.arity <= 1) {
     return dc.tag ? generateArity1Tagged(dc, moduleName) : generateArity1Untagged(dc)
   }
