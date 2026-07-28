@@ -48,7 +48,7 @@ imports. Lexically shadowed bindings are left untouched. Exact semantics are
 the default. `assumePure: true` permits only documented pure execution
 rewrites; it still evaluates every argument expression exactly once, and a
 residual or otherwise non-fully-lowered site still constructs the real
-operator factory too (see "Tier-preserving lowering" below for the exact
+operator factory too (see "Recognized facade entries" below for the exact
 construction-elision contract).
 
 ## Options
