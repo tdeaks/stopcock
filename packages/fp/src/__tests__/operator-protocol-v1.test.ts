@@ -360,9 +360,15 @@ describe('OperatorSemanticV1 authoring', () => {
     expect(mapRecord.semantic.diagnosticTag.authority).toBe('diagnostic-only')
     expect(mapRecord.semantic.diagnosticTag.bindingFields).toEqual(['_fn'])
 
+    // `diagnosticTag.bindingFields` documents the 1.x wire shape a fused
+    // runtime engine once read off a tagged operator (`_fn`, here). There is
+    // no such engine any more (one-runtime-path plan): the runtime factory
+    // below returns a plain closure with neither the legacy `_fn` binding
+    // nor a public `fn` field, and the protocol fact stays as historical
+    // documentation of a wire format nothing produces or consumes today.
     const callback = (value: number) => value * 2
     const tagged = map(callback) as unknown as Record<string, unknown>
-    expect(tagged._fn).toBe(callback)
+    expect(tagged._fn).toBeUndefined()
     expect(tagged).not.toHaveProperty('fn')
   })
 

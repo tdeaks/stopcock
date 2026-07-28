@@ -3,14 +3,13 @@ import type { Err, Fn, LazyValue, None, Ok, Option, Result, Some } from '..'
 // S8 moved these to the subpaths that own them. They stay importable, just not
 // from the root.
 import type { Runner } from '../compile'
-import type { PipelineExplanation, PureRewrite } from '../fusion-debug'
+import type { PipelineExplanation } from '../fusion-debug'
 
 test('every mapped current root type export remains importable', () => {
   expectTypeOf<Fn<number, string>>().toEqualTypeOf<(value: number) => string>()
   expectTypeOf<LazyValue<number>>().toEqualTypeOf<() => number>()
   expectTypeOf<Runner<number, string>>().toEqualTypeOf<(input: number) => string>()
-  expectTypeOf<PipelineExplanation>().toBeObject()
-  expectTypeOf<PureRewrite>().toBeObject()
+  expectTypeOf<PipelineExplanation>().toEqualTypeOf<'sequential' | 'compiled site'>()
   expectTypeOf<None>().toMatchTypeOf<{ readonly _tag: 0 }>()
   expectTypeOf<Some<number>>().toMatchTypeOf<{ readonly _tag: 1; readonly value: number }>()
   expectTypeOf<Option<number>>().toMatchTypeOf<None | Some<number>>()

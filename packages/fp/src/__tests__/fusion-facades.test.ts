@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 import * as A from '../array'
-import { compile } from '../compile'
-import { explain } from '../internal/explain'
+import { compile, compilePure } from '../compile'
+import { explain, explainPure } from '../internal/explain'
 import * as fusion from '../fusion'
 import * as fusionDebug from '../fusion-debug'
 import { sequentialFlow, sequentialPipe } from '../internal/sequential'
@@ -37,33 +37,39 @@ describe('explicit fusion facades', () => {
     expect(PUBLIC_MODULES.some((module) => module.subpath.includes('optimized'))).toBe(false)
   })
 
-  it('resolves the deprecated compile subpath to compact fusion', () => {
+  it('resolves the deprecated compile subpath the same as fusion and root', () => {
     // An FP-only install has to stay complete. This specifier must not become
     // a hidden forwarder to a package that may not be installed.
     const viaCompile = compile(A.map(double), A.filter(big))([1, 2, 3])
     expect(viaCompile).toEqual(fusion.pipe([1, 2, 3], A.map(double), A.filter(big)))
   })
 
-  it('matches current fused semantics', () => {
+  it('matches current sequential semantics', () => {
     const viaFacade = fusion.pipe([1, 2, 3], A.map(double), A.filter(big))
     const viaRoot = pipe([1, 2, 3], A.map(double), A.filter(big))
     const viaCompile = compile(A.map(double), A.filter(big))([1, 2, 3])
+    const viaCompilePure = compilePure(A.map(double), A.filter(big))([1, 2, 3])
     expect(viaFacade).toEqual([2, 4, 6].filter((x) => x > 2))
     expect(viaFacade).toEqual(viaRoot)
     expect(viaFacade).toEqual(viaCompile)
+    expect(viaFacade).toEqual(viaCompilePure)
   })
 
-  it('interleaves callbacks, which is what fusing means here', () => {
-    // The executor-kind diagnostic that lets a later slice prove root and
-    // explicit fusion are intentionally different: a fused pipeline runs the
-    // predicate right after the mapper for each element, a sequential one runs
-    // every mapper first.
-    expect(traceCallbacks(fusion.pipe)).toEqual(['map', 'filter', 'map', 'filter'])
+  it('runs every step to completion before the next, same as root pipe', () => {
+    // There is no runtime fusion engine any more (see the one-runtime-path
+    // plan): `@stopcock/fp/fusion`'s `pipe` is the same sequential function
+    // as root `pipe`. Callback interleaving is unspecified across tiers (D1);
+    // the only tier left here is sequential, so every mapper runs before any
+    // filter, the same as root.
+    expect(traceCallbacks(fusion.pipe)).toEqual(['map', 'map', 'filter', 'filter'])
+    expect(traceCallbacks(fusion.pipe)).toEqual(traceCallbacks(pipe))
   })
 
   it('exposes named aliases so a call site can say which it means', () => {
     expect(fusion.fusedPipe).toBe(fusion.pipe)
     expect(fusion.fusedFlow).toBe(fusion.flow)
+    expect(fusion.pipe).toBe(pipe)
+    expect(fusion.flow).toBe(flow)
   })
 
   it('keeps root exports unchanged in this slice', () => {
@@ -82,40 +88,29 @@ describe('fusion debug facade', () => {
   })
 
   it('keeps engine-bound diagnostics out of this package entirely', () => {
-    // There is no specialized runner bank left to produce them.
-    for (const name of ['explainRunner', 'getOptimizerStats', 'resetOptimizerStats']) {
+    // There is no fusion engine, specialized runner bank, or plan/registry
+    // left to produce them.
+    for (const name of [
+      'explainRunner',
+      'getOptimizerStats',
+      'resetOptimizerStats',
+      'PureRewrite',
+    ]) {
       expect(Object.keys(fusionDebug)).not.toContain(name)
       expect(Object.keys(fusion)).not.toContain(name)
     }
   })
 
-  it('explains a facade pipeline', () => {
-    const explanation = fusionDebug.explain(A.map(double), A.filter(big))
-    expect(explanation.version).toBe(1)
-    expect(explanation.segments.length).toBeGreaterThan(0)
-    expect(explanation.executor).toBe('portable')
-  })
-
-  it('reports only currently authorized pure rewrites', () => {
-    expect(fusionDebug.explainPure(A.sort, A.take(2)).rewrites).toEqual([])
-    expect(
-      fusionDebug.explainPure(A.map((value: number) => value), A.length).rewrites,
-    ).toEqual([
-      {
-        kind: 'elide-unused-map',
-        description: 'map callbacks are elided when only downstream length observes the segment',
-      },
-    ])
+  it('reports sequential for any pipeline, truthfully: there is nothing left to fuse at runtime', () => {
+    expect(explain(A.map(double), A.filter(big))).toBe('sequential')
+    expect(explainPure(A.map(double), A.filter(big))).toBe('sequential')
+    expect(fusionDebug.explain(A.sort, A.take(2))).toBe('sequential')
+    expect(fusionDebug.explainPure()).toBe('sequential')
   })
 })
 
 describe('internal sequential core', () => {
-  it('is not connected to root yet', () => {
-    expect(pipe).not.toBe(sequentialPipe)
-    expect(flow).not.toBe(sequentialFlow)
-  })
-
-  it('applies steps left to right', () => {
+  it('root pipe and flow delegate straight to it', () => {
     expect(
       sequentialPipe(
         1,
@@ -132,16 +127,17 @@ describe('internal sequential core', () => {
     ).toBe(20)
   })
 
-  it('steps rather than fusing, whatever the operators are', () => {
+  it('applies steps left to right, whatever the operators are', () => {
     expect(sequentialPipe([1, 2, 3], A.map(double), A.filter(big))).toEqual([4, 6])
     expect(traceCallbacks(sequentialPipe as never)).toEqual(['map', 'map', 'filter', 'filter'])
   })
 
-  it('agrees with the fused engine on the same pipeline', () => {
+  it('agrees with every public facade on the same pipeline', () => {
     const steps = [A.map(double), A.filter(big), A.take(1)] as never[]
-    expect(sequentialPipe([1, 2, 3, 4], ...steps)).toEqual(
-      fusion.pipe([1, 2, 3, 4], ...(steps as [never, never, never])),
-    )
+    const expected = sequentialPipe([1, 2, 3, 4], ...steps)
+    expect(expected).toEqual(fusion.pipe([1, 2, 3, 4], ...(steps as [never, never, never])))
+    expect(expected).toEqual(pipe([1, 2, 3, 4], ...(steps as [never, never, never])))
+    expect(expected).toEqual(compile(...steps)([1, 2, 3, 4]))
   })
 
   it('imports nothing', async () => {

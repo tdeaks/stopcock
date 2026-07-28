@@ -45,13 +45,11 @@ describe('dual', () => {
   })
 
   describe('tagging', () => {
+    // The tag was read by a fused runtime engine that no longer exists. It
+    // remains an accepted argument for source compatibility (see dual.ts),
+    // but is otherwise inert: a tagged and an untagged dual() behave
+    // identically, and neither stamps `_op`/`_fn`/`_a1`/`_a2` any more.
     const multiply = dual(2, (a: number, b: number) => a * b, { op: 'multiply' })
-
-    it('tagged data-last form has _op and _fn', () => {
-      const dataLast = multiply(3)
-      expect(typeof dataLast._op).toBe('number')
-      expect(dataLast._fn).toBe(3)
-    })
 
     it('tagged data-first still works', () => {
       expect(multiply(4, 3)).toBe(12)
@@ -65,6 +63,15 @@ describe('dual', () => {
       expect(pipe(4, multiply(3))).toBe(12)
     })
 
+    it('tagged dual has no _op or _fn', () => {
+      const dataLast = multiply(3) as ((data: number) => number) & {
+        readonly _op?: number
+        readonly _fn?: unknown
+      }
+      expect(dataLast._op).toBeUndefined()
+      expect(dataLast._fn).toBeUndefined()
+    })
+
     it('untagged dual has no _op or _fn', () => {
       const add = dual(2, (a: number, b: number) => a + b)
       const dataLast = add(2) as ((data: number) => number) & {
@@ -75,16 +82,11 @@ describe('dual', () => {
       expect(dataLast._fn).toBeUndefined()
     })
 
-    it('each data-last invocation gets fresh metadata', () => {
-      const fn1 = multiply(5)
-      const fn2 = multiply(10)
-      expect(fn1._fn).toBe(5)
-      expect(fn2._fn).toBe(10)
-    })
-
-    it('arity-1 tagged: wrapper itself has _op', () => {
-      const negate = dual(1, (x: number) => -x, { op: 'negate' })
-      expect(typeof negate._op).toBe('number')
+    it('arity-1 tagged: wrapper has no _op', () => {
+      const negate = dual(1, (x: number) => -x, { op: 'negate' }) as ((x: number) => number) & {
+        readonly _op?: number
+      }
+      expect(negate._op).toBeUndefined()
       expect(negate(5)).toBe(-5)
     })
 
@@ -143,11 +145,11 @@ describe('dual', () => {
 
     it('data-first', () => expect(tagged3(10, 2, 3)).toBe(15))
 
-    it('data-last has _op and _fn', () => {
+    it('data-last still works, with no _op/_fn/_a1', () => {
       const dl = tagged3(2, 3)
-      expect(typeof dl._op).toBe('number')
-      expect(dl._fn).toBe(2)
-      expect(dl._a1).toBe(3)
+      expect(dl._op).toBeUndefined()
+      expect(dl._fn).toBeUndefined()
+      expect(dl._a1).toBeUndefined()
       expect(dl(10)).toBe(15)
     })
   })
@@ -159,12 +161,12 @@ describe('dual', () => {
 
     it('data-first', () => expect(tagged4(10, 1, 2, 3)).toBe(16))
 
-    it('data-last has _op, _fn, _a1, _a2', () => {
+    it('data-last still works, with no _op/_fn/_a1/_a2', () => {
       const dl = tagged4(1, 2, 3)
-      expect(typeof dl._op).toBe('number')
-      expect(dl._fn).toBe(1)
-      expect(dl._a1).toBe(2)
-      expect(dl._a2).toBe(3)
+      expect(dl._op).toBeUndefined()
+      expect(dl._fn).toBeUndefined()
+      expect(dl._a1).toBeUndefined()
+      expect(dl._a2).toBeUndefined()
       expect(dl(10)).toBe(16)
     })
   })
@@ -178,10 +180,10 @@ describe('dual', () => {
 
     it('data-first', () => expect(tagged5(1, 2, 3, 4, 5)).toBe(15))
 
-    it('data-last has _op and _fn', () => {
+    it('data-last still works, with no _op/_fn', () => {
       const dl = tagged5(2, 3, 4, 5)
-      expect(typeof dl._op).toBe('number')
-      expect(dl._fn).toBe(2)
+      expect(dl._op).toBeUndefined()
+      expect(dl._fn).toBeUndefined()
       expect(dl(1)).toBe(15)
     })
   })

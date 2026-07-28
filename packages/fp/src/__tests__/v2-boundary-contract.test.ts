@@ -3,8 +3,6 @@ import * as F from '../index'
 import * as A from '../array'
 import * as Iter from '../iter'
 import { compile } from '../fusion'
-import { interpret } from '../internal/compact-runtime'
-import { buildPlan } from '../plan'
 import {
   V2_EAGER_FLAT_MAP_EXPECTATIONS,
   V2_EAGER_FLAT_MAP_SURFACES,
@@ -19,40 +17,15 @@ interface EagerSurface {
   readonly run: (input: number[], callback: EagerCallback) => unknown
 }
 
-const happyPathArraySurfaces: readonly EagerSurface[] = [
+// Both surfaces run the exact same `array.ts` operators: `runtime-compile`
+// used to run through the compact fusion engine's own executor, which is
+// gone. `compile` now just aliases sequential application (see
+// `v2-contract-fixtures.mts`'s comment on `V2_EAGER_FLAT_MAP_SURFACES`), so
+// every array-domain surface this package ships conforms identically.
+const eagerArraySurfaces: readonly EagerSurface[] = [
   {
     id: 'generated-data-last',
     run: (input, callback) => A.flatMap(callback)(input),
-  },
-  {
-    id: 'reference-interpreter',
-    run: (input, callback) => interpret(buildPlan([A.flatMap(callback)]), input),
-  },
-  {
-    id: 'portable-lowering',
-    run: (input, callback) => interpret(buildPlan([A.flatMap(callback)]), input),
-  },
-  {
-    id: 'runtime-compile',
-    run: (input, callback) =>
-      compile(
-        A.flatMap(callback),
-        A.map((value: number) => value),
-      )(input),
-  },
-]
-
-const directEagerSurfaces = happyPathArraySurfaces.slice(0, 1)
-
-const divergentArraySurfaces: readonly EagerSurface[] = [
-  {
-    id: 'reference-interpreter',
-    run: (input, callback) => interpret(buildPlan([A.flatMap(callback)]), input),
-  },
-  {
-    id: 'portable-lowering',
-    run: (input, callback) =>
-      interpret(buildPlan([A.flatMap(callback), A.map((value: number) => value)]), input),
   },
   {
     id: 'runtime-compile',
@@ -99,7 +72,6 @@ describe('Stopcock 2.0 root migration snapshot', () => {
       'Ok',
       'Option',
       'PipelineExplanation',
-      'PureRewrite',
       'Result',
       'Runner',
       'Some',
@@ -114,11 +86,9 @@ describe('Stopcock 2.0 root migration snapshot', () => {
 })
 
 describe('eager Array.flatMap 2.0 contract', () => {
-  it('records one intended contract and an explicit oracle status for every execution surface', () => {
+  it('records one intended contract and a conformant status for every execution surface', () => {
     expect(V2_EAGER_FLAT_MAP_SURFACES.map(({ id }) => id)).toEqual([
       'generated-data-last',
-      'reference-interpreter',
-      'portable-lowering',
       'runtime-compile',
       'fp-compiler',
     ])
@@ -127,15 +97,11 @@ describe('eager Array.flatMap 2.0 contract', () => {
         ({ expectedContract }) => expectedContract === 'indexed-returned-array',
       ),
     ).toBe(true)
-    expect(
-      V2_EAGER_FLAT_MAP_SURFACES.filter(({ currentStatus }) =>
-        currentStatus.startsWith('divergent-'),
-      ).every(({ oracleEligible }) => !oracleEligible),
-    ).toBe(true)
+    expect(V2_EAGER_FLAT_MAP_SURFACES.every(({ oracleEligible }) => oracleEligible)).toBe(true)
   })
 
-  it.each(happyPathArraySurfaces)(
-    '$id independently matches the explicit Array-return happy-path result and callback shape',
+  it.each(eagerArraySurfaces)(
+    '$id matches the explicit Array-return happy-path result and callback shape',
     ({ run }) => {
       const calls: unknown[][] = []
       const result = run([1, 2, 3], (...args: unknown[]) => {
@@ -149,45 +115,26 @@ describe('eager Array.flatMap 2.0 contract', () => {
     },
   )
 
-  it.each(divergentArraySurfaces)(
-    '$id currently consumes arbitrary returned iterables and is therefore not an oracle',
-    ({ id, run }) => {
-      let iteratorReads = 0
-      const iterable = {
-        get [Symbol.iterator]() {
-          iteratorReads++
-          return function* () {
-            yield 10
-            yield 20
-          }
-        },
-      }
+  it.each(eagerArraySurfaces)('$id does not consume an arbitrary callback-returned iterable', ({ run }) => {
+    let iteratorReads = 0
+    const iterable = {
+      get [Symbol.iterator]() {
+        iteratorReads++
+        return function* () {
+          yield 10
+          yield 20
+        }
+      },
+    }
 
-      expect(run([1], () => iterable as unknown as number[])).toEqual([10, 20])
-      expect(iteratorReads).toBe(1)
-      expect(V2_EAGER_FLAT_MAP_SURFACES.find((surface) => surface.id === id)?.oracleEligible).toBe(
-        false,
-      )
-    },
-  )
+    const result = run([1], () => iterable as unknown as number[])
 
-  it.each(divergentArraySurfaces)(
-    '$id currently observes returned Array growth and is therefore not an oracle',
-    ({ run }) => {
-      const returned = [1]
-      Object.defineProperty(returned, 0, {
-        configurable: true,
-        get() {
-          returned.push(2)
-          return 1
-        },
-      })
+    expect(result).toEqual([])
+    expect(iteratorReads).toBe(0)
+    expect(V2_EAGER_FLAT_MAP_EXPECTATIONS.arbitraryReturnedIterable).toBe('not-consumed')
+  })
 
-      expect(run([0], () => returned)).toEqual([1, 2])
-    },
-  )
-
-  it.each(directEagerSurfaces)(
+  it.each(eagerArraySurfaces)(
     '$id snapshots the source and returned Array lengths and reads every indexed hole',
     ({ run }) => {
       const source = [1, 2]
@@ -227,29 +174,7 @@ describe('eager Array.flatMap 2.0 contract', () => {
     },
   )
 
-  it.each(directEagerSurfaces)(
-    '$id does not consume an arbitrary callback-returned iterable',
-    ({ run }) => {
-      let iteratorReads = 0
-      const iterable = {
-        get [Symbol.iterator]() {
-          iteratorReads++
-          return function* () {
-            yield 10
-            yield 20
-          }
-        },
-      }
-
-      const result = run([1], () => iterable as unknown as number[])
-
-      expect(result).toEqual([])
-      expect(iteratorReads).toBe(0)
-      expect(V2_EAGER_FLAT_MAP_EXPECTATIONS.arbitraryReturnedIterable).toBe('not-consumed')
-    },
-  )
-
-  it.each(directEagerSurfaces)(
+  it.each(eagerArraySurfaces)(
     '$id preserves the first thrown getter error and stops outer callbacks',
     ({ run }) => {
       const error = new Error('flatMap getter failed')

@@ -115,12 +115,6 @@ export const V2_ROOT_MIGRATION = [
     disposition: 'move',
   },
   {
-    name: 'PureRewrite',
-    kind: 'type',
-    destination: '@stopcock/fp/fusion/debug',
-    disposition: 'move',
-  },
-  {
     name: 'None',
     kind: 'type',
     destination: '@stopcock/fp',
@@ -158,6 +152,16 @@ export const V2_ROOT_MIGRATION = [
   },
 ] as const
 
+// Before the one-runtime-path plan, `reference-interpreter` and
+// `portable-lowering` ran the fused compact engine's own executor, which
+// consumed a callback's returned value as an arbitrary Iterable (a plain
+// `for...of`) rather than reading it as an indexed Array like every other
+// surface. That executor is gone: `runtime-compile` (`@stopcock/fp/compile`)
+// is now a plain alias for sequential application over the real `array.ts`
+// operators, so it is byte-for-byte the same code path as
+// `generated-data-last` and conforms identically -- confirmed empirically
+// (exact result, event order, and thrown-error propagation all match) before
+// this fixture was updated.
 export const V2_EAGER_FLAT_MAP_SURFACES = [
   {
     id: 'generated-data-last',
@@ -166,22 +170,10 @@ export const V2_EAGER_FLAT_MAP_SURFACES = [
     oracleEligible: true,
   },
   {
-    id: 'reference-interpreter',
-    expectedContract: 'indexed-returned-array',
-    currentStatus: 'divergent-arbitrary-iterable-and-live-length',
-    oracleEligible: false,
-  },
-  {
-    id: 'portable-lowering',
-    expectedContract: 'indexed-returned-array',
-    currentStatus: 'divergent-arbitrary-iterable-and-live-length',
-    oracleEligible: false,
-  },
-  {
     id: 'runtime-compile',
     expectedContract: 'indexed-returned-array',
-    currentStatus: 'divergent-in-multi-step-lowering',
-    oracleEligible: false,
+    currentStatus: 'conformant',
+    oracleEligible: true,
   },
   {
     id: 'fp-compiler',

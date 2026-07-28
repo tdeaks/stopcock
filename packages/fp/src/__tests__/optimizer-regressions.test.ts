@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vite-plus/test'
-// These exercise fused execution, which since S8 lives behind the explicit
-// entry rather than at the root. Root pipe is sequential and is covered by
-// root-sequential.test.ts.
+// Imported from the explicit fusion entry for historical reasons (this file
+// predates the one-runtime-path plan, when that entry ran a separate fused
+// engine). `@stopcock/fp/fusion`'s `pipe` is now the same sequential
+// function as root `pipe`, covered separately by root-sequential.test.ts.
 import { pipe } from '../fusion'
 import { flow } from '../flow'
 import * as A from '../array'
@@ -77,10 +78,10 @@ describe('optimizer regressions', () => {
       }
       const result = pipe(data, A.sort, A.map(f), A.take(3))
       expect(result).toEqual([10, 20, 30])
-      // map is called on the 4th item too: take's limit is only recognized
-      // after map forwards that item downstream (single-pass exact
-      // semantics, matching interpret()). Its result is discarded.
-      expect(calls).toEqual([1, 2, 3, 4])
+      // D1 / one-runtime-path: there is no fused runtime engine left, so map
+      // runs to completion over the whole (sorted) array before take slices
+      // it -- one full pass per step, same as root pipe.
+      expect(calls).toEqual([1, 2, 3, 4, 5])
     })
 
     it('accessor op used non-terminally is not silently dropped (pipe, few args)', () => {
@@ -192,7 +193,11 @@ describe('optimizer regressions', () => {
   })
 
   describe('flatMap early termination across outer and inner iterators', () => {
-    it('take stops mid wide expansion with exact outer call count', () => {
+    it('take slices the fully expanded array: no early exit without a fusion engine (D1)', () => {
+      // Before the one-runtime-path plan this ran through the fused compact
+      // engine and stopped after the first outer call once take's quota was
+      // satisfied mid-expansion. There is no fused runtime left: flatMap
+      // expands every outer element first, and take(7) slices the result.
       const wide = Array.from({ length: 1000 }, (_, i) => i)
       let outerCalls = 0
       const f = (x: number) => {
@@ -201,10 +206,16 @@ describe('optimizer regressions', () => {
       }
       const result = pipe(wide, A.flatMap(f), A.take(7))
       expect(result).toEqual([0, 1, 2, 3, 4, 5, 6])
-      expect(outerCalls).toBe(1)
+      expect(outerCalls).toBe(1000)
     })
 
-    it('takeWhile stops mid wide expansion with exact call counts', () => {
+    it('takeWhile filters the fully expanded array: no early exit without a fusion engine (D1)', () => {
+      // Same reasoning as the take case above: flatMap expands every one of
+      // the 1000 outer elements (outerCalls) before takeWhile ever runs.
+      // takeWhile's own early exit is intact -- it is a property of
+      // takeWhile's implementation, not of fusion -- and it still only
+      // needs 6 predicate calls to find its stopping point, because that
+      // point falls within the first outer element's own 50-item expansion.
       const wide = Array.from({ length: 1000 }, (_, i) => i)
       let outerCalls = 0
       let innerCalls = 0
@@ -218,7 +229,7 @@ describe('optimizer regressions', () => {
       }
       const result = pipe(wide, A.flatMap(f), A.takeWhile(pred))
       expect(result).toEqual([0, 1, 2, 3, 4])
-      expect(outerCalls).toBe(1)
+      expect(outerCalls).toBe(1000)
       expect(innerCalls).toBe(6)
     })
 

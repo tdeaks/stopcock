@@ -7,14 +7,19 @@ import { sequentialPipe } from '../internal/sequential'
 import { pipe } from '../pipe'
 
 /**
- * S8: root `pipe` and `flow` are sequential. Fusion is something you ask for by
- * name. The two must agree on output and disagree on execution, and this file
- * pins both halves — a root that quietly still fused would pass every result
- * assertion in the suite.
+ * S8: root `pipe` and `flow` are sequential. Fusion used to be something you
+ * asked for by name, backed by a separate runtime engine with genuinely
+ * different execution; this file used to pin the two disagreeing on
+ * execution while agreeing on output, so a root that quietly still fused
+ * would fail here even though it passed every result assertion elsewhere.
+ *
+ * The one-runtime-path plan deleted that engine. `@stopcock/fp/fusion`'s
+ * `pipe`/`flow` are now the literal same functions as root's -- there is
+ * nothing left to disagree on, so this file pins that identity instead.
  */
 describe('root pipe is sequential', () => {
-  it('is the sequential core, not the engine', () => {
-    expect(pipe).not.toBe(fusedPipe)
+  it('is the sequential core, and fusion is now the same function', () => {
+    expect(pipe).toBe(fusedPipe)
   })
 
   it('runs every stage before the next rather than interleaving', () => {

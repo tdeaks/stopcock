@@ -273,6 +273,6 @@ test('portable compiler runners retain endpoint types', () => {
     FusionDebug.explain(
       A.map((value: number) => value + 1),
       A.sum,
-    ).runtimeCodeGeneration,
-  ).toEqualTypeOf<false>()
+    ),
+  ).toEqualTypeOf<'sequential' | 'compiled site'>()
 })

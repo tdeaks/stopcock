@@ -6,8 +6,10 @@
 // from documented/native-JS semantics, not from running the implementation
 // first and pasting its output.
 import { describe, it, expect } from 'vite-plus/test'
-// These exercise fused execution, which since S8 lives behind the explicit
-// entry rather than at the root. Root pipe is sequential and is covered by
+// Imported from the explicit fusion entry rather than root for historical
+// reasons (this file predates the one-runtime-path plan, when that entry
+// still ran a separate fused engine). `@stopcock/fp/fusion`'s `pipe` is now
+// the same sequential function as root `pipe`, covered separately by
 // root-sequential.test.ts.
 import { pipe } from '../fusion'
 import { compile, compilePure } from '../compile'
@@ -57,7 +59,7 @@ describe('callback order and argument shapes', () => {
     ])
   })
 
-  it('a fused chain runs each accepted item through every step before advancing to the next item', () => {
+  it('runs every step to completion over the whole array before the next step starts (D1: no runtime fusion engine left to interleave)', () => {
     const log: string[] = []
     pipe(
       [1, 2],
@@ -70,7 +72,7 @@ describe('callback order and argument shapes', () => {
         return true
       }),
     )
-    expect(log).toEqual(['map(1)', 'filter(2)', 'map(2)', 'filter(3)'])
+    expect(log).toEqual(['map(1)', 'map(2)', 'filter(2)', 'filter(3)'])
   })
 })
 
@@ -90,7 +92,11 @@ describe('exceptions mid-pipeline', () => {
     expect(calls).toEqual([1, 2, 3])
   })
 
-  it('an exception in a later step still means earlier steps already ran for that item', () => {
+  it('a later step throwing does not stop an earlier step, which already ran over the whole array (D1)', () => {
+    // Sequential runs one step to completion before the next starts: map has
+    // no downstream, so it never sees forEach's exception. forEach's own
+    // early exit (it stops calling its own callback at the throw) is intact;
+    // that is a property of forEach's implementation, not of any fusion.
     const mapped: number[] = []
     expect(() =>
       pipe(
@@ -104,7 +110,7 @@ describe('exceptions mid-pipeline', () => {
         }),
       ),
     ).toThrow('stop')
-    expect(mapped).toEqual([1, 2])
+    expect(mapped).toEqual([1, 2, 3])
   })
 })
 
@@ -325,13 +331,14 @@ describe('take/drop edge conventions', () => {
     expect(result).toEqual([])
   })
 
-  // Asserted contract: take's quota check happens at take's own position in
-  // the fused chain, after any upstream step has already run for that item.
-  // So an upstream map still gets called once on the item that reveals the
-  // quota is full (the (n+1)-th accepted item), one call more than the
-  // output length -- it just never reaches take's downstream (nothing here,
-  // but the same rule is what lets a later step count differently).
-  it('take(n) halts one item past its quota: the upstream step still runs on that (n+1)-th item', () => {
+  // Asserted contract (D1): sequential runs the whole array through map
+  // before take ever sees a value, so an upstream step's callback count
+  // does not depend on a downstream take's quota at all. Before the
+  // one-runtime-path plan this pipe ran through the fused compact engine,
+  // which interleaved map and take per element and halted the upstream
+  // step one item past the quota; that engine is gone, and this pin moved
+  // to match root pipe's actual, sequential behavior.
+  it("take(n)'s quota does not shorten an upstream step's call count: map still runs over the whole array", () => {
     const calls: number[] = []
     const result = pipe(
       [1, 2, 3, 4, 5],
@@ -342,7 +349,7 @@ describe('take/drop edge conventions', () => {
       A.take(2),
     )
     expect(result).toEqual([1, 2])
-    expect(calls).toEqual([1, 2, 3])
+    expect(calls).toEqual([1, 2, 3, 4, 5])
   })
 })
 
@@ -460,7 +467,7 @@ describe('reduce seeding', () => {
 })
 
 describe('compile()/compilePure() agree with pipe() on these same contracts', () => {
-  it('compile() preserves callback order and take() early exit like pipe()', () => {
+  it('compile() preserves callback order like pipe(), including the D1 take() re-pin above', () => {
     const calls: number[] = []
     const runner = compile(
       A.map((x: number) => {
@@ -470,7 +477,7 @@ describe('compile()/compilePure() agree with pipe() on these same contracts', ()
       A.take(2),
     )
     expect(runner([1, 2, 3, 4])).toEqual([2, 4])
-    expect(calls).toEqual([1, 2, 3])
+    expect(calls).toEqual([1, 2, 3, 4])
   })
 
   it('compilePure() still runs left to right for a plain map/filter/reduce chain', () => {

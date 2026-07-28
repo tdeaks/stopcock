@@ -5,12 +5,12 @@ import * as A from '../array'
 
 describe('array', () => {
   describe('operator construction', () => {
-    it('tags the map operator and keeps it fusible', () => {
+    it('constructs a plain data-last closure, with no runtime tag', () => {
       const double = (x: number) => x * 2
       const op = A.map(double)
 
-      expect((op as any)._op).toBe(1)
-      expect((op as any)._fn).toBe(double)
+      expect((op as any)._op).toBeUndefined()
+      expect((op as any)._fn).toBeUndefined()
       expect(pipe([1, 2, 3], op)).toEqual([2, 4, 6])
     })
   })

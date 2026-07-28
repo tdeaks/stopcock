@@ -12,9 +12,11 @@ const dbl = (x: number) => x * 2
  * fuse. Building a plan to discover there was no plan to build made composing
  * plain functions about 15x slower than lodash for an identical result.
  *
- * It now compiles only when a step is one of this package's operators. These
- * tests pin both halves of that: composition stays cheap, and fusion still
- * happens where it is the point.
+ * There is no runtime fusion engine any more (one-runtime-path plan):
+ * `flow`/`fusedFlow` both compose left to right over plain function
+ * application, whatever the steps are. Composition stays cheap because
+ * there is nothing left to build before running it; `@stopcock/fp-compiler`
+ * is the only thing that still fuses, and it does that at build time.
  */
 describe('flow over plain functions', () => {
   it('composes left to right', () => {
@@ -72,9 +74,11 @@ describe('flow over this package operators', () => {
     expect(order).toEqual(['map', 'map', 'filter', 'filter'])
   })
 
-  it('still fuses through the explicit entry', () => {
-    // Fused execution interleaves the callbacks per element; a sequential
-    // composition would run every mapper before the first predicate.
+  it('is sequential through the explicit entry too: fusedFlow is flow', () => {
+    // `@stopcock/fp/fusion`'s `flow` is the same sequential function as root
+    // `flow` -- there is no separate runtime engine left to interleave
+    // callbacks. `@stopcock/fp-compiler` is what fuses, at build time.
+    expect(fusedFlow).toBe(flow)
     const order: string[] = []
     const composed = fusedFlow(
       A.map((x: number) => {
@@ -87,7 +91,7 @@ describe('flow over this package operators', () => {
       }),
     )
     expect(composed([1, 2])).toEqual([2, 4])
-    expect(order).toEqual(['map', 'filter', 'map', 'filter'])
+    expect(order).toEqual(['map', 'map', 'filter', 'filter'])
   })
 
   it('fuses when only a later step is an operator', () => {
