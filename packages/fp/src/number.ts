@@ -1,4 +1,3 @@
-import { dual } from './dual-untagged'
 import { none, some, type Option } from './option'
 
 declare const finiteBrand: unique symbol
@@ -15,23 +14,19 @@ export const isPositive = (value: number): value is Positive => value > 0
 export const isEven = (value: number): boolean => value % 2 === 0
 export const isOdd = (value: number): boolean => value % 2 !== 0
 
-export const clamp: {
-  (value: number, minimum: number, maximum: number): number
-  (minimum: number, maximum: number): (value: number) => number
-} = /* @__PURE__ */ dual(3, (value: number, minimum: number, maximum: number): number => {
-  const low = Math.min(minimum, maximum)
-  const high = Math.max(minimum, maximum)
-  return Math.min(Math.max(value, low), high)
-})
+export const clamp: (minimum: number, maximum: number) => (value: number) => number =
+  (minimum, maximum) => (value) => {
+    const low = Math.min(minimum, maximum)
+    const high = Math.max(minimum, maximum)
+    return Math.min(Math.max(value, low), high)
+  }
 
-export const between: {
-  (value: number, minimum: number, maximum: number): boolean
-  (minimum: number, maximum: number): (value: number) => boolean
-} = /* @__PURE__ */ dual(3, (value: number, minimum: number, maximum: number): boolean => {
-  const low = Math.min(minimum, maximum)
-  const high = Math.max(minimum, maximum)
-  return value >= low && value <= high
-})
+export const between: (minimum: number, maximum: number) => (value: number) => boolean =
+  (minimum, maximum) => (value) => {
+    const low = Math.min(minimum, maximum)
+    const high = Math.max(minimum, maximum)
+    return value >= low && value <= high
+  }
 
 export const sum = (values: readonly number[]): number => {
   let total = 0
@@ -56,12 +51,10 @@ export const mean = (values: readonly number[]): Option<number> => {
 export const meanNonEmpty = (values: readonly [number, ...number[]]): number =>
   sum(values) / values.length
 
-export const weightedMeanOrUndefined: {
-  (values: readonly number[], weights: readonly number[]): number | undefined
-  (weights: readonly number[]): (values: readonly number[]) => number | undefined
-} = /* @__PURE__ */ dual(
-  2,
-  (values: readonly number[], weights: readonly number[]): number | undefined => {
+export const weightedMeanOrUndefined: (
+  weights: readonly number[],
+) => (values: readonly number[]) => number | undefined =
+  (weights) => (values) => {
     if (values.length !== weights.length) {
       throw new RangeError('weightedMean: values and weights must have equal lengths')
     }
@@ -72,19 +65,15 @@ export const weightedMeanOrUndefined: {
       totalWeight += weights[index]
     }
     return totalWeight === 0 ? undefined : weighted / totalWeight
-  },
-)
+  }
 
-export const weightedMean: {
-  (values: readonly number[], weights: readonly number[]): Option<number>
-  (weights: readonly number[]): (values: readonly number[]) => Option<number>
-} = /* @__PURE__ */ dual(
-  2,
-  (values: readonly number[], weights: readonly number[]): Option<number> => {
-    const value = weightedMeanOrUndefined(values, weights)
+export const weightedMean: (
+  weights: readonly number[],
+) => (values: readonly number[]) => Option<number> =
+  (weights) => (values) => {
+    const value = weightedMeanOrUndefined(weights)(values)
     return value === undefined ? none : some(value)
-  },
-)
+  }
 
 export const medianOrUndefined = (values: readonly number[]): number | undefined => {
   if (values.length === 0) return undefined
@@ -245,86 +234,66 @@ const interpolateSorted = (values: readonly number[], fraction: number): number 
   return sorted[low] + (position - low) * (sorted[high] - sorted[low])
 }
 
-export const quantileOrUndefined: {
-  (values: readonly number[], q: number): number | undefined
-  (q: number): (values: readonly number[]) => number | undefined
-} = /* @__PURE__ */ dual(2, (values: readonly number[], q: number): number | undefined => {
+export const quantileOrUndefined: (
+  q: number,
+) => (values: readonly number[]) => number | undefined = (q) => (values) => {
   if (q < 0 || q > 1 || Number.isNaN(q)) {
     throw new RangeError('quantile: q must be in the inclusive range [0, 1]')
   }
   return interpolateSorted(values, q)
-})
+}
 
-export const quantile: {
-  (values: readonly number[], q: number): Option<number>
-  (q: number): (values: readonly number[]) => Option<number>
-} = /* @__PURE__ */ dual(2, (values: readonly number[], q: number): Option<number> => {
-  const value = quantileOrUndefined(values, q)
-  return value === undefined ? none : some(value)
-})
+export const quantile: (q: number) => (values: readonly number[]) => Option<number> =
+  (q) => (values) => {
+    const value = quantileOrUndefined(q)(values)
+    return value === undefined ? none : some(value)
+  }
 
-export const quantileNonEmpty: {
-  (values: readonly [number, ...number[]], q: number): number
-  (q: number): (values: readonly [number, ...number[]]) => number
-} = /* @__PURE__ */ dual(
-  2,
-  (values: readonly [number, ...number[]], q: number): number =>
-    quantileOrUndefined(values, q) as number,
-)
+export const quantileNonEmpty: (
+  q: number,
+) => (values: readonly [number, ...number[]]) => number = (q) => (values) =>
+  quantileOrUndefined(q)(values) as number
 
-export const percentileOrUndefined: {
-  (values: readonly number[], p: number): number | undefined
-  (p: number): (values: readonly number[]) => number | undefined
-} = /* @__PURE__ */ dual(2, (values: readonly number[], p: number): number | undefined => {
+export const percentileOrUndefined: (
+  p: number,
+) => (values: readonly number[]) => number | undefined = (p) => (values) => {
   if (p < 0 || p > 100 || Number.isNaN(p)) {
     throw new RangeError('percentile: p must be in the inclusive range [0, 100]')
   }
   return interpolateSorted(values, p / 100)
-})
+}
 
-export const percentile: {
-  (values: readonly number[], p: number): Option<number>
-  (p: number): (values: readonly number[]) => Option<number>
-} = /* @__PURE__ */ dual(2, (values: readonly number[], p: number): Option<number> => {
-  const value = percentileOrUndefined(values, p)
-  return value === undefined ? none : some(value)
-})
-
-export const percentileNonEmpty: {
-  (values: readonly [number, ...number[]], p: number): number
-  (p: number): (values: readonly [number, ...number[]]) => number
-} = /* @__PURE__ */ dual(
-  2,
-  (values: readonly [number, ...number[]], p: number): number =>
-    percentileOrUndefined(values, p) as number,
-)
-
-export const dotProduct: {
-  (left: readonly number[], right: readonly number[]): number
-  (right: readonly number[]): (left: readonly number[]) => number
-} = /* @__PURE__ */ dual(2, (left: readonly number[], right: readonly number[]): number => {
-  if (left.length !== right.length) {
-    throw new RangeError('dotProduct: vectors must have equal lengths')
+export const percentile: (p: number) => (values: readonly number[]) => Option<number> =
+  (p) => (values) => {
+    const value = percentileOrUndefined(p)(values)
+    return value === undefined ? none : some(value)
   }
-  let total = 0
-  for (let index = 0; index < left.length; index++) total += left[index] * right[index]
-  return total
-})
 
-export const dotProductTruncate: {
-  (left: readonly number[], right: readonly number[]): number
-  (right: readonly number[]): (left: readonly number[]) => number
-} = /* @__PURE__ */ dual(2, (left: readonly number[], right: readonly number[]): number => {
+export const percentileNonEmpty: (
+  p: number,
+) => (values: readonly [number, ...number[]]) => number = (p) => (values) =>
+  percentileOrUndefined(p)(values) as number
+
+export const dotProduct: (right: readonly number[]) => (left: readonly number[]) => number =
+  (right) => (left) => {
+    if (left.length !== right.length) {
+      throw new RangeError('dotProduct: vectors must have equal lengths')
+    }
+    let total = 0
+    for (let index = 0; index < left.length; index++) total += left[index] * right[index]
+    return total
+  }
+
+export const dotProductTruncate: (
+  right: readonly number[],
+) => (left: readonly number[]) => number = (right) => (left) => {
   const length = Math.min(left.length, right.length)
   let total = 0
   for (let index = 0; index < length; index++) total += left[index] * right[index]
   return total
-})
+}
 
-export const gcd: {
-  (left: number, right: number): number
-  (right: number): (left: number) => number
-} = /* @__PURE__ */ dual(2, (left: number, right: number): number => {
+export const gcd: (right: number) => (left: number) => number = (right) => (left) => {
   let a = Math.abs(Math.trunc(left))
   let b = Math.abs(Math.trunc(right))
   while (b !== 0) {
@@ -333,14 +302,11 @@ export const gcd: {
     b = remainder
   }
   return a
-})
+}
 
-export const lcm: {
-  (left: number, right: number): number
-  (right: number): (left: number) => number
-} = /* @__PURE__ */ dual(2, (left: number, right: number): number =>
-  left === 0 || right === 0 ? 0 : Math.abs((left / gcd(left, right)) * right),
-)
+export const lcm: (right: number) => (left: number) => number =
+  (right) => (left) =>
+    left === 0 || right === 0 ? 0 : Math.abs((left / gcd(right)(left)) * right)
 
 export const parseFinite = (input: string): Option<Finite> => {
   if (input.trim() === '') return none
@@ -360,26 +326,9 @@ export const parseInteger = (input: string, radix = 10): Option<Integer> => {
 
 export type RoundingMode = 'round' | 'floor' | 'ceil' | 'trunc'
 
-export const roundTo: {
-  (value: number, digits: number, mode?: RoundingMode): number
-  (digits: number, mode?: RoundingMode): (value: number) => number
-} = function roundTo(
-  valueOrDigits: number,
-  digitsOrMode?: number | RoundingMode,
-  maybeMode: RoundingMode = 'round',
-): number | ((value: number) => number) {
-  if (typeof digitsOrMode !== 'number') {
-    const digits = valueOrDigits
-    const mode = digitsOrMode ?? 'round'
-    return (value: number): number => {
-      const factor = 10 ** Math.trunc(digits)
-      return Math[mode](value * factor) / factor
-    }
+export const roundTo: (digits: number, mode?: RoundingMode) => (value: number) => number =
+  (digits, mode = 'round') =>
+  (value) => {
+    const factor = 10 ** Math.trunc(digits)
+    return Math[mode](value * factor) / factor
   }
-  const digits = Math.trunc(digitsOrMode)
-  const factor = 10 ** digits
-  return Math[maybeMode](valueOrDigits * factor) / factor
-} as {
-  (value: number, digits: number, mode?: RoundingMode): number
-  (digits: number, mode?: RoundingMode): (value: number) => number
-}

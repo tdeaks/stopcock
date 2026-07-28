@@ -133,49 +133,22 @@ export const isEmpty = (source: object): boolean => {
 const hasImpl = (source: object, key: PropertyKey): boolean =>
   Object.prototype.hasOwnProperty.call(source, key)
 
-export function has(source: object, key: PropertyKey): boolean
-export function has(key: PropertyKey): (source: object) => boolean
-export function has(
-  sourceOrKey: object | PropertyKey,
-  key?: PropertyKey,
-): boolean | ((source: object) => boolean) {
-  if (arguments.length === 1) {
-    const search = sourceOrKey as PropertyKey
-    return (source) => hasImpl(source, search)
-  }
-  return hasImpl(sourceOrKey as object, key as PropertyKey)
+export function has(key: PropertyKey): (source: object) => boolean {
+  return (source) => hasImpl(source, key)
 }
 
 const getImpl = <A>(source: ReadonlyRecord<A>, key: PropertyKey): Option<A> =>
   hasImpl(source, key) ? some(source[key]) : none
 
-export function get<A>(source: ReadonlyRecord<A>, key: PropertyKey): Option<A>
-export function get(key: PropertyKey): <A>(source: ReadonlyRecord<A>) => Option<A>
-export function get<A>(
-  sourceOrKey: ReadonlyRecord<A> | PropertyKey,
-  key?: PropertyKey,
-): Option<A> | (<B>(source: ReadonlyRecord<B>) => Option<B>) {
-  if (arguments.length === 1) {
-    const search = sourceOrKey as PropertyKey
-    return <B>(source: ReadonlyRecord<B>): Option<B> => getImpl(source, search)
-  }
-  return getImpl(sourceOrKey as ReadonlyRecord<A>, key as PropertyKey)
+export function get(key: PropertyKey): <A>(source: ReadonlyRecord<A>) => Option<A> {
+  return <A>(source: ReadonlyRecord<A>): Option<A> => getImpl(source, key)
 }
 
 const getOrUndefinedImpl = <A>(source: ReadonlyRecord<A>, key: PropertyKey): A | undefined =>
   hasImpl(source, key) ? source[key] : undefined
 
-export function getOrUndefined<A>(source: ReadonlyRecord<A>, key: PropertyKey): A | undefined
-export function getOrUndefined(key: PropertyKey): <A>(source: ReadonlyRecord<A>) => A | undefined
-export function getOrUndefined<A>(
-  sourceOrKey: ReadonlyRecord<A> | PropertyKey,
-  key?: PropertyKey,
-): A | undefined | (<B>(source: ReadonlyRecord<B>) => B | undefined) {
-  if (arguments.length === 1) {
-    const search = sourceOrKey as PropertyKey
-    return <B>(source: ReadonlyRecord<B>): B | undefined => getOrUndefinedImpl(source, search)
-  }
-  return getOrUndefinedImpl(sourceOrKey as ReadonlyRecord<A>, key as PropertyKey)
+export function getOrUndefined(key: PropertyKey): <A>(source: ReadonlyRecord<A>) => A | undefined {
+  return <A>(source: ReadonlyRecord<A>): A | undefined => getOrUndefinedImpl(source, key)
 }
 
 const setImpl = <A, B>(
@@ -189,26 +162,11 @@ const setImpl = <A, B>(
   return result
 }
 
-export function set<A, B>(
-  source: ReadonlyRecord<A>,
-  key: PropertyKey,
-  value: B,
-): MutableRecord<A | B>
 export function set<B>(
   key: PropertyKey,
   value: B,
-): <A>(source: ReadonlyRecord<A>) => MutableRecord<A | B>
-export function set<A, B>(
-  sourceOrKey: ReadonlyRecord<A> | PropertyKey,
-  keyOrValue: PropertyKey | B,
-  value?: B,
-): MutableRecord<A | B> | (<C>(source: ReadonlyRecord<C>) => MutableRecord<C | B>) {
-  if (arguments.length === 2) {
-    const key = sourceOrKey as PropertyKey
-    const next = keyOrValue as B
-    return <C>(source: ReadonlyRecord<C>): MutableRecord<C | B> => setImpl(source, key, next)
-  }
-  return setImpl(sourceOrKey as ReadonlyRecord<A>, keyOrValue as PropertyKey, value as B)
+): <A>(source: ReadonlyRecord<A>) => MutableRecord<A | B> {
+  return <A>(source: ReadonlyRecord<A>): MutableRecord<A | B> => setImpl(source, key, value)
 }
 
 const removeImpl = <A>(source: ReadonlyRecord<A>, key: PropertyKey): MutableRecord<A> => {
@@ -220,17 +178,8 @@ const removeImpl = <A>(source: ReadonlyRecord<A>, key: PropertyKey): MutableReco
   return result
 }
 
-export function remove<A>(source: ReadonlyRecord<A>, key: PropertyKey): MutableRecord<A>
-export function remove(key: PropertyKey): <A>(source: ReadonlyRecord<A>) => MutableRecord<A>
-export function remove<A>(
-  sourceOrKey: ReadonlyRecord<A> | PropertyKey,
-  key?: PropertyKey,
-): MutableRecord<A> | (<B>(source: ReadonlyRecord<B>) => MutableRecord<B>) {
-  if (arguments.length === 1) {
-    const excluded = sourceOrKey as PropertyKey
-    return <B>(source: ReadonlyRecord<B>): MutableRecord<B> => removeImpl(source, excluded)
-  }
-  return removeImpl(sourceOrKey as ReadonlyRecord<A>, key as PropertyKey)
+export function remove(key: PropertyKey): <A>(source: ReadonlyRecord<A>) => MutableRecord<A> {
+  return <A>(source: ReadonlyRecord<A>): MutableRecord<A> => removeImpl(source, key)
 }
 
 const modifyImpl = <A>(
@@ -243,25 +192,10 @@ const modifyImpl = <A>(
 }
 
 export function modify<A>(
-  source: ReadonlyRecord<A>,
   key: PropertyKey,
   f: (value: A) => A,
-): MutableRecord<A>
-export function modify<A>(
-  key: PropertyKey,
-  f: (value: A) => A,
-): (source: ReadonlyRecord<A>) => MutableRecord<A>
-export function modify<A>(
-  sourceOrKey: ReadonlyRecord<A> | PropertyKey,
-  keyOrF: PropertyKey | ((value: A) => A),
-  f?: (value: A) => A,
-): MutableRecord<A> | ((source: ReadonlyRecord<A>) => MutableRecord<A>) {
-  if (arguments.length === 2) {
-    const key = sourceOrKey as PropertyKey
-    const transform = keyOrF as (value: A) => A
-    return (source) => modifyImpl(source, key, transform)
-  }
-  return modifyImpl(sourceOrKey as ReadonlyRecord<A>, keyOrF as PropertyKey, f as (value: A) => A)
+): (source: ReadonlyRecord<A>) => MutableRecord<A> {
+  return (source) => modifyImpl(source, key, f)
 }
 
 const updateImpl = <A>(
@@ -274,51 +208,16 @@ const updateImpl = <A>(
 }
 
 export function update<A>(
-  source: ReadonlyRecord<A>,
   key: PropertyKey,
   f: (value: Option<A>) => Option<A>,
-): MutableRecord<A>
-export function update<A>(
-  key: PropertyKey,
-  f: (value: Option<A>) => Option<A>,
-): (source: ReadonlyRecord<A>) => MutableRecord<A>
-export function update<A>(
-  sourceOrKey: ReadonlyRecord<A> | PropertyKey,
-  keyOrF: PropertyKey | ((value: Option<A>) => Option<A>),
-  f?: (value: Option<A>) => Option<A>,
-): MutableRecord<A> | ((source: ReadonlyRecord<A>) => MutableRecord<A>) {
-  if (arguments.length === 2) {
-    const key = sourceOrKey as PropertyKey
-    const transform = keyOrF as (value: Option<A>) => Option<A>
-    return (source) => updateImpl(source, key, transform)
-  }
-  return updateImpl(
-    sourceOrKey as ReadonlyRecord<A>,
-    keyOrF as PropertyKey,
-    f as (value: Option<A>) => Option<A>,
-  )
+): (source: ReadonlyRecord<A>) => MutableRecord<A> {
+  return (source) => updateImpl(source, key, f)
 }
 
 export function map<A, B>(
-  source: ReadonlyRecord<A>,
   f: (value: A, key: PropertyKey) => B,
-): MutableRecord<B>
-export function map<A, B>(
-  f: (value: A, key: PropertyKey) => B,
-): (source: ReadonlyRecord<A>) => MutableRecord<B>
-export function map<A, B>(
-  sourceOrF: ReadonlyRecord<A> | ((value: A, key: PropertyKey) => B),
-  f?: (value: A, key: PropertyKey) => B,
-): MutableRecord<B> | ((source: ReadonlyRecord<A>) => MutableRecord<B>) {
-  if (arguments.length === 1) {
-    const transform = sourceOrF as (value: A, key: PropertyKey) => B
-    return (source) => mapIntoImpl(source, create<B>(), transform)
-  }
-  return mapIntoImpl(
-    sourceOrF as ReadonlyRecord<A>,
-    create<B>(),
-    f as (value: A, key: PropertyKey) => B,
-  )
+): (source: ReadonlyRecord<A>) => MutableRecord<B> {
+  return (source) => mapIntoImpl(source, create<B>(), f)
 }
 
 const mapIntoImpl = <A, B, Target extends MutableRecord<unknown>>(
@@ -342,32 +241,15 @@ interface MapInto {
 export const mapInto = mapIntoImpl as MapInto
 
 export function filter<A, B extends A>(
-  source: ReadonlyRecord<A>,
-  predicate: (value: A, key: PropertyKey) => value is B,
-): MutableRecord<B>
-export function filter<A>(
-  source: ReadonlyRecord<A>,
-  predicate: (value: A, key: PropertyKey) => boolean,
-): MutableRecord<A>
-export function filter<A, B extends A>(
   predicate: (value: A, key: PropertyKey) => value is B,
 ): (source: ReadonlyRecord<A>) => MutableRecord<B>
 export function filter<A>(
   predicate: (value: A, key: PropertyKey) => boolean,
 ): (source: ReadonlyRecord<A>) => MutableRecord<A>
 export function filter<A>(
-  sourceOrPredicate: ReadonlyRecord<A> | ((value: A, key: PropertyKey) => boolean),
-  predicate?: (value: A, key: PropertyKey) => boolean,
-): MutableRecord<A> | ((source: ReadonlyRecord<A>) => MutableRecord<A>) {
-  if (arguments.length === 1) {
-    const test = sourceOrPredicate as (value: A, key: PropertyKey) => boolean
-    return (source) => filterIntoImpl(source, create<A>(), test)
-  }
-  return filterIntoImpl(
-    sourceOrPredicate as ReadonlyRecord<A>,
-    create<A>(),
-    predicate as (value: A, key: PropertyKey) => boolean,
-  )
+  predicate: (value: A, key: PropertyKey) => boolean,
+): (source: ReadonlyRecord<A>) => MutableRecord<A> {
+  return (source) => filterIntoImpl(source, create<A>(), predicate)
 }
 
 const filterIntoImpl = <A, Target extends MutableRecord<unknown>>(
@@ -409,24 +291,9 @@ const filterMapImpl = <A, B>(
 }
 
 export function filterMap<A, B>(
-  source: ReadonlyRecord<A>,
   f: (value: A, key: PropertyKey) => Option<B>,
-): MutableRecord<B>
-export function filterMap<A, B>(
-  f: (value: A, key: PropertyKey) => Option<B>,
-): (source: ReadonlyRecord<A>) => MutableRecord<B>
-export function filterMap<A, B>(
-  sourceOrF: ReadonlyRecord<A> | ((value: A, key: PropertyKey) => Option<B>),
-  f?: (value: A, key: PropertyKey) => Option<B>,
-): MutableRecord<B> | ((source: ReadonlyRecord<A>) => MutableRecord<B>) {
-  if (arguments.length === 1) {
-    const transform = sourceOrF as (value: A, key: PropertyKey) => Option<B>
-    return (source) => filterMapImpl(source, transform)
-  }
-  return filterMapImpl(
-    sourceOrF as ReadonlyRecord<A>,
-    f as (value: A, key: PropertyKey) => Option<B>,
-  )
+): (source: ReadonlyRecord<A>) => MutableRecord<B> {
+  return (source) => filterMapImpl(source, f)
 }
 
 const mapKeysImpl = <A>(
@@ -438,10 +305,6 @@ const mapKeysImpl = <A>(
   return result
 }
 
-export function mapKeys<A>(
-  source: ReadonlyRecord<A>,
-  f: (key: PropertyKey, value: A) => PropertyKey,
-): MutableRecord<A>
 export function mapKeys(
   f: (key: PropertyKey) => PropertyKey,
 ): <A>(source: ReadonlyRecord<A>) => MutableRecord<A>
@@ -449,17 +312,9 @@ export function mapKeys<A>(
   f: (key: PropertyKey, value: A) => PropertyKey,
 ): (source: ReadonlyRecord<A>) => MutableRecord<A>
 export function mapKeys<A>(
-  sourceOrF: ReadonlyRecord<A> | ((key: PropertyKey, value: A) => PropertyKey),
-  f?: (key: PropertyKey, value: A) => PropertyKey,
-): MutableRecord<A> | ((source: ReadonlyRecord<A>) => MutableRecord<A>) {
-  if (arguments.length === 1) {
-    const transform = sourceOrF as (key: PropertyKey, value: A) => PropertyKey
-    return (source) => mapKeysImpl(source, transform)
-  }
-  return mapKeysImpl(
-    sourceOrF as ReadonlyRecord<A>,
-    f as (key: PropertyKey, value: A) => PropertyKey,
-  )
+  f: (key: PropertyKey, value: A) => PropertyKey,
+): (source: ReadonlyRecord<A>) => MutableRecord<A> {
+  return (source) => mapKeysImpl(source, f)
 }
 
 const mergeImpl = <A, B>(
@@ -467,22 +322,10 @@ const mergeImpl = <A, B>(
   other: ReadonlyRecord<B>,
 ): MutableRecord<A | B> => Object.assign(create<A | B>(), source, other)
 
-export function merge<A, B>(
-  source: ReadonlyRecord<A>,
-  other: ReadonlyRecord<B>,
-): MutableRecord<A | B>
 export function merge<B>(
   other: ReadonlyRecord<B>,
-): <A>(source: ReadonlyRecord<A>) => MutableRecord<A | B>
-export function merge<A, B>(
-  sourceOrOther: ReadonlyRecord<A> | ReadonlyRecord<B>,
-  other?: ReadonlyRecord<B>,
-): MutableRecord<A | B> | (<C>(source: ReadonlyRecord<C>) => MutableRecord<C | B>) {
-  if (arguments.length === 1) {
-    const right = sourceOrOther as ReadonlyRecord<B>
-    return <C>(source: ReadonlyRecord<C>): MutableRecord<C | B> => mergeImpl(source, right)
-  }
-  return mergeImpl(sourceOrOther as ReadonlyRecord<A>, other as ReadonlyRecord<B>)
+): <A>(source: ReadonlyRecord<A>) => MutableRecord<A | B> {
+  return <A>(source: ReadonlyRecord<A>): MutableRecord<A | B> => mergeImpl(source, other)
 }
 
 const pickImpl = <A>(
@@ -496,22 +339,10 @@ const pickImpl = <A>(
   return result
 }
 
-export function pick<A>(
-  source: ReadonlyRecord<A>,
-  selected: Iterable<PropertyKey>,
-): MutableRecord<A>
 export function pick(
   selected: Iterable<PropertyKey>,
-): <A>(source: ReadonlyRecord<A>) => MutableRecord<A>
-export function pick<A>(
-  sourceOrSelected: ReadonlyRecord<A> | Iterable<PropertyKey>,
-  selected?: Iterable<PropertyKey>,
-): MutableRecord<A> | (<B>(source: ReadonlyRecord<B>) => MutableRecord<B>) {
-  if (arguments.length === 1) {
-    const keys = sourceOrSelected as Iterable<PropertyKey>
-    return <B>(source: ReadonlyRecord<B>): MutableRecord<B> => pickImpl(source, keys)
-  }
-  return pickImpl(sourceOrSelected as ReadonlyRecord<A>, selected as Iterable<PropertyKey>)
+): <A>(source: ReadonlyRecord<A>) => MutableRecord<A> {
+  return <A>(source: ReadonlyRecord<A>): MutableRecord<A> => pickImpl(source, selected)
 }
 
 const omitImpl = <A>(
@@ -527,19 +358,10 @@ const omitImpl = <A>(
   return result
 }
 
-export function omit<A>(source: ReadonlyRecord<A>, omitted: Iterable<PropertyKey>): MutableRecord<A>
 export function omit(
   omitted: Iterable<PropertyKey>,
-): <A>(source: ReadonlyRecord<A>) => MutableRecord<A>
-export function omit<A>(
-  sourceOrOmitted: ReadonlyRecord<A> | Iterable<PropertyKey>,
-  omitted?: Iterable<PropertyKey>,
-): MutableRecord<A> | (<B>(source: ReadonlyRecord<B>) => MutableRecord<B>) {
-  if (arguments.length === 1) {
-    const keys = sourceOrOmitted as Iterable<PropertyKey>
-    return <B>(source: ReadonlyRecord<B>): MutableRecord<B> => omitImpl(source, keys)
-  }
-  return omitImpl(sourceOrOmitted as ReadonlyRecord<A>, omitted as Iterable<PropertyKey>)
+): <A>(source: ReadonlyRecord<A>) => MutableRecord<A> {
+  return <A>(source: ReadonlyRecord<A>): MutableRecord<A> => omitImpl(source, omitted)
 }
 
 const partitionImpl = <A>(
@@ -556,14 +378,6 @@ const partitionImpl = <A>(
 }
 
 export function partition<A, B extends A>(
-  source: ReadonlyRecord<A>,
-  predicate: (value: A, key: PropertyKey) => value is B,
-): readonly [accepted: MutableRecord<B>, rejected: MutableRecord<Exclude<A, B>>]
-export function partition<A>(
-  source: ReadonlyRecord<A>,
-  predicate: (value: A, key: PropertyKey) => boolean,
-): readonly [accepted: MutableRecord<A>, rejected: MutableRecord<A>]
-export function partition<A, B extends A>(
   predicate: (value: A, key: PropertyKey) => value is B,
 ): (
   source: ReadonlyRecord<A>,
@@ -572,21 +386,11 @@ export function partition<A>(
   predicate: (value: A, key: PropertyKey) => boolean,
 ): (source: ReadonlyRecord<A>) => readonly [accepted: MutableRecord<A>, rejected: MutableRecord<A>]
 export function partition<A>(
-  sourceOrPredicate: ReadonlyRecord<A> | ((value: A, key: PropertyKey) => boolean),
-  predicate?: (value: A, key: PropertyKey) => boolean,
-):
-  | readonly [accepted: MutableRecord<A>, rejected: MutableRecord<A>]
-  | ((
-      source: ReadonlyRecord<A>,
-    ) => readonly [accepted: MutableRecord<A>, rejected: MutableRecord<A>]) {
-  if (arguments.length === 1) {
-    const test = sourceOrPredicate as (value: A, key: PropertyKey) => boolean
-    return (source) => partitionImpl(source, test)
-  }
-  return partitionImpl(
-    sourceOrPredicate as ReadonlyRecord<A>,
-    predicate as (value: A, key: PropertyKey) => boolean,
-  )
+  predicate: (value: A, key: PropertyKey) => boolean,
+): (
+  source: ReadonlyRecord<A>,
+) => readonly [accepted: MutableRecord<A>, rejected: MutableRecord<A>] {
+  return (source) => partitionImpl(source, predicate)
 }
 
 const reduceImpl = <A, B>(
@@ -600,29 +404,10 @@ const reduceImpl = <A, B>(
 }
 
 export function reduce<A, B>(
-  source: ReadonlyRecord<A>,
   reducer: (state: B, value: A, key: PropertyKey) => B,
   initial: B,
-): B
-export function reduce<A, B>(
-  reducer: (state: B, value: A, key: PropertyKey) => B,
-  initial: B,
-): (source: ReadonlyRecord<A>) => B
-export function reduce<A, B>(
-  sourceOrReducer: ReadonlyRecord<A> | ((state: B, value: A, key: PropertyKey) => B),
-  reducerOrInitial: ((state: B, value: A, key: PropertyKey) => B) | B,
-  initial?: B,
-): B | ((source: ReadonlyRecord<A>) => B) {
-  if (arguments.length === 2) {
-    const reducer = sourceOrReducer as (state: B, value: A, key: PropertyKey) => B
-    const seed = reducerOrInitial as B
-    return (source) => reduceImpl(source, reducer, seed)
-  }
-  return reduceImpl(
-    sourceOrReducer as ReadonlyRecord<A>,
-    reducerOrInitial as (state: B, value: A, key: PropertyKey) => B,
-    initial as B,
-  )
+): (source: ReadonlyRecord<A>) => B {
+  return (source) => reduceImpl(source, reducer, initial)
 }
 
 const equalsImpl = <A>(
@@ -638,19 +423,8 @@ const equalsImpl = <A>(
   return true
 }
 
-type NonRuntimeFunction<T> = T extends
-  | ((...arguments_: never[]) => unknown)
-  | (abstract new (...arguments_: never[]) => unknown)
-  ? never
-  : T
-
 type RecordValue<T extends ReadonlyRecord<unknown>> = T extends ReadonlyRecord<infer A> ? A : never
 
-export function equals<A, Other extends ReadonlyRecord<A>>(
-  source: ReadonlyRecord<A>,
-  other: Other & NonRuntimeFunction<Other>,
-  equal?: (left: A, right: A) => boolean,
-): boolean
 export function equals<Other extends ReadonlyRecord<unknown>>(
   other: Other,
 ): (source: ReadonlyRecord<RecordValue<Other>>) => boolean
@@ -659,17 +433,8 @@ export function equals<Other extends ReadonlyRecord<unknown>>(
   equal: (left: RecordValue<Other>, right: RecordValue<Other>) => boolean,
 ): (source: ReadonlyRecord<RecordValue<Other>>) => boolean
 export function equals<A>(
-  sourceOrOther: ReadonlyRecord<A>,
-  otherOrEqual?: ReadonlyRecord<A> | ((left: A, right: A) => boolean),
+  other: ReadonlyRecord<A>,
   equal: (left: A, right: A) => boolean = Object.is,
-): boolean | ((source: ReadonlyRecord<A>) => boolean) {
-  if (arguments.length === 1) {
-    const other = sourceOrOther
-    return (source) => equalsImpl(source, other, Object.is)
-  }
-  if (typeof otherOrEqual === 'function') {
-    const other = sourceOrOther
-    return (source) => equalsImpl(source, other, otherOrEqual)
-  }
-  return equalsImpl(sourceOrOther, otherOrEqual as ReadonlyRecord<A>, equal)
+): (source: ReadonlyRecord<A>) => boolean {
+  return (source) => equalsImpl(source, other, equal)
 }

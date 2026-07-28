@@ -1,4 +1,3 @@
-import { dual } from './dual-untagged'
 import type { Predicate, Refinement } from './guard'
 import { err, ok, type Result } from './result'
 
@@ -33,12 +32,6 @@ export const fromResult = <A, E>(result: Result<A, E>): Validation<A, E> =>
 
 export const fromPredicate: {
   <A, B extends A, E>(
-    value: A,
-    predicate: Refinement<A, B>,
-    onFalse: (value: A) => E,
-  ): Validation<B, E>
-  <A, E>(value: A, predicate: Predicate<A>, onFalse: (value: A) => E): Validation<A, E>
-  <A, B extends A, E>(
     predicate: Refinement<A, B>,
     onFalse: (value: A) => E,
   ): <C extends A>(value: C) => Validation<B & C, E>
@@ -46,11 +39,10 @@ export const fromPredicate: {
     predicate: Predicate<A>,
     onFalse: (value: A) => E,
   ): <B extends A>(value: B) => Validation<B, E>
-} = dual(
-  3,
-  <A, E>(value: A, predicate: Predicate<A>, onFalse: (value: A) => E): Validation<A, E> =>
-    predicate(value) ? valid(value) : invalid(onFalse(value)),
-)
+} =
+  <A, E>(predicate: Predicate<A>, onFalse: (value: A) => E) =>
+  (value: A): Validation<A, E> =>
+    predicate(value) ? valid(value) : invalid(onFalse(value))
 
 type ValidationValue<T> = T extends { readonly _tag: 1; readonly value: infer A } ? A : never
 type ValidationError<T> = T extends {
@@ -111,10 +103,8 @@ export function all(
 }
 
 export const traverse: {
-  <A, B, E>(values: readonly A[], validate: (value: A) => Validation<B, E>): Validation<B[], E>
   <A, B, E>(validate: (value: A) => Validation<B, E>): (values: readonly A[]) => Validation<B[], E>
-} = dual(
-  2,
-  <A, B, E>(values: readonly A[], validate: (value: A) => Validation<B, E>): Validation<B[], E> =>
-    all(values.map(validate)),
-)
+} =
+  <A, B, E>(validate: (value: A) => Validation<B, E>) =>
+  (values: readonly A[]): Validation<B[], E> =>
+    all(values.map(validate))

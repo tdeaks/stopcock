@@ -1,4 +1,3 @@
-import { dual } from './dual-untagged'
 import { none, some as optionSome, type Option } from './option'
 
 // Plan step opcodes. Purely internal tags for IterStep['op'] -- there is no
@@ -1158,40 +1157,35 @@ export const unfold = <S, A>(
 const mapImpl = <A, B>(source: Iterable<A>, f: (value: A, index: number) => B): Iter<B> =>
   appendStep(source, 'map', f as IterUnary)
 
-export const map: {
-  <A, B>(source: Iterable<A>, f: (value: A, index: number) => B): Iter<B>
-  <A, B>(f: (value: A, index: number) => B): (source: Iterable<A>) => Iter<B>
-} = dual(2, mapImpl)
+export const map: <A, B>(f: (value: A, index: number) => B) => (source: Iterable<A>) => Iter<B> =
+  (f) => (source) => mapImpl(source, f)
 
 const filterImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A> =>
   appendStep(source, 'filter', predicate as IterPredicate)
 
 export const filter: {
-  <A, B extends A>(source: Iterable<A>, predicate: Refinement<A, B>): Iter<B>
-  <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A>
   <A, B extends A>(predicate: Refinement<A, B>): (source: Iterable<A>) => Iter<B>
   <A>(predicate: Predicate<A>): (source: Iterable<A>) => Iter<A>
-} = dual(2, filterImpl)
+} = ((predicate: Predicate<unknown>) => (source: Iterable<unknown>) =>
+  filterImpl(source, predicate)) as any
 
 const filterMapImpl = <A, B>(
   source: Iterable<A>,
   f: (value: A, index: number) => Option<B>,
 ): Iter<B> => appendStep(source, 'filterMap', f as IterUnary)
 
-export const filterMap: {
-  <A, B>(source: Iterable<A>, f: (value: A, index: number) => Option<B>): Iter<B>
-  <A, B>(f: (value: A, index: number) => Option<B>): (source: Iterable<A>) => Iter<B>
-} = dual(2, filterMapImpl)
+export const filterMap: <A, B>(
+  f: (value: A, index: number) => Option<B>,
+) => (source: Iterable<A>) => Iter<B> = (f) => (source) => filterMapImpl(source, f)
 
 const flatMapImpl = <A, B>(
   source: Iterable<A>,
   f: (value: A, index: number) => Iterable<B>,
 ): Iter<B> => appendStep(source, 'flatMap', f as IterUnary)
 
-export const flatMap: {
-  <A, B>(source: Iterable<A>, f: (value: A, index: number) => Iterable<B>): Iter<B>
-  <A, B>(f: (value: A, index: number) => Iterable<B>): (source: Iterable<A>) => Iter<B>
-} = dual(2, flatMapImpl)
+export const flatMap: <A, B>(
+  f: (value: A, index: number) => Iterable<B>,
+) => (source: Iterable<A>) => Iter<B> = (f) => (source) => flatMapImpl(source, f)
 
 export const flatten = <A>(source: Iterable<Iterable<A>>): Iter<A> =>
   flatMapImpl(source, (value) => value)
@@ -1202,46 +1196,37 @@ const tapImpl = <A>(source: Iterable<A>, effect: (value: A, index: number) => vo
     return value
   })
 
-export const tap: {
-  <A>(source: Iterable<A>, effect: (value: A, index: number) => void): Iter<A>
-  <A>(effect: (value: A, index: number) => void): (source: Iterable<A>) => Iter<A>
-} = dual(2, tapImpl)
+export const tap: <A>(
+  effect: (value: A, index: number) => void,
+) => (source: Iterable<A>) => Iter<A> = (effect) => (source) => tapImpl(source, effect)
 
 const takeImpl = <A>(source: Iterable<A>, count: number): Iter<A> => {
   const limit = natural(count)
   return appendStep(source, 'take', undefined, limit)
 }
 
-export const take: {
-  <A>(source: Iterable<A>, count: number): Iter<A>
-  (count: number): <A>(source: Iterable<A>) => Iter<A>
-} = dual(2, takeImpl)
+export const take: (count: number) => <A>(source: Iterable<A>) => Iter<A> = (count) => (source) =>
+  takeImpl(source, count)
 
 const dropImpl = <A>(source: Iterable<A>, count: number): Iter<A> => {
   const limit = natural(count)
   return appendStep(source, 'drop', undefined, limit)
 }
 
-export const drop: {
-  <A>(source: Iterable<A>, count: number): Iter<A>
-  (count: number): <A>(source: Iterable<A>) => Iter<A>
-} = dual(2, dropImpl)
+export const drop: (count: number) => <A>(source: Iterable<A>) => Iter<A> = (count) => (source) =>
+  dropImpl(source, count)
 
 const takeWhileImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A> =>
   appendStep(source, 'takeWhile', predicate as IterPredicate)
 
-export const takeWhile: {
-  <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A>
-  <A>(predicate: Predicate<A>): (source: Iterable<A>) => Iter<A>
-} = dual(2, takeWhileImpl)
+export const takeWhile: <A>(predicate: Predicate<A>) => (source: Iterable<A>) => Iter<A> =
+  (predicate) => (source) => takeWhileImpl(source, predicate)
 
 const dropWhileImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A> =>
   appendStep(source, 'dropWhile', predicate as IterPredicate)
 
-export const dropWhile: {
-  <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A>
-  <A>(predicate: Predicate<A>): (source: Iterable<A>) => Iter<A>
-} = dual(2, dropWhileImpl)
+export const dropWhile: <A>(predicate: Predicate<A>) => (source: Iterable<A>) => Iter<A> =
+  (predicate) => (source) => dropWhileImpl(source, predicate)
 
 const scanImpl = <A, B>(
   source: Iterable<A>,
@@ -1249,17 +1234,11 @@ const scanImpl = <A, B>(
   initial: B,
 ): Iter<B> => appendStep(source, 'scan', reducer as IterReducer, 0, initial)
 
-export const scan: {
-  <A, B>(
-    source: Iterable<A>,
-    reducer: (state: B, value: A, index: number) => B,
-    initial: B,
-  ): Iter<B>
-  <A, B>(
-    reducer: (state: B, value: A, index: number) => B,
-    initial: B,
-  ): (source: Iterable<A>) => Iter<B>
-} = dual(3, scanImpl)
+export const scan: <A, B>(
+  reducer: (state: B, value: A, index: number) => B,
+  initial: B,
+) => (source: Iterable<A>) => Iter<B> = (reducer, initial) => (source) =>
+  scanImpl(source, reducer, initial)
 
 const chunkImpl = <A>(source: Iterable<A>, size: number): Iter<readonly A[]> => {
   if (!Number.isSafeInteger(size) || size < 1) {
@@ -1279,10 +1258,8 @@ const chunkImpl = <A>(source: Iterable<A>, size: number): Iter<readonly A[]> => 
   })
 }
 
-export const chunk: {
-  <A>(source: Iterable<A>, size: number): Iter<readonly A[]>
-  (size: number): <A>(source: Iterable<A>) => Iter<readonly A[]>
-} = dual(2, chunkImpl)
+export const chunk: (size: number) => <A>(source: Iterable<A>) => Iter<readonly A[]> =
+  (size) => (source) => chunkImpl(source, size)
 
 const intersperseImpl = <A>(source: Iterable<A>, separator: A): Iter<A> =>
   make(function* () {
@@ -1294,10 +1271,8 @@ const intersperseImpl = <A>(source: Iterable<A>, separator: A): Iter<A> =>
     }
   })
 
-export const intersperse: {
-  <A>(source: Iterable<A>, separator: A): Iter<A>
-  <A>(separator: A): (source: Iterable<A>) => Iter<A>
-} = dual(2, intersperseImpl)
+export const intersperse: <A>(separator: A) => (source: Iterable<A>) => Iter<A> =
+  (separator) => (source) => intersperseImpl(source, separator)
 
 const distinctByImpl = <A, K>(source: Iterable<A>, keyOf: (value: A) => K): Iter<A> =>
   make(function* () {
@@ -1311,10 +1286,8 @@ const distinctByImpl = <A, K>(source: Iterable<A>, keyOf: (value: A) => K): Iter
     }
   })
 
-export const distinctBy: {
-  <A, K>(source: Iterable<A>, keyOf: (value: A) => K): Iter<A>
-  <A, K>(keyOf: (value: A) => K): (source: Iterable<A>) => Iter<A>
-} = dual(2, distinctByImpl)
+export const distinctBy: <A, K>(keyOf: (value: A) => K) => (source: Iterable<A>) => Iter<A> =
+  (keyOf) => (source) => distinctByImpl(source, keyOf)
 
 export const distinct = <A>(source: Iterable<A>): Iter<A> =>
   distinctByImpl(source, (value) => value)
@@ -1325,10 +1298,8 @@ const concatImpl = <A, B>(source: Iterable<A>, other: Iterable<B>): Iter<A | B> 
     yield* other
   })
 
-export const concat: {
-  <A, B>(source: Iterable<A>, other: Iterable<B>): Iter<A | B>
-  <B>(other: Iterable<B>): <A>(source: Iterable<A>) => Iter<A | B>
-} = dual(2, concatImpl)
+export const concat: <B>(other: Iterable<B>) => <A>(source: Iterable<A>) => Iter<A | B> =
+  (other) => (source) => concatImpl(source, other)
 
 const zipWithImpl = <A, B, C>(
   source: Iterable<A>,
@@ -1363,26 +1334,14 @@ const zipWithImpl = <A, B, C>(
     }
   })
 
-export const zipWith: {
-  <A, B, C>(
-    source: Iterable<A>,
-    other: Iterable<B>,
-    f: (left: A, right: B, index: number) => C,
-  ): Iter<C>
-  <A, B, C>(
-    other: Iterable<B>,
-    f: (left: A, right: B, index: number) => C,
-  ): (source: Iterable<A>) => Iter<C>
-} = dual(3, zipWithImpl)
+export const zipWith: <A, B, C>(
+  other: Iterable<B>,
+  f: (left: A, right: B, index: number) => C,
+) => (source: Iterable<A>) => Iter<C> = (other, f) => (source) => zipWithImpl(source, other, f)
 
-export const zip: {
-  <A, B>(source: Iterable<A>, other: Iterable<B>): Iter<readonly [A, B]>
-  <B>(other: Iterable<B>): <A>(source: Iterable<A>) => Iter<readonly [A, B]>
-} = dual(
-  2,
-  <A, B>(source: Iterable<A>, other: Iterable<B>): Iter<readonly [A, B]> =>
-    zipWithImpl(source, other, (left, right) => [left, right] as const),
-)
+export const zip: <A, B>(other: Iterable<B>) => (source: Iterable<A>) => Iter<readonly [A, B]> =
+  (other) => (source) =>
+    zipWithImpl(source, other, (left, right) => [left, right] as const)
 
 export const enumerate = <A>(source: Iterable<A>): Iter<readonly [number, A]> =>
   mapImpl(source, (value, index) => [index, value] as const)
@@ -1480,10 +1439,11 @@ const reduceImpl = <A, B>(
   return state
 }
 
-export const reduce: {
-  <A, B>(source: Iterable<A>, reducer: (state: B, value: A, index: number) => B, initial: B): B
-  <A, B>(reducer: (state: B, value: A, index: number) => B, initial: B): (source: Iterable<A>) => B
-} = dual(3, reduceImpl)
+export const reduce: <A, B>(
+  reducer: (state: B, value: A, index: number) => B,
+  initial: B,
+) => (source: Iterable<A>) => B = (reducer, initial) => (source) =>
+  reduceImpl(source, reducer, initial)
 
 export const firstOrUndefined = <A>(source: Iterable<A>): A | undefined => {
   const plan = planOf(source)
@@ -1595,11 +1555,10 @@ const findOrUndefinedImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): A
 }
 
 export const findOrUndefined: {
-  <A, B extends A>(source: Iterable<A>, predicate: Refinement<A, B>): B | undefined
-  <A>(source: Iterable<A>, predicate: Predicate<A>): A | undefined
   <A, B extends A>(predicate: Refinement<A, B>): (source: Iterable<A>) => B | undefined
   <A>(predicate: Predicate<A>): (source: Iterable<A>) => A | undefined
-} = dual(2, findOrUndefinedImpl)
+} = ((predicate: Predicate<unknown>) => (source: Iterable<unknown>) =>
+  findOrUndefinedImpl(source, predicate)) as any
 
 const findImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Option<A> => {
   let index = 0
@@ -1626,11 +1585,10 @@ const findImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Option<A> =>
 }
 
 export const find: {
-  <A, B extends A>(source: Iterable<A>, predicate: Refinement<A, B>): Option<B>
-  <A>(source: Iterable<A>, predicate: Predicate<A>): Option<A>
   <A, B extends A>(predicate: Refinement<A, B>): (source: Iterable<A>) => Option<B>
   <A>(predicate: Predicate<A>): (source: Iterable<A>) => Option<A>
-} = dual(2, findImpl)
+} = ((predicate: Predicate<unknown>) => (source: Iterable<unknown>) =>
+  findImpl(source, predicate)) as any
 
 const nthOrUndefinedImpl = <A>(source: Iterable<A>, index: number): A | undefined => {
   if (!Number.isSafeInteger(index) || index < 0) return undefined
@@ -1657,10 +1615,8 @@ const nthOrUndefinedImpl = <A>(source: Iterable<A>, index: number): A | undefine
   return undefined
 }
 
-export const nthOrUndefined: {
-  <A>(source: Iterable<A>, index: number): A | undefined
-  (index: number): <A>(source: Iterable<A>) => A | undefined
-} = dual(2, nthOrUndefinedImpl)
+export const nthOrUndefined: (index: number) => <A>(source: Iterable<A>) => A | undefined =
+  (index) => (source) => nthOrUndefinedImpl(source, index)
 
 const nthImpl = <A>(source: Iterable<A>, index: number): Option<A> => {
   if (!Number.isSafeInteger(index) || index < 0) return none
@@ -1687,10 +1643,8 @@ const nthImpl = <A>(source: Iterable<A>, index: number): Option<A> => {
   return none
 }
 
-export const nth: {
-  <A>(source: Iterable<A>, index: number): Option<A>
-  (index: number): <A>(source: Iterable<A>) => Option<A>
-} = dual(2, nthImpl)
+export const nth: (index: number) => <A>(source: Iterable<A>) => Option<A> = (index) => (source) =>
+  nthImpl(source, index)
 
 const someImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => {
   let index = 0
@@ -1716,10 +1670,8 @@ const someImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => {
   return false
 }
 
-export const some: {
-  <A>(source: Iterable<A>, predicate: Predicate<A>): boolean
-  <A>(predicate: Predicate<A>): (source: Iterable<A>) => boolean
-} = dual(2, someImpl)
+export const some: <A>(predicate: Predicate<A>) => (source: Iterable<A>) => boolean =
+  (predicate) => (source) => someImpl(source, predicate)
 
 const everyImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => {
   let index = 0
@@ -1745,10 +1697,8 @@ const everyImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => 
   return true
 }
 
-export const every: {
-  <A>(source: Iterable<A>, predicate: Predicate<A>): boolean
-  <A>(predicate: Predicate<A>): (source: Iterable<A>) => boolean
-} = dual(2, everyImpl)
+export const every: <A>(predicate: Predicate<A>) => (source: Iterable<A>) => boolean =
+  (predicate) => (source) => everyImpl(source, predicate)
 
 export const count = (source: Iterable<unknown>): number => {
   let total = 0
@@ -1789,7 +1739,6 @@ const forEachImpl = <A>(source: Iterable<A>, effect: (value: A, index: number) =
   for (const value of source) effect(value, index++)
 }
 
-export const forEach: {
-  <A>(source: Iterable<A>, effect: (value: A, index: number) => void): void
-  <A>(effect: (value: A, index: number) => void): (source: Iterable<A>) => void
-} = dual(2, forEachImpl)
+export const forEach: <A>(
+  effect: (value: A, index: number) => void,
+) => (source: Iterable<A>) => void = (effect) => (source) => forEachImpl(source, effect)

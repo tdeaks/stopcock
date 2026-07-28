@@ -1,4 +1,3 @@
-import { dual } from './dual'
 import { registerTrustedOperator } from './internal/provenance'
 import {
   OP_STR_IS_EMPTY,
@@ -60,114 +59,54 @@ export const toUpperCase: (value: string) => string = /* @__PURE__ */ taggedUnar
   OP_STR_UPPER,
 )
 
-export const startsWith: {
-  (value: string, prefix: string): boolean
-  (prefix: string): (value: string) => boolean
-} = /* @__PURE__ */ dual(2, (value: string, prefix: string): boolean => value.startsWith(prefix))
+export const startsWith: (prefix: string) => (value: string) => boolean =
+  (prefix) => (value) =>
+    value.startsWith(prefix)
 
-export const endsWith: {
-  (value: string, suffix: string): boolean
-  (suffix: string): (value: string) => boolean
-} = /* @__PURE__ */ dual(2, (value: string, suffix: string): boolean => value.endsWith(suffix))
+export const endsWith: (suffix: string) => (value: string) => boolean =
+  (suffix) => (value) =>
+    value.endsWith(suffix)
 
-export const includes: {
-  (value: string, search: string): boolean
-  (search: string): (value: string) => boolean
-} = /* @__PURE__ */ dual(2, (value: string, search: string): boolean => value.includes(search))
+export const includes: (search: string) => (value: string) => boolean =
+  (search) => (value) =>
+    value.includes(search)
 
-export const split: {
-  (value: string, separator: string | RegExp): string[]
-  (separator: string | RegExp): (value: string) => string[]
-} = /* @__PURE__ */ (() => {
-  return function () {
-    if (arguments.length < 2) {
-      const separator = arguments[0] as string | RegExp
-      const operator = ((value: string): string[] => value.split(separator)) as ((
-        value: string,
-      ) => string[]) & {
-        _op: number
-        _fn: string | RegExp
-      }
-      operator._op = OP_STR_SPLIT
-      operator._fn = separator
-      return registerTrustedOperator(operator, OP_STR_SPLIT, separator)
+export const split: (separator: string | RegExp) => (value: string) => string[] =
+  /* @__PURE__ */ (separator) => {
+    const operator = ((value: string): string[] => value.split(separator)) as ((
+      value: string,
+    ) => string[]) & {
+      _op: number
+      _fn: string | RegExp
     }
-    return (arguments[0] as string).split(arguments[1] as string | RegExp)
+    operator._op = OP_STR_SPLIT
+    operator._fn = separator
+    return registerTrustedOperator(operator, OP_STR_SPLIT, separator)
   }
-})() as {
-  (value: string, separator: string | RegExp): string[]
-  (separator: string | RegExp): (value: string) => string[]
-}
 
-export const repeat: {
-  (value: string, count: number): string
-  (count: number): (value: string) => string
-} = /* @__PURE__ */ dual(2, (value: string, count: number): string => value.repeat(count))
+export const repeat: (count: number) => (value: string) => string =
+  (count) => (value) =>
+    value.repeat(count)
 
-export const slice: {
-  (value: string, start: number, end?: number): string
-  (start: number, end?: number): (value: string) => string
-} = function slice(
-  valueOrStart: string | number,
-  startOrEnd?: number,
-  maybeEnd?: number,
-): string | ((value: string) => string) {
-  if (typeof valueOrStart === 'number') {
-    return (value: string): string => value.slice(valueOrStart, startOrEnd)
-  }
-  return valueOrStart.slice(startOrEnd, maybeEnd)
-} as {
-  (value: string, start: number, end?: number): string
-  (start: number, end?: number): (value: string) => string
-}
+export const slice: (start: number, end?: number) => (value: string) => string =
+  (start, end) => (value) =>
+    value.slice(start, end)
 
-export const padStart: {
-  (value: string, targetLength: number, fill?: string): string
-  (targetLength: number, fill?: string): (value: string) => string
-} = function padStart(
-  valueOrLength: string | number,
-  lengthOrFill?: number | string,
-  maybeFill?: string,
-): string | ((value: string) => string) {
-  if (typeof valueOrLength === 'number') {
-    const fill = typeof lengthOrFill === 'string' ? lengthOrFill : undefined
-    return (value: string): string => value.padStart(valueOrLength, fill)
-  }
-  return valueOrLength.padStart(lengthOrFill as number, maybeFill)
-} as {
-  (value: string, targetLength: number, fill?: string): string
-  (targetLength: number, fill?: string): (value: string) => string
-}
+export const padStart: (targetLength: number, fill?: string) => (value: string) => string =
+  (targetLength, fill) => (value) =>
+    value.padStart(targetLength, fill)
 
-export const padEnd: typeof padStart = function padEnd(
-  valueOrLength: string | number,
-  lengthOrFill?: number | string,
-  maybeFill?: string,
-): string | ((value: string) => string) {
-  if (typeof valueOrLength === 'number') {
-    const fill = typeof lengthOrFill === 'string' ? lengthOrFill : undefined
-    return (value: string): string => value.padEnd(valueOrLength, fill)
-  }
-  return valueOrLength.padEnd(lengthOrFill as number, maybeFill)
-} as typeof padStart
+export const padEnd: (targetLength: number, fill?: string) => (value: string) => string =
+  (targetLength, fill) => (value) =>
+    value.padEnd(targetLength, fill)
 
-export const stripPrefix: {
-  (value: string, prefix: string): Option<string>
-  (prefix: string): (value: string) => Option<string>
-} = /* @__PURE__ */ dual(
-  2,
-  (value: string, prefix: string): Option<string> =>
-    value.startsWith(prefix) ? some(value.slice(prefix.length)) : none,
-)
+export const stripPrefix: (prefix: string) => (value: string) => Option<string> =
+  (prefix) => (value) =>
+    value.startsWith(prefix) ? some(value.slice(prefix.length)) : none
 
-export const stripSuffix: {
-  (value: string, suffix: string): Option<string>
-  (suffix: string): (value: string) => Option<string>
-} = /* @__PURE__ */ dual(
-  2,
-  (value: string, suffix: string): Option<string> =>
-    value.endsWith(suffix) ? some(value.slice(0, -suffix.length || undefined)) : none,
-)
+export const stripSuffix: (suffix: string) => (value: string) => Option<string> =
+  (suffix) => (value) =>
+    value.endsWith(suffix) ? some(value.slice(0, -suffix.length || undefined)) : none
 
 export const lines = (value: string): string[] => value.split(/\r\n?|\n/u)
 
@@ -176,81 +115,43 @@ export const words = (value: string): string[] => {
   return normalized === '' ? [] : normalized.split(/\s+/u)
 }
 
-export const replace: {
-  (value: string, search: string | RegExp, replacement: string): string
-  (search: string | RegExp, replacement: string): (value: string) => string
-} = /* @__PURE__ */ dual(3, (value: string, search: string | RegExp, replacement: string): string =>
-  value.replace(search, replacement),
-)
+export const replace: (search: string | RegExp, replacement: string) => (value: string) => string =
+  (search, replacement) => (value) =>
+    value.replace(search, replacement)
 
-export const replaceAll: {
-  (value: string, search: string | RegExp, replacement: string): string
-  (search: string | RegExp, replacement: string): (value: string) => string
-} = /* @__PURE__ */ dual(3, (value: string, search: string | RegExp, replacement: string): string =>
-  value.replaceAll(search, replacement),
-)
+export const replaceAll: (
+  search: string | RegExp,
+  replacement: string,
+) => (value: string) => string = (search, replacement) => (value) =>
+  value.replaceAll(search, replacement)
 
-export const test: {
-  (value: string, expression: RegExp): boolean
-  (expression: RegExp): (value: string) => boolean
-} = /* @__PURE__ */ dual(2, (value: string, expression: RegExp): boolean => {
-  expression.lastIndex = 0
-  return expression.test(value)
-})
-
-export const match: {
-  (value: string, expression: RegExp): Option<RegExpMatchArray>
-  (expression: RegExp): (value: string) => Option<RegExpMatchArray>
-} = /* @__PURE__ */ dual(2, (value: string, expression: RegExp): Option<RegExpMatchArray> => {
-  expression.lastIndex = 0
-  const result = value.match(expression)
-  return result === null ? none : some(result)
-})
-
-export const truncate: {
-  (value: string, maximum: number, omission?: string): string
-  (maximum: number, omission?: string): (value: string) => string
-} = function truncate(
-  valueOrMaximum: string | number,
-  maximumOrOmission?: number | string,
-  maybeOmission: string = '…',
-): string | ((value: string) => string) {
-  if (typeof valueOrMaximum === 'number') {
-    const omission = typeof maximumOrOmission === 'string' ? maximumOrOmission : '…'
-    return (value: string): string => truncate(value, valueOrMaximum, omission) as string
+export const test: (expression: RegExp) => (value: string) => boolean =
+  (expression) => (value) => {
+    expression.lastIndex = 0
+    return expression.test(value)
   }
-  const maximum = Math.max(0, Math.trunc(maximumOrOmission as number))
-  if (valueOrMaximum.length <= maximum) return valueOrMaximum
-  if (maximum <= maybeOmission.length) return maybeOmission.slice(0, maximum)
-  return valueOrMaximum.slice(0, maximum - maybeOmission.length) + maybeOmission
-} as {
-  (value: string, maximum: number, omission?: string): string
-  (maximum: number, omission?: string): (value: string) => string
-}
+
+export const match: (expression: RegExp) => (value: string) => Option<RegExpMatchArray> =
+  (expression) => (value) => {
+    expression.lastIndex = 0
+    const result = value.match(expression)
+    return result === null ? none : some(result)
+  }
+
+export const truncate: (maximum: number, omission?: string) => (value: string) => string =
+  (maximum, omission = '…') =>
+  (value) => {
+    const bound = Math.max(0, Math.trunc(maximum))
+    if (value.length <= bound) return value
+    if (bound <= omission.length) return omission.slice(0, bound)
+    return value.slice(0, bound - omission.length) + omission
+  }
 
 export type NormalizationForm = 'NFC' | 'NFD' | 'NFKC' | 'NFKD'
 
-export const normalize: {
-  (value: string, form?: NormalizationForm): string
-  (form?: NormalizationForm): (value: string) => string
-} = function normalize(
-  valueOrForm?: string,
-  maybeForm?: NormalizationForm,
-): string | ((value: string) => string) {
-  if (
-    valueOrForm === undefined ||
-    valueOrForm === 'NFC' ||
-    valueOrForm === 'NFD' ||
-    valueOrForm === 'NFKC' ||
-    valueOrForm === 'NFKD'
-  ) {
-    return (value: string): string => value.normalize(valueOrForm)
-  }
-  return valueOrForm.normalize(maybeForm)
-} as {
-  (value: string, form?: NormalizationForm): string
-  (form?: NormalizationForm): (value: string) => string
-}
+export const normalize: (form?: NormalizationForm) => (value: string) => string =
+  (form) => (value) =>
+    value.normalize(form)
 
 const wordParts = (value: string): string[] =>
   value

@@ -348,164 +348,30 @@ const replaceAny = <S, A, T, B>(
 
 const maximumSafeSpreadLength = 16_384
 
-export function view<S, A>(
-  optic: Lens<S, A> | Iso<S, A> | Getter<S, A>,
-  source: S,
-): A
-export function view<S, A>(
-  optic: Lens<S, A> | Iso<S, A> | Getter<S, A>,
-): (source: S) => A
-export function view<S, A>(
-  optic: Lens<S, A> | Iso<S, A> | Getter<S, A>,
-  source?: S,
-): A | ((source: S) => A) {
-  if (arguments.length === 1) {
-    return (value: S): A => (optic._tag === 'Iso' ? optic.to(value) : optic.get(value))
-  }
-  return optic._tag === 'Iso' ? optic.to(source as S) : optic.get(source as S)
-}
+export const view =
+  <S, A>(optic: Lens<S, A> | Iso<S, A> | Getter<S, A>) =>
+  (source: S): A =>
+    optic._tag === 'Iso' ? optic.to(source) : optic.get(source)
 
-export function preview<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  source: S,
-): Option<A>
-export function preview<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-): (source: S) => Option<A>
-export function preview<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  source?: S,
-): Option<A> | ((source: S) => Option<A>) {
-  if (arguments.length === 1) {
-    return (value: S): Option<A> => previewAny(optic, value)
-  }
-  switch (optic._tag) {
-    case 'Lens':
-    case 'Getter':
-      return optionSome(optic.get(source as S))
-    case 'Iso':
-      return optionSome(optic.to(source as S))
-    case 'Optional':
-    case 'Prism':
-      return optic.preview(source as S)
-    case 'Traversal':
-    case 'Fold': {
-      const values = optic.collect(source as S)
-      return values.length === 0 ? none : optionSome(values[0])
-    }
-    case 'Setter':
-      return none
-  }
-}
+export const preview =
+  <S, A, T, B>(optic: Optic<S, A, T, B>) =>
+  (source: S): Option<A> =>
+    previewAny(optic, source)
 
-export function collect<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  source: S,
-): readonly A[]
-export function collect<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-): (source: S) => readonly A[]
-export function collect<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  source?: S,
-): readonly A[] | ((source: S) => readonly A[]) {
-  if (arguments.length === 1) {
-    return (value: S): readonly A[] => collectAny(optic, value)
-  }
-  switch (optic._tag) {
-    case 'Lens':
-    case 'Getter':
-      return [optic.get(source as S)]
-    case 'Iso':
-      return [optic.to(source as S)]
-    case 'Optional':
-    case 'Prism': {
-      const value = optic.preview(source as S)
-      return isSome(value) ? [value.value] : []
-    }
-    case 'Traversal':
-    case 'Fold':
-      return optic.collect(source as S)
-    case 'Setter':
-      return []
-  }
-}
+export const collect =
+  <S, A, T, B>(optic: Optic<S, A, T, B>) =>
+  (source: S): readonly A[] =>
+    collectAny(optic, source)
 
-export function modify<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  source: S,
-  f: (focus: A) => B,
-): T
-export function modify<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  f: (focus: A) => B,
-): (source: S) => T
-export function modify<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  sourceOrFn: S | ((focus: A) => B),
-  maybeFn?: (focus: A) => B,
-): T | ((source: S) => T) {
-  if (arguments.length === 2) {
-    const f = sourceOrFn as (focus: A) => B
-    return (source: S): T => modifyAny(optic, source, f)
-  }
-  const source = sourceOrFn as S
-  const f = maybeFn as (focus: A) => B
-  switch (optic._tag) {
-    case 'Lens':
-      return optic.replace(source, f(optic.get(source)))
-    case 'Iso':
-      return optic.from(f(optic.to(source)))
-    case 'Optional':
-    case 'Prism': {
-      const focus = optic.preview(source)
-      return isSome(focus) ? optic.replace(source, f(focus.value)) : (source as unknown as T)
-    }
-    case 'Traversal':
-    case 'Setter':
-      return optic.modify(source, f)
-    case 'Getter':
-    case 'Fold':
-      throw new TypeError(`Cannot modify a read-only ${optic._tag}`)
-  }
-}
+export const modify =
+  <S, A, T, B>(optic: Optic<S, A, T, B>, f: (focus: A) => B) =>
+  (source: S): T =>
+    modifyAny(optic, source, f)
 
-export function set<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  source: S,
-  focus: B,
-): T
-export function set<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  focus: B,
-): (source: S) => T
-export function set<S, A, T, B>(
-  optic: Optic<S, A, T, B>,
-  sourceOrFocus: S | B,
-  maybeFocus?: B,
-): T | ((source: S) => T) {
-  if (arguments.length === 2) {
-    const focus = sourceOrFocus as B
-    return (source: S): T => replaceAny(optic, source, focus)
-  }
-  const source = sourceOrFocus as S
-  const focus = maybeFocus as B
-  switch (optic._tag) {
-    case 'Lens':
-      return optic.replace(source, focus)
-    case 'Iso':
-      return optic.from(focus)
-    case 'Optional':
-    case 'Prism':
-      return isSome(optic.preview(source)) ? optic.replace(source, focus) : (source as unknown as T)
-    case 'Traversal':
-    case 'Setter':
-      return optic.modify(source, () => focus)
-    case 'Getter':
-    case 'Fold':
-      throw new TypeError(`Cannot modify a read-only ${optic._tag}`)
-  }
-}
+export const set =
+  <S, A, T, B>(optic: Optic<S, A, T, B>, focus: B) =>
+  (source: S): T =>
+    replaceAny(optic, source, focus)
 
 export function compose<S, A, T, B, C, U, D>(
   outer: Lens<S, A, T, B>,
@@ -616,14 +482,14 @@ export const laws = {
     source: S,
     equals: (left: S, right: S) => boolean = deepEq.equals,
   ): boolean =>
-    equals(set(optic, source, view(optic, source)), source),
+    equals(set(optic, view(optic)(source))(source), source),
   lensSetGet: <S, A>(
     optic: Lens<S, A>,
     source: S,
     focus: A,
     equals: (left: A, right: A) => boolean = deepEq.equals,
   ): boolean =>
-    equals(view(optic, set(optic, source, focus)), focus),
+    equals(view(optic)(set(optic, focus)(source)), focus),
   lensSetSet: <S, A>(
     optic: Lens<S, A>,
     source: S,
@@ -632,7 +498,7 @@ export const laws = {
     equals: (left: S, right: S) => boolean = deepEq.equals,
   ): boolean =>
     equals(
-      set(optic, set(optic, source, first), second),
-      set(optic, source, second),
+      set(optic, second)(set(optic, first)(source)),
+      set(optic, second)(source),
     ),
 }

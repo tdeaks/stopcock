@@ -1,4 +1,3 @@
-import { dual } from './dual-untagged'
 import type { Predicate, Refinement } from './guard'
 import { none, some, type Option } from './option'
 
@@ -18,69 +17,54 @@ export const isOk = <A, E>(result: Result<A, E>): result is Ok<A> => result._tag
 export const isErr = <A, E>(result: Result<A, E>): result is Err<E> => result._tag === 0
 
 export const fromPredicate: {
-  <A, B extends A, E>(value: A, predicate: Refinement<A, B>, onFalse: (value: A) => E): Result<B, E>
-  <A, E>(value: A, predicate: Predicate<A>, onFalse: (value: A) => E): Result<A, E>
   <A, B extends A, E>(
     predicate: Refinement<A, B>,
     onFalse: (value: A) => E,
   ): <C extends A>(value: C) => Result<B & C, E>
   <A, E>(predicate: Predicate<A>, onFalse: (value: A) => E): <B extends A>(value: B) => Result<B, E>
-} = /* @__PURE__ */ dual(3,
-  <A, E>(value: A, predicate: Predicate<A>, onFalse: (value: A) => E): Result<A, E> =>
-    predicate(value) ? ok(value) : err(onFalse(value)),
-)
+} =
+  <A, E>(predicate: Predicate<A>, onFalse: (value: A) => E) =>
+  (value: A): Result<A, E> =>
+    predicate(value) ? ok(value) : err(onFalse(value))
 
 export const map: {
-  <A, E, B>(result: Result<A, E>, f: (value: A) => B): Result<B, E>
   <A, B>(
     f: (value: A) => B,
   ): <Current extends Result<A, unknown>>(result: Current) => Result<B, ResultError<Current>>
-} = /* @__PURE__ */ dual(2,
-  <A, E, B>(result: Result<A, E>, f: (value: A) => B): Result<B, E> =>
-    result._tag === 1 ? ok(f(result.value)) : result,
-)
+} =
+  ((f: (value: unknown) => unknown) =>
+    (result: Result<unknown, unknown>) =>
+      result._tag === 1 ? ok(f(result.value)) : result) as any
 
 export const mapErr: {
-  <A, E, F>(result: Result<A, E>, f: (error: E) => F): Result<A, F>
   <E, F>(
     f: (error: E) => F,
   ): <Current extends Result<unknown, E>>(result: Current) => Result<ResultValue<Current>, F>
-} = /* @__PURE__ */ dual(2,
-  <A, E, F>(result: Result<A, E>, f: (error: E) => F): Result<A, F> =>
-    isErr(result) ? err(f(result.error)) : result,
-)
+} =
+  ((f: (error: unknown) => unknown) =>
+    (result: Result<unknown, unknown>) =>
+      isErr(result) ? err(f(result.error)) : result) as any
 
 export const mapBoth: {
-  <A, E, B, F>(
-    result: Result<A, E>,
-    handlers: { readonly ok: (value: A) => B; readonly err: (error: E) => F },
-  ): Result<B, F>
   <A, E, B, F>(handlers: {
     readonly ok: (value: A) => B
     readonly err: (error: E) => F
   }): (result: Result<A, E>) => Result<B, F>
-} = /* @__PURE__ */ dual(2,
-  <A, E, B, F>(
-    result: Result<A, E>,
-    handlers: { readonly ok: (value: A) => B; readonly err: (error: E) => F },
-  ): Result<B, F> =>
-    isOk(result) ? ok(handlers.ok(result.value)) : err(handlers.err(result.error)),
-)
+} =
+  <A, E, B, F>(handlers: { readonly ok: (value: A) => B; readonly err: (error: E) => F }) =>
+  (result: Result<A, E>): Result<B, F> =>
+    isOk(result) ? ok(handlers.ok(result.value)) : err(handlers.err(result.error))
 
 export const flatMap: {
-  <A, E, Fn extends (value: A) => { readonly _tag: 0 | 1 }>(
-    result: Result<A, E>,
-    f: Fn,
-  ): Result<ResultValue<ReturnType<Fn>>, E | ResultError<ReturnType<Fn>>>
   <A, Fn extends (value: A) => { readonly _tag: 0 | 1 }>(
     f: Fn,
   ): <Current extends Result<A, unknown>>(
     result: Current,
   ) => Result<ResultValue<ReturnType<Fn>>, ResultError<Current> | ResultError<ReturnType<Fn>>>
-} = /* @__PURE__ */ dual(2,
-  <A, E, B, F>(result: Result<A, E>, f: (value: A) => Result<B, F>): Result<B, E | F> =>
-    isOk(result) ? f(result.value) : result,
-)
+} =
+  ((f: (value: unknown) => Result<unknown, unknown>) =>
+    (result: Result<unknown, unknown>) =>
+      isOk(result) ? f(result.value) : result) as any
 
 export const andThen = flatMap
 
@@ -88,74 +72,49 @@ export const flatten = <A, E, F>(result: Result<Result<A, F>, E>): Result<A, E |
   isOk(result) ? result.value : result
 
 export const orElse: {
-  <A, E, B, F>(result: Result<A, E>, onErr: (error: E) => Result<B, F>): Result<A | B, F>
   <E, B, F>(onErr: (error: E) => Result<B, F>): <A>(result: Result<A, E>) => Result<A | B, F>
-} = /* @__PURE__ */ dual(2,
-  <A, E, B, F>(result: Result<A, E>, onErr: (error: E) => Result<B, F>): Result<A | B, F> =>
-    isOk(result) ? result : onErr(result.error),
-)
+} =
+  ((onErr: (error: unknown) => Result<unknown, unknown>) =>
+    (result: Result<unknown, unknown>) =>
+      isOk(result) ? result : onErr(result.error)) as any
 
 export const and: {
-  <A, E, B, F>(result: Result<A, E>, next: Result<B, F>): Result<B, E | F>
   <B, F>(next: Result<B, F>): <A, E>(result: Result<A, E>) => Result<B, E | F>
-} = /* @__PURE__ */ dual(2,
-  <A, E, B, F>(result: Result<A, E>, next: Result<B, F>): Result<B, E | F> =>
-    isOk(result) ? next : result,
-)
+} =
+  ((next: Result<unknown, unknown>) => (result: Result<unknown, unknown>) =>
+    isOk(result) ? next : result) as any
 
 export const zip: {
-  <A, E, B, F>(result: Result<A, E>, that: Result<B, F>): Result<readonly [A, B], E | F>
   <B, F>(that: Result<B, F>): <A, E>(result: Result<A, E>) => Result<readonly [A, B], E | F>
-} = /* @__PURE__ */ dual(2,
-  <A, E, B, F>(result: Result<A, E>, that: Result<B, F>): Result<readonly [A, B], E | F> =>
-    isErr(result) ? result : isErr(that) ? that : ok([result.value, that.value] as const),
-)
+} =
+  ((that: Result<unknown, unknown>) => (result: Result<unknown, unknown>) =>
+    isErr(result) ? result : isErr(that) ? that : ok([result.value, that.value] as const)) as any
 
 export const zipWith: {
-  <A, E, B, F, C>(
-    result: Result<A, E>,
-    that: Result<B, F>,
-    f: (left: A, right: B) => C,
-  ): Result<C, E | F>
   <A, B, F, C>(
     that: Result<B, F>,
     f: (left: A, right: B) => C,
   ): <E>(result: Result<A, E>) => Result<C, E | F>
-} = /* @__PURE__ */ dual(3,
-  <A, E, B, F, C>(
-    result: Result<A, E>,
-    that: Result<B, F>,
-    f: (left: A, right: B) => C,
-  ): Result<C, E | F> =>
-    isErr(result) ? result : isErr(that) ? that : ok(f(result.value, that.value)),
-)
+} =
+  ((that: Result<unknown, unknown>, f: (left: unknown, right: unknown) => unknown) =>
+    (result: Result<unknown, unknown>) =>
+      isErr(result) ? result : isErr(that) ? that : ok(f(result.value, that.value))) as any
 
 export const ap: {
-  <A, E, B, F>(result: Result<A, E>, fn: Result<(value: A) => B, F>): Result<B, E | F>
   <A, B, F>(fn: Result<(value: A) => B, F>): <E>(result: Result<A, E>) => Result<B, E | F>
-} = /* @__PURE__ */ dual(2,
-  <A, E, B, F>(result: Result<A, E>, fn: Result<(value: A) => B, F>): Result<B, E | F> =>
-    isErr(result) ? result : isErr(fn) ? fn : ok(fn.value(result.value)),
-)
+} =
+  ((fn: Result<(value: unknown) => unknown, unknown>) =>
+    (result: Result<unknown, unknown>) =>
+      isErr(result) ? result : isErr(fn) ? fn : ok(fn.value(result.value))) as any
 
 export const map2 = zipWith
 
 export const lift2 =
   <A, B, C>(f: (left: A, right: B) => C) =>
   <E, F>(left: Result<A, E>, right: Result<B, F>): Result<C, E | F> =>
-    zipWith(left, right, f)
+    zipWith<A, B, F, C>(right, f)(left)
 
 export const filterOrElse: {
-  <A, B extends A, E, F>(
-    result: Result<A, E>,
-    predicate: Refinement<A, B>,
-    onFalse: (value: A) => F,
-  ): Result<B, E | F>
-  <A, E, F>(
-    result: Result<A, E>,
-    predicate: Predicate<A>,
-    onFalse: (value: A) => F,
-  ): Result<A, E | F>
   <A, B extends A, F>(
     predicate: Refinement<A, B>,
     onFalse: (value: A) => F,
@@ -164,14 +123,10 @@ export const filterOrElse: {
     predicate: Predicate<A>,
     onFalse: (value: A) => F,
   ): <B extends A, E>(result: Result<B, E>) => Result<B, E | F>
-} = /* @__PURE__ */ dual(3,
-  <A, E, F>(
-    result: Result<A, E>,
-    predicate: Predicate<A>,
-    onFalse: (value: A) => F,
-  ): Result<A, E | F> =>
-    isErr(result) ? result : predicate(result.value) ? result : err(onFalse(result.value)),
-)
+} =
+  <A, E, F>(predicate: Predicate<A>, onFalse: (value: A) => F) =>
+  (result: Result<A, E>): Result<A, E | F> =>
+    isErr(result) ? result : predicate(result.value) ? result : err(onFalse(result.value))
 
 export const ensure = filterOrElse
 
@@ -179,12 +134,11 @@ const sameValueZero = (left: unknown, right: unknown): boolean =>
   left === right || (left !== left && right !== right)
 
 export const contains: {
-  <A, E>(result: Result<A, E>, value: A): boolean
   <A>(value: A): <E>(result: Result<A, E>) => boolean
-} = /* @__PURE__ */ dual(2,
-  <A, E>(result: Result<A, E>, value: A): boolean =>
-    isOk(result) && sameValueZero(result.value, value),
-)
+} =
+  <A>(value: A) =>
+  <E>(result: Result<A, E>): boolean =>
+    isOk(result) && sameValueZero(result.value, value)
 
 export const containsWith =
   <A>(equals: (left: A, right: A) => boolean) =>
@@ -193,27 +147,26 @@ export const containsWith =
     isOk(result) && equals(result.value, value)
 
 export const exists: {
-  <A, E>(result: Result<A, E>, predicate: Predicate<A>): boolean
   <A>(predicate: Predicate<A>): <E>(result: Result<A, E>) => boolean
-} = /* @__PURE__ */ dual(2,
-  <A, E>(result: Result<A, E>, predicate: Predicate<A>): boolean =>
-    isOk(result) && predicate(result.value),
-)
+} =
+  <A>(predicate: Predicate<A>) =>
+  <E>(result: Result<A, E>): boolean =>
+    isOk(result) && predicate(result.value)
 
 export const getOrElse: {
-  <A, E, B>(result: Result<A, E>, onErr: (error: E) => B): A | B
   <E, B>(onErr: (error: E) => B): <A>(result: Result<A, E>) => A | B
-} = /* @__PURE__ */ dual(2, <A, E, B>(result: Result<A, E>, onErr: (error: E) => B): A | B =>
-  isOk(result) ? result.value : onErr(result.error),
-)
+} =
+  ((onErr: (error: unknown) => unknown) => (result: Result<unknown, unknown>) =>
+    isOk(result) ? result.value : onErr(result.error)) as any
 
 export const getOrThrow: {
-  <A, E>(result: Result<A, E>, onErr: (error: E) => unknown): A
   <E>(onErr: (error: E) => unknown): <A>(result: Result<A, E>) => A
-} = /* @__PURE__ */ dual(2, <A, E>(result: Result<A, E>, onErr: (error: E) => unknown): A => {
-  if (isOk(result)) return result.value
-  throw onErr(result.error)
-})
+} =
+  ((onErr: (error: unknown) => unknown) =>
+    (result: Result<unknown, unknown>): unknown => {
+      if (isOk(result)) return result.value
+      throw onErr(result.error)
+    }) as any
 
 export interface Matchers<A, E, B, C = B> {
   readonly err: (error: E) => B
@@ -221,12 +174,11 @@ export interface Matchers<A, E, B, C = B> {
 }
 
 export const match: {
-  <A, E, B, C>(result: Result<A, E>, matchers: Matchers<A, E, B, C>): B | C
   <A, E, B, C>(matchers: Matchers<A, E, B, C>): (result: Result<A, E>) => B | C
-} = /* @__PURE__ */ dual(2,
-  <A, E, B, C>(result: Result<A, E>, matchers: Matchers<A, E, B, C>): B | C =>
-    isOk(result) ? matchers.ok(result.value) : matchers.err(result.error),
-)
+} =
+  <A, E, B, C>(matchers: Matchers<A, E, B, C>) =>
+  (result: Result<A, E>): B | C =>
+    isOk(result) ? matchers.ok(result.value) : matchers.err(result.error)
 
 export function tryCatch<A>(thunk: () => A): Result<A, unknown>
 export function tryCatch<A, E>(thunk: () => A, onError: (error: unknown) => E): Result<A, E>
@@ -311,10 +263,10 @@ export function struct<const T extends Readonly<Record<PropertyKey, Result<unkno
 }
 
 export const traverse: {
-  <A, B, E>(values: readonly A[], f: (value: A, index: number) => Result<B, E>): Result<B[], E>
   <A, B, E>(f: (value: A, index: number) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
-} = /* @__PURE__ */ dual(2,
-  <A, B, E>(values: readonly A[], f: (value: A, index: number) => Result<B, E>): Result<B[], E> => {
+} =
+  <A, B, E>(f: (value: A, index: number) => Result<B, E>) =>
+  (values: readonly A[]): Result<B[], E> => {
     const output: B[] = []
     for (let index = 0; index < values.length; index++) {
       const result = f(values[index], index)
@@ -322,8 +274,7 @@ export const traverse: {
       output.push(result.value)
     }
     return ok(output)
-  },
-)
+  }
 
 export type NonEmptyArray<A> = readonly [A, ...A[]]
 
@@ -357,35 +308,26 @@ export function allValidation(
 
 export const traverseValidation: {
   <A, B, E>(
-    values: readonly A[],
-    f: (value: A, index: number) => Result<B, E>,
-  ): Result<B[], NonEmptyArray<E>>
-  <A, B, E>(
     f: (value: A, index: number) => Result<B, E>,
   ): (values: readonly A[]) => Result<B[], NonEmptyArray<E>>
-} = /* @__PURE__ */ dual(2,
-  <A, B, E>(
-    values: readonly A[],
-    f: (value: A, index: number) => Result<B, E>,
-  ): Result<B[], NonEmptyArray<E>> =>
-    allValidation(values.map((value, index) => f(value, index))) as Result<B[], NonEmptyArray<E>>,
-)
+} =
+  <A, B, E>(f: (value: A, index: number) => Result<B, E>) =>
+  (values: readonly A[]): Result<B[], NonEmptyArray<E>> =>
+    allValidation(values.map((value, index) => f(value, index))) as Result<B[], NonEmptyArray<E>>
 
 export const optional: {
-  <A, B, E>(value: A | undefined, decode: (value: A) => Result<B, E>): Result<B | undefined, E>
   <A, B, E>(decode: (value: A) => Result<B, E>): (value: A | undefined) => Result<B | undefined, E>
-} = /* @__PURE__ */ dual(2,
-  <A, B, E>(value: A | undefined, decode: (value: A) => Result<B, E>): Result<B | undefined, E> =>
-    value === undefined ? ok(undefined) : decode(value),
-)
+} =
+  <A, B, E>(decode: (value: A) => Result<B, E>) =>
+  (value: A | undefined): Result<B | undefined, E> =>
+    value === undefined ? ok(undefined) : decode(value)
 
 export const nullable: {
-  <A, B, E>(value: A | null, decode: (value: A) => Result<B, E>): Result<B | null, E>
   <A, B, E>(decode: (value: A) => Result<B, E>): (value: A | null) => Result<B | null, E>
-} = /* @__PURE__ */ dual(2,
-  <A, B, E>(value: A | null, decode: (value: A) => Result<B, E>): Result<B | null, E> =>
-    value === null ? ok(null) : decode(value),
-)
+} =
+  <A, B, E>(decode: (value: A) => Result<B, E>) =>
+  (value: A | null): Result<B | null, E> =>
+    value === null ? ok(null) : decode(value)
 
 export const swap = <A, E>(result: Result<A, E>): Result<E, A> =>
   isOk(result) ? err(result.value) : ok(result.error)
@@ -394,31 +336,29 @@ export const toOption = <A, E>(result: Result<A, E>): Option<A> =>
   isOk(result) ? some(result.value) : none
 
 export const tap: {
-  <A, E>(result: Result<A, E>, f: (value: A) => void): Result<A, E>
   <A>(f: (value: A) => void): <E>(result: Result<A, E>) => Result<A, E>
-} = /* @__PURE__ */ dual(2,
-  <A, E>(result: Result<A, E>, f: (value: A) => void): Result<A, E> => {
-    if (isOk(result)) f(result.value)
-    return result
-  },
-)
+} =
+  ((f: (value: unknown) => void) =>
+    (result: Result<unknown, unknown>): Result<unknown, unknown> => {
+      if (isOk(result)) f(result.value)
+      return result
+    }) as any
 
 export const tapErr: {
-  <A, E>(result: Result<A, E>, f: (error: E) => void): Result<A, E>
   <E>(f: (error: E) => void): <A>(result: Result<A, E>) => Result<A, E>
-} = /* @__PURE__ */ dual(2,
-  <A, E>(result: Result<A, E>, f: (error: E) => void): Result<A, E> => {
-    if (isErr(result)) f(result.error)
-    return result
-  },
-)
+} =
+  ((f: (error: unknown) => void) =>
+    (result: Result<unknown, unknown>): Result<unknown, unknown> => {
+      if (isErr(result)) f(result.error)
+      return result
+    }) as any
 
 export const as: {
-  <A, E, B>(result: Result<A, E>, value: B): Result<B, E>
   <B>(value: B): <A, E>(result: Result<A, E>) => Result<B, E>
-} = /* @__PURE__ */ dual(2,
-  <A, E, B>(result: Result<A, E>, value: B): Result<B, E> => (isOk(result) ? ok(value) : result),
-)
+} =
+  <B>(value: B) =>
+  <A, E>(result: Result<A, E>): Result<B, E> =>
+    isOk(result) ? ok(value) : result
 
 export const asVoid = <A, E>(result: Result<A, E>): Result<void, E> =>
   isOk(result) ? ok(undefined) : result
@@ -426,7 +366,7 @@ export const asVoid = <A, E>(result: Result<A, E>): Result<void, E> =>
 export const bindTo =
   <Name extends PropertyKey>(name: Name) =>
   <A, E>(result: Result<A, E>): Result<{ readonly [K in Name]: A }, E> =>
-    map(result, (value) => ({ [name]: value }) as { readonly [K in Name]: A })
+    map((value: A) => ({ [name]: value }) as { readonly [K in Name]: A })(result)
 
 export const bind =
   <Name extends PropertyKey, A extends object, B, F>(
@@ -434,15 +374,14 @@ export const bind =
     f: (value: A) => Result<B, F>,
   ) =>
   <E>(result: Result<A, E>): Result<A & { readonly [K in Name]: B }, E | F> =>
-    flatMap(result, (value) =>
+    (flatMap as any)((value: A) =>
       map(
-        f(value),
-        (bound) =>
+        (bound: B) =>
           Object.assign({}, value, { [name]: bound }) as A & {
             readonly [K in Name]: B
           },
-      ),
-    )
+      )(f(value)),
+    )(result)
 
 const letValue =
   <Name extends PropertyKey, A extends object, B>(
@@ -451,12 +390,11 @@ const letValue =
   ) =>
   <E>(result: Result<A, E>): Result<A & { readonly [K in Name]: B }, E> =>
     map(
-      result,
-      (value) =>
+      (value: A) =>
         Object.assign({}, value, { [name]: f(value) }) as A & {
           readonly [K in Name]: B
         },
-    )
+    )(result)
 
 export { letValue as let }
 

@@ -40,36 +40,9 @@ export function discriminant<
   Output,
 >(
   key: Key,
-  value: Union,
   handlers: Handlers<Union, Key, Output>,
-): Output
-export function discriminant<
-  Key extends PropertyKey,
-  Union extends Readonly<Record<Key, PropertyTag>>,
-  Output,
->(
-  key: Key,
-  handlers: Handlers<Union, Key, Output>,
-): (value: Union) => Output
-export function discriminant<
-  Key extends PropertyKey,
-  Union extends Readonly<Record<Key, PropertyTag>>,
-  Output,
->(
-  key: Key,
-  valueOrHandlers: Union | Handlers<Union, Key, Output>,
-  maybeHandlers?: Handlers<Union, Key, Output>,
-): Output | ((value: Union) => Output) {
-  if (arguments.length === 2) {
-    const handlers = valueOrHandlers as Handlers<Union, Key, Output>
-    return (value: Union): Output =>
-      runDiscriminant(key, value, handlers)
-  }
-  return runDiscriminant(
-    key,
-    valueOrHandlers as Union,
-    maybeHandlers as Handlers<Union, Key, Output>,
-  )
+): (value: Union) => Output {
+  return (value: Union): Output => runDiscriminant(key, value, handlers)
 }
 
 export type TaggedHandlers<
@@ -80,28 +53,8 @@ export type TaggedHandlers<
 export function tag<
   Union extends { readonly _tag: PropertyTag },
   Output,
->(value: Union, handlers: TaggedHandlers<Union, Output>): Output
-export function tag<
-  Union extends { readonly _tag: PropertyTag },
-  Output,
->(handlers: TaggedHandlers<Union, Output>): (value: Union) => Output
-export function tag<
-  Union extends { readonly _tag: PropertyTag },
-  Output,
->(
-  valueOrHandlers: Union | TaggedHandlers<Union, Output>,
-  maybeHandlers?: TaggedHandlers<Union, Output>,
-): Output | ((value: Union) => Output) {
-  if (arguments.length === 1) {
-    const handlers = valueOrHandlers as TaggedHandlers<Union, Output>
-    return (value: Union): Output =>
-      runDiscriminant('_tag', value, handlers)
-  }
-  return runDiscriminant(
-    '_tag',
-    valueOrHandlers as Union,
-    maybeHandlers as TaggedHandlers<Union, Output>,
-  )
+>(handlers: TaggedHandlers<Union, Output>): (value: Union) => Output {
+  return (value: Union): Output => runDiscriminant('_tag', value, handlers)
 }
 
 export const exhaustive = (value: never): never => {

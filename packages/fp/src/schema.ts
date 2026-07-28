@@ -1,4 +1,3 @@
-import { dual } from './dual-untagged'
 import { err, isErr, ok, type Result } from './result'
 
 export interface StandardTypedV1<Input = unknown, Output = Input> {
@@ -172,41 +171,26 @@ export function isStandardSchema(value: unknown): value is StandardSchemaV1 {
 
 export const validateSync: {
   <Input, Output>(
-    value: unknown,
-    schema: StandardSchemaV1<Input, Output>,
-  ): Result<Output, readonly Issue[]>
-  <Input, Output>(
     schema: StandardSchemaV1<Input, Output>,
   ): (value: unknown) => Result<Output, readonly Issue[]>
-} = dual(
-  2,
-  <Input, Output>(
-    value: unknown,
-    schema: StandardSchemaV1<Input, Output>,
-  ): Result<Output, readonly Issue[]> => {
+} =
+  <Input, Output>(schema: StandardSchemaV1<Input, Output>) =>
+  (value: unknown): Result<Output, readonly Issue[]> => {
     const decoded = decode(schema, value)
     if (isPromiseLike(decoded)) {
       throw new TypeError('validateSync: schema validation returned a Promise')
     }
     return decoded
-  },
-)
+  }
 
 export const validate: {
   <Input, Output>(
-    value: unknown,
-    schema: StandardSchemaV1<Input, Output>,
-  ): Promise<Result<Output, readonly Issue[]>>
-  <Input, Output>(
     schema: StandardSchemaV1<Input, Output>,
   ): (value: unknown) => Promise<Result<Output, readonly Issue[]>>
-} = dual(
-  2,
-  async <Input, Output>(
-    value: unknown,
-    schema: StandardSchemaV1<Input, Output>,
-  ): Promise<Result<Output, readonly Issue[]>> => Promise.resolve(decode(schema, value)),
-)
+} =
+  <Input, Output>(schema: StandardSchemaV1<Input, Output>) =>
+  async (value: unknown): Promise<Result<Output, readonly Issue[]>> =>
+    Promise.resolve(decode(schema, value))
 
 export function map<Input, A, B>(
   schema: StandardSchemaV1<Input, A>,

@@ -1,4 +1,3 @@
-import { dual } from './dual-untagged'
 import { none, some, type Option } from './option'
 import type {
   IsPathConstructible,
@@ -243,160 +242,94 @@ export const entries = <T extends object>(value: T): Array<readonly [keyof T, T[
   return result as Array<readonly [keyof T, T[keyof T]]>
 }
 
-export const pick: {
-  <T extends object, const K extends readonly (keyof T)[]>(
-    value: T,
-    selected: K,
-  ): Pick<T, K[number]>
-  <T extends object, const K extends readonly (keyof T)[]>(
-    selected: K,
-  ): (value: T) => Pick<T, K[number]>
-} = /* @__PURE__ */ dual(
-  2,
-  <T extends object, const K extends readonly (keyof T)[]>(
-    value: T,
-    selected: K,
-  ): Pick<T, K[number]> => {
+export const pick: <const K extends readonly PropertyKey[]>(
+  selected: K,
+) => <T extends { readonly [P in K[number]]: unknown }>(value: T) => Pick<T, K[number]> =
+  (selected) => (value) => {
     const output = Object.create(null) as object
     for (const key of selected) {
       if (hasOwn(value, key) && isEnumerable(value, key)) {
         define(output, key, Reflect.get(value, key))
       }
     }
-    return output as Pick<T, K[number]>
-  },
-)
+    return output as any
+  }
 
-export const omit: {
-  <T extends object, const K extends readonly (keyof T)[]>(value: T, omitted: K): Omit<T, K[number]>
-  <T extends object, const K extends readonly (keyof T)[]>(
-    omitted: K,
-  ): (value: T) => Omit<T, K[number]>
-} = /* @__PURE__ */ dual(
-  2,
-  <T extends object, const K extends readonly (keyof T)[]>(
-    value: T,
-    omitted: K,
-  ): Omit<T, K[number]> => {
+export const omit: <const K extends readonly PropertyKey[]>(
+  omitted: K,
+) => <T extends { readonly [P in K[number]]: unknown }>(value: T) => Omit<T, K[number]> =
+  (omitted) => (value) => {
     const excluded = new Set<PropertyKey>(omitted)
     const output = Object.create(null) as object
     for (const key of enumerableKeys(value)) {
       if (!excluded.has(key)) define(output, key, Reflect.get(value, key))
     }
-    return output as Omit<T, K[number]>
-  },
-)
+    return output as any
+  }
 
-export const assoc: {
-  <T extends object, K extends PropertyKey, V>(
-    value: T,
-    key: K,
-    replacement: V,
-  ): Omit<T, K> & { readonly [P in K]: V }
-  <K extends PropertyKey, V>(
-    key: K,
-    replacement: V,
-  ): <T extends object>(value: T) => Omit<T, K> & { readonly [P in K]: V }
-} = /* @__PURE__ */ dual(
-  3,
-  <T extends object, K extends PropertyKey, V>(
-    value: T,
-    key: K,
-    replacement: V,
-  ): Omit<T, K> & { readonly [P in K]: V } => {
+export const assoc: <K extends PropertyKey, V>(
+  key: K,
+  replacement: V,
+) => <T extends object>(value: T) => Omit<T, K> & { readonly [P in K]: V } =
+  (key, replacement) => (value) => {
     const output = cloneEnumerable(value)
     define(output, key, replacement)
-    return output as Omit<T, K> & { readonly [P in K]: V }
-  },
-)
+    return output as any
+  }
 
-export const dissoc: {
-  <T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
-  <K extends PropertyKey>(key: K): <T extends object>(value: T) => Omit<T, Extract<K, keyof T>>
-} = /* @__PURE__ */ dual(2, <T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> => {
+export const dissoc: <K extends PropertyKey>(
+  key: K,
+) => <T extends object>(value: T) => Omit<T, Extract<K, keyof T>> = (key) => (value) => {
   const output = Object.create(Object.getPrototypeOf(value)) as object
   for (const current of enumerableKeys(value)) {
     if (current !== key) define(output, current, Reflect.get(value, current))
   }
-  return output as Omit<T, K>
-})
+  return output as any
+}
 
-export const mapValues: {
-  <T extends object, B>(value: T, f: (value: T[keyof T], key: keyof T) => B): { [K in keyof T]: B }
-  <T extends object, B>(
-    f: (value: T[keyof T], key: keyof T) => B,
-  ): (value: T) => { [K in keyof T]: B }
-} = /* @__PURE__ */ dual(
-  2,
-  <T extends object, B>(
-    value: T,
-    f: (value: T[keyof T], key: keyof T) => B,
-  ): { [K in keyof T]: B } => {
+export const mapValues: <T extends object, B>(
+  f: (value: T[keyof T], key: keyof T) => B,
+) => (value: T) => { [K in keyof T]: B } =
+  (f) => (value) => {
     const output = Object.create(null) as object
     for (const key of enumerableKeys(value)) {
-      define(output, key, f(Reflect.get(value, key) as T[keyof T], key as keyof T))
+      define(output, key, f(Reflect.get(value, key) as any, key as any))
     }
-    return output as { [K in keyof T]: B }
-  },
-)
+    return output as any
+  }
 
-export const mapKeys: {
-  <T extends object, K extends PropertyKey>(
-    value: T,
-    f: (key: keyof T, value: T[keyof T]) => K,
-  ): Record<K, T[keyof T]>
-  <T extends object, K extends PropertyKey>(
-    f: (key: keyof T, value: T[keyof T]) => K,
-  ): (value: T) => Record<K, T[keyof T]>
-} = /* @__PURE__ */ dual(
-  2,
-  <T extends object, K extends PropertyKey>(
-    value: T,
-    f: (key: keyof T, value: T[keyof T]) => K,
-  ): Record<K, T[keyof T]> => {
+export const mapKeys: <T extends object, K extends PropertyKey>(
+  f: (key: keyof T, value: T[keyof T]) => K,
+) => (value: T) => Record<K, T[keyof T]> =
+  (f) => (value) => {
     const output = Object.create(null) as object
     for (const key of enumerableKeys(value)) {
-      const current = Reflect.get(value, key) as T[keyof T]
-      define(output, f(key as keyof T, current), current)
+      const current = Reflect.get(value, key)
+      define(output, f(key as any, current as any), current)
     }
-    return output as Record<K, T[keyof T]>
-  },
-)
+    return output as any
+  }
 
-export const pickBy: {
-  <T extends object>(value: T, predicate: (value: T[keyof T], key: keyof T) => boolean): Partial<T>
-  <T extends object>(
-    predicate: (value: T[keyof T], key: keyof T) => boolean,
-  ): (value: T) => Partial<T>
-} = /* @__PURE__ */ dual(
-  2,
-  <T extends object>(
-    value: T,
-    predicate: (value: T[keyof T], key: keyof T) => boolean,
-  ): Partial<T> => {
+export const pickBy: <T extends object>(
+  predicate: (value: T[keyof T], key: keyof T) => boolean,
+) => (value: T) => Partial<T> =
+  (predicate) => (value) => {
     const output = Object.create(null) as object
     for (const key of enumerableKeys(value)) {
-      const current = Reflect.get(value, key) as T[keyof T]
-      if (predicate(current, key as keyof T)) define(output, key, current)
+      const current = Reflect.get(value, key)
+      if (predicate(current as any, key as any)) define(output, key, current)
     }
-    return output as Partial<T>
-  },
-)
+    return output as any
+  }
 
-export const omitBy: typeof pickBy = /* @__PURE__ */ dual(
-  2,
-  <T extends object>(
-    value: T,
-    predicate: (value: T[keyof T], key: keyof T) => boolean,
-  ): Partial<T> => {
-    const output = Object.create(null) as object
-    for (const key of enumerableKeys(value)) {
-      const current = Reflect.get(value, key) as T[keyof T]
-      if (!predicate(current, key as keyof T)) define(output, key, current)
-    }
-    return output as Partial<T>
-  },
-)
+export const omitBy: typeof pickBy = (predicate) => (value) => {
+  const output = Object.create(null) as object
+  for (const key of enumerableKeys(value)) {
+    const current = Reflect.get(value, key)
+    if (!(predicate as any)(current, key)) define(output, key, current)
+  }
+  return output as any
+}
 
 export const invert = <T extends Readonly<Record<PropertyKey, PropertyKey>>>(
   value: T,
@@ -408,37 +341,22 @@ export const invert = <T extends Readonly<Record<PropertyKey, PropertyKey>>>(
   return output as Record<T[keyof T], keyof T>
 }
 
-export const mergeWith: {
-  <A extends object, B extends object>(
-    left: A,
-    right: B,
-    resolve: (left: unknown, right: unknown, key: keyof A | keyof B) => unknown,
-  ): A & B
-  <A extends object, B extends object>(
-    right: B,
-    resolve: (left: unknown, right: unknown, key: keyof A | keyof B) => unknown,
-  ): (left: A) => A & B
-} = /* @__PURE__ */ dual(
-  3,
-  <A extends object, B extends object>(
-    left: A,
-    right: B,
-    resolve: (left: unknown, right: unknown, key: keyof A | keyof B) => unknown,
-  ): A & B => {
+export const mergeWith: <A extends object, B extends object>(
+  right: B,
+  resolve: (left: unknown, right: unknown, key: keyof A | keyof B) => unknown,
+) => (left: A) => A & B =
+  (right, resolve) => (left) => {
     const output = cloneEnumerable(left)
     for (const key of enumerableKeys(right)) {
       const rightValue = Reflect.get(right, key)
       define(
         output,
         key,
-        hasOwn(left, key)
-          ? resolve(Reflect.get(left, key), rightValue, key as keyof A | keyof B)
-          : rightValue,
+        hasOwn(left, key) ? resolve(Reflect.get(left, key), rightValue, key as any) : rightValue,
       )
     }
-    return output as A & B
-  },
-)
+    return output as any
+  }
 
 export interface DeepMergeOptions {
   readonly bias?: 'left' | 'right'
@@ -500,30 +418,10 @@ const deepMerge = (
   return output
 }
 
-export const mergeDeep: {
-  <A, B>(left: A, right: B, options?: DeepMergeOptions): A & B
-  <B>(right: B, options?: DeepMergeOptions): <A>(left: A) => A & B
-} = function mergeDeep<A, B>(
-  leftOrRight: A | B,
-  rightOrOptions?: B | DeepMergeOptions,
-  maybeOptions: DeepMergeOptions = {},
-): (A & B) | (<T>(left: T) => T & A) {
-  if (
-    arguments.length < 2 ||
-    (arguments.length === 2 &&
-      rightOrOptions !== null &&
-      typeof rightOrOptions === 'object' &&
-      ('bias' in rightOrOptions || 'arrays' in rightOrOptions || 'onConflict' in rightOrOptions))
-  ) {
-    const right = leftOrRight as A
-    const options = (rightOrOptions as DeepMergeOptions | undefined) ?? {}
-    return <T>(left: T): T & A => deepMerge(left, right, options, [], new WeakMap()) as T & A
-  }
-  return deepMerge(leftOrRight, rightOrOptions, maybeOptions, [], new WeakMap()) as A & B
-} as {
-  <A, B>(left: A, right: B, options?: DeepMergeOptions): A & B
-  <B>(right: B, options?: DeepMergeOptions): <A>(left: A) => A & B
-}
+export const mergeDeep: <B>(right: B, options?: DeepMergeOptions) => <A>(left: A) => A & B =
+  (right, options = {}) =>
+  (left) =>
+    deepMerge(left, right, options, [], new WeakMap()) as any
 
 const readPath = <T, const P extends PathSegments>(value: T, path: P): Option<PathValue<T, P>> => {
   let current: unknown = value
@@ -537,37 +435,25 @@ const readPath = <T, const P extends PathSegments>(value: T, path: P): Option<Pa
   return some(current as PathValue<T, P>)
 }
 
-export const getPathOrUndefined: {
-  <T, const P extends PathSegments>(value: T, path: P): PathValue<T, P> | undefined
-  <const P extends PathSegments>(path: P): <T>(value: T) => PathValue<T, P> | undefined
-} = /* @__PURE__ */ dual(
-  2,
-  <T, const P extends PathSegments>(value: T, path: P): PathValue<T, P> | undefined => {
-    let current: unknown = value
-    for (const key of path) {
-      if (current === null || (typeof current !== 'object' && typeof current !== 'function')) {
-        return undefined
-      }
-      if (!hasOwn(current, key)) return undefined
-      current = Reflect.get(current, key)
+export const getPathOrUndefined: <const P extends PathSegments>(
+  path: P,
+) => <T>(value: T) => PathValue<T, P> | undefined = (path) => (value) => {
+  let current: unknown = value
+  for (const key of path) {
+    if (current === null || (typeof current !== 'object' && typeof current !== 'function')) {
+      return undefined
     }
-    return current as PathValue<T, P>
-  },
-)
+    if (!hasOwn(current, key)) return undefined
+    current = Reflect.get(current, key)
+  }
+  return current as any
+}
 
-export const getPath: {
-  <T, const P extends PathSegments>(value: T, path: P): Option<PathValue<T, P>>
-  <const P extends PathSegments>(path: P): <T>(value: T) => Option<PathValue<T, P>>
-} = /* @__PURE__ */ dual(
-  2,
-  <T, const P extends PathSegments>(value: T, path: P): Option<PathValue<T, P>> =>
-    readPath(value, path),
-)
+export const getPath: <const P extends PathSegments>(
+  path: P,
+) => <T>(value: T) => Option<PathValue<T, P>> = (path) => (value) => readPath(value, path) as any
 
-export const hasPath: {
-  <T>(value: T, path: PathSegments): boolean
-  (path: PathSegments): <T>(value: T) => boolean
-} = /* @__PURE__ */ dual(2, <T>(value: T, path: PathSegments): boolean => {
+export const hasPath: (path: PathSegments) => <T>(value: T) => boolean = (path) => (value) => {
   let current: unknown = value
   for (const key of path) {
     if (current === null || (typeof current !== 'object' && typeof current !== 'function')) {
@@ -577,7 +463,7 @@ export const hasPath: {
     current = Reflect.get(current, key)
   }
   return true
-})
+}
 
 const updatePath = (
   value: unknown,
@@ -639,24 +525,12 @@ type ValidRemoveSource<T, P extends PathSegments> = [P] extends [ValidPath<T>]
  * type. A write that could encounter a missing container is accepted only when
  * the path itself supplies every required sibling needed to construct it.
  */
-export const setPath: {
-  <T, const P extends PathSegments>(
-    value: T,
-    path: P &
-      LiteralPath<P> &
-      ([P] extends [ValidPath<T>] ? unknown : never) &
-      (IsPathConstructible<T, P> extends true ? unknown : never),
-    replacement: NoInfer<PathWriteValue<T, P>>,
-  ): T
-  <const P extends PathSegments, B>(
-    path: P & LiteralPath<P>,
-    replacement: B,
-  ): <T>(value: T & ValidSetSource<T, P, B>) => T
-} = /* @__PURE__ */ dual(
-  3,
-  <T, const P extends PathSegments>(value: T, path: P, replacement: PathWriteValue<T, P>): T =>
-    (path.length === 0 ? replacement : updatePath(value, path, () => replacement, false)) as T,
-)
+export const setPath: <const P extends PathSegments, B>(
+  path: P & LiteralPath<P>,
+  replacement: B,
+) => <T>(value: T & ValidSetSource<T, P, B>) => T =
+  (path, replacement) => (value) =>
+    (path.length === 0 ? replacement : updatePath(value, path, () => replacement, false)) as any
 
 /**
  * Immutably modifies the focus at a valid tuple path.
@@ -666,30 +540,14 @@ export const setPath: {
  * must fit the declared write type, so this operation also preserves `T`.
  * Missing containers follow the same complete-construction rule as `setPath`.
  */
-export const modifyPath: {
-  <T, const P extends PathSegments>(
-    value: T,
-    path: P &
-      LiteralPath<P> &
-      ([P] extends [ValidPath<T>] ? unknown : never) &
-      (IsPathConstructible<T, P> extends true ? unknown : never),
-    f: (current: PathValue<T, P>) => NoInfer<PathWriteValue<T, P>>,
-  ): T
-  <const P extends PathSegments, A, B>(
-    path: P & LiteralPath<P>,
-    f: (current: A) => B,
-  ): <T>(value: T & ValidModifySource<T, P, A, B>) => T
-} = /* @__PURE__ */ dual(
-  3,
-  <T, const P extends PathSegments>(
-    value: T,
-    path: P,
-    f: (current: PathValue<T, P>) => PathWriteValue<T, P>,
-  ): T =>
+export const modifyPath: <const P extends PathSegments, A, B>(
+  path: P & LiteralPath<P>,
+  f: (current: A) => B,
+) => <T>(value: T & ValidModifySource<T, P, A, B>) => T =
+  (path, f) => (value) =>
     (path.length === 0
-      ? f(value as PathValue<T, P>)
-      : updatePath(value, path, (current) => f(current as PathValue<T, P>), true)) as T,
-)
+      ? f(value as any)
+      : updatePath(value, path, (current) => f(current as any), true)) as any
 
 const removePathValue = (value: unknown, path: PathSegments, depth: number): unknown => {
   if (value === null || value === undefined) return value
@@ -717,22 +575,10 @@ const removePathValue = (value: unknown, path: PathSegments, depth: number): unk
  * Required leaves and array indices are rejected because deleting either while
  * returning `T` would be unsound. An empty path is an identity operation.
  */
-export const removePath: {
-  <T, const P extends PathSegments>(
-    value: T,
-    path: P &
-      LiteralPath<P> &
-      ([P] extends [ValidPath<T>] ? unknown : never) &
-      (IsRemovablePath<T, P> extends true ? unknown : never),
-  ): T
-  <const P extends PathSegments>(
-    path: P & LiteralPath<P>,
-  ): <T>(value: T & ValidRemoveSource<T, P>) => T
-} = /* @__PURE__ */ dual(
-  2,
-  <T>(value: T, path: PathSegments): T =>
-    (path.length === 0 ? value : removePathValue(value, path, 0)) as T,
-)
+export const removePath: <const P extends PathSegments>(
+  path: P & LiteralPath<P>,
+) => <T>(value: T & ValidRemoveSource<T, P>) => T = (path) => (value) =>
+  (path.length === 0 ? value : removePathValue(value, path, 0)) as any
 
 export const pathOf =
   <T>() =>
@@ -834,20 +680,10 @@ export const compilePathOf =
     })
   }
 
-export const evolve: {
-  <T extends object>(
-    value: T,
-    transformations: Partial<{ readonly [K in keyof T]: (value: T[K]) => T[K] }>,
-  ): T
-  <T extends object>(
-    transformations: Partial<{ readonly [K in keyof T]: (value: T[K]) => T[K] }>,
-  ): (value: T) => T
-} = /* @__PURE__ */ dual(
-  2,
-  <T extends object>(
-    value: T,
-    transformations: Partial<{ readonly [K in keyof T]: (value: T[K]) => T[K] }>,
-  ): T => {
+export const evolve: <T extends object>(
+  transformations: Partial<{ readonly [K in keyof T]: (value: T[K]) => T[K] }>,
+) => (value: T) => T =
+  (transformations) => (value) => {
     const output = cloneEnumerable(value)
     for (const key of enumerableKeys(transformations)) {
       if (!hasOwn(value, key)) continue
@@ -857,5 +693,4 @@ export const evolve: {
       if (transform) define(output, key, transform(Reflect.get(value, key)))
     }
     return output
-  },
-)
+  }
