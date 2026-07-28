@@ -17,14 +17,12 @@ const replacement = patch([
   },
 ])
 
-test('apply preserves the target type in data-first and data-last forms', () => {
-  expectTypeOf(apply(model, replacement)).toEqualTypeOf<Result<Model, PatchError>>()
+test('apply preserves the target type across generic instantiations', () => {
   expectTypeOf(apply(replacement)(model)).toEqualTypeOf<Result<Model, PatchError>>()
   expectTypeOf(apply(replacement)(42)).toEqualTypeOf<Result<number, PatchError>>()
 })
 
-test('applyUnsafe preserves the target type in data-first and data-last forms', () => {
-  expectTypeOf(applyUnsafe(model, replacement)).toEqualTypeOf<Model>()
+test('applyUnsafe preserves the target type across generic instantiations', () => {
   expectTypeOf(applyUnsafe(replacement)(model)).toEqualTypeOf<Model>()
   expectTypeOf(applyUnsafe(replacement)(42)).toEqualTypeOf<number>()
 })

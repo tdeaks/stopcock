@@ -13,11 +13,11 @@ const numericalB = (f: (a: number, b: number) => number, a: number, b: number, h
 
 describe('scalar ops', () => {
   it.each([
-    ['add', (a: Var<number>, b: Var<number>) => add(a, b), (a: number, b: number) => a + b],
-    ['sub', (a: Var<number>, b: Var<number>) => sub(a, b), (a: number, b: number) => a - b],
-    ['mul', (a: Var<number>, b: Var<number>) => mul(a, b), (a: number, b: number) => a * b],
-    ['div', (a: Var<number>, b: Var<number>) => div(a, b), (a: number, b: number) => a / b],
-    ['pow', (a: Var<number>, b: Var<number>) => pow(a, b), (a: number, b: number) => a ** b],
+    ['add', (a: Var<number>, b: Var<number>) => add(b)(a), (a: number, b: number) => a + b],
+    ['sub', (a: Var<number>, b: Var<number>) => sub(b)(a), (a: number, b: number) => a - b],
+    ['mul', (a: Var<number>, b: Var<number>) => mul(b)(a), (a: number, b: number) => a * b],
+    ['div', (a: Var<number>, b: Var<number>) => div(b)(a), (a: number, b: number) => a / b],
+    ['pow', (a: Var<number>, b: Var<number>) => pow(b)(a), (a: number, b: number) => a ** b],
   ])('%s matches central differences', (_, op, raw) => {
     const f = differentiable((a: Var<number>, b: Var<number>) => op(a, b))
     const a = 1.7
@@ -39,7 +39,7 @@ describe('scalar ops', () => {
   })
 
   it('does not compute the exponent gradient for constant exponents', () => {
-    const f = differentiable((x: Var<number>) => pow(x, 2))
+    const f = differentiable((x: Var<number>) => pow(2)(x))
 
     expect(f.forward(-2)).toBe(4)
     expect(f.gradient(-2)).toBe(-4)

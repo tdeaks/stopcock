@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import type { Color, ColorSpace } from './types'
 import {
   LIN_SRGB_TO_XYZ_D65,
@@ -349,10 +348,9 @@ const convertImpl = (color: Color, target: ColorSpace): Color => {
   return cur
 }
 
-export const convert: {
-  (color: Color, target: ColorSpace): Color
-  (target: ColorSpace): (color: Color) => Color
-} = dual(2, convertImpl)
+export const convert: (target: ColorSpace) => (color: Color) => Color =
+  (target) => (color) =>
+    convertImpl(color, target)
 
 // Convenience aliases (arity 1, directly pipeable)
 export const toSRGB = (c: Color): Color => convertImpl(c, 'srgb')

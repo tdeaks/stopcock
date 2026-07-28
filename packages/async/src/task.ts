@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import { ok, err, type Result } from '@stopcock/fp/result'
 import { isSome, type Option } from '@stopcock/fp/option'
 import { abortableDelay } from './internals'
@@ -91,39 +90,31 @@ export const never: Task<never, never> = {
 
 // --- Combinators ---
 
-export const map = dual(
-  2,
-  <A, B, E>(task: Task<A, E>, f: (a: A) => B): Task<B, E> => ({
+export const map =
+  <A, B>(f: (a: A) => B) =>
+  <E>(task: Task<A, E>): Task<B, E> => ({
     _tag: 'Task',
     run: async (signal?) => {
       const a = await task.run(signal)
       signal?.throwIfAborted()
       return f(a)
     },
-  }),
-) as {
-  <A, B, E>(task: Task<A, E>, f: (a: A) => B): Task<B, E>
-  <A, B>(f: (a: A) => B): <E>(task: Task<A, E>) => Task<B, E>
-}
+  })
 
-export const flatMap: {
-  <A, B, E, E2>(task: Task<A, E>, f: (a: A) => Task<B, E2>): Task<B, E | E2>
-  <A, B, E2>(f: (a: A) => Task<B, E2>): <E>(task: Task<A, E>) => Task<B, E | E2>
-} = dual(
-  2,
-  <A, B, E, E2>(task: Task<A, E>, f: (a: A) => Task<B, E2>): Task<B, E | E2> => ({
+export const flatMap =
+  <A, B, E2>(f: (a: A) => Task<B, E2>) =>
+  <E>(task: Task<A, E>): Task<B, E | E2> => ({
     _tag: 'Task',
     run: async (signal?) => {
       const a = await task.run(signal)
       signal?.throwIfAborted()
       return f(a).run(signal)
     },
-  }),
-)
+  })
 
-export const tap = dual(
-  2,
-  <A, E>(task: Task<A, E>, f: (a: A) => void | Promise<void>): Task<A, E> => ({
+export const tap =
+  <A>(f: (a: A) => void | Promise<void>) =>
+  <E>(task: Task<A, E>): Task<A, E> => ({
     _tag: 'Task',
     run: async (signal?) => {
       const a = await task.run(signal)
@@ -131,15 +122,11 @@ export const tap = dual(
       await f(a)
       return a
     },
-  }),
-) as {
-  <A, E>(task: Task<A, E>, f: (a: A) => void | Promise<void>): Task<A, E>
-  <A>(f: (a: A) => void | Promise<void>): <E>(task: Task<A, E>) => Task<A, E>
-}
+  })
 
-export const mapError = dual(
-  2,
-  <A, E, E2>(task: Task<A, E>, f: (e: E) => E2): Task<A, E2> => ({
+export const mapError =
+  <E, E2>(f: (e: E) => E2) =>
+  <A>(task: Task<A, E>): Task<A, E2> => ({
     _tag: 'Task',
     run: async (signal?) => {
       try {
@@ -148,18 +135,11 @@ export const mapError = dual(
         throw f(e as E)
       }
     },
-  }),
-) as {
-  <A, E, E2>(task: Task<A, E>, f: (e: E) => E2): Task<A, E2>
-  <E, E2>(f: (e: E) => E2): <A>(task: Task<A, E>) => Task<A, E2>
-}
+  })
 
-export const catchError: {
-  <A, E, B>(task: Task<A, E>, f: (e: E) => B): Task<A | B, never>
-  <E, B>(f: (e: E) => B): <A>(task: Task<A, E>) => Task<A | B, never>
-} = dual(
-  2,
-  <A, E, B>(task: Task<A, E>, f: (e: E) => B): Task<A | B, never> => ({
+export const catchError =
+  <E, B>(f: (e: E) => B) =>
+  <A>(task: Task<A, E>): Task<A | B, never> => ({
     _tag: 'Task',
     run: async (signal?) => {
       try {
@@ -168,15 +148,11 @@ export const catchError: {
         return f(e as E)
       }
     },
-  }),
-)
+  })
 
-export const flatMapError: {
-  <A, E, B, E2>(task: Task<A, E>, f: (e: E) => Task<B, E2>): Task<A | B, E2>
-  <E, B, E2>(f: (e: E) => Task<B, E2>): <A>(task: Task<A, E>) => Task<A | B, E2>
-} = dual(
-  2,
-  <A, E, B, E2>(task: Task<A, E>, f: (e: E) => Task<B, E2>): Task<A | B, E2> => ({
+export const flatMapError =
+  <E, B, E2>(f: (e: E) => Task<B, E2>) =>
+  <A>(task: Task<A, E>): Task<A | B, E2> => ({
     _tag: 'Task',
     run: async (signal?) => {
       try {
@@ -185,24 +161,11 @@ export const flatMapError: {
         return f(e as E).run(signal)
       }
     },
-  }),
-)
+  })
 
-export const match: {
-  <A, E, B, C>(
-    task: Task<A, E>,
-    handlers: { ok: (a: A) => B; err: (e: E) => C },
-  ): Task<B | C, never>
-  <A, E, B, C>(handlers: {
-    ok: (a: A) => B
-    err: (e: E) => C
-  }): (task: Task<A, E>) => Task<B | C, never>
-} = dual(
-  2,
-  <A, E, B, C>(
-    task: Task<A, E>,
-    handlers: { ok: (a: A) => B; err: (e: E) => C },
-  ): Task<B | C, never> => ({
+export const match =
+  <A, E, B, C>(handlers: { ok: (a: A) => B; err: (e: E) => C }) =>
+  (task: Task<A, E>): Task<B | C, never> => ({
     _tag: 'Task',
     run: async (signal?) => {
       try {
@@ -211,8 +174,7 @@ export const match: {
         return handlers.err(e as E)
       }
     },
-  }),
-)
+  })
 
 // --- Terminals ---
 

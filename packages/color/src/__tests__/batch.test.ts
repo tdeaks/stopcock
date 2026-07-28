@@ -103,12 +103,12 @@ describe('applyTransfer', () => {
 describe('convertBuffer', () => {
   it('matches convert() for every color-space pair', () => {
     for (const sourceSpace of spaces) {
-      const sourceColors = fixtures.map((color) => convert(color, sourceSpace))
+      const sourceColors = fixtures.map((color) => convert(sourceSpace)(color))
       const src = bufferFrom(sourceColors)
 
       for (const targetSpace of spaces) {
         const actual = convertBuffer(src, sourceSpace, targetSpace)
-        const expected = bufferFrom(sourceColors.map((color) => convert(color, targetSpace)))
+        const expected = bufferFrom(sourceColors.map((color) => convert(targetSpace)(color)))
         expectBufferClose(actual, expected, 1e-7)
       }
     }
@@ -126,7 +126,7 @@ describe('convertBuffer', () => {
     const mid = convertBuffer(src, 'srgb', 'oklab')
     mid[1] += 0.01
     const actual = convertBuffer(mid, 'oklab', 'srgb')
-    const expected = convert({ space: 'oklab', channels: mid, alpha: 1 }, 'srgb')
+    const expected = convert('srgb')({ space: 'oklab', channels: mid, alpha: 1 })
     expectBufferClose(actual, expected.channels, 1e-10)
   })
 
@@ -156,10 +156,10 @@ describe('simulateBuffer', () => {
 
 describe('toGamutBuffer', () => {
   it('matches toGamut() per pixel', () => {
-    const wide = fixtures.map((color) => convert(color, 'p3'))
+    const wide = fixtures.map((color) => convert('p3')(color))
     const src = bufferFrom(wide)
     const actual = toGamutBuffer(src, 'p3', 'srgb')
-    const expected = bufferFrom(wide.map((color) => toGamut(color, 'srgb')))
+    const expected = bufferFrom(wide.map((color) => toGamut('srgb')(color)))
     expectBufferClose(actual, expected, 1e-7)
   })
 })

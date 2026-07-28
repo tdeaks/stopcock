@@ -92,9 +92,4 @@ describe('fallback', () => {
     const task = pipe(reject('fail'), fallback(resolve('backup')))
     expect(await run(task)).toBe('backup')
   })
-
-  it('data-first calling convention', async () => {
-    const task = fallback(reject('fail'), resolve('backup'))
-    expect(await run(task)).toBe('backup')
-  })
 })

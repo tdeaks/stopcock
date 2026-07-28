@@ -548,7 +548,7 @@ export const toGamutBuffer = (
       channels: new Float64Array([src[i], src[i + 1], src[i + 2]]),
       alpha: 1,
     }
-    const mapped = toGamut(color, targetSpace)
+    const mapped = toGamut(targetSpace)(color)
     out[i] = mapped.channels[0]
     out[i + 1] = mapped.channels[1]
     out[i + 2] = mapped.channels[2]

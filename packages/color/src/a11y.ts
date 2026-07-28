@@ -21,7 +21,7 @@ export const paletteContrastMatrix = (palette: Color[]): ContrastCell[][] => {
   for (let i = 0; i < n; i++) {
     const row: ContrastCell[] = []
     for (let j = 0; j < n; j++) {
-      const r = contrastRatio(palette[i], palette[j])
+      const r = contrastRatio(palette[j])(palette[i])
       row.push({ ratio: r, aa: r >= 4.5, aaLarge: r >= 3, aaa: r >= 7 })
     }
     out.push(row)

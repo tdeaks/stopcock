@@ -17,8 +17,8 @@ describe('toLens', () => {
     }
     const l = toLens(op)
     expect(l).not.toBeNull()
-    expect(view(l!, { user: { name: 'Tom' } })).toBe('Tom')
-    expect(set(l!, { user: { name: 'Tom' } }, 'Alice')).toEqual({
+    expect(view(l!)({ user: { name: 'Tom' } })).toBe('Tom')
+    expect(set(l!, 'Alice')({ user: { name: 'Tom' } })).toEqual({
       user: { name: 'Alice' },
     })
   })
@@ -27,8 +27,8 @@ describe('toLens', () => {
     const op = { op: 'replace' as const, path: [0] as const, oldValue: 'a', newValue: 'b' }
     const l = toLens(op)
     expect(l).not.toBeNull()
-    expect(view(l!, ['x', 'y'])).toBe('x')
-    expect(set(l!, ['x', 'y'], 'z')).toEqual(['z', 'y'])
+    expect(view(l!)(['x', 'y'])).toBe('x')
+    expect(set(l!, 'z')(['x', 'y'])).toEqual(['z', 'y'])
   })
 
   it('creates lens for mixed path (with numeric segments)', () => {
@@ -41,8 +41,8 @@ describe('toLens', () => {
     const l = toLens(op)
     expect(l).not.toBeNull()
     const data = { items: [{ name: 'first' }, { name: 'second' }] }
-    expect(view(l!, data)).toBe('first')
-    const updated = set(l!, data, 'changed')
+    expect(view(l!)(data)).toBe('first')
+    const updated = set(l!, 'changed')(data)
     expect(updated.items[0].name).toBe('changed')
     expect(updated.items[1].name).toBe('second')
   })

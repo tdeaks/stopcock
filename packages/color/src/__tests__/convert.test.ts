@@ -24,16 +24,13 @@ const expectChannels = (c: Color, [a, b, ch]: [number, number, number], eps = 1e
 describe('convert', () => {
   it('is a no-op when target matches source space', () => {
     const c = rgb(0.5, 0.5, 0.5)
-    expect(convert(c, 'srgb')).toBe(c)
+    expect(convert('srgb')(c)).toBe(c)
   })
 
-  it('supports both data-first and curried forms', () => {
+  it('converts to the target space', () => {
     const c = rgb(1, 0, 0)
-    const direct = convert(c, 'oklch')
     const curried = convert('oklch')(c)
-    expect(direct.space).toBe('oklch')
     expect(curried.space).toBe('oklch')
-    expectChannels(direct, [curried.channels[0], curried.channels[1], curried.channels[2]])
   })
 
   it('preserves alpha across any conversion', () => {
@@ -50,7 +47,7 @@ describe('convert', () => {
       'xyz-d50',
       'linear-srgb',
     ]
-    for (const s of spaces) expect(convert(c, s).alpha).toBe(0.42)
+    for (const s of spaces) expect(convert(s)(c).alpha).toBe(0.42)
   })
 })
 
@@ -95,15 +92,15 @@ describe('round-trips within epsilon', () => {
     'xyz-d65',
     'xyz-d50',
   ] as const)('srgb -> %s -> srgb', (mid) => {
-    const there = convert(start, mid)
-    const back = convert(there, 'srgb')
+    const there = convert(mid)(start)
+    const back = convert('srgb')(there)
     expectChannels(back, [start.channels[0], start.channels[1], start.channels[2]], eps)
   })
 
   it('multi-hop oklch -> lab -> oklch', () => {
     const start = oklch(0.7, 0.15, 250)
     const mid = toLab(start)
-    const back = convert(mid, 'oklch')
+    const back = convert('oklch')(mid)
     expectChannels(back, [start.channels[0], start.channels[1], start.channels[2]], 1e-4)
   })
 })
@@ -118,7 +115,7 @@ describe('grayscale hue stability', () => {
 describe('hsl round-trip preserves the hex', () => {
   it('blue', () => {
     const c = fromHex('#2563eb')
-    const back = convert(convert(c, 'hsl'), 'srgb')
+    const back = convert('srgb')(convert('hsl')(c))
     expectChannels(back, [c.channels[0], c.channels[1], c.channels[2]], 1e-6)
   })
 })

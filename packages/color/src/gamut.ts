@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import type { Color, ColorSpace } from './types'
 import { convert, toOKLCh } from './convert'
 import { deltaEOK } from './contrast'
@@ -12,21 +11,20 @@ const inGamutImpl = (c: Color, target: ColorSpace): boolean => {
     // Other spaces (lab, oklab, xyz, ...) are unbounded; trivially in gamut.
     return true
   }
-  const conv = convert(c, target)
+  const conv = convert(target)(c)
   return inRange01(conv.channels[0]) && inRange01(conv.channels[1]) && inRange01(conv.channels[2])
 }
 
-export const inGamut: {
-  (c: Color, target: ColorSpace): boolean
-  (target: ColorSpace): (c: Color) => boolean
-} = dual(2, inGamutImpl)
+export const inGamut: (target: ColorSpace) => (c: Color) => boolean =
+  (target) => (c) =>
+    inGamutImpl(c, target)
 
 // CSS Color 4 gamut mapping: binary search on OKLCh chroma, preserving L and h,
 // until the result is in-gamut AND its deltaEOK from the clipped variant is < JND.
 const JND = 0.02
 
 const clipToGamut = (c: Color, target: ColorSpace): Color => {
-  const conv = convert(c, target)
+  const conv = convert(target)(c)
   const ch = new Float64Array([
     Math.max(0, Math.min(1, conv.channels[0])),
     Math.max(0, Math.min(1, conv.channels[1])),
@@ -36,21 +34,23 @@ const clipToGamut = (c: Color, target: ColorSpace): Color => {
 }
 
 const toGamutImpl = (c: Color, target: ColorSpace): Color => {
-  if (inGamutImpl(c, target)) return convert(c, target)
+  if (inGamutImpl(c, target)) return convert(target)(c)
 
   // Edge cases: pure black/white short-circuit
   const ok = toOKLCh(c)
   const [L] = ok.channels
   if (L >= 1)
-    return convert(
-      { space: 'oklch', channels: new Float64Array([1, 0, 0]), alpha: c.alpha },
-      target,
-    )
+    return convert(target)({
+      space: 'oklch',
+      channels: new Float64Array([1, 0, 0]),
+      alpha: c.alpha,
+    })
   if (L <= 0)
-    return convert(
-      { space: 'oklch', channels: new Float64Array([0, 0, 0]), alpha: c.alpha },
-      target,
-    )
+    return convert(target)({
+      space: 'oklch',
+      channels: new Float64Array([0, 0, 0]),
+      alpha: c.alpha,
+    })
 
   // Binary search chroma in [0, current]
   let lo = 0
@@ -85,7 +85,6 @@ const toGamutImpl = (c: Color, target: ColorSpace): Color => {
   return clipToGamut(candidate, target)
 }
 
-export const toGamut: {
-  (c: Color, target: ColorSpace): Color
-  (target: ColorSpace): (c: Color) => Color
-} = dual(2, toGamutImpl)
+export const toGamut: (target: ColorSpace) => (c: Color) => Color =
+  (target) => (c) =>
+    toGamutImpl(c, target)

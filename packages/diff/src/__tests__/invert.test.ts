@@ -61,10 +61,10 @@ describe('invert', () => {
   it('roundtrip: apply then apply inverted restores original', () => {
     const a = { x: 1, y: [1, 2, 3], z: { nested: true } }
     const b = { x: 2, y: [1, 3], z: { nested: false, extra: 'hi' } }
-    const p = diff(a, b)
-    const result = applyUnsafe(a, p)
+    const p = diff(b)(a)
+    const result = applyUnsafe(p)(a)
     expect(result).toEqual(b)
-    const restored = applyUnsafe(result, invert(p))
+    const restored = applyUnsafe(invert(p))(result)
     expect(restored).toEqual(a)
   })
 })

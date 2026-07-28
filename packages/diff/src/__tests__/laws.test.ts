@@ -25,33 +25,33 @@ describe('diff laws', () => {
 
   for (const { name, a, b } of cases) {
     it(`apply(a, diff(a, b)) = b [${name}]`, () => {
-      const p = diff(a, b)
-      const result = apply(a, p)
+      const p = diff(b)(a)
+      const result = apply(p)(a)
       expect(ok(result)).toBe(true)
       expect(result.value).toEqual(b)
     })
 
     it(`apply(b, invert(diff(a, b))) = a [${name}]`, () => {
-      const p = diff(a, b)
-      const b2 = applyUnsafe(a, p)
-      const restored = applyUnsafe(b2, invert(p))
+      const p = diff(b)(a)
+      const b2 = applyUnsafe(p)(a)
+      const restored = applyUnsafe(invert(p))(b2)
       expect(restored).toEqual(a)
     })
   }
 
   it('diff(a, a) = empty', () => {
     const obj = { deep: { nested: [1, 2, 3] } }
-    expect(diff(obj, obj).ops).toHaveLength(0)
+    expect(diff(obj)(obj).ops).toHaveLength(0)
   })
 
   it('compose(diff(a,b), diff(b,c)) applied to a gives c', () => {
     const a = { x: 1, y: 2 }
     const b = { x: 1, y: 3 }
     const c = { x: 1, y: 4 }
-    const p1 = diff(a, b)
-    const p2 = diff(b, c)
-    const composed = compose(p1, p2)
-    const result = applyUnsafe(a, composed)
+    const p1 = diff(b)(a)
+    const p2 = diff(c)(b)
+    const composed = compose(p2)(p1)
+    const result = applyUnsafe(composed)(a)
     expect(result).toEqual(c)
   })
 })

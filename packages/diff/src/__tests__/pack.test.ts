@@ -93,7 +93,7 @@ describe('packed tarball', () => {
     expect(files.some((file) => file.startsWith('src/'))).toBe(false)
   })
 
-  it('executes the extracted public root in both call forms', async () => {
+  it('executes the extracted public root', async () => {
     await writeFile(
       join(consumerDir, 'smoke.mjs'),
       `
@@ -102,15 +102,11 @@ import { apply, applyUnsafe, patch } from '@stopcock/diff'
 const change = patch([
   { op: 'replace', path: ['count'], oldValue: 1, newValue: 2 },
 ])
-const direct = apply({ count: 1 }, change)
 const dataLast = apply(change)({ count: 1 })
 const unsafe = applyUnsafe(change)({ count: 1 })
 
-if (direct._tag !== 1 || direct.value.count !== 2) {
-  throw new Error('packed direct apply smoke failed')
-}
 if (dataLast._tag !== 1 || dataLast.value.count !== 2) {
-  throw new Error('packed data-last apply smoke failed')
+  throw new Error('packed apply smoke failed')
 }
 if (unsafe.count !== 2) throw new Error('packed applyUnsafe smoke failed')
 `.trimStart(),
@@ -122,7 +118,7 @@ if (unsafe.count !== 2) throw new Error('packed applyUnsafe smoke failed')
     })
   })
 
-  it('exposes portable declarations for both generic overloads', async () => {
+  it('exposes portable declarations for the curried generic form', async () => {
     await writeFile(
       join(consumerDir, 'consumer.ts'),
       `
@@ -135,13 +131,9 @@ const change = patch([
   { op: 'replace', path: ['count'], oldValue: 1, newValue: 2 },
 ])
 
-const direct: Result<Model, PatchError> = apply(model, change)
 const dataLast: Result<Model, PatchError> = apply(change)(model)
-const unsafeDirect: Model = applyUnsafe(model, change)
 const unsafeDataLast: Model = applyUnsafe(change)(model)
-void direct
 void dataLast
-void unsafeDirect
 void unsafeDataLast
 `.trimStart(),
     )

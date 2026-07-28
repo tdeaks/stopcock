@@ -30,21 +30,14 @@ describe('public async types', () => {
   it('preserves higher-rank Task channels through map, tap, and mapError', () => {
     const source = Task.of<number, 'original'>(async () => 1)
 
-    expectTypeOf(Task.map(source, String)).toEqualTypeOf<TaskType<string, 'original'>>()
     expectTypeOf(Task.map((value: number) => String(value))(source)).toEqualTypeOf<
       TaskType<string, 'original'>
     >()
 
-    expectTypeOf(Task.tap(source, async (_value) => {})).toEqualTypeOf<
-      TaskType<number, 'original'>
-    >()
     expectTypeOf(Task.tap(async (_value: number) => {})(source)).toEqualTypeOf<
       TaskType<number, 'original'>
     >()
 
-    expectTypeOf(Task.mapError(source, (error) => error.length)).toEqualTypeOf<
-      TaskType<number, number>
-    >()
     expectTypeOf(Task.mapError((error: 'original') => error.length)(source)).toEqualTypeOf<
       TaskType<number, number>
     >()

@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import { asVar, record } from './tape'
 import type { Var } from './types'
 import type { ScalarInput } from './scalar'
@@ -71,16 +70,12 @@ export const relu = (x: ScalarInput): Var<number> => {
   return record(Math.max(0, xv.value), [xv], (grad) => [xv.value > 0 ? grad : 0])
 }
 
-type LeakyReluOp = {
-  (x: ScalarInput, alpha: number): Var<number>
-  (alpha: number): (x: ScalarInput) => Var<number>
-}
-
-export const leakyRelu = dual(2, (x: ScalarInput, alpha: number): Var<number> => {
-  const xv = asVar(x)
-  const value = xv.value > 0 ? xv.value : alpha * xv.value
-  return record(value, [xv], (grad) => [xv.value > 0 ? grad : grad * alpha])
-}) as LeakyReluOp
+export const leakyRelu: (alpha: number) => (x: ScalarInput) => Var<number> =
+  (alpha) => (x) => {
+    const xv = asVar(x)
+    const value = xv.value > 0 ? xv.value : alpha * xv.value
+    return record(value, [xv], (grad) => [xv.value > 0 ? grad : grad * alpha])
+  }
 
 export const softplus = (x: ScalarInput): Var<number> => {
   const xv = asVar(x)

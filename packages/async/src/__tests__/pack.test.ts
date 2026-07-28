@@ -109,7 +109,7 @@ import { AsyncIter, Task, run } from '@stopcock/async'
 const modules = await Promise.all(
   ${JSON.stringify(PUBLIC_IMPORTS)}.map((specifier) => import(specifier)),
 )
-const taskResult = await run(Task.map(Task.resolve(2), (value) => value * 3))
+const taskResult = await run(Task.map((value) => value * 3)(Task.resolve(2)))
 const iterResult = await run(
   AsyncIter.collect(
     AsyncIter.take(
@@ -158,7 +158,7 @@ import * as AsyncIterSubpath from '@stopcock/async/async-iter'
 import * as TaskSubpath from '@stopcock/async/task'
 
 const task: TaskValue<number> = resolve(42)
-const doubled: TaskValue<number> = Task.map(task, (value) => value * 2)
+const doubled: TaskValue<number> = Task.map((value: number) => value * 2)(task)
 const values = AsyncIter.map([1, 2, 3], (value) => value * 2)
 const collected: TaskValue<number[], unknown> = AsyncIter.collect(values)
 const result: Promise<number> = run(doubled)

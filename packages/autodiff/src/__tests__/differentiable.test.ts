@@ -7,7 +7,7 @@ import type { Var } from '../types'
 
 describe('differentiable', () => {
   it('runs the plan example end to end', () => {
-    const f = differentiable((x: Var<number>) => sin(add(square(x), 3)))
+    const f = differentiable((x: Var<number>) => sin(add(3)(square(x))))
 
     expect(f.forward(2)).toBeCloseTo(Math.sin(7), 10)
     expect(f.gradient(2)).toBeCloseTo(Math.cos(7) * 4, 6)
@@ -15,14 +15,14 @@ describe('differentiable', () => {
 
   it('records through untagged pipe stages', () => {
     const piped = differentiable((x: Var<number>) => pipe(x, square, add(3), sin))
-    const nested = differentiable((x: Var<number>) => sin(add(square(x), 3)))
+    const nested = differentiable((x: Var<number>) => sin(add(3)(square(x))))
 
     expect(piped.forward(2)).toBeCloseTo(nested.forward(2), 10)
     expect(piped.gradient(2)).toBeCloseTo(nested.gradient(2), 10)
   })
 
   it('returns tuples for multi-input gradients', () => {
-    const f = differentiable((x: Var<number>, y: Var<number>) => add(mul(x, y), square(x)))
+    const f = differentiable((x: Var<number>, y: Var<number>) => add(square(x))(mul(y)(x)))
 
     expect(f.gradient(2, 3)).toEqual([7, 2])
   })

@@ -21,8 +21,8 @@ describe('simulate', () => {
   it('deuteranopia substantially collapses the red/green axis', () => {
     const simRed = simulate(rgb(1, 0, 0), 'deuteranopia', 1)
     const simGreen = simulate(rgb(0, 1, 0), 'deuteranopia', 1)
-    const simRedVsGreenAfter = deltaE(simRed, simGreen)
-    const realRedVsGreen = deltaE(rgb(1, 0, 0), rgb(0, 1, 0))
+    const simRedVsGreenAfter = deltaE(simGreen)(simRed)
+    const realRedVsGreen = deltaE(rgb(0, 1, 0))(rgb(1, 0, 0))
     // After full deuteranopia, the red-green distance should drop by at least half.
     expect(simRedVsGreenAfter).toBeLessThan(realRedVsGreen * 0.5)
   })
@@ -30,16 +30,16 @@ describe('simulate', () => {
   it('protanopia reduces the red/green distance (but less aggressively than deuteranopia)', () => {
     const simRed = simulate(rgb(1, 0, 0), 'protanopia', 1)
     const simGreen = simulate(rgb(0, 1, 0), 'protanopia', 1)
-    const simRedVsGreenAfter = deltaE(simRed, simGreen)
-    const realRedVsGreen = deltaE(rgb(1, 0, 0), rgb(0, 1, 0))
+    const simRedVsGreenAfter = deltaE(simGreen)(simRed)
+    const realRedVsGreen = deltaE(rgb(0, 1, 0))(rgb(1, 0, 0))
     expect(simRedVsGreenAfter).toBeLessThan(realRedVsGreen * 0.7)
   })
 
   it('tritanopia collapses the blue/yellow axis (not blue/green)', () => {
     const simBlue = simulate(rgb(0, 0, 1), 'tritanopia', 1)
     const simYellow = simulate(rgb(1, 1, 0), 'tritanopia', 1)
-    const simBlueVsYellow = deltaE(simBlue, simYellow)
-    const realBlueVsYellow = deltaE(rgb(0, 0, 1), rgb(1, 1, 0))
+    const simBlueVsYellow = deltaE(simYellow)(simBlue)
+    const realBlueVsYellow = deltaE(rgb(1, 1, 0))(rgb(0, 0, 1))
     expect(simBlueVsYellow).toBeLessThan(realBlueVsYellow * 0.8)
   })
 

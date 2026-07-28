@@ -41,7 +41,7 @@ const directional = (f: (x: Mat) => number, x: Mat, d: Mat, h = 1e-5) =>
 
 describe('matrix ops', () => {
   it('computes transpose, scale, sum, and mean gradients', () => {
-    const sumLoss = differentiable((m: Var<Mat>) => matSum(matScale(matTranspose(m), 2)))
+    const sumLoss = differentiable((m: Var<Mat>) => matSum(matScale(2)(matTranspose(m))))
     const meanLoss = differentiable((m: Var<Mat>) => matMean(m))
     const m = mat(2, 2, [1, 2, 3, 4])
 
@@ -52,7 +52,7 @@ describe('matrix ops', () => {
   it('computes matMul gradients against central differences', () => {
     const target = mat(2, 2, [1, -1, 0.5, 2])
     const loss = differentiable((a: Var<Mat>, b: Var<Mat>) =>
-      matNormSquared(matSub(matMul(a, b), target)),
+      matNormSquared(matSub(target)(matMul(b)(a))),
     )
     const a = mat(2, 3, [1, 2, -1, 0, 1, 3])
     const b = mat(3, 2, [2, -1, 0.5, 1, -2, 3])
@@ -71,15 +71,15 @@ describe('matrix ops', () => {
   })
 
   it('accumulates matrix fan-out gradients', () => {
-    const f = differentiable((m: Var<Mat>) => matNormSquared(matAdd(m, m)))
+    const f = differentiable((m: Var<Mat>) => matNormSquared(matAdd(m)(m)))
     const grad = f.gradient(mat(2, 2, [1, -2, 3, -4]))
 
     approxMat(grad, [8, -16, 24, -32])
   })
 
   it('throws ShapeError for mismatched matrix shapes', () => {
-    const addLoss = differentiable((m: Var<Mat>) => matSum(matAdd(m, mat(1, 2, [1, 2]))))
-    const mulLoss = differentiable((m: Var<Mat>) => matSum(matMul(m, mat(4, 1, [1, 2, 3, 4]))))
+    const addLoss = differentiable((m: Var<Mat>) => matSum(matAdd(mat(1, 2, [1, 2]))(m)))
+    const mulLoss = differentiable((m: Var<Mat>) => matSum(matMul(mat(4, 1, [1, 2, 3, 4]))(m)))
 
     expect(() => addLoss.forward(mat(2, 2, [1, 2, 3, 4]))).toThrow(ShapeError)
     expect(() => mulLoss.forward(mat(2, 2, [1, 2, 3, 4]))).toThrow(ShapeError)
@@ -88,7 +88,7 @@ describe('matrix ops', () => {
   it('reduces a matrix model loss with gradient descent', () => {
     const x = mat(4, 2, [0, 0, 0, 1, 1, 0, 1, 1])
     const y = mat(4, 1, [0, -1, 2, 1])
-    const loss = differentiable((w: Var<Mat>) => matNormSquared(matSub(matMul(x, w), y)))
+    const loss = differentiable((w: Var<Mat>) => matNormSquared(matSub(y)(matMul(w)(x))))
 
     let w = mat(2, 1, [0, 0])
     const initial = loss.forward(w)

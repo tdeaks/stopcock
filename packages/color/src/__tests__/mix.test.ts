@@ -25,7 +25,7 @@ describe('hueInterpolate (shorter arc)', () => {
 describe('mix', () => {
   it('at t=0 returns first color (in OKLab)', () => {
     const a = rgb(1, 0, 0)
-    const out = mix(a, rgb(0, 0, 1), 0)
+    const out = mix(rgb(0, 0, 1), 0)(a)
     expect(out.space).toBe('oklab')
     const aOk = toOKLab(a)
     expect(out.channels[0]).toBeCloseTo(aOk.channels[0], 6)
@@ -33,13 +33,13 @@ describe('mix', () => {
 
   it('at t=1 returns second color', () => {
     const b = rgb(0, 0, 1)
-    const out = mix(rgb(1, 0, 0), b, 1)
+    const out = mix(b, 1)(rgb(1, 0, 0))
     const bOk = toOKLab(b)
     expect(out.channels[0]).toBeCloseTo(bOk.channels[0], 6)
   })
 
   it('default t is 0.5', () => {
-    const half = mix(rgb(0, 0, 0), rgb(1, 1, 1))
+    const half = mix(rgb(1, 1, 1))(rgb(0, 0, 0))
     expect(half.channels[0]).toBeGreaterThan(0)
     expect(half.channels[0]).toBeLessThan(1)
   })
@@ -51,19 +51,19 @@ describe('mix', () => {
   })
 
   it('mixes alpha linearly', () => {
-    const out = mix(rgb(1, 0, 0, 1), rgb(0, 0, 1, 0), 0.25)
+    const out = mix(rgb(0, 0, 1, 0), 0.25)(rgb(1, 0, 0, 1))
     expect(out.alpha).toBeCloseTo(0.75)
   })
 })
 
 describe('mixIn', () => {
   it('honors the requested interpolation space', () => {
-    const out = mixIn(fromHex('#ff0000'), fromHex('#0000ff'), 'oklch', 0.5)
+    const out = mixIn(fromHex('#0000ff'), 'oklch', 0.5)(fromHex('#ff0000'))
     expect(out.space).toBe('oklch')
   })
 
   it('interpolates hue along shorter arc in polar spaces', () => {
-    const out = mixIn(oklch(0.7, 0.15, 350), oklch(0.7, 0.15, 10), 'oklch', 0.5)
+    const out = mixIn(oklch(0.7, 0.15, 10), 'oklch', 0.5)(oklch(0.7, 0.15, 350))
     expect(out.channels[2]).toBeCloseTo(0, 1)
   })
 })

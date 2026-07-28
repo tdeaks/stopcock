@@ -88,7 +88,7 @@ export const simulate = (c: Color, type: CVDType, severity: number = 1): Color =
       channels: new Float64Array([L, L, L]),
       alpha: c.alpha,
     }
-    return convert(linGray, c.space)
+    return convert(c.space)(linGray)
   }
 
   const m = matrixFor(type, Math.max(0, Math.min(1, severity)))
@@ -99,5 +99,5 @@ export const simulate = (c: Color, type: CVDType, severity: number = 1): Color =
     channels: new Float64Array([r, g, b]),
     alpha: c.alpha,
   }
-  return convert(simulated, c.space)
+  return convert(c.space)(simulated)
 }

@@ -1,23 +1,21 @@
-import { dual } from '@stopcock/fp/dual'
 import { err, ok, type Result } from '@stopcock/fp/result'
 import type { Operation, Patch, ConflictError, Path } from './types'
 import { patch, empty } from './patch'
 
-export const rebase: {
-  (p: Patch, onto: Patch): Result<Patch, ConflictError>
-  (onto: Patch): (p: Patch) => Result<Patch, ConflictError>
-} = dual(2, (p: Patch, onto: Patch): Result<Patch, ConflictError> => {
-  if (onto.ops.length === 0) return ok(p)
-  if (p.ops.length === 0) return ok(empty())
+export const rebase =
+  (onto: Patch) =>
+  (p: Patch): Result<Patch, ConflictError> => {
+    if (onto.ops.length === 0) return ok(p)
+    if (p.ops.length === 0) return ok(empty())
 
-  const result: Operation[] = []
-  for (const op of p.ops) {
-    const transformed = transformOp(op, onto.ops)
-    if (transformed._tag === 0) return transformed as any
-    if (transformed.value !== null) result.push(transformed.value)
+    const result: Operation[] = []
+    for (const op of p.ops) {
+      const transformed = transformOp(op, onto.ops)
+      if (transformed._tag === 0) return transformed as any
+      if (transformed.value !== null) result.push(transformed.value)
+    }
+    return ok(result.length === 0 ? empty() : patch(result))
   }
-  return ok(result.length === 0 ? empty() : patch(result))
-})
 
 function conflictError(message: string, local: Operation, remote: Operation): ConflictError {
   return { _tag: 'ConflictError', message, local, remote }

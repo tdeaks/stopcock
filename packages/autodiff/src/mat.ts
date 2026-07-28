@@ -1,20 +1,9 @@
-import { dual } from '@stopcock/fp/dual'
 import { Mat as LaMat } from '@stopcock/la'
 import { asVar, record } from './tape'
 import { ShapeError, type Mat, type Var } from './types'
 import type { ScalarInput } from './scalar'
 
 export type MatInput = Var<Mat> | Mat
-
-type BinaryMatOp = {
-  (a: MatInput, b: MatInput): Var<Mat>
-  (b: MatInput): (a: MatInput) => Var<Mat>
-}
-
-type MatScaleOp = {
-  (m: MatInput, s: ScalarInput): Var<Mat>
-  (s: ScalarInput): (m: MatInput) => Var<Mat>
-}
 
 const assertSameShape = (op: string, a: Mat, b: Mat) => {
   if (a.rows !== b.rows || a.cols !== b.cols)
@@ -38,7 +27,7 @@ const matInner = (a: Mat, b: Mat): number => {
   return sum
 }
 
-export const matMul = dual(2, (a: MatInput, b: MatInput): Var<Mat> => {
+export const matMul: (b: MatInput) => (a: MatInput) => Var<Mat> = (b) => (a) => {
   const av = asVar(a)
   const bv = asVar(b)
   assertMatMulShape(av.value, bv.value)
@@ -46,30 +35,30 @@ export const matMul = dual(2, (a: MatInput, b: MatInput): Var<Mat> => {
     LaMat.multiply(grad, LaMat.transpose(bv.value)),
     LaMat.multiply(LaMat.transpose(av.value), grad),
   ])
-}) as BinaryMatOp
+}
 
-export const matAdd = dual(2, (a: MatInput, b: MatInput): Var<Mat> => {
+export const matAdd: (b: MatInput) => (a: MatInput) => Var<Mat> = (b) => (a) => {
   const av = asVar(a)
   const bv = asVar(b)
   assertSameShape('matAdd', av.value, bv.value)
   return record(LaMat.add(av.value, bv.value), [av, bv], (grad) => [grad, grad])
-}) as BinaryMatOp
+}
 
-export const matSub = dual(2, (a: MatInput, b: MatInput): Var<Mat> => {
+export const matSub: (b: MatInput) => (a: MatInput) => Var<Mat> = (b) => (a) => {
   const av = asVar(a)
   const bv = asVar(b)
   assertSameShape('matSub', av.value, bv.value)
   return record(LaMat.sub(av.value, bv.value), [av, bv], (grad) => [grad, LaMat.scale(grad, -1)])
-}) as BinaryMatOp
+}
 
-export const matScale = dual(2, (m: MatInput, s: ScalarInput): Var<Mat> => {
+export const matScale: (s: ScalarInput) => (m: MatInput) => Var<Mat> = (s) => (m) => {
   const mv = asVar(m)
   const sv = asVar(s)
   return record(LaMat.scale(mv.value, sv.value), [mv, sv], (grad) => [
     LaMat.scale(grad, sv.value),
     matInner(grad, mv.value),
   ])
-}) as MatScaleOp
+}
 
 export const matTranspose = (m: MatInput): Var<Mat> => {
   const mv = asVar(m)

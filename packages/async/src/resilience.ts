@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import type { Task } from './task'
 import { of } from './task'
 import { linkedController, abortableDelay } from './internals'
@@ -78,17 +77,13 @@ export const timeout =
       })
     })
 
-export const fallback: {
-  <A, E, B, E2>(task: Task<A, E>, backup: Task<B, E2>): Task<A | B, E2>
-  <B, E2>(backup: Task<B, E2>): <A, E>(task: Task<A, E>) => Task<A | B, E2>
-} = dual(
-  2,
-  <A, E, B, E2>(task: Task<A, E>, backup: Task<B, E2>): Task<A | B, E2> =>
+export const fallback =
+  <B, E2>(backup: Task<B, E2>) =>
+  <A, E>(task: Task<A, E>): Task<A | B, E2> =>
     of(async (signal?) => {
       try {
         return await task.run(signal)
       } catch {
         return backup.run(signal)
       }
-    }),
-)
+    })

@@ -8,8 +8,8 @@ import { vecAdd } from '../vec'
 describe('tape', () => {
   it('throws outside an active tape', () => {
     expect(() => currentTape()).toThrow(NoActiveTapeError)
-    expect(() => mul(2, 3)).toThrow(NoActiveTapeError)
-    expect(() => vecAdd(new Float64Array([1]), new Float64Array([1, 2]))).toThrow(NoActiveTapeError)
+    expect(() => mul(3)(2)).toThrow(NoActiveTapeError)
+    expect(() => vecAdd(new Float64Array([1, 2]))(new Float64Array([1]))).toThrow(NoActiveTapeError)
   })
 
   it('records leaf variables without cloning their values', () => {
@@ -25,7 +25,7 @@ describe('tape', () => {
   it('accumulates fan-out gradients instead of overwriting', () => {
     withTape((tape) => {
       const x = variable(3)
-      const y = mul(x, x)
+      const y = mul(x)(x)
 
       backward(y, tape)
 
@@ -47,8 +47,8 @@ describe('tape', () => {
 
   it('keeps nested differentiable tapes independent', () => {
     const outer = differentiable((x: Var<number>) => {
-      const inner = differentiable((y: Var<number>) => mul(y, y))
-      return add(mul(x, x), inner.gradient(3))
+      const inner = differentiable((y: Var<number>) => mul(y)(y))
+      return add(inner.gradient(3))(mul(x)(x))
     })
 
     expect(outer.forward(2)).toBe(10)

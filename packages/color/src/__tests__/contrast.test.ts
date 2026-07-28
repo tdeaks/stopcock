@@ -10,12 +10,12 @@ describe('luminance', () => {
 
 describe('contrastRatio', () => {
   it('black on white is 21', () => {
-    expect(contrastRatio(rgb(0, 0, 0), rgb(1, 1, 1))).toBeCloseTo(21, 3)
+    expect(contrastRatio(rgb(1, 1, 1))(rgb(0, 0, 0))).toBeCloseTo(21, 3)
   })
 
   it('symmetric (order does not matter)', () => {
-    expect(contrastRatio(rgb(0.2, 0.4, 0.6), rgb(1, 1, 1))).toBeCloseTo(
-      contrastRatio(rgb(1, 1, 1), rgb(0.2, 0.4, 0.6)),
+    expect(contrastRatio(rgb(1, 1, 1))(rgb(0.2, 0.4, 0.6))).toBeCloseTo(
+      contrastRatio(rgb(0.2, 0.4, 0.6))(rgb(1, 1, 1)),
       6,
     )
   })
@@ -26,17 +26,17 @@ describe('contrastRatio', () => {
 })
 
 describe('WCAG thresholds', () => {
-  it('black/white passes AAA', () => expect(meetsAAA(rgb(0, 0, 0), rgb(1, 1, 1))).toBe(true))
-  it('white/white fails AA', () => expect(meetsAA(rgb(1, 1, 1), rgb(1, 1, 1))).toBe(false))
+  it('black/white passes AAA', () => expect(meetsAAA(rgb(1, 1, 1))(rgb(0, 0, 0))).toBe(true))
+  it('white/white fails AA', () => expect(meetsAA(rgb(1, 1, 1))(rgb(1, 1, 1))).toBe(false))
   it('low contrast passes AA Large but not AA', () => {
     // ~3.4:1 contrast
     const fg = rgb(0.55, 0.55, 0.55)
     const bg = rgb(1, 1, 1)
-    const r = contrastRatio(fg, bg)
+    const r = contrastRatio(bg)(fg)
     expect(r).toBeGreaterThan(3)
     expect(r).toBeLessThan(4.5)
-    expect(meetsAALarge(fg, bg)).toBe(true)
-    expect(meetsAA(fg, bg)).toBe(false)
+    expect(meetsAALarge(bg)(fg)).toBe(true)
+    expect(meetsAA(bg)(fg)).toBe(false)
   })
 })
 
@@ -53,10 +53,10 @@ describe('deltaE (CIEDE2000)', () => {
   ])('Sharma pair L1=%s ... expected %s', (L1, a1, b1, L2, a2, b2, exp) => {
     const c1 = lab(L1, a1, b1)
     const c2 = lab(L2, a2, b2)
-    expect(deltaE(c1, c2)).toBeCloseTo(exp, 2)
+    expect(deltaE(c2)(c1)).toBeCloseTo(exp, 2)
   })
 
   it('returns 0 for identical colors', () => {
-    expect(deltaE(rgb(0.3, 0.5, 0.7), rgb(0.3, 0.5, 0.7))).toBeCloseTo(0, 6)
+    expect(deltaE(rgb(0.3, 0.5, 0.7))(rgb(0.3, 0.5, 0.7))).toBeCloseTo(0, 6)
   })
 })

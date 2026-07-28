@@ -1,19 +1,17 @@
-import { dual } from '@stopcock/fp/dual'
 import { deep } from '@stopcock/fp/eq'
 import type { Patch, DiffOptions } from './types'
 import { patch, empty } from './patch'
 import { treeDiff } from './tree-diff'
 
-export const diff: {
-  (a: unknown, b: unknown): Patch
-  (b: unknown): (a: unknown) => Patch
-} = dual(2, (a: unknown, b: unknown): Patch => diffWith(a, b, {}))
+export const diff =
+  (b: unknown) =>
+  (a: unknown): Patch =>
+    diffWith(b, {})(a)
 
-export const diffWith: {
-  (a: unknown, b: unknown, options: DiffOptions): Patch
-  (b: unknown, options: DiffOptions): (a: unknown) => Patch
-} = dual(3, (a: unknown, b: unknown, options: DiffOptions): Patch => {
-  if ((options.eq ?? deep.equals)(a, b)) return empty()
-  const ops = treeDiff(a, b, [], options)
-  return ops.length === 0 ? empty() : patch(ops)
-})
+export const diffWith =
+  (b: unknown, options: DiffOptions) =>
+  (a: unknown): Patch => {
+    if ((options.eq ?? deep.equals)(a, b)) return empty()
+    const ops = treeDiff(a, b, [], options)
+    return ops.length === 0 ? empty() : patch(ops)
+  }

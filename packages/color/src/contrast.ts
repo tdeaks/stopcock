@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import type { Color } from './types'
 import { convert, toLinearRGB, toLab, toOKLab } from './convert'
 
@@ -16,27 +15,21 @@ const contrastImpl = (a: Color, b: Color): number => {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
-export const contrastRatio: {
-  (a: Color, b: Color): number
-  (b: Color): (a: Color) => number
-} = dual(2, contrastImpl)
+export const contrastRatio: (b: Color) => (a: Color) => number =
+  (b) => (a) =>
+    contrastImpl(a, b)
 
-const threshold = (limit: number) => dual(2, (a: Color, b: Color) => contrastImpl(a, b) >= limit)
+const threshold =
+  (limit: number) =>
+  (b: Color) =>
+  (a: Color): boolean =>
+    contrastImpl(a, b) >= limit
 
-export const meetsAA: {
-  (a: Color, b: Color): boolean
-  (b: Color): (a: Color) => boolean
-} = threshold(4.5)
+export const meetsAA: (b: Color) => (a: Color) => boolean = threshold(4.5)
 
-export const meetsAAA: {
-  (a: Color, b: Color): boolean
-  (b: Color): (a: Color) => boolean
-} = threshold(7)
+export const meetsAAA: (b: Color) => (a: Color) => boolean = threshold(7)
 
-export const meetsAALarge: {
-  (a: Color, b: Color): boolean
-  (b: Color): (a: Color) => boolean
-} = threshold(3)
+export const meetsAALarge: (b: Color) => (a: Color) => boolean = threshold(3)
 
 // ──────────────────────────────────────────────────────────────────────
 // CIEDE2000 deltaE — Sharma et al. 2005 reference implementation
@@ -104,10 +97,9 @@ const deltaEImpl = (c1: Color, c2: Color): number => {
   )
 }
 
-export const deltaE: {
-  (a: Color, b: Color): number
-  (b: Color): (a: Color) => number
-} = dual(2, deltaEImpl)
+export const deltaE: (b: Color) => (a: Color) => number =
+  (b) => (a) =>
+    deltaEImpl(a, b)
 
 // Euclidean distance in OKLab — used by gamut mapping
 export const deltaEOK = (a: Color, b: Color): number => {

@@ -12,7 +12,7 @@ const rotateHue = (source: Color, ok: Color, deg: number): Color => {
     channels: new Float64Array([ok.channels[0], ok.channels[1], h]),
     alpha: ok.alpha,
   }
-  return convert(rotated, source.space)
+  return convert(source.space)(rotated)
 }
 
 export const complementary = (c: Color): Color => {

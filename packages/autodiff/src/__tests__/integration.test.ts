@@ -17,9 +17,9 @@ const predict = (
   v2: Var<number>,
   c: Var<number>,
 ) => {
-  const h1 = sigmoid(add(add(mul(w11, x1), mul(w21, x2)), b1))
-  const h2 = sigmoid(add(add(mul(w12, x1), mul(w22, x2)), b2))
-  return sigmoid(add(add(mul(v1, h1), mul(v2, h2)), c))
+  const h1 = sigmoid(add(b1)(add(mul(x2)(w21))(mul(x1)(w11))))
+  const h2 = sigmoid(add(b2)(add(mul(x2)(w22))(mul(x1)(w12))))
+  return sigmoid(add(c)(add(mul(h2)(v2))(mul(h1)(v1))))
 }
 
 describe('autodiff integration', () => {
@@ -44,14 +44,15 @@ describe('autodiff integration', () => {
         c: Var<number>,
       ) => {
         let total = square(
-          sub(
+          sub(samples[0][2])(
             predict(samples[0][0], samples[0][1], w11, w12, w21, w22, b1, b2, v1, v2, c),
-            samples[0][2],
           ),
         )
         for (let i = 1; i < samples.length; i++) {
           const [x1, x2, y] = samples[i]
-          total = add(total, square(sub(predict(x1, x2, w11, w12, w21, w22, b1, b2, v1, v2, c), y)))
+          total = add(
+            square(sub(y)(predict(x1, x2, w11, w12, w21, w22, b1, b2, v1, v2, c))),
+          )(total)
         }
         return total
       },

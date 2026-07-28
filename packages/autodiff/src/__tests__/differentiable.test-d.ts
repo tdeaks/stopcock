@@ -13,13 +13,13 @@ describe('differentiable types', () => {
   })
 
   it('keeps multi-input gradients as tuples', () => {
-    const f = differentiable((x: Var<number>, y: Var<number>) => add(mul(x, y), x))
+    const f = differentiable((x: Var<number>, y: Var<number>) => add(x)(mul(y)(x)))
 
     expectTypeOf(f.gradient(1, 2)).toEqualTypeOf<readonly [number, number]>()
   })
 
   it('preserves vector gradient shapes', () => {
-    const f = differentiable((w: Var<Vec>, x: Var<Vec>) => vecDot(w, x))
+    const f = differentiable((w: Var<Vec>, x: Var<Vec>) => vecDot(x)(w))
     const w = new Float64Array([1, 2])
     const x = new Float64Array([3, 4])
 

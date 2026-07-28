@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import { deep } from '@stopcock/fp/eq'
 import { err, ok, type Result } from '@stopcock/fp/result'
 import type { Operation, Patch, PatchError, Path } from './types'
@@ -113,24 +112,22 @@ function applyOp(target: unknown, op: Operation): Result<unknown, PatchError> {
   }
 }
 
-export const apply = dual(2, <T>(target: T, p: Patch): Result<T, PatchError> => {
-  let current: unknown = target
-  for (const op of p.ops) {
-    const result = applyOp(current, op)
-    if (result._tag === 0) return result as any
-    current = result.value
+export const apply =
+  (p: Patch) =>
+  <T>(target: T): Result<T, PatchError> => {
+    let current: unknown = target
+    for (const op of p.ops) {
+      const result = applyOp(current, op)
+      if (result._tag === 0) return result as any
+      current = result.value
+    }
+    return ok(current as T)
   }
-  return ok(current as T)
-}) as {
-  <T>(target: T, p: Patch): Result<T, PatchError>
-  (p: Patch): <T>(target: T) => Result<T, PatchError>
-}
 
-export const applyUnsafe = dual(2, <T>(target: T, p: Patch): T => {
-  const result = apply(target, p)
-  if (result._tag === 0) throw new Error(result.error.message)
-  return result.value
-}) as {
-  <T>(target: T, p: Patch): T
-  (p: Patch): <T>(target: T) => T
-}
+export const applyUnsafe =
+  (p: Patch) =>
+  <T>(target: T): T => {
+    const result = apply(p)(target)
+    if (result._tag === 0) throw new Error(result.error.message)
+    return result.value
+  }

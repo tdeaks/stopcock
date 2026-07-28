@@ -1,16 +1,13 @@
-import { dual } from '@stopcock/fp/dual'
 import { asVar, record } from './tape'
 import type { Var } from './types'
 
 export type ScalarInput = Var<number> | number
 
-type BinaryScalarOp = {
-  (a: ScalarInput, b: ScalarInput): Var<number>
-  (b: ScalarInput): (a: ScalarInput) => Var<number>
-}
-
-const binaryScalar = (body: (a: ScalarInput, b: ScalarInput) => Var<number>): BinaryScalarOp =>
-  dual(2, body) as BinaryScalarOp
+const binaryScalar =
+  (body: (a: ScalarInput, b: ScalarInput) => Var<number>) =>
+  (b: ScalarInput) =>
+  (a: ScalarInput): Var<number> =>
+    body(a, b)
 
 export const add = binaryScalar((a, b) => {
   const av = asVar(a)
