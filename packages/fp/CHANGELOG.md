@@ -4,30 +4,6 @@
 
 ### Major Changes
 
-- [`b8d5ce2`](https://github.com/tdeaks/stopcock/commit/b8d5ce255e9d6866ba7e725d8e5689a64f7d68eb) Thanks [@tdeaks](https://github.com/tdeaks)! - Release the clean FP 2.0 architecture: a slim root, explicit subpaths, strict
-  generated sources, portable-only pipeline compilation, Iter in place of
-  Stream, comprehensive data/algebra/collection/optic modules, and explicit
-  partiality and equality contracts. Move build-time specialization to the
-  compiler package, asynchronous failures to Task/AsyncIter, and migrate all
-  first-party consumers to the new subpath and optic APIs.
-
-  Performance contracts now cover 311 required rows per engine across portable
-  compilation, build-time specialization, Iter, transducers, collectors, typed
-  arrays, dispatch, and every FP module hot-path family. On the final local
-  Darwin arm64 characterization, portable compilation measured 1.677×/0.943×
-  geomean/minimum on Bun and 1.379×/0.973× on Node; stratified build output
-  measured 2.044×/0.906× and 1.572×/0.997× respectively. The separate
-  operation-complete compiler lane measured 1.105×/0.866× and 1.181×/0.924×
-  across 37 timed operations while retaining `length` and `isEmpty` as
-  optimizer canaries. These are comparator-relative paired ratios, not
-  cross-machine absolute-throughput claims.
-
-  Linux x64 and macOS arm64 release jobs run Bun 1.3.14 and Node 22, fail closed
-  on provenance, completeness, correctness, sampling, statistical, confidence,
-  or floor failures, and retain raw plus evaluated artifacts. Package size is
-  also gated. The public runtime has no `eval`, `new Function`, function-source
-  parsing, or runtime-loaded JIT; optional specialization happens at build time.
-
 - [`55ca6a1`](https://github.com/tdeaks/stopcock/commit/55ca6a1385ad7264af11bcbb6a7acfb61cafd05c) Thanks [@tdeaks](https://github.com/tdeaks)! - Root `pipe` and `flow` are sequential. Fusion is now something you ask for.
 
   `pipe(xs, map(f), filter(g))` used to fuse into a single pass automatically.
@@ -36,15 +12,11 @@
   arrays are no longer elided and callbacks run stage by stage rather than
   interleaved per element.
 
-  If you want fusion, import it by name:
-
-  ```ts
-  import { pipe } from "@stopcock/fp/fusion";
-  ```
-
-  That entry has meant exactly this since it shipped and keeps meaning it. If you
-  build with a bundler, `@stopcock/fp-compiler` fuses at build time and leaves no
-  runtime engine in your output at all.
+  If you want fusion, build with the `@stopcock/fp-compiler` plugin: it
+  rewrites your pipelines into single loops at build time and leaves no runtime
+  engine in your output at all. The `@stopcock/fp/fusion` entry remains as the
+  way a call site opts in by name; at runtime it is the same sequential pipe,
+  and the compiler is what makes it fuse.
 
   Why: the root is what most people import, and it was carrying an optimizer for
   everyone who only wanted to compose two functions. Importing `pipe` now costs
@@ -89,79 +61,7 @@
   runtime has no `eval`, `new Function`, or runtime-loaded code; everything
   clever happens at build time.
 
-- [`e0becf5`](https://github.com/tdeaks/stopcock/commit/e0becf549d2883f598f3a06e605449eca304215b) Thanks [@tdeaks](https://github.com/tdeaks)! - Optimized execution now requires trusted operator provenance.
-
-  Until now, any function carrying an `_op` field with a valid opcode was treated
-  as one of this package's operators, and its `_fn`/`_a1`/`_a2` fields became the
-  bindings a fused kernel executed. Those fields are public and settable by
-  anyone, so a caller could hand `pipe` a hand-made object and have it drive a
-  kernel.
-
-  Operators built by this package are now recorded in a module-private table when
-  they are constructed, and only that table can promote a step to a fused plan.
-  The public fields stay exactly where they were and remain readable for
-  diagnostics, but they no longer grant anything.
-
-  What changes for you:
-
-  - Functions you build with the public `dual(..., { op })` stay callable and
-    keep their `_op` field. They now always run the generic path instead of
-    being fused. Behaviour and results are unchanged; only the execution
-    strategy is.
-  - Hand-written objects carrying `_op` are no longer fused. They run
-    generically, which was always the correct outcome for a function this
-    package did not build.
-  - Deleting or overwriting `_op`, `_fn`, `_a1`, or `_a2` on an operator you got
-    from this package no longer changes what it does.
-  - A forged out-of-range opcode used to throw from the registry. It is now
-    simply generic.
-
-  There is no public registrar, and none ships in 2.0. If you need an operator
-  that fuses, use the ones this package exports.
-
 ### Minor Changes
-
-- [`90c3265`](https://github.com/tdeaks/stopcock/commit/90c326592d9f88506d05c6cfdf97a9b082f80b17) Thanks [@tdeaks](https://github.com/tdeaks)! - `@stopcock/fp/fusion` is now compact fusion, not an alias for the optimized engine.
-
-  Since it shipped, `/fusion` has been the same implementation as
-  `/fusion/optimized`, kept separate so you could commit to one without moving
-  later. This is that move.
-
-  Compact fuses through one generic exact executor rather than a bank of
-  specialized templates. It is honestly size-first: **2,874 gzip bytes against
-  optimized fusion's 11,495**, and slower than optimized in exchange. Results,
-  callback order, and early-exit counts are identical — the tiers are tested
-  against each other on all three.
-
-  Pick by what you need:
-
-  | you want                 | import                             |
-  | ------------------------ | ---------------------------------- |
-  | smallest fused runtime   | `@stopcock/fp/fusion`              |
-  | fastest fused runtime    | `@stopcock/fp/fusion/optimized`    |
-  | no runtime engine at all | build with `@stopcock/fp-compiler` |
-
-  If you were importing `/fusion` for speed, move to `/fusion/optimized` and
-  nothing else changes. Compact carries no operation-name registry, no
-  descriptions and no statistics; diagnostics stay in `@stopcock/fp/fusion/debug`,
-  which production compact never imports.
-
-- [`27ae9d3`](https://github.com/tdeaks/stopcock/commit/27ae9d393252b9ca64304efdb54e8dcffde2bb6b) Thanks [@tdeaks](https://github.com/tdeaks)! - Add explicit fusion entries: `@stopcock/fp/fusion`, `@stopcock/fp/fusion/optimized`, and `@stopcock/fp/fusion/debug`.
-
-  Root `pipe` and `flow` fuse automatically today. In 2.0 they become sequential,
-  and these entries are how you keep fusion where you actually want it. They
-  delegate to the engine that has always implemented fused behaviour, not to the
-  root symbols, so an import written today means the same thing after root
-  changes.
-
-  `fusion` and `fusion/optimized` are the same implementation right now. They are
-  separate entries so you can commit to one now and not have to move later, when
-  optimized fusion gets its own runner.
-
-  `fusion/debug` carries the explanation and statistics surface. It is absent
-  from any bundle that does not import it.
-
-  Nothing about root changes in this release. These are additive.
 
 - [`e2481f3`](https://github.com/tdeaks/stopcock/commit/e2481f3754b613f4ec9038c511b9765ae63c80d9) Thanks [@tdeaks](https://github.com/tdeaks)! - Add `Obj.compilePathOf` and make plain-data path writes take a guarded fast
   tier.
@@ -190,7 +90,7 @@
   held to that by a differential corpus that compares every write against a pinned
   copy of the exact clone.
 
-- [`d6c5d7b`](https://github.com/tdeaks/stopcock/commit/d6c5d7b124512a921835cacb429eb3f2dd997f85) Thanks [@tdeaks](https://github.com/tdeaks)! - Add `Map.getOrElse` in direct and data-last forms.
+- [`d6c5d7b`](https://github.com/tdeaks/stopcock/commit/d6c5d7b124512a921835cacb429eb3f2dd997f85) Thanks [@tdeaks](https://github.com/tdeaks)! - Add `Map.getOrElse`.
 
   The fallback is lazy and runs at most once, and only when the key is genuinely
   absent, so an expensive default costs nothing on a hit. The lookup calls `get`
@@ -248,79 +148,7 @@
   Nothing else about the root changed: `some`, `none`, `ok`, `err`, the guards,
   and the types are where they were.
 
-- [`e0becf5`](https://github.com/tdeaks/stopcock/commit/e0becf549d2883f598f3a06e605449eca304215b) Thanks [@tdeaks](https://github.com/tdeaks)! - Optimized execution now requires trusted operator provenance.
-
-  Until now, any function carrying an `_op` field with a valid opcode was treated
-  as one of this package's operators, and its `_fn`/`_a1`/`_a2` fields became the
-  bindings a fused kernel executed. Those fields are public and settable by
-  anyone, so a caller could hand `pipe` a hand-made object and have it drive a
-  kernel.
-
-  Operators built by this package are now recorded in a module-private table when
-  they are constructed, and only that table can promote a step to a fused plan.
-  The public fields stay exactly where they were and remain readable for
-  diagnostics, but they no longer grant anything.
-
-  What changes for you:
-
-  - Functions you build with the public `dual(..., { op })` stay callable and
-    keep their `_op` field. They now always run the generic path instead of
-    being fused. Behaviour and results are unchanged; only the execution
-    strategy is.
-  - Hand-written objects carrying `_op` are no longer fused. They run
-    generically, which was always the correct outcome for a function this
-    package did not build.
-  - Deleting or overwriting `_op`, `_fn`, `_a1`, or `_a2` on an operator you got
-    from this package no longer changes what it does.
-  - A forged out-of-range opcode used to throw from the registry. It is now
-    simply generic.
-
-  There is no public registrar, and none ships in 2.0. If you need an operator
-  that fuses, use the ones this package exports.
-
 ### Minor Changes
-
-- [`90c3265`](https://github.com/tdeaks/stopcock/commit/90c326592d9f88506d05c6cfdf97a9b082f80b17) Thanks [@tdeaks](https://github.com/tdeaks)! - `@stopcock/fp/fusion` is now compact fusion, not an alias for the optimized engine.
-
-  Since it shipped, `/fusion` has been the same implementation as
-  `/fusion/optimized`, kept separate so you could commit to one without moving
-  later. This is that move.
-
-  Compact fuses through one generic exact executor rather than a bank of
-  specialized templates. It is honestly size-first: **2,874 gzip bytes against
-  optimized fusion's 11,495**, and slower than optimized in exchange. Results,
-  callback order, and early-exit counts are identical — the tiers are tested
-  against each other on all three.
-
-  Pick by what you need:
-
-  | you want                 | import                             |
-  | ------------------------ | ---------------------------------- |
-  | smallest fused runtime   | `@stopcock/fp/fusion`              |
-  | fastest fused runtime    | `@stopcock/fp/fusion/optimized`    |
-  | no runtime engine at all | build with `@stopcock/fp-compiler` |
-
-  If you were importing `/fusion` for speed, move to `/fusion/optimized` and
-  nothing else changes. Compact carries no operation-name registry, no
-  descriptions and no statistics; diagnostics stay in `@stopcock/fp/fusion/debug`,
-  which production compact never imports.
-
-- [`27ae9d3`](https://github.com/tdeaks/stopcock/commit/27ae9d393252b9ca64304efdb54e8dcffde2bb6b) Thanks [@tdeaks](https://github.com/tdeaks)! - Add explicit fusion entries: `@stopcock/fp/fusion`, `@stopcock/fp/fusion/optimized`, and `@stopcock/fp/fusion/debug`.
-
-  Root `pipe` and `flow` fuse automatically today. In 2.0 they become sequential,
-  and these entries are how you keep fusion where you actually want it. They
-  delegate to the engine that has always implemented fused behaviour, not to the
-  root symbols, so an import written today means the same thing after root
-  changes.
-
-  `fusion` and `fusion/optimized` are the same implementation right now. They are
-  separate entries so you can commit to one now and not have to move later, when
-  optimized fusion gets its own runner.
-
-  `fusion/debug` carries the explanation and statistics surface. It is absent
-  from any bundle that does not import it.
-
-  Nothing about root changes in this release. These are additive.
 
 - [`e2481f3`](https://github.com/tdeaks/stopcock/commit/e2481f3754b613f4ec9038c511b9765ae63c80d9) Thanks [@tdeaks](https://github.com/tdeaks)! - Add `Obj.compilePathOf` and make plain-data path writes take a guarded fast
   tier.
@@ -349,7 +177,7 @@
   held to that by a differential corpus that compares every write against a pinned
   copy of the exact clone.
 
-- [`d6c5d7b`](https://github.com/tdeaks/stopcock/commit/d6c5d7b124512a921835cacb429eb3f2dd997f85) Thanks [@tdeaks](https://github.com/tdeaks)! - Add `Map.getOrElse` in direct and data-last forms.
+- [`d6c5d7b`](https://github.com/tdeaks/stopcock/commit/d6c5d7b124512a921835cacb429eb3f2dd997f85) Thanks [@tdeaks](https://github.com/tdeaks)! - Add `Map.getOrElse`.
 
   The fallback is lazy and runs at most once, and only when the key is genuinely
   absent, so an expensive default costs nothing on a hit. The lookup calls `get`
