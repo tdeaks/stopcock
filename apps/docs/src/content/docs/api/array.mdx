@@ -3,7 +3,13 @@ title: A (Array)
 description: Filter, map, sort, group, and 30+ array functions for pipe
 ---
 
-Every function works both ways: `A.fn(arr, ...)` (data-first) and `pipe(arr, A.fn(...))` (data-last). Streaming operations such as `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, and `dropWhile` [fuse in pipe](/concepts/fusion) into single loops. Terminal folds, accessor terminals, and materializing operations have different boundaries.
+Every operator is curried: `A.fn(...)(arr)`, which is what makes it drop into
+`pipe(arr, A.fn(...))`. Streaming operators such as `map`, `filter`,
+`flatMap`, `take`, `drop`, `takeWhile`, and `dropWhile` can be fused into a
+single loop by the separate build-time [`@stopcock/fp-compiler`](/concepts/fusion)
+plugin. Plain `pipe` at runtime never fuses on its own; it just calls each
+step in order. Terminal folds, accessor terminals, and materializing
+operations have different boundaries in what the compiler can fuse.
 
 ## Accessors
 
@@ -21,73 +27,77 @@ length<A>(arr: A[]): number
 isEmpty<A>(arr: A[]): boolean
 ```
 
-`head`, `last`, `length`, and `isEmpty` are accessor terminals in fused chains.
-Option-returning names are the default; `*OrUndefined` is the explicit
-JavaScript interop escape hatch.
+`head`, `last`, `length`, and `isEmpty` are accessor terminals: the compiler
+can treat them as the last step of a fused loop. Option-returning names are
+the default; `*OrUndefined` is the explicit JavaScript interop escape hatch.
 
 ## Transforms
 
 ```ts
-map<A, B>(arr: A[], f: (a: A) => B): B[]
-mapWithIndex<A, B>(arr: A[], f: (a: A, i: number) => B): B[]
-filter<A>(arr: A[], pred: (a: A) => boolean): A[]
-filterWithIndex<A>(arr: A[], pred: (a: A, i: number) => boolean): A[]
-flatMap<A, B>(arr: A[], f: (a: A) => B[]): B[]
-reduce<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
-reduceRight<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
-scan<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B[]
-forEach<A>(arr: A[], f: (a: A) => void): void
-forEachWithIndex<A>(arr: A[], f: (a: A, i: number) => void): void
+map<A, B>(f: (a: A) => B): (arr: A[]) => B[]
+mapWithIndex<A, B>(f: (a: A, i: number) => B): (arr: A[]) => B[]
+filter<A>(pred: (a: A) => boolean): (arr: A[]) => A[]
+filterWithIndex<A>(pred: (a: A, i: number) => boolean): (arr: A[]) => A[]
+flatMap<A, B>(f: (a: A) => B[]): (arr: A[]) => B[]
+reduce<A, B>(f: (acc: B, a: A) => B, init: B): (arr: A[]) => B
+reduceRight<A, B>(f: (acc: B, a: A) => B, init: B): (arr: A[]) => B
+scan<A, B>(f: (acc: B, a: A) => B, init: B): (arr: A[]) => B[]
+forEach<A>(f: (a: A) => void): (arr: A[]) => void
+forEachWithIndex<A>(f: (a: A, i: number) => void): (arr: A[]) => void
 ```
 
-`map`, `mapWithIndex`, `filter`, `filterWithIndex`, and `flatMap` stream in fused `pipe` chains. `reduce` is a terminal fold. `forEach` is terminal side-effect traversal. `scan` returns an intermediate array.
+`map`, `mapWithIndex`, `filter`, `filterWithIndex`, and `flatMap` are the
+streaming steps the compiler can fuse into one loop. `reduce` is a terminal
+fold. `forEach` is a terminal side-effect traversal. `scan` returns an
+intermediate array of every running value.
 
 ## Ordering
 
 ```ts
 sort(arr: number[]): number[]
-sortBy<A>(arr: A[], cmp: (a: A, b: A) => number): A[]
+sortBy<A>(cmp: (a: A, b: A) => number): (arr: A[]) => A[]
 reverse<A>(arr: A[]): A[]
 ```
 
-Materialization boundaries. They need the whole array. When callback purity is
-explicitly promised, `compilePure` can apply its bounded stable top-k rewrite
-to an adjacent `sortBy -> take(k)` or `sort -> take(k)` pair; ordinary `pipe`
-and `compile` keep exact semantics.
+Materialization boundaries: they need the whole array before they can
+produce anything. `sort` and `sortBy` always run a full sort; a following
+`take` does not get a bounded top-k shortcut.
 
 ## Slicing
 
 ```ts
-take<A>(arr: A[], n: number): A[]
-drop<A>(arr: A[], n: number): A[]
-takeWhile<A>(arr: A[], pred: (a: A) => boolean): A[]
-dropWhile<A>(arr: A[], pred: (a: A) => boolean): A[]
-chunk<A>(arr: A[], n: number): A[][]
-slidingWindow<A>(arr: A[], n: number): A[][]
-aperture<A>(arr: A[], n: number): A[][]
+take(n: number): <A>(arr: A[]) => A[]
+drop(n: number): <A>(arr: A[]) => A[]
+takeWhile<A>(pred: (a: A) => boolean): (arr: A[]) => A[]
+dropWhile<A>(pred: (a: A) => boolean): (arr: A[]) => A[]
+chunk(n: number): <A>(arr: A[]) => A[][]
+slidingWindow(n: number): <A>(arr: A[]) => A[][]
+aperture(n: number): <A>(arr: A[]) => A[][]
 ```
 
-`take`, `drop`, `takeWhile`, and `dropWhile` can stream in fused pipelines. `take` and `takeWhile` can stop early.
+`take`, `drop`, `takeWhile`, and `dropWhile` are streaming steps the
+compiler can fuse. `take` and `takeWhile` can stop the loop early.
 
 ## Search
 
 ```ts
-find<A>(arr: readonly A[], pred: (a: A) => boolean): Option<A>
-findIndex<A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
-findOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
-findIndexOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
-every<A>(arr: A[], pred: (a: A) => boolean): boolean
-some<A>(arr: A[], pred: (a: A) => boolean): boolean
-includes<A>(arr: A[], value: A): boolean
+find<A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<A>
+findIndex<A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<number>
+findOrUndefined<A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
+findIndexOrUndefined<A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
+every<A>(pred: (a: A) => boolean): (arr: A[]) => boolean
+some<A>(pred: (a: A) => boolean): (arr: A[]) => boolean
+includes<A>(value: A): (arr: A[]) => boolean
 ```
 
-`find`, `every`, and `some` are terminal predicates/searches. They can run as the final step of a fused pass and bail out early.
+`find`, `every`, and `some` are terminal predicates/searches: the compiler
+can run them as the last step of a fused loop and bail out early.
 
 ## Deduplication
 
 ```ts
 uniq<A>(arr: A[]): A[]
-uniqBy<A, B>(arr: A[], f: (a: A) => B): A[]
+uniqBy<A, B>(f: (a: A) => B): (arr: A[]) => A[]
 ```
 
 Deduplication needs seen-value state and returns a materialized array.
@@ -95,21 +105,21 @@ Deduplication needs seen-value state and returns a materialized array.
 ## Set operations
 
 ```ts
-intersection<A>(a: A[], b: A[]): A[]
-union<A>(a: A[], b: A[]): A[]
-difference<A>(a: A[], b: A[]): A[]
-symmetricDifference<A>(a: A[], b: A[]): A[]
+intersection<A>(b: A[]): (a: A[]) => A[]
+union<A>(b: A[]): (a: A[]) => A[]
+difference<A>(b: A[]): (a: A[]) => A[]
+symmetricDifference<A>(b: A[]): (a: A[]) => A[]
 ```
 
 ## Combinators
 
 ```ts
-zip<A, B>(a: A[], b: B[]): [A, B][]
-zipWith<A, B, C>(a: A[], b: B[], f: (a: A, b: B) => C): C[]
-xprod<A, B>(a: A[], b: B[]): [A, B][]
-groupBy<A>(arr: readonly A[], f: (a: A) => string): Record<string, A[]>
-partition<A>(arr: A[], pred: (a: A) => boolean): [A[], A[]]
-intersperse<A>(arr: A[], sep: A): A[]
+zip<A, B>(b: B[]): (a: A[]) => [A, B][]
+zipWith<A, B, C>(b: B[], f: (a: A, b: B) => C): (a: A[]) => C[]
+xprod<A, B>(b: B[]): (a: A[]) => [A, B][]
+groupBy<A>(f: (a: A) => string): (arr: readonly A[]) => Record<string, A[]>
+partition<A>(pred: (a: A) => boolean): (arr: A[]) => [A[], A[]]
+intersperse<A>(sep: A): (arr: A[]) => A[]
 flatten<A>(arr: A[][]): A[]
 transpose<A>(arr: A[][]): A[][]
 ```
@@ -119,10 +129,10 @@ transpose<A>(arr: A[][]): A[][]
 ## Mutation (immutable)
 
 ```ts
-adjust<A>(arr: A[], index: number, f: (a: A) => A): A[]
-update<A>(arr: A[], index: number, value: A): A[]
-insert<A>(arr: A[], index: number, value: A): A[]
-remove<A>(arr: A[], index: number, count: number): A[]
+adjust<A>(index: number, f: (a: A) => A): (arr: A[]) => A[]
+update<A>(index: number, value: A): (arr: A[]) => A[]
+insert<A>(index: number, value: A): (arr: A[]) => A[]
+remove(index: number, count: number): <A>(arr: A[]) => A[]
 ```
 
 All return new arrays.
@@ -131,9 +141,9 @@ All return new arrays.
 
 ```ts
 range(start: number, end: number): number[]
-repeat<A>(value: A, n: number): A[]
-times<A>(f: (i: number) => A, n: number): A[]
-unfold<A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
+repeat<A>(n: number): (value: A) => A[]
+times(n: number): <A>(f: (i: number) => A) => A[]
+unfold<A, B>(seed: B): (f: (seed: B) => [A, B] | undefined) => A[]
 ```
 
 ## Examples
@@ -149,7 +159,8 @@ type Product = {
   inStock: boolean
 }
 
-// fused: filter -> map -> take runs in one loop
+// the compiler can fuse filter -> map -> take into one loop;
+// plain pipe just runs each step in order
 const deals = pipe(
   products,
   A.filter((p: Product) => p.inStock && p.price < 50),
@@ -158,11 +169,17 @@ const deals = pipe(
 )
 
 // group + count
-const byCategory = A.groupBy(products, (p) => p.category)
+const byCategory = pipe(
+  products,
+  A.groupBy((p: Product) => p.category),
+)
 // { electronics: [...], clothing: [...] }
 
 // rolling total
-A.scan([100, 200, 150, 300], (acc, x) => acc + x, 0)
+pipe(
+  [100, 200, 150, 300],
+  A.scan((acc, x) => acc + x, 0),
+)
 // [100, 300, 450, 750]
 
 // remove duplicates by key
@@ -172,9 +189,9 @@ const uniqueCustomers = pipe(
 )
 
 // set operations
-const newUsers = A.difference(allUsers, existingUsers)
-const commonTags = A.intersection(tagsA, tagsB)
+const newUsers = pipe(allUsers, A.difference(existingUsers))
+const commonTags = pipe(tagsA, A.intersection(tagsB))
 
 // batch processing
-const batches = A.chunk(records, 100)
+const batches = pipe(records, A.chunk(100))
 ```

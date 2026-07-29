@@ -72,14 +72,14 @@ const result = pipe(
 
 ```ts
 Iter.toArray(source)
-Iter.toArrayInto(source, target)
-Iter.reduce(source, reducer, initial)
-Iter.forEach(source, effect)
+Iter.toArrayInto(target)(source)
+Iter.reduce(reducer, initial)(source)
+Iter.forEach(effect)(source)
 Iter.first(source) // Option<A>
 Iter.last(source)  // Option<A>
-Iter.find(source, predicate) // Option<A>
-Iter.some(source, predicate)
-Iter.every(source, predicate)
+Iter.find(predicate)(source) // Option<A>
+Iter.some(predicate)(source)
+Iter.every(predicate)(source)
 Iter.count(source)
 ```
 
@@ -93,6 +93,8 @@ still open. This matters for generators that own file handles, cursors, or
 other resources:
 
 ```ts
+import { pipe } from '@stopcock/fp'
+
 function* rows() {
   try {
     yield* databaseCursor
@@ -101,7 +103,7 @@ function* rows() {
   }
 }
 
-Iter.toArray(Iter.take(rows(), 10))
+pipe(rows(), Iter.take(10), Iter.toArray)
 ```
 
 The `finally` block runs after the tenth value.

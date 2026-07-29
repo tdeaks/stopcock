@@ -5,9 +5,9 @@ description: not, and, or, ifElse. Boolean combinators for pipe
 
 ```ts
 not_(a: boolean): boolean
-and_(a: boolean, b: boolean): boolean      // dual
-or_(a: boolean, b: boolean): boolean       // dual
-ifElse<A>(cond: boolean, onTrue: () => A, onFalse: () => A): A  // dual
+and_(b: boolean): (a: boolean) => boolean
+or_(b: boolean): (a: boolean) => boolean
+ifElse<A>(onTrue: () => A, onFalse: () => A): (cond: boolean) => A
 ```
 
 Trailing underscores avoid colliding with JS reserved words.

@@ -3,7 +3,7 @@ title: M (Math)
 description: add, multiply, sum, mean, median. Arithmetic and stats for pipe
 ---
 
-## Non-dual
+## Single-argument
 
 ```ts
 inc(n: number): number
@@ -12,14 +12,14 @@ negate(n: number): number
 product(arr: number[]): number
 ```
 
-## Dual
+## Curried
 
 ```ts
-add(a: number, b: number): number
-subtract(a: number, b: number): number
-multiply(a: number, b: number): number
-divide(a: number, b: number): number
-modulo(a: number, b: number): number
+add(b: number): (a: number) => number
+subtract(b: number): (a: number) => number
+multiply(b: number): (a: number) => number
+divide(b: number): (a: number) => number
+modulo(b: number): (a: number) => number
 ```
 
 ## Examples
@@ -43,6 +43,6 @@ pipe(count, M.inc) // count + 1
 pipe(count, M.dec) // count - 1
 pipe(value, M.negate) // -value
 
-// data-first
-M.modulo(17, 5) // 2
+// bare curried call
+M.modulo(5)(17) // 2
 ```

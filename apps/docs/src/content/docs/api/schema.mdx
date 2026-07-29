@@ -43,10 +43,10 @@ individual issues, and issue arrays are normalized to Standard Schema issues.
 ## Consume any Standard Schema
 
 ```ts
-const result = Schema.validateSync(input, schema)
+const result = Schema.validateSync(schema)(input)
 // Result<Output, readonly Issue[]>
 
-const asyncResult = await Schema.validate(input, schema)
+const asyncResult = await Schema.validate(schema)(input)
 // Promise<Result<Output, readonly Issue[]>>
 ```
 

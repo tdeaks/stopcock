@@ -50,14 +50,15 @@ const byId = Optic.at<string, User>('user-1')
 ## Read and update
 
 ```ts
-Optic.view(name, user)
-Optic.preview(first, users)       // Option<User>
-Optic.collect(adults, users)      // readonly User[]
-Optic.set(name, user, 'Ada')
-Optic.modify(name, user, (value) => value.toUpperCase())
+Optic.view(name)(user)
+Optic.preview(first)(users)       // Option<User>
+Optic.collect(adults)(users)      // readonly User[]
+Optic.set(name, 'Ada')(user)
+Optic.modify(name, (value) => value.toUpperCase())(user)
 ```
 
-Each operation also has a pipe-friendly form with the optic first:
+Each operation curries the optic (and any other argument) ahead of the
+source, so it drops straight into `pipe`:
 
 ```ts
 import { pipe } from '@stopcock/fp'
@@ -76,7 +77,7 @@ const city = Optic.compose(
   Optic.prop<Address, 'city'>('city'),
 )
 
-Optic.view(city, user)
+Optic.view(city)(user)
 ```
 
 Composition preserves the strongest valid optic kind: lens with lens remains

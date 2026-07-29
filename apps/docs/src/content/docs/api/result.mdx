@@ -16,7 +16,6 @@ ok<A>(value: A): Result<A, never>
 err<E>(error: E): Result<never, E>
 tryCatch<A>(thunk: () => A): Result<A, unknown>
 fromNullable<E>(onNullish: () => E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
-fromPredicate<A, E>(value: A, predicate: (value: A) => boolean, onFalse: (value: A) => E): Result<A, E>
 fromPredicate<A, E>(predicate: (value: A) => boolean, onFalse: (value: A) => E): (value: A) => Result<A, E>
 ```
 
@@ -30,7 +29,6 @@ the rejected value and runs only when the predicate fails.
 map<A, B>(f: (a: A) => B): <E>(r: Result<A, E>) => Result<B, E>
 mapErr<E, F>(f: (e: E) => F): <A>(r: Result<A, E>) => Result<A, F>
 flatMap<A, B, E2>(f: (a: A) => Result<B, E2>): <E>(r: Result<A, E>) => Result<B, E | E2>
-filterOrElse<A, E, E2>(result: Result<A, E>, predicate: (value: A) => boolean, onFalse: (value: A) => E2): Result<A, E | E2>
 filterOrElse<A, E2>(predicate: (value: A) => boolean, onFalse: (value: A) => E2): <E>(result: Result<A, E>) => Result<A, E | E2>
 tap<A>(f: (a: A) => void): <E>(r: Result<A, E>) => Result<A, E>
 tapErr<E>(f: (e: E) => void): <A>(r: Result<A, E>) => Result<A, E>
@@ -45,18 +43,17 @@ predicate nor `onFalse` runs for them.
 all<T extends readonly Result<unknown, unknown>[]>(results: T): Result<ValuesOf<T>, ErrorsOf<T>>
 sequence: typeof all
 
-traverse<A, B, E>(values: readonly A[], decode: (value: A) => Result<B, E>): Result<B[], E>
 traverse<A, B, E>(decode: (value: A) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
 
-optional<A, B, E>(value: A | undefined, decode: (value: A) => Result<B, E>): Result<B | undefined, E>
-nullable<A, B, E>(value: A | null, decode: (value: A) => Result<B, E>): Result<B | null, E>
+optional<A, B, E>(decode: (value: A) => Result<B, E>): (value: A | undefined) => Result<B | undefined, E>
+nullable<A, B, E>(decode: (value: A) => Result<B, E>): (value: A | null) => Result<B | null, E>
 ```
 
 `all` and its exact alias `sequence` keep tuple types and return the first error from left to right.
 `traverse` stops calling the decoder after its first error. Empty inputs return `ok([])`.
 
 `optional` skips decoding only for `undefined`; `nullable` skips only for `null`. The other sentinel
-is passed to the decoder like any other value. Both also support data-last calls:
+is passed to the decoder like any other value. Both curry the decoder first:
 `R.optional(decode)(value)` and `R.nullable(decode)(value)`.
 
 ## Extraction
@@ -89,11 +86,11 @@ const data = pipe(
 )
 
 // narrow an unknown request body
-const body = R.fromPredicate(rawBody, G.isPlainObject, () => 'expected an object')
+const body = R.fromPredicate(G.isPlainObject, () => 'expected an object')(rawBody)
 
 // decode optional and nullable request fields without conflating their sentinels
-const limit = R.optional(request.limit, decodePositiveInteger)
-const displayName = R.nullable(request.displayName, decodeNonBlankString)
+const limit = R.optional(decodePositiveInteger)(request.limit)
+const displayName = R.nullable(decodeNonBlankString)(request.displayName)
 
 // chain validations
 pipe(

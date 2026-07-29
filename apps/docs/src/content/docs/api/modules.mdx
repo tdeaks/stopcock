@@ -10,7 +10,7 @@ tree-shakeable subpaths.
 
 | Subpath              | Purpose                                                              |
 | -------------------- | -------------------------------------------------------------------- |
-| `/array`             | Eager array operators, fused pipeline steps, explicit `*Into` writes |
+| `/array`             | Eager array operators, streaming steps the build-time compiler can fuse, explicit `*Into` writes |
 | `/readonly-array`    | Read-only alias of the array vocabulary                              |
 | `/non-empty-array`   | Constructors and total operations for non-empty arrays               |
 | `/tuple`             | Typed tuple construction, mapping, zipping, and projection           |
@@ -20,8 +20,6 @@ tree-shakeable subpaths.
 | `/typed-array`       | Numeric typed-array transforms and explicit destination buffers      |
 | `/indexed`           | Shared indexed-collection operations                                 |
 | [`/iter`](/api/iter) | Lazy synchronous sequences                                           |
-| `/transducer`        | Composable allocation-free reducing transformations                  |
-| `/collector`         | Reusable terminal collectors                                         |
 
 Writable `*Into` operations preserve the concrete destination type. They
 reject fixed tuples, heterogeneous or refined record destinations, and
@@ -65,7 +63,9 @@ Asynchronous failures and asynchronous iteration are provided by
 | `/math`                | Arithmetic pipeline operators                                          |
 | `/boolean`             | Boolean combinators                                                    |
 | `/dual`                | Build data-first and data-last APIs                                    |
-| `/compile`             | Portable pipeline planning and explanations                            |
+| `/compile`             | `compile`/`compilePure` markers the build-time compiler recognizes; uncompiled, they alias `pipe` |
+| `/fusion`              | Same `pipe`/`flow`/`compile`, imported by a name that says "I mean fusion" |
+| `/fusion/debug`        | `explain`/`explainPure`; always report `'sequential'` at runtime       |
 | [`/optic`](/api/optic) | Lenses, optionals, prisms, traversals, and more                        |
 | `/match`               | Exhaustive tagged-value matching                                       |
 

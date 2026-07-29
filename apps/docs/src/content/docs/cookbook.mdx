@@ -9,10 +9,12 @@ description: Practical @stopcock/fp 2.0 recipes
 import { pipe } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
 
+type Product = { id: string; name: string; price: number; inStock: boolean }
+
 const cards = pipe(
   products,
-  A.filter((product) => product.inStock),
-  A.map((product) => ({
+  A.filter((product: Product) => product.inStock),
+  A.map((product: Product) => ({
     id: product.id,
     label: product.name,
     price: product.price,
@@ -21,29 +23,27 @@ const cards = pipe(
 )
 ```
 
-Use direct form when it reads more naturally:
-
-```ts
-const cards = A.map(products, toCard)
-```
-
 ## Compile a repeated hot path
 
 ```ts
-import { compile, explain } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
+import { explain } from '@stopcock/fp/fusion/debug'
 import * as A from '@stopcock/fp/array'
 
 const activeIds = compile(
   A.filter((user: User) => user.active),
-  A.map((user) => user.id),
+  A.map((user: User) => user.id),
   A.take(100),
 )
 
 activeIds(firstBatch)
 activeIds(secondBatch)
-console.log(explain(A.filter((user: User) => user.active), A.map((user) => user.id)))
+console.log(explain(A.filter((user: User) => user.active), A.map((user: User) => user.id)))
+// 'sequential' unless @stopcock/fp-compiler fused this exact call at build time
 ```
 
+`compile` is a marker: uncompiled it's identical to `pipe`. `@stopcock/fp-compiler`
+is what actually fuses a recognized call site into one loop at build time.
 Use `compilePure` only when every callback is pure and the extra rewrite
 freedom is valid for your code.
 
@@ -56,7 +56,7 @@ import * as O from '@stopcock/fp/option'
 const port = pipe(
   O.fromNullable(process.env.PORT),
   O.map(Number),
-  O.filter((value) => Number.isSafeInteger(value) && value > 0 && value < 65_536),
+  O.filter((value: number) => Number.isSafeInteger(value) && value > 0 && value < 65_536),
   O.getOrElse(() => 3000),
 )
 ```
@@ -95,18 +95,17 @@ type FieldError = {
   readonly message: string
 }
 
-const signup = V.all([
-  V.fromPredicate(
-    email,
-    (value) => value.includes('@'),
-    (): FieldError => ({ field: 'email', message: 'invalid email' }),
-  ),
-  V.fromPredicate(
-    password,
-    (value) => value.length >= 12,
-    (): FieldError => ({ field: 'password', message: 'too short' }),
-  ),
-] as const)
+const validateSignup = (email: string, password: string) =>
+  V.all([
+    V.fromPredicate(
+      (value: string) => value.includes('@'),
+      (): FieldError => ({ field: 'email', message: 'invalid email' }),
+    )(email),
+    V.fromPredicate(
+      (value: string) => value.length >= 12,
+      (): FieldError => ({ field: 'password', message: 'too short' }),
+    )(password),
+  ] as const)
 ```
 
 Use `Result.flatMap` for checks that depend on earlier values. Use Validation
@@ -123,7 +122,7 @@ const userId = Schema.fromPredicate(
   () => Schema.issue('Expected a user id', ['id']),
 )
 
-const decoded = Schema.validateSync(input, userId)
+const decoded = Schema.validateSync(userId)(input)
 ```
 
 The same consumer accepts a Standard Schema produced by another library.
@@ -169,11 +168,10 @@ const moved = pipe(
 import * as A from '@stopcock/fp/array'
 
 const revenueByRegion = A.groupMapReduce(
-  orders,
-  (order) => order.region,
-  (order) => order.total,
-  (left, right) => left + right,
-)
+  (order: Order) => order.region,
+  (order: Order) => order.total,
+  (left: number, right: number) => left + right,
+)(orders)
 ```
 
 `groupMapReduce`, `countBy`, `partitionMap`, binary search, combinations, and
@@ -190,11 +188,11 @@ type Payment =
   | { readonly type: 'Failed'; readonly id: string; readonly reason: string }
 
 const label = (payment: Payment) =>
-  Match.discriminant('type', payment, {
+  Match.discriminant<'type', Payment, string>('type', {
     Pending: (value) => `Pending ${value.id}`,
     Paid: (value) => `Receipt ${value.receipt}`,
     Failed: (value) => `Failed: ${value.reason}`,
-  })
+  })(payment)
 ```
 
 The handler object must cover every tag. Use the pattern module for structural

@@ -19,12 +19,6 @@ invalid<E>(error: E): Validation<never, E>
 fromResult<A, E>(result: Result<A, E>): Validation<A, E>
 
 fromPredicate<A, E>(
-  value: A,
-  predicate: (value: A) => boolean,
-  onFalse: (value: A) => E,
-): Validation<A, E>
-
-fromPredicate<A, E>(
   predicate: (value: A) => boolean,
   onFalse: (value: A) => E,
 ): (value: A) => Validation<A, E>
@@ -39,11 +33,6 @@ one Result error. Type-guard predicates narrow the successful value, and `onFals
 all<T extends readonly Validation<unknown, unknown>[]>(
   validations: T,
 ): Validation<ValuesOf<T>, ErrorsOf<T>>
-
-traverse<A, B, E>(
-  values: readonly A[],
-  validate: (value: A) => Validation<B, E>,
-): Validation<B[], E>
 
 traverse<A, B, E>(
   validate: (value: A) => Validation<B, E>,
@@ -61,26 +50,24 @@ type FieldError = { field: string; message: string }
 
 const signup = V.all([
   V.fromPredicate(
-    email,
-    (value) => value.includes('@'),
+    (value: string) => value.includes('@'),
     () => ({
       field: 'email',
       message: 'invalid email',
     }),
-  ),
+  )(email),
   V.fromPredicate(
-    password,
-    (value) => value.length >= 8,
+    (value: string) => value.length >= 8,
     () => ({
       field: 'password',
       message: 'too short',
     }),
-  ),
+  )(password),
 ] as const)
 
 R.match({
   err: (errors) => showErrors(errors),
-  ok: ([validEmail, validPassword]) => submit(validEmail, validPassword),
+  ok: ([validEmail, validPassword]: [string, string]) => submit(validEmail, validPassword),
 })(signup)
 ```
 

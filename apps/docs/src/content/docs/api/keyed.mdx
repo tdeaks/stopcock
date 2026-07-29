@@ -13,16 +13,16 @@ import * as Record from '@stopcock/fp/record'
 Three lookups, three different answers to "what if it is not there?":
 
 ```ts
-MapOps.get(scores, 'ada') // Option<number>
-MapOps.getOrUndefined(scores, 'ada') // number | undefined
-MapOps.getOrElse(scores, 'ada', () => 0) // number
+MapOps.get('ada')(scores) // Option<number>
+MapOps.getOrUndefined('ada')(scores) // number | undefined
+MapOps.getOrElse('ada', () => 0)(scores) // number
 ```
 
 `getOrElse` is lazy. The fallback runs at most once, and only when the key is
 genuinely absent, so an expensive default costs nothing on a hit:
 
 ```ts
-const config = MapOps.getOrElse(cache, url, () => parseExpensiveDefault())
+const config = MapOps.getOrElse(url, () => parseExpensiveDefault())(cache)
 ```
 
 A key whose stored value is `undefined` is present. All three operations agree
@@ -30,7 +30,7 @@ on that: `get` returns `Some(undefined)`, `getOrUndefined` returns `undefined`,
 and `getOrElse` returns `undefined` without calling the fallback. If you need
 to tell "missing" from "stored `undefined`", use `get`.
 
-Every lookup is also available data-last:
+Every lookup curries the key first, so it drops straight into `pipe`:
 
 ```ts
 pipe(
@@ -44,12 +44,12 @@ pipe(
 Both hold string- and symbol-keyed data, so the split is about what the value
 means, not about the runtime shape.
 
-Reach for `Record` when the keys are data and every value has the same type — a
+Reach for `Record` when the keys are data and every value has the same type: a
 lookup table, a counter, an index built at runtime. It is the cheaper contract:
 it works in enumerable own properties on null-prototype objects and does not
 carry descriptor, accessor, or prototype machinery.
 
-Reach for `Object` when the keys are the _shape_ — a struct with a known set of
+Reach for `Object` when the keys are the _shape_: a struct with a known set of
 differently-typed fields, especially when you need nested path writes, symbol
 preservation, or descriptor-faithful clones.
 

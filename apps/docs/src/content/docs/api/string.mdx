@@ -3,7 +3,7 @@ title: S (String)
 description: trim, split, replace, startsWith, slice. String transforms for pipe
 ---
 
-## Non-dual
+## Single-argument
 
 ```ts
 trim(s: string): string
@@ -15,16 +15,16 @@ isEmpty(s: string): boolean
 length(s: string): number
 ```
 
-## Dual
+## Curried
 
 ```ts
-startsWith(s: string, search: string): boolean
-endsWith(s: string, search: string): boolean
-includes(s: string, search: string): boolean
-split(s: string, sep: string): string[]
-repeat(s: string, n: number): string
-slice(s: string, start: number, end: number): string
-replaceAll(s: string, search: string, replacement: string): string
+startsWith(search: string): (s: string) => boolean
+endsWith(search: string): (s: string) => boolean
+includes(search: string): (s: string) => boolean
+split(sep: string): (s: string) => string[]
+repeat(n: number): (s: string) => string
+slice(start: number, end?: number): (s: string) => string
+replaceAll(search: string, replacement: string): (s: string) => string
 ```
 
 ## Examples

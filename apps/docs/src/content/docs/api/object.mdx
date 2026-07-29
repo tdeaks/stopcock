@@ -16,14 +16,14 @@ defend write paths against prototype-pollution keys.
 Obj.keys(value)
 Obj.values(value)
 Obj.entries(value)
-Obj.pick(value, ['id', 'name'])
-Obj.omit(value, ['password'])
-Obj.pickBy(value, (_value, key) => key !== 'internal')
-Obj.omitBy(value, predicate)
+Obj.pick(['id', 'name'])(value)
+Obj.omit(['password'])(value)
+Obj.pickBy((_value, key) => key !== 'internal')(value)
+Obj.omitBy(predicate)(value)
 ```
 
-`pick`, `omit`, and predicate projections are available in data-first and
-pipe-friendly forms.
+`pick`, `omit`, and predicate projections curry the keys or predicate first,
+so they drop straight into `pipe`.
 
 ## Immutable updates
 
@@ -45,12 +45,12 @@ const updated = pipe(
 ## Merge
 
 ```ts
-Obj.mergeWith(defaults, overrides, (left, right) => right ?? left)
+Obj.mergeWith(overrides, (left, right) => right ?? left)(defaults)
 
-Obj.mergeDeep(defaults, overrides, {
+Obj.mergeDeep(overrides, {
   bias: 'right',
   arrays: 'replace',
-})
+})(defaults)
 ```
 
 Deep merge options make conflict and array semantics explicit:
@@ -68,14 +68,14 @@ Paths are readonly key tuples, not dotted strings:
 ```ts
 const cityPath = Obj.pathOf<User>()('profile', 'address', 'city')
 
-Obj.getPath(user, cityPath) // Option<string>
-Obj.getPathOrUndefined(user, cityPath) // string | undefined
-Obj.hasPath(user, cityPath)
+Obj.getPath(cityPath)(user) // Option<string>
+Obj.getPathOrUndefined(cityPath)(user) // string | undefined
+Obj.hasPath(cityPath)(user)
 
-const moved = Obj.setPath(user, cityPath, 'Manchester')
-const upper = Obj.modifyPath(user, cityPath, String.toUpperCase)
+const moved = Obj.setPath(cityPath, 'Manchester')(user)
+const upper = Obj.modifyPath(cityPath, String.toUpperCase)(user)
 const nicknamePath = Obj.pathOf<User>()('profile', 'nickname')
-const withoutNickname = Obj.removePath(user, nicknamePath)
+const withoutNickname = Obj.removePath(nicknamePath)(user)
 ```
 
 Tuple paths distinguish numeric indices from string keys, reject unsafe write
@@ -85,8 +85,8 @@ original source type.
 
 Path writes traverse only ordinary arrays and plain objects. Missing object
 containers are created with normal `{}` semantics (and missing numeric
-containers as arrays). Unrelated own properties—including symbols,
-non-enumerables, accessors, and property flags—are preserved along each cloned
+containers as arrays). Unrelated own properties, including symbols,
+non-enumerables, accessors, and property flags, are preserved along each cloned
 branch. Class instances, callable objects, and array subclasses are not traversed:
 nominal and callable types are rejected statically when TypeScript can prove
 them, and structurally indistinguishable runtime values fail with `TypeError`.

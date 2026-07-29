@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Install stopcock and build your first pipe with fusion, Option, and Result
+description: Install stopcock and build your first pipe with Option and Result
 ---
 
 ```bash
@@ -16,7 +16,7 @@ import * as R from '@stopcock/fp/result'
 
 ## pipe
 
-Pass a value through functions, left to right. If you chain array operations, they get fused into single loops automatically.
+Pass a value through functions, left to right.
 
 ```ts
 type User = { name: string; active: boolean; score: number }
@@ -30,8 +30,9 @@ const leaderboard = pipe(
 )
 ```
 
-Portable tagged operators can be planned into a single loop. `take(10)`
-terminates early, so work stops after ten matching results.
+Every operator is curried and data-last: `A.take(10)` returns a function
+that takes the array, so it slots straight into `pipe`. There's no
+data-first form (`A.take(users, 10)`) any more.
 
 ## flow
 
@@ -47,41 +48,36 @@ activeNames(usersA)
 activeNames(usersB)
 ```
 
-## Fusion
+## Compiling pipelines
 
-`pipe` recognizes tagged array operations and uses checked-in portable loop
-templates. `take` and short-circuiting terminals can stop before the input is
-exhausted.
+`pipe` and `flow` are plain function application. Nothing fuses at runtime
+on its own:
 
 ```ts
 const big = Array.from({ length: 1_000_000 }, (_, i) => i)
 
-// visits ~70 items, allocates nothing intermediate
+// three full passes over 1,000,000 items: filter, then map, then take(10)
 pipe(
   big,
-  A.filter((x) => x % 7 === 0),
-  A.map((x) => x * 2),
+  A.filter((x: number) => x % 7 === 0),
+  A.map((x: number) => x * 2),
   A.take(10),
 )
 ```
 
-Operations that need the whole array (`sort`, `groupBy`, `uniq`) break the fusion chain. See [Fusion](/concepts/fusion) for the full picture.
-
-## Dual signatures
-
-Every function works both ways:
-
-```ts
-A.take(users, 5) // data-first
-pipe(users, A.take(5)) // data-last
-```
+For a pipeline you've actually measured as hot, add `@stopcock/fp-compiler`
+(a build-time Vite/Rollup/esbuild plugin). It recognizes this exact shape
+and rewrites it into one inlined loop that stops after 10 matches, so the
+call above only visits a few dozen items once it's built. You don't change
+how you write the pipeline -- run `stopcock check` to see which call sites
+it recognized. See [Fusion](/concepts/fusion) for how the compiler works.
 
 ## Option and Result
 
 ```ts
 pipe(
   O.fromNullable(user.email),
-  O.map((e) => e.split('@')[1]),
+  O.map((e: string) => e.split('@')[1]),
   O.getOrElse(() => 'unknown'),
 )
 
