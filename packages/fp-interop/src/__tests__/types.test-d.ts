@@ -123,7 +123,7 @@ test('Standard Schema and Node callback adapters infer outputs', () => {
     (value: unknown): value is string => typeof value === 'string',
   )
   expectTypeOf(
-    decodeStandardSchemaSync('value', schema),
+    decodeStandardSchemaSync(schema)('value'),
   ).toEqualTypeOf<Result<string, readonly Schema.Issue[]>>()
 
   const read = liftNodeCallback(
