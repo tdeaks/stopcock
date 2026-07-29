@@ -48,6 +48,20 @@
  * asks output identity of them, and several (lodash's chain, in particular)
  * have their own internal, undocumented short-circuit behaviour that a raw
  * call count would not represent fairly.
+ *
+ * Measurement caveat (found chasing 52526d2's takeWhile fix, which measured
+ * 1.27-1.3x faster in isolation but appeared to move row 9's `pipe`/`ramda`
+ * numbers not at all here): this file's default config (vitest.config.ts)
+ * aliases `@stopcock/fp/*` straight to packages/fp/src, so it is never
+ * measuring a stale dist/ build -- but running all 15 shapes' composed
+ * `pipe`-style executors (ours and every competitor's) in one process is not
+ * free. Confirmed by progressively stripping this file down: shape 9's
+ * `pipe` and `ramda` rows fall roughly 3-8x from a clean single-shape
+ * process to this full suite, while `hand`/`compiled` (no shared generic
+ * dispatch) barely move. A composed row here is not comparable to an
+ * isolated micro-benchmark of the same chain for that reason; only the
+ * within-suite pipe-vs-competitor ratio, and within-suite before/after
+ * ratios, are meaningful.
  */
 import { afterAll, bench, describe } from 'vite-plus/test'
 import { pipe } from '@stopcock/fp'
