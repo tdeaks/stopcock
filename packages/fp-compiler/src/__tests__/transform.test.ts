@@ -876,6 +876,139 @@ export function run() {
     () => ({ log: [] }),
   )
 
+  // `sortBy` immediately followed by `take`: the compiler fuses this pair
+  // into one bounded top-k pass instead of a full sort (rewrites.ts's
+  // `fuse-sort-take`). These fixtures pin exact result identity (values,
+  // order, and stability on tied keys) across the whole range of `take`'s
+  // count argument -- the rewrite must produce byte-identical output to the
+  // unfused `sortBy` + `take` reference for every one of these, even though
+  // (per the comment on `emitFusedSortTake`) it calls the comparator a
+  // different number of times to get there.
+  expectSame('sortBy immediately followed by take: basic fusion, sortBy not preceded by anything', {
+    name: 'sort-take-basic',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `return pipe([5, 3, 8, 1, 9, 2, 7], A.sortBy((a, b) => a - b), A.take(3));`,
+    expectTransformed: true,
+  })
+
+  expectSame(
+    'sortBy immediately followed by take: tied keys keep a stable full-sort order',
+    {
+      name: 'sort-take-ties',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const values = [
+          { id: 'a', rank: 2 },
+          { id: 'b', rank: 1 },
+          { id: 'c', rank: 2 },
+          { id: 'd', rank: 1 },
+          { id: 'e', rank: 2 },
+          { id: 'f', rank: 0 },
+          { id: 'g', rank: 1 },
+        ]
+        return pipe(
+          values,
+          A.sortBy((left, right) => left.rank - right.rank),
+          A.take(4),
+        ).map((value) => value.id);
+      `,
+      expectTransformed: true,
+    },
+  )
+
+  expectSame(
+    'sortBy immediately followed by take: every corner of the count argument',
+    {
+      name: 'sort-take-count-corners',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const values = [
+          { id: 'a', rank: 2 },
+          { id: 'b', rank: 1 },
+          { id: 'c', rank: 2 },
+          { id: 'd', rank: 1 },
+          { id: 'e', rank: 0 },
+          { id: 'f', rank: 1 },
+        ]
+        // n = 6. Covers: negative, zero, one, non-integer (truncates like
+        // take's own normalization), n-1, n, n+1 (k > n), and Infinity.
+        const counts = [-3, 0, 1, 2.9, 5, 6, 7, Infinity]
+        return counts.map((k) =>
+          pipe(values, A.sortBy((left, right) => left.rank - right.rank), A.take(k)).map(
+            (value) => value.id,
+          ),
+        );
+      `,
+      expectTransformed: true,
+    },
+  )
+
+  expectSame(
+    'sortBy immediately followed by take: mid-chain, followed by more steps',
+    {
+      name: 'sort-take-mid-chain',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const values = [
+          { id: 'a', rank: 20 },
+          { id: 'b', rank: 10 },
+          { id: 'c', rank: 20 },
+          { id: 'd', rank: 5 },
+          { id: 'e', rank: 10 },
+          { id: 'f', rank: 30 },
+        ]
+        return pipe(
+          values,
+          A.map((value) => ({ id: value.id, rank: value.rank * 2 })),
+          A.sortBy((left, right) => left.rank - right.rank),
+          A.take(3),
+          A.map((value) => value.id),
+        );
+      `,
+      expectTransformed: true,
+    },
+  )
+
+  it(
+    'sortBy immediately followed by take: compiled tier calls the comparator ' +
+      'fewer times than a full sort (D1: callback counts are per-tier pinned, ' +
+      'not cross-tier asserted -- docs/superpowers/plans/2026-07-28-one-runtime-path.md)',
+    () => {
+      const fixture: Fixture = {
+        name: 'sort-take-callback-count',
+        imports: STD_IMPORTS,
+        locals: { pipe: 'pipe', A: 'A' },
+        body: `
+          const comparator = (left, right) => {
+            log.push(left.id + ':' + right.id)
+            return left.rank - right.rank
+          }
+          const values = []
+          for (let i = 0; i < 200; i++) values.push({ id: i, rank: (i * 37) % 200 })
+          const top = pipe(values, A.sortBy(comparator), A.take(5))
+          return { ids: top.map((value) => value.id), calls: log.length }
+        `,
+        expectTransformed: true,
+      }
+      const result = runFixture(fixture, () => ({ log: [] }))
+      expect(result.original.error).toBeUndefined()
+      expect(result.compiled.error).toBeUndefined()
+      const original = result.original.value as { ids: number[]; calls: number }
+      const compiled = result.compiled.value as { ids: number[]; calls: number }
+      // Results are exactly identical: same top-5 ids, in the same order.
+      expect(compiled.ids).toEqual(original.ids)
+      // The fused top-k pass only calls the comparator while a candidate is
+      // still in contention, so for this random 200-element input it calls
+      // it far fewer times than the full sort the unfused reference runs.
+      expect(original.calls).toBeGreaterThan(200)
+      expect(compiled.calls).toBeLessThan(original.calls)
+    },
+  )
+
   expectSame('sortAsc boundary', {
     name: 'sortAsc-boundary',
     imports: STD_IMPORTS,
