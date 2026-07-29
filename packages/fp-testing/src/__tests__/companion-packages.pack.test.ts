@@ -295,8 +295,18 @@ for (const specifier of specifiers) {
       ),
     )
 
+    const parserSource = packedPackages.find(
+      ({ manifest }) => manifest.name === '@stopcock/parser',
+    )?.manifest
+
     expect(manifests['@stopcock/parser']?.dependencies?.['@stopcock/fp']).toBeUndefined()
-    expect(manifests['@stopcock/parser']?.peerDependencies?.['@stopcock/fp']).toBe('^2.0.0')
+    // The -next cohort pins an exact prerelease (e.g. '2.0.0-next.0') because a
+    // plain '^2.0.0' range does not match a prerelease under npm semver; assert
+    // against the source manifest so this follows the cohort instead of a
+    // hardcoded string that only holds once FP reaches stable 2.0.0.
+    expect(manifests['@stopcock/parser']?.peerDependencies?.['@stopcock/fp']).toBe(
+      parserSource?.peerDependencies?.['@stopcock/fp'],
+    )
     expect(manifests['@stopcock/eslint-plugin-fp']?.peerDependencies?.eslint).toBe(
       '>=9.0.0 <11.0.0',
     )

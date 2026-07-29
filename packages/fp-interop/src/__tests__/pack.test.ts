@@ -154,7 +154,13 @@ if (callback._tag !== 1 || callback.value !== 3) throw new Error('node smoke fai
       peerDependencies?: Record<string, string>
     }
     expect(installedPackage.dependencies?.['@stopcock/fp']).toBeUndefined()
-    expect(installedPackage.peerDependencies?.['@stopcock/fp']).toBe('^2.0.0')
+    // The -next cohort pins an exact prerelease (e.g. '2.0.0-next.0') because a
+    // plain '^2.0.0' range does not match a prerelease under npm semver; assert
+    // against the source manifest so this follows the cohort instead of a
+    // hardcoded string that only holds once FP reaches stable 2.0.0.
+    expect(installedPackage.peerDependencies?.['@stopcock/fp']).toBe(
+      pkg.peerDependencies['@stopcock/fp'],
+    )
 
     await writeFile(
       join(consumerDir, 'consumer.ts'),
