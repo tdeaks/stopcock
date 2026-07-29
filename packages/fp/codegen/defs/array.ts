@@ -568,12 +568,10 @@ export const takeWhile: {
 } = dual(
   2,
   (arr: any, pred: any) => {
-    var out = []
-    for (var i = 0, len = arr.length; i < len; i++) {
-      if (!pred(arr[i])) break
-      out.push(arr[i])
-    }
-    return out
+    var len = arr.length
+    var i = 0
+    while (i < len && pred(arr[i])) i++
+    return arr.slice(0, i)
   },
   { op: 'takeWhile' },
 )
@@ -1213,13 +1211,10 @@ export const takeUntil: {
 } = dual(
   2,
   (arr: any[], pred: any) => {
-    const out: any[] = []
-    for (let i = 0, len = arr.length; i < len; i++) {
-      const value = arr[i]
-      if (pred(value)) break
-      out.push(value)
-    }
-    return out
+    const len = arr.length
+    let i = 0
+    while (i < len && !pred(arr[i])) i++
+    return arr.slice(0, i)
   },
   { op: 'takeUntil' },
 )

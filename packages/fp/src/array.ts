@@ -443,12 +443,10 @@ export const drop: (n: number) => <A>(arr: readonly A[]) => A[] = function drop(
 
 export const takeWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function takeWhile(pred: any) {
   return function (arr: any) {
-    var out = []
-    for (var i = 0, len = arr.length; i < len; i++) {
-      if (!pred(arr[i])) break
-      out.push(arr[i])
-    }
-    return out
+    var len = arr.length
+    var i = 0
+    while (i < len && pred(arr[i])) i++
+    return arr.slice(0, i)
   }
 } as any
 
@@ -933,13 +931,10 @@ export const mapWhile: <A, B>(f: (a: A) => B | null | undefined) => (arr: readon
 
 export const takeUntil: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function takeUntil(pred: any) {
   return function (arr: any) {
-    const out: any[] = []
-    for (let i = 0, len = arr.length; i < len; i++) {
-      const value = arr[i]
-      if (pred(value)) break
-      out.push(value)
-    }
-    return out
+    const len = arr.length
+    let i = 0
+    while (i < len && !pred(arr[i])) i++
+    return arr.slice(0, i)
   }
 } as any
 
