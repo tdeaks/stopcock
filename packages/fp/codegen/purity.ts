@@ -21,125 +21,17 @@ export interface PureInitializerSourceSiteV1 {
   readonly callKind: 'dual' | 'freeze'
 }
 
-// Every listed call is tagless. With no tag, dual allocates only a fresh local
-// wrapper: it does not invoke the body or read the mutable opcode table.
-export const MANUAL_PURE_DUAL_INITIALIZERS_V1 = Object.freeze({
-  'array-extra': Object.freeze([
-    'partitionMap',
-    'traverse',
-    'groupMap',
-    'groupMapReduce',
-    'countBy',
-    'zipAll',
-    'span',
-    'dropUntil',
-    'cartesian',
-    'combinations',
-    'binarySearch',
-    'mapInto',
-    'filterInto',
-    'shuffleWith',
-  ]),
-  // Phase 2 (compiler: option/result domains): dual-internal.ts is gone;
-  // option.ts and result.ts call `dual` from `./dual-untagged` now (same
-  // untagged dispatchers, moved so `dual-internal.ts` could go), same call
-  // shape as every other untagged module below, so they belong on this
-  // allowlist rather than a separate one.
-  option: Object.freeze([
-    'fromPredicate',
-    'map',
-    'flatMap',
-    'orElse',
-    'orElseWith',
-    'and',
-    'zip',
-    'zipWith',
-    'contains',
-    'exists',
-    'mapNullable',
-    'filter',
-    'getOrElse',
-    'getWithDefault',
-    'match',
-    'tap',
-    'as',
-    'ap',
-    'traverse',
-    'partitionMap',
-    'toResult',
-  ]),
-  result: Object.freeze([
-    'fromPredicate',
-    'map',
-    'mapErr',
-    'mapBoth',
-    'flatMap',
-    'orElse',
-    'and',
-    'zip',
-    'zipWith',
-    'ap',
-    'filterOrElse',
-    'contains',
-    'exists',
-    'getOrElse',
-    'getOrThrow',
-    'match',
-    'traverse',
-    'traverseValidation',
-    'optional',
-    'nullable',
-    'tap',
-    'tapErr',
-    'as',
-  ]),
-  object: Object.freeze([
-    'pick',
-    'omit',
-    'assoc',
-    'dissoc',
-    'mapValues',
-    'mapKeys',
-    'pickBy',
-    'omitBy',
-    'mergeWith',
-    'getPathOrUndefined',
-    'getPath',
-    'hasPath',
-    'setPath',
-    'modifyPath',
-    'removePath',
-    'evolve',
-  ]),
-  string: Object.freeze([
-    'startsWith',
-    'endsWith',
-    'includes',
-    'repeat',
-    'stripPrefix',
-    'stripSuffix',
-    'replace',
-    'replaceAll',
-    'test',
-    'match',
-  ]),
-  number: Object.freeze([
-    'clamp',
-    'between',
-    'weightedMeanOrUndefined',
-    'weightedMean',
-    'quantileOrUndefined',
-    'quantile',
-    'quantileNonEmpty',
-    'percentileOrUndefined',
-    'percentile',
-    'percentileNonEmpty',
-    'dotProduct',
-    'dotProductTruncate',
-    'gcd',
-    'lcm',
-  ]),
-} as const)
+// a308baa ("convert every hand-written op module to single-form") moved
+// array-extra, option, result, object, string, and number off dual()/
+// dual-untagged() entirely: every op in those modules is now a plain
+// op(configArgs) => (data) => result closure, not a call to `dual`. A plain
+// function expression assigned to a const carries no side effect a bundler
+// needs `/* @__PURE__ */` to disprove, so none of those modules review a
+// manual dual initializer anymore. This allowlist stays empty until a
+// hand-written module reintroduces a tagless `dual(...)` call.
+export const MANUAL_PURE_DUAL_INITIALIZERS_V1 = Object.freeze(
+  {} as Readonly<Record<string, readonly string[]>>,
+)
 
 // Object.freeze receives a fresh literal, so dropping this unused singleton
 // cannot mutate external state or expose a different construction order.
