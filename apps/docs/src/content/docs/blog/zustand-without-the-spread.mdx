@@ -42,7 +42,7 @@ The Zustand action becomes:
 
 ```ts
 setCity: (value) =>
-  set((state) => Optic.set(city, state, value))
+  set((state) => Optic.set(city, value)(state))
 ```
 
 ## A complete store
@@ -68,11 +68,11 @@ const useStore = create<State & Actions>((set) => ({
   cart: { items: [], discount: null },
   ui: { sidebarOpen: false, theme: 'light' },
 
-  setCity: (value) => set((state) => Optic.set(city, state, value)),
-  setTheme: (value) => set((state) => Optic.set(theme, state, value)),
-  applyDiscount: (value) => set((state) => Optic.set(discount, state, value)),
+  setCity: (value) => set((state) => Optic.set(city, value)(state)),
+  setTheme: (value) => set((state) => Optic.set(theme, value)(state)),
+  applyDiscount: (value) => set((state) => Optic.set(discount, value)(state)),
   toggleSidebar: () =>
-    set((state) => Optic.modify(sidebar, state, (open) => !open)),
+    set((state) => Optic.modify(sidebar, (open) => !open)(state)),
 }))
 ```
 
@@ -87,9 +87,8 @@ const outOfStock = Optic.filtered<CartItem>((item) => item.stock === 0)
 
 const updatedItems = Optic.modify(
   outOfStock,
-  items,
   (item) => ({ ...item, disabled: true }),
-)
+)(items)
 ```
 
 Compose the traversal with a lens to update items directly inside state:
@@ -102,9 +101,8 @@ const markOutOfStock = () =>
   set((state) =>
     Optic.modify(
       unavailableItems,
-      state,
       (item) => ({ ...item, disabled: true }),
-    ),
+    )(state),
   )
 ```
 
@@ -115,11 +113,11 @@ leave the source unchanged when no focus exists.
 
 ```ts
 const selected = Optic.find<CartItem>((item) => item.id === selectedId)
-const current = Optic.preview(selected, items)
-const renamed = Optic.modify(selected, items, (item) => ({
+const current = Optic.preview(selected)(items)
+const renamed = Optic.modify(selected, (item) => ({
   ...item,
   name: item.name.trim(),
-}))
+}))(items)
 ```
 
 ## When to use optics

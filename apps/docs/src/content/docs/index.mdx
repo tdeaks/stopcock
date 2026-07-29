@@ -16,7 +16,6 @@ hero:
       variant: minimal
 ---
 
-import FusionSpotlight from '../../components/charts/FusionSpotlight.astro'
 import LibraryGrid from '../../components/LibraryGrid.astro'
 
 A focused set of TypeScript packages that play nicely together. Pipeable
@@ -28,10 +27,12 @@ testing and migration tooling.
 import { pipe } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
 
+type User = { name: string; active: boolean; score: number }
+
 const top10 = pipe(
   users,
-  A.filter((u) => u.active),
-  A.map((u) => ({ name: u.name, score: u.score })),
+  A.filter((u: User) => u.active),
+  A.map((u: User) => ({ name: u.name, score: u.score })),
   A.take(10),
 )
 ```
@@ -63,12 +64,12 @@ import { diff, apply, invert } from '@stopcock/diff'
 
 const before = { user: 'Tom', scores: [10, 20] }
 const after = { user: 'Tom', scores: [10, 20, 30] }
-const patch = diff(before, after)
-const restored = apply(after, invert(patch))
+const patch = diff(after)(before)
+const restored = apply(invert(patch))(after)
 ```
 
 ```ts
-import { create, history } from '@stopcock/state'
+import { create } from '@stopcock/state'
 
 const store = create({ count: 0, name: 'Tom' })
 store.subscribe(
@@ -83,7 +84,7 @@ import { pipe } from '@stopcock/fp'
 import { fromRGBA, resize, sharpen, contrast } from '@stopcock/img'
 
 const thumbnail = (data: Uint8ClampedArray, w: number, h: number) =>
-  pipe(fromRGBA(data, w, h), resize(200, 200), sharpen, contrast(30))
+  pipe(fromRGBA(data, w, h), resize(200, 200), (img) => sharpen(img), contrast(30))
 ```
 
 ---
@@ -92,11 +93,13 @@ const thumbnail = (data: Uint8ClampedArray, w: number, h: number) =>
 
 ---
 
-## Array pipelines fuse automatically
+## Compile the pipelines you've measured as hot
 
-`pipe` detects chainable array operations and fuses them into a single loop. `take(10)` bails after 10 hits. On a million-element array, that's dozens of items touched instead of three full passes.
-
-<FusionSpotlight />
+`pipe` runs each step in order -- it doesn't fuse anything by itself. For a
+pipeline you've actually measured as hot, the `@stopcock/fp-compiler` build
+plugin recognizes the shape and rewrites it into a single loop at build
+time, so `take(10)` stops after 10 hits without three full passes over the
+array. See [Fusion](/concepts/fusion).
 
 ---
 

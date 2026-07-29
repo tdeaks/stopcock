@@ -142,28 +142,18 @@ format(due, 'DD MMM YYYY') // "14 Apr 2026"
 ```ts
 import { pipe } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
-import {
-  fromParts,
-  startOf,
-  endOf,
-  daysIn,
-  getWeekday,
-  format,
-  isToday,
-  isWeekend,
-} from '@stopcock/date'
+import { daysIn, getWeekday, format, isToday, isWeekend } from '@stopcock/date'
 
-const calendarMonth = (year: number, month: number) => {
-  const start = fromParts({ year, month })
-  const days = daysIn(startOf(start, 'month'), endOf(start, 'month'))
-
-  return A.map(days, (day) => ({
-    label: format(day, 'D'),
-    weekday: getWeekday(day),
-    today: isToday(day),
-    weekend: isWeekend(day),
-  }))
-}
+const calendarMonth = (year: number, month: number) =>
+  pipe(
+    daysIn(year, month),
+    A.map((day) => ({
+      label: format('D')(day),
+      weekday: getWeekday(day),
+      today: isToday(day),
+      weekend: isWeekend(day),
+    })),
+  )
 ```
 
 ### Time-ago formatting
@@ -187,7 +177,7 @@ const timeAgo = (ts: Timestamp) => {
 import { pipe } from '@stopcock/fp'
 import { fromISO, Tz } from '@stopcock/date'
 
-const standup = pipe(fromISO('2026-04-03'), (ts) => Tz.add(ts, 9, 'hour', 'Europe/London'))
+const standup = pipe(fromISO('2026-04-03'), Tz.add(9, 'hour', 'Europe/London'))
 
 Tz.format(standup, 'HH:mm z', 'America/New_York') // "04:00 EDT"
 Tz.format(standup, 'HH:mm z', 'Asia/Tokyo') // "17:00 JST"
@@ -257,86 +247,100 @@ getDaysInYear(ts): number         isLeapYear(ts): boolean
 
 ### Comparison & predicates
 
+Every signature below is dual: the data-first form on the left works, and
+omitting the timestamp/leading argument returns a curried function instead
+(shown here since it's the preferred, consistent-with-the-rest-of-the-docs
+form). `min`, `max`, `isWeekend`, `isWeekday`, `isToday`, `isPast`, `isFuture`,
+and `isValid` take one argument and aren't curried functions of anything else.
+
 ```ts
-compare(a, b): number             min(...ts): Timestamp
-max(...ts): Timestamp             clamp(ts, lo, hi): Timestamp
-isBefore(a, b): boolean           isAfter(a, b): boolean
-isEqual(a, b): boolean            isSameDay(a, b): boolean
-isSameMonth(a, b): boolean        isSameYear(a, b): boolean
-isBetween(ts, start, end): boolean
-isWeekend(ts): boolean            isWeekday(ts): boolean
-isToday(ts): boolean              isPast(ts): boolean
-isFuture(ts): boolean             isValid(ts): boolean
+compare(a, b): number
+min(dates: Timestamp[]): Timestamp        max(dates: Timestamp[]): Timestamp
+clamp(lo, hi): (ts) => Timestamp
+isBefore(other): (ts) => boolean          isAfter(other): (ts) => boolean
+isEqual(other): (ts) => boolean           isSameDay(other): (ts) => boolean
+isSameMonth(other): (ts) => boolean       isSameYear(other): (ts) => boolean
+isBetween(start, end): (ts) => boolean
+isWeekend(ts): boolean                    isWeekday(ts): boolean
+isToday(ts): boolean                      isPast(ts): boolean
+isFuture(ts): boolean                     isValid(ts): boolean
 ```
 
 ### Arithmetic
 
 ```ts
-add(ts, amount, unit): Timestamp
-subtract(ts, amount, unit): Timestamp
-startOf(ts, unit): Timestamp
-endOf(ts, unit): Timestamp
-setYear(ts, year): Timestamp      setMonth(ts, month): Timestamp
-setDay(ts, day): Timestamp        setHours(ts, hours): Timestamp
-setMinutes(ts, minutes): Timestamp setSeconds(ts, seconds): Timestamp
+add(amount, unit): (ts) => Timestamp
+subtract(amount, unit): (ts) => Timestamp
+startOf(unit): (ts) => Timestamp
+endOf(unit): (ts) => Timestamp
+setYear(year): (ts) => Timestamp           setMonth(month): (ts) => Timestamp
+setDay(day): (ts) => Timestamp             setHours(hours): (ts) => Timestamp
+setMinutes(minutes): (ts) => Timestamp     setSeconds(seconds): (ts) => Timestamp
 ```
 
 ### Diff
 
 ```ts
-diff(a, b, unit): number          diffInDays(a, b): number
-diffInHours(a, b): number         diffInMinutes(a, b): number
-diffInSeconds(a, b): number       diffInMonths(a, b): number
-diffInYears(a, b): number
+diff(b, unit): (a) => number      diffInDays(b): (a) => number
+diffInHours(b): (a) => number     diffInMinutes(b): (a) => number
+diffInSeconds(b): (a) => number   diffInMonths(b): (a) => number
+diffInYears(b): (a) => number
 ```
 
 ### Rounding
 
 ```ts
-roundTo(ts, unit): Timestamp      ceilTo(ts, unit): Timestamp
-floorTo(ts, unit): Timestamp      snapTo(ts, interval, unit): Timestamp
+roundTo(unit): (ts) => Timestamp      ceilTo(unit): (ts) => Timestamp
+floorTo(unit): (ts) => Timestamp      snapTo(interval, unit): (ts) => Timestamp
 ```
 
 ### Duration
 
 ```ts
 duration(amount, unit): Duration
-addDuration(ts, d): Timestamp     subtractDuration(ts, d): Timestamp
-toDuration(ms): Duration          durationToUnit(d, unit): number
-scaleDuration(d, factor): Duration negateDuration(d): Duration
+addDuration(d): (ts) => Timestamp     subtractDuration(d): (ts) => Timestamp
+toDuration(a, b): Duration            durationToUnit(unit): (d) => number
+scaleDuration(d, factor): Duration    negateDuration(d): Duration
 ```
+
+`toDuration`, `scaleDuration`, and `negateDuration` aren't curried; they're
+plain functions.
 
 ### Ranges & intervals
 
 ```ts
-range(start, end, step, unit): Timestamp[]
-rangeBy(start, end, stepFn): Timestamp[]
-daysIn(start, end): Timestamp[]   weekdaysIn(start, end): Timestamp[]
-sequence(start, count, step, unit): Timestamp[]
-overlaps(a, b): boolean           contains(interval, ts): boolean
-intersection(a, b): [Timestamp, Timestamp] | null
-union(a, b): [Timestamp, Timestamp] | null
-gap(a, b): [Timestamp, Timestamp] | null
+range(end, step, unit): (start) => Timestamp[]
+rangeBy(end, stepFn): (start) => Timestamp[]
+daysIn(year, month): Timestamp[]     weekdaysIn(year, month): Timestamp[]
+sequence(count, step, unit): (start) => Timestamp[]
+overlaps(a1, a2, b1, b2): boolean    contains(start, end, point): boolean
+intersection(a1, a2, b1, b2): [Timestamp, Timestamp] | null
+union(a1, a2, b1, b2): [Timestamp, Timestamp] | null
+gap(a1, a2, b1, b2): [Timestamp, Timestamp] | null
 mergeIntervals(intervals): [Timestamp, Timestamp][]
 ```
+
+`daysIn` and `weekdaysIn` take a year and a month, not a range. `overlaps`,
+`contains`, `intersection`, `union`, `gap`, and `mergeIntervals` aren't
+curried.
 
 ### Business days
 
 ```ts
 isBusinessDay(ts): boolean
-addBusinessDays(ts, days): Timestamp
-subtractBusinessDays(ts, days): Timestamp
-businessDaysBetween(a, b): number
+addBusinessDays(amount): (ts) => Timestamp
+subtractBusinessDays(amount): (ts) => Timestamp
+businessDaysBetween(b): (a) => number
 nextBusinessDay(ts): Timestamp    prevBusinessDay(ts): Timestamp
-addBusinessDaysWithHolidays(ts, days, holidays): Timestamp
+addBusinessDaysWithHolidays(amount, holidays): (ts) => Timestamp
 ```
 
 ### Formatting & parsing
 
 ```ts
-format(ts, pattern): string       formatter(pattern): (ts) => string
-parse(input, pattern): Timestamp  parser(pattern): (input) => Timestamp
-tryParse(input, pattern): Timestamp | null
+format(pattern): (ts) => string       formatter(pattern): (ts) => string
+parse(pattern): (input) => Timestamp  parser(pattern): (input) => Timestamp
+tryParse(pattern): (input) => Timestamp | null
 tryParser(pattern): (input) => Timestamp | null
 parseISO(input): Timestamp
 ```
@@ -359,5 +363,5 @@ Tz.getOffsetString(ts, zone): string
 ```
 
 <Aside type="tip">
-  All `Tz` functions are dual-form. `Tz.format('YYYY-MM-DD', 'Europe/London')` returns `(ts) => string`.
+  Most `Tz` functions that take a timestamp are dual-form: `Tz.format('YYYY-MM-DD', 'Europe/London')` returns `(ts) => string`. Predicates and offset lookups (`Tz.isWeekend`, `Tz.isToday`, `Tz.getOffsetMinutes`, `Tz.getOffsetString`, `Tz.utcToLocal`, `Tz.localToUTC`) take the timestamp first and aren't curried.
 </Aside>

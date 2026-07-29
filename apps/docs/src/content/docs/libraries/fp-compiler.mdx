@@ -30,10 +30,13 @@ The Unplugin instance also provides Rollup, esbuild, and webpack adapters. It
 understands namespace, named, aliased, and wrapper-package imports, while
 lexically shadowed bindings and unsupported sites remain ordinary FP calls.
 
-Exact semantics are the default. `assumePure: true` records an explicit pure
-contract without silently enabling a different result today. Use `include`
-and `exclude` to filter files, `importSources` and `arrayImportSources` for
-wrapper packages, and `diagnostics: 'error'` for a fail-closed build.
+Exact semantics are the default. `assumePure: true` enables proven pure
+execution rewrites (this release includes `map ... map -> length` callback
+elision); argument expressions still evaluate exactly once, and operator
+construction stays observable only at a residual or otherwise
+non-fully-lowered site. Use `include` and `exclude` to filter files,
+`importSources` and `arrayImportSources` for wrapper packages, and
+`diagnostics: 'error'` for a fail-closed build.
 
 ```ts
 import { transformStopcockPipelines } from '@stopcock/fp-compiler'

@@ -40,14 +40,16 @@ computed from the same composed pipeline, not from a hand-written formula.
 
 ## Why it works with pipe
 
-Stopcock's regular pipeline fusion compiles tagged operations into imperative
-loops. Autodiff ops are intentionally untagged, so `pipe()` uses its direct call
-path and every stage can record to the active tape.
+`pipe` is plain, sequential function application. There's no runtime fusion
+step to bypass. Each autodiff op runs for real and records to the active tape
+as it executes. The build-time `@stopcock/fp-compiler` only recognizes
+`@stopcock/fp/array` operators, so a `pipe` chain of autodiff ops is
+unaffected either way.
 
 ## The API
 
 ```ts
-const f = differentiable((x: Var<number>, y: Var<number>) => add(mul(x, y), square(x)))
+const f = differentiable((x: Var<number>, y: Var<number>) => add(square(x))(mul(y)(x)))
 
 f.forward(2, 3) // 10
 f.gradient(2, 3) // [7, 2]
@@ -87,10 +89,10 @@ import {
 } from '@stopcock/autodiff'
 ```
 
-Binary operations support both data-first and data-last forms:
+Binary operations are curried, data-last, so they compose with `pipe`:
 
 ```ts
-add(x, 3)
+add(3)(x)
 pipe(x, square, add(3), sin)
 ```
 
@@ -103,12 +105,12 @@ import { differentiable, sub, square, vecDot, type Var, type Vec } from '@stopco
 
 const x = new Float64Array([1, 2, 3])
 
-const loss = differentiable((w: Var<Vec>) => square(sub(vecDot(w, x), 1)))
+const loss = differentiable((w: Var<Vec>) => square(sub(1)(vecDot(x)(w))))
 
 loss.gradient(new Float64Array([0, 0, 0]))
 ```
 
-This example shows a tiny linear model. `vecDot(w, x)` predicts a value,
+This example shows a tiny linear model. `vecDot(x)(w)` predicts a value,
 `square(...)` measures the error, and `gradient(...)` returns a vector shaped
 like `w`, telling each weight how to move.
 
@@ -136,7 +138,7 @@ import {
 const target: Mat = { rows: 2, cols: 1, data: new Float64Array([1, -1]) }
 
 const loss = differentiable((w: Var<Mat>, x: Var<Mat>) =>
-  matNormSquared(matSub(matMul(x, w), target)),
+  matNormSquared(matSub(target)(matMul(w)(x))),
 )
 ```
 

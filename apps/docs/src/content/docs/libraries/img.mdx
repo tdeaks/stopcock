@@ -43,7 +43,7 @@ import { fromRGBA, grayscale, sepia, brightness } from '@stopcock/img'
 
 const vintage = (img: Image) => pipe(img, grayscale, sepia, brightness(1.1))
 
-const processed = A.map(images, vintage)
+const processed = A.map(vintage)(images)
 ```
 
 ### Edge detection for feature extraction

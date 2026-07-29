@@ -9,7 +9,7 @@ import { Tabs, TabItem, Aside } from '@astrojs/starlight/components'
 bun add @stopcock/diff
 ```
 
-Compute a patch between two values, apply it, invert it for undo, compose sequential patches, or rebase concurrent edits with conflict detection. All functions are dual-form.
+Compute a patch between two values, apply it, invert it for undo, compose sequential patches, or rebase concurrent edits with conflict detection. Every function is curried, data-last.
 
 ```ts
 import { diff, apply, invert, compose } from '@stopcock/diff'
@@ -17,10 +17,10 @@ import { diff, apply, invert, compose } from '@stopcock/diff'
 const before = { name: 'Tom', scores: [10, 20] }
 const after = { name: 'Tom', scores: [10, 20, 30] }
 
-const patch = diff(before, after)
+const patch = diff(after)(before)
 // [{ op: 'add', path: ['scores', 2], value: 30 }]
 
-const restored = apply(after, invert(patch))
+const restored = apply(invert(patch))(after)
 // { name: 'Tom', scores: [10, 20] }
 ```
 
@@ -45,8 +45,8 @@ type Operation =
 ## Diffing
 
 ```ts
-diff(before, after): Patch
-diffWith(before, after, options): Patch
+diff(after): (before) => Patch
+diffWith(after, options): (before) => Patch
 ```
 
 Options:
@@ -57,19 +57,19 @@ Options:
 
 ```ts
 // Move detection
-diff({ items: ['a', 'b', 'c'] }, { items: ['c', 'a', 'b'] })
+diff({ items: ['c', 'a', 'b'] })({ items: ['a', 'b', 'c'] })
 // [{ op: 'move', from: ['items', 2], path: ['items', 0] }]
 
 // Rename detection
-diff({ firstName: 'Tom' }, { name: 'Tom' })
+diff({ name: 'Tom' })({ firstName: 'Tom' })
 // [{ op: 'rename', path: [], oldKey: 'firstName', newKey: 'name' }]
 ```
 
 ## Applying patches
 
 ```ts
-apply(target, patch): Result<T, PatchError>
-applyUnsafe(target, patch): T
+apply(patch): (target) => Result<T, PatchError>
+applyUnsafe(patch): (target) => T
 ```
 
 `apply` returns a `Result`. If an operation fails (path doesn't exist, index out of bounds), you get a `PatchError` with context. `applyUnsafe` throws instead.
@@ -87,14 +87,14 @@ Reverses a patch. `add` becomes `remove`, `remove` becomes `add`, `replace` swap
 This is what powers undo in `@stopcock/state`.
 
 ```ts
-const p = diff(a, b)
-apply(b, invert(p)) // back to a
+const p = diff(b)(a)
+apply(invert(p))(b) // back to a
 ```
 
 ## Composition
 
 ```ts
-compose(p1, p2): Patch
+compose(p2): (p1) => Patch
 ```
 
 Merges two sequential patches into one. Automatically simplifies:
@@ -104,17 +104,17 @@ Merges two sequential patches into one. Automatically simplifies:
 - `add` then `replace` at the same path becomes a single `add`
 
 ```ts
-const p1 = diff(a, b)
-const p2 = diff(b, c)
-const p3 = compose(p1, p2)
+const p1 = diff(b)(a)
+const p2 = diff(c)(b)
+const p3 = compose(p2)(p1)
 
-// apply(a, p3) === apply(apply(a, p1), p2)
+// apply(p3)(a) === apply(p2)(apply(p1)(a))
 ```
 
 ## Rebasing
 
 ```ts
-rebase(localPatch, remotePatch): Result<Patch, ConflictError>
+rebase(remotePatch): (localPatch) => Result<Patch, ConflictError>
 ```
 
 You and someone else both edited the same base state. The remote patch already landed. `rebase` transforms your local patch so it applies cleanly on top of the remote changes.
@@ -122,10 +122,10 @@ You and someone else both edited the same base state. The remote patch already l
 ```ts
 const base = { name: 'Tom', scores: [10, 20] }
 
-const local = diff(base, { name: 'Tom', scores: [10, 20, 30] })
-const remote = diff(base, { name: 'Tom', scores: [5, 10, 20] })
+const local = diff({ name: 'Tom', scores: [10, 20, 30] })(base)
+const remote = diff({ name: 'Tom', scores: [5, 10, 20] })(base)
 
-const rebased = rebase(local, remote)
+const rebased = rebase(remote)(local)
 // local's add at index 2 shifts to index 3
 ```
 
@@ -146,7 +146,7 @@ fromJsonPatch(ops): Patch
 Convert to and from the standard JSON Patch format. Useful for sending patches over the wire or storing them in a database.
 
 ```ts
-const p = diff(before, after)
+const p = diff(after)(before)
 const json = toJsonPatch(p)
 // [{ op: 'add', path: '/scores/2', value: 30 }]
 
@@ -201,13 +201,13 @@ isEmpty(p: Patch): boolean
 ### Core
 
 ```ts
-diff(a, b): Patch
-diffWith(a, b, options: DiffOptions): Patch
-apply(target, patch): Result<T, PatchError>
-applyUnsafe(target, patch): T
+diff(b): (a) => Patch
+diffWith(b, options: DiffOptions): (a) => Patch
+apply(patch): (target) => Result<T, PatchError>
+applyUnsafe(patch): (target) => T
 invert(patch): Patch
-compose(p1, p2): Patch
-rebase(local, remote): Result<Patch, ConflictError>
+compose(p2): (p1) => Patch
+rebase(remote): (local) => Result<Patch, ConflictError>
 ```
 
 ### JSON Patch

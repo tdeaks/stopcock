@@ -56,7 +56,7 @@ import {
 import { symmetry, toQuad } from '@stopcock/svg/la'
 
 const source = fromRGBA(rgbaBytes, width, height)
-const simulated = simulateCVD(source, 'deuteranopia', 1)
+const simulated = simulateCVD('deuteranopia', 1)(source)
 const href = canvasDataUrl(simulated)
 
 const tile = pattern(image(href, width, height), width, height)

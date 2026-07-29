@@ -156,7 +156,8 @@ const checkFallback = pipe(
 )
 
 const isHealthy = await pipe(
-  fallback(checkPrimary, checkFallback),
+  checkPrimary,
+  fallback(checkFallback),
   catchError(() => false),
   run,
 )
@@ -176,16 +177,16 @@ const users = await Promise.all(ids.map((id) => callApi(`/users/${id}`)))
 
 ## Combinators
 
-All dual-form: data-first and data-last for `pipe`.
+Curried, data-last, so they compose with `pipe`.
 
 ```ts
-map<A, B, E>(task: Task<A, E>, f: (a: A) => B): Task<B, E>
-flatMap<A, B, E, E2>(task: Task<A, E>, f: (a: A) => Task<B, E2>): Task<B, E | E2>
-tap<A, E>(task: Task<A, E>, f: (a: A) => void): Task<A, E>
-mapError<A, E, E2>(task: Task<A, E>, f: (e: E) => E2): Task<A, E2>
-catchError<A, E>(task: Task<A, E>, f: (e: E) => A): Task<A, never>
-flatMapError<A, E, E2>(task: Task<A, E>, f: (e: E) => Task<A, E2>): Task<A, E2>
-match<A, E, B>(task: Task<A, E>, cases: { ok: (a: A) => B, err: (e: E) => B }): Task<B, never>
+map<A, B>(f: (a: A) => B): <E>(task: Task<A, E>) => Task<B, E>
+flatMap<A, B, E2>(f: (a: A) => Task<B, E2>): <E>(task: Task<A, E>) => Task<B, E | E2>
+tap<A>(f: (a: A) => void | Promise<void>): <E>(task: Task<A, E>) => Task<A, E>
+mapError<E, E2>(f: (e: E) => E2): <A>(task: Task<A, E>) => Task<A, E2>
+catchError<E, B>(f: (e: E) => B): <A>(task: Task<A, E>) => Task<A | B, never>
+flatMapError<E, B, E2>(f: (e: E) => Task<B, E2>): <A>(task: Task<A, E>) => Task<A | B, E2>
+match<A, E, B, C>(handlers: { ok: (a: A) => B, err: (e: E) => C }): (task: Task<A, E>) => Task<B | C, never>
 ```
 
 ## Running
@@ -224,7 +225,7 @@ const results = await pipe(tasks, parallel(4), run)
 ```ts
 retry(opts: RetryOptions): <A, E>(task: Task<A, E>) => Task<A, E>
 timeout(ms: number): <A, E>(task: Task<A, E>) => Task<A, E | TimeoutError>
-fallback<A, E>(task: Task<A, E>, alt: Task<A, E>): Task<A, E>
+fallback<B, E2>(backup: Task<B, E2>): <A, E>(task: Task<A, E>) => Task<A | B, E2>
 ```
 
 ```ts

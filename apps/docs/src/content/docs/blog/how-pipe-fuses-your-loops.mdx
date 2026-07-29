@@ -1,26 +1,27 @@
 ---
-title: How portable pipeline fusion works
+title: How @stopcock/fp-compiler fuses your loops
 date: 2026-04-06
 authors:
   - tom
 tags:
   - internals
   - performance
-excerpt: How @stopcock/fp plans tagged operators into portable loops without runtime code generation.
+excerpt: pipe doesn't fuse array chains at runtime any more. @stopcock/fp-compiler does it at build time instead.
 ---
 
-> Updated for `@stopcock/fp` 2.0. The old runtime-JIT design was removed.
+> Updated for `@stopcock/fp` 2.0. The runtime-JIT design was removed first,
+> then the portable runtime fusion engine that replaced it was removed too.
+> `pipe` is now plain sequential function application. Read on for what
+> replaced it.
 
 Ordinary array chains allocate intermediate arrays:
 
 ```ts
 const result = users
-  .filter((user) => user.active)
-  .map((user) => user.name)
+  .filter((user: User) => user.active)
+  .map((user: User) => user.name)
   .slice(0, 10)
 ```
-
-Stopcock operators carry small internal operation tags:
 
 ```ts
 import { pipe } from '@stopcock/fp'
@@ -28,17 +29,26 @@ import * as A from '@stopcock/fp/array'
 
 const result = pipe(
   users,
-  A.filter((user) => user.active),
-  A.map((user) => user.name),
+  A.filter((user: User) => user.active),
+  A.map((user: User) => user.name),
   A.take(10),
 )
 ```
 
-The planner recognizes compatible tagged segments and dispatches to checked-in,
-hand-shaped loop templates. A filter/map/take segment behaves roughly like:
+`pipe` doesn't change that on its own. It runs each step in order: `filter`
+produces a full intermediate array, then `map` produces another, then
+`take` slices it. Nothing fuses at runtime any more. If you were relying on
+`pipe` to fuse a hot chain for you, it won't -- you need the compiler.
+
+## The compiler fuses this at build time
+
+`@stopcock/fp-compiler` is a Vite/Rollup/esbuild plugin. It recognizes a
+statically-imported `pipe`/`flow`/`compile` chain built from its supported
+array operators and rewrites it into a single inlined loop before your code
+ships. The call above compiles to roughly:
 
 ```ts
-const output = []
+const output: string[] = []
 for (let index = 0; index < users.length; index++) {
   const user = users[index]
   if (!user.active) continue
@@ -47,21 +57,25 @@ for (let index = 0; index < users.length; index++) {
 }
 ```
 
-There is no `eval`, `new Function`, function-source parsing, or dynamically
-loaded JIT chunk in the public runtime graph. This keeps the same code valid
+There's no `eval`, `new Function`, function-source parsing, or dynamically
+loaded JIT chunk anywhere in this. The rewrite happens once, during your
+build, by reading and transforming the source. The same output stays valid
 under strict CSP and across Node, Bun, Deno, browsers, workers, and edge
 runtimes.
 
-## Plan once for repeated work
+## Compile once for repeated work
 
-For a hot pipeline used with many inputs, compile its shape once:
+For a hot pipeline used across many inputs, `compile` marks the call site
+so the plugin knows to fuse it. Uncompiled, `compile` is identical to
+`pipe` -- it changes nothing by itself:
 
 ```ts
-import { compile, explain } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
+import { explain } from '@stopcock/fp/fusion/debug'
 
 const activeNames = compile(
   A.filter((user: User) => user.active),
-  A.map((user) => user.name),
+  A.map((user: User) => user.name),
   A.take(10),
 )
 
@@ -71,44 +85,40 @@ activeNames(secondPage)
 console.log(
   explain(
     A.filter((user: User) => user.active),
-    A.map((user) => user.name),
+    A.map((user: User) => user.name),
     A.take(10),
   ),
 )
+// 'sequential' -- explain() runs at runtime, and a call the compiler
+// actually fused at build time never reaches this code to be explained
 ```
 
-`compile` keeps normal callback semantics. `compilePure` is an explicit promise
-that callbacks are pure and may enable additional rewrites. Purity is never
-silently guessed from `Function#toString`.
+`compilePure` is `compile` under a different name, for source parity with
+the compiler's `assumePure` option: it permits a documented set of pure
+rewrites (like collapsing an adjacent `sortBy -> take(k)` into a bounded
+top-k pass) only when the plugin actually fuses the site.
 
-## Boundaries
+## What compiles and what doesn't
 
-Item-by-item transforms such as map, filter, reject, filter-map, take, and drop
-can share a streaming segment. Whole-input operations such as sorting,
-reversing, grouping, and global deduplication form materialization boundaries.
-Terminals such as reduce, count, sum, and short-circuit searches can finish a
-segment without another intermediate collection.
+Item-by-item steps -- `map`, `filter`, `reject`, `filterMap`, `take`,
+`takeWhile`, `drop`, `dropWhile`, `flatMap` -- can share one fused loop.
+Whole-input operations -- `sort`, `sortBy`, `reverse`, `uniq`, `flatten`,
+`scan` -- need the complete array first, so they end one loop and start
+another. Terminals -- `reduce`, `count`, `sum`, `find`, and the other
+short-circuit searches -- can finish a fused loop without another
+intermediate array.
 
-Specialized optimizations are semantic, not magical. For example, a sorted
-top-k request can select and sort only the required prefix when its ordering
-contract allows that rewrite.
+An unsupported operator, a dynamic step, a lexically shadowed import, or
+anything else the compiler can't resolve statically leaves the call site
+untouched: an ordinary runtime call to `pipe`, exactly as if the plugin
+weren't installed. Run `stopcock check --strict` to see which sites in your
+own source compiled and which bailed, and why.
 
-## Build-time lowering
+## When it's worth compiling
 
-`@stopcock/fp-compiler` is an optional build plugin for Vite/Rollup-compatible
-hosts. It recognizes ordinary imports from `@stopcock/fp` and
-`@stopcock/fp/array`, lowers supported call sites to direct loops, and emits
-diagnostics for transformed or rejected shapes. It is a development dependency;
-applications do not import it at runtime.
-
-## When fusion helps
-
-Measure your workload. Fusion is most useful for large inputs, early exit,
-multiple compatible stages, and repeated hot paths. For a short collection or
-a single native operation, clarity usually matters more than forcing a
-compiled plan.
-
-The benchmark suite measures source and packed-dist lanes on the real runtime
-engine. Release gates compare the build compiler with a frozen loop emitter on
-Linux x64 and macOS arm64 and reject correctness mismatches as well as
-performance regressions.
+Measure your workload. Compiling helps most for large inputs, early exit,
+several compatible stages, and hot repeated pipelines. For a short
+collection or a single native operation, an uncompiled `pipe` is already
+close to hand-loop speed -- see [Benchmarks](/performance/benchmarks) for
+the measured comparison against lodash, ramda, remeda, rambda, and
+ts-belt.

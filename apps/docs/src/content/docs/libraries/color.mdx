@@ -1,6 +1,6 @@
 ---
 title: color
-description: Color as a first-class value — 11 spaces, perceptual ops, WCAG contrast, CVD simulation
+description: Color as a first-class value. 11 spaces, perceptual ops, WCAG contrast, CVD simulation
 ---
 
 import { Aside } from '@astrojs/starlight/components'
@@ -9,7 +9,7 @@ import { Aside } from '@astrojs/starlight/components'
 bun add @stopcock/color
 ```
 
-A color algebra in pure TypeScript. 11 color spaces with lossless conversions (CSS Color 4 matrices), perceptually-uniform adjustments via OKLCh, WCAG contrast, CIEDE2000 perceptual distance, gamut mapping, and color-vision-deficiency simulation. Every transformation is dual-form so it composes with `pipe`.
+A color algebra in pure TypeScript. 11 color spaces with lossless conversions (CSS Color 4 matrices), perceptually-uniform adjustments via OKLCh, WCAG contrast, CIEDE2000 perceptual distance, gamut mapping, and color-vision-deficiency simulation. Every transformation is curried, data-last, so it composes with `pipe`.
 
 Try the API in the [Color showcase](/showcases/color/), or see it compose with
 image processing and procedural graphics in the
@@ -30,10 +30,10 @@ Try it live in the [interactive showcase](/showcases/color/).
 The package routes every perceptual operation (`lighten`, `darken`, `saturate`, `mix`) through OKLCh by default. OKLCh is a polar form of OKLab, which is the most accurate perceptual color space currently published (Ottosson, 2020). Compared to HSL:
 
 - Lightening blue in HSL turns it pink. Lightening blue in OKLCh keeps it blue.
-- Equal lightness steps in OKLCh look like equal lightness steps. HSL's lightness is just `(max + min) / 2` in sRGB — heavily biased.
+- Equal lightness steps in OKLCh look like equal lightness steps. HSL's lightness is just `(max + min) / 2` in sRGB, which is heavily biased.
 - Mixing two colors in OKLab avoids the muddy gray middle that sRGB interpolation produces.
 
-You can still operate in any space explicitly with `convert(c, 'hsl')` or `mixIn(a, b, 'hsl', t)` when you need legacy behavior.
+You can still operate in any space explicitly with `convert('hsl')(c)` or `mixIn(b, 'hsl', t)(a)` when you need legacy behavior.
 
 ## Representation
 
@@ -58,7 +58,7 @@ type Color = {
 }
 ```
 
-Alpha lives outside the channels array because it's orthogonal to color-space conversion — converting sRGB to OKLab does not touch alpha.
+Alpha lives outside the channels array because it's orthogonal to color-space conversion: converting sRGB to OKLab does not touch alpha.
 
 ## Construction
 
@@ -78,10 +78,9 @@ fromCSS('oklch(0.7 0.15 250)')
 
 ## Conversion
 
-Dual-form. Routes through a hub-and-spoke graph (XYZ-D65 at the center) with memoized BFS — pay the graph walk once per unique pair, O(1) after.
+Curried. Routes through a hub-and-spoke graph (XYZ-D65 at the center) with memoized BFS: pay the graph walk once per unique pair, O(1) after.
 
 ```ts
-convert(color: Color, target: ColorSpace): Color
 convert(target: ColorSpace): (c: Color) => Color
 ```
 
@@ -109,28 +108,28 @@ Alpha stays out-of-band. `@stopcock/img` handles RGBA byte splitting and recombi
 
 ## Adjustments
 
-All route through OKLCh, then return to the source space. Dual-form.
+All route through OKLCh, then return to the source space. Curried.
 
 ```ts
-lighten(c: Color, amount: number): Color
-darken(c: Color, amount: number): Color
-saturate(c: Color, amount: number): Color
-desaturate(c: Color, amount: number): Color
-adjustHue(c: Color, degrees: number): Color
-adjustAlpha(c: Color, alpha: number): Color
+lighten(amount: number): (c: Color) => Color
+darken(amount: number): (c: Color) => Color
+saturate(amount: number): (c: Color) => Color
+desaturate(amount: number): (c: Color) => Color
+adjustHue(degrees: number): (c: Color) => Color
+adjustAlpha(alpha: number): (c: Color) => Color
 ```
 
 ## Mixing
 
 ```ts
-mix(a: Color, b: Color, t?: number): Color           // OKLab, t defaults to 0.5
-mixIn(a: Color, b: Color, space: ColorSpace, t?): Color  // explicit space
-hueInterpolate(h1: number, h2: number, t: number): number  // shorter-arc
+mix(b: Color, t?: number): (a: Color) => Color           // OKLab, t defaults to 0.5
+mixIn(b: Color, space: ColorSpace, t?: number): (a: Color) => Color  // explicit space
+hueInterpolate(h1: number, h2: number, t: number): number  // shorter-arc, not curried
 ```
 
 <Aside type="tip">
   Mixing in OKLab gives smooth, perceptually-uniform gradients. The `mixIn` form lets you pick a
-  different space — useful when you want HSL-style chroma preservation or sRGB-compatible output.
+  different space, useful when you want HSL-style chroma preservation or sRGB-compatible output.
 </Aside>
 
 ## Palettes
@@ -144,7 +143,7 @@ analogous(c: Color, count?: number, angle?: number): Color[]
 analogous(count?, angle?): (c: Color) => Color[]   // curried for pipe
 ```
 
-Harmony palettes rotate the hue in OKLCh and project back to the source space, so the resulting colors share lightness/chroma — they "go together."
+Harmony palettes rotate the hue in OKLCh and project back to the source space, so the resulting colors share lightness/chroma. They "go together."
 
 ## Channels
 
@@ -167,19 +166,19 @@ toHSLString(c): string
 
 ```ts
 luminance(c): number                              // WCAG relative luminance
-contrastRatio(a, b): number                       // WCAG ratio
-meetsAA(a, b): boolean                            // ratio >= 4.5
-meetsAAA(a, b): boolean                           // ratio >= 7
-meetsAALarge(a, b): boolean                       // ratio >= 3
-deltaE(a, b): number                              // CIEDE2000 perceptual distance
-deltaEOK(a, b): number                            // Euclidean distance in OKLab
+contrastRatio(b: Color): (a: Color) => number     // WCAG ratio, curried
+meetsAA(b: Color): (a: Color) => boolean          // ratio >= 4.5, curried
+meetsAAA(b: Color): (a: Color) => boolean         // ratio >= 7, curried
+meetsAALarge(b: Color): (a: Color) => boolean     // ratio >= 3, curried
+deltaE(b: Color): (a: Color) => number            // CIEDE2000 perceptual distance, curried
+deltaEOK(a, b): number                            // Euclidean distance in OKLab, not curried
 ```
 
 ## Gamut mapping
 
 ```ts
-inGamut(c: Color, target: ColorSpace): boolean
-toGamut(c: Color, target: ColorSpace): Color
+inGamut(target: ColorSpace): (c: Color) => boolean
+toGamut(target: ColorSpace): (c: Color) => Color
 ```
 
 `toGamut` uses the CSS Color 4 algorithm: binary search in OKLCh chroma, preserving lightness and hue, until the result is in the target gamut and within JND (`deltaEOK < 0.02`) of the clipped variant. Better than naive RGB clipping, which shifts the hue.
@@ -216,7 +215,7 @@ minDistinguishableDistance(palette: Color[], type: CVDType, severity?): number
 type ContrastCell = { ratio: number; aa: boolean; aaLarge: boolean; aaa: boolean }
 ```
 
-`paletteContrastMatrix` returns the full N×N pairwise contrast grid — pick foreground/background pairs visually.
+`paletteContrastMatrix` returns the full N×N pairwise contrast grid. Pick foreground/background pairs visually.
 
 `minDistinguishableDistance` simulates a palette under a given CVD condition and reports the smallest pairwise distance. A high minimum means every color in your palette stays distinct under that CVD.
 
@@ -231,8 +230,8 @@ import { fromHex, toOKLCh, lighten, darken, toHex } from '@stopcock/color'
 const brand = fromHex('#2563eb')
 const theme = {
   primary: toHex(brand),
-  primaryHover: toHex(lighten(brand, 0.05)),
-  primaryActive: toHex(darken(brand, 0.05)),
+  primaryHover: toHex(lighten(0.05)(brand)),
+  primaryActive: toHex(darken(0.05)(brand)),
   primaryMuted: toHex(pipe(brand, lighten(0.4))),
 }
 ```
@@ -242,7 +241,7 @@ const theme = {
 ```ts
 import { contrastRatio, fromHex, rgb } from '@stopcock/color'
 
-const onBg = (bg: Color) => (contrastRatio(rgb(1, 1, 1), bg) >= 4.5 ? rgb(1, 1, 1) : rgb(0, 0, 0))
+const onBg = (bg: Color) => (contrastRatio(bg)(rgb(1, 1, 1)) >= 4.5 ? rgb(1, 1, 1) : rgb(0, 0, 0))
 ```
 
 ### Building a colorblind-safe categorical palette

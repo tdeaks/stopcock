@@ -17,18 +17,12 @@ compiler without taking ownership of your application runtime.
 The root is intentionally small:
 
 ```ts
-import {
-  compile,
-  compilePure,
-  dual,
-  err,
-  flow,
-  none,
-  ok,
-  pipe,
-  some,
-} from '@stopcock/fp'
+import { err, flow, none, ok, pipe, some } from '@stopcock/fp'
 ```
+
+`compile`, `compilePure`, `dual`, and `explain` are not root exports. Import
+them from the subpaths that name what they are: `@stopcock/fp/compile`,
+`@stopcock/fp/dual`, and `@stopcock/fp/fusion/debug`.
 
 Specialist APIs live in tree-shakeable subpaths:
 
@@ -55,10 +49,10 @@ const activeNames = pipe(
 )
 ```
 
-Public operators support direct and pipe-friendly forms where both are useful:
+Every operator has one form: curried, data-last.
 
 ```ts
-const doubled = A.map([1, 2, 3], (value) => value * 2)
+const doubled = A.map((value: number) => value * 2)([1, 2, 3])
 const alsoDoubled = pipe([1, 2, 3], A.map((value) => value * 2))
 ```
 
@@ -68,9 +62,15 @@ allowed to alias an input.
 
 ## Portable compilation
 
-Repeated hot pipelines can be planned once:
+There is one runtime path: `pipe`, `flow`, `compile`, and `compilePure` are
+all the same plain, left-to-right, sequential application. `compile` exists
+so a call site can say "this is a pipeline I intend to compile" by name;
+uncompiled, it behaves exactly like `pipe`, including callback order and
+early-exit counts.
 
 ```ts
+import { compile } from '@stopcock/fp/compile'
+
 const activeNames = compile(
   A.filter((player: Player) => player.active),
   A.map((player) => player.name),
@@ -80,25 +80,26 @@ const activeNames = compile(
 activeNames(players)
 ```
 
-`compile` preserves ordinary callback semantics. `compilePure` additionally
-permits rewrites that are valid only when callbacks are pure. Both use
-checked-in portable loop templates: the runtime package does not call
-`eval`, construct functions from strings, or load a JIT chunk.
+The actual fusion is `@stopcock/fp-compiler`: a build-time transform that
+recognizes a `pipe`/`flow`/`compile` call over these operators and replaces
+it with an inlined, single-pass loop, so the runtime engine above never runs
+for that call at all. `compilePure` exists for source parity with the
+compiler's `assumePure` option; at runtime it is `compile` under a different
+name.
 
 ```ts
-import { explain } from '@stopcock/fp'
+import { explain } from '@stopcock/fp/fusion/debug'
 
-console.log(
-  explain(
-    A.map((value: number) => value * 2),
-    A.filter((value) => value > 0),
-  ),
-)
+explain(
+  A.map((value: number) => value * 2),
+  A.filter((value) => value > 0),
+) // 'sequential', always -- a call the compiler actually fused never
+  // reaches this code to be explained
 ```
 
-See [Inspect pipelines with `explain()`](/concepts/explain) for verified
-reports, field definitions, materialization boundaries, opaque functions, and
-pure rewrites.
+Uncompiled `pipe` is already at or near hand-loop speed for most chains, so
+you do not need the compiler to get reasonable performance. Reach for
+`@stopcock/fp-compiler` for pipelines you've actually measured as hot.
 
 <Aside type="note">
   The optional `@stopcock/fp-compiler` build plugin can lower ordinary
@@ -130,8 +131,8 @@ const parsed = R.tryCatch(
 )
 
 const fields = V.all([
-  V.fromPredicate(name, (value) => value.length > 0, () => 'name is required'),
-  V.fromPredicate(age, Number.isFinite, () => 'age must be finite'),
+  V.fromPredicate((value: string) => value.length > 0, () => 'name is required')(name),
+  V.fromPredicate(Number.isFinite, () => 'age must be finite')(age),
 ] as const)
 ```
 

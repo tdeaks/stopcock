@@ -1,26 +1,26 @@
 ---
 title: Color
-description: Interactive demo of stopcock/color — color spaces, palettes, mixing, contrast, gamut mapping, and CVD simulation
+description: Interactive demo of stopcock/color, covering color spaces, palettes, mixing, contrast, gamut mapping, and CVD simulation
 ---
 
 import ColorShowcase from '../../../components/ColorShowcase.astro'
 
-Every section below runs live in your browser using the actual `@stopcock/color` API — no canvas tricks, no precomputed swatches. Pick a base color, switch the accessibility lens, and watch every demo recalculate.
+Every section below runs live in your browser using the actual `@stopcock/color` API. No canvas tricks, no precomputed swatches. Pick a base color, switch the accessibility lens, and watch every demo recalculate.
 
-The CVD lens at the top simulates how each color appears to viewers with protanopia, deuteranopia, tritanopia, or achromatopsia. Toggling it does not change the underlying color — only how this page renders it — so you can spot palettes that collapse under common color vision differences.
+The CVD lens at the top simulates how each color appears to viewers with protanopia, deuteranopia, tritanopia, or achromatopsia. Toggling it does not change the underlying color. It only changes how this page renders it, so you can spot palettes that collapse under common color vision differences.
 
 <ColorShowcase />
 
 ## What's happening
 
-Every transformation goes through the same dual-form API you'd use in your own code. The palette section, for instance, is built from one call per row:
+Every transformation goes through the same curried, data-last API you'd use in your own code. The palette section, for instance, is built from one call per row:
 
 ```ts
 import { fromHex, analogous, complementary, triadic } from '@stopcock/color'
 
 const base = fromHex('#2563eb')
 const harmonies = {
-  analogous: analogous(base, 5),
+  analogous: analogous(5)(base),
   complementary: [base, complementary(base)],
   triadic: triadic(base),
 }
@@ -29,16 +29,19 @@ const harmonies = {
 The mix gradient renders 13 stops by interpolating in each space:
 
 ```ts
-import { mixIn } from '@stopcock/color'
+import { fromHex, mixIn, type ColorSpace } from '@stopcock/color'
+
+const base = fromHex('#2563eb')
+const target = fromHex('#f97316')
 
 const stops = (space: ColorSpace) =>
-  Array.from({ length: 13 }, (_, i) => mixIn(base, target, space, i / 12))
+  Array.from({ length: 13 }, (_, i) => mixIn(target, space, i / 12)(base))
 ```
 
-The accessibility lens calls `simulate(c, type)` on every color before rendering. `simulate` uses Machado et al. (2009) matrices applied in linear sRGB space — see the [library overview](/libraries/color/#color-vision-deficiency) for details.
+The accessibility lens calls `simulate(c, type)` on every color before rendering. `simulate` uses Machado et al. (2009) matrices applied in linear sRGB space. See the [library overview](/libraries/color/#color-vision-deficiency) for details.
 
 ## Read more
 
-- [Library overview](/libraries/color/) — API reference, key concepts, real-world patterns
+- [Library overview](/libraries/color/): API reference, key concepts, real-world patterns
 - The OKLCh / OKLab math comes from Björn Ottosson's [original paper](https://bottosson.github.io/posts/oklab/)
 - WCAG 2.1 [§1.4.3 Contrast (Minimum)](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html) is the source of the AA/AAA thresholds shown here
