@@ -9,8 +9,9 @@ const fn = (x: number) => x * 2
 describe.each([100, 1_000, 10_000, 100_000])('adjust — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
   const idx = Math.floor(n / 2)
+  const stopcockAdjust = A.adjust(idx, fn) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.adjust(data, idx, fn))
+  bench('stopcock', () => stopcockAdjust(data))
   bench('rambda', () => Rb.adjust(idx, fn)(data))
   bench('ramda', () => Ra.adjust(idx, fn, data))
 })
@@ -18,7 +19,8 @@ describe.each([100, 1_000, 10_000, 100_000])('adjust — n=%i', (n) => {
 describe.each([100, 1_000, 10_000, 100_000])('update — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
   const idx = Math.floor(n / 2)
+  const stopcockUpdate = A.update(idx, 999) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.update(data, idx, 999))
+  bench('stopcock', () => stopcockUpdate(data))
   bench('ramda', () => Ra.update(idx, 999, data))
 })

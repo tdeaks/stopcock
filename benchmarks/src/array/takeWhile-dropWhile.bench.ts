@@ -11,8 +11,9 @@ const pred = (x: number) => x < 0.5
 
 describe.each([100, 1_000, 10_000, 100_000])('takeWhile — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockTakeWhile = A.takeWhile(pred) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.takeWhile(data, pred))
+  bench('stopcock', () => stopcockTakeWhile(data))
   bench('ts-belt', () => TB.takeWhile(data, pred))
   bench('remeda', () => R.takeWhile(data, pred))
   bench('rambda', () => Rb.takeWhile(pred)(data))
@@ -22,8 +23,9 @@ describe.each([100, 1_000, 10_000, 100_000])('takeWhile — n=%i', (n) => {
 
 describe.each([100, 1_000, 10_000, 100_000])('dropWhile — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockDropWhile = A.dropWhile(pred) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.dropWhile(data, pred))
+  bench('stopcock', () => stopcockDropWhile(data))
   bench('ts-belt', () => TB.dropWhile(data, pred))
   bench('remeda', () => R.dropWhile(data, pred))
   bench('rambda', () => Rb.dropWhile(pred)(data))

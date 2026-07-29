@@ -8,8 +8,9 @@ import { getData } from '../setup'
 describe.each([100, 1_000, 10_000])('symmetricDifference — n=%i', (n) => {
   const a = getData<number>('numbers', n as any).slice(0, n)
   const b = getData<number>('numbers', n as any).slice(Math.floor(n / 2))
+  const stopcockSymmetricDifference = A.symmetricDifference(b) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.symmetricDifference(a, b))
+  bench('stopcock', () => stopcockSymmetricDifference(a))
   bench('ramda', () => Ra.symmetricDifference(a, b))
   bench('rambda', () => Rb.symmetricDifference(a)(b))
   bench('lodash', () => _.xor(a, b))

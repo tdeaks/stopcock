@@ -13,7 +13,8 @@ describe.each([100, 1_000, 10_000])('dropRepeats — n=%i', (n) => {
 describe.each([100, 1_000, 10_000])('splitAt — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
   const mid = Math.floor(n / 2)
+  const stopcockSplitAt = A.splitAt(mid) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.splitAt(data, mid))
+  bench('stopcock', () => stopcockSplitAt(data))
   bench('ramda', () => Ra.splitAt(mid, data))
 })

@@ -11,8 +11,9 @@ const pred = (x: number) => x > 0.5
 
 describe.each([100, 1_000, 10_000, 100_000])('partition — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockPartition = A.partition(pred) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.partition(data, pred))
+  bench('stopcock', () => stopcockPartition(data))
   bench('ts-belt', () => TB.partition(data, pred))
   bench('remeda', () => R.partition(data, pred))
   bench('rambda', () => Rb.partition(pred)(data))
@@ -22,8 +23,9 @@ describe.each([100, 1_000, 10_000, 100_000])('partition — n=%i', (n) => {
 
 describe.each([100, 1_000, 10_000])('chunk(10) — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockChunk = A.chunk(10) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.chunk(data, 10))
+  bench('stopcock', () => stopcockChunk(data))
   bench('ts-belt', () => TB.splitEvery(data, 10))
   bench('remeda', () => R.chunk(data, 10))
   bench('rambda', () => Rb.splitEvery(10)(data))

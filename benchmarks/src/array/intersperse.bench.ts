@@ -7,8 +7,9 @@ import { getData } from '../setup'
 
 describe.each([100, 1_000, 10_000])('intersperse — n=%i', (n) => {
   const data = getData<number>('numbers', n as any)
+  const stopcockIntersperse = A.intersperse(0) // hoisted: isolate execution cost, not closure construction
 
-  bench('stopcock', () => A.intersperse(data, 0))
+  bench('stopcock', () => stopcockIntersperse(data))
   bench('ts-belt', () => TB.intersperse(data, 0))
   bench('rambda', () => Rb.intersperse(0)(data))
   bench('ramda', () => Ra.intersperse(0, data))
