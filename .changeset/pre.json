@@ -33,8 +33,15 @@
     "add-fp-companion-tools",
     "add-fp-interop",
     "add-persistent-collections",
+    "compact-fusion",
+    "explicit-fusion-facades",
     "fp-absolute-performance",
+    "fp-compiled-object-paths",
+    "fp-map-get-or-else",
     "fp-validation-composition",
-    "normalize-public-package-metadata"
+    "normalize-public-package-metadata",
+    "root-sequential-cutover",
+    "stopcock-check-cli",
+    "trusted-operator-provenance"
   ]
 }

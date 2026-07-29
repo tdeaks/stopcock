@@ -1,5 +1,12 @@
 # @stopcock/svg
 
+## 2.0.0-next.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @stopcock/color@2.0.0-next.1
+
 ## 2.0.0-next.0
 
 ### Patch Changes

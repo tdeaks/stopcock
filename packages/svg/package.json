@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/svg",
-  "version": "2.0.0-next.0",
+  "version": "2.0.0-next.1",
   "description": "Typed procedural SVG nodes, paths, transforms, paint, filters, and rendering.",
   "license": "MIT",
   "repository": {
