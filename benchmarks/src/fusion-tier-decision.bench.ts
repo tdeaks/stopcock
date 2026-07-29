@@ -10,11 +10,10 @@
  * evidence; this suite now measures what survived, three executors per
  * shape:
  *
- *   pipe     - plain closures (no runtime tag of any kind -- there is no
- *              engine left to tag for) through root `pipe`, applied
- *              sequentially. This is the naive row from when there was an
- *              engine to be naive relative to; it is simply what every
- *              pipe call is now.
+ *   pipe     - the shipped @stopcock/fp/array operators (A.map, A.filter,
+ *              A.reduce, ...) through root `pipe`, applied sequentially.
+ *              The old naive-closure baseline is gone along with the engine;
+ *              this measures the real product.
  *   hand     - a hand-written loop: the ceiling.
  *   compiled - build-time output via @stopcock/fp-compiler's
  *              transformStopcockPipelines, new Function'd (compiled-
@@ -213,65 +212,6 @@ function competitorSuite(
 
 
 // ---------------------------------------------------------------------------
-// untagged closure factories -- no _op, so fusionPipe cannot fuse them
-// ---------------------------------------------------------------------------
-
-const naiveMap =
-  <A, B>(f: (a: A) => B) =>
-  (xs: readonly A[]): B[] =>
-    xs.map(f)
-const naiveFilter =
-  <A>(pred: (a: A) => boolean) =>
-  (xs: readonly A[]): A[] =>
-    xs.filter(pred)
-const naiveReduce =
-  <A, B>(f: (acc: B, a: A) => B, init: B) =>
-  (xs: readonly A[]): B =>
-    xs.reduce(f, init)
-const naiveFind =
-  <A>(pred: (a: A) => boolean) =>
-  (xs: readonly A[]): unknown => {
-    for (let i = 0; i < xs.length; i++) if (pred(xs[i]!)) return some(xs[i])
-    return none
-  }
-const naiveTake =
-  (n: number) =>
-  <A>(xs: readonly A[]): A[] =>
-    xs.slice(0, n)
-const naiveSortBy =
-  <A>(cmp: (a: A, b: A) => number) =>
-  (xs: readonly A[]): A[] =>
-    xs.slice().sort(cmp)
-const naiveUniq = <A>(xs: readonly A[]): A[] => Array.from(new Set(xs))
-const naiveScan =
-  <A, B>(f: (acc: B, a: A) => B, init: B) =>
-  (xs: readonly A[]): B[] => {
-    const out = new Array<B>(xs.length + 1)
-    let acc = init
-    out[0] = init
-    for (let i = 0; i < xs.length; i++) {
-      acc = f(acc, xs[i]!)
-      out[i + 1] = acc
-    }
-    return out
-  }
-const naiveFlatMap =
-  <A, B>(f: (a: A) => B[]) =>
-  (xs: readonly A[]): B[] =>
-    xs.flatMap(f)
-const naiveTakeWhile =
-  <A>(pred: (a: A) => boolean) =>
-  (xs: readonly A[]): A[] => {
-    const out: A[] = []
-    for (let i = 0; i < xs.length; i++) {
-      if (!pred(xs[i]!)) break
-      out.push(xs[i]!)
-    }
-    return out
-  }
-const naiveHead = <A>(xs: readonly A[]): unknown => (xs.length === 0 ? none : some(xs[0]))
-
-// ---------------------------------------------------------------------------
 // callback-count table (early-exit shapes) -- printed once at collection time
 // ---------------------------------------------------------------------------
 
@@ -299,7 +239,6 @@ const addOp = (a: number, b: number): number => a + b
 
 const map1Data = (n: number) => floats(n, 101)
 const map1FusedMap = A.map(double)
-const map1NaiveMap = naiveMap(double)
 function map1Hand(xs: readonly number[]): number[] {
   const out = new Array<number>(xs.length)
   for (let i = 0; i < xs.length; i++) out[i] = xs[i]! * 2
@@ -322,11 +261,11 @@ const map1Competitors: readonly Competitor[] = [
 describe.each(SIZES)('1. map — n=%i', (n) => {
   const xs = map1Data(n)
   const expected = pipe(xs, map1FusedMap)
-  assertSame(`1. map naive n=${n}`, pipe(xs, map1NaiveMap), expected)
+  assertSame(`1. map pipe n=${n}`, pipe(xs, map1FusedMap), expected)
   assertSame(`1. map hand n=${n}`, map1Hand(xs), expected)
   assertSame(`1. map compiled n=${n}`, map1Compiled(xs), expected)
-  
-  bench('pipe', () => pipe(xs, map1NaiveMap))
+
+  bench('pipe', () => pipe(xs, map1FusedMap))
   bench('hand', () => map1Hand(xs))
   bench('compiled', () => map1Compiled(xs))
   competitorSuite('1. map', n, xs, expected, map1Competitors)
@@ -339,8 +278,6 @@ describe.each(SIZES)('1. map — n=%i', (n) => {
 const map2Data = (n: number) => floats(n, 102)
 const map2FusedMap = A.map(double)
 const map2FusedFilter = A.filter(keepMod3)
-const map2NaiveMap = naiveMap(double)
-const map2NaiveFilter = naiveFilter(keepMod3)
 function map2Hand(xs: readonly number[]): number[] {
   const out: number[] = []
   for (let i = 0; i < xs.length; i++) {
@@ -366,11 +303,11 @@ const map2Competitors: readonly Competitor[] = [
 describe.each(SIZES)('2. map->filter — n=%i', (n) => {
   const xs = map2Data(n)
   const expected = pipe(xs, map2FusedMap, map2FusedFilter)
-  assertSame(`2. naive n=${n}`, pipe(xs, map2NaiveMap, map2NaiveFilter), expected)
+  assertSame(`2. pipe n=${n}`, pipe(xs, map2FusedMap, map2FusedFilter), expected)
   assertSame(`2. hand n=${n}`, map2Hand(xs), expected)
   assertSame(`2. compiled n=${n}`, map2Compiled(xs), expected)
-  
-  bench('pipe', () => pipe(xs, map2NaiveMap, map2NaiveFilter))
+
+  bench('pipe', () => pipe(xs, map2FusedMap, map2FusedFilter))
   bench('hand', () => map2Hand(xs))
   bench('compiled', () => map2Compiled(xs))
   competitorSuite('2. map->filter', n, xs, expected, map2Competitors)
@@ -382,7 +319,6 @@ describe.each(SIZES)('2. map->filter — n=%i', (n) => {
 
 const chain3Data = (n: number) => floats(n, 103)
 const chain3FusedReduce = A.reduce(addOp, 0)
-const chain3NaiveReduce = naiveReduce(addOp, 0)
 function chain3Hand(xs: readonly number[]): number {
   let acc = 0
   for (let i = 0; i < xs.length; i++) {
@@ -412,14 +348,14 @@ describe.each(SIZES)('3. map->filter->reduce — n=%i', (n) => {
   const xs = chain3Data(n)
   const expected = pipe(xs, A.map(double), A.filter(keepMod3), chain3FusedReduce)
   assertSame(
-    `3. naive n=${n}`,
-    pipe(xs, naiveMap(double), naiveFilter(keepMod3), chain3NaiveReduce),
+    `3. pipe n=${n}`,
+    pipe(xs, A.map(double), A.filter(keepMod3), chain3FusedReduce),
     expected,
   )
   assertSame(`3. hand n=${n}`, chain3Hand(xs), expected)
   assertSame(`3. compiled n=${n}`, chain3Compiled(xs), expected)
-  
-  bench('pipe', () => pipe(xs, naiveMap(double), naiveFilter(keepMod3), chain3NaiveReduce))
+
+  bench('pipe', () => pipe(xs, A.map(double), A.filter(keepMod3), chain3FusedReduce))
   bench('hand', () => chain3Hand(xs))
   bench('compiled', () => chain3Compiled(xs))
   competitorSuite('3. map->filter->reduce', n, xs, expected, chain3Competitors)
@@ -474,15 +410,15 @@ describe.each(SIZES)('4. map->filter->map->filter — n=%i', (n) => {
   const xs = chain4Data(n)
   const expected = pipe(xs, A.map(double), A.filter(keepMod3), A.map(double), A.filter(keepMod3))
   assertSame(
-    `4. naive n=${n}`,
-    pipe(xs, naiveMap(double), naiveFilter(keepMod3), naiveMap(double), naiveFilter(keepMod3)),
+    `4. pipe n=${n}`,
+    pipe(xs, A.map(double), A.filter(keepMod3), A.map(double), A.filter(keepMod3)),
     expected,
   )
   assertSame(`4. hand n=${n}`, chain4Hand(xs), expected)
   assertSame(`4. compiled n=${n}`, chain4Compiled(xs), expected)
-  
+
   bench('pipe', () =>
-    pipe(xs, naiveMap(double), naiveFilter(keepMod3), naiveMap(double), naiveFilter(keepMod3)))
+    pipe(xs, A.map(double), A.filter(keepMod3), A.map(double), A.filter(keepMod3)))
   bench('hand', () => chain4Hand(xs))
   bench('compiled', () => chain4Compiled(xs))
   competitorSuite('4. map->filter->map->filter', n, xs, expected, chain4Competitors)
@@ -494,7 +430,6 @@ describe.each(SIZES)('4. map->filter->map->filter — n=%i', (n) => {
 
 const chain8Data = (n: number) => floats(n, 105)
 const chain8FusedReduce = A.reduce(addOp, 0)
-const chain8NaiveReduce = naiveReduce(addOp, 0)
 function chain8Hand(xs: readonly number[]): number {
   let acc = 0
   for (let i = 0; i < xs.length; i++) {
@@ -604,17 +539,17 @@ describe.each(SIZES)('5. 8-op chain — n=%i', (n) => {
     chain8FusedReduce,
   )
   assertSame(
-    `5. naive n=${n}`,
+    `5. pipe n=${n}`,
     pipe(
       xs,
-      naiveMap(double),
-      naiveFilter(keepMod3),
-      naiveMap(double),
-      naiveFilter(keepMod3),
-      naiveMap(double),
-      naiveFilter(keepMod3),
-      naiveMap(double),
-      chain8NaiveReduce,
+      A.map(double),
+      A.filter(keepMod3),
+      A.map(double),
+      A.filter(keepMod3),
+      A.map(double),
+      A.filter(keepMod3),
+      A.map(double),
+      chain8FusedReduce,
     ),
     expected,
   )
@@ -624,14 +559,14 @@ describe.each(SIZES)('5. 8-op chain — n=%i', (n) => {
   bench('pipe', () =>
     pipe(
       xs,
-      naiveMap(double),
-      naiveFilter(keepMod3),
-      naiveMap(double),
-      naiveFilter(keepMod3),
-      naiveMap(double),
-      naiveFilter(keepMod3),
-      naiveMap(double),
-      chain8NaiveReduce,
+      A.map(double),
+      A.filter(keepMod3),
+      A.map(double),
+      A.filter(keepMod3),
+      A.map(double),
+      A.filter(keepMod3),
+      A.map(double),
+      chain8FusedReduce,
     ))
   bench('hand', () => chain8Hand(xs))
   bench('compiled', () => chain8Compiled(xs))
@@ -657,9 +592,6 @@ function findLateData(n: number): number[] {
 const findFusedMap = A.map(double)
 const findFusedFilter = A.filter(findFilterPred)
 const findFusedFind = A.find(findPred)
-const findNaiveMap = naiveMap(double)
-const findNaiveFilter = naiveFilter(findFilterPred)
-const findNaiveFind = naiveFind(findPred)
 
 function findHand(xs: readonly number[]): unknown {
   for (let i = 0; i < xs.length; i++) {
@@ -699,12 +631,12 @@ function findCounts(xs: readonly number[]): Record<string, number> {
   let pipeN = 0
   pipe(
     xs,
-    naiveMap((x: number) => {
+    A.map((x: number) => {
       pipeN++
       return x * 2
     }),
-    findNaiveFilter,
-    findNaiveFind,
+    findFusedFilter,
+    findFusedFind,
   )
 
   let handN = 0
@@ -729,13 +661,13 @@ function findCounts(xs: readonly number[]): Record<string, number> {
 describe.each(SIZES)('6. map->filter->find (early exit near start) — n=%i', (n) => {
   const xs = findEarlyData(n)
   const expected = pipe(xs, findFusedMap, findFusedFilter, findFusedFind)
-  assertSame(`6. naive n=${n}`, pipe(xs, findNaiveMap, findNaiveFilter, findNaiveFind), expected)
+  assertSame(`6. pipe n=${n}`, pipe(xs, findFusedMap, findFusedFilter, findFusedFind), expected)
   assertSame(`6. hand n=${n}`, findHand(xs), expected)
   assertSame(`6. compiled n=${n}`, findCompiled(xs), expected)
-  
+
   recordCounts('6. find (early)', n, findCounts(xs))
 
-  bench('pipe', () => pipe(xs, findNaiveMap, findNaiveFilter, findNaiveFind))
+  bench('pipe', () => pipe(xs, findFusedMap, findFusedFilter, findFusedFind))
   bench('hand', () => findHand(xs))
   bench('compiled', () => findCompiled(xs))
   competitorSuite('6. find (early)', n, xs, unwrapOption(expected), findCompetitors)
@@ -744,13 +676,13 @@ describe.each(SIZES)('6. map->filter->find (early exit near start) — n=%i', (n
 describe.each(SIZES)('7. map->filter->find (early exit late) — n=%i', (n) => {
   const xs = findLateData(n)
   const expected = pipe(xs, findFusedMap, findFusedFilter, findFusedFind)
-  assertSame(`7. naive n=${n}`, pipe(xs, findNaiveMap, findNaiveFilter, findNaiveFind), expected)
+  assertSame(`7. pipe n=${n}`, pipe(xs, findFusedMap, findFusedFilter, findFusedFind), expected)
   assertSame(`7. hand n=${n}`, findHand(xs), expected)
   assertSame(`7. compiled n=${n}`, findCompiled(xs), expected)
-  
+
   recordCounts('7. find (late)', n, findCounts(xs))
 
-  bench('pipe', () => pipe(xs, findNaiveMap, findNaiveFilter, findNaiveFind))
+  bench('pipe', () => pipe(xs, findFusedMap, findFusedFilter, findFusedFind))
   bench('hand', () => findHand(xs))
   bench('compiled', () => findCompiled(xs))
   competitorSuite('7. find (late)', n, xs, unwrapOption(expected), findCompetitors)
@@ -764,9 +696,6 @@ const take8Data = (n: number) => floats(n, 108)
 const take8FusedMap = A.map(double)
 const take8FusedFilter = A.filter(findFilterPred)
 const take8FusedTake = A.take(10)
-const take8NaiveMap = naiveMap(double)
-const take8NaiveFilter = naiveFilter(findFilterPred)
-const take8NaiveTake = naiveTake(10)
 
 function take8Hand(xs: readonly number[]): number[] {
   const out: number[] = []
@@ -803,12 +732,12 @@ function take8Counts(xs: readonly number[]): Record<string, number> {
   let pipeN = 0
   pipe(
     xs,
-    naiveMap((x: number) => {
+    A.map((x: number) => {
       pipeN++
       return x * 2
     }),
-    take8NaiveFilter,
-    take8NaiveTake,
+    take8FusedFilter,
+    take8FusedTake,
   )
 
   let handN = 0
@@ -834,13 +763,13 @@ function take8Counts(xs: readonly number[]): Record<string, number> {
 describe.each(SIZES)('8. map->filter->take(10) — n=%i', (n) => {
   const xs = take8Data(n)
   const expected = pipe(xs, take8FusedMap, take8FusedFilter, take8FusedTake)
-  assertSame(`8. naive n=${n}`, pipe(xs, take8NaiveMap, take8NaiveFilter, take8NaiveTake), expected)
+  assertSame(`8. pipe n=${n}`, pipe(xs, take8FusedMap, take8FusedFilter, take8FusedTake), expected)
   assertSame(`8. hand n=${n}`, take8Hand(xs), expected)
   assertSame(`8. compiled n=${n}`, take8Compiled(xs), expected)
 
   recordCounts('8. take(10)', n, take8Counts(xs))
 
-  bench('pipe', () => pipe(xs, take8NaiveMap, take8NaiveFilter, take8NaiveTake))
+  bench('pipe', () => pipe(xs, take8FusedMap, take8FusedFilter, take8FusedTake))
   bench('hand', () => take8Hand(xs))
   bench('compiled', () => take8Compiled(xs))
   competitorSuite('8. take(10)', n, xs, expected, take8Competitors)
@@ -860,8 +789,6 @@ function takeWhileData(n: number): number[] {
 const takeWhilePred = (x: number): boolean => x < 0.9
 const s9FusedTakeWhile = A.takeWhile(takeWhilePred)
 const s9FusedMap = A.map(double)
-const s9NaiveTakeWhile = naiveTakeWhile(takeWhilePred)
-const s9NaiveMap = naiveMap(double)
 
 function s9Hand(xs: readonly number[]): number[] {
   const out: number[] = []
@@ -895,11 +822,11 @@ function s9Counts(xs: readonly number[]): Record<string, number> {
   let pipeN = 0
   pipe(
     xs,
-    naiveTakeWhile((x: number) => {
+    A.takeWhile((x: number) => {
       pipeN++
       return x < 0.9
     }),
-    s9NaiveMap,
+    s9FusedMap,
   )
 
   let handN = 0
@@ -923,13 +850,13 @@ function s9Counts(xs: readonly number[]): Record<string, number> {
 describe.each(SIZES)('9. takeWhile->map — n=%i', (n) => {
   const xs = takeWhileData(n)
   const expected = pipe(xs, s9FusedTakeWhile, s9FusedMap)
-  assertSame(`9. naive n=${n}`, pipe(xs, s9NaiveTakeWhile, s9NaiveMap), expected)
+  assertSame(`9. pipe n=${n}`, pipe(xs, s9FusedTakeWhile, s9FusedMap), expected)
   assertSame(`9. hand n=${n}`, s9Hand(xs), expected)
   assertSame(`9. compiled n=${n}`, s9Compiled(xs), expected)
 
   recordCounts('9. takeWhile->map', n, s9Counts(xs))
 
-  bench('pipe', () => pipe(xs, s9NaiveTakeWhile, s9NaiveMap))
+  bench('pipe', () => pipe(xs, s9FusedTakeWhile, s9FusedMap))
   bench('hand', () => s9Hand(xs))
   bench('compiled', () => s9Compiled(xs))
   competitorSuite('9. takeWhile->map', n, xs, expected, s9Competitors)
@@ -944,8 +871,6 @@ const s10FlatMapFn = (x: number): number[] => [x, x + 1]
 const s10FilterPred = (v: number): boolean => v % 2 === 0
 const s10FusedFlatMap = A.flatMap(s10FlatMapFn)
 const s10FusedFilter = A.filter(s10FilterPred)
-const s10NaiveFlatMap = naiveFlatMap(s10FlatMapFn)
-const s10NaiveFilter = naiveFilter(s10FilterPred)
 
 function s10Hand(xs: readonly number[]): number[] {
   const out: number[] = []
@@ -980,11 +905,11 @@ const s10Competitors: readonly Competitor[] = [
 describe.each(SIZES)('10. flatMap->filter — n=%i', (n) => {
   const xs = s10Data(n)
   const expected = pipe(xs, s10FusedFlatMap, s10FusedFilter)
-  assertSame(`10. naive n=${n}`, pipe(xs, s10NaiveFlatMap, s10NaiveFilter), expected)
+  assertSame(`10. pipe n=${n}`, pipe(xs, s10FusedFlatMap, s10FusedFilter), expected)
   assertSame(`10. hand n=${n}`, s10Hand(xs), expected)
   assertSame(`10. compiled n=${n}`, s10Compiled(xs), expected)
-  
-  bench('pipe', () => pipe(xs, s10NaiveFlatMap, s10NaiveFilter))
+
+  bench('pipe', () => pipe(xs, s10FusedFlatMap, s10FusedFilter))
   bench('hand', () => s10Hand(xs))
   bench('compiled', () => s10Compiled(xs))
   competitorSuite('10. flatMap->filter', n, xs, expected, s10Competitors)
@@ -999,9 +924,6 @@ const s11Cmp = (a: number, b: number): number => a - b
 const s11FusedMap = A.map(double)
 const s11FusedSort = A.sortBy(s11Cmp)
 const s11FusedTake = A.take(10)
-const s11NaiveMap = naiveMap(double)
-const s11NaiveSort = naiveSortBy(s11Cmp)
-const s11NaiveTake = naiveTake(10)
 
 function s11Hand(xs: readonly number[]): number[] {
   const mapped = new Array<number>(xs.length)
@@ -1028,11 +950,11 @@ const s11Competitors: readonly Competitor[] = [
 describe.each(SIZES)('11. map->sortBy->take(10) — n=%i', (n) => {
   const xs = s11Data(n)
   const expected = pipe(xs, s11FusedMap, s11FusedSort, s11FusedTake)
-  assertSame(`11. naive n=${n}`, pipe(xs, s11NaiveMap, s11NaiveSort, s11NaiveTake), expected)
+  assertSame(`11. pipe n=${n}`, pipe(xs, s11FusedMap, s11FusedSort, s11FusedTake), expected)
   assertSame(`11. hand n=${n}`, s11Hand(xs), expected)
   assertSame(`11. compiled n=${n}`, s11Compiled(xs), expected)
-  
-  bench('pipe', () => pipe(xs, s11NaiveMap, s11NaiveSort, s11NaiveTake))
+
+  bench('pipe', () => pipe(xs, s11FusedMap, s11FusedSort, s11FusedTake))
   bench('hand', () => s11Hand(xs))
   bench('compiled', () => s11Compiled(xs))
   competitorSuite('11. map->sortBy->take(10)', n, xs, expected, s11Competitors)
@@ -1046,8 +968,6 @@ const s12Data = (n: number) => dupeInts(n, 112)
 const s12FusedMap = A.map(double)
 const s12FusedUniq = A.uniq
 const s12FusedFilter = A.filter(keepMod3)
-const s12NaiveMap = naiveMap(double)
-const s12NaiveFilter = naiveFilter(keepMod3)
 
 function s12Hand(xs: readonly number[]): number[] {
   const seen = new Set<number>()
@@ -1077,11 +997,11 @@ const s12Competitors: readonly Competitor[] = [
 describe.each(SIZES)('12. map->uniq->filter — n=%i', (n) => {
   const xs = s12Data(n)
   const expected = pipe(xs, s12FusedMap, s12FusedUniq, s12FusedFilter)
-  assertSame(`12. naive n=${n}`, pipe(xs, s12NaiveMap, naiveUniq, s12NaiveFilter), expected)
+  assertSame(`12. pipe n=${n}`, pipe(xs, s12FusedMap, s12FusedUniq, s12FusedFilter), expected)
   assertSame(`12. hand n=${n}`, s12Hand(xs), expected)
   assertSame(`12. compiled n=${n}`, s12Compiled(xs), expected)
-  
-  bench('pipe', () => pipe(xs, s12NaiveMap, naiveUniq, s12NaiveFilter))
+
+  bench('pipe', () => pipe(xs, s12FusedMap, s12FusedUniq, s12FusedFilter))
   bench('hand', () => s12Hand(xs))
   bench('compiled', () => s12Compiled(xs))
   competitorSuite('12. map->uniq->filter', n, xs, expected, s12Competitors)
@@ -1094,8 +1014,6 @@ describe.each(SIZES)('12. map->uniq->filter — n=%i', (n) => {
 const s13Data = (n: number) => floats(n, 113)
 const s13FusedScan = A.scan(addOp, 0)
 const s13FusedMap = A.map(double)
-const s13NaiveScan = naiveScan(addOp, 0)
-const s13NaiveMap = naiveMap(double)
 
 function s13Hand(xs: readonly number[]): number[] {
   const out = new Array<number>(xs.length + 1)
@@ -1123,11 +1041,11 @@ const s13Competitors: readonly Competitor[] = [
 describe.each(SIZES)('13. scan->map — n=%i', (n) => {
   const xs = s13Data(n)
   const expected = pipe(xs, s13FusedScan, s13FusedMap)
-  assertSame(`13. naive n=${n}`, pipe(xs, s13NaiveScan, s13NaiveMap), expected)
+  assertSame(`13. pipe n=${n}`, pipe(xs, s13FusedScan, s13FusedMap), expected)
   assertSame(`13. hand n=${n}`, s13Hand(xs), expected)
   assertSame(`13. compiled n=${n}`, s13Compiled(xs), expected)
-  
-  bench('pipe', () => pipe(xs, s13NaiveScan, s13NaiveMap))
+
+  bench('pipe', () => pipe(xs, s13FusedScan, s13FusedMap))
   bench('hand', () => s13Hand(xs))
   bench('compiled', () => s13Compiled(xs))
   competitorSuite('13. scan->map', n, xs, expected, s13Competitors)
@@ -1143,9 +1061,6 @@ const heavyKeep = (v: number): boolean => v > 2
 const s14FusedMap = A.map(heavyMap)
 const s14FusedFilter = A.filter(heavyKeep)
 const s14FusedReduce = A.reduce(addOp, 0)
-const s14NaiveMap = naiveMap(heavyMap)
-const s14NaiveFilter = naiveFilter(heavyKeep)
-const s14NaiveReduce = naiveReduce(addOp, 0)
 
 function s14Hand(xs: readonly string[]): number {
   let acc = 0
@@ -1181,11 +1096,11 @@ const s14Competitors: readonly Competitor[] = [
 describe.each(SIZES)('14. heavy map->filter->reduce — n=%i', (n) => {
   const xs = s14Data(n)
   const expected = pipe(xs, s14FusedMap, s14FusedFilter, s14FusedReduce)
-  assertSame(`14. naive n=${n}`, pipe(xs, s14NaiveMap, s14NaiveFilter, s14NaiveReduce), expected)
+  assertSame(`14. pipe n=${n}`, pipe(xs, s14FusedMap, s14FusedFilter, s14FusedReduce), expected)
   assertSame(`14. hand n=${n}`, s14Hand(xs), expected)
   assertSame(`14. compiled n=${n}`, s14Compiled(xs), expected)
-  
-  bench('pipe', () => pipe(xs, s14NaiveMap, s14NaiveFilter, s14NaiveReduce))
+
+  bench('pipe', () => pipe(xs, s14FusedMap, s14FusedFilter, s14FusedReduce))
   bench('hand', () => s14Hand(xs))
   bench('compiled', () => s14Compiled(xs))
   competitorSuite('14. heavy map->filter->reduce', n, xs, expected, s14Competitors)
@@ -1203,7 +1118,6 @@ function s15Data(n: number): number[] {
 const s15FilterPred = (x: number): boolean => x > 100
 const s15FusedFilter = A.filter(s15FilterPred)
 const s15FusedHead = A.head
-const s15NaiveFilter = naiveFilter(s15FilterPred)
 
 function s15Hand(xs: readonly number[]): unknown {
   for (let i = 0; i < xs.length; i++) {
@@ -1229,11 +1143,11 @@ function s15Counts(xs: readonly number[]): Record<string, number> {
   let pipeN = 0
   pipe(
     xs,
-    naiveFilter((x: number) => {
+    A.filter((x: number) => {
       pipeN++
       return x > 100
     }),
-    naiveHead,
+    s15FusedHead,
   )
 
   let handN = 0
@@ -1257,13 +1171,13 @@ function s15Counts(xs: readonly number[]): Record<string, number> {
 describe.each(SIZES)('15. filter->head — n=%i', (n) => {
   const xs = s15Data(n)
   const expected = pipe(xs, s15FusedFilter, s15FusedHead)
-  assertSame(`15. naive n=${n}`, pipe(xs, s15NaiveFilter, naiveHead), expected)
+  assertSame(`15. pipe n=${n}`, pipe(xs, s15FusedFilter, s15FusedHead), expected)
   assertSame(`15. hand n=${n}`, s15Hand(xs), expected)
   assertSame(`15. compiled n=${n}`, s15Compiled(xs), expected)
 
   recordCounts('15. filter->head', n, s15Counts(xs))
 
-  bench('pipe', () => pipe(xs, s15NaiveFilter, naiveHead))
+  bench('pipe', () => pipe(xs, s15FusedFilter, s15FusedHead))
   bench('hand', () => s15Hand(xs))
   bench('compiled', () => s15Compiled(xs))
   competitorSuite('15. filter->head', n, xs, unwrapOption(expected), s15Competitors)
