@@ -33,6 +33,8 @@ export const isDeepEqual = deep.equals
 
 export const isDefined = <T>(val: T | undefined): val is T => val !== undefined
 
+export const isUndefined = (val: unknown): val is undefined => val === undefined
+
 export const isEmpty = (val: unknown): boolean => {
   if (val == null) return true
   if (typeof val === 'string' || Array.isArray(val)) return val.length === 0
@@ -49,6 +51,8 @@ export const isFunction = (val: unknown): val is ((...args: never[]) => unknown)
   typeof val === 'function'
 
 export const isNonNull = <T>(val: T | null): val is T => val !== null
+
+export const isNull = (val: unknown): val is null => val === null
 
 export const isNonNullish = <T>(val: T | null | undefined): val is T =>
   val !== null && val !== undefined

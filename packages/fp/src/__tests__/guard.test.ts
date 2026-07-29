@@ -6,7 +6,9 @@ import {
   isNumber,
   isBoolean,
   isNonNull,
+  isNull,
   isDefined,
+  isUndefined,
   isNullish,
   isNonNullish,
   isArray,
@@ -152,6 +154,13 @@ describe('guard', () => {
     it('false for null', () => expect(isNonNull(null)).toBe(false))
   })
 
+  describe('isNull', () => {
+    it('true for null', () => expect(isNull(null)).toBe(true))
+    it('false for undefined', () => expect(isNull(undefined)).toBe(false))
+    it('false for 0', () => expect(isNull(0)).toBe(false))
+    it('false for empty string', () => expect(isNull('')).toBe(false))
+  })
+
   describe('isNonNullish', () => {
     it('true for values', () => expect(isNonNullish(42)).toBe(true))
     it('false for null', () => expect(isNonNullish(null)).toBe(false))
@@ -162,6 +171,13 @@ describe('guard', () => {
     it('true for values', () => expect(isDefined(42)).toBe(true))
     it('true for null', () => expect(isDefined(null)).toBe(true))
     it('false for undefined', () => expect(isDefined(undefined)).toBe(false))
+  })
+
+  describe('isUndefined', () => {
+    it('true for undefined', () => expect(isUndefined(undefined)).toBe(true))
+    it('false for null', () => expect(isUndefined(null)).toBe(false))
+    it('false for 0', () => expect(isUndefined(0)).toBe(false))
+    it('false for empty string', () => expect(isUndefined('')).toBe(false))
   })
 
   describe('isNullish', () => {

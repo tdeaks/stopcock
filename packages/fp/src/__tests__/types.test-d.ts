@@ -148,6 +148,18 @@ test('guards compose refinements and brands without runtime wrappers', () => {
   expectTypeOf<G.Brand<string, 'UserId'>>().toMatchTypeOf<string>()
 })
 
+test('isNull and isUndefined each narrow to a single nullability case', () => {
+  const values: readonly (number | null | undefined)[] = [1, null, undefined]
+  expectTypeOf(A.filter(G.isNull)(values)).toEqualTypeOf<null[]>()
+  expectTypeOf(A.filter(G.isUndefined)(values)).toEqualTypeOf<undefined[]>()
+
+  const value = values[0]
+  if (G.isNull(value)) expectTypeOf(value).toEqualTypeOf<null>()
+  if (G.isUndefined(value)) expectTypeOf(value).toEqualTypeOf<undefined>()
+  if (G.isNonNull(value)) expectTypeOf(value).toEqualTypeOf<number | undefined>()
+  if (G.isDefined(value)) expectTypeOf(value).toEqualTypeOf<number | null>()
+})
+
 test('tuple paths preserve nested values and reject invalid paths', () => {
   type User = {
     readonly profile?: {
