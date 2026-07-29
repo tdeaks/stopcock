@@ -55,7 +55,7 @@
     "check:types": "tsc -p tsconfig.type-tests.json"
   },
   "peerDependencies": {
-    "@stopcock/fp": "2.0.0-next.1"
+    "@stopcock/fp": "^2.0.0"
   },
   "devDependencies": {
     "@stopcock/fp": "workspace:*",
