@@ -485,9 +485,23 @@ export function createStaticCompilerPlan(input: StaticCompilerPlanInput): Static
     (rewrite): rewrite is Extract<PlanRewrite, { kind: 'elide-unused-map' }> =>
       rewrite.kind === 'elide-unused-map',
   )
+  /*
+   * `fuse-sort-take`: the `take` step folds into the preceding `sortBy`
+   * boundary's own emission (see `emitFusedSortTake` in `rewrites.ts`), so
+   * it must not also start (or extend) an element/stream segment of its
+   * own. Its argument is still captured exactly once, in original order --
+   * that capture already happened above, in the per-step loop, independent
+   * of this filtering.
+   */
+  const fusedTakeIndexes = new Set(
+    pureRewrites.flatMap((rewrite) => (rewrite.kind === 'fuse-sort-take' ? [rewrite.takeIndex] : [])),
+  )
+  const elidedStepIndexes = new Set<number>(fusedTakeIndexes)
   if (pureMapLength !== undefined) {
-    const elided = new Set(pureMapLength.elidedStepIndexes)
-    executionSteps = planSteps.filter((step) => !elided.has(step.index))
+    for (const index of pureMapLength.elidedStepIndexes) elidedStepIndexes.add(index)
+  }
+  if (elidedStepIndexes.size > 0) {
+    executionSteps = planSteps.filter((step) => !elidedStepIndexes.has(step.index))
   }
   const segments = segmentPlan(executionSteps, executionLayout, input.sourceTier)
   /*

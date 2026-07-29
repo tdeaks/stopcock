@@ -9,12 +9,29 @@ import type { CompilerSemantics } from './types'
  * not fire when the deleted work could be observed. No pattern DSL, no cost
  * model: each rewrite is its own small function, tried in order.
  */
-export interface PlanRewrite {
+export interface PlanRewriteElideUnusedMap {
   readonly kind: 'elide-unused-map'
   /** Map steps whose values cannot affect the following length terminal. */
   readonly elidedStepIndexes: readonly number[]
   readonly terminalIndex: number
 }
+
+/**
+ * `sortBy(cmp) |> take(k)` -> one bounded top-k pass. A full `sortBy` sorts
+ * every element before `take` throws all but the first k away; this rewrite
+ * selects the k smallest in a single pass over the source instead, with no
+ * full sort. `takeIndex` is the step immediately following `sortIndex` --
+ * codegen removes it from the segment it would otherwise start (see
+ * `createStaticCompilerPlan`'s `executionSteps` filtering) and folds its
+ * count argument into the sort boundary's own emission.
+ */
+export interface PlanRewriteFuseSortTake {
+  readonly kind: 'fuse-sort-take'
+  readonly sortIndex: number
+  readonly takeIndex: number
+}
+
+export type PlanRewrite = PlanRewriteElideUnusedMap | PlanRewriteFuseSortTake
 
 /**
  * `map* |> length` -> `length`. Gated on `mode === 'pure'`, the exact
@@ -56,6 +73,127 @@ function matchElideUnusedMap(
     }
   }
   return undefined
+}
+
+/**
+ * Sort-family ops this rewrite covers. `sortBy` takes a comparator, so its
+ * key function is the thing a bounded selection must call instead of a full
+ * sort. `sort`/`sortAsc`/`sortDesc` take no callback at all (numeric
+ * ascending/descending via native `<`/`>`); fusing those too is a plausible
+ * follow-up but needs its own emission (no comparator local to reuse), so
+ * they are deliberately left alone here.
+ */
+const FUSIBLE_SORT_OPS = new Set(['sortBy'])
+
+/**
+ * `sortBy(cmp) |> take(k)` -> `emitFusedSortTake`'s bounded top-k pass.
+ * Unconditional, any mode: unlike the map/length elision above, this never
+ * skips a callback that the source program could observe running -- it
+ * changes *how many times* the comparator runs (fewer comparisons than a
+ * full sort touches when k is small), never *whether* the two operators'
+ * argument expressions evaluate. Both `sortBy`'s comparator and `take`'s
+ * count still evaluate exactly once, in original order, through the plan's
+ * ordinary capture mechanism (`createStaticCompilerPlan`'s `captures` loop
+ * runs over every step before this rewrite ever touches segmentation).
+ * Only adjacent pairs match: nothing may sit between the two steps, since
+ * codegen fuses them into a single boundary segment covering both indexes.
+ */
+function matchFuseSortTake(steps: readonly PlanStep[]): PlanRewriteFuseSortTake[] {
+  const rewrites: PlanRewriteFuseSortTake[] = []
+  for (let position = 0; position < steps.length - 1; position++) {
+    const sortStep = steps[position]
+    const takeStep = steps[position + 1]
+    if (
+      sortStep.kind !== 'operator' ||
+      sortStep.fact.compilerPipelineRole !== 'boundary' ||
+      !FUSIBLE_SORT_OPS.has(sortStep.fact.name) ||
+      takeStep.kind !== 'operator' ||
+      takeStep.fact.name !== 'take'
+    ) {
+      continue
+    }
+    rewrites.push({ kind: 'fuse-sort-take', sortIndex: sortStep.index, takeIndex: takeStep.index })
+  }
+  return rewrites
+}
+
+/**
+ * `emitFusedSortTake`'s generated code, in three shapes based on the
+ * runtime value of `take`'s count (`k`), normalized exactly as the compiled
+ * `take` op itself normalizes it (see `ops-table.ts`'s `take` render: `k =
+ * k > 0 ? (k === Infinity ? k : trunc(k)) : 0`), so both fused and unfused
+ * `take` treat `k <= 0`, non-integer `k`, and `k = Infinity` identically:
+ *
+ * - `k <= 0` (after normalizing): the result is always `[]`. The comparator
+ *   never runs -- a full sort would have run it ~n*log(n) times for a
+ *   result that gets thrown away, so this is strictly fewer calls, never
+ *   more.
+ * - `k >= n`: `take` would keep everything, so this calls the exact same
+ *   captured `sortBy(cmp)` operator a normal (unfused) boundary segment
+ *   would have called. Same code, same result, same comparator call count.
+ * - `0 < k < n`: the only case that actually needs a bounded pass. Keeps a
+ *   sorted buffer of the k best-so-far source elements; a new element
+ *   either grows the buffer (while it has room) or replaces the current
+ *   worst kept element when strictly better than it (never on a tie).
+ *   Insertion shifts only elements strictly greater than the incoming
+ *   value, exactly like `sort-kernel.ts`'s insertion-sort runs -- so a tied
+ *   key never moves past an equal one already in the buffer. Composing that
+ *   with left-to-right source order reproduces a stable sort's tie-break
+ *   (earlier index wins) without ever comparing indexes: an incoming
+ *   element can only ever be inserted *after* every already-kept element it
+ *   ties with, and a kept element can only be evicted by a strictly smaller
+ *   one, never by a later arrival with an equal key. Worst case is
+ *   O(n*k) (an adversarial input that replaces the worst element on every
+ *   iteration); this is the same asymptotic trade `takeSortedBy` in
+ *   `array.ts` already makes with quickselect's O(n^2) worst case, and the
+ *   common case (random data, small k) is close to O(n).
+ */
+export function emitFusedSortTake(
+  sortStepIndex: number,
+  cmpExpr: string,
+  sortOperatorExpr: string,
+  takeCountExpr: string,
+  curData: string,
+  nextData: string,
+): string[] {
+  const n = `_ftN${sortStepIndex}`
+  const k = `_ftK${sortStepIndex}`
+  const lim = `_ftLim${sortStepIndex}`
+  const top = `_ftTop${sortStepIndex}`
+  const size = `_ftSize${sortStepIndex}`
+  const i = `_ftI${sortStepIndex}`
+  const v = `_ftV${sortStepIndex}`
+  const p = `_ftP${sortStepIndex}`
+  return [
+    `var ${n} = ${curData}.length;`,
+    `var ${k} = (${takeCountExpr});`,
+    `${k} = ${k} > 0 ? (${k} === 1 / 0 ? ${k} : ${k} - ${k} % 1) : 0;`,
+    `var ${lim} = ${k} < ${n} ? ${k} : ${n};`,
+    `var ${nextData};`,
+    `if (${lim} <= 0) {`,
+    `${nextData} = [];`,
+    `} else if (${lim} >= ${n}) {`,
+    `${nextData} = (${sortOperatorExpr})(${curData});`,
+    `} else {`,
+    `var ${top} = new Array(${lim});`,
+    `var ${size} = 0;`,
+    `var ${p};`,
+    `for (var ${i} = 0; ${i} < ${n}; ${i}++) {`,
+    `var ${v} = ${curData}[${i}];`,
+    `if (${size} < ${lim}) {`,
+    `${p} = ${size};`,
+    `while (${p} > 0 && (${cmpExpr})(${top}[${p} - 1], ${v}) > 0) { ${top}[${p}] = ${top}[${p} - 1]; ${p}--; }`,
+    `${top}[${p}] = ${v};`,
+    `${size}++;`,
+    `} else if ((${cmpExpr})(${v}, ${top}[${lim} - 1]) < 0) {`,
+    `${p} = ${lim} - 1;`,
+    `while (${p} > 0 && (${cmpExpr})(${top}[${p} - 1], ${v}) > 0) { ${top}[${p}] = ${top}[${p} - 1]; ${p}--; }`,
+    `${top}[${p}] = ${v};`,
+    '}',
+    '}',
+    `${nextData} = ${top};`,
+    '}',
+  ]
 }
 
 /**
@@ -117,6 +255,7 @@ export function findPlanRewrites(
   const rewrites: PlanRewrite[] = []
   const mapLength = matchElideUnusedMap(steps, mode)
   if (mapLength !== undefined) rewrites.push(mapLength)
+  rewrites.push(...matchFuseSortTake(steps))
   return rewrites
 }
 

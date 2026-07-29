@@ -10,7 +10,7 @@ import type {
   OptionEmitCtx,
 } from './ops-table'
 import { planInline, renderDirectInlineExpressionMapped, renderDirectInlineMapped } from './inline'
-import { emitElideUnusedMap, fuseFilterLength } from './rewrites'
+import { emitElideUnusedMap, emitFusedSortTake, fuseFilterLength } from './rewrites'
 import {
   FULL_ARRAY_LOWERING_ID,
   FULL_RUNNER_LOWERING_ID,
@@ -478,6 +478,29 @@ function segmentsFromPlan(plan: StaticCompilerPlanV1): readonly Segment[] {
 
 export const segmentKindsForSteps = (steps: readonly Step[]): readonly ('stream' | 'boundary')[] =>
   segmentSteps(steps).map((segment) => (segment.kind === 'boundary' ? 'boundary' : 'stream'))
+
+/**
+ * Maps a `fuse-sort-take` rewrite's `sortIndex` to the `take` step it fuses
+ * with. The `take` step itself never appears in `plan.segments` (it was
+ * filtered out of `executionSteps`), so its args are read directly off
+ * `plan.steps` here -- that array is never filtered, only `segmentPlan`'s
+ * input is.
+ */
+function sortTakeFusionsForPlan(plan: StaticCompilerPlanV1): ReadonlyMap<number, IndexedStep> {
+  const fusions = new Map<number, IndexedStep>()
+  for (const rewrite of plan.pureRewrites) {
+    if (rewrite.kind !== 'fuse-sort-take') continue
+    const takeStep = plan.steps.find(
+      (step) => step.kind === 'operator' && step.index === rewrite.takeIndex,
+    )
+    if (takeStep === undefined || takeStep.kind !== 'operator') continue
+    fusions.set(rewrite.sortIndex, {
+      index: takeStep.index,
+      step: { name: takeStep.fact.name, node: takeStep.node, args: takeStep.args, fact: takeStep.fact },
+    })
+  }
+  return fusions
+}
 
 /**
  * Single-step collectors can retain the runtime operation's exact
@@ -1900,6 +1923,8 @@ function generateSegmentedBodyInternal(
   pureMapLengthTerminalIndexes: ReadonlySet<number> = new Set(),
   sourceTier: StaticCompilerPlanV1['sourceTier'] = 'compiler',
   sourceIsArrayLiteral = false,
+  /** `sortBy` step index -> the `take` step it fuses with (see rewrites.ts's `fuse-sort-take`). */
+  sortTakeFusions: ReadonlyMap<number, IndexedStep> = new Map(),
 ): Omit<FusedBody, 'sourceFragments'> {
   const blockLines: string[] = []
 
@@ -1972,7 +1997,24 @@ function generateSegmentedBodyInternal(
         seg.step.step.fact.compilerPipelineRole === 'boundary'
           ? opEmitFor(seg.step.step.name)
           : undefined
-      if (pureMapLengthTerminalIndexes.has(seg.step.index)) {
+      const fusedTake = sortTakeFusions.get(seg.step.index)
+      if (fusedTake !== undefined) {
+        // Phase 6's `sortBy |> take` rewrite: bounded top-k in place of a
+        // full sort, see `emitFusedSortTake`'s doc for the three cases it
+        // codegens. The fused `take` step never gets its own segment (it was
+        // filtered out of `executionSteps` in `createStaticCompilerPlan`),
+        // so its count argument is read directly off the plan step here.
+        blockLines.push(
+          ...emitFusedSortTake(
+            seg.step.index,
+            renderExpression(seg.step.step.args[0]),
+            renderExpression(seg.step.step.node),
+            renderExpression(fusedTake.step.args[0]),
+            curData,
+            nextData,
+          ),
+        )
+      } else if (pureMapLengthTerminalIndexes.has(seg.step.index)) {
         blockLines.push(...emitElideUnusedMap(seg.step.index, curData, nextData))
       } else if (
         inlineEmit !== undefined &&
@@ -2388,6 +2430,7 @@ export function generateStaticPlanBody(
     pureMapLengthTerminalIndexes,
     plan.sourceTier,
     sourceIsArrayLiteral,
+    sortTakeFusionsForPlan(plan),
   )
 
   let taggedStatements = knownBody.stmts
@@ -2714,6 +2757,8 @@ export function generateStaticPlanRunner(
     outerLabel,
     pureMapLengthTerminalIndexes,
     plan.sourceTier,
+    false,
+    sortTakeFusionsForPlan(plan),
   )
   const tagged = [
     '(() => {',
