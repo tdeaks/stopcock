@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/autodiff",
-  "version": "2.0.0-next.1",
+  "version": "2.0.0",
   "description": "Reverse-mode automatic differentiation for scalar, vector, and matrix values.",
   "license": "MIT",
   "repository": {
