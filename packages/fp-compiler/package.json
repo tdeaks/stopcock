@@ -9,7 +9,7 @@
     "directory": "packages/fp-compiler"
   },
   "bin": {
-    "stopcock": "./dist/cli.js"
+    "stopcock": "dist/cli.js"
   },
   "files": [
     "dist",

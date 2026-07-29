@@ -58,7 +58,7 @@ jobs:
         run: |
           node -e "if (process.versions.node.split('.')[0] !== '24') throw new Error(\`expected Node 24, got \${process.versions.node}\`)"
       - run: vp run build:packages
-      - run: npm install -g npm@latest
+      - run: npm install -g npm@11
       - run: npm --version
       - uses: changesets/action@v1
         with:

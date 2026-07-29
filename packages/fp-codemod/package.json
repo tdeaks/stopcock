@@ -9,7 +9,7 @@
     "directory": "packages/fp-codemod"
   },
   "bin": {
-    "stopcock-fp-codemod": "./dist/cli.js"
+    "stopcock-fp-codemod": "dist/cli.js"
   },
   "files": [
     "dist",
