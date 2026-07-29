@@ -35,31 +35,11 @@ jobs:
           run-install: |
             - cwd: .
               args: ['--frozen-lockfile']
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
       - name: Verify minimum Node runtime
         run: |
           node -e "if (process.versions.node.split('.')[0] !== '22') throw new Error(\`expected Node 22, got \${process.versions.node}\`)"
       - run: vp run build:packages
-      - run: bun run test:types
-      - run: vp run test:packages
-      - run: bun run codegen:check
-        working-directory: packages/fp
-      - run: bun run manifest:check
-        working-directory: packages/fp
-      - run: bun run check:portable
-        working-directory: packages/fp
-      - run: bun run check:codegen-types
-        working-directory: packages/fp
-      - run: bun run check:script-types
-        working-directory: packages/fp
-      - run: bunx tsc -p tsconfig.json --noEmit
-        working-directory: packages/fp
-      - run: bun run check:types
-        working-directory: packages/fp
-      - run: bun run scripts/check-package-contract.ts
-        working-directory: packages/fp
+      - run: vp run test:ci
 
   publish:
     needs: [test]
