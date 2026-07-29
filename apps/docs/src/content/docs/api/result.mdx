@@ -93,6 +93,9 @@ const limit = R.optional(decodePositiveInteger)(request.limit)
 const displayName = R.nullable(decodeNonBlankString)(request.displayName)
 
 // chain validations
+type SignupForm = { readonly name: string; readonly email: string }
+declare const formData: SignupForm
+
 pipe(
   R.ok(formData),
   R.flatMap((d) => (d.name ? R.ok(d) : R.err('name required'))),

@@ -28,18 +28,14 @@ export const fromPredicate: {
     predicate(value) ? ok(value) : err(onFalse(value))
 
 export const map: {
-  <A, B>(
-    f: (value: A) => B,
-  ): <Current extends Result<A, unknown>>(result: Current) => Result<B, ResultError<Current>>
+  <A, B>(f: (value: A) => B): <E = never>(result: Result<A, E>) => Result<B, E>
 } =
   ((f: (value: unknown) => unknown) =>
     (result: Result<unknown, unknown>) =>
       result._tag === 1 ? ok(f(result.value)) : result) as any
 
 export const mapErr: {
-  <E, F>(
-    f: (error: E) => F,
-  ): <Current extends Result<unknown, E>>(result: Current) => Result<ResultValue<Current>, F>
+  <E, F>(f: (error: E) => F): <A = never>(result: Result<A, E>) => Result<A, F>
 } =
   ((f: (error: unknown) => unknown) =>
     (result: Result<unknown, unknown>) =>
@@ -56,11 +52,7 @@ export const mapBoth: {
     isOk(result) ? ok(handlers.ok(result.value)) : err(handlers.err(result.error))
 
 export const flatMap: {
-  <A, Fn extends (value: A) => { readonly _tag: 0 | 1 }>(
-    f: Fn,
-  ): <Current extends Result<A, unknown>>(
-    result: Current,
-  ) => Result<ResultValue<ReturnType<Fn>>, ResultError<Current> | ResultError<ReturnType<Fn>>>
+  <A, B, E2>(f: (value: A) => Result<B, E2>): <E = never>(result: Result<A, E>) => Result<B, E | E2>
 } =
   ((f: (value: unknown) => Result<unknown, unknown>) =>
     (result: Result<unknown, unknown>) =>

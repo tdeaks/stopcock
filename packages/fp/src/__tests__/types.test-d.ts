@@ -95,7 +95,7 @@ test('Result composition preserves value and error unions', () => {
   const decoded = null as unknown as R.Result<number, 'decode'>
   const decodeStep: (value: number) => R.Result<string, 'negative'> = (value) =>
     value > 0 ? R.ok(String(value)) : R.err('negative' as const)
-  const flatMapped = R.flatMap<number, typeof decodeStep>(decodeStep)(decoded)
+  const flatMapped = R.flatMap(decodeStep)(decoded)
   const output = R.map((value: string) => value.length)(flatMapped)
   const checkedOutput: R.Result<number, 'decode' | 'negative'> = output
   expectTypeOf(checkedOutput).toMatchTypeOf<R.Result<number, 'decode' | 'negative'>>()
@@ -120,6 +120,61 @@ test('Result composition preserves value and error unions', () => {
       () => 'parse' as const,
     ),
   ).toEqualTypeOf<(value: string) => R.Result<number, 'parse'>>()
+})
+
+test('Result.flatMap infers the value and error channels through pipe with no annotations', () => {
+  type SignupForm = { readonly name: string; readonly email: string }
+  const formData = null as unknown as SignupForm
+
+  const chained = Root.pipe(
+    R.ok(formData),
+    R.flatMap((d) => (d.name ? R.ok(d) : R.err('name required' as const))),
+    R.flatMap((d) => (d.email ? R.ok(d) : R.err('email required' as const))),
+  )
+  const checkedChained: R.Result<SignupForm, 'name required' | 'email required'> = chained
+  expectTypeOf(checkedChained).toMatchTypeOf<
+    R.Result<SignupForm, 'name required' | 'email required'>
+  >()
+
+  const output = Root.pipe(
+    chained,
+    R.match({
+      err: (error) => ({ success: false as const, error }),
+      ok: (data) => ({ success: true as const, data }),
+    }),
+  )
+  if (!output.success) {
+    expectTypeOf(output.error).toEqualTypeOf<'name required' | 'email required'>()
+  } else {
+    expectTypeOf(output.data).toEqualTypeOf<SignupForm>()
+  }
+
+  // map and mapErr carry the same disease (an opaque, extends-constrained
+  // second type parameter hiding the value/error type the callback needs),
+  // so they get the identical no-annotation treatment.
+  const mapped = Root.pipe(
+    R.ok(1) as R.Result<number, 'decode'>,
+    R.map((value) => value + 1),
+  )
+  expectTypeOf(mapped).toEqualTypeOf<R.Result<number, 'decode'>>()
+
+  const mappedErr = Root.pipe(
+    R.err('decode' as const) as R.Result<number, 'decode'>,
+    R.mapErr((error) => error.length),
+  )
+  expectTypeOf(mappedErr).toEqualTypeOf<R.Result<number, number>>()
+
+  // Applied directly to a bare Ok/Err (no union with the other side), the
+  // absent channel must resolve to `never`, not widen to `unknown`. This is
+  // what the old ResultError/ResultValue conditional-type extraction got
+  // right; the default type parameters on the curried return keep it right.
+  expectTypeOf(R.map((n: number) => n + 1)(R.ok(1))).toEqualTypeOf<R.Result<number, never>>()
+  expectTypeOf(R.mapErr((e: string) => e.length)(R.err('x'))).toEqualTypeOf<
+    R.Result<never, number>
+  >()
+  expectTypeOf(
+    R.flatMap((n: number) => (n > 0 ? R.ok(n) : R.err('neg' as const)))(R.ok(1)),
+  ).toEqualTypeOf<R.Result<number, 'neg'>>()
 })
 
 test('Validation accumulates a typed non-empty error collection', () => {
