@@ -21,7 +21,7 @@ const accent = pipe(
 )
 ```
 
-Transformations support data-first and data-last calls. Typed-array batch
-operations are available for image-sized workloads.
+Every transformation is curried, data-last, so it composes with `pipe`.
+Typed-array batch operations are available for image-sized workloads.
 
 [Documentation](https://stopcock.dev/libraries/color)

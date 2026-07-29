@@ -7,29 +7,29 @@ bun add @stopcock/diff
 ```
 
 ```ts
-import { diff, apply, invert, compose, rebase } from '@stopcock/diff'
+import { diff, apply, invert } from '@stopcock/diff'
 
 const before = { name: 'Tom', scores: [10, 20] }
 const after = { name: 'Tom', scores: [10, 20, 30] }
 
-const p = diff(before, after)
-apply(before, p) // { name: 'Tom', scores: [10, 20, 30] }
+const p = diff(after)(before)
+apply(p)(before) // { name: 'Tom', scores: [10, 20, 30] }
 
 const undo = invert(p)
-apply(after, undo) // back to before
+apply(undo)(after) // back to before
 ```
 
 ## What's in the box
 
-- **diff / diffWith** — compute a `Patch` between two values, with optional move/rename detection and custom equality
-- **apply / applyUnsafe** — apply a patch to a value (safe returns `Result`, unsafe throws)
-- **invert** — reverse a patch for undo
-- **compose** — merge sequential patches into one, with simplification
-- **rebase** — transform a patch over concurrent edits, with conflict detection
-- **toJsonPatch / fromJsonPatch** — RFC 6902 JSON Patch interop
-- **toLens / fromLens / fromTraversal** — bridge between patches and `@stopcock/fp` optics
+- **diff / diffWith**: compute a `Patch` between two values, with optional move/rename detection and custom equality
+- **apply / applyUnsafe**: apply a patch to a value (safe returns `Result`, unsafe throws)
+- **invert**: reverse a patch for undo
+- **compose**: merge sequential patches into one, with simplification
+- **rebase**: transform a patch over concurrent edits, with conflict detection
+- **toJsonPatch / fromJsonPatch**: RFC 6902 JSON Patch interop
+- **toLens / fromLens / fromTraversal**: bridge between patches and `@stopcock/fp` optics
 
-All functions are dual (data-first and data-last).
+Every function is curried, data-last: `apply(patch)(target)`, not `apply(target, patch)`.
 
 ## Optics bridge
 
@@ -48,7 +48,7 @@ const name = toLens({
 })
 
 if (name) {
-  view(name, source) // 'Tom'
-  set(name, source, 'Ada') // { user: { name: 'Ada' } }
+  view(name)(source) // 'Tom'
+  set(name, 'Ada')(source) // { user: { name: 'Ada' } }
 }
 ```

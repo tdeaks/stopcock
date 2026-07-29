@@ -57,8 +57,8 @@ import * as Optic from '@stopcock/fp/optic'
   `undefined` variants are named.
 - SameValueZero is the default equality for collection membership.
 - `record` is the homogeneous dictionary API (`ReadonlyRecord<A>`). Closed,
-  named object shapes—including interfaces without an index signature—belong
-  in `object`, whose operations preserve their declared shape.
+  named object shapes, including interfaces without an index signature,
+  belong in `object`, whose operations preserve their declared shape.
 - Synchronous failures use `Result`. Asynchronous failures and cancellation
   live in `@stopcock/async` as `Task`; there is no competing `AsyncResult`.
 
@@ -213,6 +213,13 @@ const values = pipe(
   Iter.toArray,
 )
 ```
+
+Default to `array`. It wins 2-4x over `Iter` on chains that consume the
+whole input, at every size measured. Reach for `Iter` when a chain stops
+early -- `find`, `take`, `head` -- on an input of 1,000 elements or more:
+eager loses there, and `Iter` wins 5-884x on those same shapes. Compile
+whichever chain you've actually measured as hot (see "Compiling pipelines"
+above).
 
 For asynchronous sources, bounded concurrency, cancellation, and Task
 terminals, use `@stopcock/async/async-iter`.
