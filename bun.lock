@@ -151,14 +151,14 @@
     },
     "packages/async": {
       "name": "@stopcock/async",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
       },
     },
     "packages/autodiff": {
       "name": "@stopcock/autodiff",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
         "@stopcock/la": "workspace:*",
@@ -166,7 +166,7 @@
     },
     "packages/color": {
       "name": "@stopcock/color",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
         "@stopcock/la": "workspace:*",
@@ -174,14 +174,14 @@
     },
     "packages/date": {
       "name": "@stopcock/date",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
       },
     },
     "packages/diff": {
       "name": "@stopcock/diff",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "dependencies": {
         "@stopcock/fp": "workspace:*",
       },
@@ -198,7 +198,7 @@
     },
     "packages/fp": {
       "name": "@stopcock/fp",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
     },
     "packages/fp-codemod": {
       "name": "@stopcock/fp-codemod",
@@ -217,7 +217,7 @@
     },
     "packages/fp-compiler": {
       "name": "@stopcock/fp-compiler",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "bin": {
         "stopcock": "./dist/cli.js",
       },
@@ -237,18 +237,18 @@
         "vite-plus": "^0.2.5",
       },
       "peerDependencies": {
-        "@stopcock/fp": "2.0.0-next.0",
+        "@stopcock/fp": "2.0.0-next.1",
       },
     },
     "packages/fp-interop": {
       "name": "@stopcock/fp-interop",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "devDependencies": {
         "@stopcock/fp": "workspace:*",
         "vite-plus": "catalog:",
       },
       "peerDependencies": {
-        "@stopcock/fp": "2.0.0-next.0",
+        "@stopcock/fp": "2.0.0-next.1",
       },
     },
     "packages/fp-testing": {
@@ -260,7 +260,7 @@
     },
     "packages/http": {
       "name": "@stopcock/http",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "dependencies": {
         "@stopcock/async": "workspace:*",
         "@stopcock/fp": "workspace:*",
@@ -268,7 +268,7 @@
     },
     "packages/img": {
       "name": "@stopcock/img",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "dependencies": {
         "@stopcock/color": "workspace:*",
         "@stopcock/la": "workspace:*",
@@ -280,13 +280,13 @@
     },
     "packages/parser": {
       "name": "@stopcock/parser",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "devDependencies": {
         "@stopcock/fp": "workspace:*",
         "vite-plus": "catalog:",
       },
       "peerDependencies": {
-        "@stopcock/fp": "2.0.0-next.0",
+        "@stopcock/fp": "2.0.0-next.1",
       },
     },
     "packages/pattern": {
@@ -309,7 +309,7 @@
     },
     "packages/state": {
       "name": "@stopcock/state",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "dependencies": {
         "@stopcock/diff": "workspace:*",
         "@stopcock/fp": "workspace:*",
@@ -332,7 +332,7 @@
     },
     "packages/svg": {
       "name": "@stopcock/svg",
-      "version": "2.0.0-next.0",
+      "version": "2.0.0-next.1",
       "dependencies": {
         "@stopcock/color": "workspace:*",
         "@stopcock/la": "workspace:*",

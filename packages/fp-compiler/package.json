@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/fp-compiler",
-  "version": "2.0.0-next.0",
+  "version": "2.0.0-next.1",
   "description": "Build-time lowering for portable Stopcock FP pipelines",
   "license": "MIT",
   "repository": {
@@ -61,7 +61,7 @@
     "vite-plus": "^0.2.5"
   },
   "peerDependencies": {
-    "@stopcock/fp": "2.0.0-next.0"
+    "@stopcock/fp": "2.0.0-next.1"
   },
   "engines": {
     "node": ">=22"
