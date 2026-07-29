@@ -1159,11 +1159,22 @@ function collectSteps(
         i === stepNodes.length - 1 &&
         steps.length > 0
       ) {
-        if (steps.some((step) => BOUNDARY_OPS.has(step.name) || step.name === 'reduce')) {
+        // `scan` moved from `BOUNDARY_OPS` to the fused element path (it no
+        // longer trips the `BOUNDARY_OPS.has` arm below), but prefix-residual
+        // lowering's step-vector receiver ABI was never exercised against
+        // scan's n+1-output phantom-pass mechanic. Named explicitly here to
+        // keep this narrow feature's behavior unchanged rather than silently
+        // widening it as a side effect of the element-role reclassification.
+        if (
+          steps.some(
+            (step) =>
+              BOUNDARY_OPS.has(step.name) || step.name === 'reduce' || step.name === 'scan',
+          )
+        ) {
           return {
             ok: false,
             reason:
-              'prefix residual lowering does not yet admit materialization boundaries or reduce',
+              'prefix residual lowering does not yet admit materialization boundaries, reduce, or scan',
             partialNames: recognised,
           }
         }

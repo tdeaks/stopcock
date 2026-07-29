@@ -399,6 +399,29 @@ const ELEMENT_EMIT_TEMPLATES: Readonly<Record<string, OpEmit>> = {
       }
     },
   },
+  // `scan` emits its initial accumulator *before* any real element (see
+  // `array.ts#scan`: `out[0] = init`, an n+1-length output) -- the one
+  // element template whose per-iteration body alone is not the whole
+  // story. This template only renders the per-element update
+  // (`_sa{index} = fn(_sa{index}, v); next = _sa{index}`), exactly like
+  // `iterScanTemplate` above minus the index argument (array `scan`'s
+  // callback is `(acc, value)`, never indexed). The initial-accumulator
+  // *value* is emitted once, before the loop, by a one-shot phantom pass
+  // that `fp-compiler/src/codegen.ts#emitElementSegment` splices in
+  // per scan position -- see the comment there and
+  // `benchmarks/src/reference/emitter.ts`'s `scanPositions` mechanic,
+  // which this replicates for the real compiler.
+  scan: {
+    kind: 'stateful',
+    render: (ctx) => {
+      const acc = `_sa${ctx.index}`
+      const cb = ctx.cb.emit([acc, ctx.v], (expr) => [`${acc} = ${expr};`])
+      return {
+        pre: [...(cb.pre ?? []), `var ${acc} = ${ctx.a1};`],
+        body: [...cb.body, `var ${ctx.next} = ${acc};`],
+      }
+    },
+  },
   sum: {
     kind: 'sink',
     render: (ctx) => ({ pre: [`var ${ctx.next} = 0;`], body: [`${ctx.next} += ${ctx.v};`] }),
@@ -3692,7 +3715,7 @@ const LEGACY_ROWS = [
     false,
     true,
     true,
-    'boundary',
+    'element',
   ),
   op(
     103,

@@ -126,6 +126,7 @@ const CALLBACK_OPS = new Set([
   'takeUntil',
   'takeWhile',
   'dropWhile',
+  'scan',
   'count',
   'reduce',
   'forEach',
@@ -937,6 +938,19 @@ function emitElementSegment(
   const bodyLines: string[] = []
   const closeBraces: string[] = []
 
+  // `scan` emits its initial accumulator before any real element (see the
+  // comment on `ELEMENT_EMIT_TEMPLATES.scan` in operator-definitions.ts).
+  // Every position after a `scan` step in this segment -- its own
+  // per-iteration body slice from `bodyLines`/`closeBraces` -- is recorded
+  // here so it can be replayed once, standalone, before the real loop
+  // starts, seeded with that scan's own untouched accumulator instead of a
+  // real source element.
+  const scanContinuations: {
+    readonly index: number
+    readonly bodyStart: number
+    readonly closeStart: number
+  }[] = []
+
   bodyLines.push(`var _v0 = ${curData}[_i];`)
   let curVar = '_v0'
 
@@ -960,6 +974,9 @@ function emitElementSegment(
     )
     const fragment = emitStep(step, ctx, code, renderSource, globalUndefinedIsUnbound)
     splice(fragment, preLines, stateLines, bodyLines, closeBraces)
+    if (step.name === 'scan') {
+      scanContinuations.push({ index, bodyStart: bodyLines.length, closeStart: closeBraces.length })
+    }
     curVar = nextVar
   })
 
@@ -992,11 +1009,54 @@ function emitElementSegment(
   const loopIndex = seg.steps[0]?.index ?? seg.terminal!.index
   const loopLength = `_len${loopIndex}`
   stateLines.unshift(`var ${loopLength} = ${curData}.length;`)
+
+  if (scanContinuations.length === 0) {
+    return [
+      stateLines.join('\n'),
+      `${outerLabel}: for (var _i = 0; _i < ${loopLength}; _i++) {`,
+      bodyLines.join('\n'),
+      ...closeBraces,
+      '}',
+    ]
+  }
+
+  // One-shot phantom passes for each `scan` position, run before the real
+  // loop starts, in descending position order: the *last* scan's own
+  // phantom pass must fire first, using its own untouched initial
+  // accumulator, before an *earlier* scan's phantom pass replays through it
+  // (mutating it in place) -- matching sequential scan-of-scan composition
+  // exactly. See `benchmarks/src/reference/emitter.ts`'s `scanPositions`
+  // handling in `emitStreamSegment`, which this mirrors for the real
+  // compiler. `outerLabel` now labels the wrapping block, not the loop
+  // itself (the loop is unlabeled here -- a bare `continue` still targets
+  // it, the nearest enclosing loop, regardless), so a `break outerLabel`
+  // fired from inside a phantom pass -- an early-exit terminal, or a
+  // downstream `take`/`takeWhile` -- skips the rest of this segment
+  // (remaining phantom passes and the real loop) exactly like it already
+  // does from inside the loop. Each phantom pass is its own unlabeled
+  // `do { ... } while (false)`: a bare `continue` inside it (a
+  // `filter`/`filterMap`/... rejecting the phantom value) just ends that
+  // one pass and falls through to the next, without needing its own label.
+  const phantomPasses: string[] = []
+  for (let i = scanContinuations.length - 1; i >= 0; i--) {
+    const { index, bodyStart, closeStart } = scanContinuations[i]
+    phantomPasses.push(
+      `var _v${index + 1} = _sa${index};`,
+      'do {',
+      bodyLines.slice(bodyStart).join('\n'),
+      ...closeBraces.slice(closeStart),
+      '} while (false);',
+    )
+  }
+
   return [
     stateLines.join('\n'),
-    `${outerLabel}: for (var _i = 0; _i < ${loopLength}; _i++) {`,
+    `${outerLabel}: {`,
+    ...phantomPasses,
+    `for (var _i = 0; _i < ${loopLength}; _i++) {`,
     bodyLines.join('\n'),
     ...closeBraces,
+    '}',
     '}',
   ]
 }

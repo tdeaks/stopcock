@@ -321,7 +321,11 @@ export function run(input) {
     expect(result.code).toContain('_scanOut0[_i + 1] = _scanAcc0;')
     expect(result.code).toContain('return _scanOut0;')
     expect(result.code).not.toContain('_boundary0')
-    expect(result.code).toContain('A.scan(')
+    // scan is now an element-role op (fused into the loop like every other
+    // stream op), so its construction is elided the same way map/filter/...
+    // already are: the callback and seed are captured directly and the real
+    // `A.scan` factory is never called at all.
+    expect(result.code).not.toContain('A.scan(')
     expect(result.code).not.toContain('(function ()')
   })
 
@@ -363,6 +367,254 @@ export function run(input) {
     `,
     expectTransformed: false,
     reasonIncludes: 'lexical Array',
+  })
+
+  // -- scan fusion: the phantom-pass mechanic --------------------------------
+  //
+  // scan is now `compilerPipelineRole: 'element'` (see
+  // `ELEMENT_EMIT_TEMPLATES.scan` in operator-definitions.ts): it fuses into
+  // the same loop as any other stream op instead of running as its own
+  // materializing boundary. scan emits its initial accumulator *before* any
+  // real element (n+1 outputs), which `emitElementSegment` in codegen.ts
+  // reproduces with a one-shot "phantom pass" per scan position, run before
+  // the real loop, seeded with that scan's own untouched initial
+  // accumulator -- mirroring `benchmarks/src/reference/emitter.ts`'s
+  // `scanPositions` mechanic. Every fixture below goes through the general
+  // segmented path (`const out = pipe(...); return out;`, not a bare
+  // `return pipe(...)`), so it exercises `emitElementSegment` rather than
+  // `generateFusedTailBody`'s separate solo-scan tail fast path (covered
+  // above). scan's callback is `(acc, value)`, never indexed (no
+  // `scanWithIndex` exists), so there is no index-using-callback variant to
+  // cover here.
+
+  expectSame('scan alone, not in tail position (exercises the general element path)', {
+    name: 'scan-alone-general-path',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const out = pipe([1, 2, 3], A.scan((acc, x) => acc + x, 0));
+      return out;
+    `,
+    expectTransformed: true,
+  })
+
+  it('scan alone: the initial accumulator is first, unmodified by any element', () => {
+    const result = runFixture({
+      name: 'scan-alone-order',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const out = pipe([10, 20, 30], A.scan((acc, x) => acc + x, 100));
+        return out;
+      `,
+      expectTransformed: true,
+    })
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect(result.compiled.value).toEqual([100, 110, 130, 160])
+  })
+
+  it('scan alone on an empty array: output is just [initial]', () => {
+    const result = runFixture({
+      name: 'scan-alone-empty',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const out = pipe([], A.scan((acc, x) => acc + x, 42));
+        return out;
+      `,
+      expectTransformed: true,
+    })
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect(result.compiled.value).toEqual([42])
+  })
+
+  expectSame('scan -> map fuses into one loop', {
+    name: 'scan-then-map',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const out = pipe([1, 2, 3, 4], A.scan((acc, x) => acc + x, 0), A.map((x) => x * 2));
+      return out;
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('scan -> filter fuses into one loop', {
+    name: 'scan-then-filter',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const out = pipe(
+        [1, 2, 3, 4, 5],
+        A.scan((acc, x) => acc + x, 0),
+        A.filter((x) => x % 2 === 0),
+      );
+      return out;
+    `,
+    expectTransformed: true,
+  })
+
+  it('scan -> take: the phantom pass counts toward take\'s budget, matching the real runtime', () => {
+    const result = runFixture({
+      name: 'scan-then-take',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const out = pipe([1, 2, 3, 4, 5], A.scan((acc, x) => acc + x, 0), A.take(2));
+        return out;
+      `,
+      expectTransformed: true,
+    })
+    expect(result.compiled.value).toEqual(result.original.value)
+    // scan's output is [0, 1, 3, 6, 10, 15] (n+1); take(2) keeps the first
+    // two -- the phantom-emitted initial accumulator, then the first real
+    // element's update.
+    expect(result.compiled.value).toEqual([0, 1])
+  })
+
+  it('scan -> take(0): the phantom pass alone exhausts the budget, no real element runs', () => {
+    const result = runFixture(
+      {
+        name: 'scan-then-take-zero',
+        imports: STD_IMPORTS,
+        locals: { pipe: 'pipe', A: 'A' },
+        body: `
+          const out = pipe(input, A.scan((acc, x) => acc + x, 0), A.take(0));
+          return out;
+        `,
+        expectTransformed: true,
+      },
+      () => ({ input: [1, 2, 3] }),
+    )
+    expect(result.compiled.value).toEqual(result.original.value)
+    expect(result.compiled.value).toEqual([])
+  })
+
+  it('scan -> find: an early exit through the phantom pass matches the real runtime', () => {
+    const result = runFixture({
+      name: 'scan-then-find-phantom-hit',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const out = pipe([1, 2, 3], A.scan((acc, x) => acc + x, 0), A.find((x) => x >= 0));
+        return out;
+      `,
+      expectTransformed: true,
+    })
+    expect(result.compiled.value).toEqual(result.original.value)
+    // The initial accumulator (0) already satisfies \`x >= 0\`, so find must
+    // resolve to it without ever reaching a real element.
+    expect(result.compiled.value).toEqual({ _tag: 1, value: 0 })
+  })
+
+  expectSame('scan -> find: a miss on the phantom value falls through to real elements', {
+    name: 'scan-then-find-phantom-miss',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const out = pipe([1, 2, 3], A.scan((acc, x) => acc + x, 0), A.find((x) => x > 2));
+      return out;
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('two scans in one chain compose (n+2 outputs)', {
+    name: 'scan-then-scan',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const out = pipe(
+        [1, 2, 3],
+        A.scan((acc, x) => acc + x, 10),
+        A.scan((acc, x) => acc + x, 100),
+      );
+      return out;
+    `,
+    expectTransformed: true,
+  })
+
+  it('two scans in one chain: the later scan\'s own phantom fires before the earlier one replays through it', () => {
+    const result = runFixture({
+      name: 'scan-then-scan-values',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const out = pipe(
+          [1, 2, 3],
+          A.scan((acc, x) => acc + x, 10),
+          A.scan((acc, x) => acc + x, 100),
+        );
+        return out;
+      `,
+      expectTransformed: true,
+    })
+    expect(result.compiled.value).toEqual(result.original.value)
+    // scan1: [10, 11, 13, 16] (n+1). scan2 folds over scan1's output:
+    // [100, 100+10=110, 110+11=121, 121+13=134, 134+16=150] (n+2 total).
+    expect(result.compiled.value).toEqual([100, 110, 121, 134, 150])
+  })
+
+  expectSame('scan mid-chain with a step before it', {
+    name: 'scan-mid-chain',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const out = pipe(
+        [1, 2, 3, 4, 5],
+        A.filter((x) => x % 2 === 1),
+        A.scan((acc, x) => acc + x, 0),
+        A.map((x) => x * 10),
+      );
+      return out;
+    `,
+    expectTransformed: true,
+  })
+
+  expectSame('scan -> flatMap (downstream close-brace splicing through the phantom pass)', {
+    name: 'scan-then-flatmap',
+    imports: STD_IMPORTS,
+    locals: { pipe: 'pipe', A: 'A' },
+    body: `
+      const out = pipe(
+        [1, 2, 3],
+        A.scan((acc, x) => acc + x, 0),
+        A.flatMap((x) => [x, x + 1]),
+      );
+      return out;
+    `,
+    expectTransformed: true,
+  })
+
+  it('scan callback and seed still evaluate exactly once, in original order, when fused with a following op', () => {
+    const result = runFixture({
+      name: 'scan-fused-evaluation-order',
+      imports: STD_IMPORTS,
+      locals: { pipe: 'pipe', A: 'A' },
+      body: `
+        const order = []
+        const source = () => {
+          order.push('source')
+          return [1, 2, 3]
+        }
+        const callback = () => {
+          order.push('callback')
+          return (acc, value) => {
+            order.push('item:' + value)
+            return acc + value
+          }
+        }
+        const seed = () => {
+          order.push('seed')
+          return order.join('|')
+        }
+        return [
+          pipe(source(), A.scan(callback(), seed()), A.map((x) => x)),
+          order,
+        ]
+      `,
+      expectTransformed: true,
+    })
+    expect(result.compiled.value).toEqual(result.original.value)
   })
 
   it('emits a direct tail-position sum loop', () => {

@@ -162,6 +162,7 @@ export const ELEMENT_OP_NAMES = [
   'mapWhile',
   'mapWithIndex',
   'reject',
+  'scan',
   'take',
   'takeUntil',
   'takeWhile',
@@ -311,7 +312,6 @@ export const BOUNDARY_OP_NAMES = [
   'remove',
   'reverse',
   'sample',
-  'scan',
   'shuffle',
   'slice',
   'slidingWindow',
@@ -2468,10 +2468,20 @@ export const OPS_TABLE: readonly OpsTableEntry[] = [
     domainTransition: false,
     loweringId: '@stopcock/fp/array/scan/lowering/compiler-aot',
     loweringRevision: 1,
-    runnerId: '@stopcock/fp-compiler/runner/boundary/scan/v1',
-    compilerPipelineRole: 'boundary',
+    runnerId: '@stopcock/fp-compiler/runner/element/scan/v1',
+    compilerPipelineRole: 'element',
     compilerFinalBoundary: false,
-    emit: { kind: 'boundary' },
+    emit: {
+      kind: 'stateful',
+      render: (ctx) => {
+        const acc = `_sa${ctx.index}`,
+          cb = ctx.cb.emit([acc, ctx.v], (expr) => [`${acc} = ${expr};`])
+        return {
+          pre: [...(cb.pre ?? []), `var ${acc} = ${ctx.a1};`],
+          body: [...cb.body, `var ${ctx.next} = ${acc};`],
+        }
+      },
+    },
   },
   {
     name: 'shuffle',

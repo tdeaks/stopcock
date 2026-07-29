@@ -6,9 +6,15 @@
 // assert identical outputs and callback counts.
 //
 // fp-compiler's supported subset (packages/fp-compiler/src/ops.ts): stream
-// ops map/filter/reject/filterMap/flatMap/take/drop/takeWhile/dropWhile,
+// ops map/filter/reject/filterMap/flatMap/take/drop/takeWhile/dropWhile/scan,
 // boundary ops sort/sortBy/sortAsc/sortDesc/reverse/uniq, terminals sum/
-// count/reduce/forEach/find/findIndex/findMap/every/some/none. Note
+// count/reduce/forEach/find/findIndex/findMap/every/some/none. scan moved
+// from a boundary op to a fused stream op (see the "W7: scan" describe
+// block below): it emits its initial accumulator before any real element
+// (n+1 outputs), which both the frozen emitter and the compiler now
+// reproduce with a one-shot phantom pass before the real loop, so a scan
+// feeding an early-exit downstream op (take/find/...) fuses into one pass
+// like every other stream op instead of fully materializing first. Note
 // fp-compiler fuses sum into the same loop as a terminal, while the
 // registry classifies OP_SUM as a materializer/boundary (see emitter.ts's
 // header comment) -- an architectural difference, not an output
@@ -370,6 +376,159 @@ describe('W6: flatMap and boundary ops diff clean against fp-compiler', () => {
   }
 })
 
+// --- scan fusion: W7 (scan moves from a boundary op to a fused stream op) ---
+//
+// scan emits its initial accumulator before any real element (n+1 outputs).
+// Both the frozen emitter (emitter.ts's `scanPositions` handling) and
+// fp-compiler (codegen.ts's `emitElementSegment` phantom pass) reproduce
+// that with a one-shot pass seeded with the initial accumulator, run before
+// the real loop. `trackedIndex` follows scan's own callback (binding index
+// 0) unless noted, so `originalLogLength` documents whether the fused
+// tiers' early exit through the phantom pass changes scan's own call count
+// relative to the sequential tier's full materialization (D1).
+const scanFixtures: Fixture[] = [
+  {
+    name: 'scan alone',
+    source: `return pipe(input, A.scan((acc, x) => (track(x), acc + x), 0));`,
+    desc: { steps: [{ kind: 'scan' }] },
+    bindings: [{ fn: (acc: number, x: number) => acc + x, a1: 0 }],
+  },
+  {
+    name: 'scan -> map (map also runs once on the phantom-emitted initial value)',
+    source: `return pipe(
+      input,
+      A.scan((acc, x) => (track(x), acc + x), 0),
+      A.map((x) => x * 2),
+    );`,
+    desc: { steps: [{ kind: 'scan' }, { kind: 'map' }] },
+    bindings: [{ fn: (acc: number, x: number) => acc + x, a1: 0 }, { fn: (x: number) => x * 2 }],
+  },
+  {
+    name: 'scan -> filter',
+    source: `return pipe(
+      input,
+      A.scan((acc, x) => (track(x), acc + x), 0),
+      A.filter((x) => x % 2 === 0),
+    );`,
+    desc: { steps: [{ kind: 'scan' }, { kind: 'filter' }] },
+    bindings: [
+      { fn: (acc: number, x: number) => acc + x, a1: 0 },
+      { fn: (x: number) => x % 2 === 0 },
+    ],
+  },
+  {
+    name: 'scan -> take (early exit through the phantom pass)',
+    // D1: sequential scan calls its callback for every element of INPUT
+    // before take ever sees a value; the fused compiled/emitted tiers stop
+    // as soon as take's quota is satisfied -- here the phantom pass alone
+    // (the initial accumulator) already fills half the quota, so only one
+    // real element is needed.
+    originalLogLength: INPUT.length,
+    source: `return pipe(
+      input,
+      A.scan((acc, x) => (track(x), acc + x), 0),
+      A.take(2),
+    );`,
+    desc: { steps: [{ kind: 'scan' }, { kind: 'take' }] },
+    bindings: [{ fn: (acc: number, x: number) => acc + x, a1: 0 }, { fn: 2 }],
+  },
+  {
+    name: 'scan -> find: an early exit through the phantom pass itself',
+    // D1, same reason as scan->take: sequential scan runs to completion
+    // first. Here the phantom-emitted initial accumulator (0) already
+    // satisfies `x >= 0`, so the fused tiers never call scan's callback at
+    // all.
+    originalLogLength: INPUT.length,
+    source: `return pipe(
+      input,
+      A.scan((acc, x) => (track(x), acc + x), 0),
+      A.find((x) => x >= 0),
+    );`,
+    desc: { steps: [{ kind: 'scan' }, { kind: 'find' }] },
+    bindings: [{ fn: (acc: number, x: number) => acc + x, a1: 0 }, { fn: (x: number) => x >= 0 }],
+  },
+  {
+    name: 'two scans in one chain (n+2 outputs)',
+    source: `return pipe(
+      input,
+      A.scan((acc, x) => (track(x), acc + x), 10),
+      A.scan((acc, x) => acc + x, 100),
+    );`,
+    desc: { steps: [{ kind: 'scan' }, { kind: 'scan' }] },
+    bindings: [
+      { fn: (acc: number, x: number) => acc + x, a1: 10 },
+      { fn: (acc: number, x: number) => acc + x, a1: 100 },
+    ],
+  },
+  {
+    name: 'filter -> scan (scan mid-chain, with a step before it)',
+    source: `return pipe(
+      input,
+      A.filter((x) => x % 2 === 0),
+      A.scan((acc, x) => (track(x), acc + x), 0),
+    );`,
+    desc: { steps: [{ kind: 'filter' }, { kind: 'scan' }] },
+    trackedStepIndex: 1,
+    bindings: [{ fn: (x: number) => x % 2 === 0 }, { fn: (acc: number, x: number) => acc + x, a1: 0 }],
+  },
+]
+
+describe('W7: scan fuses into the element loop like every other stream op', () => {
+  for (const fixture of scanFixtures) {
+    it(fixture.name, () => {
+      const input = fixture.input ?? INPUT
+      const originalLog: number[] = []
+      const originalValue = run(fixture.source, input, originalLog)
+
+      const transformedLog: number[] = []
+      const probe = probeSource(fixture.source)
+      const result = transformStopcockPipelines(probe, `${fixture.name}.ts`, { diagnostics: false })
+      expect(
+        result.code,
+        `${fixture.name}: expected the compiler to transform this pipeline`,
+      ).not.toBe(probe)
+      const transformedValue = runTransformed(fixture.source, input, transformedLog)
+
+      const emittedLog: number[] = []
+      const trackedIndex = fixture.trackedStepIndex ?? 0
+      const trackedBindings = fixture.bindings.map((b, i) => {
+        if (i !== trackedIndex || typeof b.fn !== 'function') return b
+        const raw = b.fn as (...args: unknown[]) => unknown
+        return {
+          ...b,
+          fn: (...args: unknown[]) => (
+            emittedLog.push(args[args.length - 1] as number),
+            raw(...args)
+          ),
+        }
+      })
+      const emittedValue = compileEmittedPipeline(fixture.desc)(input.slice(), trackedBindings)
+
+      expect(transformedValue).toEqual(originalValue)
+      expect(emittedValue).toEqual(originalValue)
+      expect(originalLog.length).toBe(fixture.originalLogLength ?? transformedLog.length)
+      expect(transformedLog.length).toBe(emittedLog.length)
+    })
+  }
+
+  it('scan alone on an empty array: output is just [initial]', () => {
+    const originalValue = run(
+      `return pipe(input, A.scan((acc, x) => acc + x, 42));`,
+      [],
+      [],
+    )
+    const probe = probeSource(`return pipe(input, A.scan((acc, x) => acc + x, 42));`)
+    transformStopcockPipelines(probe, 'scan-empty.ts', { diagnostics: false })
+    const transformedValue = runTransformed(
+      `return pipe(input, A.scan((acc, x) => acc + x, 42));`,
+      [],
+      [],
+    )
+    expect(originalValue).toEqual([42])
+    expect(transformedValue).toEqual(originalValue)
+  })
+})
+
 // --- flow()/compile(): W6 grammar extension ---
 //
 // flow/compile fixtures wire steps as call arguments instead of pipe()'s
@@ -493,7 +652,7 @@ describe('W6: flow()/compile() with >= 2 steps diff clean against fp-compiler', 
 // --- transform and diagnose edges outside the generated differential corpus ---
 
 describe('W6: expanded compiler coverage and clean unsupported diagnostics', () => {
-  it('scan is transformed through its exact full-array boundary', () => {
+  it('scan is transformed and fused into the element loop (see the W7 describe block for value coverage)', () => {
     const source = probeSource(`return pipe(input, A.scan((acc, x) => acc + x, 0));`)
     const result = transformStopcockPipelines(source, 'scan.ts', { diagnostics: 'verbose' })
     expect(result.code).not.toBe(source)
@@ -536,7 +695,7 @@ describe('W6: expanded compiler coverage and clean unsupported diagnostics', () 
     expect(result.diagnostics[0].transformed).toBe(true)
   })
 
-  it('flow() containing scan transforms through its full-array boundary', () => {
+  it('flow() containing scan transforms and fuses scan into the element loop', () => {
     const source = probeSourceDeferred(
       `const run = flow(A.map((x) => x * 2), A.scan((acc, x) => acc + x, 0)); return run(input);`,
     )
