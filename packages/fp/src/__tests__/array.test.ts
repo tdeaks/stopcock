@@ -345,6 +345,54 @@ describe('array', () => {
       ).toEqual([0, 1, 3, 6]))
   })
 
+  describe('takeSortedBy', () => {
+    it('data-last returns the k smallest, sorted by cmp', () =>
+      expect(pipe([3, 1, 2], A.takeSortedBy(2, (a, b) => a - b))).toEqual([1, 2]))
+
+    it('k <= 0 returns []', () => expect(A.takeSortedBy(0, (a: number, b: number) => a - b)([3, 1, 2])).toEqual([]))
+
+    it('k >= length returns the full sorted array', () =>
+      expect(A.takeSortedBy(10, (a: number, b: number) => a - b)([3, 1, 2])).toEqual([1, 2, 3]))
+
+    // Pinning regression: a prior quickselect-based implementation was not
+    // tie-stable, so it could return a different subset/order than
+    // sortBy(cmp) |> take(k) whenever keys tied. Concretely, on this input
+    // quickselect returned [C, B] instead of [A, B]. takeSortedBy must always
+    // equal sortBy(cmp) |> take(k), since stopcock's sortBy is stable and
+    // users reasonably expect the fused/bounded helper to match it.
+    it('matches sortBy(cmp) |> take(k) for tied keys', () => {
+      const data = [
+        { k: 1, id: 'A' },
+        { k: 1, id: 'B' },
+        { k: 1, id: 'C' },
+        { k: 2, id: 'D' },
+      ]
+      const cmp = (a: { k: number }, b: { k: number }) => a.k - b.k
+      const expected = pipe(data, A.sortBy(cmp), A.take(2))
+      expect(A.takeSortedBy(2, cmp)(data)).toEqual(expected)
+      expect(expected.map((x) => x.id)).toEqual(['A', 'B'])
+    })
+
+    it('matches sortBy(cmp) |> take(k) across randomized heavily-tied inputs, spanning the bounded/full-sort threshold', () => {
+      // deterministic LCG, no reliance on Math.random for repeatability
+      let seed = 42
+      const rand = () => {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff
+        return seed / 0x7fffffff
+      }
+      const cmp = (a: { k: number }, b: { k: number }) => a.k - b.k
+      for (let trial = 0; trial < 200; trial++) {
+        const n = 1 + Math.floor(rand() * 3000)
+        const tieBucket = 1 + Math.floor(rand() * 5)
+        const data = Array.from({ length: n }, (_, i) => ({ k: Math.floor(rand() * tieBucket), id: i }))
+        const k = Math.floor(rand() * (n + 5)) - 2
+        const expected = pipe(data, A.sortBy(cmp), A.take(k))
+        const actual = A.takeSortedBy(k, cmp)(data)
+        expect(actual).toEqual(expected)
+      }
+    })
+  })
+
   describe('pipe composition', () => {
     it('chains multiple array operations', () => {
       const result = pipe(
