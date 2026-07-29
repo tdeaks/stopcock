@@ -1,223 +1,55 @@
 ---
 title: Inspect pipelines with explain()
-description: Read Stopcock's static pipeline plan, boundaries, executors, and pure rewrites
+description: What explain() reports now that fusion is a build-time transform
 ---
 
-import { Aside } from '@astrojs/starlight/components'
-import VerifiedExplainReport from '../../../components/VerifiedExplainReport.astro'
-
-`explain()` shows how Stopcock understands a pipeline before you run it. Pass
-it the same data-last operators you would give to `pipe` or `compile`, and it
-returns an immutable description of the resulting execution plan.
-
-It answers questions such as:
-
-- Will these operations share one streaming pass?
-- Which step needs the complete intermediate array?
-- Does a segment use a checked-in template or the generic portable executor?
-- Which opt-in pure rewrite would `compilePure` apply?
-- Did an ordinary user function make part of the pipeline opaque?
-
-<Aside type="note" title="Static inspection, not profiling">
-  `explain()` does not accept input data, invoke callbacks, execute the pipeline, measure elapsed
-  time, or count allocations. It describes the static plan for the supplied operators.
-</Aside>
-
-## Quick start
+`explain()` and `explainPure()` (from `@stopcock/fp/fusion/debug`) describe
+what running a set of steps through `pipe` does at runtime. Since there's no
+runtime fusion engine any more, the answer is always the same one:
 
 ```ts
-import { compile, explain } from '@stopcock/fp'
+import { explain } from '@stopcock/fp/fusion/debug'
 import * as A from '@stopcock/fp/array'
 
-const steps = [
+explain(
   A.map((value: number) => value * 2),
-  A.filter((value) => value > 10),
+  A.filter((value: number) => value > 10),
   A.take(3),
-] as const
-
-const report = explain(...steps)
-const run = compile(...steps)
-
-console.log(run([1, 6, 7, 8, 9]))
-// [12, 14, 16]
+)
+// 'sequential'
 ```
 
-The report below is not copied documentation output. The docs component calls
-the current workspace implementation of `explain()` during the static Astro
-build and renders the returned object.
+`explain()` returns the string `'sequential'` for any set of steps, always.
+`pipe` runs each one in order, one call at a time -- there's no plan to
+report beyond that. The return type also allows `'compiled site'`, but you
+will never observe it: if `@stopcock/fp-compiler` recognizes and fuses a
+call at build time, the fused loop replaces the call outright, and this
+function never runs for it. A truly compiled site never calls `explain()`
+at all -- there's nothing left there to ask.
 
-<VerifiedExplainReport example="fused" />
+## Why this function still exists
 
-This pipeline has one `stream` segment containing all three steps. The
-`template` executor means Stopcock has a checked-in specialized portable loop
-for this shape. There is no materialization boundary, so `map`, `filter`, and
-`take` can cooperate in one pass, and `take(3)` can stop upstream work after
-three matching values.
+Steps built from `@stopcock/fp` operators and ordinary opaque functions now
+run identically through `pipe`: in order, one at a time. `explain()` is a
+holdover from the pre-2.0 runtime engine, which used to plan tagged
+operators into streaming segments, materialization boundaries, and
+specialized executors, and this function described that plan. That plan
+doesn't exist any more, so there's nothing left to describe beyond the one
+constant answer above.
 
-## Reading the report
+If you want to know whether a specific call site in your own source will
+actually get fused, that's a build-time question, not a runtime one -- ask
+the compiler directly:
 
-| Field                       | Meaning                                                                                                          |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `version`                   | Version of the explanation object, currently `1`.                                                                |
-| `domains`                   | The input domain of each segment, in segment order. This is not a set of unique domains.                         |
-| `segments`                  | Ordered regions of the pipeline: `stream`, `boundary`, or `opaque`.                                              |
-| `materializationBoundaries` | Zero-based step indexes for explicit whole-input boundaries.                                                     |
-| `semanticMode`              | `exact` for ordinary semantics or `pure` after an explicit purity promise.                                       |
-| `executor`                  | The top-level execution family. The current runtime executor is `portable`.                                      |
-| `segmentExecutors`          | `template` for a recognized checked-in kernel, otherwise `generic`. A generic stream segment can still be fused. |
-| `rewrites`                  | Additional transformations available in pure mode. Exact mode reports none.                                      |
-| `runtimeCodeGeneration`     | Always `false`: the runtime does not use `eval` or `new Function`.                                               |
-| `aotRecommended`            | Whether the optional build-time compiler is recommended. Version 1 currently reports `true` for every plan.      |
-
-Every segment contains:
-
-- `kind`: `stream`, `boundary`, or `opaque`;
-- `domain`: currently `array`, `scalar`, or `iterable`;
-- `startIndex`: the zero-based index of its first supplied step;
-- `length`: the number of steps in that segment.
-
-## Materialization boundaries
-
-Streaming operators can process one value at a time. Sorting cannot emit its
-first result until it has seen the complete input, so it becomes a boundary:
-
-```ts
-const steps = [
-  A.map((value: number) => value * 2), // index 0
-  A.sort, // index 1
-  A.take(3), // index 2
-] as const
-
-console.log(explain(...steps))
-
-compile(...steps)([3, 1, 2, 5, 4])
-// [2, 4, 6]
+```bash
+stopcock check --strict src
 ```
 
-<VerifiedExplainReport example="boundary" />
+This reports, per call site, whether `@stopcock/fp-compiler` recognized and
+fused it or bailed and left it as an ordinary call, and why. See
+[`@stopcock/fp-compiler`](/libraries/fp-compiler) for the diagnostics
+options and [Fusion](/concepts/fusion) for what fusing actually changes.
 
-`materializationBoundaries: [1]` points to `A.sort`. The report therefore
-describes three regions:
-
-```text
-map → materialize and sort → take
- 0             1             2
-```
-
-The boundary index identifies a semantic whole-input operation. It should not
-be read as a complete allocation count: specialized lowerings can sometimes
-optimize work across adjacent segments while preserving the same observable
-semantics.
-
-## Ordinary functions become opaque
-
-Any function can still appear in a Stopcock pipeline. If it does not carry
-Stopcock's internal operation metadata, the planner treats it as an `opaque`
-whole-domain step:
-
-```ts
-const reverseCopy = (values: readonly number[]) => values.slice().reverse()
-
-const steps = [
-  A.map((value: number) => value * 2),
-  reverseCopy,
-  A.filter((value) => value < 5),
-] as const
-
-compile(...steps)([1, 2, 3])
-// [4, 2]
-```
-
-<VerifiedExplainReport example="opaque" />
-
-Opaque does not mean invalid. Stopcock calls `reverseCopy` normally and can
-still recognize the tagged segments on either side. What it cannot do is
-inspect, fuse, reorder, or eliminate the opaque function.
-
-Likewise, `generic` does not mean “unfused.” A multi-operation `stream` segment
-without a matching shape-specific template still runs through Stopcock's
-general fused stream executor.
-
-## Exact plans and pure rewrites
-
-`explain()` always reports exact semantics. Stopcock preserves callback order,
-callback count, exceptions, and other observable behavior.
-
-`explainPure()` answers a different question: what could `compilePure()` do if
-you explicitly promise that the supplied callbacks are pure?
-
-```ts
-import { explainPure } from '@stopcock/fp/compile'
-import * as A from '@stopcock/fp/array'
-
-console.log(explainPure(A.sort, A.take(3)))
-```
-
-<VerifiedExplainReport example="pure-top-k" />
-
-The `top-k` rewrite avoids completely sorting a large input when only its
-smallest three values are observed. The compiled result remains stable and
-sorted:
-
-```ts
-import { compilePure } from '@stopcock/fp'
-
-const smallestThree = compilePure(A.sort, A.take(3))
-
-smallestThree([9, 4, 1, 7, 3, 2])
-// [1, 2, 3]
-```
-
-Pure mode can also remove callbacks whose results cannot be observed:
-
-```ts
-explainPure(
-  A.map((value: number) => expensiveTransform(value)),
-  A.length,
-).rewrites
-// [{
-//   kind: 'elide-unused-map',
-//   description:
-//     'map callbacks are elided when only downstream length observes the segment'
-// }]
-```
-
-<Aside type="caution" title="Purity is a contract">
-  Use `compilePure` only when removed or reordered callback execution cannot be observed. A callback
-  that logs, mutates state, reads changing external state, or deliberately throws is not safe to
-  elide.
-</Aside>
-
-## How explain() builds the report
-
-1. Data-last Stopcock operators carry private operation and binding metadata.
-2. The planner resolves those tags into operation codes and callback bindings.
-3. It splits the operation codes at domain changes, whole-input boundaries,
-   and opaque functions.
-4. It checks whether each segment matches a checked-in template or would use
-   the generic closure-based executor.
-5. `explain()` freezes and returns the structural description. It never
-   compiles or executes the chosen runner, and it does not change optimizer
-   statistics.
-
-Callbacks and scalar arguments do not become part of the reusable shape key.
-Two pipelines with the same structure but different callbacks can therefore
-share the lowered shape without retaining or mixing up user functions.
-
-## What explain() does not currently show
-
-The version 1 report does not include:
-
-- actual elements consumed by a particular execution;
-- elapsed time, memory use, or allocation counts;
-- callback source code or captured values;
-- build-plugin transformation diagnostics;
-- why a particular AOT call site was accepted or rejected.
-
-Use the optional [`@stopcock/fp-compiler`](/libraries/fp-compiler) diagnostics
-for build-time lowering decisions, and use application benchmarks for measured
-performance. `explain()` is the reliable structural view of the portable
-runtime plan.
-
-Continue with [Fusion](/concepts/fusion) for the execution model or return to
-the [`@stopcock/fp` overview](/libraries/fp).
+`explainPure()` is `explain()` under a different name, kept for source
+parity with `compilePure`'s `assumePure` option. It also always returns
+`'sequential'`.

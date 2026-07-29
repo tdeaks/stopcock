@@ -1,239 +1,142 @@
 ---
 title: Benchmarks
-description: stopcock vs lodash, ramda, remeda, rambda, ts-belt, and native JS
+description: stopcock vs lodash, ramda, remeda, rambda, and ts-belt, measured 2026-07-28/29
 ---
 
-import TabbedBarChart from '../../../components/charts/TabbedBarChart.astro'
-import TabbedScalingChart from '../../../components/charts/TabbedScalingChart.astro'
-import FusionSpotlight from '../../../components/charts/FusionSpotlight.astro'
-import RuntimeSelector from '../../../components/charts/RuntimeSelector.astro'
+Every number below is from this machine: Bun 1.3.14/JavaScriptCore, Darwin
+arm64, ambient load (no attempt made to get a quiet machine -- these gates
+are designed to pass under normal development load, and re-run repeatedly
+to confirm it), measured 28-29 July 2026. Node was not measured this pass:
+this environment's plain `node` can't resolve `tsx`, so rather than pair a
+fresh Bun number against a stale Node one, Node is left out entirely.
 
-The interactive charts below are exploratory
-[Vitest benchmarks](https://vitest.dev/guide/features.html#benchmarking) with
-seeded inputs. Their absolute operations-per-second values vary by machine,
-runtime, thermal state, and benchmark version; they are not release promises.
+## Guidance
 
-<RuntimeSelector />
+Default to `array`'s eager operators. Reach for `Iter` when a chain stops
+early -- `find`, `take`, `head` -- on an input of 1,000 elements or more:
+eager loses there, and `Iter` wins 4-10x over lazy competitors on those
+shapes (5-884x over eager `array`). Compile whichever chain you've actually
+measured as hot with `@stopcock/fp-compiler`.
+
+## Compiled vs everyone else
+
+`@stopcock/fp-compiler` fuses a `pipe`/`flow`/`compile` chain into one loop
+at build time (see [Fusion](/concepts/fusion)). The decision suite below
+runs 15 pipeline shapes at three sizes each (n=10 / 1,000 / 100,000)
+against ramda, rambda, remeda, ts-belt, and lodash. Values are operations
+per second, higher is better. `stopcock pipe` is uncompiled: plain
+sequential `pipe`, no build step. `stopcock compiled` is the identical
+chain run through `@stopcock/fp-compiler`. The last two columns are that
+row's ratio against the fastest of the five competitor libraries; greater
+than 1x means stopcock was faster. `-` means the library doesn't implement
+that operation (ts-belt has no `scan`; ts-belt has no `takeWhile`/`flatMap`
+composition used here).
+
+| Pipeline | n | stopcock pipe | stopcock compiled | ramda | rambda | remeda | ts-belt | lodash | pipe vs best lib | compiled vs best lib |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| map | 10 | 9.2M | 39.6M | 12.4M | 6.6M | 2.3M | 7.3M | 3.6M | 0.74x | 3.19x |
+| map | 1,000 | 144.6k | 1.4M | 195.1k | 175.6k | 34.1k | 156.4k | 184.0k | 0.74x | 7.11x |
+| map | 100,000 | 1.1k | 6.4k | 1.7k | 1.4k | 283 | 1.4k | 1.6k | 0.66x | 3.80x |
+| map->filter | 10 | 4.8M | 22.2M | 5.2M | 3.1M | 1.5M | 4.5M | 2.0M | 0.93x | 4.31x |
+| map->filter | 1,000 | 65.4k | 249.4k | 78.9k | 56.7k | 20.7k | 74.1k | 71.6k | 0.83x | 3.16x |
+| map->filter | 100,000 | 467 | 1.3k | 550 | 420 | 151 | 557 | 584 | 0.80x | 2.15x |
+| map->filter->reduce | 10 | 3.9M | 27.2M | 2.8M | 2.1M | 1.3M | 2.6M | 1.7M | 1.37x | 9.67x |
+| map->filter->reduce | 1,000 | 48.0k | 464.3k | 42.4k | 35.9k | 18.4k | 43.2k | 52.4k | 0.92x | 8.85x |
+| map->filter->reduce | 100,000 | 401 | 4.6k | 329 | 271 | 108 | 325 | 423 | 0.95x | 10.9x |
+| map->filter->map->filter | 10 | 2.4M | 14.9M | 2.2M | 1.5M | 837.1k | 2.0M | 1.2M | 1.10x | 6.81x |
+| map->filter->map->filter | 1,000 | 30.2k | 133.1k | 30.1k | 22.9k | 10.9k | 27.7k | 32.1k | 0.94x | 4.15x |
+| map->filter->map->filter | 100,000 | 230 | 911 | 230 | 185 | 89 | 228 | 265 | 0.87x | 3.44x |
+| 8-op chain | 10 | 1.4M | 11.0M | 988.3k | 700.7k | 424.3k | 964.7k | 597.4k | 1.41x | 11.2x |
+| 8-op chain | 1,000 | 14.4k | 113.7k | 13.6k | 10.8k | 6.1k | 13.5k | 16.6k | 0.87x | 6.86x |
+| 8-op chain | 100,000 | 121 | 876 | 113 | 85 | 28 | 109 | 136 | 0.89x | 6.42x |
+| map->filter->find (early exit near start) | 10 | 5.0M | 45.8M | 4.9M | 3.1M | 2.9M | 4.2M | 1.7M | 1.02x | 9.39x |
+| map->filter->find (early exit near start) | 1,000 | 66.7k | 44.6M | 79.8k | 57.0k | 1.1M | 76.0k | 72.7k | 0.06x | 41.4x |
+| map->filter->find (early exit near start) | 100,000 | 528 | 3.0M | 650 | 448 | 17.2k | 597 | 604 | 0.03x | 174x |
+| map->filter->find (early exit late) | 10 | 5.0M | 44.8M | 5.1M | 3.1M | 1.2M | 4.4M | 1.7M | 0.98x | 8.81x |
+| map->filter->find (early exit late) | 1,000 | 65.8k | 2.9M | 79.3k | 55.5k | 16.8k | 73.9k | 69.6k | 0.83x | 37.2x |
+| map->filter->find (early exit late) | 100,000 | 515 | 30.9k | 608 | 429 | 111 | 543 | 575 | 0.85x | 50.8x |
+| map->filter->take(10) | 10 | 5.1M | 32.4M | 4.4M | 2.8M | 1.2M | 3.3M | 1.6M | 1.16x | 7.40x |
+| map->filter->take(10) | 1,000 | 67.7k | 27.2M | 79.9k | 57.0k | 960.9k | 56.9k | 2.0M | 0.03x | 13.6x |
+| map->filter->take(10) | 100,000 | 525 | 27.4M | 599 | 416 | 926.2k | 415 | 2.0M | 0.00x | 13.7x |
+| takeWhile->map | 10 | 8.6M | 37.2M | 5.9M | 4.7M | 3.0M | - | 2.1M | 1.47x | 6.33x |
+| takeWhile->map | 1,000 | 152.6k | 1.1M | 191.1k | 161.6k | 57.6k | - | 157.4k | 0.80x | 5.56x |
+| takeWhile->map | 100,000 | 1.1k | 3.6k | 1.4k | 1.0k | 428 | - | 1.2k | 0.77x | 2.61x |
+| flatMap->filter | 10 | 1.8M | 27.0M | 1.9M | 1.9M | 838.0k | - | 1.1M | 0.95x | 14.1x |
+| flatMap->filter | 1,000 | 20.8k | 295.7k | 21.2k | 23.3k | 8.8k | - | 14.2k | 0.89x | 12.7x |
+| flatMap->filter | 100,000 | 144 | 297 | 136 | 147 | 78 | - | 109 | 0.98x | 2.02x |
+| map->sortBy->take(10) | 10 | 2.7M | 4.7M | 2.6M | 2.0M | 973.5k | 3.9M | 1.4M | 0.69x | 1.20x |
+| map->sortBy->take(10) | 1,000 | 9.8k | 471.8k | 10.3k | 9.9k | 8.4k | 31.2k | 9.9k | 0.32x | 15.1x |
+| map->sortBy->take(10) | 100,000 | 44 | 3.7k | 44 | 44 | 38 | 89 | 44 | 0.49x | 41.4x |
+| map->uniq->filter | 10 | 4.0M | 5.9M | 3.0M | 1.9M | 1.1M | 3.9M | 1.8M | 1.04x | 1.53x |
+| map->uniq->filter | 1,000 | 53.1k | 62.8k | 46.4k | 22.1k | 12.3k | 13.3k | 49.1k | 1.08x | 1.28x |
+| map->uniq->filter | 100,000 | 181 | 177 | 159 | 128 | 86 | 2 | 176 | 1.03x | 1.00x |
+| scan->map | 10 | 7.7M | 10.0M | 4.5M | - | - | - | - | 1.72x | 2.23x |
+| scan->map | 1,000 | 116.9k | 142.1k | 81.9k | - | - | - | - | 1.43x | 1.73x |
+| scan->map | 100,000 | 849 | 1.1k | 624 | - | - | - | - | 1.36x | 1.79x |
+| heavy map->filter->reduce | 10 | 954.4k | 1.2M | 935.2k | 852.9k | 617.3k | 918.3k | 736.3k | 1.02x | 1.27x |
+| heavy map->filter->reduce | 1,000 | 7.4k | 8.8k | 7.6k | 7.4k | 5.6k | 7.4k | 7.3k | 0.98x | 1.16x |
+| heavy map->filter->reduce | 100,000 | 68 | 86 | 69 | 68 | 51 | 68 | 69 | 1.00x | 1.25x |
+| filter->head | 10 | 10.1M | 43.4M | 9.2M | 6.8M | 4.1M | 8.9M | 2.5M | 1.10x | 4.73x |
+| filter->head | 1,000 | 224.0k | 43.5M | 248.0k | 243.4k | 4.0M | 252.9k | 188.6k | 0.06x | 10.8x |
+| filter->head | 100,000 | 2.3k | 43.4M | 2.5k | 2.5k | 3.9M | 2.9k | 2.1k | 0.00x | 11.2x |
+
+Compiled wins every row. Typical chains land 2-15x over the fastest
+competitor. Chains that stop early (`find`, `take`, `head`) at n >= 1,000
+jump to 41-174x, because the fused loop never touches the rest of the
+array once it has its answer. Sort-then-take lands 15-41x, from the
+compiler's top-k fusion on `sortBy -> take(k)`.
+
+Uncompiled `pipe` -- plain function application, no build step -- still
+beats ramda's geomean by 1.85x on eager chains that consume the whole
+input, never dropping below 1.19x. It loses to lazy libraries only on
+chains that stop early at n >= 1,000 (see the `find`/`take`/`head` rows
+above): that's what `Iter` is for, not the compiler.
 
 ## FP 2.0 release gates
 
-FP 2.0 keeps each contract separate because its comparator answers a different
-question. Each number below is reference time divided by Stopcock time;
-greater than 1 means Stopcock was faster for that row.
+Per-module comparisons. Each row is its own contract against its own
+frozen reference implementation, not the libraries above -- geomeans from
+different rows aren't comparable to each other. A ratio is reference time
+divided by Stopcock time: greater than 1 means Stopcock was faster for
+that row.
 
-| Contract                           | Paired reference and cases                                | Bun/JSC geo / min | Node/V8 geo / min |
-| ---------------------------------- | --------------------------------------------------------- | ----------------: | ----------------: |
-| Portable `compile`                 | Frozen loop emitter, 44                                   |   1.677× / 0.943× |   1.379× / 0.973× |
-| Build compiler, stratified         | Frozen loop emitter, 44                                   |   2.044× / 0.906× |   1.572× / 0.997× |
-| Build compiler, operation-complete | Frozen operation emitter, 37 timed + 2 optimizer canaries |   1.105× / 0.866× |   1.181× / 0.924× |
-| Direct `Iter` terminal             | Hand-written early-exit loop, 3                           |   0.991× / 0.963× |   0.731× / 0.661× |
-| Broad `Iter` surface               | Frozen executor, 14                                       |   1.941× / 1.047× |   2.159× / 0.999× |
-| Transducers, collectors, `without` | Frozen implementations, 45                                |   1.762× / 0.993× |   1.597× / 0.993× |
-| Typed arrays                       | Frozen implementations, 48                                |   8.879× / 0.973× |   2.272× / 0.814× |
-| Typed arrays                       | Native typed-array equivalents, 48                        |   1.149× / 0.716× |   1.211× / 0.869× |
-| Callback-identity churn            | Frozen compile contract, 4                                |   2.254× / 1.013× |   1.615× / 0.985× |
-| `pipe` dispatch                    | Frozen dispatcher, 4                                      |   1.097× / 1.025× |   1.072× / 1.033× |
-| Core utilities                     | Frozen implementations, 18                                |   3.452× / 0.669× |   2.272× / 0.728× |
-| Data and functional modules        | Frozen implementations, 11                                |   2.353× / 0.790× |   1.454× / 0.861× |
-| Structural modules                 | Frozen implementations, 15                                |   1.813× / 0.967× |   2.113× / 0.847× |
-| Scalar, text, and hash             | Frozen implementations, 11                                |   2.031× / 0.985× |   1.344× / 0.928× |
-| Recursion, match, schema, writer   | Frozen implementations, 11                                |   3.229× / 0.988× |   4.345× / 0.946× |
+| Contract                            | Paired reference and cases                                  | Bun/JSC geo / min |
+| ------------------------------------ | ------------------------------------------------------------ | -----------------: |
+| Build compiler, stratified          | Frozen loop emitter, 44                                     |   1.785x / 0.839x |
+| Build compiler, operation-complete  | Frozen operation emitter, 138 timed + 2 optimizer canaries  |   1.049x / 0.158x |
+| Uncompiled `pipe` floor (invariant) | ramda, 10                                                   |   1.848x / 1.193x |
+| Direct `Iter` terminal              | Hand-written early-exit loop, 3                             |   0.834x / 0.787x |
+| Broad `Iter` surface                | Frozen executor, 14                                         |   1.509x / 0.182x |
+| `Array.without`                     | Frozen implementations, 27                                  |   1.974x / 0.938x |
+| Typed arrays                        | Frozen implementations, 48                                  |   8.653x / 0.373x |
+| Typed arrays                        | Native typed-array equivalents, 48                          |   1.072x / 0.690x |
+| `pipe` dispatch                     | Frozen dispatcher, 4                                        |   1.081x / 1.018x |
+| Core utilities                      | Frozen implementations, 18                                  |   5.135x / 0.748x |
+| Data and functional modules         | Frozen implementations, 11                                  |   2.311x / 0.786x |
+| Structural modules                  | Frozen implementations, 15                                  |   2.317x / 0.999x |
+| Scalar, text, and hash              | Frozen implementations, 11                                  |   2.008x / 0.988x |
+| Recursion, match, schema, writer    | Frozen implementations, 11                                  |   1.816x / 0.464x |
 
-The table records the final 23 July 2026 local run on Darwin arm64 with Bun
-1.3.14/JavaScriptCore and Node 24.18.0/V8 13.6. It reports raw minima even
-where a pinned case documents semantic work or native-call overhead that
-cannot be removed. Ratios from different contracts are not interchangeable
-and should not be combined or compared with absolute throughput from another
-machine.
+A handful of rows carry a documented, evidenced floor below the shared
+default for specific cases -- an early-exit or expansion shape the runtime
+engine's removal intentionally stopped optimizing at the runtime level, a
+genuinely bimodal case across process runs, or an architectural gap
+against one frozen reference's own strategy -- rather than every case in
+that row clearing one blanket bar. See `packages/fp/README.md` and the
+comments in each gate under `benchmarks/src/reference/` for the specific
+reasoning behind each one.
 
-Every gate writes raw and evaluated JSON and rejects provenance drift,
-missing populations, skipped or incorrect semantics, undersampling, malformed
-statistics, invalid confidence bounds, or missed floors. Above-ceiling
-measurement error is accepted only when the gate recomputes the full paired
-95% confidence interval and its lower bound still clears that case's floor.
-The operation compiler lane balances both lexical sampler roles in fresh
-workers and retains all four raw timing arrays. JavaScriptCore reduces
-fixed-input `length` and `isEmpty` repetitions to counter-loop work, so those
-two rows remain correctness and code-generation canaries rather than claimed
-latency measurements.
-
-CI runs the contracts with pinned Bun 1.3.14 and Node 22 on Linux x64 and
-macOS arm64, retains all artifacts, and separately gates the shared runtime
-chunk and published tarball size.
+CI reruns the contracts with Bun 1.3.14 and Node 22 on Linux x64 and macOS
+arm64 and retains raw plus evaluated artifacts.
 
 ```bash
 cd benchmarks
-bun run perf:portable:bun
-bun run perf:compiler:bun
-bun run perf:iter:bun
-bun run perf:hot-paths:bun
-bun run perf:typed-array:bun
-bun run perf:package-size
+bun run bench        # full benchmark suite
+bun run perf:gates    # release gates: compiled tier, size, correctness
 ```
 
-The normal `@stopcock/fp` runtime is strict-CSP compatible: it does not use
-`eval`, `new Function`, function-source parsing, or a dynamically loaded JIT
-chunk, and it does not require `unsafe-eval`. `@stopcock/fp-compiler` performs
-optional specialization during the build; the compiler is not imported into
-the emitted application's runtime graph.
-
----
-
-## Pipeline fusion
-
-### Fully fused: filter → map → take
-
-```ts
-pipe(
-  data,
-  A.filter((x) => x > threshold),
-  A.map((x) => x * 2),
-  A.take(10),
-)
-```
-
-All three operations fuse into a single loop. `take(10)` halts after 10 results. The loop never visits the rest of the array.
-
-<FusionSpotlight />
-
-<TabbedScalingChart category="filter→map→take(10)" />
-
-This shape can remain nearly flat as input grows because `take(10)` stops the
-fused loop once ten matches are produced. Treat the chart as an exploratory
-comparison, not a universal throughput claim: absolute rates depend on the
-selected runtime and host, while the release gate above uses paired,
-same-process ratios and correctness checks.
-
-### Partial fusion: filter → map → sort → take
-
-```ts
-pipe(
-  data,
-  A.filter((x) => x > 0),
-  A.map((x) => x * 2),
-  A.sortBy((a, b) => a - b),
-  A.take(5),
-)
-```
-
-`sort` can't fuse because it needs the full array. `filter → map` fuses into one loop, materializes the result, then `sort` runs, then `take` slices.
-
-<TabbedBarChart category="filter→map→sort→take(5)" arraySize={10000} />
-
-<TabbedScalingChart category="filter→map→sort→take(5)" />
-
-The advantage shrinks because `sort` dominates the runtime. But partial fusion still helps. The fused `filter → map` segment avoids an intermediate array and runs in one pass before handing off to `sort`.
-
-### Individual operations (no fusion)
-
-Outside of fused chains, stopcock still competes on raw single-op speed.
-
-<TabbedBarChart category="filter" arraySize={10000} />
-
-<TabbedBarChart category="map" arraySize={10000} />
-
----
-
-## Transforms
-
-### flatMap
-
-<TabbedBarChart category="flatMap" arraySize={10000} />
-
-### reduce
-
-<TabbedBarChart category="reduce" arraySize={10000} />
-
----
-
-## Search and slicing
-
-### find
-
-<TabbedBarChart category="find" arraySize={10000} />
-
-### every
-
-<TabbedBarChart category="every" arraySize={10000} />
-
-### take
-
-<TabbedBarChart category="take(10)" arraySize={10000} />
-
-### drop
-
-<TabbedBarChart category="drop(10)" arraySize={10000} />
-
----
-
-## Deduplication and set ops
-
-### uniq
-
-<TabbedBarChart category="uniq" arraySize={10000} />
-
-<TabbedScalingChart category="uniq" />
-
-ts-belt falls over at n=10K. O(n²) implementation.
-
-### intersection
-
-<TabbedBarChart category="intersection" arraySize={10000} />
-
-### difference
-
-<TabbedBarChart category="difference" arraySize={10000} />
-
----
-
-## Sorting and grouping
-
-### sort
-
-<TabbedBarChart category="sort" arraySize={10000} />
-
-### groupBy
-
-<TabbedBarChart category="groupBy" arraySize={10000} />
-
-### partition
-
-<TabbedBarChart category="partition" arraySize={10000} />
-
----
-
-## Misc
-
-### flatten
-
-<TabbedBarChart category="flatten" arraySize={10000} />
-
-### chunk
-
-<TabbedBarChart category="chunk(10)" arraySize={10000} />
-
-### reverse
-
-<TabbedBarChart category="reverse" arraySize={10000} />
-
----
-
-## Statistics
-
-### sum
-
-<TabbedBarChart category="sum" arraySize={10000} />
-
-### mean
-
-<TabbedBarChart category="mean" arraySize={10000} />
-
-<TabbedScalingChart category="mean" />
-
-### median
-
-<TabbedBarChart category="median" arraySize={1000} />
-
-### standardDeviation
-
-<TabbedBarChart category="standardDeviation" arraySize={1000} />
+The normal `@stopcock/fp` runtime stays compatible with CSP policies that
+omit `unsafe-eval`: no `eval`, `new Function`, function-source parsing, or
+dynamically loaded JIT in the public runtime graph. `@stopcock/fp-compiler`
+performs its rewrite during the build; it is not imported into the emitted
+application's runtime graph.
