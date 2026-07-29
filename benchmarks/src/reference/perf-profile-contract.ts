@@ -59,7 +59,20 @@ const LOCAL_MACOS_ARM64: PerfProfile = {
   osReleaseMajors: ['25'],
   runtimes: [
     { runtime: 'bun', versions: ['1.3.14'] },
-    { runtime: 'node', versions: ['24.18.0'], canary: true },
+    // 24.18.1 added 2026-07-29: requalification, not a tolerance widening.
+    // The toolchain-managed node install moved 24.18.0 -> 24.18.1 (patch
+    // bump, same machine), which made the live-host test fail every run,
+    // not intermittently, on one entry: "node 24.18.1 is not an accepted
+    // profile version (24.18.0)". That test only calls resolveProfile(), an
+    // exact-match identity check with no timing and no clock, so ambient
+    // load can't cause or fix it. cpu brand, core count and os release were
+    // unchanged, confirming this is the same qualified host, not drift onto
+    // a different one, so 24.18.0 stays listed rather than being replaced.
+    // Node's numbers were never release evidence, so this doesn't need a
+    // rerun of the noisy variance qualification in perf-profile-gate.ts's
+    // main() -- that stays a one-time quiet-machine ceremony, unrelated to
+    // this exact-match check.
+    { runtime: 'node', versions: ['24.18.0', '24.18.1'], canary: true },
   ],
   variance: {
     maxWithinSessionSpread: 0.12,
