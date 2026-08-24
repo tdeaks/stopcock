@@ -209,7 +209,7 @@ Append one line per phase: `Phase N landed at <commit>`.
 
 Phase 0 landed at 3e95eaf.
 
-Phase 1 executed 2026-08-24 (landing commit appended below once made).
+Phase 1 landed at 3771dee (plus this ledger-line commit).
 
 Emission: dual-inline.ts now emits dual factories for array (143 ops),
 boolean (3), math (8); 121 arity-2+ closures, policy split delegate/inline
