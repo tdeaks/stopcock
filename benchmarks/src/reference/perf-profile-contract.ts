@@ -58,7 +58,14 @@ const LOCAL_MACOS_ARM64: PerfProfile = {
   logicalCpus: 14,
   osReleaseMajors: ['25'],
   runtimes: [
-    { runtime: 'bun', versions: ['1.3.14'] },
+    // 1.4.0 added 2026-08-24: the toolchain-managed bun moved 1.3.14 ->
+    // 1.4.0 on the same machine (cpu brand, cores, os release unchanged).
+    // Unlike the node entries below, bun IS the release-evidence runtime,
+    // so this was not a list-and-move-on requalification: perf-profile-
+    // gate.ts's own no-change variance ceremony was re-run under 1.4.0 on
+    // a quiet machine and passed (session medians and spreads in the gate
+    // report). 1.3.14 stays listed for older checkouts of the toolchain.
+    { runtime: 'bun', versions: ['1.3.14', '1.4.0'] },
     // 24.18.1 added 2026-07-29: requalification, not a tolerance widening.
     // The toolchain-managed node install moved 24.18.0 -> 24.18.1 (patch
     // bump, same machine), which made the live-host test fail every run,
@@ -72,7 +79,11 @@ const LOCAL_MACOS_ARM64: PerfProfile = {
     // rerun of the noisy variance qualification in perf-profile-gate.ts's
     // main() -- that stays a one-time quiet-machine ceremony, unrelated to
     // this exact-match check.
-    { runtime: 'node', versions: ['24.18.0', '24.18.1'], canary: true },
+    // 24.19.0 added 2026-08-24: same requalification pattern as above. The
+    // toolchain-managed node moved 24.18.1 -> 24.19.0 on the same machine
+    // (cpu brand, cores, os release unchanged); exact-match identity check,
+    // no timing involved, prior versions stay listed.
+    { runtime: 'node', versions: ['24.18.0', '24.18.1', '24.19.0'], canary: true },
   ],
   variance: {
     maxWithinSessionSpread: 0.12,

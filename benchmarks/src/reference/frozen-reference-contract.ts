@@ -44,7 +44,11 @@ export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
     'packages/fp/src/option.ts',
     'packages/fp/src/sort-kernel.ts',
   ] as const),
-  sha256: '54458e66db1dd4eeed78a39d047d558f7f87d7b801c4e134a88e4e8740a1d093',
+  // Re-pinned 2026-08-24: src/array.ts regenerated with dual emission
+  // (2026-08-24-dual-performance-first.md Phase 1). Curried closures are
+  // byte-identical to the single-form emission; only factory headers and
+  // the data-first dispatch branch changed.
+  sha256: '63ab34d6133b6a162b1c11e7fe0a4a1f68dfe23ca835c85ea05ad8b62dddce34',
 })
 
 export interface PortableBatchPolicy {

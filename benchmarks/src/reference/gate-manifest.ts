@@ -29,6 +29,8 @@ export type GateGroup =
   | 'parity:compiler'
   /** Iter and typed-array execution against frozen baselines. */
   | 'parity:iter'
+  /** Dual factories against the frozen single-form emission. */
+  | 'parity:dual'
   /** Retained heap and allocation counts. */
   | 'allocation'
   /** Stopcock against the competing libraries. */
@@ -83,6 +85,13 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     group: 'competitors',
     checks:
       'invariant 4: plain (uncompiled) pipe chains stay within 1.2x of ramda on the decision suite\'s eager shapes -- there is no runtime fusion engine left, so this is the floor the compiler earns its keep against',
+  }),
+  Object.freeze({
+    script: 'dual-parity-gate.ts',
+    kind: 'timing',
+    group: 'parity:dual',
+    checks:
+      'dual-performance-first invariant 3: the dual factories stay at parity (geomean >= 0.97, rows >= 0.90) with the frozen single-form emission on hoisted-pipe, construction, and hoisted-scalar rows',
   }),
   Object.freeze({
     script: 'compiler-perf-sessions-gate.ts',

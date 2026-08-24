@@ -1,20 +1,31 @@
 /**
- * Dual Inliner. Emits single-form (data-last only) factories from bodies
- * written against dual()'s data-first shape.
+ * Dual Inliner. Emits dual-form (data-first and curried) factories from
+ * bodies written against dual()'s data-first shape.
  *
  * Usage: bun run codegen/dual-inline.ts
  * Input:  codegen/defs/*.ts   (human-written, uses dual())
- * Output: src/*.ts            (generated, single-form factory per op)
+ * Output: src/*.ts            (generated, one dual factory per op)
  *
- * Every generated op is `op(...args) => (data) => result`. There is no
- * `arguments.length` dispatch and no data-first call form -- one runtime
- * path. The `dual()` bodies in codegen/defs/ stay data-first
- * (`(data, ...args) => result`) purely as the authoring convention; this
- * generator flips them at build time.
+ * Every arity-2+ op answers both call shapes under one name:
+ * `op(data, ...args)` returns the result, `op(...args)` returns the curried
+ * step. Dispatch is a bare `arguments.length` branch, emitted per op by the
+ * measured policy of docs/superpowers/plans/2026-08-24-dual-performance-first.md
+ * (Phase 0 ledger):
  *
- * Generated factories carry no runtime tag any more (no `_op`/`_fn`/`_a1`/
- * `_a2`, no `registerTrustedOperator`): the fused runtime engine that tag
- * machinery existed for is gone, and `@stopcock/fp-compiler` recognises
+ *   delegate - loop-bodied ops. The data-first branch re-enters the curried
+ *              form (`return op(...cfg)(data)`); the curried branch returns
+ *              a closure byte-identical to the old single-form emission
+ *              (invariant 1). Smallest bytes; the one extra closure per
+ *              data-first call is invisible next to the loop it runs.
+ *   inline   - loop-free, short bodies (scalar-class ops), where the
+ *              inlined body is smaller than the delegation call and the
+ *              delegation tax was the only measurable one. Both branches
+ *              carry the body; the curried closure stays byte-identical.
+ *
+ * No generic dual() wrapper appears in shipped output -- the Phase 0 bench
+ * showed the old arity-check tax was the wrapper machinery, never the
+ * branch. Generated factories carry no runtime tag (no `_op`/`_fn`/`_a1`/
+ * `_a2`, no `registerTrustedOperator`): `@stopcock/fp-compiler` recognises
  * operators by import name at build time, never by a runtime marker.
  */
 
@@ -372,97 +383,23 @@ function generateArity1(dc: DualCall): string {
   return `${decl} = function ${dc.name}(${params.join(': any, ')}: any) { ${bodyCode} } as any\n`
 }
 
-// --- Single-form (data-last only) signature rewriting ---
+// --- Dual emission ---
 //
 // codegen/defs/*.ts writes each arity>=2 op's type as a two-branch (or, for
 // refinement-narrowing ops, four-branch) call-signature object: the
-// data-first branch(es) first, the data-last (curried) branch(es) last. The
-// single-form world keeps only the curried branches. One kept branch
-// collapses to a plain arrow function type; more than one stays as an
-// object-of-call-signatures block (overloads on a const still need that
-// shape) with the discarded branches removed.
+// data-first branch(es) first, the data-last (curried) branch(es) last.
+// Dual emission ships the annotation whole; the single-form world used to
+// filter it down to the curried branches, and that filter went with it.
 
-function splitSignatureLines(inner: string): string[] {
-  const rawLines = inner.split('\n')
-  const sigs: string[] = []
-  let current: string[] = []
-  for (const raw of rawLines) {
-    const trimmed = raw.trim()
-    if (!trimmed) continue
-    if ((trimmed.startsWith('<') || trimmed.startsWith('(')) && current.length > 0) {
-      sigs.push(current.join('\n'))
-      current = [raw]
-    } else {
-      current.push(raw)
-    }
-  }
-  if (current.length) sigs.push(current.join('\n'))
-  return sigs
-}
-
-/** A signature `<G>(params): Ret` is data-last iff Ret is itself a function type. */
-function isDataLastSignature(sig: string): boolean {
-  const trimmed = sig.trim()
-  let i = 0
-  if (trimmed[i] === '<') {
-    const r = angleBlock(trimmed, i)
-    if (!r.success) return false
-    i = r.position
-  }
-  while (i < trimmed.length && /\s/.test(trimmed[i])) i++
-  if (trimmed[i] !== '(') return false
-  const end = findMatchingClose(trimmed, i)
-  let j = end + 1
-  while (j < trimmed.length && /\s/.test(trimmed[j])) j++
-  if (trimmed[j] !== ':') return false
-  j++
-  while (j < trimmed.length && /\s/.test(trimmed[j])) j++
-  // Return type may itself open with a generic prefix before its own params,
-  // e.g. `<A extends ...>(arr) => A[K][]` (pluck's data-last branch).
-  if (trimmed[j] === '<') {
-    const r = angleBlock(trimmed, j)
-    if (!r.success) return false
-    j = r.position
-    while (j < trimmed.length && /\s/.test(trimmed[j])) j++
-  }
-  return trimmed[j] === '('
-}
-
-/** Rewrites one call signature `<G>(params): Ret` into a standalone arrow type `<G>(params) => Ret`. */
-function arrowFormOf(sig: string): string {
-  const trimmed = sig.trim()
-  let i = 0
-  let generics = ''
-  if (trimmed[i] === '<') {
-    const r = angleBlock(trimmed, i)
-    if (r.success) {
-      generics = `<${r.value}>`
-      i = r.position
-    }
-  }
-  while (i < trimmed.length && /\s/.test(trimmed[i])) i++
-  const parenStart = i
-  const end = findMatchingClose(trimmed, i)
-  const params = trimmed.slice(parenStart, end + 1)
-  let j = end + 1
-  while (j < trimmed.length && /\s/.test(trimmed[j])) j++
-  j++ // skip ':'
-  while (j < trimmed.length && /\s/.test(trimmed[j])) j++
-  const ret = trimmed.slice(j).trim()
-  return `${generics}${params} => ${ret}`
-}
-
-/** Filters a dual() type annotation down to its data-last branch(es) only. */
-function singleFormAnnotation(annotation: string): string {
-  const trimmed = annotation.trim()
-  if (!trimmed.startsWith('{')) return trimmed
-  const closeBrace = trimmed.lastIndexOf('}')
-  const inner = trimmed.slice(1, closeBrace)
-  const sigs = splitSignatureLines(inner)
-  const kept = sigs.filter(isDataLastSignature)
-  if (kept.length === 0) return trimmed
-  if (kept.length === 1) return arrowFormOf(kept[0])
-  return `{\n  ${kept.map((s) => s.trim()).join('\n  ')}\n}`
+/**
+ * The Phase 0 policy (2026-08-24-dual-performance-first.md, ledger): inline
+ * when the body has no loop and is short enough that the inlined body beats
+ * the delegation call on bytes; delegate otherwise. Per-op overrides land
+ * here when a bench row earns one.
+ */
+function dispatchPolicy(bodyText: string): 'delegate' | 'inline' {
+  if (/\b(for|while)\s*\(/.test(bodyText)) return 'delegate'
+  return bodyText.length <= 200 ? 'inline' : 'delegate'
 }
 
 function generateArityN(dc: DualCall): string {
@@ -472,12 +409,18 @@ function generateArityN(dc: DualCall): string {
 
 function generateArityNRef(dc: DualCall, n: number): string {
   const ref = dc.bodyStr
-  const decl = typeDecl(dc.name, singleFormAnnotation(dc.typeAnnotation))
+  const decl = typeDecl(dc.name, dc.typeAnnotation)
   const factoryParams = Array.from({ length: n - 1 }, (_, i) => `_a${i}`)
-  const factoryArgs = factoryParams.map((p) => `${p}: any`).join(', ')
+  const factoryArgs = [
+    `${factoryParams[0]}: any`,
+    ...factoryParams.slice(1).map((p) => `${p}?: any`),
+    '__df?: any',
+  ].join(', ')
   const callArgs = ['data', ...factoryParams].join(', ')
+  const dataFirstArgs = [...factoryParams, '__df'].join(', ')
 
-  return `${decl} = function ${dc.name}(${factoryArgs}) {
+  return `${decl} = function ${dc.name}(${factoryArgs}): any {
+  if (arguments.length >= ${n}) return ${ref}(${dataFirstArgs})
   return function (data: any) {
     return ${ref}(${callArgs})
   }
@@ -487,13 +430,45 @@ function generateArityNRef(dc: DualCall, n: number): string {
 function generateArityNInline(dc: DualCall): string {
   const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
   const bodyCode = isExpression ? `return ${bodyText}` : bodyText
-  const decl = typeDecl(dc.name, singleFormAnnotation(dc.typeAnnotation))
+  const decl = typeDecl(dc.name, dc.typeAnnotation)
 
   const dataParam = params[0]
   const factoryParams = params.slice(1)
-  const factoryArgs = factoryParams.map((p) => `${p}: any`).join(', ')
+  const n = dc.arity
 
-  return `${decl} = function ${dc.name}(${factoryArgs}) {
+  if (dispatchPolicy(bodyText) === 'inline') {
+    // Neutral slots plus per-branch aliases: the def's own param names stay
+    // usable in both branches without TDZ traps, and the curried closure
+    // text stays byte-identical to the single-form emission (invariant 1).
+    const slotArgs = ['a0: any', ...params.slice(1).map((_, i) => `a${i + 1}?: any`)].join(', ')
+    const dataFirstAliases = params.map((p, i) => `${p} = a${i}`).join(',\n      ')
+    const curriedAliases = factoryParams.map((p, i) => `${p} = a${i}`).join(',\n    ')
+
+    return `${decl} = function ${dc.name}(${slotArgs}): any {
+  if (arguments.length >= ${n}) {
+    const ${dataFirstAliases}
+    ${bodyCode}
+  }
+  const ${curriedAliases}
+  return function (${dataParam}: any) {
+    ${bodyCode}
+  }
+} as any\n`
+  }
+
+  // Delegate: the factory keeps the single-form shape (the def's own config
+  // param names, the identical curried closure) with the data-first branch
+  // prepended. On that path the config names hold shifted slots (the first
+  // config param carries the data); the delegation call restores the order.
+  const factoryArgs = [
+    `${factoryParams[0]}: any`,
+    ...factoryParams.slice(1).map((p) => `${p}?: any`),
+    '__df?: any',
+  ].join(', ')
+  const delegationCfg = [...factoryParams.slice(1), '__df'].join(', ')
+
+  return `${decl} = function ${dc.name}(${factoryArgs}): any {
+  if (arguments.length >= ${n}) return ${dc.name}(${delegationCfg})(${factoryParams[0]})
   return function (${dataParam}: any) {
     ${bodyCode}
   }

@@ -115,19 +115,29 @@ Gate: policy table in Ledger, bench committed, baselines pinned.
 
 ## Phase 1: codegen emission for array, boolean, math
 
-- [ ] dual-inline.ts second template: dispatch per the policy table.
-      Codegen test asserts invariant 1 (closure-body diff against the
-      single-form emission).
-- [ ] Emit per-op overload signature pairs. Ambiguity audit of defs first:
-      any op whose data-first and curried call shapes can collide on
-      argument count gets predicate dispatch (Effect-style) and a test.
-- [ ] test-d: pipe with unannotated lambdas, data-first inference,
-      filter/guard 4-overload matrix, wrong-shape calls are type errors.
-- [ ] Re-pin, deliberately and in one commit, every gate that sha256-pins
-      generated sources: scalar-text-hash, core-utilities, structural,
-      third-wave, frozen-reference-contract. Listed here so it is a step,
-      not a mid-phase discovery.
-- [ ] Wire the dual-parity gate (invariant 3) into run-gates.ts.
+- [x] dual-inline.ts second template: dispatch per the policy table.
+      Invariant 1 proven mechanically at conversion time (a comparator over
+      old and new emissions: 121/121 curried closures byte-identical) and
+      pinned permanently by src/__tests__/dual-emission.test.ts, which
+      checks representative closure text against the generated file itself
+      (transform-independent) plus a 14-op data-first/curried parity table.
+- [x] Emit per-op overload signature pairs. The defs' two-branch (and
+      four-branch narrowing) annotations were never discarded; the old
+      emitter filtered them down to curried-only and the dual emitter ships
+      them whole. Ambiguity audit of array/boolean/math defs: zero optional
+      or variadic params, so no predicate dispatch is needed in Phase 1 at
+      all; that class lives in string (Phase 2).
+- [x] test-d: dual-emission-types.test-d.ts covers data-first generic
+      inference, contextual callback params, guard narrowing both shapes,
+      pipe with unannotated lambdas, and wrong-shape calls as type errors.
+- [x] Re-pin, deliberately and in one commit, every gate that sha256-pins
+      generated sources. The audit found exactly one: frozen-reference-
+      contract.ts's portable-runtime digest (includes src/array.ts).
+      scalar-text-hash, core-utilities, structural, third-wave pin only
+      hand-written modules this phase does not touch. Re-pinned with the
+      digest recomputed by the gate's own algorithm.
+- [x] Wire the dual-parity gate (invariant 3) into run-gates.ts
+      (benchmarks/src/reference/dual-parity-gate.ts, group parity:dual).
 
 Gate: packages/fp suite green, all 23 + 1 gates green, byte deltas in
 Ledger, compiler-perf-gate unchanged.
@@ -198,6 +208,87 @@ adopting data-first. Webpack support. Compiled-tier semantic changes.
 Append one line per phase: `Phase N landed at <commit>`.
 
 Phase 0 landed at 3e95eaf.
+
+Phase 1 executed 2026-08-24 (landing commit appended below once made).
+
+Emission: dual-inline.ts now emits dual factories for array (143 ops),
+boolean (3), math (8); 121 arity-2+ closures, policy split delegate/inline
+by body shape (loop or >200 chars -> delegate, else inline), zero
+predicate-dispatch ops needed (the ambiguity audit of these three modules
+found no optional/variadic params). Types are the defs' own two-branch
+annotations shipped whole; no generic dual type anywhere.
+
+Invariant 1: proven mechanically at conversion time -- a comparator
+extracted the curried closure text of every arity-2+ op from the old
+(git HEAD single-form) and new (dual) emissions: 121/121 byte-identical.
+Pinned permanently by src/__tests__/dual-emission.test.ts against the
+generated file text (transform-independent), plus a 14-op data-first/
+curried behavioral parity table. dual-emission-types.test-d.ts holds the
+type-level contract (data-first generic inference, contextual lambdas in
+pipe, guard narrowing both shapes, wrong-shape calls rejected).
+
+Suites: packages/fp 948/948 (42 files, includes the two new files);
+fp-compiler 557/557 untouched; full monorepo suite
+(--exclude synth/date) 181 files / 3724 tests, all green after two
+manifest fixes (parity:dual registered as a gate group; node 24.19.0
+requalified in perf-profile-contract.ts per the 0fe5c26 pattern).
+check:types and check:source clean. codegen determinism (three identical
+regenerations) verified by check-codegen-reproducibility's canonical
+passes; its final tracked-and-clean assertion verified green after the
+landing commit.
+
+Gates, substantive (all pass):
+- dual-parity-gate (new, invariant 3, wired into run-gates as
+  parity:dual): geomean 1.000, min 0.931 (construction/take, RME 8.74%),
+  7/7 rows correct. The dispatch branch measures at zero, now enforced.
+- pipe-floor: geomean 1.559, min 1.081 vs the 0.833 floor.
+- compiler-perf: geomean 1.864 / 1.916 / 1.895 across three isolated
+  runs (invariant >= 1.8 holds; one worst-case row read 0.761 on the
+  first run and did not reproduce -- 0.905, 0.906 after).
+- compiler-operation-perf, compiler-perf-sessions, s10-hand-loop,
+  pipe-dispatch, iter-perf, iter-compiled-perf: green in the full
+  manifest run.
+- Size gates: s8-root -- sequential.common-pipeline 220 -> 246 B gzip
+  (+26 B, the dispatch bytes; ceiling 1536 B), every other row unchanged
+  (root.pipe 126, root.flow 138, named-fixture 154, enumerated 403).
+  s3b-untagged unchanged (140/126/66/303 B -- none of those modules are
+  regenerated). fp-package: shared runtime 629 B unchanged, same-package
+  lower-bound 37033 -> 38012 (+979 B whole-package dispatch cost,
+  ceiling 100000). All inside D3's budget; no ceiling changed.
+
+Provenance re-pins, both evidenced:
+- frozen-reference-contract portable-runtime digest re-pinned (includes
+  the regenerated src/array.ts).
+- core-utilities subject digest re-pinned: found stale at HEAD BEFORE
+  this phase (verified by hashing the six subject files at HEAD with the
+  gate's own algorithm -- none of them generated, none changed here); the
+  same touched-without-repinning gap the one-runtime-path ledger
+  documented for scalar-text-hash. Pre-existing, fixed in passing.
+
+Gates, noise-blocked (documented, not chased): the full 24-gate manifest
+run and solo re-runs were taken with measured heavy ambient load resident
+(a Virtualization.framework VM at 78% CPU, WindowServer 47%, two agent
+apps at 20-40%, Docker 20%). Six gates fail ONLY on RME (measurement
+precision), with every substantive floor passing in the same runs:
+core-utilities geomean 4.646 / floors pass, structural 2.252 / worst
+1.002, third-wave 2.296 / worst 0.776 vs 0.150 floor, without 2.007 /
+min 0.957, scalar-text-hash geomean 1.850, iter-broad geomean 1.556,
+typed-array frozen geomean 7.663 (concat rows read RME up to 588%, pure
+scheduler chaos, plus the known-tight float64/reverse/64 boundary row at
+0.900 vs 0.920 on a module this phase never touched). perf-profile-gate
+fails as designed -- it is the quiet-machine detector, and the machine is
+not quiet: its no-change ceremony read one outlier session (spread
+0.19-0.20 vs the 0.12 ceiling) in each of two runs, different session
+position each time, bias 0.0004. No tolerance was widened.
+
+Toolchain requalification: the managed bun moved 1.3.14 -> 1.4.0 and node
+24.18.1 -> 24.19.0 since 0fe5c26; both added to perf-profile-contract.ts
+(prior versions kept). Bun is the release-evidence runtime, so its entry
+notes the variance ceremony must pass before 1.4.0 readings count as
+release evidence; under current load it reads exactly like a loaded
+machine and not like a regression (14 timing gates green under 1.4.0,
+failures RME-only). Formal Phase 1 close-out: one quiet-machine
+`perf:gates` pass, expected all-green with no further changes.
 
 Phase 0 measured 2026-08-24 (bench: benchmarks/src/dual-dispatch.bench.ts,
 probe: benchmarks/src/dual-dispatch-size-probe.ts). Both lanes ran: Bun/JSC

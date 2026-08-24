@@ -147,7 +147,11 @@ export const transpose: <A>(arr: readonly A[][]) => A[][] = function transpose(a
     return out } as any
 
 
-export const repeat: <A>(n: number) => (value: A) => A[] = function repeat(n: any) {
+export const repeat: {
+  <A>(value: A, n: number): A[]
+  <A>(n: number): (value: A) => A[]
+} = function repeat(n: any, __df?: any): any {
+  if (arguments.length >= 2) return repeat(__df)(n)
   return function (value: any) {
     if (n <= 0) return []
     const out = new Array(n)
@@ -157,7 +161,11 @@ export const repeat: <A>(n: number) => (value: A) => A[] = function repeat(n: an
 } as any
 
 
-export const times: (n: number) => <A>(f: (i: number) => A) => A[] = function times(n: any) {
+export const times: {
+  <A>(f: (i: number) => A, n: number): A[]
+  (n: number): <A>(f: (i: number) => A) => A[]
+} = function times(n: any, __df?: any): any {
+  if (arguments.length >= 2) return times(__df)(n)
   return function (f: any) {
     if (n <= 0) return []
     const out = new Array(n)
@@ -167,7 +175,11 @@ export const times: (n: number) => <A>(f: (i: number) => A) => A[] = function ti
 } as any
 
 
-export const unfold: <A, B>(seed: B) => (f: (seed: B) => [A, B] | undefined) => A[] = function unfold(seed: any) {
+export const unfold: {
+  <A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
+  <A, B>(seed: B): (f: (seed: B) => [A, B] | undefined) => A[]
+} = function unfold(seed: any, __df?: any): any {
+  if (arguments.length >= 2) return unfold(__df)(seed)
   return function (f: any) {
     const result: any[] = []
     let s = seed
@@ -182,7 +194,11 @@ export const unfold: <A, B>(seed: B) => (f: (seed: B) => [A, B] | undefined) => 
 } as any
 
 
-export const xprod: <B>(b: readonly B[]) => <A>(a: readonly A[]) => [A, B][] = function xprod(b: any) {
+export const xprod: {
+  <A, B>(a: readonly A[], b: readonly B[]): [A, B][]
+  <B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
+} = function xprod(b: any, __df?: any): any {
+  if (arguments.length >= 2) return xprod(__df)(b)
   return function (a: any) {
     let lenA = a.length
     let lenB = b.length
@@ -202,7 +218,11 @@ export const xprod: <B>(b: readonly B[]) => <A>(a: readonly A[]) => [A, B][] = f
 
 
 // Arity 2
-export const map: <A, B>(f: (a: A) => B) => (arr: readonly A[]) => B[] = function map(f: any) {
+export const map: {
+  <A, B>(arr: readonly A[], f: (a: A) => B): B[]
+  <A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
+} = function map(f: any, __df?: any): any {
+  if (arguments.length >= 2) return map(__df)(f)
   return function (arr: any) {
     const len = arr.length,
       out = new Array(len)
@@ -212,7 +232,11 @@ export const map: <A, B>(f: (a: A) => B) => (arr: readonly A[]) => B[] = functio
 } as any
 
 
-export const mapWithIndex: <A, B>(f: (a: A, i: number) => B) => (arr: readonly A[]) => B[] = function mapWithIndex(f: any) {
+export const mapWithIndex: {
+  <A, B>(arr: readonly A[], f: (a: A, i: number) => B): B[]
+  <A, B>(f: (a: A, i: number) => B): (arr: readonly A[]) => B[]
+} = function mapWithIndex(f: any, __df?: any): any {
+  if (arguments.length >= 2) return mapWithIndex(__df)(f)
   return function (arr: any) {
     const len = arr.length,
       out = new Array(len)
@@ -223,9 +247,12 @@ export const mapWithIndex: <A, B>(f: (a: A, i: number) => B) => (arr: readonly A
 
 
 export const filter: {
+  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): B[]
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => B[]
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
-} = function filter(pred: any) {
+} = function filter(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return filter(__df)(pred)
   return function (arr: any) {
     const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
@@ -238,9 +265,12 @@ export const filter: {
 
 
 export const filterWithIndex: {
+  <A, B extends A>(arr: readonly A[], pred: (a: A, i: number) => a is B): B[]
+  <A>(arr: readonly A[], pred: (a: A, i: number) => boolean): A[]
   <A, B extends A>(pred: (a: A, i: number) => a is B): (arr: readonly A[]) => B[]
   <A>(pred: (a: A, i: number) => boolean): (arr: readonly A[]) => A[]
-} = function filterWithIndex(pred: any) {
+} = function filterWithIndex(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return filterWithIndex(__df)(pred)
   return function (arr: any) {
     const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
@@ -252,7 +282,11 @@ export const filterWithIndex: {
 } as any
 
 
-export const flatMap: <A, B>(f: (a: A) => B[]) => (arr: readonly A[]) => B[] = function flatMap(f: any) {
+export const flatMap: {
+  <A, B>(arr: readonly A[], f: (a: A) => B[]): B[]
+  <A, B>(f: (a: A) => B[]): (arr: readonly A[]) => B[]
+} = function flatMap(f: any, __df?: any): any {
+  if (arguments.length >= 2) return flatMap(__df)(f)
   return function (arr: any) {
     const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
@@ -265,9 +299,12 @@ export const flatMap: <A, B>(f: (a: A) => B[]) => (arr: readonly A[]) => B[] = f
 
 
 export const findOrUndefined: {
+  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): B | undefined
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => B | undefined
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
-} = function findOrUndefined(pred: any) {
+} = function findOrUndefined(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return findOrUndefined(__df)(pred)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) {
     const v = arr[i]
@@ -279,9 +316,12 @@ export const findOrUndefined: {
 
 
 export const find: {
+  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): Option<B>
+  <A>(arr: readonly A[], pred: (a: A) => boolean): Option<A>
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => Option<B>
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<A>
-} = function find(pred: any) {
+} = function find(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return find(__df)(pred)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) {
       const v = arr[i]
@@ -292,7 +332,11 @@ export const find: {
 } as any
 
 
-export const findIndexOrUndefined: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => number | undefined = function findIndexOrUndefined(pred: any) {
+export const findIndexOrUndefined: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
+} = function findIndexOrUndefined(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return findIndexOrUndefined(__df)(pred)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) {
     if (pred(arr[i])) return i
@@ -302,7 +346,11 @@ export const findIndexOrUndefined: <A>(pred: (a: A) => boolean) => (arr: readonl
 } as any
 
 
-export const findIndex: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => Option<number> = function findIndex(pred: any) {
+export const findIndex: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<number>
+} = function findIndex(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return findIndex(__df)(pred)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) {
       if (pred(arr[i])) return optionSome(i)
@@ -312,7 +360,11 @@ export const findIndex: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => O
 } as any
 
 
-export const every: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => boolean = function every(pred: any) {
+export const every: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
+} = function every(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return every(__df)(pred)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) {
       if (!pred(arr[i])) return false
@@ -322,7 +374,11 @@ export const every: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => boole
 } as any
 
 
-export const some: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => boolean = function some(pred: any) {
+export const some: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
+} = function some(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return some(__df)(pred)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) {
       if (pred(arr[i])) return true
@@ -332,14 +388,32 @@ export const some: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => boolea
 } as any
 
 
-export const includes: <A>(value: A) => (arr: readonly A[]) => boolean = function includes(value: any) {
+export const includes: {
+  <A>(arr: readonly A[], value: A): boolean
+  <A>(value: A): (arr: readonly A[]) => boolean
+} = function includes(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      value = a1
+    return arr.includes(value)
+  }
+  const value = a0
   return function (arr: any) {
     return arr.includes(value)
   }
 } as any
 
 
-export const sortBy: <A>(cmp: (a: A, b: A) => number) => (arr: readonly A[]) => A[] = function sortBy(cmp: any) {
+export const sortBy: {
+  <A>(arr: readonly A[], cmp: (a: A, b: A) => number): A[]
+  <A>(cmp: (a: A, b: A) => number): (arr: readonly A[]) => A[]
+} = function sortBy(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      cmp = a1
+    return mergeSortBy(arr, cmp)
+  }
+  const cmp = a0
   return function (arr: any) {
     return mergeSortBy(arr, cmp)
   }
@@ -359,7 +433,11 @@ export const sortBy: <A>(cmp: (a: A, b: A) => number) => (arr: readonly A[]) => 
 // 2048 stays inside that margin across the whole range measured.
 const TAKE_SORTED_BY_BOUNDED_LIMIT = 2048
 
-export const takeSortedBy: <A>(k: number, cmp: (a: A, b: A) => number) => (arr: readonly A[]) => A[] = function takeSortedBy(k: any, cmp: any) {
+export const takeSortedBy: {
+  <A>(arr: readonly A[], k: number, cmp: (a: A, b: A) => number): A[]
+  <A>(k: number, cmp: (a: A, b: A) => number): (arr: readonly A[]) => A[]
+} = function takeSortedBy(k: any, cmp?: any, __df?: any): any {
+  if (arguments.length >= 3) return takeSortedBy(cmp, __df)(k)
   return function (arr: any) {
     var n = arr.length
   if (k <= 0) return []
@@ -398,7 +476,11 @@ export const takeSortedBy: <A>(k: number, cmp: (a: A, b: A) => number) => (arr: 
 export const uniq: <A>(arr: readonly A[]) => A[] = function uniq(arr: any) { return Array.from(new Set(arr)) } as any
 
 
-export const uniqBy: <A, B>(f: (a: A) => B) => (arr: readonly A[]) => A[] = function uniqBy(f: any) {
+export const uniqBy: {
+  <A, B>(arr: readonly A[], f: (a: A) => B): A[]
+  <A, B>(f: (a: A) => B): (arr: readonly A[]) => A[]
+} = function uniqBy(f: any, __df?: any): any {
+  if (arguments.length >= 2) return uniqBy(__df)(f)
   return function (arr: any) {
     var seen = new Set(),
       out = []
@@ -415,7 +497,21 @@ export const uniqBy: <A, B>(f: (a: A) => B) => (arr: readonly A[]) => A[] = func
 } as any
 
 
-export const take: (n: number) => <A>(arr: readonly A[]) => A[] = function take(n: any) {
+export const take: {
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
+} = function take(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      n = a1
+    let len = arr.length
+    if (n <= 0) {
+      return []
+    } else {
+      return arr.slice(0, n > len ? len : n)
+    }
+  }
+  const n = a0
   return function (arr: any) {
     let len = arr.length
     if (n <= 0) {
@@ -427,7 +523,23 @@ export const take: (n: number) => <A>(arr: readonly A[]) => A[] = function take(
 } as any
 
 
-export const drop: (n: number) => <A>(arr: readonly A[]) => A[] = function drop(n: any) {
+export const drop: {
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
+} = function drop(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      n = a1
+    let len = arr.length
+    if (n <= 0) {
+      return arr.slice()
+    } else if (n >= len) {
+      return []
+    } else {
+      return arr.slice(n)
+    }
+  }
+  const n = a0
   return function (arr: any) {
     let len = arr.length
     if (n <= 0) {
@@ -441,7 +553,11 @@ export const drop: (n: number) => <A>(arr: readonly A[]) => A[] = function drop(
 } as any
 
 
-export const takeWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function takeWhile(pred: any) {
+export const takeWhile: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+} = function takeWhile(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return takeWhile(__df)(pred)
   return function (arr: any) {
     var len = arr.length
     var i = 0
@@ -451,7 +567,11 @@ export const takeWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A
 } as any
 
 
-export const dropWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function dropWhile(pred: any) {
+export const dropWhile: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+} = function dropWhile(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return dropWhile(__df)(pred)
   return function (arr: any) {
     for (var i = 0, len = arr.length; i < len; i++) {
       if (!pred(arr[i])) return arr.slice(i)
@@ -461,7 +581,11 @@ export const dropWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A
 } as any
 
 
-export const chunk: (n: number) => <A>(arr: readonly A[]) => A[][] = function chunk(n: any) {
+export const chunk: {
+  <A>(arr: readonly A[], n: number): A[][]
+  (n: number): <A>(arr: readonly A[]) => A[][]
+} = function chunk(n: any, __df?: any): any {
+  if (arguments.length >= 2) return chunk(__df)(n)
   return function (arr: any) {
     var len = arr.length
     if (n <= 0 || len === 0) return []
@@ -475,7 +599,11 @@ export const chunk: (n: number) => <A>(arr: readonly A[]) => A[][] = function ch
 } as any
 
 
-export const slidingWindow: (n: number) => <A>(arr: readonly A[]) => A[][] = function slidingWindow(n: any) {
+export const slidingWindow: {
+  <A>(arr: readonly A[], n: number): A[][]
+  (n: number): <A>(arr: readonly A[]) => A[][]
+} = function slidingWindow(n: any, __df?: any): any {
+  if (arguments.length >= 2) return slidingWindow(__df)(n)
   return function (arr: any) {
     let len = arr.length
     if (n <= 0 || n > len) {
@@ -495,7 +623,11 @@ export const slidingWindow: (n: number) => <A>(arr: readonly A[]) => A[][] = fun
 } as any
 
 
-export const intersperse: <A>(sep: A) => (arr: readonly A[]) => A[] = function intersperse(sep: any) {
+export const intersperse: {
+  <A>(arr: readonly A[], sep: A): A[]
+  <A>(sep: A): (arr: readonly A[]) => A[]
+} = function intersperse(sep: any, __df?: any): any {
+  if (arguments.length >= 2) return intersperse(__df)(sep)
   return function (arr: any) {
     let len = arr.length
     if (len <= 1) {
@@ -514,21 +646,33 @@ export const intersperse: <A>(sep: A) => (arr: readonly A[]) => A[] = function i
 } as any
 
 
-export const forEach: <A>(f: (a: A) => void) => (arr: readonly A[]) => void = function forEach(f: any) {
+export const forEach: {
+  <A>(arr: readonly A[], f: (a: A) => void): void
+  <A>(f: (a: A) => void): (arr: readonly A[]) => void
+} = function forEach(f: any, __df?: any): any {
+  if (arguments.length >= 2) return forEach(__df)(f)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) f(arr[i])
   }
 } as any
 
 
-export const forEachWithIndex: <A>(f: (a: A, i: number) => void) => (arr: readonly A[]) => void = function forEachWithIndex(f: any) {
+export const forEachWithIndex: {
+  <A>(arr: readonly A[], f: (a: A, i: number) => void): void
+  <A>(f: (a: A, i: number) => void): (arr: readonly A[]) => void
+} = function forEachWithIndex(f: any, __df?: any): any {
+  if (arguments.length >= 2) return forEachWithIndex(__df)(f)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) f(arr[i], i)
   }
 } as any
 
 
-export const groupBy: <A>(f: (a: A) => string) => (arr: readonly A[]) => Dict<A[]> = function groupBy(f: any) {
+export const groupBy: {
+  <A>(arr: readonly A[], f: (a: A) => string): Dict<A[]>
+  <A>(f: (a: A) => string): (arr: readonly A[]) => Dict<A[]>
+} = function groupBy(f: any, __df?: any): any {
+  if (arguments.length >= 2) return groupBy(__df)(f)
   return function (arr: any) {
     var out: Dict<any[]> = {}
     for (var i = 0, len = arr.length; i < len; i++) {
@@ -543,7 +687,11 @@ export const groupBy: <A>(f: (a: A) => string) => (arr: readonly A[]) => Dict<A[
 } as any
 
 
-export const partition: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => [A[], A[]] = function partition(pred: any) {
+export const partition: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): [A[], A[]]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => [A[], A[]]
+} = function partition(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return partition(__df)(pred)
   return function (arr: any) {
     let len = arr.length
     let pass = new Array(len)
@@ -567,7 +715,11 @@ export const partition: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => [
 } as any
 
 
-export const aperture: (n: number) => <A>(arr: readonly A[]) => A[][] = function aperture(n: any) {
+export const aperture: {
+  <A>(arr: readonly A[], n: number): A[][]
+  (n: number): <A>(arr: readonly A[]) => A[][]
+} = function aperture(n: any, __df?: any): any {
+  if (arguments.length >= 2) return aperture(__df)(n)
   return function (arr: any) {
     let len = arr.length
     if (n <= 0 || n > len) {
@@ -587,7 +739,11 @@ export const aperture: (n: number) => <A>(arr: readonly A[]) => A[][] = function
 } as any
 
 
-export const intersection: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function intersection(b: any) {
+export const intersection: {
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
+} = function intersection(b: any, __df?: any): any {
+  if (arguments.length >= 2) return intersection(__df)(b)
   return function (a: any) {
     const included = new Set(b)
     const emitted = new Set()
@@ -604,7 +760,11 @@ export const intersection: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = fu
 } as any
 
 
-export const union: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function union(b: any) {
+export const union: {
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
+} = function union(b: any, __df?: any): any {
+  if (arguments.length >= 2) return union(__df)(b)
   return function (a: any) {
     const seen = new Set()
     const out = []
@@ -627,7 +787,11 @@ export const union: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function 
 } as any
 
 
-export const difference: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function difference(b: any) {
+export const difference: {
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
+} = function difference(b: any, __df?: any): any {
+  if (arguments.length >= 2) return difference(__df)(b)
   return function (a: any) {
     const excluded = new Set(b)
     const emitted = new Set()
@@ -644,7 +808,11 @@ export const difference: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = func
 } as any
 
 
-export const symmetricDifference: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function symmetricDifference(b: any) {
+export const symmetricDifference: {
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
+} = function symmetricDifference(b: any, __df?: any): any {
+  if (arguments.length >= 2) return symmetricDifference(__df)(b)
   return function (a: any) {
     const setA = new Set(a)
     const setB = new Set(b)
@@ -670,7 +838,11 @@ export const symmetricDifference: <A>(b: readonly A[]) => (a: readonly A[]) => A
 
 
 // Arity 3
-export const reduce: <A, B>(f: (acc: B, a: A) => B, init: B) => (arr: readonly A[]) => B = function reduce(f: any, init: any) {
+export const reduce: {
+  <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
+  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
+} = function reduce(f: any, init?: any, __df?: any): any {
+  if (arguments.length >= 3) return reduce(init, __df)(f)
   return function (arr: any) {
     let acc = init
     for (let i = 0, len = arr.length; i < len; i++) acc = f(acc, arr[i])
@@ -679,7 +851,11 @@ export const reduce: <A, B>(f: (acc: B, a: A) => B, init: B) => (arr: readonly A
 } as any
 
 
-export const reduceRight: <A, B>(f: (acc: B, a: A) => B, init: B) => (arr: readonly A[]) => B = function reduceRight(f: any, init: any) {
+export const reduceRight: {
+  <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
+  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
+} = function reduceRight(f: any, init?: any, __df?: any): any {
+  if (arguments.length >= 3) return reduceRight(init, __df)(f)
   return function (arr: any) {
     let acc = init
     for (let i = arr.length - 1; i >= 0; i--) acc = f(acc, arr[i])
@@ -688,7 +864,11 @@ export const reduceRight: <A, B>(f: (acc: B, a: A) => B, init: B) => (arr: reado
 } as any
 
 
-export const zip: <B>(b: readonly B[]) => <A>(a: readonly A[]) => [A, B][] = function zip(b: any) {
+export const zip: {
+  <A, B>(a: readonly A[], b: readonly B[]): [A, B][]
+  <B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
+} = function zip(b: any, __df?: any): any {
+  if (arguments.length >= 2) return zip(__df)(b)
   return function (a: any) {
     var len = a.length < b.length ? a.length : b.length
     var out = new Array(len),
@@ -702,7 +882,11 @@ export const zip: <B>(b: readonly B[]) => <A>(a: readonly A[]) => [A, B][] = fun
 } as any
 
 
-export const zipWith: <A, B, C>(b: readonly B[], f: (a: A, b: B) => C) => (a: readonly A[]) => C[] = function zipWith(b: any, f: any) {
+export const zipWith: {
+  <A, B, C>(a: readonly A[], b: readonly B[], f: (a: A, b: B) => C): C[]
+  <A, B, C>(b: readonly B[], f: (a: A, b: B) => C): (a: readonly A[]) => C[]
+} = function zipWith(b: any, f?: any, __df?: any): any {
+  if (arguments.length >= 3) return zipWith(f, __df)(b)
   return function (a: any) {
     let lenA = a.length
     let lenB = b.length
@@ -716,7 +900,24 @@ export const zipWith: <A, B, C>(b: readonly B[], f: (a: A, b: B) => C) => (a: re
 } as any
 
 
-export const adjust: <A>(index: number, f: (a: A) => A) => (arr: readonly A[]) => A[] = function adjust(index: any, f: any) {
+export const adjust: {
+  <A>(arr: readonly A[], index: number, f: (a: A) => A): A[]
+  <A>(index: number, f: (a: A) => A): (arr: readonly A[]) => A[]
+} = function adjust(a0: any, a1?: any, a2?: any): any {
+  if (arguments.length >= 3) {
+    const arr = a0,
+      index = a1,
+      f = a2
+    let len = arr.length
+    if (index < 0 || index >= len) {
+      return arr.slice(0)
+    }
+    let out = arr.slice(0)
+    out[index] = f(arr[index])
+    return out
+  }
+  const index = a0,
+    f = a1
   return function (arr: any) {
     let len = arr.length
     if (index < 0 || index >= len) {
@@ -729,7 +930,22 @@ export const adjust: <A>(index: number, f: (a: A) => A) => (arr: readonly A[]) =
 } as any
 
 
-export const update: <A>(index: number, value: A) => (arr: readonly A[]) => A[] = function update(index: any, value: any) {
+export const update: {
+  <A>(arr: readonly A[], index: number, value: A): A[]
+  <A>(index: number, value: A): (arr: readonly A[]) => A[]
+} = function update(a0: any, a1?: any, a2?: any): any {
+  if (arguments.length >= 3) {
+    const arr = a0,
+      index = a1,
+      value = a2
+    var len = arr.length
+    if (index < 0 || index >= len) return arr.slice()
+    var out = arr.slice()
+    out[index] = value
+    return out
+  }
+  const index = a0,
+    value = a1
   return function (arr: any) {
     var len = arr.length
     if (index < 0 || index >= len) return arr.slice()
@@ -740,7 +956,11 @@ export const update: <A>(index: number, value: A) => (arr: readonly A[]) => A[] 
 } as any
 
 
-export const insert: <A>(index: number, value: A) => (arr: readonly A[]) => A[] = function insert(index: any, value: any) {
+export const insert: {
+  <A>(arr: readonly A[], index: number, value: A): A[]
+  <A>(index: number, value: A): (arr: readonly A[]) => A[]
+} = function insert(index: any, value?: any, __df?: any): any {
+  if (arguments.length >= 3) return insert(value, __df)(index)
   return function (arr: any) {
     let len = arr.length
     let idx = index < 0 ? 0 : index > len ? len : index
@@ -757,7 +977,11 @@ export const insert: <A>(index: number, value: A) => (arr: readonly A[]) => A[] 
 } as any
 
 
-export const remove: (index: number, count: number) => <A>(arr: readonly A[]) => A[] = function remove(index: any, count: any) {
+export const remove: {
+  <A>(arr: readonly A[], index: number, count: number): A[]
+  (index: number, count: number): <A>(arr: readonly A[]) => A[]
+} = function remove(index: any, count?: any, __df?: any): any {
+  if (arguments.length >= 3) return remove(count, __df)(index)
   return function (arr: any) {
     let len = arr.length
     if (index < 0 || index >= len || count <= 0) {
@@ -777,7 +1001,11 @@ export const remove: (index: number, count: number) => <A>(arr: readonly A[]) =>
 } as any
 
 
-export const scan: <A, B>(f: (acc: B, a: A) => B, init: B) => (arr: readonly A[]) => B[] = function scan(f: any, init: any) {
+export const scan: {
+  <A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B[]
+  <A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B[]
+} = function scan(f: any, init?: any, __df?: any): any {
+  if (arguments.length >= 3) return scan(init, __df)(f)
   return function (arr: any) {
     let len = arr.length
     let out = new Array((len + 1) | 0)
@@ -845,7 +1073,11 @@ export const unnest: <A>(arr: readonly A[][]) => A[] = function unnest(arr: any)
 
 
 // Arity 2. Fuseable
-export const reject: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function reject(pred: any) {
+export const reject: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+} = function reject(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return reject(__df)(pred)
   return function (arr: any) {
     const len = arr.length
     var out = []
@@ -857,7 +1089,11 @@ export const reject: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] 
 } as any
 
 
-export const none: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => boolean = function none(pred: any) {
+export const none: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
+} = function none(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return none(__df)(pred)
   return function (arr: any) {
     const len = arr.length
     for (var i = 0; i < len; i++) {
@@ -868,7 +1104,11 @@ export const none: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => boolea
 } as any
 
 
-export const count: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => number = function count(pred: any) {
+export const count: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): number
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number
+} = function count(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return count(__df)(pred)
   return function (arr: any) {
     let len = arr.length
     let c = 0
@@ -882,7 +1122,11 @@ export const count: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => numbe
 } as any
 
 
-export const filterMap: <A, B>(f: (a: A) => B | null | undefined) => (arr: readonly A[]) => B[] = function filterMap(f: any) {
+export const filterMap: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
+} = function filterMap(f: any, __df?: any): any {
+  if (arguments.length >= 2) return filterMap(__df)(f)
   return function (arr: any) {
     const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
@@ -894,7 +1138,11 @@ export const filterMap: <A, B>(f: (a: A) => B | null | undefined) => (arr: reado
 } as any
 
 
-export const findMapOrUndefined: <A, B>(f: (a: A) => B | null | undefined) => (arr: readonly A[]) => B | undefined = function findMapOrUndefined(f: any) {
+export const findMapOrUndefined: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B | undefined
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B | undefined
+} = function findMapOrUndefined(f: any, __df?: any): any {
+  if (arguments.length >= 2) return findMapOrUndefined(__df)(f)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) {
     const mapped = f(arr[i])
@@ -905,7 +1153,11 @@ export const findMapOrUndefined: <A, B>(f: (a: A) => B | null | undefined) => (a
 } as any
 
 
-export const findMap: <A, B>(f: (a: A) => B | null | undefined) => (arr: readonly A[]) => Option<NonNullable<B>> = function findMap(f: any) {
+export const findMap: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): Option<NonNullable<B>>
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => Option<NonNullable<B>>
+} = function findMap(f: any, __df?: any): any {
+  if (arguments.length >= 2) return findMap(__df)(f)
   return function (arr: any) {
     for (let i = 0, len = arr.length; i < len; i++) {
       const mapped = f(arr[i])
@@ -916,7 +1168,11 @@ export const findMap: <A, B>(f: (a: A) => B | null | undefined) => (arr: readonl
 } as any
 
 
-export const mapWhile: <A, B>(f: (a: A) => B | null | undefined) => (arr: readonly A[]) => B[] = function mapWhile(f: any) {
+export const mapWhile: {
+  <A, B>(arr: readonly A[], f: (a: A) => B | null | undefined): B[]
+  <A, B>(f: (a: A) => B | null | undefined): (arr: readonly A[]) => B[]
+} = function mapWhile(f: any, __df?: any): any {
+  if (arguments.length >= 2) return mapWhile(__df)(f)
   return function (arr: any) {
     const out: any[] = []
     for (let i = 0, len = arr.length; i < len; i++) {
@@ -929,7 +1185,11 @@ export const mapWhile: <A, B>(f: (a: A) => B | null | undefined) => (arr: readon
 } as any
 
 
-export const takeUntil: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function takeUntil(pred: any) {
+export const takeUntil: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+} = function takeUntil(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return takeUntil(__df)(pred)
   return function (arr: any) {
     const len = arr.length
     let i = 0
@@ -940,7 +1200,11 @@ export const takeUntil: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A
 
 
 // Arity 2. Non-fuseable
-export const append: <A>(value: A) => (arr: readonly A[]) => A[] = function append(value: any) {
+export const append: {
+  <A>(arr: readonly A[], value: A): A[]
+  <A>(value: A): (arr: readonly A[]) => A[]
+} = function append(value: any, __df?: any): any {
+  if (arguments.length >= 2) return append(__df)(value)
   return function (arr: any) {
     let len = arr.length
   let out = new Array((len + 1) | 0)
@@ -953,7 +1217,11 @@ export const append: <A>(value: A) => (arr: readonly A[]) => A[] = function appe
 } as any
 
 
-export const prepend: <A>(value: A) => (arr: readonly A[]) => A[] = function prepend(value: any) {
+export const prepend: {
+  <A>(arr: readonly A[], value: A): A[]
+  <A>(value: A): (arr: readonly A[]) => A[]
+} = function prepend(value: any, __df?: any): any {
+  if (arguments.length >= 2) return prepend(__df)(value)
   return function (arr: any) {
     let len = arr.length
   let out = new Array((len + 1) | 0)
@@ -966,14 +1234,33 @@ export const prepend: <A>(value: A) => (arr: readonly A[]) => A[] = function pre
 } as any
 
 
-export const concat: <A>(b: readonly A[]) => (a: readonly A[]) => A[] = function concat(b: any) {
+export const concat: {
+  <A>(a: readonly A[], b: readonly A[]): A[]
+  <A>(b: readonly A[]): (a: readonly A[]) => A[]
+} = function concat(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const a = a0,
+      b = a1
+    return a.concat(b)
+  }
+  const b = a0
   return function (a: any) {
     return a.concat(b)
   }
 } as any
 
 
-export const nthOrUndefined: (index: number) => <A>(arr: readonly A[]) => A | undefined = function nthOrUndefined(n: any) {
+export const nthOrUndefined: {
+  <A>(arr: readonly A[], index: number): A | undefined
+  (index: number): <A>(arr: readonly A[]) => A | undefined
+} = function nthOrUndefined(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      n = a1
+    var i = n < 0 ? arr.length + n : n
+  return i < 0 || i >= arr.length ? undefined : arr[i]
+  }
+  const n = a0
   return function (arr: any) {
     var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? undefined : arr[i]
@@ -981,7 +1268,17 @@ export const nthOrUndefined: (index: number) => <A>(arr: readonly A[]) => A | un
 } as any
 
 
-export const nth: (index: number) => <A>(arr: readonly A[]) => Option<A> = function nth(n: any) {
+export const nth: {
+  <A>(arr: readonly A[], index: number): Option<A>
+  (index: number): <A>(arr: readonly A[]) => Option<A>
+} = function nth(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      n = a1
+    var i = n < 0 ? arr.length + n : n
+  return i < 0 || i >= arr.length ? optionNone : optionSome(arr[i])
+  }
+  const n = a0
   return function (arr: any) {
     var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? optionNone : optionSome(arr[i])
@@ -989,7 +1286,17 @@ export const nth: (index: number) => <A>(arr: readonly A[]) => Option<A> = funct
 } as any
 
 
-export const indexOfOrUndefined: <A>(value: A) => (arr: readonly A[]) => number | undefined = function indexOfOrUndefined(val: any) {
+export const indexOfOrUndefined: {
+  <A>(arr: readonly A[], value: A): number | undefined
+  <A>(value: A): (arr: readonly A[]) => number | undefined
+} = function indexOfOrUndefined(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      val = a1
+    var i = arr.indexOf(val)
+  return i === -1 ? undefined : i
+  }
+  const val = a0
   return function (arr: any) {
     var i = arr.indexOf(val)
   return i === -1 ? undefined : i
@@ -997,7 +1304,17 @@ export const indexOfOrUndefined: <A>(value: A) => (arr: readonly A[]) => number 
 } as any
 
 
-export const indexOf: <A>(value: A) => (arr: readonly A[]) => Option<number> = function indexOf(val: any) {
+export const indexOf: {
+  <A>(arr: readonly A[], value: A): Option<number>
+  <A>(value: A): (arr: readonly A[]) => Option<number>
+} = function indexOf(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      val = a1
+    var i = arr.indexOf(val)
+  return i === -1 ? optionNone : optionSome(i)
+  }
+  const val = a0
   return function (arr: any) {
     var i = arr.indexOf(val)
   return i === -1 ? optionNone : optionSome(i)
@@ -1005,7 +1322,17 @@ export const indexOf: <A>(value: A) => (arr: readonly A[]) => Option<number> = f
 } as any
 
 
-export const lastIndexOfOrUndefined: <A>(value: A) => (arr: readonly A[]) => number | undefined = function lastIndexOfOrUndefined(val: any) {
+export const lastIndexOfOrUndefined: {
+  <A>(arr: readonly A[], value: A): number | undefined
+  <A>(value: A): (arr: readonly A[]) => number | undefined
+} = function lastIndexOfOrUndefined(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      val = a1
+    var i = arr.lastIndexOf(val)
+  return i === -1 ? undefined : i
+  }
+  const val = a0
   return function (arr: any) {
     var i = arr.lastIndexOf(val)
   return i === -1 ? undefined : i
@@ -1013,7 +1340,17 @@ export const lastIndexOfOrUndefined: <A>(value: A) => (arr: readonly A[]) => num
 } as any
 
 
-export const lastIndexOf: <A>(value: A) => (arr: readonly A[]) => Option<number> = function lastIndexOf(val: any) {
+export const lastIndexOf: {
+  <A>(arr: readonly A[], value: A): Option<number>
+  <A>(value: A): (arr: readonly A[]) => Option<number>
+} = function lastIndexOf(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      val = a1
+    var i = arr.lastIndexOf(val)
+  return i === -1 ? optionNone : optionSome(i)
+  }
+  const val = a0
   return function (arr: any) {
     var i = arr.lastIndexOf(val)
   return i === -1 ? optionNone : optionSome(i)
@@ -1022,9 +1359,12 @@ export const lastIndexOf: <A>(value: A) => (arr: readonly A[]) => Option<number>
 
 
 export const findLastOrUndefined: {
+  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): B | undefined
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => B | undefined
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
-} = function findLastOrUndefined(pred: any) {
+} = function findLastOrUndefined(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return findLastOrUndefined(__df)(pred)
   return function (arr: any) {
     for (var i = arr.length - 1; i >= 0; i--) {
     if (pred(arr[i])) return arr[i]
@@ -1035,9 +1375,12 @@ export const findLastOrUndefined: {
 
 
 export const findLast: {
+  <A, B extends A>(arr: readonly A[], pred: (a: A) => a is B): Option<B>
+  <A>(arr: readonly A[], pred: (a: A) => boolean): Option<A>
   <A, B extends A>(pred: (a: A) => a is B): (arr: readonly A[]) => Option<B>
   <A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<A>
-} = function findLast(pred: any) {
+} = function findLast(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return findLast(__df)(pred)
   return function (arr: any) {
     for (var i = arr.length - 1; i >= 0; i--) {
     if (pred(arr[i])) return optionSome(arr[i])
@@ -1047,7 +1390,11 @@ export const findLast: {
 } as any
 
 
-export const findLastIndexOrUndefined: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => number | undefined = function findLastIndexOrUndefined(pred: any) {
+export const findLastIndexOrUndefined: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
+} = function findLastIndexOrUndefined(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return findLastIndexOrUndefined(__df)(pred)
   return function (arr: any) {
     for (var i = arr.length - 1; i >= 0; i--) {
     if (pred(arr[i])) return i
@@ -1057,7 +1404,11 @@ export const findLastIndexOrUndefined: <A>(pred: (a: A) => boolean) => (arr: rea
 } as any
 
 
-export const findLastIndex: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => Option<number> = function findLastIndex(pred: any) {
+export const findLastIndex: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<number>
+} = function findLastIndex(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return findLastIndex(__df)(pred)
   return function (arr: any) {
     for (var i = arr.length - 1; i >= 0; i--) {
     if (pred(arr[i])) return optionSome(i)
@@ -1300,23 +1651,40 @@ const withoutDispatchRaw = (arr: any, values: any): any[] => {
 
 // values is a single array-valued argument here, not variadic. Both call
 // styles share the same size-specialized dispatcher.
-export const without: <A>(values: readonly A[]) => (arr: readonly A[]) => A[] = function without(_a0: any) {
+export const without: {
+  <A>(arr: readonly A[], values: readonly A[]): A[]
+  <A>(values: readonly A[]): (arr: readonly A[]) => A[]
+} = function without(_a0: any, __df?: any): any {
+  if (arguments.length >= 2) return withoutDispatchRaw(_a0, __df)
   return function (data: any) {
     return withoutDispatchRaw(data, _a0)
   }
 } as any
 
 
-export const pluck: <K extends PropertyKey>(
+export const pluck: {
+  <A, K extends keyof A>(arr: readonly A[], key: K): A[K][]
+  <K extends PropertyKey>(
     key: K,
-  ) => <A extends Readonly<Record<K, unknown>>>(arr: readonly A[]) => A[K][] = function pluck(key: any) {
+  ): <A extends Readonly<Record<K, unknown>>>(arr: readonly A[]) => A[K][]
+} = function pluck(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      key = a1
+    return pluckRaw(arr, key)
+  }
+  const key = a0
   return function (arr: any) {
     return pluckRaw(arr, key)
   }
 } as any
 
 
-export const dropRepeatsBy: <A, B>(f: (a: A) => B) => (arr: readonly A[]) => A[] = function dropRepeatsBy(f: any) {
+export const dropRepeatsBy: {
+  <A, B>(arr: readonly A[], f: (a: A) => B): A[]
+  <A, B>(f: (a: A) => B): (arr: readonly A[]) => A[]
+} = function dropRepeatsBy(f: any, __df?: any): any {
+  if (arguments.length >= 2) return dropRepeatsBy(__df)(f)
   return function (arr: any) {
     const len = arr.length
   if (len === 0) return []
@@ -1336,7 +1704,11 @@ export const dropRepeatsBy: <A, B>(f: (a: A) => B) => (arr: readonly A[]) => A[]
 } as any
 
 
-export const dropRepeatsWith: <A>(eq: (a: A, b: A) => boolean) => (arr: readonly A[]) => A[] = function dropRepeatsWith(eq: any) {
+export const dropRepeatsWith: {
+  <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(eq: (a: A, b: A) => boolean): (arr: readonly A[]) => A[]
+} = function dropRepeatsWith(eq: any, __df?: any): any {
+  if (arguments.length >= 2) return dropRepeatsWith(__df)(eq)
   return function (arr: any) {
     let len = arr.length
   if (len === 0) {
@@ -1354,7 +1726,11 @@ export const dropRepeatsWith: <A>(eq: (a: A, b: A) => boolean) => (arr: readonly
 } as any
 
 
-export const dropLast: (n: number) => <A>(arr: readonly A[]) => A[] = function dropLast(n: any) {
+export const dropLast: {
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
+} = function dropLast(n: any, __df?: any): any {
+  if (arguments.length >= 2) return dropLast(__df)(n)
   return function (arr: any) {
     let len = arr.length
   if (n <= 0) {
@@ -1373,7 +1749,11 @@ export const dropLast: (n: number) => <A>(arr: readonly A[]) => A[] = function d
 } as any
 
 
-export const dropLastWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function dropLastWhile(pred: any) {
+export const dropLastWhile: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+} = function dropLastWhile(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return dropLastWhile(__df)(pred)
   return function (arr: any) {
     let len = arr.length
   let i = (len - 1) | 0
@@ -1396,7 +1776,11 @@ export const dropLastWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) 
 } as any
 
 
-export const takeLast: (n: number) => <A>(arr: readonly A[]) => A[] = function takeLast(n: any) {
+export const takeLast: {
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
+} = function takeLast(n: any, __df?: any): any {
+  if (arguments.length >= 2) return takeLast(__df)(n)
   return function (arr: any) {
     let len = arr.length
   if (n <= 0) {
@@ -1415,7 +1799,11 @@ export const takeLast: (n: number) => <A>(arr: readonly A[]) => A[] = function t
 } as any
 
 
-export const takeLastWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[] = function takeLastWhile(pred: any) {
+export const takeLastWhile: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+} = function takeLastWhile(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return takeLastWhile(__df)(pred)
   return function (arr: any) {
     let len = arr.length
   let i = (len - 1) | 0
@@ -1439,7 +1827,17 @@ export const takeLastWhile: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) 
 } as any
 
 
-export const splitAt: (index: number) => <A>(arr: readonly A[]) => [A[], A[]] = function splitAt(index: any) {
+export const splitAt: {
+  <A>(arr: readonly A[], index: number): [A[], A[]]
+  (index: number): <A>(arr: readonly A[]) => [A[], A[]]
+} = function splitAt(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      index = a1
+    var i = index < 0 ? 0 : index > arr.length ? arr.length : index
+  return [arr.slice(0, i), arr.slice(i)]
+  }
+  const index = a0
   return function (arr: any) {
     var i = index < 0 ? 0 : index > arr.length ? arr.length : index
   return [arr.slice(0, i), arr.slice(i)]
@@ -1447,7 +1845,11 @@ export const splitAt: (index: number) => <A>(arr: readonly A[]) => [A[], A[]] = 
 } as any
 
 
-export const splitWhen: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => [A[], A[]] = function splitWhen(pred: any) {
+export const splitWhen: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): [A[], A[]]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => [A[], A[]]
+} = function splitWhen(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return splitWhen(__df)(pred)
   return function (arr: any) {
     let len = arr.length
   let i = 0
@@ -1464,7 +1866,11 @@ export const splitWhen: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => [
 } as any
 
 
-export const splitWhenever: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => A[][] = function splitWhenever(pred: any) {
+export const splitWhenever: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): A[][]
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[][]
+} = function splitWhenever(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return splitWhenever(__df)(pred)
   return function (arr: any) {
     let len = arr.length
   if (len === 0) {
@@ -1487,14 +1893,27 @@ export const splitWhenever: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) 
 } as any
 
 
-export const join: (sep: string) => (arr: readonly string[]) => string = function join(sep: any) {
+export const join: {
+  (arr: readonly string[], sep: string): string
+  (sep: string): (arr: readonly string[]) => string
+} = function join(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      sep = a1
+    return arr.join(sep)
+  }
+  const sep = a0
   return function (arr: any) {
     return arr.join(sep)
   }
 } as any
 
 
-export const uniqWith: <A>(eq: (a: A, b: A) => boolean) => (arr: readonly A[]) => A[] = function uniqWith(eq: any) {
+export const uniqWith: {
+  <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(eq: (a: A, b: A) => boolean): (arr: readonly A[]) => A[]
+} = function uniqWith(eq: any, __df?: any): any {
+  if (arguments.length >= 2) return uniqWith(__df)(eq)
   return function (arr: any) {
     let result = []
   for (let i = 0, i_finish = arr.length; i < i_finish; ++i) {
@@ -1516,7 +1935,11 @@ export const uniqWith: <A>(eq: (a: A, b: A) => boolean) => (arr: readonly A[]) =
 } as any
 
 
-export const groupWith: <A>(eq: (a: A, b: A) => boolean) => (arr: readonly A[]) => A[][] = function groupWith(eq: any) {
+export const groupWith: {
+  <A>(arr: readonly A[], eq: (a: A, b: A) => boolean): A[][]
+  <A>(eq: (a: A, b: A) => boolean): (arr: readonly A[]) => A[][]
+} = function groupWith(eq: any, __df?: any): any {
+  if (arguments.length >= 2) return groupWith(__df)(eq)
   return function (arr: any) {
     let len = arr.length
   if (len === 0) {
@@ -1539,7 +1962,11 @@ export const groupWith: <A>(eq: (a: A, b: A) => boolean) => (arr: readonly A[]) 
 } as any
 
 
-export const indexBy: <A>(f: (a: A) => string) => (arr: readonly A[]) => Dict<A> = function indexBy(f: any) {
+export const indexBy: {
+  <A>(arr: readonly A[], f: (a: A) => string): Dict<A>
+  <A>(f: (a: A) => string): (arr: readonly A[]) => Dict<A>
+} = function indexBy(f: any, __df?: any): any {
+  if (arguments.length >= 2) return indexBy(__df)(f)
   return function (arr: any) {
     let len = arr.length
   let dict: Dict<any> = {}
@@ -1552,7 +1979,11 @@ export const indexBy: <A>(f: (a: A) => string) => (arr: readonly A[]) => Dict<A>
 } as any
 
 
-export const collectBy: <A>(f: (a: A) => string) => (arr: readonly A[]) => A[][] = function collectBy(f: any) {
+export const collectBy: {
+  <A>(arr: readonly A[], f: (a: A) => string): A[][]
+  <A>(f: (a: A) => string): (arr: readonly A[]) => A[][]
+} = function collectBy(f: any, __df?: any): any {
+  if (arguments.length >= 2) return collectBy(__df)(f)
   return function (arr: any) {
     let len = arr.length
   let dict: Dict<any[]> = {}
@@ -1583,21 +2014,43 @@ export const collectBy: <A>(f: (a: A) => string) => (arr: readonly A[]) => A[][]
 } as any
 
 
-export const sample: (n: number) => <A>(arr: readonly A[]) => A[] = function sample(n: any) {
+export const sample: {
+  <A>(arr: readonly A[], n: number): A[]
+  (n: number): <A>(arr: readonly A[]) => A[]
+} = function sample(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      n = a1
+    return sampleRaw(arr, n)
+  }
+  const n = a0
   return function (arr: any) {
     return sampleRaw(arr, n)
   }
 } as any
 
 
-export const hasAtLeast: (n: number) => <A>(arr: readonly A[]) => boolean = function hasAtLeast(n: any) {
+export const hasAtLeast: {
+  <A>(arr: readonly A[], n: number): boolean
+  (n: number): <A>(arr: readonly A[]) => boolean
+} = function hasAtLeast(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      n = a1
+    return arr.length >= n
+  }
+  const n = a0
   return function (arr: any) {
     return arr.length >= n
   }
 } as any
 
 
-export const meanByOrUndefined: <A>(f: (a: A) => number) => (arr: readonly A[]) => number | undefined = function meanByOrUndefined(f: any) {
+export const meanByOrUndefined: {
+  <A>(arr: readonly A[], f: (a: A) => number): number | undefined
+  <A>(f: (a: A) => number): (arr: readonly A[]) => number | undefined
+} = function meanByOrUndefined(f: any, __df?: any): any {
+  if (arguments.length >= 2) return meanByOrUndefined(__df)(f)
   return function (arr: any) {
     let len = arr.length
   if (len === 0) {
@@ -1612,7 +2065,17 @@ export const meanByOrUndefined: <A>(f: (a: A) => number) => (arr: readonly A[]) 
 } as any
 
 
-export const meanBy: <A>(f: (a: A) => number) => (arr: readonly A[]) => Option<number> = function meanBy(f: any) {
+export const meanBy: {
+  <A>(arr: readonly A[], f: (a: A) => number): Option<number>
+  <A>(f: (a: A) => number): (arr: readonly A[]) => Option<number>
+} = function meanBy(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      f = a1
+    const value = meanByOrUndefined(f)(arr)
+  return value === undefined ? optionNone : optionSome(value)
+  }
+  const f = a0
   return function (arr: any) {
     const value = meanByOrUndefined(f)(arr)
   return value === undefined ? optionNone : optionSome(value)
@@ -1620,14 +2083,27 @@ export const meanBy: <A>(f: (a: A) => number) => (arr: readonly A[]) => Option<n
 } as any
 
 
-export const meanByNonEmpty: <A>(f: (a: A) => number) => (arr: readonly [A, ...A[]]) => number = function meanByNonEmpty(f: any) {
+export const meanByNonEmpty: {
+  <A>(arr: readonly [A, ...A[]], f: (a: A) => number): number
+  <A>(f: (a: A) => number): (arr: readonly [A, ...A[]]) => number
+} = function meanByNonEmpty(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      f = a1
+    return meanByOrUndefined(f)(arr) as number
+  }
+  const f = a0
   return function (arr: any) {
     return meanByOrUndefined(f)(arr) as number
   }
 } as any
 
 
-export const sumBy: <A>(f: (a: A) => number) => (arr: readonly A[]) => number = function sumBy(f: any) {
+export const sumBy: {
+  <A>(arr: readonly A[], f: (a: A) => number): number
+  <A>(f: (a: A) => number): (arr: readonly A[]) => number
+} = function sumBy(f: any, __df?: any): any {
+  if (arguments.length >= 2) return sumBy(__df)(f)
   return function (arr: any) {
     let len = arr.length
   let acc = 0.0
@@ -1639,7 +2115,11 @@ export const sumBy: <A>(f: (a: A) => number) => (arr: readonly A[]) => number = 
 } as any
 
 
-export const mapToObj: <A, B>(f: (a: A) => [string, B]) => (arr: readonly A[]) => Dict<B> = function mapToObj(f: any) {
+export const mapToObj: {
+  <A, B>(arr: readonly A[], f: (a: A) => [string, B]): Dict<B>
+  <A, B>(f: (a: A) => [string, B]): (arr: readonly A[]) => Dict<B>
+} = function mapToObj(f: any, __df?: any): any {
+  if (arguments.length >= 2) return mapToObj(__df)(f)
   return function (arr: any) {
     let len = arr.length
   let dict: Dict<any> = {}
@@ -1652,7 +2132,11 @@ export const mapToObj: <A, B>(f: (a: A) => [string, B]) => (arr: readonly A[]) =
 } as any
 
 
-export const zipObj: <A>(values: readonly A[]) => (keys: readonly string[]) => Dict<A> = function zipObj(values: any) {
+export const zipObj: {
+  <A>(keys: readonly string[], values: readonly A[]): Dict<A>
+  <A>(values: readonly A[]): (keys: readonly string[]) => Dict<A>
+} = function zipObj(values: any, __df?: any): any {
+  if (arguments.length >= 2) return zipObj(__df)(values)
   return function (keys: any) {
     let lenK = keys.length
   let lenV = values.length
@@ -1666,14 +2150,27 @@ export const zipObj: <A>(values: readonly A[]) => (keys: readonly string[]) => D
 } as any
 
 
-export const groupByProp: (prop: string) => <A>(arr: readonly A[]) => Dict<A[]> = function groupByProp(prop: any) {
+export const groupByProp: {
+  <A>(arr: readonly A[], prop: string): Dict<A[]>
+  (prop: string): <A>(arr: readonly A[]) => Dict<A[]>
+} = function groupByProp(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const arr = a0,
+      prop = a1
+    return groupByPropRaw(arr, prop)
+  }
+  const prop = a0
   return function (arr: any) {
     return groupByPropRaw(arr, prop)
   }
 } as any
 
 
-export const arrayStartsWith: <A>(prefix: readonly A[]) => (arr: readonly A[]) => boolean = function arrayStartsWith(prefix: any) {
+export const arrayStartsWith: {
+  <A>(arr: readonly A[], prefix: readonly A[]): boolean
+  <A>(prefix: readonly A[]): (arr: readonly A[]) => boolean
+} = function arrayStartsWith(prefix: any, __df?: any): any {
+  if (arguments.length >= 2) return arrayStartsWith(__df)(prefix)
   return function (arr: any) {
     const lenA = arr.length
   const lenP = prefix.length
@@ -1684,7 +2181,11 @@ export const arrayStartsWith: <A>(prefix: readonly A[]) => (arr: readonly A[]) =
 } as any
 
 
-export const arrayEndsWith: <A>(suffix: readonly A[]) => (arr: readonly A[]) => boolean = function arrayEndsWith(suffix: any) {
+export const arrayEndsWith: {
+  <A>(arr: readonly A[], suffix: readonly A[]): boolean
+  <A>(suffix: readonly A[]): (arr: readonly A[]) => boolean
+} = function arrayEndsWith(suffix: any, __df?: any): any {
+  if (arguments.length >= 2) return arrayEndsWith(__df)(suffix)
   return function (arr: any) {
     const lenA = arr.length
   const lenS = suffix.length
@@ -1696,7 +2197,11 @@ export const arrayEndsWith: <A>(suffix: readonly A[]) => (arr: readonly A[]) => 
 } as any
 
 
-export const sortedIndex: (value: number) => (arr: readonly number[]) => number = function sortedIndex(value: any) {
+export const sortedIndex: {
+  (arr: readonly number[], value: number): number
+  (value: number): (arr: readonly number[]) => number
+} = function sortedIndex(value: any, __df?: any): any {
+  if (arguments.length >= 2) return sortedIndex(__df)(value)
   return function (arr: any) {
     let lo = 0,
       hi = arr.length
@@ -1710,7 +2215,11 @@ export const sortedIndex: (value: number) => (arr: readonly number[]) => number 
 } as any
 
 
-export const sortedLastIndex: (value: number) => (arr: readonly number[]) => number = function sortedLastIndex(value: any) {
+export const sortedLastIndex: {
+  (arr: readonly number[], value: number): number
+  (value: number): (arr: readonly number[]) => number
+} = function sortedLastIndex(value: any, __df?: any): any {
+  if (arguments.length >= 2) return sortedLastIndex(__df)(value)
   return function (arr: any) {
     let lo = 0,
       hi = arr.length
@@ -1727,7 +2236,11 @@ export const sortedLastIndex: (value: number) => (arr: readonly number[]) => num
 export const pair: <A, B>(a: A, b: B) => [A, B] = (a: any, b: any) => [a, b]
 
 // Arity 3
-export const withoutBy: <A>(values: readonly A[], f: (a: A) => string) => (arr: readonly A[]) => A[] = function withoutBy(values: any, f: any) {
+export const withoutBy: {
+  <A>(arr: readonly A[], values: readonly A[], f: (a: A) => string): A[]
+  <A>(values: readonly A[], f: (a: A) => string): (arr: readonly A[]) => A[]
+} = function withoutBy(values: any, f?: any, __df?: any): any {
+  if (arguments.length >= 3) return withoutBy(f, __df)(values)
   return function (arr: any) {
     let exclude = new Set()
   for (let i = 0, i_finish = values.length; i < i_finish; ++i) {
@@ -1745,7 +2258,11 @@ export const withoutBy: <A>(values: readonly A[], f: (a: A) => string) => (arr: 
 } as any
 
 
-export const slice: (start: number, end: number) => <A>(arr: readonly A[]) => A[] = function slice(start: any, end_: any) {
+export const slice: {
+  <A>(arr: readonly A[], start: number, end: number): A[]
+  (start: number, end: number): <A>(arr: readonly A[]) => A[]
+} = function slice(start: any, end_?: any, __df?: any): any {
+  if (arguments.length >= 3) return slice(end_, __df)(start)
   return function (arr: any) {
     let len = arr.length
   let s = start < 0 ? (((len + start) | 0) > 0 ? (len + start) | 0 : 0) : start < len ? start : len
@@ -1763,7 +2280,25 @@ export const slice: (start: number, end: number) => <A>(arr: readonly A[]) => A[
 } as any
 
 
-export const swap: (i: number, j: number) => <A>(arr: readonly A[]) => A[] = function swap(i: any, j: any) {
+export const swap: {
+  <A>(arr: readonly A[], i: number, j: number): A[]
+  (i: number, j: number): <A>(arr: readonly A[]) => A[]
+} = function swap(a0: any, a1?: any, a2?: any): any {
+  if (arguments.length >= 3) {
+    const arr = a0,
+      i = a1,
+      j = a2
+    let len = arr.length
+  if (i < 0 || i >= len || j < 0 || j >= len) {
+    return arr.slice(0)
+  }
+  let out = arr.slice(0)
+  out[i] = arr[j]
+  out[j] = arr[i]
+  return out
+  }
+  const i = a0,
+    j = a1
   return function (arr: any) {
     let len = arr.length
   if (i < 0 || i >= len || j < 0 || j >= len) {
@@ -1777,7 +2312,11 @@ export const swap: (i: number, j: number) => <A>(arr: readonly A[]) => A[] = fun
 } as any
 
 
-export const insertAll: <A>(index: number, values: readonly A[]) => (arr: readonly A[]) => A[] = function insertAll(index: any, values: any) {
+export const insertAll: {
+  <A>(arr: readonly A[], index: number, values: readonly A[]): A[]
+  <A>(index: number, values: readonly A[]): (arr: readonly A[]) => A[]
+} = function insertAll(index: any, values?: any, __df?: any): any {
+  if (arguments.length >= 3) return insertAll(values, __df)(index)
   return function (arr: any) {
     let len = arr.length
   let vLen = values.length
@@ -1797,7 +2336,11 @@ export const insertAll: <A>(index: number, values: readonly A[]) => (arr: readon
 } as any
 
 
-export const unionBy: <A>(b: readonly A[], f: (a: A) => string) => (a: readonly A[]) => A[] = function unionBy(b: any, f: any) {
+export const unionBy: {
+  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
+  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
+} = function unionBy(b: any, f?: any, __df?: any): any {
+  if (arguments.length >= 3) return unionBy(f, __df)(b)
   return function (a: any) {
     let seen = new Set()
   let result = []
@@ -1822,7 +2365,11 @@ export const unionBy: <A>(b: readonly A[], f: (a: A) => string) => (a: readonly 
 } as any
 
 
-export const unionWith: <A>(b: readonly A[], eq: (a: A, b: A) => boolean) => (a: readonly A[]) => A[] = function unionWith(b: any, eq: any) {
+export const unionWith: {
+  <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(b: readonly A[], eq: (a: A, b: A) => boolean): (a: readonly A[]) => A[]
+} = function unionWith(b: any, eq?: any, __df?: any): any {
+  if (arguments.length >= 3) return unionWith(eq, __df)(b)
   return function (a: any) {
     let result: any[] = []
   let addIfNew = (x: any): void => {
@@ -1850,7 +2397,11 @@ export const unionWith: <A>(b: readonly A[], eq: (a: A, b: A) => boolean) => (a:
 } as any
 
 
-export const intersectionBy: <A>(b: readonly A[], f: (a: A) => string) => (a: readonly A[]) => A[] = function intersectionBy(b: any, f: any) {
+export const intersectionBy: {
+  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
+  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
+} = function intersectionBy(b: any, f?: any, __df?: any): any {
+  if (arguments.length >= 3) return intersectionBy(f, __df)(b)
   return function (a: any) {
     let setB = new Set()
   for (let i = 0, i_finish = b.length; i < i_finish; ++i) {
@@ -1871,7 +2422,11 @@ export const intersectionBy: <A>(b: readonly A[], f: (a: A) => string) => (a: re
 } as any
 
 
-export const differenceBy: <A>(b: readonly A[], f: (a: A) => string) => (a: readonly A[]) => A[] = function differenceBy(b: any, f: any) {
+export const differenceBy: {
+  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
+  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
+} = function differenceBy(b: any, f?: any, __df?: any): any {
+  if (arguments.length >= 3) return differenceBy(f, __df)(b)
   return function (a: any) {
     let setB = new Set()
   for (let i = 0, i_finish = b.length; i < i_finish; ++i) {
@@ -1892,7 +2447,11 @@ export const differenceBy: <A>(b: readonly A[], f: (a: A) => string) => (a: read
 } as any
 
 
-export const differenceWith: <A>(b: readonly A[], eq: (a: A, b: A) => boolean) => (a: readonly A[]) => A[] = function differenceWith(b: any, eq: any) {
+export const differenceWith: {
+  <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(b: readonly A[], eq: (a: A, b: A) => boolean): (a: readonly A[]) => A[]
+} = function differenceWith(b: any, eq?: any, __df?: any): any {
+  if (arguments.length >= 3) return differenceWith(eq, __df)(b)
   return function (a: any) {
     let result = []
   for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
@@ -1914,7 +2473,11 @@ export const differenceWith: <A>(b: readonly A[], eq: (a: A, b: A) => boolean) =
 } as any
 
 
-export const symmetricDifferenceBy: <A>(b: readonly A[], f: (a: A) => string) => (a: readonly A[]) => A[] = function symmetricDifferenceBy(b: any, f: any) {
+export const symmetricDifferenceBy: {
+  <A>(a: readonly A[], b: readonly A[], f: (a: A) => string): A[]
+  <A>(b: readonly A[], f: (a: A) => string): (a: readonly A[]) => A[]
+} = function symmetricDifferenceBy(b: any, f?: any, __df?: any): any {
+  if (arguments.length >= 3) return symmetricDifferenceBy(f, __df)(b)
   return function (a: any) {
     let setA = new Set()
   let setB = new Set()
@@ -1947,7 +2510,11 @@ export const symmetricDifferenceBy: <A>(b: readonly A[], f: (a: A) => string) =>
 } as any
 
 
-export const symmetricDifferenceWith: <A>(b: readonly A[], eq: (a: A, b: A) => boolean) => (a: readonly A[]) => A[] = function symmetricDifferenceWith(b: any, eq: any) {
+export const symmetricDifferenceWith: {
+  <A>(a: readonly A[], b: readonly A[], eq: (a: A, b: A) => boolean): A[]
+  <A>(b: readonly A[], eq: (a: A, b: A) => boolean): (a: readonly A[]) => A[]
+} = function symmetricDifferenceWith(b: any, eq?: any, __df?: any): any {
+  if (arguments.length >= 3) return symmetricDifferenceWith(eq, __df)(b)
   return function (a: any) {
     let result = []
   for (let i = 0, i_finish = a.length; i < i_finish; ++i) {
@@ -1983,7 +2550,11 @@ export const symmetricDifferenceWith: <A>(b: readonly A[], eq: (a: A, b: A) => b
 } as any
 
 
-export const sortedIndexBy: <A>(value: A, f: (a: A) => number) => (arr: readonly A[]) => number = function sortedIndexBy(value: any, f: any) {
+export const sortedIndexBy: {
+  <A>(arr: readonly A[], value: A, f: (a: A) => number): number
+  <A>(value: A, f: (a: A) => number): (arr: readonly A[]) => number
+} = function sortedIndexBy(value: any, f?: any, __df?: any): any {
+  if (arguments.length >= 3) return sortedIndexBy(f, __df)(value)
   return function (arr: any) {
     let target = f(value)
   let lo = 0
@@ -2001,7 +2572,11 @@ export const sortedIndexBy: <A>(value: A, f: (a: A) => number) => (arr: readonly
 } as any
 
 
-export const sortedIndexWith: <A>(pred: (a: A) => boolean) => (arr: readonly A[]) => number = function sortedIndexWith(pred: any) {
+export const sortedIndexWith: {
+  <A>(arr: readonly A[], pred: (a: A) => boolean): number
+  <A>(pred: (a: A) => boolean): (arr: readonly A[]) => number
+} = function sortedIndexWith(pred: any, __df?: any): any {
+  if (arguments.length >= 2) return sortedIndexWith(__df)(pred)
   return function (arr: any) {
     let lo = 0
   let hi = arr.length
@@ -2018,7 +2593,11 @@ export const sortedIndexWith: <A>(pred: (a: A) => boolean) => (arr: readonly A[]
 } as any
 
 
-export const sortedLastIndexBy: <A>(value: A, f: (a: A) => number) => (arr: readonly A[]) => number = function sortedLastIndexBy(value: any, f: any) {
+export const sortedLastIndexBy: {
+  <A>(arr: readonly A[], value: A, f: (a: A) => number): number
+  <A>(value: A, f: (a: A) => number): (arr: readonly A[]) => number
+} = function sortedLastIndexBy(value: any, f?: any, __df?: any): any {
+  if (arguments.length >= 3) return sortedLastIndexBy(f, __df)(value)
   return function (arr: any) {
     let target = f(value)
   let lo = 0
@@ -2036,7 +2615,11 @@ export const sortedLastIndexBy: <A>(value: A, f: (a: A) => number) => (arr: read
 } as any
 
 
-export const mapAccum: <A, B, C>(f: (acc: B, a: A) => [B, C], init: B) => (arr: readonly A[]) => [B, C[]] = function mapAccum(f: any, init: any) {
+export const mapAccum: {
+  <A, B, C>(arr: readonly A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
+  <A, B, C>(f: (acc: B, a: A) => [B, C], init: B): (arr: readonly A[]) => [B, C[]]
+} = function mapAccum(f: any, init?: any, __df?: any): any {
+  if (arguments.length >= 3) return mapAccum(init, __df)(f)
   return function (arr: any) {
     let len = arr.length
   let out = new Array(len)
@@ -2051,7 +2634,11 @@ export const mapAccum: <A, B, C>(f: (acc: B, a: A) => [B, C], init: B) => (arr: 
 } as any
 
 
-export const mapAccumRight: <A, B, C>(f: (acc: B, a: A) => [B, C], init: B) => (arr: readonly A[]) => [B, C[]] = function mapAccumRight(f: any, init: any) {
+export const mapAccumRight: {
+  <A, B, C>(arr: readonly A[], f: (acc: B, a: A) => [B, C], init: B): [B, C[]]
+  <A, B, C>(f: (acc: B, a: A) => [B, C], init: B): (arr: readonly A[]) => [B, C[]]
+} = function mapAccumRight(f: any, init?: any, __df?: any): any {
+  if (arguments.length >= 3) return mapAccumRight(init, __df)(f)
   return function (arr: any) {
     let len = arr.length
   let out = new Array(len)
@@ -2068,11 +2655,15 @@ export const mapAccumRight: <A, B, C>(f: (acc: B, a: A) => [B, C], init: B) => (
 
 
 // Arity 4
-export const reduceBy: <A, B>(
+export const reduceBy: {
+  <A, B>(arr: readonly A[], keyFn: (a: A) => string, reducer: (acc: B, a: A) => B, init: B): Dict<B>
+  <A, B>(
     keyFn: (a: A) => string,
     reducer: (acc: B, a: A) => B,
     init: B,
-  ) => (arr: readonly A[]) => Dict<B> = function reduceBy(keyFn: any, reducer: any, init: any) {
+  ): (arr: readonly A[]) => Dict<B>
+} = function reduceBy(keyFn: any, reducer?: any, init?: any, __df?: any): any {
+  if (arguments.length >= 4) return reduceBy(reducer, init, __df)(keyFn)
   return function (arr: any) {
     const dict: Record<string, any> = {}
   for (let i = 0; i < arr.length; i++) {
@@ -2086,7 +2677,11 @@ export const reduceBy: <A, B>(
 } as any
 
 
-export const reduceWhile: <A, B>(pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B) => (arr: readonly A[]) => B = function reduceWhile(pred: any, f: any, init: any) {
+export const reduceWhile: {
+  <A, B>(arr: readonly A[], pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B): B
+  <A, B>(pred: (acc: B, a: A) => boolean, f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
+} = function reduceWhile(pred: any, f?: any, init?: any, __df?: any): any {
+  if (arguments.length >= 4) return reduceWhile(f, init, __df)(pred)
   return function (arr: any) {
     let len = arr.length
   let acc = init
@@ -2106,7 +2701,11 @@ export const reduceWhile: <A, B>(pred: (acc: B, a: A) => boolean, f: (acc: B, a:
 } as any
 
 
-export const splice: <A>(start: number, deleteCount: number, items: readonly A[]) => (arr: readonly A[]) => A[] = function splice(start: any, deleteCount: any, items: any) {
+export const splice: {
+  <A>(arr: readonly A[], start: number, deleteCount: number, items: readonly A[]): A[]
+  <A>(start: number, deleteCount: number, items: readonly A[]): (arr: readonly A[]) => A[]
+} = function splice(start: any, deleteCount?: any, items?: any, __df?: any): any {
+  if (arguments.length >= 4) return splice(deleteCount, items, __df)(start)
   return function (arr: any) {
     let len = arr.length
   let s = start < 0 ? (((len + start) | 0) > 0 ? (len + start) | 0 : 0) : start < len ? start : len
