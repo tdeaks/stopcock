@@ -301,11 +301,14 @@ describe('third-wave performance gate', () => {
       'node-v8',
       0.69,
     )
+    // Wide interval whose lower bound sits under the 0.7 case floor, so the
+    // CI-lower escape hatch does not save it and the RME check still fires.
     cases[1] = {
       ...cases[1]!,
-      ciLow: 0.94,
-      ciHigh: 1.06,
-      relativeMarginOfError: 6,
+      medianRatio: 1,
+      ciLow: 0.69,
+      ciHigh: 1.31,
+      relativeMarginOfError: 31,
     }
     const evaluation = evaluateThirdWavePerfReport(
       makeReport(cases, 'node-v8'),

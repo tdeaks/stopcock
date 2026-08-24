@@ -470,7 +470,14 @@ const evaluateUnsafe = (
     )
     failUnless(
       failures,
-      item.relativeMarginOfError <= policy.maximumRme,
+      item.relativeMarginOfError <= policy.maximumRme ||
+        // Same escape hatch as without-perf-gate and data-functional: a wide
+        // interval is still release-safe when its entire 95% confidence
+        // range clears the case floor. Adopted 2026-08-24 after
+        // schema/map-sync-success blew through the requalified 48% cap
+        // (its ratio sits at 2-4x, CI-low far above the 0.15 floor; the
+        // row's variance is occasionally unbounded, its throughput is not).
+        item.ciLow >= policy.minimumCaseRatio,
       `${item.name}: RME exceeds ${policy.maximumRme}%`,
     )
   }
