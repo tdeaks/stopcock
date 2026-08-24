@@ -287,8 +287,34 @@ Toolchain requalification: the managed bun moved 1.3.14 -> 1.4.0 and node
 notes the variance ceremony must pass before 1.4.0 readings count as
 release evidence; under current load it reads exactly like a loaded
 machine and not like a regression (14 timing gates green under 1.4.0,
-failures RME-only). Formal Phase 1 close-out: one quiet-machine
-`perf:gates` pass, expected all-green with no further changes.
+failures RME-only).
+
+A/B exoneration (post-landing, after a 14/24 re-run on the user's own
+quieter machine showed the SAME rows failing): the failing RME rows were
+re-run on a worktree at cef414d (pre-dual, single-form emission, same
+bun 1.4.0, same host). core-utilities fails the identical rows there
+(curry/arity-4, option/map-some, result/map-ok, map/get-present,
+map/get-present-undefined, plus record/omit-128) with floors passing
+(geomean 4.700 / worst 1.427 pre-dual vs 4.646 / 1.286 post-dual), and
+the stale provenance pin reproduces, confirming it pre-dates Phase 1.
+third-wave fails the identical four rows there (match/discriminant-
+data-first, match/tag-data-first, schema/map-sync-success, writer/zip)
+with floors passing (2.360 / 0.996 pre vs 2.296 / 0.776 post). The RME
+failures are environmental/toolchain, present before this plan's first
+commit, on subject modules this phase never touched.
+
+perf-profile ceremony distribution under bun 1.4.0 (7 runs, VM and
+Docker closed, Spotlight mds indexing at ~40% CPU plus two resident
+agent apps): 1 pass, 6 single-outlier-session failures at spread
+0.133-0.204 vs the 0.12 within-session ceiling, outlier position moving
+run to run; sessionMedianSpread 0.004-0.043 (ceiling 0.15) and
+noChangeBias <= 0.0013 (ceiling 0.1) pristine every run. The ceiling is
+NOT widened: the gate is the quiet-machine detector and it is correctly
+reporting a marginal environment. Bun 1.4.0 readings become release
+evidence when the ceremony passes on a genuinely quiet host (agent apps
+closed, mds settled); until then this environment's timing readings
+carry that caveat, which the A/B above shows applies equally to the
+pre-dual tree. No further code changes expected for the formal close.
 
 Phase 0 measured 2026-08-24 (bench: benchmarks/src/dual-dispatch.bench.ts,
 probe: benchmarks/src/dual-dispatch-size-probe.ts). Both lanes ran: Bun/JSC
