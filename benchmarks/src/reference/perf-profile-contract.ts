@@ -86,7 +86,15 @@ const LOCAL_MACOS_ARM64: PerfProfile = {
     { runtime: 'node', versions: ['24.18.0', '24.18.1', '24.19.0'], canary: true },
   ],
   variance: {
-    maxWithinSessionSpread: 0.12,
+    // 0.12 -> 0.18, bun 1.4.0 requalification 2026-08-24. Under 1.4.0 the
+    // no-change workload grows one fat-tailed session most runs (position
+    // moves run to run) while median spread and bias keep 4-40x headroom;
+    // 0.12 was failing genuinely quiet sessions roughly one run in three
+    // (recorded distribution in the dual-performance-first ledger: quiet
+    // outlier sessions 0.133-0.166, VM-loaded runs 0.189-0.204). 0.18
+    // sits in the observed gap, so the detector still fails a loaded
+    // machine while accepting 1.4.0's own tail.
+    maxWithinSessionSpread: 0.18,
     maxSessionMedianSpread: 0.15,
     maxNoChangeBias: 0.1,
     requiredSessions: 5,
