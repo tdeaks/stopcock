@@ -500,18 +500,8 @@ export const uniqBy: {
 export const take: {
   <A>(arr: readonly A[], n: number): A[]
   (n: number): <A>(arr: readonly A[]) => A[]
-} = function take(a0: any, a1?: any): any {
-  if (arguments.length >= 2) {
-    const arr = a0,
-      n = a1
-    let len = arr.length
-    if (n <= 0) {
-      return []
-    } else {
-      return arr.slice(0, n > len ? len : n)
-    }
-  }
-  const n = a0
+} = function take(n: any, __df?: any): any {
+  if (arguments.length >= 2) return take(__df)(n)
   return function (arr: any) {
     let len = arr.length
     if (n <= 0) {
@@ -526,20 +516,8 @@ export const take: {
 export const drop: {
   <A>(arr: readonly A[], n: number): A[]
   (n: number): <A>(arr: readonly A[]) => A[]
-} = function drop(a0: any, a1?: any): any {
-  if (arguments.length >= 2) {
-    const arr = a0,
-      n = a1
-    let len = arr.length
-    if (n <= 0) {
-      return arr.slice()
-    } else if (n >= len) {
-      return []
-    } else {
-      return arr.slice(n)
-    }
-  }
-  const n = a0
+} = function drop(n: any, __df?: any): any {
+  if (arguments.length >= 2) return drop(__df)(n)
   return function (arr: any) {
     let len = arr.length
     if (n <= 0) {
@@ -903,21 +881,8 @@ export const zipWith: {
 export const adjust: {
   <A>(arr: readonly A[], index: number, f: (a: A) => A): A[]
   <A>(index: number, f: (a: A) => A): (arr: readonly A[]) => A[]
-} = function adjust(a0: any, a1?: any, a2?: any): any {
-  if (arguments.length >= 3) {
-    const arr = a0,
-      index = a1,
-      f = a2
-    let len = arr.length
-    if (index < 0 || index >= len) {
-      return arr.slice(0)
-    }
-    let out = arr.slice(0)
-    out[index] = f(arr[index])
-    return out
-  }
-  const index = a0,
-    f = a1
+} = function adjust(index: any, f?: any, __df?: any): any {
+  if (arguments.length >= 3) return adjust(f, __df)(index)
   return function (arr: any) {
     let len = arr.length
     if (index < 0 || index >= len) {
@@ -933,19 +898,8 @@ export const adjust: {
 export const update: {
   <A>(arr: readonly A[], index: number, value: A): A[]
   <A>(index: number, value: A): (arr: readonly A[]) => A[]
-} = function update(a0: any, a1?: any, a2?: any): any {
-  if (arguments.length >= 3) {
-    const arr = a0,
-      index = a1,
-      value = a2
-    var len = arr.length
-    if (index < 0 || index >= len) return arr.slice()
-    var out = arr.slice()
-    out[index] = value
-    return out
-  }
-  const index = a0,
-    value = a1
+} = function update(index: any, value?: any, __df?: any): any {
+  if (arguments.length >= 3) return update(value, __df)(index)
   return function (arr: any) {
     var len = arr.length
     if (index < 0 || index >= len) return arr.slice()
@@ -1253,14 +1207,8 @@ export const concat: {
 export const nthOrUndefined: {
   <A>(arr: readonly A[], index: number): A | undefined
   (index: number): <A>(arr: readonly A[]) => A | undefined
-} = function nthOrUndefined(a0: any, a1?: any): any {
-  if (arguments.length >= 2) {
-    const arr = a0,
-      n = a1
-    var i = n < 0 ? arr.length + n : n
-  return i < 0 || i >= arr.length ? undefined : arr[i]
-  }
-  const n = a0
+} = function nthOrUndefined(n: any, __df?: any): any {
+  if (arguments.length >= 2) return nthOrUndefined(__df)(n)
   return function (arr: any) {
     var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? undefined : arr[i]
@@ -1271,14 +1219,8 @@ export const nthOrUndefined: {
 export const nth: {
   <A>(arr: readonly A[], index: number): Option<A>
   (index: number): <A>(arr: readonly A[]) => Option<A>
-} = function nth(a0: any, a1?: any): any {
-  if (arguments.length >= 2) {
-    const arr = a0,
-      n = a1
-    var i = n < 0 ? arr.length + n : n
-  return i < 0 || i >= arr.length ? optionNone : optionSome(arr[i])
-  }
-  const n = a0
+} = function nth(n: any, __df?: any): any {
+  if (arguments.length >= 2) return nth(__df)(n)
   return function (arr: any) {
     var i = n < 0 ? arr.length + n : n
   return i < 0 || i >= arr.length ? optionNone : optionSome(arr[i])
@@ -1307,14 +1249,8 @@ export const indexOfOrUndefined: {
 export const indexOf: {
   <A>(arr: readonly A[], value: A): Option<number>
   <A>(value: A): (arr: readonly A[]) => Option<number>
-} = function indexOf(a0: any, a1?: any): any {
-  if (arguments.length >= 2) {
-    const arr = a0,
-      val = a1
-    var i = arr.indexOf(val)
-  return i === -1 ? optionNone : optionSome(i)
-  }
-  const val = a0
+} = function indexOf(val: any, __df?: any): any {
+  if (arguments.length >= 2) return indexOf(__df)(val)
   return function (arr: any) {
     var i = arr.indexOf(val)
   return i === -1 ? optionNone : optionSome(i)
@@ -1343,14 +1279,8 @@ export const lastIndexOfOrUndefined: {
 export const lastIndexOf: {
   <A>(arr: readonly A[], value: A): Option<number>
   <A>(value: A): (arr: readonly A[]) => Option<number>
-} = function lastIndexOf(a0: any, a1?: any): any {
-  if (arguments.length >= 2) {
-    const arr = a0,
-      val = a1
-    var i = arr.lastIndexOf(val)
-  return i === -1 ? optionNone : optionSome(i)
-  }
-  const val = a0
+} = function lastIndexOf(val: any, __df?: any): any {
+  if (arguments.length >= 2) return lastIndexOf(__df)(val)
   return function (arr: any) {
     var i = arr.lastIndexOf(val)
   return i === -1 ? optionNone : optionSome(i)
@@ -1830,14 +1760,8 @@ export const takeLastWhile: {
 export const splitAt: {
   <A>(arr: readonly A[], index: number): [A[], A[]]
   (index: number): <A>(arr: readonly A[]) => [A[], A[]]
-} = function splitAt(a0: any, a1?: any): any {
-  if (arguments.length >= 2) {
-    const arr = a0,
-      index = a1
-    var i = index < 0 ? 0 : index > arr.length ? arr.length : index
-  return [arr.slice(0, i), arr.slice(i)]
-  }
-  const index = a0
+} = function splitAt(index: any, __df?: any): any {
+  if (arguments.length >= 2) return splitAt(__df)(index)
   return function (arr: any) {
     var i = index < 0 ? 0 : index > arr.length ? arr.length : index
   return [arr.slice(0, i), arr.slice(i)]
@@ -2068,14 +1992,8 @@ export const meanByOrUndefined: {
 export const meanBy: {
   <A>(arr: readonly A[], f: (a: A) => number): Option<number>
   <A>(f: (a: A) => number): (arr: readonly A[]) => Option<number>
-} = function meanBy(a0: any, a1?: any): any {
-  if (arguments.length >= 2) {
-    const arr = a0,
-      f = a1
-    const value = meanByOrUndefined(f)(arr)
-  return value === undefined ? optionNone : optionSome(value)
-  }
-  const f = a0
+} = function meanBy(f: any, __df?: any): any {
+  if (arguments.length >= 2) return meanBy(__df)(f)
   return function (arr: any) {
     const value = meanByOrUndefined(f)(arr)
   return value === undefined ? optionNone : optionSome(value)
@@ -2283,22 +2201,8 @@ export const slice: {
 export const swap: {
   <A>(arr: readonly A[], i: number, j: number): A[]
   (i: number, j: number): <A>(arr: readonly A[]) => A[]
-} = function swap(a0: any, a1?: any, a2?: any): any {
-  if (arguments.length >= 3) {
-    const arr = a0,
-      i = a1,
-      j = a2
-    let len = arr.length
-  if (i < 0 || i >= len || j < 0 || j >= len) {
-    return arr.slice(0)
-  }
-  let out = arr.slice(0)
-  out[i] = arr[j]
-  out[j] = arr[i]
-  return out
-  }
-  const i = a0,
-    j = a1
+} = function swap(i: any, j?: any, __df?: any): any {
+  if (arguments.length >= 3) return swap(j, __df)(i)
   return function (arr: any) {
     let len = arr.length
   if (i < 0 || i >= len || j < 0 || j >= len) {

@@ -316,6 +316,26 @@ closed, mds settled); until then this environment's timing readings
 carry that caveat, which the A/B above shows applies equally to the
 pre-dual tree. No further code changes expected for the formal close.
 
+Quiet-machine correction (2026-08-24, after the user's first genuinely
+quiet run-gates pass: perf-profile-gate PASSED, then dual-parity-gate
+FAILED on construction/take/10000 at 0.845 with geomean 0.967): the
+inline policy's 200-char threshold was wrong for take-shaped bodies.
+Four readings of that row across sessions (0.931, pass, 0.845, 0.956)
+all sat below 1.0 while delegate-policy rows straddled it; mechanism:
+take's ~110-char body inlined twice plus the branch outgrows the
+engine's inline budget for the factory itself, taxing exactly and only
+the construction-per-call path. Fix: threshold tightened 200 -> 64
+chars (true one-expression bodies stay inline -- 11 array ops, math,
+and boolean's and_/or_; take, drop, ifElse and friends flip to
+delegate, whose factory is the single-form factory plus one line).
+Confirmed by response to treatment: construction/take/10000 reads
+0.989 / 1.032 / 1.005 across three post-fix runs, gate geomean
+1.000-1.028, min 0.976-0.994. Closure identity still 121/121 against
+the pre-dual emission; fp 948/948, fp-compiler 557/557; portable
+digest re-pinned for the regenerated array.ts. The dual-parity gate
+caught a real emission defect on its first quiet reading, which is the
+job it was built for.
+
 Phase 0 measured 2026-08-24 (bench: benchmarks/src/dual-dispatch.bench.ts,
 probe: benchmarks/src/dual-dispatch-size-probe.ts). Both lanes ran: Bun/JSC
 (`bun run bench dual-dispatch`) and Node/V8 (`npx vitest bench --run

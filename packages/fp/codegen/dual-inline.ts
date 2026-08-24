@@ -396,10 +396,18 @@ function generateArity1(dc: DualCall): string {
  * when the body has no loop and is short enough that the inlined body beats
  * the delegation call on bytes; delegate otherwise. Per-op overrides land
  * here when a bench row earns one.
+ *
+ * The threshold started at 200 and was tightened to 64 by the dual-parity
+ * gate's first quiet-machine reading: take (~110-char body, inlined twice
+ * into the factory plus the branch) read 0.845 on construction-per-call,
+ * consistent with the factory outgrowing the engine's inline budget. 64
+ * keeps the true one-expression bodies (add's is 13 chars) and pushes
+ * everything take-shaped to delegate, whose factory is the single-form
+ * factory plus one dispatch line.
  */
 function dispatchPolicy(bodyText: string): 'delegate' | 'inline' {
   if (/\b(for|while)\s*\(/.test(bodyText)) return 'delegate'
-  return bodyText.length <= 200 ? 'inline' : 'delegate'
+  return bodyText.length <= 64 ? 'inline' : 'delegate'
 }
 
 function generateArityN(dc: DualCall): string {

@@ -58,19 +58,8 @@ export const or_: {
 export const ifElse: {
   <A>(cond: boolean, onTrue: () => A, onFalse: () => A): A
   <A>(onTrue: () => A, onFalse: () => A): (cond: boolean) => A
-} = function ifElse(a0: any, a1?: any, a2?: any): any {
-  if (arguments.length >= 3) {
-    const cond = a0,
-      onTrue = a1,
-      onFalse = a2
-    if (cond) {
-    return onTrue();
-  } else {
-    return onFalse();
-  }
-  }
-  const onTrue = a0,
-    onFalse = a1
+} = function ifElse(onTrue: any, onFalse?: any, __df?: any): any {
+  if (arguments.length >= 3) return ifElse(onFalse, __df)(onTrue)
   return function (cond: any) {
     if (cond) {
     return onTrue();
