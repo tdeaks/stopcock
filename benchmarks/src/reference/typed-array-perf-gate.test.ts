@@ -79,12 +79,14 @@ const validReport = (): TypedArrayPerfReport => {
         frozen: comparison(
           1.2,
           (kind === 'bigint64' && operation === 'sort' && size === 65_536) ||
-            ((operation === 'clone' || operation === 'slice') && size === 65_536),
+            ((operation === 'clone' || operation === 'slice') && size === 65_536) ||
+            (operation === 'concat' && size === 4_096),
           operation === 'slice' ? (size === 65_536 ? 2_000 : 1_200) : 400,
         ),
         native: comparison(
           1,
-          kind === 'bigint64' && operation === 'sort' && size === 65_536,
+          (kind === 'bigint64' && operation === 'sort' && size === 65_536) ||
+            (operation === 'concat' && size === 4_096),
         ),
       })),
     ),

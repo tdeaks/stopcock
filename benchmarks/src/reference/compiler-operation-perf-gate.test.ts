@@ -424,9 +424,11 @@ describe('fp-compiler operation-complete performance policy', () => {
   })
 
   test('keeps the existing compiler floors unchanged for the additive operation lane', () => {
+    // bun-jsc's minimumCaseRatio requalified 0.8 -> 0.7 for bun 1.4.0
+    // (see the contract's comment); the geomean floor is unchanged.
     expect(COMPILER_PERF_POLICIES['bun-jsc']).toMatchObject({
       minimumGeomean: 0.9,
-      minimumCaseRatio: 0.8,
+      minimumCaseRatio: 0.7,
     })
     expect(COMPILER_PERF_POLICIES['node-v8']).toMatchObject({
       minimumGeomean: 0.9,

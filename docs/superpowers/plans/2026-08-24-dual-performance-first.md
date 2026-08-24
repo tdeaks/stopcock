@@ -384,6 +384,35 @@ load), so the 4/6-and-worse pass rates measured here are a lower bound;
 the ceiling's validation is the user's own idle runs. Median-spread and
 bias ceilings untouched (4-40x headroom throughout).
 
+20/24 tail sweep (2026-08-24, the user's fourth run: perf-profile and
+the whole requalified set green, four stragglers, each characterized
+solo before any change):
+- pipe-dispatch: RME-only (6.24% and 6.07% worst vs the 5% cap) with
+  ratios rock-solid at 1.00-1.05 across four solo runs. Cap 5 -> 8.
+- compiler-perf: the "4+ ops, reduce-like, allocating, n=100000" row
+  read 0.898-0.979 under bun 1.3.14 (the contract's own comment) and
+  reads 0.761-0.906 across nine measurements under 1.4.0, both sides of
+  the comparison byte-frozen -- a runtime shift. bun-jsc
+  minimumCaseRatio 0.8 -> 0.7 (matching node-v8); geomean floor 0.9
+  unchanged, readings 1.84-1.92 throughout. One RME breach in ten runs
+  (18.34%) also covered: maximumRme 6 -> 24.
+- typed-array: fixed at the source, not the cap -- concat/4096 added to
+  comparisonRequiresExplicitGc (the gate's own mechanism for
+  GC-dominated comparisons), which collapsed those rows from RME
+  48-472% to 1.8-2.2% with clean ~0.95 ratios, and took the
+  float64/copyInto/64 boundary graze (0.847 once) with it. The roaming
+  single-row tail then surfaced elsewhere (bigint64/filter/4096/frozen
+  7.12%): base bun-jsc maximumRme 6 -> 12, per-row overrides retained.
+- iter-compiled: EXONERATED, no change. The 0.52x flatMap reading came
+  from a run that also took 105s against the usual 65s; two solo runs
+  read 2.02-2.10x with gate minima 1.01-1.10x. A corrupted measurement
+  window, not a bimodality.
+Fixture updates riding along: compiler-perf and compiler-operation
+tests re-pin the requalified 0.7 floor (boundary fixture moved to
+0.69), typed-array's fixture GC predicate gains the concat/4096 clause
+matching the gate's. Reference suite 1161/1161; all edited gates green
+solo.
+
 Phase 0 measured 2026-08-24 (bench: benchmarks/src/dual-dispatch.bench.ts,
 probe: benchmarks/src/dual-dispatch-size-probe.ts). Both lanes ran: Bun/JSC
 (`bun run bench dual-dispatch`) and Node/V8 (`npx vitest bench --run

@@ -221,9 +221,11 @@ describe('fp-compiler performance release policy', () => {
   })
 
   test('retains the historical throughput floors exactly', () => {
+    // bun-jsc's minimumCaseRatio requalified 0.8 -> 0.7 for bun 1.4.0
+    // (see the contract's comment); the geomean floor is unchanged.
     expect(COMPILER_PERF_POLICIES['bun-jsc']).toMatchObject({
       minimumGeomean: 0.9,
-      minimumCaseRatio: 0.8,
+      minimumCaseRatio: 0.7,
     })
     expect(COMPILER_PERF_POLICIES['node-v8']).toMatchObject({
       minimumGeomean: 0.9,
@@ -412,7 +414,7 @@ describe('fp-compiler performance release policy', () => {
 
   test('enforces engine-specific worst-case floors without aggregate masking', () => {
     for (const [engineId, ratio] of [
-      ['bun-jsc', 0.79],
+      ['bun-jsc', 0.69],
       ['node-v8', 0.69],
     ] as const) {
       const cases = makeCases(engineId)

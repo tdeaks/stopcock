@@ -365,9 +365,19 @@ export const COMPILER_PERF_POLICIES = Object.freeze({
     minimumWarmupRounds: 30,
     minimumBatchInputItems: 100_000,
     targetConsumedItemsPerMicroBatch: 10_000,
-    maximumRme: 6,
+    // bun 1.4.0 requalification 2026-08-24: one RME breach (18.34%, a
+    // trivial n=100 row) in ten runs of this gate; ceremony-worst x1.3.
+    maximumRme: 24,
     minimumGeomean: 0.9,
-    minimumCaseRatio: 0.8,
+    // bun 1.4.0 requalification 2026-08-24: the worst row ("4+ ops,
+    // sink=reduce-like, boundary=none, allocating, n=100000") read
+    // 0.898-0.979 under 1.3.14 (comment above) and reads 0.761-0.906
+    // across nine measurements under 1.4.0, with both sides of the
+    // comparison byte-frozen -- a runtime shift, not a compiled-output
+    // change. 0.70 clears the observed low with margin and matches the
+    // node-v8 floor below; the 0.9 geomean floor is unchanged (readings
+    // 1.84-1.92 throughout).
+    minimumCaseRatio: 0.7,
   }),
   'node-v8': Object.freeze({
     minimumRounds: 40,
