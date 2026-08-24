@@ -182,20 +182,22 @@ describe('Array.without performance policy', () => {
   })
 
   test('accepts a wide interval only when its lower bound clears the floor', () => {
+    // Both fixtures sit beyond the bun 1.4.0-requalified 26% cap, so only
+    // the CI-lower escape hatch separates them.
     const cases = makeCases(1)
     cases[0] = {
       ...cases[0],
-      ciLow: 0.9,
-      ciHigh: 1.1,
-      relativeMarginOfError: 10,
+      ciLow: 0.86,
+      ciHigh: 1.5,
+      relativeMarginOfError: 32,
     }
     expect(evaluateHotPathPerfReport(makeReport(cases)).passed).toBe(true)
 
     cases[0] = {
       ...cases[0],
       ciLow: 0.8,
-      ciHigh: 1.2,
-      relativeMarginOfError: 20,
+      ciHigh: 1.44,
+      relativeMarginOfError: 32,
     }
     expect(
       evaluateHotPathPerfReport(makeReport(cases)).failures.join('\n'),

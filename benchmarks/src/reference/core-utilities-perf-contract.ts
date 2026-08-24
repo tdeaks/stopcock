@@ -83,7 +83,10 @@ export const CORE_UTILITIES_PERF_POLICIES = Object.freeze({
     minimumWarmupRounds: 30,
     minimumBatchWorkUnits: 100_000,
     targetWorkUnitsPerMicroBatch: 10_000,
-    maximumRme: 6,
+    // bun 1.4.0 requalification 2026-08-24: worst quiet-machine reading in
+    // the 4-run RME ceremony was 25.16% (dual-performance-first ledger).
+    // Ratio floors below are unchanged and remain the substantive check.
+    maximumRme: 33,
     minimumGeomean: 0.9,
     minimumCaseRatio: 0.7,
     caseOverrides: Object.freeze({

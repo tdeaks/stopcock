@@ -336,6 +336,39 @@ digest re-pinned for the regenerated array.ts. The dual-parity gate
 caught a real emission defect on its first quiet reading, which is the
 job it was built for.
 
+Bun 1.4.0 RME requalification (2026-08-24, after the user's second quiet
+run read 16/24 with perf-profile AND dual-parity green): with the
+quiet-machine detector passing, the remaining 8 gates' failures could no
+longer be ambient load, and the A/B had already shown they pre-date this
+plan. The RME ceremony (4 solo runs per failing gate, per-row ratio and
+RME harvested from every report, table in scratchpad, worst-per-row
+summarized here): 108 rows harvested, 34 breach the old 6% cap at least
+once, including rows that had never failed a gate run (reader/tap
+23.65%, record/omit-128 12.05%, these/zip-both-both 10.82%). A third of
+the corpus breaching intermittently is the compiler-operation "never the
+same one twice" pattern, so the remedy is per-gate, not per-row:
+maximumRme raised on the bun-jsc policies only, each to its ceremony
+worst times ~1.3 -- core-utilities 6 -> 33 (worst 25.16), structural
+6 -> 45 (34.56), third-wave 9 -> 48 (36.66), scalar-text-hash 6 -> 30
+(22.82), data-functional 6 -> 31 (23.65), without 6 -> 26 (19.99),
+iter-broad 6 -> 18 (13.94), typed-array concat/4096 per-row 250 (its
+concat rows read 48-196%, pure GC scheduling, added to its existing
+per-row override chain). Every ratio floor and geomean is UNCHANGED;
+those pass on every gate in the same runs (worst harvested minRatio
+0.739, above its 0.7 floor) and remain the substantive protection.
+node-v8 policies untouched (not yet requalified under 24.19.0).
+without/n=64/m=32's one-off 0.793 ratio reading did not reproduce
+(0.960/0.972/0.992 solo, RME 1.2-1.9%); no floor changed for it.
+without-perf-gate.test.ts's boundary fixture moved to the new cap,
+still exercising the CI-lower escape hatch from both sides. All eight
+gates green solo post-change; benchmarks reference suite 1161/1161.
+Noted for later: data-functional and without already accept a wide
+interval when its whole CI clears the floor -- adopting that compound in
+the remaining gates would let these caps tighten again; recorded as a
+candidate improvement, not attempted here. Alternative rejected:
+pinning the toolchain back to bun 1.3.14 restores the old calibrations
+but fights the managed toolchain and only defers the requalification.
+
 Phase 0 measured 2026-08-24 (bench: benchmarks/src/dual-dispatch.bench.ts,
 probe: benchmarks/src/dual-dispatch-size-probe.ts). Both lanes ran: Bun/JSC
 (`bun run bench dual-dispatch`) and Node/V8 (`npx vitest bench --run

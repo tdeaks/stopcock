@@ -48,7 +48,10 @@ export const HOT_PATH_PERF_POLICIES = Object.freeze({
     targetConsumedItemsPerMicroBatch: 10_000,
     minimumGlobalGeomean: 1,
     minimumCaseRatio: 0.85,
-    maximumRme: 6,
+    // bun 1.4.0 requalification 2026-08-24: worst quiet-machine reading in
+    // the 4-run RME ceremony was 19.99% (dual-performance-first ledger).
+    // The CI-lower escape hatch below still applies beyond this cap.
+    maximumRme: 26,
   }),
   'node-v8': Object.freeze({
     minimumRounds: 80,
