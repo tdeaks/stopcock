@@ -197,7 +197,7 @@ adopting data-first. Webpack support. Compiled-tier semantic changes.
 
 Append one line per phase: `Phase N landed at <commit>`.
 
-Phase 0 landed at 04cde69.
+Phase 0 landed at 3e95eaf.
 
 Phase 0 measured 2026-08-24 (bench: benchmarks/src/dual-dispatch.bench.ts,
 probe: benchmarks/src/dual-dispatch-size-probe.ts). Both lanes ran: Bun/JSC
