@@ -440,6 +440,23 @@ solo.
   reproducible condition.
 Reference suite 1161/1161 after all of the above.
 
+pipe-dispatch zero-margin floors (2026-08-24, the user's sixth run):
+fresh-2-step failed at a displayed "ratio 1.000 is below 1.000" -- the
+hard 1.000 parity floors (three of the four rows) that the one-runtime-
+path ledger had already flagged as zero-margin. A row whose true value
+IS parity reads below 1.0 half the time by paired-noise construction.
+Restructured rather than nudged: per-row floors are now the single-
+shape regression tripwire at 0.90 (a real dispatch regression reads far
+below that; the fixture's is 0.1), the unchanged 0.98 geomean floor
+carries the parity claim, and the failure message prints 4 decimals so
+a boundary miss can never again display as "1.000 below 1.000". The
+first-cut 0.98 row floor failed a loaded re-run at 0.949 before
+settling on this structure. RME cap raised 8 -> 24 on the same
+ceremony-worst-x1.3 convention (ten further runs under agent-session
+load read up to 19.03% with ratios 1.00-1.07 throughout). Two fixture
+updates ride along (RME 30, ratio display 0.1000). Eight consecutive
+green runs under active agent-session load; reference suite 1161/1161.
+
 Phase 0 measured 2026-08-24 (bench: benchmarks/src/dual-dispatch.bench.ts,
 probe: benchmarks/src/dual-dispatch-size-probe.ts). Both lanes ran: Bun/JSC
 (`bun run bench dual-dispatch`) and Node/V8 (`npx vitest bench --run

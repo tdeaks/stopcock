@@ -95,7 +95,7 @@ describe('pipe-dispatch performance release policy', () => {
       ...cases[0],
       correctnessOk: false,
       rounds: 8,
-      relativeMarginOfError: 10,
+      relativeMarginOfError: 30,
     }
     const base = makeReport(cases.slice(0, -1))
     const report = makeReport(cases.slice(0, -1), {
@@ -122,6 +122,6 @@ describe('pipe-dispatch performance release policy', () => {
     const evaluation = evaluatePipeDispatchReport(makeReport(cases))
 
     expect(evaluation.passed).toBe(false)
-    expect(evaluation.failures.join('\n')).toContain('fresh-2-step: ratio 0.100')
+    expect(evaluation.failures.join('\n')).toContain('fresh-2-step: ratio 0.1000')
   })
 })
