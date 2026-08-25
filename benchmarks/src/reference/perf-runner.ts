@@ -154,6 +154,14 @@ function signTestP(xs: readonly number[]): number {
 export interface PairedRunOptions {
   readonly rounds: number
   readonly warmupRounds?: number
+  /**
+   * Runs before each timed sample, outside the timing window. For
+   * allocation-heavy comparisons that force garbage collection so neither
+   * side's sample inherits the other's collection debt (the GC-phase
+   * lottery documented for typed-array concat/4096 and dual-parity's
+   * n=100k rows in the dual-performance-first ledger).
+   */
+  readonly beforeSample?: () => void
 }
 
 export interface InterleavedPairedRunOptions extends PairedRunOptions {
@@ -200,6 +208,7 @@ export function runPaired(a: () => void, b: () => void, opts: PairedRunOptions):
   const pairedRatios: number[] = []
 
   const timeOf = (fn: () => void): number => {
+    opts.beforeSample?.()
     const t0 = process.hrtime.bigint()
     fn()
     const t1 = process.hrtime.bigint()

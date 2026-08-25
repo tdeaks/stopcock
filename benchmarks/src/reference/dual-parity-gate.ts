@@ -138,8 +138,23 @@ const frozenAddStep = frozenAdd(3)
 interface Row {
   readonly id: DualParityRowId
   readonly iterations: number
+  /**
+   * n=100k rows allocate a fresh 100k-element array per call, which makes
+   * their paired ratios a GC-phase lottery (construction/map/100000 read
+   * 0.863 in one manifest run against 0.95-1.08 everywhere else, with the
+   * measured closure byte-identical). Forcing collection before each timed
+   * sample removes the inherited collection debt, same as typed-array's
+   * concat/4096 treatment.
+   */
+  readonly forceGcBetweenSamples?: boolean
   readonly shipped: () => unknown
   readonly frozen: () => unknown
+}
+
+const collectGarbage = (): void => {
+  const bunGc = (globalThis as { Bun?: { gc?: (force: boolean) => void } }).Bun?.gc
+  if (bunGc) bunGc(true)
+  else (globalThis as { gc?: () => void }).gc?.()
 }
 
 const rows: readonly Row[] = [
@@ -152,6 +167,7 @@ const rows: readonly Row[] = [
   {
     id: 'hoisted-pipe/map->filter/100000',
     iterations: 1,
+    forceGcBetweenSamples: true,
     shipped: () => pipe(data100k, shippedMapStep, shippedFilterStep),
     frozen: () => pipe(data100k, frozenMapStep, frozenFilterStep),
   },
@@ -164,6 +180,7 @@ const rows: readonly Row[] = [
   {
     id: 'construction/map/100000',
     iterations: 1,
+    forceGcBetweenSamples: true,
     shipped: () => A.map(double)(data100k),
     frozen: () => frozenMap(double)(data100k),
   },
@@ -336,7 +353,11 @@ const main = async (): Promise<void> => {
       const measured = runPaired(
         batched(row.shipped, row.iterations),
         batched(row.frozen, row.iterations),
-        { rounds: policy.minimumRounds, warmupRounds: policy.warmupRounds },
+        {
+          rounds: policy.minimumRounds,
+          warmupRounds: policy.warmupRounds,
+          beforeSample: row.forceGcBetweenSamples ? collectGarbage : undefined,
+        },
       )
       cases.push({
         id: row.id,

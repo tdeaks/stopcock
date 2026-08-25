@@ -457,6 +457,20 @@ load read up to 19.03% with ratios 1.00-1.07 throughout). Two fixture
 updates ride along (RME 30, ratio display 0.1000). Eight consecutive
 green runs under active agent-session load; reference suite 1161/1161.
 
+dual-parity GC lottery (2026-08-24, the user's seventh run):
+construction/map/100000 read 0.863 against its 0.90 floor, dragging the
+geomean to 0.964. A real regression there is physically implausible
+(the measured closure is byte-identical and the dispatch branch
+amortizes over a 100k-element loop); the row allocates a fresh
+100k-element array per call, making its paired ratio the same GC-phase
+lottery as typed-array's concat/4096. Fixed at the source, same as
+there: perf-runner's PairedRunOptions gains an optional beforeSample
+hook (no behavior change for existing callers), and dual-parity's two
+n=100k rows force collection before each timed sample. Six consecutive
+green runs under agent-session load after the change, geomeans
+0.993-1.006 and minima 0.959-0.990 -- tighter than the gate has ever
+read. Floors unchanged. Reference suite 1161/1161.
+
 Phase 0 measured 2026-08-24 (bench: benchmarks/src/dual-dispatch.bench.ts,
 probe: benchmarks/src/dual-dispatch-size-probe.ts). Both lanes ran: Bun/JSC
 (`bun run bench dual-dispatch`) and Node/V8 (`npx vitest bench --run
