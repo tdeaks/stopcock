@@ -252,9 +252,17 @@ export const runQualificationSessions = (count: number): QualificationSession[] 
   // machine: two distinct closures would let V8 tier each call site up
   // independently and report that as noise.
   const subject = () => noChangeSubject(input)
+  // rounds 24 -> 96, bun 1.4.0 requalification 2026-08-24. At 24 ratios the
+  // p90 in relativeSpread is the third-highest sample, so a two-round
+  // scheduler burst counted as a session's spread and the ceremony failed
+  // one session most runs (position moving run to run -- the ledger's
+  // recorded distributions). At 96 a burst has to span ~10 rounds to reach
+  // p90, while a genuinely bimodal clock state still shows at any round
+  // count, which is what this statistic exists to catch. Whole ceremony
+  // still runs in under a second.
   const session = () =>
     runInterleavedPaired(subject, subject, {
-      rounds: 24,
+      rounds: 96,
       batchIterations: 64,
       microBatchIterations: 8,
       warmupRounds: 64,

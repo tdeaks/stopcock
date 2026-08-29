@@ -471,6 +471,25 @@ green runs under agent-session load after the change, geomeans
 0.993-1.006 and minima 0.959-0.990 -- tighter than the gate has ever
 read. Floors unchanged. Reference suite 1161/1161.
 
+perf-profile ceremony sample size (2026-08-24, the user's eighth run
+failed the ceremony again at the 0.18 ceiling): stopped chasing the
+ceiling and fixed the statistic's exposure instead. At 24 rounds per
+session, relativeSpread's p90 is the third-highest sample, so a
+two-round scheduler burst WAS the session's spread. rounds 24 -> 96: a
+burst now has to span ~10 rounds to reach p90, while a genuinely
+bimodal clock state (the shape this statistic exists to catch, per its
+own docstring) shows at any round count. Verified detection survives:
+under this agent session's own load the ceremony still fails 6/8 runs
+with spreads 0.20-0.34 (bursts here span seconds, i.e. many rounds) --
+the detector still detects. The 0.18 ceiling stays; if the user's idle
+runs are consistently tight at 96 rounds, it can return toward the
+original 0.12. Whole ceremony still under a second. Also: the managed
+toolchain moved node AGAIN mid-session (24.19.0 -> 24.20.0, the third
+version listed from one working day); listed per the standing pattern,
+with a note to consider a major-version range for node specifically if
+the churn keeps up (canary-only, never release evidence). Reference
+suite 1161/1161.
+
 Phase 0 measured 2026-08-24 (bench: benchmarks/src/dual-dispatch.bench.ts,
 probe: benchmarks/src/dual-dispatch-size-probe.ts). Both lanes ran: Bun/JSC
 (`bun run bench dual-dispatch`) and Node/V8 (`npx vitest bench --run

@@ -83,7 +83,12 @@ const LOCAL_MACOS_ARM64: PerfProfile = {
     // toolchain-managed node moved 24.18.1 -> 24.19.0 on the same machine
     // (cpu brand, cores, os release unchanged); exact-match identity check,
     // no timing involved, prior versions stay listed.
-    { runtime: 'node', versions: ['24.18.0', '24.18.1', '24.19.0'], canary: true },
+    // 24.20.0 added 2026-08-24, hours after 24.19.0: the managed toolchain
+    // updates node continuously (three versions listed from one working
+    // day). If this churn keeps up, consider accepting a major-version
+    // range for node specifically -- it is canary-only and its numbers are
+    // never release evidence, so exact-match buys little here.
+    { runtime: 'node', versions: ['24.18.0', '24.18.1', '24.19.0', '24.20.0'], canary: true },
   ],
   variance: {
     // 0.12 -> 0.18, bun 1.4.0 requalification 2026-08-24. Under 1.4.0 the
