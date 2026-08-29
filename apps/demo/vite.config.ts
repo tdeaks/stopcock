@@ -10,7 +10,6 @@ export default defineConfig({
       '@stopcock/state': path.resolve(__dirname, '../../packages/state/src/index.ts'),
       '@stopcock/http': path.resolve(__dirname, '../../packages/http/src/index.ts'),
       '@stopcock/async': path.resolve(__dirname, '../../packages/async/src/index.ts'),
-      '@stopcock/fp/dual': path.resolve(__dirname, '../../packages/fp/src/dual-lite.ts'),
       '@stopcock/fp/option': path.resolve(__dirname, '../../packages/fp/src/option.ts'),
       '@stopcock/fp/result': path.resolve(__dirname, '../../packages/fp/src/result.ts'),
       '@stopcock/fp': path.resolve(__dirname, '../../packages/fp/src/index.ts'),

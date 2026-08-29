@@ -85,15 +85,14 @@ Composition and programs:
 - `compile`, `optic`, `match`
 - `reader`, `state-fn`, `writer`, `recursion`
 
-Every operator has one form: curried, data-last.
+Every data operation with two or more arguments supports both call shapes
+under the same name: direct data-first and curried data-last.
 
 ```ts
+const firstFive = A.take(values, 5)
+const alsoFirstFive = A.take(5)(values)
 pipe(values, A.take(5))
 ```
-
-`dual` is a separate export, a helper for authoring your own data-first/
-data-last operator (`dual(2, (data, n) => ..., { op: 'myOp' })`); no module in
-this package uses it to build its own operators any more.
 
 ## Compiling pipelines
 

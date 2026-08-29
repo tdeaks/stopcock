@@ -18,14 +18,9 @@ import {
   runInterleavedPaired,
   type InterleavedPairedSampling,
 } from './perf-runner'
-import {
-  EXPECTED_PORTABLE_SUBJECT,
-  minimumPortableBatchIterations,
-} from './frozen-reference-contract'
+import { minimumPortableBatchIterations } from './frozen-reference-contract'
 
 const localDirectory = dirname(fileURLToPath(import.meta.url))
-const repositoryRoot = resolve(localDirectory, '..', '..', '..')
-
 export const PORTABLE_PERF_WORKER_MARKER = 'PORTABLE_PERF_RESULT_JSON:'
 
 interface PerfCaseFile {
@@ -405,17 +400,6 @@ const runWorker = (
   return parsed
 }
 
-const subjectSha256 = async (): Promise<string> => {
-  const hash = createHash('sha256')
-  for (const relativePath of EXPECTED_PORTABLE_SUBJECT.files) {
-    hash.update(relativePath)
-    hash.update('\0')
-    hash.update(await readFile(join(repositoryRoot, relativePath)))
-    hash.update('\0')
-  }
-  return hash.digest('hex')
-}
-
 const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2))
   const engine = currentPerfEngine()
@@ -501,11 +485,6 @@ const main = async (): Promise<void> => {
       {
         generatedAt: new Date().toISOString(),
         engine,
-        subject: {
-          id: EXPECTED_PORTABLE_SUBJECT.id,
-          files: EXPECTED_PORTABLE_SUBJECT.files,
-          sha256: await subjectSha256(),
-        },
         corpus: {
           id: corpus.id,
           version: corpus.version,

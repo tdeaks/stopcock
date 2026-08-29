@@ -46,7 +46,6 @@ export const PUBLIC_MODULES = [
   { subpath: './number', entry: 'src/number.ts' },
   { subpath: './math', entry: 'src/math.ts' },
   { subpath: './boolean', entry: 'src/boolean.ts' },
-  { subpath: './dual', entry: 'src/dual.ts' },
   { subpath: './compile', entry: 'src/compile.ts' },
   { subpath: './fusion', entry: 'src/fusion.ts' },
   {

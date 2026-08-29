@@ -111,6 +111,27 @@ describe('transformSource', () => {
     expect(result.diagnostics[0]?.code).toBe('manual-module-migration')
   })
 
+  it.each(['@stopcock/fp/dual', '@stopcock/fp/dual-lite'])(
+    'flags the removed %s subpath without guessing',
+    (specifier) => {
+      const source = `import { dual } from '${specifier}'\n`
+      const result = transformSource(source, 'fixture.ts')
+      expect(result.code).toBe(source)
+      expect(result.changed).toBe(false)
+      expect(result.diagnostics[0]?.code).toBe('manual-module-migration')
+      expect(result.diagnostics[0]?.severity).toBe('error')
+    },
+  )
+
+  it('flags the removed root dual export without inventing a destination', () => {
+    const source = "import { dual } from '@stopcock/fp'\n"
+    const result = transformSource(source, 'fixture.ts')
+    expect(result.code).toBe(source)
+    expect(result.changed).toBe(false)
+    expect(result.diagnostics[0]?.code).toBe('manual-module-migration')
+    expect(result.diagnostics[0]?.severity).toBe('error')
+  })
+
   it('leaves commented root imports intact', () => {
     const source = [
       'import {',

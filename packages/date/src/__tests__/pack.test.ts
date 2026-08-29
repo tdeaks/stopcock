@@ -1,13 +1,11 @@
 import { execFileSync } from 'node:child_process'
 import {
   access,
-  cp,
   mkdtemp,
   mkdir,
   readFile,
   readdir,
   rm,
-  symlink,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -17,7 +15,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 import pkg from '../../package.json' with { type: 'json' }
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url))
-const FP_ROOT = fileURLToPath(new URL('../../../fp', import.meta.url))
 const TSC = fileURLToPath(
   new URL('../../../../node_modules/typescript/lib/tsc.js', import.meta.url),
 )
@@ -29,10 +26,6 @@ let installedRoot: string
 
 beforeAll(async () => {
   execFileSync('node', ['../../tooling/build-package.mjs'], {
-    cwd: FP_ROOT,
-    stdio: 'inherit',
-  })
-  execFileSync('node', ['../../tooling/build-package.mjs'], {
     cwd: PACKAGE_ROOT,
     stdio: 'inherit',
   })
@@ -43,11 +36,6 @@ beforeAll(async () => {
     stdio: 'inherit',
   })
 
-  const fpFixtureDir = join(scratchDir, 'fp')
-  await mkdir(fpFixtureDir, { recursive: true })
-  await cp(join(FP_ROOT, 'dist'), join(fpFixtureDir, 'dist'), { recursive: true })
-  await cp(join(FP_ROOT, 'package.json'), join(fpFixtureDir, 'package.json'))
-
   consumerDir = join(scratchDir, 'consumer')
   installedRoot = join(consumerDir, 'node_modules/@stopcock/date')
   await mkdir(installedRoot, { recursive: true })
@@ -56,7 +44,6 @@ beforeAll(async () => {
     ['-xzf', join(scratchDir, TARBALL_NAME), '-C', installedRoot, '--strip-components=1'],
     { stdio: 'inherit' },
   )
-  await symlink(fpFixtureDir, join(consumerDir, 'node_modules/@stopcock/fp'), 'dir')
   await writeFile(
     join(consumerDir, 'package.json'),
     JSON.stringify({
@@ -86,7 +73,7 @@ describe('packed tarball', () => {
     await expect(access(join(installedRoot, 'README.md'))).resolves.toBeUndefined()
     await expect(access(join(installedRoot, 'CHANGELOG.md'))).resolves.toBeUndefined()
     await expect(access(join(installedRoot, 'LICENSE'))).resolves.toBeUndefined()
-    expect(installedPackage.dependencies?.['@stopcock/fp']).not.toContain('workspace:')
+    expect(installedPackage.dependencies).toBeUndefined()
 
     const files = await readdir(installedRoot, { recursive: true })
     expect(files.some((file) => file.includes('__tests__'))).toBe(false)

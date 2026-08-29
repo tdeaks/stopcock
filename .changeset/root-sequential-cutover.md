@@ -24,15 +24,17 @@ Why: the root is what most people import, and it was carrying an optimizer for
 everyone who only wanted to compose two functions. Importing `pipe` now costs
 191 gzip bytes.
 
-Four names also moved off the root to the subpaths that own them:
+Three names also moved off the root to the subpaths that own them:
 
 | was                      | now                         |
 | ------------------------ | --------------------------- |
 | `compile`, `compilePure` | `@stopcock/fp/compile`      |
-| `dual`                   | `@stopcock/fp/dual`         |
 | `explain`                | `@stopcock/fp/fusion/debug` |
 
-`@stopcock/fp-codemod` rewrites all four.
+The generic `dual` authoring helper was removed; arity-2+ data operations now
+provide their data-first and curried data-last call shapes directly.
+`@stopcock/fp-codemod` rewrites the three moved names and reports `dual` for
+manual migration.
 
 Nothing else about the root changed: `some`, `none`, `ok`, `err`, the guards,
 and the types are where they were.

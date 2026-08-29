@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import type { Timestamp } from './types'
 import { epochDays, epochDaysToCivil, msOfDay, timeComponents } from './core'
 

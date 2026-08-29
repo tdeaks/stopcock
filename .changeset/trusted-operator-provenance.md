@@ -17,10 +17,8 @@ diagnostics, but they no longer grant anything.
 
 What changes for you:
 
-- Functions you build with the public `dual(..., { op })` stay callable and
-  keep their `_op` field. They now always run the generic path instead of
-  being fused. Behaviour and results are unchanged; only the execution
-  strategy is.
+- The public `dual` authoring helper is removed. Custom functions remain
+  ordinary untagged pipeline steps.
 - Hand-written objects carrying `_op` are no longer fused. They run
   generically, which was always the correct outcome for a function this
   package did not build.

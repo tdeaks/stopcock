@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import type { Timestamp, DateUnit } from './types'
 import {
   epochDays,
@@ -23,54 +22,6 @@ import { startOf as utcStartOf, endOf as utcEndOf, add as utcAdd } from './arith
 export type Disambiguation = 'earlier' | 'later' | 'compatible'
 
 type TransitionEntry = { at: number; offset: number }
-
-type OptionalDataFirstDual3<Data, A1, A2, Optional, Result> = {
-  (data: Data, a1: A1, a2: A2, optional?: Optional): Result
-  (a1: A1, a2: A2): (data: Data) => Result
-}
-
-function dual3WithOptionalDataFirst<Data, A1, A2, Optional, Result>(
-  body: (data: Data, a1: A1, a2: A2, optional?: Optional) => Result,
-): OptionalDataFirstDual3<Data, A1, A2, Optional, Result> {
-  return function () {
-    if (arguments.length >= 3) {
-      return body(
-        arguments[0] as Data,
-        arguments[1] as A1,
-        arguments[2] as A2,
-        arguments[3] as Optional | undefined,
-      )
-    }
-    const a1 = arguments[0] as A1
-    const a2 = arguments[1] as A2
-    return (data: Data): Result => body(data, a1, a2)
-  } as OptionalDataFirstDual3<Data, A1, A2, Optional, Result>
-}
-
-type OptionalDataFirstDual4<Data, A1, A2, A3, Optional, Result> = {
-  (data: Data, a1: A1, a2: A2, a3: A3, optional?: Optional): Result
-  (a1: A1, a2: A2, a3: A3): (data: Data) => Result
-}
-
-function dual4WithOptionalDataFirst<Data, A1, A2, A3, Optional, Result>(
-  body: (data: Data, a1: A1, a2: A2, a3: A3, optional?: Optional) => Result,
-): OptionalDataFirstDual4<Data, A1, A2, A3, Optional, Result> {
-  return function () {
-    if (arguments.length >= 4) {
-      return body(
-        arguments[0] as Data,
-        arguments[1] as A1,
-        arguments[2] as A2,
-        arguments[3] as A3,
-        arguments[4] as Optional | undefined,
-      )
-    }
-    const a1 = arguments[0] as A1
-    const a2 = arguments[1] as A2
-    const a3 = arguments[2] as A3
-    return (data: Data): Result => body(data, a1, a2, a3)
-  } as OptionalDataFirstDual4<Data, A1, A2, A3, Optional, Result>
-}
 
 // ── Cache ────────────────────────────────────────────────────────────
 
@@ -283,57 +234,73 @@ export function localToUTC(
 export const getYear: {
   (ts: Timestamp, tz: string): number
   (tz: string): (ts: Timestamp) => number
-} = dual(
-  2,
-  (ts: Timestamp, tz: string): number => epochDaysToCivil(epochDays(utcToLocal(ts, tz))).year,
-)
+} = function getYear(tsOrTz: Timestamp | string, tz?: string): any {
+  if (arguments.length >= 2) return epochDaysToCivil(epochDays(utcToLocal(tsOrTz as Timestamp, tz!))).year
+  const selectedTz = tsOrTz as string
+  return (ts: Timestamp): number => epochDaysToCivil(epochDays(utcToLocal(ts, selectedTz))).year
+}
 
 export const getMonth: {
   (ts: Timestamp, tz: string): number
   (tz: string): (ts: Timestamp) => number
-} = dual(
-  2,
-  (ts: Timestamp, tz: string): number => epochDaysToCivil(epochDays(utcToLocal(ts, tz))).month,
-)
+} = function getMonth(tsOrTz: Timestamp | string, tz?: string): any {
+  if (arguments.length >= 2) return epochDaysToCivil(epochDays(utcToLocal(tsOrTz as Timestamp, tz!))).month
+  const selectedTz = tsOrTz as string
+  return (ts: Timestamp): number => epochDaysToCivil(epochDays(utcToLocal(ts, selectedTz))).month
+}
 
 export const getDay: {
   (ts: Timestamp, tz: string): number
   (tz: string): (ts: Timestamp) => number
-} = dual(
-  2,
-  (ts: Timestamp, tz: string): number => epochDaysToCivil(epochDays(utcToLocal(ts, tz))).day,
-)
+} = function getDay(tsOrTz: Timestamp | string, tz?: string): any {
+  if (arguments.length >= 2) return epochDaysToCivil(epochDays(utcToLocal(tsOrTz as Timestamp, tz!))).day
+  const selectedTz = tsOrTz as string
+  return (ts: Timestamp): number => epochDaysToCivil(epochDays(utcToLocal(ts, selectedTz))).day
+}
 
 export const getHours: {
   (ts: Timestamp, tz: string): number
   (tz: string): (ts: Timestamp) => number
-} = dual(2, (ts: Timestamp, tz: string): number => timeComponents(msOfDay(utcToLocal(ts, tz))).hour)
+} = function getHours(tsOrTz: Timestamp | string, tz?: string): any {
+  if (arguments.length >= 2) return timeComponents(msOfDay(utcToLocal(tsOrTz as Timestamp, tz!))).hour
+  const selectedTz = tsOrTz as string
+  return (ts: Timestamp): number => timeComponents(msOfDay(utcToLocal(ts, selectedTz))).hour
+}
 
 export const getMinutes: {
   (ts: Timestamp, tz: string): number
   (tz: string): (ts: Timestamp) => number
-} = dual(
-  2,
-  (ts: Timestamp, tz: string): number => timeComponents(msOfDay(utcToLocal(ts, tz))).minute,
-)
+} = function getMinutes(tsOrTz: Timestamp | string, tz?: string): any {
+  if (arguments.length >= 2) return timeComponents(msOfDay(utcToLocal(tsOrTz as Timestamp, tz!))).minute
+  const selectedTz = tsOrTz as string
+  return (ts: Timestamp): number => timeComponents(msOfDay(utcToLocal(ts, selectedTz))).minute
+}
 
 export const getSeconds: {
   (ts: Timestamp, tz: string): number
   (tz: string): (ts: Timestamp) => number
-} = dual(
-  2,
-  (ts: Timestamp, tz: string): number => timeComponents(msOfDay(utcToLocal(ts, tz))).second,
-)
+} = function getSeconds(tsOrTz: Timestamp | string, tz?: string): any {
+  if (arguments.length >= 2) return timeComponents(msOfDay(utcToLocal(tsOrTz as Timestamp, tz!))).second
+  const selectedTz = tsOrTz as string
+  return (ts: Timestamp): number => timeComponents(msOfDay(utcToLocal(ts, selectedTz))).second
+}
 
 // Predicates in local time
 export const isSameDay: {
   (a: Timestamp, b: Timestamp, tz: string): boolean
   (b: Timestamp, tz: string): (a: Timestamp) => boolean
-} = dual(
-  3,
-  (a: Timestamp, b: Timestamp, tz: string): boolean =>
-    epochDays(utcToLocal(a, tz)) === epochDays(utcToLocal(b, tz)),
-)
+} = function isSameDay(
+  aOrB: Timestamp,
+  bOrTz: Timestamp | string,
+  tz?: string,
+): any {
+  if (arguments.length >= 3) {
+    return epochDays(utcToLocal(aOrB, tz!)) === epochDays(utcToLocal(bOrTz as Timestamp, tz!))
+  }
+  const b = aOrB
+  const selectedTz = bOrTz as string
+  return (a: Timestamp): boolean => epochDays(utcToLocal(a, selectedTz)) === epochDays(utcToLocal(b, selectedTz))
+}
 
 export function isWeekend(ts: Timestamp, tz: string): boolean {
   const d = epochDays(utcToLocal(ts, tz))
@@ -352,87 +319,150 @@ export function isToday(ts: Timestamp, tz: string): boolean {
 }
 
 // startOf / endOf in local time
-export const startOf: {
-  (ts: Timestamp, unit: DateUnit, tz: string, disambig?: Disambiguation): Timestamp
-  (unit: DateUnit, tz: string): (ts: Timestamp) => Timestamp
-} = dual3WithOptionalDataFirst(
-  (
-    ts: Timestamp,
-    unit: DateUnit,
-    tz: string,
-    disambig: Disambiguation = 'compatible',
-  ): Timestamp => {
-    // For sub-day units, offset doesn't change within an hour
-    if (unit === 'millisecond' || unit === 'second' || unit === 'minute' || unit === 'hour') {
-      const local = utcToLocal(ts, tz)
-      const resultLocal = utcStartOf(local, unit)
-      return localToUTC(resultLocal as number, tz, disambig)
-    }
+function startOfImpl(
+  ts: Timestamp,
+  unit: DateUnit,
+  tz: string,
+  disambig: Disambiguation = 'compatible',
+): Timestamp {
+  // For sub-day units, offset doesn't change within an hour
+  if (unit === 'millisecond' || unit === 'second' || unit === 'minute' || unit === 'hour') {
     const local = utcToLocal(ts, tz)
     const resultLocal = utcStartOf(local, unit)
     return localToUTC(resultLocal as number, tz, disambig)
-  },
-)
+  }
+  const local = utcToLocal(ts, tz)
+  const resultLocal = utcStartOf(local, unit)
+  return localToUTC(resultLocal as number, tz, disambig)
+}
+
+export const startOf: {
+  (ts: Timestamp, unit: DateUnit, tz: string, disambig?: Disambiguation): Timestamp
+  (unit: DateUnit, tz: string): (ts: Timestamp) => Timestamp
+} = function startOf(
+  tsOrUnit: Timestamp | DateUnit,
+  unitOrTz: DateUnit | string,
+  tzOrDisambig?: string | Disambiguation,
+  disambig?: Disambiguation,
+): any {
+  if (arguments.length >= 3) {
+    return startOfImpl(tsOrUnit as Timestamp, unitOrTz as DateUnit, tzOrDisambig as string, disambig)
+  }
+  const unit = tsOrUnit as DateUnit
+  const tz = unitOrTz as string
+  return (ts: Timestamp): Timestamp => startOfImpl(ts, unit, tz)
+}
+
+function endOfImpl(
+  ts: Timestamp,
+  unit: DateUnit,
+  tz: string,
+  disambig: Disambiguation = 'compatible',
+): Timestamp {
+  const local = utcToLocal(ts, tz)
+  const resultLocal = utcEndOf(local, unit)
+  return localToUTC(resultLocal as number, tz, disambig)
+}
 
 export const endOf: {
   (ts: Timestamp, unit: DateUnit, tz: string, disambig?: Disambiguation): Timestamp
   (unit: DateUnit, tz: string): (ts: Timestamp) => Timestamp
-} = dual3WithOptionalDataFirst(
-  (
-    ts: Timestamp,
-    unit: DateUnit,
-    tz: string,
-    disambig: Disambiguation = 'compatible',
-  ): Timestamp => {
-    const local = utcToLocal(ts, tz)
-    const resultLocal = utcEndOf(local, unit)
-    return localToUTC(resultLocal as number, tz, disambig)
-  },
-)
+} = function endOf(
+  tsOrUnit: Timestamp | DateUnit,
+  unitOrTz: DateUnit | string,
+  tzOrDisambig?: string | Disambiguation,
+  disambig?: Disambiguation,
+): any {
+  if (arguments.length >= 3) {
+    return endOfImpl(tsOrUnit as Timestamp, unitOrTz as DateUnit, tzOrDisambig as string, disambig)
+  }
+  const unit = tsOrUnit as DateUnit
+  const tz = unitOrTz as string
+  return (ts: Timestamp): Timestamp => endOfImpl(ts, unit, tz)
+}
 
 // add / subtract in local time (calendar units are tz-aware)
+function addImpl(
+  ts: Timestamp,
+  amount: number,
+  unit: DateUnit,
+  tz: string,
+  disambig: Disambiguation = 'compatible',
+): Timestamp {
+  // Absolute units: no tz needed
+  if (unit === 'millisecond' || unit === 'second' || unit === 'minute' || unit === 'hour') {
+    return utcAdd(ts, amount, unit)
+  }
+  // Calendar units: convert to local, add, convert back
+  const local = utcToLocal(ts, tz)
+  const resultLocal = utcAdd(local, amount, unit)
+  return localToUTC(resultLocal as number, tz, disambig)
+}
+
 export const add: {
   (ts: Timestamp, amount: number, unit: DateUnit, tz: string, disambig?: Disambiguation): Timestamp
   (amount: number, unit: DateUnit, tz: string): (ts: Timestamp) => Timestamp
-} = dual4WithOptionalDataFirst(
-  (
-    ts: Timestamp,
-    amount: number,
-    unit: DateUnit,
-    tz: string,
-    disambig: Disambiguation = 'compatible',
-  ): Timestamp => {
-    // Absolute units: no tz needed
-    if (unit === 'millisecond' || unit === 'second' || unit === 'minute' || unit === 'hour') {
-      return utcAdd(ts, amount, unit)
-    }
-    // Calendar units: convert to local, add, convert back
-    const local = utcToLocal(ts, tz)
-    const resultLocal = utcAdd(local, amount, unit)
-    return localToUTC(resultLocal as number, tz, disambig)
-  },
-)
+} = function add(
+  tsOrAmount: Timestamp | number,
+  amountOrUnit: number | DateUnit,
+  unitOrTz: DateUnit | string,
+  tzOrDisambig?: string | Disambiguation,
+  disambig?: Disambiguation,
+): any {
+  if (arguments.length >= 4) {
+    return addImpl(
+      tsOrAmount as Timestamp,
+      amountOrUnit as number,
+      unitOrTz as DateUnit,
+      tzOrDisambig as string,
+      disambig,
+    )
+  }
+  const amount = tsOrAmount as number
+  const unit = amountOrUnit as DateUnit
+  const tz = unitOrTz as string
+  return (ts: Timestamp): Timestamp => addImpl(ts, amount, unit, tz)
+}
 
 export const subtract: {
   (ts: Timestamp, amount: number, unit: DateUnit, tz: string, disambig?: Disambiguation): Timestamp
   (amount: number, unit: DateUnit, tz: string): (ts: Timestamp) => Timestamp
-} = dual4WithOptionalDataFirst(
-  (
-    ts: Timestamp,
-    amount: number,
-    unit: DateUnit,
-    tz: string,
-    disambig: Disambiguation = 'compatible',
-  ): Timestamp => (add as any)(ts, -amount, unit, tz, disambig),
-)
+} = function subtract(
+  tsOrAmount: Timestamp | number,
+  amountOrUnit: number | DateUnit,
+  unitOrTz: DateUnit | string,
+  tzOrDisambig?: string | Disambiguation,
+  disambig?: Disambiguation,
+): any {
+  if (arguments.length >= 4) {
+    return (add as any)(
+      tsOrAmount as Timestamp,
+      -(amountOrUnit as number),
+      unitOrTz as DateUnit,
+      tzOrDisambig as string,
+      disambig,
+    )
+  }
+  const amount = tsOrAmount as number
+  const unit = amountOrUnit as DateUnit
+  const tz = unitOrTz as string
+  return (ts: Timestamp): Timestamp => (add as any)(ts, -amount, unit, tz)
+}
 
 // format in local time
 export const format: {
   (ts: Timestamp, template: string, tz: string): string
   (template: string, tz: string): (ts: Timestamp) => string
-} = dual(3, (ts: Timestamp, template: string, tz: string): string =>
-  utcFormat(utcToLocal(ts, tz), template),
-)
+} = function format(
+  tsOrTemplate: Timestamp | string,
+  templateOrTz: string,
+  tz?: string,
+): any {
+  if (arguments.length >= 3) return utcFormat(utcToLocal(tsOrTemplate as Timestamp, tz!), templateOrTz)
+  const template = tsOrTemplate as string
+  const selectedTz = templateOrTz
+  return (ts: Timestamp): string => utcFormat(utcToLocal(ts, selectedTz), template)
+}
 
 export function formatter(template: string, tz: string): (ts: Timestamp) => string {
   const fmt = utcFormatter(template)
@@ -465,10 +495,7 @@ export function parserTz(
 export { parseTz as parse }
 
 // diff in local time (calendar units)
-export const diff: {
-  (a: Timestamp, b: Timestamp, unit: DateUnit, tz: string): number
-  (b: Timestamp, unit: DateUnit, tz: string): (a: Timestamp) => number
-} = dual(4, (a: Timestamp, b: Timestamp, unit: DateUnit, tz: string): number => {
+function diffImpl(a: Timestamp, b: Timestamp, unit: DateUnit, tz: string): number {
   if (unit === 'millisecond' || unit === 'second' || unit === 'minute' || unit === 'hour') {
     const delta = (a as number) - (b as number)
     switch (unit) {
@@ -498,7 +525,25 @@ export const diff: {
     default:
       return 0
   }
-})
+}
+
+export const diff: {
+  (a: Timestamp, b: Timestamp, unit: DateUnit, tz: string): number
+  (b: Timestamp, unit: DateUnit, tz: string): (a: Timestamp) => number
+} = function diff(
+  aOrB: Timestamp,
+  bOrUnit: Timestamp | DateUnit,
+  unitOrTz: DateUnit | string,
+  tz?: string,
+): any {
+  if (arguments.length >= 4) {
+    return diffImpl(aOrB, bOrUnit as Timestamp, unitOrTz as DateUnit, tz!)
+  }
+  const b = aOrB
+  const unit = bOrUnit as DateUnit
+  const selectedTz = unitOrTz as string
+  return (a: Timestamp): number => diffImpl(a, b, unit, selectedTz)
+}
 
 // Get the timezone abbreviation at a given instant
 export function getOffsetString(ts: Timestamp, tz: string): string {

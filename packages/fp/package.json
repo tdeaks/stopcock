@@ -141,10 +141,6 @@
       "types": "./dist/boolean.d.ts",
       "import": "./dist/boolean.js"
     },
-    "./dual": {
-      "types": "./dist/dual.d.ts",
-      "import": "./dist/dual.js"
-    },
     "./compile": {
       "types": "./dist/compile.d.ts",
       "import": "./dist/compile.js"

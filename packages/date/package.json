@@ -22,9 +22,6 @@
       "import": "./dist/index.js"
     }
   },
-  "dependencies": {
-    "@stopcock/fp": "workspace:*"
-  },
   "engines": {
     "node": ">=22"
   }
