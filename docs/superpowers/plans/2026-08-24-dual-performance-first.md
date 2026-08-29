@@ -144,15 +144,15 @@ Ledger, compiler-perf-gate unchanged.
 
 ## Phase 2: the rest of the surface
 
-- [ ] Defs coverage audit: string/object/number defs exist but are not in
+- [x] Defs coverage audit: string/object/number defs exist but are not in
       GENERATED_MODULES. Verify each against the hand-written src (they may
       be stale), then promote current ones into codegen per D2.
-- [ ] Remaining hand-written modules (record, map, set, option, result,
+- [x] Remaining hand-written modules (record, map, set, option, result,
       iter, array-extra, typed-array, optic, match, guard, nullable, ...):
       recover data-first bodies from git pre-b23e09c, promote to defs or
       convert in place per D2. Batches of two or three modules, suite and
       gates green per batch.
-- [ ] Internal call sites stay curried (they are already); no internal
+- [x] Internal call sites stay curried (they are already); no internal
       caller adopts data-first this plan.
 
 Gate: full monorepo suite green, gates green, byte deltas per batch in
@@ -160,15 +160,15 @@ Ledger.
 
 ## Phase 3: ecosystem and close-out
 
-- [ ] packages/date off the old dual.ts and onto the new emission; delete
+- [x] packages/date off the old dual.ts and onto the new emission; delete
       dual.ts and the `./dual` export (the standing follow-up).
-- [ ] fp-compiler, measured and optional: lower recognized data-first call
+- [x] fp-compiler, measured and optional: lower recognized data-first call
       sites the same way pipe steps lower. Only if Phase 0/1 numbers show
       uncompiled data-first leaving real headroom.
-- [ ] eslint-plugin-fp: retire any curried-only arity rule; keep or add
+- [x] eslint-plugin-fp: retire any curried-only arity rule; keep or add
       wrong-shape detection only where types cannot catch it.
-- [ ] fuzz-correctness dual lane (invariant 6).
-- [ ] Docs: fp README's call-shape claims become true again; compiler
+- [x] fuzz-correctness dual lane (invariant 6).
+- [x] Docs: fp README's call-shape claims become true again; compiler
       README note on data-first call sites.
 
 Gate: full suite, perf:gates, packed smoke, Ledger closed with byte and
@@ -562,3 +562,71 @@ contract files remain where other code imports them; a dead-code sweep
 is a separate follow-up. Full manifest now runs in ~24s instead of ~10
 minutes and contains nothing that failed for machine-weather reasons
 this month. Reference suite 1048/1048; 9/9 gates green.
+
+Phase 2 landed at 5e188a4 (Iter size close-out at 02e6e0c).
+
+Phase 3 landed at c9674b4 (integration close-out at 02e6e0c, plus this ledger-line commit).
+
+Phase 2 emission (2026-08-30): string, object, and number joined
+`GENERATED_MODULES`; codegen now reports array 143, boolean 3, math 8,
+string 10, object 16, and number 14 authored `dual()` calls, emitting 194
+functions. The promoted-module fixture pins 48 pre-promotion curried closures;
+the full hand-written conversion audit compared 260 pre/post closures with
+zero byte differences. The final Iter name-only size repair compared 326
+working-tree/landed closures with zero differences. Runtime parity tables and
+the type-level overload/narrowing matrix cover both shapes.
+
+The remaining public arity-2+ surface was converted in place with
+`arguments.length` dispatch, except ambiguous optional forms, which use the
+data predicate or require the full data-first arity. Production internal calls
+remain curried. packages/fp closed Phase 2 at 47 files / 1,143 tests with
+source, type, manifest, portable-boundary, package-contract, and post-commit
+codegen checks green. Final reproducibility after Phase 3 is
+`sha256:b6fe4599c6359f28e5782e9b98c1e438c8631f41fd2a02705c017d307336d12c`;
+the obsolete portable-subject SHA provenance contract was deleted, not
+re-pinned, per the 9-gate manifest decision above.
+
+Phase 2 byte deltas against the Phase 1 ledger: s3b option.flow 140 -> 197 B
+(+57 across two dual ops), result.flow 126 -> 180 B (+54 across two dual ops),
+string.trim 66 -> 66 B, and object.pick 303 -> 341 B (+38). The two aggregate
+flow rows exceed D3's 48 B row proposal only because each bundles two newly
+dual factories; their per-op additions are about 27-29 B. s8 common-pipeline
+stayed 246 B; shared runtime stayed 629 B; the same-package lower-bound moved
+38,012 -> 41,525 B under its 100,000 B ceiling. Iter finished at 6,491 B
+gzip against the unchanged 6,516 B ceiling (baseline 6,206 B, +4.59%). No
+ceiling or timing floor changed.
+
+Phase 3 ecosystem (2026-08-30): all eight date source files now inline their
+own dual dispatch and `@stopcock/date` has no FP runtime dependency. The public
+`@stopcock/fp/dual` source, export, tests, aliases, packed contract, stale
+release guidance, and portable-subject provenance were removed. The codemod
+and ESLint plugin report both removed dual subpaths without an unsafe fix.
+The fuzz corpus now compares emitted, curried-sequential, and direct data-first
+lanes. README and site-source call-shape claims describe the shipped API.
+
+The optional compiler lowering was deliberately not added. Phase 0 already
+measured direct data-first calls ahead of remeda by 1.4-10x, while the compiler
+contract recognizes operators only as pipe/flow/compile steps. Extending it to
+standalone calls would enlarge that contract without measured headroom to win;
+the compiler README now states the boundary. fp-compiler source/types and
+557/557 tests passed; packed FP + compiler smoke passed; the final monorepo
+run (date included, synth excluded) passed 195 files / 4,175 tests. The
+reference suite passed 22 files / 1,048 tests.
+
+Final 9-gate evidence: all nine gates passed, with the plan's required solo
+confirmation used for timing-only manifest flakes. dual-parity's final solo
+read geomean 1.004 / min 0.941 (the take row RME settled to 13.24%); compiler
+perf read 44/44, geomean 1.907 / min 0.961; pipe-floor read 1.597 / 1.091;
+pipe-dispatch read 1.057 / 1.025. The complete manifest repeatedly passed all
+four deterministic gates and eight of nine in one process; its only final red
+was take-row RME 15.98% vs 15%, which immediately passed solo. An earlier
+compiler 0.638 timing miss likewise passed solo at 0.961. No source, ceiling,
+floor, or tolerance changed in response.
+
+Final deterministic readings: root 126 B, flow 138 B, common-pipeline 246 B,
+named fixture 154 B, enumerated root 403 B; s3b 197/180/66/341 B; package
+tarball 105,581 B with 629 B shared runtime and 41,525 B same-package
+projection; prototype pack 562,129 B across 101 files with zero optimizer or
+compiler runtime bytes. Competitor-floor rows were 4.61x lodash flow, 6.21x
+ramda compose-and-call, 1.01x lodash map, 1.29x lodash filter, and 0.90x
+ts-belt map-filter (the ts-belt two-function 1.00x row remains report-only).
