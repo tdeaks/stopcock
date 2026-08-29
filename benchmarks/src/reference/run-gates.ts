@@ -35,6 +35,24 @@ const runGate = (gate: GateEntry, runtime: string): GateOutcome => {
     cwd: resolve(referenceDir, '..', '..'),
   })
   const output = `${child.stdout ?? ''}\n${child.stderr ?? ''}`
+  const matchedLines = output
+    .split('\n')
+    .filter((line) => line.startsWith('FAIL') || line.includes('Error:'))
+    .slice(0, 5)
+  // A failed gate whose output matched nothing was previously reported as a
+  // bare FAIL with no detail -- an 11ms silent crash on 2026-08-24 (cause
+  // never identified; suspected toolchain binary swap mid-run) was
+  // undiagnosable for exactly this reason. Surface the spawn error, signal,
+  // exit status, and the output tail so the next one names itself.
+  const failureLines =
+    child.status === 0 || matchedLines.length > 0
+      ? matchedLines
+      : [
+          child.error !== undefined
+            ? `spawn failed: ${child.error.message}`
+            : `exited status=${child.status} signal=${child.signal ?? 'none'} with no FAIL/Error line`,
+          ...output.split('\n').filter((line) => line.trim().length > 0).slice(-4),
+        ].slice(0, 5)
   return {
     script: gate.script,
     kind: gate.kind,
@@ -42,10 +60,7 @@ const runGate = (gate: GateEntry, runtime: string): GateOutcome => {
     status: child.status,
     // A gate that crashes fails even if it printed no FAIL line.
     passed: child.status === 0,
-    failureLines: output
-      .split('\n')
-      .filter((line) => line.startsWith('FAIL') || line.includes('Error:'))
-      .slice(0, 5),
+    failureLines,
     durationMs: Date.now() - started,
   }
 }
