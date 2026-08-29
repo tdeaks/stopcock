@@ -12,8 +12,8 @@ export const duotone: {
 } = dual(3, (img: Image, dark: Color, light: Color): Image => {
   const { rgb, alpha } = imageToChannelBuffer(img)
   const lab = convertBuffer(rgb, 'srgb', 'oklab')
-  const darkLab = convert(dark, 'oklab').channels
-  const lightLab = convert(light, 'oklab').channels
+  const darkLab = convert('oklab')(dark).channels
+  const lightLab = convert('oklab')(light).channels
 
   for (let i = 0; i < lab.length; i += 3) {
     const t = clamp01(lab[i])

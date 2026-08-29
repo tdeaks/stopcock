@@ -10,7 +10,7 @@ export const colorize: {
 } = dual(2, (img: Image, target: Color): Image => {
   const { rgb, alpha } = imageToChannelBuffer(img)
   const oklch = convertBuffer(rgb, 'srgb', 'oklch')
-  const targetOklch = convert(target, 'oklch')
+  const targetOklch = convert('oklch')(target)
   const chroma = targetOklch.channels[1]
   const hue = targetOklch.channels[2]
 
