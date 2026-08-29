@@ -544,3 +544,21 @@ which under the curried-only op bundles an unapplied closure. Harmless for
 a size measurement, but it is another live instance of the silent
 partial-application class this plan closes; the call shape becomes correct
 the moment Phase 2 lands dual object ops, with no gate change needed.
+
+Gate-surface cut (2026-08-29, owner decision, supersedes invariant 2's
+"no gate retirements"): after a week in which most red runs traced to
+the measurement apparatus rather than the code (bun 1.4.0 RME
+requalification, the toolchain version whitelist breaking on four
+auto-updates in one day, sha-provenance pins firing with zero
+information gained, micro-RME quality gates flaking on a dev laptop),
+the manifest was cut 24 -> 9: the four size gates, dual-parity,
+pipe-floor, pipe-dispatch, competitor-floor, and compiler-perf. Deleted
+outright (git history keeps them): perf-profile as a gate (the file
+survives as the host-identity library; the runtime-version whitelist in
+resolveProfile now identifies but never rejects), compiler-perf-
+sessions, compiler-operation, the six sha-pinned quality gates, the
+iter trio, typed-array, s10-hand-loop, allocation. Their harness and
+contract files remain where other code imports them; a dead-code sweep
+is a separate follow-up. Full manifest now runs in ~24s instead of ~10
+minutes and contains nothing that failed for machine-weather reasons
+this month. Reference suite 1048/1048; 9/9 gates green.

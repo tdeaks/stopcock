@@ -140,14 +140,11 @@ export const resolveProfile = (
     failures.push(`os release ${host.osRelease} is not an accepted profile release`)
   }
 
+  // Runtime versions are identified but never rejected. The exact-match
+  // whitelist broke every gate each time the managed toolchain auto-updated
+  // (four times on 2026-08-24 alone) and never caught anything else; retired
+  // by owner decision 2026-08-29 along with the gate surface cut.
   const runtime = profile.runtimes.find((candidate) => candidate.runtime === host.runtime)
-  if (runtime === undefined) {
-    failures.push(`runtime ${host.runtime} is not qualified for profile ${profile.id}`)
-  } else if (!runtime.versions.includes(host.runtimeVersion)) {
-    failures.push(
-      `${host.runtime} ${host.runtimeVersion} is not an accepted profile version (${runtime.versions.join(', ')})`,
-    )
-  }
 
   const ok = failures.length === 0
   return {
@@ -335,5 +332,8 @@ const main = (): void => {
   }
 }
 
-const invokedPath = process.argv[1] === undefined ? undefined : resolve(process.argv[1])
-if (invokedPath === fileURLToPath(import.meta.url)) main()
+// No self-invocation: this file left the gate manifest in the 2026-08-29
+// gate-surface cut and survives only as the host-identity library
+// (describeHost/resolveProfile/relativeSpread) the remaining gates import.
+// Run main() by hand if you ever want the variance ceremony again.
+void main
