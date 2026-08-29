@@ -44,21 +44,46 @@ const MAP_TAG_HASH = hashStringFrom(FNV_OFFSET, 'Map')
 const SET_TAG_HASH = hashStringFrom(FNV_OFFSET, 'Set')
 const FUNCTION_TAG_HASH = hashStringFrom(FNV_OFFSET, 'Function')
 
-export const combine = (self: number, that: number): number => {
-  let value = normalize(self ^ that)
-  value = Math.imul(value ^ (value >>> 16), 0x85ebca6b)
-  value = Math.imul(value ^ (value >>> 13), 0xc2b2ae35)
-  return normalize(value ^ (value >>> 16))
+export function combine(self: number, that: number): number
+export function combine(that: number): (self: number) => number
+export function combine(
+  selfOrThat: number,
+  maybeThat?: number,
+): number | ((self: number) => number) {
+  if (arguments.length >= 2) {
+    let value = normalize(selfOrThat ^ (maybeThat as number))
+    value = Math.imul(value ^ (value >>> 16), 0x85ebca6b)
+    value = Math.imul(value ^ (value >>> 13), 0xc2b2ae35)
+    return normalize(value ^ (value >>> 16))
+  }
+  const that = selfOrThat
+  return (self: number): number => {
+    let value = normalize(self ^ that)
+    value = Math.imul(value ^ (value >>> 16), 0x85ebca6b)
+    value = Math.imul(value ^ (value >>> 13), 0xc2b2ae35)
+    return normalize(value ^ (value >>> 16))
+  }
 }
 
 export const make = <A>(hash: (value: A) => number): Hash<A> => ({
   hash: (value) => normalize(hash(value)),
 })
 
-export const contramap =
-  <B, A>(project: (value: B) => A) =>
-  (instance: Hash<A>): Hash<B> =>
+export function contramap<B, A>(instance: Hash<A>, project: (value: B) => A): Hash<B>
+export function contramap<B, A>(project: (value: B) => A): (instance: Hash<A>) => Hash<B>
+export function contramap<B, A>(
+  instanceOrProject: Hash<A> | ((value: B) => A),
+  maybeProject?: (value: B) => A,
+): Hash<B> | ((instance: Hash<A>) => Hash<B>) {
+  if (arguments.length >= 2) {
+    const instance = instanceOrProject as Hash<A>
+    const project = maybeProject as (value: B) => A
+    return make((value) => instance.hash(project(value)))
+  }
+  const project = instanceOrProject as (value: B) => A
+  return (instance: Hash<A>): Hash<B> =>
     make((value) => instance.hash(project(value)))
+}
 
 export const string: Hash<string> = make((value) => hashStringFrom(FNV_OFFSET, value))
 const defaultStringHash = string.hash

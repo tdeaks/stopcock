@@ -260,9 +260,21 @@ const atOrUndefinedImpl = <T extends AnyTypedArray>(
     : undefined
 }
 
+export function atOrUndefined<T extends AnyTypedArray>(
+  source: T,
+  index: number,
+): ElementOf<T> | undefined
 export function atOrUndefined(
   index: number,
-): <T extends AnyTypedArray>(source: T) => ElementOf<T> | undefined {
+): <T extends AnyTypedArray>(source: T) => ElementOf<T> | undefined
+export function atOrUndefined<T extends AnyTypedArray>(
+  sourceOrIndex: T | number,
+  index?: number,
+): ElementOf<T> | undefined | (<A extends AnyTypedArray>(source: A) => ElementOf<A> | undefined) {
+  if (arguments.length !== 1) {
+    return atOrUndefinedImpl(sourceOrIndex as T, index as number)
+  }
+  index = sourceOrIndex as number
   return <A extends AnyTypedArray>(source: A): ElementOf<A> | undefined =>
     atOrUndefinedImpl(source, index)
 }
@@ -272,7 +284,16 @@ const atImpl = <T extends AnyTypedArray>(source: T, index: number): Option<Eleme
   return value === undefined ? none : some(value)
 }
 
-export function at(index: number): <T extends AnyTypedArray>(source: T) => Option<ElementOf<T>> {
+export function at<T extends AnyTypedArray>(source: T, index: number): Option<ElementOf<T>>
+export function at(index: number): <T extends AnyTypedArray>(source: T) => Option<ElementOf<T>>
+export function at<T extends AnyTypedArray>(
+  sourceOrIndex: T | number,
+  index?: number,
+): Option<ElementOf<T>> | (<A extends AnyTypedArray>(source: A) => Option<ElementOf<A>>) {
+  if (arguments.length !== 1) {
+    return atImpl(sourceOrIndex as T, index as number)
+  }
+  index = sourceOrIndex as number
   return <A extends AnyTypedArray>(source: A): Option<ElementOf<A>> => atImpl(source, index)
 }
 
@@ -294,7 +315,7 @@ export const toArray = <T extends AnyTypedArray>(source: T): Array<ElementOf<T>>
   return result
 }
 
-export const copyInto = <S extends AnyTypedArray, T extends AnyTypedArray>(
+const copyIntoImpl = <S extends AnyTypedArray, T extends AnyTypedArray>(
   source: S,
   target: CompatibleTarget<S, T>,
   targetOffset = 0,
@@ -306,6 +327,32 @@ export const copyInto = <S extends AnyTypedArray, T extends AnyTypedArray>(
 
   typedArraySet.call(target, source, offset)
   return target
+}
+
+export function copyInto<S extends AnyTypedArray, T extends AnyTypedArray>(
+  source: S,
+  target: CompatibleTarget<S, T>,
+  targetOffset?: number,
+): T
+export function copyInto<T extends NumberTypedArray>(
+  target: T,
+  targetOffset?: number,
+): <S extends NumberTypedArray>(source: S) => T
+export function copyInto<T extends BigIntTypedArray>(
+  target: T,
+  targetOffset?: number,
+): <S extends BigIntTypedArray>(source: S) => T
+export function copyInto(
+  sourceOrTarget: AnyTypedArray,
+  targetOrOffset?: any,
+  targetOffset = 0,
+): any {
+  if (targetOrOffset === undefined || typeof targetOrOffset === 'number') {
+    const target = sourceOrTarget
+    const offset = targetOrOffset ?? 0
+    return (source: AnyTypedArray): AnyTypedArray => copyIntoImpl(source, target as never, offset)
+  }
+  return copyIntoImpl(sourceOrTarget, targetOrOffset as never, targetOffset)
 }
 
 const mapImpl = <T extends AnyTypedArray>(
@@ -320,6 +367,14 @@ const mapImpl = <T extends AnyTypedArray>(
   return result as unknown as Reallocated<T>
 }
 
+export function map<T extends NumberTypedArray>(
+  source: T,
+  f: (value: number, index: number) => number,
+): Reallocated<T>
+export function map<T extends BigIntTypedArray>(
+  source: T,
+  f: (value: bigint, index: number) => bigint,
+): Reallocated<T>
 export function map(
   f: (value: number, index: number) => number,
 ): <T extends NumberTypedArray>(source: T) => Reallocated<T>
@@ -327,11 +382,40 @@ export function map(
   f: (value: bigint, index: number) => bigint,
 ): <T extends BigIntTypedArray>(source: T) => Reallocated<T>
 export function map(
-  f: ((value: number, index: number) => number) | ((value: bigint, index: number) => bigint),
+  sourceOrF:
+    | AnyTypedArray
+    | ((value: number, index: number) => number)
+    | ((value: bigint, index: number) => bigint),
+  f?: ((value: number, index: number) => number) | ((value: bigint, index: number) => bigint),
 ): unknown {
-  const transform = f as (value: number | bigint, index: number) => number | bigint
+  if (arguments.length !== 1) {
+    return mapImpl(
+      sourceOrF as AnyTypedArray,
+      f as (value: number | bigint, index: number) => number | bigint,
+    )
+  }
+  const transform = sourceOrF as (value: number | bigint, index: number) => number | bigint
   return <A extends AnyTypedArray>(source: A): Reallocated<A> =>
     mapImpl(source, transform as unknown as (value: ElementOf<A>, index: number) => ElementOf<A>)
+}
+
+const mapIntoImpl = (
+  source: AnyTypedArray,
+  target: AnyTypedArray,
+  f: Function,
+  targetOffset = 0,
+): AnyTypedArray => {
+  const offset = Math.trunc(targetOffset)
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset + source.length > target.length) {
+    throw new RangeError('TypedArray.mapInto: target range is out of bounds')
+  }
+
+  const output = writable(target)
+  const transform = f as (value: number | bigint, index: number) => number | bigint
+  for (let index = 0; index < source.length; index++) {
+    output[offset + index] = transform(source[index] as number | bigint, index)
+  }
+  return target
 }
 
 export function mapInto<S extends NumberTypedArray, T extends NumberTypedArray>(
@@ -358,23 +442,38 @@ export function mapInto<S extends BigIntTypedArray, T extends BigIntTypedArray>(
   f: (value: bigint, index: number) => bigint,
   targetOffset?: number,
 ): T
+export function mapInto<T extends NumberTypedArray>(
+  target: T,
+  f: (value: number, index: number) => number,
+  targetOffset?: number,
+): <S extends NumberTypedArray>(source: S) => T
+export function mapInto<T extends BigIntTypedArray>(
+  target: T,
+  f: (value: number, index: number) => bigint,
+  targetOffset?: number,
+): <S extends NumberTypedArray>(source: S) => T
+export function mapInto<T extends NumberTypedArray>(
+  target: T,
+  f: (value: bigint, index: number) => number,
+  targetOffset?: number,
+): <S extends BigIntTypedArray>(source: S) => T
+export function mapInto<T extends BigIntTypedArray>(
+  target: T,
+  f: (value: bigint, index: number) => bigint,
+  targetOffset?: number,
+): <S extends BigIntTypedArray>(source: S) => T
 export function mapInto(
-  source: AnyTypedArray,
-  target: AnyTypedArray,
-  f: Function,
+  sourceOrTarget: AnyTypedArray,
+  targetOrF: any,
+  fOrOffset?: any,
   targetOffset = 0,
-): AnyTypedArray {
-  const offset = Math.trunc(targetOffset)
-  if (!Number.isSafeInteger(offset) || offset < 0 || offset + source.length > target.length) {
-    throw new RangeError('TypedArray.mapInto: target range is out of bounds')
+): any {
+  if (typeof targetOrF === 'function') {
+    const target = sourceOrTarget
+    const offset = (fOrOffset as number | undefined) ?? 0
+    return (source: AnyTypedArray): AnyTypedArray => mapIntoImpl(source, target, targetOrF, offset)
   }
-
-  const output = writable(target)
-  const transform = f as (value: number | bigint, index: number) => number | bigint
-  for (let index = 0; index < source.length; index++) {
-    output[offset + index] = transform(source[index] as number | bigint, index)
-  }
-  return target
+  return mapIntoImpl(sourceOrTarget, targetOrF, fOrOffset as Function, targetOffset)
 }
 
 const filterLargeBigInt = <T extends BigIntTypedArray>(
@@ -446,6 +545,10 @@ const filterSourceImpl = <T extends AnyTypedArray>(
       ) as Reallocated<T>)
 }
 
+export function filter<T extends AnyTypedArray>(
+  source: T,
+  predicate: (value: ElementOf<T>, index: number) => boolean,
+): Reallocated<T>
 export function filter(
   predicate: (value: number | bigint, index: number) => boolean,
 ): <T extends AnyTypedArray>(source: T) => Reallocated<T>
@@ -455,16 +558,44 @@ export function filter(
 export function filter(
   predicate: (value: bigint, index: number) => boolean,
 ): <T extends BigIntTypedArray>(source: T) => Reallocated<T>
-export function filter(
-  predicate:
-    | ((value: number | bigint, index: number) => boolean)
+export function filter<T extends AnyTypedArray>(
+  sourceOrPredicate:
+    | T
     | ((value: number, index: number) => boolean)
     | ((value: bigint, index: number) => boolean),
+  predicate?: (value: ElementOf<T>, index: number) => boolean,
 ):
+  | Reallocated<T>
   | (<A extends AnyTypedArray>(source: A) => Reallocated<A>)
   | (<A extends NumberTypedArray>(source: A) => Reallocated<A>)
   | (<A extends BigIntTypedArray>(source: A) => Reallocated<A>) {
-  const test = predicate as (value: number | bigint, index: number) => boolean
+  if (arguments.length !== 1) {
+    const source = sourceOrPredicate as T
+    const test = predicate as (value: ElementOf<T>, index: number) => boolean
+    if (source.length < SMALL_BULK_COPY_LENGTH) {
+      const values: Array<ElementOf<T>> = []
+      for (let index = 0; index < source.length; index++) {
+        const value = source[index] as ElementOf<T>
+        if (test(value, index)) values.push(value)
+      }
+      const result = allocateLike(source, values.length)
+      const output = writable(result)
+      for (let index = 0; index < values.length; index++) {
+        output[index] = values[index] as ElementOf<T>
+      }
+      return result as unknown as Reallocated<T>
+    }
+    return typeof source[0] === 'bigint'
+      ? (filterLargeBigInt(
+          source as BigIntTypedArray,
+          test as (value: bigint, index: number) => boolean,
+        ) as Reallocated<T>)
+      : (filterLargeNumber(
+          source as NumberTypedArray,
+          test as (value: number, index: number) => boolean,
+        ) as Reallocated<T>)
+  }
+  const test = sourceOrPredicate as (value: number | bigint, index: number) => boolean
   return <A extends AnyTypedArray>(source: A): Reallocated<A> =>
     filterSourceImpl(source, test as (value: ElementOf<A>, index: number) => boolean)
 }
@@ -474,7 +605,7 @@ export interface FilterIntoResult<T extends AnyTypedArray> {
   readonly written: number
 }
 
-export const filterInto = <S extends AnyTypedArray, T extends AnyTypedArray>(
+const filterIntoImpl = <S extends AnyTypedArray, T extends AnyTypedArray>(
   source: S,
   target: CompatibleTarget<S, T>,
   predicate: (value: ElementOf<S>, index: number) => boolean,
@@ -496,6 +627,43 @@ export const filterInto = <S extends AnyTypedArray, T extends AnyTypedArray>(
     output[offset + written++] = value as unknown as ElementOf<T>
   }
   return { target, written }
+}
+
+export function filterInto<S extends AnyTypedArray, T extends AnyTypedArray>(
+  source: S,
+  target: CompatibleTarget<S, T>,
+  predicate: (value: ElementOf<S>, index: number) => boolean,
+  targetOffset?: number,
+): FilterIntoResult<T>
+export function filterInto<T extends NumberTypedArray>(
+  target: T,
+  predicate: (value: number, index: number) => boolean,
+  targetOffset?: number,
+): <S extends NumberTypedArray>(source: S) => FilterIntoResult<T>
+export function filterInto<T extends BigIntTypedArray>(
+  target: T,
+  predicate: (value: bigint, index: number) => boolean,
+  targetOffset?: number,
+): <S extends BigIntTypedArray>(source: S) => FilterIntoResult<T>
+export function filterInto(
+  sourceOrTarget: AnyTypedArray,
+  targetOrPredicate: any,
+  predicateOrOffset?: any,
+  targetOffset = 0,
+): any {
+  if (typeof targetOrPredicate === 'function') {
+    const target = sourceOrTarget
+    const predicate = targetOrPredicate
+    const offset = (predicateOrOffset as number | undefined) ?? 0
+    return (source: AnyTypedArray): FilterIntoResult<AnyTypedArray> =>
+      filterIntoImpl(source, target as never, predicate as never, offset)
+  }
+  return filterIntoImpl(
+    sourceOrTarget,
+    targetOrPredicate as never,
+    predicateOrOffset as never,
+    targetOffset,
+  )
 }
 
 const normalizeRelativeIndex = (value: number, length: number): number => {
@@ -529,13 +697,58 @@ const sliceImpl = <T extends AnyTypedArray>(
   return result as unknown as Reallocated<T>
 }
 
+export function slice<T extends AnyTypedArray>(
+  source: T,
+  start?: number,
+  end?: number,
+): Reallocated<T>
 export function slice(
   start?: number,
   end?: number,
-): <T extends AnyTypedArray>(source: T) => Reallocated<T> {
-  const from = start ?? 0
-  return <A extends AnyTypedArray>(source: A): Reallocated<A> =>
+): <T extends AnyTypedArray>(source: T) => Reallocated<T>
+export function slice<T extends AnyTypedArray>(
+  sourceOrStart?: T | number,
+  startOrEnd?: number,
+  end?: number,
+): Reallocated<T> | (<A extends AnyTypedArray>(source: A) => Reallocated<A>) {
+  if (sourceOrStart === undefined || typeof sourceOrStart === 'number') {
+    const from = sourceOrStart ?? 0
+    const end = startOrEnd
+    return <A extends AnyTypedArray>(source: A): Reallocated<A> =>
     sliceImpl(source, from, end ?? source.length)
+  }
+  const directStart = startOrEnd ?? 0
+  const directEnd = end ?? sourceOrStart.length
+  if (
+    (SLICE_ALWAYS_INTRINSIC ||
+      sourceOrStart.length >= SMALL_BULK_COPY_LENGTH ||
+      isBigIntTypedArray(sourceOrStart)) &&
+    isCanonicalTypedArray(sourceOrStart)
+  ) {
+    return typedArraySlice.call(sourceOrStart, directStart, directEnd) as Reallocated<T>
+  }
+  // Keep the small numeric data-first path in this dispatch frame. This is the
+  // latency-sensitive case where an extra helper call is measurable; larger
+  // and bigint arrays use the intrinsic directly above.
+  if (
+    sourceOrStart.length < SMALL_BULK_COPY_LENGTH &&
+    !isBigIntTypedArray(sourceOrStart) &&
+    directStart >= 0 &&
+    directStart <= sourceOrStart.length &&
+    (directStart | 0) === directStart &&
+    directEnd >= 0 &&
+    directEnd <= sourceOrStart.length &&
+    (directEnd | 0) === directEnd
+  ) {
+    const length = Math.max(0, directEnd - directStart)
+    const result = allocateLike(sourceOrStart, length)
+    const output = writable(result)
+    for (let index = 0; index < length; index++) {
+      output[index] = sourceOrStart[directStart + index] as ElementOf<T>
+    }
+    return result as unknown as Reallocated<T>
+  }
+  return sliceImpl(sourceOrStart, directStart, directEnd)
 }
 
 export function concat<T extends NumberTypedArray>(
@@ -689,6 +902,10 @@ const sortImpl = <T extends AnyTypedArray>(
   return result as unknown as Reallocated<T>
 }
 
+export function sort<T extends AnyTypedArray>(
+  source: T,
+  compare?: (left: ElementOf<T>, right: ElementOf<T>) => number,
+): Reallocated<T>
 export function sort(): <T extends AnyTypedArray>(source: T) => Reallocated<T>
 export function sort(
   compare: (left: number | bigint, right: number | bigint) => number,
@@ -699,19 +916,26 @@ export function sort(
 export function sort(
   compare: (left: bigint, right: bigint) => number,
 ): <T extends BigIntTypedArray>(source: T) => Reallocated<T>
-export function sort(
-  compare?:
+export function sort<T extends AnyTypedArray>(
+  sourceOrCompare?:
+    | T
     | ((left: number, right: number) => number)
     | ((left: bigint, right: bigint) => number),
+  dataFirstCompare?: (left: ElementOf<T>, right: ElementOf<T>) => number,
 ):
+  | Reallocated<T>
   | (<A extends AnyTypedArray>(source: A) => Reallocated<A>)
   | (<A extends NumberTypedArray>(source: A) => Reallocated<A>)
   | (<A extends BigIntTypedArray>(source: A) => Reallocated<A>) {
-  return <A extends AnyTypedArray>(source: A): Reallocated<A> =>
+  if (sourceOrCompare === undefined || typeof sourceOrCompare === 'function') {
+    const compare = sourceOrCompare
+    return <A extends AnyTypedArray>(source: A): Reallocated<A> =>
     sortImpl(
       source,
       compare as unknown as ((left: ElementOf<A>, right: ElementOf<A>) => number) | undefined,
     )
+  }
+  return sortImpl(sourceOrCompare, dataFirstCompare)
 }
 
 const reduceImpl = <T extends AnyTypedArray, B>(
@@ -726,6 +950,11 @@ const reduceImpl = <T extends AnyTypedArray, B>(
   return state
 }
 
+export function reduce<T extends AnyTypedArray, B>(
+  source: T,
+  reducer: (state: B, value: ElementOf<T>, index: number) => B,
+  initial: B,
+): B
 export function reduce<B>(
   reducer: (state: B, value: number | bigint, index: number) => B,
   initial: B,
@@ -738,16 +967,26 @@ export function reduce<B>(
   reducer: (state: B, value: bigint, index: number) => B,
   initial: B,
 ): <T extends BigIntTypedArray>(source: T) => B
-export function reduce<B>(
-  reducer:
-    | ((state: B, value: number | bigint, index: number) => B)
+export function reduce<T extends AnyTypedArray, B>(
+  sourceOrReducer:
+    | T
     | ((state: B, value: number, index: number) => B)
     | ((state: B, value: bigint, index: number) => B),
-  initial: B,
+  reducerOrInitial: ((state: B, value: ElementOf<T>, index: number) => B) | B,
+  initial?: B,
 ):
-  | (<A extends AnyTypedArray>(source: A) => B)
+  | B
   | (<A extends NumberTypedArray>(source: A) => B)
   | (<A extends BigIntTypedArray>(source: A) => B) {
+  if (arguments.length !== 2) {
+    return reduceImpl(
+      sourceOrReducer as T,
+      reducerOrInitial as (state: B, value: ElementOf<T>, index: number) => B,
+      initial as B,
+    )
+  }
+  const reducer = sourceOrReducer as (state: B, value: number | bigint, index: number) => B
+  initial = reducerOrInitial as B
   return <A extends AnyTypedArray>(source: A): B =>
     reduceImpl(
       source,
@@ -771,17 +1010,28 @@ const indexOfOrUndefinedImpl = <T extends AnyTypedArray>(
   return index === -1 ? undefined : index
 }
 
+export function indexOfOrUndefined<T extends AnyTypedArray>(
+  source: T,
+  search: ElementOf<T>,
+): number | undefined
 export function indexOfOrUndefined(
   search: number,
 ): <T extends NumberTypedArray>(source: T) => number | undefined
 export function indexOfOrUndefined(
   search: bigint,
 ): <T extends BigIntTypedArray>(source: T) => number | undefined
-export function indexOfOrUndefined(
-  search: number | bigint,
+export function indexOfOrUndefined<T extends AnyTypedArray>(
+  sourceOrSearch: T | number | bigint,
+  dataFirstSearch?: ElementOf<T>,
 ):
+  | number
+  | undefined
   | (<A extends NumberTypedArray>(source: A) => number | undefined)
   | (<A extends BigIntTypedArray>(source: A) => number | undefined) {
+  if (arguments.length !== 1) {
+    return indexOfOrUndefinedImpl(sourceOrSearch as T, dataFirstSearch as ElementOf<T>)
+  }
+  const search = sourceOrSearch as number | bigint
   return <A extends AnyTypedArray>(source: A): number | undefined =>
     indexOfOrUndefinedImpl(source, search as ElementOf<A>)
 }
@@ -791,13 +1041,20 @@ const indexOfImpl = <T extends AnyTypedArray>(source: T, search: ElementOf<T>): 
   return index === undefined ? none : some(index)
 }
 
+export function indexOf<T extends AnyTypedArray>(source: T, search: ElementOf<T>): Option<number>
 export function indexOf(search: number): <T extends NumberTypedArray>(source: T) => Option<number>
 export function indexOf(search: bigint): <T extends BigIntTypedArray>(source: T) => Option<number>
-export function indexOf(
-  search: number | bigint,
+export function indexOf<T extends AnyTypedArray>(
+  sourceOrSearch: T | number | bigint,
+  dataFirstSearch?: ElementOf<T>,
 ):
+  | Option<number>
   | (<A extends NumberTypedArray>(source: A) => Option<number>)
   | (<A extends BigIntTypedArray>(source: A) => Option<number>) {
+  if (arguments.length !== 1) {
+    return indexOfImpl(sourceOrSearch as T, dataFirstSearch as ElementOf<T>)
+  }
+  const search = sourceOrSearch as number | bigint
   return <A extends AnyTypedArray>(source: A): Option<number> =>
     indexOfImpl(source, search as ElementOf<A>)
 }
@@ -805,11 +1062,20 @@ export function indexOf(
 const includesImpl = <T extends AnyTypedArray>(source: T, search: ElementOf<T>): boolean =>
   typedArrayIncludes.call(source, search)
 
+export function includes<T extends AnyTypedArray>(source: T, search: ElementOf<T>): boolean
 export function includes(search: number): <T extends NumberTypedArray>(source: T) => boolean
 export function includes(search: bigint): <T extends BigIntTypedArray>(source: T) => boolean
-export function includes(
-  search: number | bigint,
-): (<A extends NumberTypedArray>(source: A) => boolean) | (<A extends BigIntTypedArray>(source: A) => boolean) {
+export function includes<T extends AnyTypedArray>(
+  sourceOrSearch: T | number | bigint,
+  dataFirstSearch?: ElementOf<T>,
+):
+  | boolean
+  | (<A extends NumberTypedArray>(source: A) => boolean)
+  | (<A extends BigIntTypedArray>(source: A) => boolean) {
+  if (arguments.length !== 1) {
+    return includesImpl(sourceOrSearch as T, dataFirstSearch as ElementOf<T>)
+  }
+  const search = sourceOrSearch as number | bigint
   return <A extends AnyTypedArray>(source: A): boolean => includesImpl(source, search as ElementOf<A>)
 }
 
@@ -823,9 +1089,15 @@ const equalsImpl = (source: AnyTypedArray, other: AnyTypedArray): boolean => {
   return true
 }
 
+export function equals(source: NumberTypedArray, other: NumberTypedArray): boolean
+export function equals(source: BigIntTypedArray, other: BigIntTypedArray): boolean
 export function equals(other: NumberTypedArray): (source: NumberTypedArray) => boolean
 export function equals(other: BigIntTypedArray): (source: BigIntTypedArray) => boolean
-export function equals(other: AnyTypedArray): (source: AnyTypedArray) => boolean {
+export function equals(sourceOrOther: AnyTypedArray, other?: AnyTypedArray): unknown {
+  if (arguments.length !== 1) {
+    return equalsImpl(sourceOrOther, other as AnyTypedArray)
+  }
+  other = sourceOrOther
   return (source: AnyTypedArray) => equalsImpl(source, other)
 }
 

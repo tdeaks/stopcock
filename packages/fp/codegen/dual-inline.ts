@@ -37,7 +37,7 @@ const ROOT = join(dirname(new URL(import.meta.url).pathname), '..')
 const DEFS_DIR = join(ROOT, 'codegen', 'defs')
 const SRC_DIR = join(ROOT, 'src')
 
-const GENERATED_MODULES = ['array', 'boolean', 'math'] as const
+const GENERATED_MODULES = ['array', 'boolean', 'math', 'string', 'object', 'number'] as const
 type GeneratedModule = (typeof GENERATED_MODULES)[number]
 
 // --- Brace-counting utilities ---
@@ -124,6 +124,7 @@ interface DualCall {
   typeAnnotation: string
   arity: number
   bodyStr: string
+  curriedFactoryStr: string | null
   bodyIsRef: boolean
   tag: string | null
   fullMatch: string
@@ -132,9 +133,11 @@ interface DualCall {
 }
 
 interface InlineBody {
+  generics: string
   params: string[]
   bodyText: string
   isExpression: boolean
+  hasOptionalOrRestParams: boolean
 }
 
 // Primitives. Lift low-level char parsers into @stopcock/parse Parser types
@@ -222,15 +225,18 @@ const dualCallP: Parser<DualCall> = (input, pos) => {
 
   const name = exportMatch[1]
   const nameEnd = pos + exportMatch[0].length
-  const dualIdx = input.indexOf('= dual(', nameEnd)
-  if (dualIdx === -1) return { success: false, expected: '= dual(', position: nameEnd }
+  const dualMatch = input.slice(nameEnd).match(/=\s*(?:\/\*\s*@__PURE__\s*\*\/\s*)?dual\s*\(/)
+  if (!dualMatch || dualMatch.index === undefined) {
+    return { success: false, expected: '= dual(', position: nameEnd }
+  }
+  const dualIdx = nameEnd + dualMatch.index
 
   // Type annotation between name and = dual(
   const between = input.slice(nameEnd, dualIdx).trim()
   const typeAnnotation = between.startsWith(':') ? between.slice(1).trim() : ''
 
   // Parse inside dual(...)
-  const parenPos = dualIdx + '= dual'.length
+  const parenPos = input.indexOf('(', dualIdx)
   const innerR = innerOf(input, parenPos)
   if (!innerR.success) return innerR as ParseResult<DualCall>
   const inner = innerR.value
@@ -244,11 +250,26 @@ const dualCallP: Parser<DualCall> = (input, pos) => {
   if (!a2.success) return a2 as ParseResult<DualCall>
   const bodyStr = a2.value.text
 
-  // Optional tag
+  // Optional single-form factory, then optional tag. Promoted hand-written
+  // modules carry their former curried factory as the third argument so the
+  // emitted hot-path closure is source-identical rather than reconstructed.
+  let curriedFactoryStr: string | null = null
   let tag: string | null = null
   if (a2.value.sep === ',') {
-    const tagR = tagP(inner, a2.position + 1)
-    if (tagR.success) tag = tagR.value
+    const a3 = untilSep(inner, a2.position + 1)
+    if (!a3.success) return a3 as ParseResult<DualCall>
+    const tagR = tagP(a3.value.text, 0)
+    if (tagR.success) {
+      tag = tagR.value
+    } else if (a3.value.text.length > 0) {
+      curriedFactoryStr = a3.value.text
+      if (a3.value.sep === ',') {
+        const a4 = untilSep(inner, a3.position + 1)
+        if (!a4.success) return a4 as ParseResult<DualCall>
+        const trailingTagR = tagP(a4.value.text, 0)
+        if (trailingTagR.success) tag = trailingTagR.value
+      }
+    }
   }
 
   const bodyIsRef = /^[A-Za-z_$][\w$.]*$/.test(bodyStr)
@@ -260,6 +281,7 @@ const dualCallP: Parser<DualCall> = (input, pos) => {
       typeAnnotation,
       arity,
       bodyStr,
+      curriedFactoryStr,
       bodyIsRef,
       tag,
       fullMatch: input.slice(pos, innerR.position),
@@ -274,11 +296,13 @@ const dualCallP: Parser<DualCall> = (input, pos) => {
 // Arrow function parser: <G>(params): Ret => body
 const arrowFnP: Parser<InlineBody> = (input, pos) => {
   let cursor = pos
+  let generics = ''
 
   // Optional generic prefix <A, B>
   if (input[cursor] === '<') {
     const r = angleBlock(input, cursor)
     if (!r.success) return r as ParseResult<InlineBody>
+    generics = r.value
     cursor = r.position
     while (cursor < input.length && ' \t\n\r'.includes(input[cursor])) cursor++
   }
@@ -290,12 +314,16 @@ const arrowFnP: Parser<InlineBody> = (input, pos) => {
 
   // Split params by top-level commas, extract names (strip type annotations)
   const params: string[] = []
+  let hasOptionalOrRestParams = false
   let pi = 0
   const paramStr = paramsR.value
   while (pi < paramStr.length) {
     const sep = findTopLevelSep(paramStr, pi)
     const chunk = paramStr.slice(pi, sep.pos).trim()
     if (chunk) {
+      if (chunk.startsWith('...') || /^\s*[A-Za-z_$][\w$]*\s*\?/u.test(chunk)) {
+        hasOptionalOrRestParams = true
+      }
       const pname = chunk.split(/\s*:/)[0].trim()
       if (pname) params.push(pname)
     }
@@ -348,14 +376,20 @@ const arrowFnP: Parser<InlineBody> = (input, pos) => {
     if (!blockR.success) return blockR as ParseResult<InlineBody>
     return {
       success: true,
-      value: { params, bodyText: blockR.value.trim(), isExpression: false },
+      value: {
+        generics,
+        params,
+        bodyText: blockR.value.trim(),
+        isExpression: false,
+        hasOptionalOrRestParams,
+      },
       remaining: input.slice(blockR.position),
       position: blockR.position,
     }
   }
   return {
     success: true,
-    value: { params, bodyText: rest, isExpression: true },
+    value: { generics, params, bodyText: rest, isExpression: true, hasOptionalOrRestParams },
     remaining: '',
     position: input.length,
   }
@@ -378,9 +412,10 @@ function generateArity1(dc: DualCall): string {
   if (dc.bodyIsRef) {
     return `${decl} = ${dc.bodyStr}\n`
   }
-  const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
+  const { generics, params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
   const bodyCode = isExpression ? `return ${bodyText}` : bodyText
-  return `${decl} = function ${dc.name}(${params.join(': any, ')}: any) { ${bodyCode} } as any\n`
+  const genericDecl = generics ? `<${generics}>` : ''
+  return `${decl} = function ${dc.name}${genericDecl}(${params.join(': any, ')}: any) { ${bodyCode} } as any\n`
 }
 
 // --- Dual emission ---
@@ -410,6 +445,52 @@ function dispatchPolicy(bodyText: string): 'delegate' | 'inline' {
   return bodyText.length <= 64 ? 'inline' : 'delegate'
 }
 
+function extractCurriedClosure(factory: string): string {
+  const source = factory.trim()
+  let roundDepth = 0
+  let squareDepth = 0
+  let braceDepth = 0
+  let angleDepth = 0
+  for (let index = 0; index < source.length - 1; index++) {
+    const character = source[index]
+    if (character === "'" || character === '"' || character === '`') {
+      index = skipString(source, index) - 1
+      continue
+    }
+    if (character === '(') roundDepth++
+    else if (character === ')') roundDepth--
+    else if (character === '[') squareDepth++
+    else if (character === ']') squareDepth--
+    else if (character === '{') braceDepth++
+    else if (character === '}') braceDepth--
+    else if (character === '<' && roundDepth === 0 && squareDepth === 0 && braceDepth === 0) {
+      angleDepth++
+    } else if (
+      character === '>' &&
+      angleDepth > 0 &&
+      roundDepth === 0 &&
+      squareDepth === 0 &&
+      braceDepth === 0
+    ) {
+      angleDepth--
+    } else if (
+      character === '=' &&
+      source[index + 1] === '>' &&
+      roundDepth === 0 &&
+      squareDepth === 0 &&
+      braceDepth === 0 &&
+      angleDepth === 0
+    ) {
+      const closure = source.slice(index + 2).trim()
+      if (!closure.startsWith('(') && !closure.startsWith('<')) {
+        throw new Error('single-form factory must return an arrow closure')
+      }
+      return closure
+    }
+  }
+  throw new Error('single-form factory is missing its outer arrow')
+}
+
 function generateArityN(dc: DualCall): string {
   if (dc.bodyIsRef) return generateArityNRef(dc, dc.arity)
   return generateArityNInline(dc)
@@ -436,13 +517,24 @@ function generateArityNRef(dc: DualCall, n: number): string {
 }
 
 function generateArityNInline(dc: DualCall): string {
-  const { params, bodyText, isExpression } = tryParse(arrowFnP, dc.bodyStr)!
+  const { generics, params, bodyText, isExpression, hasOptionalOrRestParams } = tryParse(
+    arrowFnP,
+    dc.bodyStr,
+  )!
+  if (hasOptionalOrRestParams) {
+    throw new Error(
+      `${dc.name}: optional or variadic config requires an explicit predicate-dispatch factory in codegen/defs`,
+    )
+  }
   const bodyCode = isExpression ? `return ${bodyText}` : bodyText
   const decl = typeDecl(dc.name, dc.typeAnnotation)
+  const genericDecl = generics ? `<${generics}>` : ''
 
   const dataParam = params[0]
   const factoryParams = params.slice(1)
   const n = dc.arity
+  const curriedClosure =
+    dc.curriedFactoryStr === null ? null : extractCurriedClosure(dc.curriedFactoryStr)
 
   if (dispatchPolicy(bodyText) === 'inline') {
     // Neutral slots plus per-branch aliases: the def's own param names stay
@@ -452,14 +544,16 @@ function generateArityNInline(dc: DualCall): string {
     const dataFirstAliases = params.map((p, i) => `${p} = a${i}`).join(',\n      ')
     const curriedAliases = factoryParams.map((p, i) => `${p} = a${i}`).join(',\n    ')
 
-    return `${decl} = function ${dc.name}(${slotArgs}): any {
+    return `${decl} = function ${dc.name}${genericDecl}(${slotArgs}): any {
   if (arguments.length >= ${n}) {
     const ${dataFirstAliases}
     ${bodyCode}
   }
   const ${curriedAliases}
-  return function (${dataParam}: any) {
-    ${bodyCode}
+  ${
+    curriedClosure === null
+      ? `return function (${dataParam}: any) {\n    ${bodyCode}\n  }`
+      : `return (${curriedClosure}) satisfies (data: any) => any`
   }
 } as any\n`
   }
@@ -475,10 +569,12 @@ function generateArityNInline(dc: DualCall): string {
   ].join(', ')
   const delegationCfg = [...factoryParams.slice(1), '__df'].join(', ')
 
-  return `${decl} = function ${dc.name}(${factoryArgs}): any {
+  return `${decl} = function ${dc.name}${genericDecl}(${factoryArgs}): any {
   if (arguments.length >= ${n}) return ${dc.name}(${delegationCfg})(${factoryParams[0]})
-  return function (${dataParam}: any) {
-    ${bodyCode}
+  ${
+    curriedClosure === null
+      ? `return function (${dataParam}: any) {\n    ${bodyCode}\n  }`
+      : `return (${curriedClosure}) satisfies (data: any) => any`
   }
 } as any\n`
 }
@@ -520,7 +616,7 @@ export function transformModuleV1(src: string, moduleName: GeneratedModule): str
         j++
       }
 
-      if (declText.includes('= dual(')) {
+      if (/=\s*(?:\/\*\s*@__PURE__\s*\*\/\s*)?dual\s*\(/u.test(declText)) {
         const dc = tryParse(dualCallP, declText)
         if (dc) {
           outputLines.push(generateDecl(dc))
@@ -565,8 +661,13 @@ function isDeclarationComplete(text: string): boolean {
 const processModule = (mod: GeneratedModule) => {
   const src = readFileSync(join(DEFS_DIR, `${mod}.ts`), 'utf8')
   const transformed = transformModuleV1(src, mod)
-  const output = mod === 'array' ? `${transformed}\n\nexport * from './array-extra'\n` : transformed
-  const dualCount = (src.match(/= dual\(/g) || []).length
+  const output =
+    mod === 'array'
+      ? `${transformed}\n\nexport * from './array-extra'\n`
+      : mod === 'string' || mod === 'object' || mod === 'number'
+        ? `${transformed.trimEnd()}\n`
+        : transformed
+  const dualCount = (src.match(/=\s*(?:\/\*\s*@__PURE__\s*\*\/\s*)?dual\s*\(/gu) || []).length
   mkdirSync(SRC_DIR, { recursive: true })
   writeFileSync(join(SRC_DIR, `${mod}.ts`), output)
   console.log(`  ${mod}.ts: ${dualCount} dual() calls`)

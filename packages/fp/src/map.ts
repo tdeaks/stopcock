@@ -23,18 +23,34 @@ type CompatibleMapTarget<Key, Value, Target extends Map<unknown, unknown>> = Tar
 type CompatibleMapKeyTarget<Key, Target extends Map<unknown, unknown>> = Target &
   AcceptsAll<Key, MutableMapKeyCapacity<Target>>
 
+type CompatibleMapValueTarget<Value, Target extends Map<unknown, unknown>> = Target &
+  AcceptsAll<Value, MutableMapValueCapacity<Target>>
+
 export const empty = <K = never, V = never>(): ReadonlyMap<K, V> => new globalThis.Map<K, V>()
 
 export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): ReadonlyMap<K, V> =>
   new globalThis.Map(entries)
 
-export const fromIterableInto = <K, V, Target extends Map<unknown, unknown>>(
-  entries: Iterable<readonly [K, V]>,
-  target: CompatibleMapTarget<K, V, Target>,
-): Target => {
-  for (const [key, value] of entries) target.set(key, value)
-  return target
-}
+export const fromIterableInto: {
+  <K, V, Target extends Map<unknown, unknown>>(
+    entries: Iterable<readonly [K, V]>,
+    target: CompatibleMapTarget<K, V, Target>,
+  ): Target
+  <Target extends Map<unknown, unknown>>(
+    target: Target,
+  ): <K, V>(
+    entries: Iterable<readonly [K, V]>,
+    ..._capacity: [] &
+      AcceptsAll<K, MutableMapKeyCapacity<Target>> &
+      AcceptsAll<V, MutableMapValueCapacity<Target>>
+  ) => Target
+} = function fromIterableInto(target: Map<unknown, unknown>, __df?: any): any {
+  if (arguments.length >= 2) return (fromIterableInto as any)(__df)(target)
+  return (entries: Iterable<readonly [unknown, unknown]>): Map<unknown, unknown> => {
+    for (const [key, value] of entries) target.set(key, value)
+    return target
+  }
+} as any
 
 export const clone = <K, V>(source: ReadonlyMap<K, V>): ReadonlyMap<K, V> =>
   new globalThis.Map(source)
@@ -43,9 +59,20 @@ export const size = (source: ReadonlyMap<unknown, unknown>): number => source.si
 
 export const isEmpty = (source: ReadonlyMap<unknown, unknown>): boolean => source.size === 0
 
+export function has<K>(source: ReadonlyMap<K, unknown>, key: K): boolean
 export function has<K>(
   key: K,
-): <SourceKey>(source: ReadonlyMap<SourceKey, unknown> & AcceptsKey<K, SourceKey>) => boolean {
+): <SourceKey>(source: ReadonlyMap<SourceKey, unknown> & AcceptsKey<K, SourceKey>) => boolean
+export function has<K>(
+  sourceOrKey: ReadonlyMap<K, unknown> | K,
+  key?: K,
+):
+  | boolean
+  | (<SourceKey>(source: ReadonlyMap<SourceKey, unknown> & AcceptsKey<K, SourceKey>) => boolean) {
+  if (arguments.length !== 1) {
+    return (sourceOrKey as ReadonlyMap<K, unknown>).has(key as K)
+  }
+  key = sourceOrKey as K
   return <SourceKey>(
     source: ReadonlyMap<SourceKey, unknown> & AcceptsKey<K, SourceKey>,
   ): boolean => source.has(key as unknown as SourceKey)
@@ -60,17 +87,42 @@ const getImpl = <K, V>(source: ReadonlyMap<K, V>, key: K): Option<V> => {
   return some(value as V)
 }
 
+export function get<K, V>(source: ReadonlyMap<K, V>, key: K): Option<V>
 export function get<K>(
   key: K,
-): <SourceKey, V>(source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>) => Option<V> {
+): <SourceKey, V>(source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>) => Option<V>
+export function get<K, V>(
+  sourceOrKey: ReadonlyMap<K, V> | K,
+  key?: K,
+):
+  | Option<V>
+  | (<SourceKey, A>(source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>) => Option<A>) {
+  if (arguments.length !== 1) {
+    return getImpl(sourceOrKey as ReadonlyMap<K, V>, key as K)
+  }
+  key = sourceOrKey as K
   return <SourceKey, A>(
     source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>,
   ): Option<A> => getImpl(source, key as unknown as SourceKey)
 }
 
+export function getOrUndefined<K, V>(source: ReadonlyMap<K, V>, key: K): V | undefined
 export function getOrUndefined<K>(
   key: K,
-): <SourceKey, V>(source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>) => V | undefined {
+): <SourceKey, V>(source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>) => V | undefined
+export function getOrUndefined<K, V>(
+  sourceOrKey: ReadonlyMap<K, V> | K,
+  key?: K,
+):
+  | V
+  | undefined
+  | (<SourceKey, A>(
+      source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>,
+    ) => A | undefined) {
+  if (arguments.length !== 1) {
+    return (sourceOrKey as ReadonlyMap<K, V>).get(key as K)
+  }
+  key = sourceOrKey as K
   return <SourceKey, A>(
     source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>,
   ): A | undefined => source.get(key as unknown as SourceKey)
@@ -92,10 +144,21 @@ const getOrElseImpl = <K, V, B>(source: ReadonlyMap<K, V>, key: K, fallback: () 
  * absent. A key whose stored value is `undefined` is present, so it returns
  * `undefined` rather than the fallback.
  */
+export function getOrElse<K, V, B>(source: ReadonlyMap<K, V>, key: K, fallback: () => B): V | B
 export function getOrElse<K, B>(
   key: K,
   fallback: () => B,
-): <SourceKey, V>(source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>) => V | B {
+): <SourceKey, V>(source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>) => V | B
+export function getOrElse<K, V, B>(
+  sourceOrKey: ReadonlyMap<K, V> | K,
+  keyOrFallback: K | (() => B),
+  fallback?: () => B,
+): V | B | (<SourceKey, A>(source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>) => A | B) {
+  if (arguments.length !== 2) {
+    return getOrElseImpl(sourceOrKey as ReadonlyMap<K, V>, keyOrFallback as K, fallback as () => B)
+  }
+  const key = sourceOrKey as K
+  fallback = keyOrFallback as () => B
   return <SourceKey, A>(source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>): A | B =>
     getOrElseImpl(source, key as unknown as SourceKey, fallback)
 }
@@ -110,10 +173,27 @@ const setImpl = <K, L, A, B>(
   return result
 }
 
+export function set<K, L, A, B>(
+  source: ReadonlyMap<K, A>,
+  key: L,
+  value: B,
+): ReadonlyMap<K | L, A | B>
 export function set<L, B>(
   key: L,
   value: B,
-): <K, A>(source: ReadonlyMap<K, A>) => ReadonlyMap<K | L, A | B> {
+): <K, A>(source: ReadonlyMap<K, A>) => ReadonlyMap<K | L, A | B>
+export function set<K, L, A, B>(
+  sourceOrKey: ReadonlyMap<K, A> | L,
+  keyOrValue: L | B,
+  value?: B,
+):
+  | ReadonlyMap<K | L, A | B>
+  | (<SourceKey, C>(source: ReadonlyMap<SourceKey, C>) => ReadonlyMap<SourceKey | L, C | B>) {
+  if (arguments.length !== 2) {
+    return setImpl(sourceOrKey as ReadonlyMap<K, A>, keyOrValue as L, value as B)
+  }
+  const key = sourceOrKey as L
+  value = keyOrValue as B
   return <SourceKey, C>(source: ReadonlyMap<SourceKey, C>): ReadonlyMap<SourceKey | L, C | B> =>
     setImpl(source, key, value)
 }
@@ -124,11 +204,24 @@ const removeImpl = <K, V>(source: ReadonlyMap<K, V>, key: K): ReadonlyMap<K, V> 
   return result
 }
 
+export function remove<K, V>(source: ReadonlyMap<K, V>, key: K): ReadonlyMap<K, V>
 export function remove<K>(
   key: K,
 ): <SourceKey, V>(
   source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>,
-) => ReadonlyMap<SourceKey, V> {
+) => ReadonlyMap<SourceKey, V>
+export function remove<K, V>(
+  sourceOrKey: ReadonlyMap<K, V> | K,
+  key?: K,
+):
+  | ReadonlyMap<K, V>
+  | (<SourceKey, A>(
+      source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>,
+    ) => ReadonlyMap<SourceKey, A>) {
+  if (arguments.length !== 1) {
+    return removeImpl(sourceOrKey as ReadonlyMap<K, V>, key as K)
+  }
+  key = sourceOrKey as K
   return <SourceKey, A>(
     source: ReadonlyMap<SourceKey, A> & AcceptsKey<K, SourceKey>,
   ): ReadonlyMap<SourceKey, A> => removeImpl(source, key as unknown as SourceKey)
@@ -144,11 +237,30 @@ const modifyImpl = <K, V>(
 }
 
 export function modify<K, V>(
+  source: ReadonlyMap<K, V>,
+  key: K,
+  f: (value: V) => V,
+): ReadonlyMap<K, V>
+export function modify<K, V>(
   key: K,
   f: (value: V) => V,
 ): <SourceKey>(
   source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>,
-) => ReadonlyMap<SourceKey, V> {
+) => ReadonlyMap<SourceKey, V>
+export function modify<K, V>(
+  sourceOrKey: ReadonlyMap<K, V> | K,
+  keyOrF: K | ((value: V) => V),
+  f?: (value: V) => V,
+):
+  | ReadonlyMap<K, V>
+  | (<SourceKey>(
+      source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>,
+    ) => ReadonlyMap<SourceKey, V>) {
+  if (arguments.length !== 2) {
+    return modifyImpl(sourceOrKey as ReadonlyMap<K, V>, keyOrF as K, f as (value: V) => V)
+  }
+  const key = sourceOrKey as K
+  f = keyOrF as (value: V) => V
   return <SourceKey>(
     source: ReadonlyMap<SourceKey, V> & AcceptsKey<K, SourceKey>,
   ): ReadonlyMap<SourceKey, V> => modifyImpl(source, key as unknown as SourceKey, f)
@@ -167,21 +279,55 @@ const updateImpl = <K, L, V>(
   return result
 }
 
+export function update<K, L, V>(
+  source: ReadonlyMap<K, V>,
+  key: L,
+  f: (value: Option<V>) => Option<V>,
+): ReadonlyMap<K | L, V>
 export function update<L, V>(
   key: L,
   f: (value: Option<V>) => Option<V>,
-): <K>(source: ReadonlyMap<K, V>) => ReadonlyMap<K | L, V> {
+): <K>(source: ReadonlyMap<K, V>) => ReadonlyMap<K | L, V>
+export function update<K, L, V>(
+  sourceOrKey: ReadonlyMap<K, V> | L,
+  keyOrF: L | ((value: Option<V>) => Option<V>),
+  f?: (value: Option<V>) => Option<V>,
+):
+  | ReadonlyMap<K | L, V>
+  | (<SourceKey>(source: ReadonlyMap<SourceKey, V>) => ReadonlyMap<SourceKey | L, V>) {
+  if (arguments.length !== 2) {
+    return updateImpl(
+      sourceOrKey as ReadonlyMap<K, V>,
+      keyOrF as L,
+      f as (value: Option<V>) => Option<V>,
+    )
+  }
+  const key = sourceOrKey as L
+  f = keyOrF as (value: Option<V>) => Option<V>
   return <SourceKey>(source: ReadonlyMap<SourceKey, V>): ReadonlyMap<SourceKey | L, V> =>
     updateImpl(source, key, f)
 }
 
+export function map<K, A, B>(
+  source: ReadonlyMap<K, A>,
+  f: (value: A, key: K) => B,
+): ReadonlyMap<K, B>
 export function map<A, B>(f: (value: A) => B): <K>(source: ReadonlyMap<K, A>) => ReadonlyMap<K, B>
 export function map<K, A, B>(
   f: (value: A, key: K) => B,
 ): (source: ReadonlyMap<K, A>) => ReadonlyMap<K, B>
 export function map<K, A, B>(
-  f: (value: A, key: K) => B,
-): (source: ReadonlyMap<K, A>) => ReadonlyMap<K, B> {
+  sourceOrF: ReadonlyMap<K, A> | ((value: A, key: K) => B),
+  f?: (value: A, key: K) => B,
+): ReadonlyMap<K, B> | ((source: ReadonlyMap<K, A>) => ReadonlyMap<K, B>) {
+  if (arguments.length !== 1) {
+    return mapIntoImpl(
+      sourceOrF as ReadonlyMap<K, A>,
+      new globalThis.Map<K, B>(),
+      f as (value: A, key: K) => B,
+    )
+  }
+  f = sourceOrF as (value: A, key: K) => B
   return (source) => mapIntoImpl(source, new globalThis.Map<K, B>(), f)
 }
 
@@ -202,10 +348,37 @@ interface MapInto {
     target: CompatibleMapKeyTarget<K, Target>,
     f: (value: A, key: K) => B,
   ): Target
+  <A, Target extends Map<unknown, unknown>, B extends MutableMapValueCapacity<Target>>(
+    target: Target,
+    f: (value: A) => B,
+  ): <K>(
+    source: ReadonlyMap<K, A>,
+    ..._capacity: [] & AcceptsAll<K, MutableMapKeyCapacity<Target>>
+  ) => Target
+  <K, A, Target extends Map<unknown, unknown>, B extends MutableMapValueCapacity<Target>>(
+    target: CompatibleMapKeyTarget<K, Target>,
+    f: (value: A, key: K) => B,
+  ): (source: ReadonlyMap<K, A>) => Target
 }
 
-export const mapInto = mapIntoImpl as MapInto
+export const mapInto: MapInto = function mapInto(
+  target: Map<unknown, unknown>,
+  f: (value: unknown, key: unknown) => unknown,
+  __df?: any,
+): any {
+  if (arguments.length >= 3) return (mapInto as any)(f, __df)(target)
+  return (source: ReadonlyMap<unknown, unknown>): Map<unknown, unknown> =>
+    mapIntoImpl(source, target, f)
+} as any
 
+export function filter<K, A, B extends A>(
+  source: ReadonlyMap<K, A>,
+  predicate: (value: A, key: K) => value is B,
+): ReadonlyMap<K, B>
+export function filter<K, A>(
+  source: ReadonlyMap<K, A>,
+  predicate: (value: A, key: K) => boolean,
+): ReadonlyMap<K, A>
 export function filter<A, B extends A>(
   predicate: (value: A) => value is B,
 ): <K>(source: ReadonlyMap<K, A>) => ReadonlyMap<K, B>
@@ -219,8 +392,17 @@ export function filter<K, A>(
   predicate: (value: A, key: K) => boolean,
 ): (source: ReadonlyMap<K, A>) => ReadonlyMap<K, A>
 export function filter<K, A>(
-  predicate: (value: A, key: K) => boolean,
-): (source: ReadonlyMap<K, A>) => ReadonlyMap<K, A> {
+  sourceOrPredicate: ReadonlyMap<K, A> | ((value: A, key: K) => boolean),
+  predicate?: (value: A, key: K) => boolean,
+): ReadonlyMap<K, A> | ((source: ReadonlyMap<K, A>) => ReadonlyMap<K, A>) {
+  if (arguments.length !== 1) {
+    return filterIntoImpl(
+      sourceOrPredicate as ReadonlyMap<K, A>,
+      new globalThis.Map<K, A>(),
+      predicate as (value: A, key: K) => boolean,
+    )
+  }
+  predicate = sourceOrPredicate as (value: A, key: K) => boolean
   return (source) => filterIntoImpl(source, new globalThis.Map<K, A>(), predicate)
 }
 
@@ -246,7 +428,37 @@ export const filterInto: {
     target: CompatibleMapTarget<K, A, Target>,
     predicate: (value: A, key: K) => boolean,
   ): Target
-} = filterIntoImpl
+  <A, B extends A, Target extends Map<unknown, unknown>>(
+    target: CompatibleMapValueTarget<B, Target>,
+    predicate: (value: A) => value is B,
+  ): <K>(
+    source: ReadonlyMap<K, A>,
+    ..._capacity: [] & AcceptsAll<K, MutableMapKeyCapacity<Target>>
+  ) => Target
+  <A, Target extends Map<unknown, unknown>>(
+    target: CompatibleMapValueTarget<A, Target>,
+    predicate: (value: A) => boolean,
+  ): <K>(
+    source: ReadonlyMap<K, A>,
+    ..._capacity: [] & AcceptsAll<K, MutableMapKeyCapacity<Target>>
+  ) => Target
+  <K, A, B extends A, Target extends Map<unknown, unknown>>(
+    target: CompatibleMapTarget<K, B, Target>,
+    predicate: (value: A, key: K) => value is B,
+  ): (source: ReadonlyMap<K, A>) => Target
+  <K, A, Target extends Map<unknown, unknown>>(
+    target: CompatibleMapTarget<K, A, Target>,
+    predicate: (value: A, key: K) => boolean,
+  ): (source: ReadonlyMap<K, A>) => Target
+} = function filterInto(
+  target: Map<unknown, unknown>,
+  predicate: (value: unknown, key: unknown) => boolean,
+  __df?: any,
+): any {
+  if (arguments.length >= 3) return (filterInto as any)(predicate, __df)(target)
+  return (source: ReadonlyMap<unknown, unknown>): Map<unknown, unknown> =>
+    filterIntoImpl(source, target, predicate)
+} as any
 
 const filterMapImpl = <K, A, B>(
   source: ReadonlyMap<K, A>,
@@ -260,6 +472,10 @@ const filterMapImpl = <K, A, B>(
   return result
 }
 
+export function filterMap<K, A, B>(
+  source: ReadonlyMap<K, A>,
+  f: (value: A, key: K) => Option<B>,
+): ReadonlyMap<K, B>
 export function filterMap<A, B>(
   f: (value: A) => Option<B>,
 ): <K>(source: ReadonlyMap<K, A>) => ReadonlyMap<K, B>
@@ -267,8 +483,13 @@ export function filterMap<K, A, B>(
   f: (value: A, key: K) => Option<B>,
 ): (source: ReadonlyMap<K, A>) => ReadonlyMap<K, B>
 export function filterMap<K, A, B>(
-  f: (value: A, key: K) => Option<B>,
-): (source: ReadonlyMap<K, A>) => ReadonlyMap<K, B> {
+  sourceOrF: ReadonlyMap<K, A> | ((value: A, key: K) => Option<B>),
+  f?: (value: A, key: K) => Option<B>,
+): ReadonlyMap<K, B> | ((source: ReadonlyMap<K, A>) => ReadonlyMap<K, B>) {
+  if (arguments.length !== 1) {
+    return filterMapImpl(sourceOrF as ReadonlyMap<K, A>, f as (value: A, key: K) => Option<B>)
+  }
+  f = sourceOrF as (value: A, key: K) => Option<B>
   return (source) => filterMapImpl(source, f)
 }
 
@@ -281,13 +502,22 @@ const mapKeysImpl = <K, L, V>(
   return result
 }
 
+export function mapKeys<K, L, V>(
+  source: ReadonlyMap<K, V>,
+  f: (key: K, value: V) => L,
+): ReadonlyMap<L, V>
 export function mapKeys<K, L>(f: (key: K) => L): <V>(source: ReadonlyMap<K, V>) => ReadonlyMap<L, V>
 export function mapKeys<K, L, V>(
   f: (key: K, value: V) => L,
 ): (source: ReadonlyMap<K, V>) => ReadonlyMap<L, V>
 export function mapKeys<K, L, V>(
-  f: (key: K, value: V) => L,
-): (source: ReadonlyMap<K, V>) => ReadonlyMap<L, V> {
+  sourceOrF: ReadonlyMap<K, V> | ((key: K, value: V) => L),
+  f?: (key: K, value: V) => L,
+): ReadonlyMap<L, V> | ((source: ReadonlyMap<K, V>) => ReadonlyMap<L, V>) {
+  if (arguments.length !== 1) {
+    return mapKeysImpl(sourceOrF as ReadonlyMap<K, V>, f as (key: K, value: V) => L)
+  }
+  f = sourceOrF as (key: K, value: V) => L
   return (source) => mapKeysImpl(source, f)
 }
 
@@ -300,9 +530,23 @@ const mergeImpl = <K, L, A, B>(
   return result
 }
 
+export function merge<K, L, A, B>(
+  source: ReadonlyMap<K, A>,
+  other: ReadonlyMap<L, B>,
+): ReadonlyMap<K | L, A | B>
 export function merge<L, B>(
   other: ReadonlyMap<L, B>,
-): <K, A>(source: ReadonlyMap<K, A>) => ReadonlyMap<K | L, A | B> {
+): <K, A>(source: ReadonlyMap<K, A>) => ReadonlyMap<K | L, A | B>
+export function merge<K, L, A, B>(
+  sourceOrOther: ReadonlyMap<K, A> | ReadonlyMap<L, B>,
+  other?: ReadonlyMap<L, B>,
+):
+  | ReadonlyMap<K | L, A | B>
+  | (<SourceKey, C>(source: ReadonlyMap<SourceKey, C>) => ReadonlyMap<SourceKey | L, C | B>) {
+  if (arguments.length !== 1) {
+    return mergeImpl(sourceOrOther as ReadonlyMap<K, A>, other as ReadonlyMap<L, B>)
+  }
+  other = sourceOrOther as ReadonlyMap<L, B>
   return <SourceKey, C>(source: ReadonlyMap<SourceKey, C>): ReadonlyMap<SourceKey | L, C | B> =>
     mergeImpl(source, other)
 }
@@ -320,9 +564,23 @@ const intersectionImpl = <K, L, V>(
   return result
 }
 
+export function intersection<K, L, V>(
+  source: ReadonlyMap<K, V>,
+  other: ReadonlyMap<L, unknown>,
+): ReadonlyMap<K, V>
 export function intersection<L>(
   other: ReadonlyMap<L, unknown>,
-): <K, V>(source: ReadonlyMap<K, V>) => ReadonlyMap<K, V> {
+): <K, V>(source: ReadonlyMap<K, V>) => ReadonlyMap<K, V>
+export function intersection<K, L, V>(
+  sourceOrOther: ReadonlyMap<K, V> | ReadonlyMap<L, unknown>,
+  other?: ReadonlyMap<L, unknown>,
+):
+  | ReadonlyMap<K, V>
+  | (<SourceKey, A>(source: ReadonlyMap<SourceKey, A>) => ReadonlyMap<SourceKey, A>) {
+  if (arguments.length !== 1) {
+    return intersectionImpl(sourceOrOther as ReadonlyMap<K, V>, other as ReadonlyMap<L, unknown>)
+  }
+  other = sourceOrOther as ReadonlyMap<L, unknown>
   return <SourceKey, A>(source: ReadonlyMap<SourceKey, A>): ReadonlyMap<SourceKey, A> =>
     intersectionImpl(source, other)
 }
@@ -338,9 +596,23 @@ const differenceImpl = <K, L, V>(
   return result
 }
 
+export function difference<K, L, V>(
+  source: ReadonlyMap<K, V>,
+  other: ReadonlyMap<L, unknown>,
+): ReadonlyMap<K, V>
 export function difference<L>(
   other: ReadonlyMap<L, unknown>,
-): <K, V>(source: ReadonlyMap<K, V>) => ReadonlyMap<K, V> {
+): <K, V>(source: ReadonlyMap<K, V>) => ReadonlyMap<K, V>
+export function difference<K, L, V>(
+  sourceOrOther: ReadonlyMap<K, V> | ReadonlyMap<L, unknown>,
+  other?: ReadonlyMap<L, unknown>,
+):
+  | ReadonlyMap<K, V>
+  | (<SourceKey, A>(source: ReadonlyMap<SourceKey, A>) => ReadonlyMap<SourceKey, A>) {
+  if (arguments.length !== 1) {
+    return differenceImpl(sourceOrOther as ReadonlyMap<K, V>, other as ReadonlyMap<L, unknown>)
+  }
+  other = sourceOrOther as ReadonlyMap<L, unknown>
   return <SourceKey, A>(source: ReadonlyMap<SourceKey, A>): ReadonlyMap<SourceKey, A> =>
     differenceImpl(source, other)
 }
@@ -357,6 +629,14 @@ const partitionImpl = <K, V>(
   return [accepted, rejected]
 }
 
+export function partition<K, V, B extends V>(
+  source: ReadonlyMap<K, V>,
+  predicate: (value: V, key: K) => value is B,
+): readonly [accepted: ReadonlyMap<K, B>, rejected: ReadonlyMap<K, Exclude<V, B>>]
+export function partition<K, V>(
+  source: ReadonlyMap<K, V>,
+  predicate: (value: V, key: K) => boolean,
+): readonly [accepted: ReadonlyMap<K, V>, rejected: ReadonlyMap<K, V>]
 export function partition<V, B extends V>(
   predicate: (value: V) => value is B,
 ): <K>(
@@ -378,10 +658,20 @@ export function partition<K, V>(
   source: ReadonlyMap<K, V>,
 ) => readonly [accepted: ReadonlyMap<K, V>, rejected: ReadonlyMap<K, V>]
 export function partition<K, V>(
-  predicate: (value: V, key: K) => boolean,
-): (
-  source: ReadonlyMap<K, V>,
-) => readonly [accepted: ReadonlyMap<K, V>, rejected: ReadonlyMap<K, V>] {
+  sourceOrPredicate: ReadonlyMap<K, V> | ((value: V, key: K) => boolean),
+  predicate?: (value: V, key: K) => boolean,
+):
+  | readonly [accepted: ReadonlyMap<K, V>, rejected: ReadonlyMap<K, V>]
+  | ((
+      source: ReadonlyMap<K, V>,
+    ) => readonly [accepted: ReadonlyMap<K, V>, rejected: ReadonlyMap<K, V>]) {
+  if (arguments.length !== 1) {
+    return partitionImpl(
+      sourceOrPredicate as ReadonlyMap<K, V>,
+      predicate as (value: V, key: K) => boolean,
+    )
+  }
+  predicate = sourceOrPredicate as (value: V, key: K) => boolean
   return (source) => partitionImpl(source, predicate)
 }
 
@@ -405,6 +695,11 @@ const reduceImpl = <K, A, B>(
   return state
 }
 
+export function reduce<K, A, B>(
+  source: ReadonlyMap<K, A>,
+  reducer: (state: B, value: A, key: K) => B,
+  initial: B,
+): B
 export function reduce<A, B>(
   reducer: (state: B, value: A) => B,
   initial: B,
@@ -414,9 +709,19 @@ export function reduce<K, A, B>(
   initial: B,
 ): (source: ReadonlyMap<K, A>) => B
 export function reduce<K, A, B>(
-  reducer: (state: B, value: A, key: K) => B,
-  initial: B,
-): (source: ReadonlyMap<K, A>) => B {
+  sourceOrReducer: ReadonlyMap<K, A> | ((state: B, value: A, key: K) => B),
+  reducerOrInitial: ((state: B, value: A, key: K) => B) | B,
+  initial?: B,
+): B | ((source: ReadonlyMap<K, A>) => B) {
+  if (arguments.length !== 2) {
+    return reduceImpl(
+      sourceOrReducer as ReadonlyMap<K, A>,
+      reducerOrInitial as (state: B, value: A, key: K) => B,
+      initial as B,
+    )
+  }
+  const reducer = sourceOrReducer as (state: B, value: A, key: K) => B
+  initial = reducerOrInitial as B
   return (source) => reduceImpl(source, reducer, initial)
 }
 
@@ -435,14 +740,31 @@ const equalsImpl = <K, V>(
   return true
 }
 
+type NonRuntimeFunction<T> = T extends
+  | ((...arguments_: never[]) => unknown)
+  | (abstract new (...arguments_: never[]) => unknown)
+  ? never
+  : T
+
+export function equals<K, V, Other extends ReadonlyMap<K, V>>(
+  source: ReadonlyMap<K, V>,
+  other: Other & NonRuntimeFunction<Other>,
+  equal?: (left: V, right: V) => boolean,
+): boolean
 export function equals<K, V>(other: ReadonlyMap<K, V>): (source: ReadonlyMap<K, V>) => boolean
 export function equals<K, V>(
   other: ReadonlyMap<K, V>,
   equal: (left: V, right: V) => boolean,
 ): (source: ReadonlyMap<K, V>) => boolean
 export function equals<K, V>(
-  other: ReadonlyMap<K, V>,
+  sourceOrOther: ReadonlyMap<K, V>,
+  otherOrEqual?: ReadonlyMap<K, V> | ((left: V, right: V) => boolean),
   equal: (left: V, right: V) => boolean = Object.is,
-): (source: ReadonlyMap<K, V>) => boolean {
+): boolean | ((source: ReadonlyMap<K, V>) => boolean) {
+  if (arguments.length >= 2 && typeof otherOrEqual !== 'function') {
+    return equalsImpl(sourceOrOther, otherOrEqual as ReadonlyMap<K, V>, equal)
+  }
+  const other = sourceOrOther
+  equal = typeof otherOrEqual === 'function' ? otherOrEqual : Object.is
   return (source) => equalsImpl(source, other, equal)
 }

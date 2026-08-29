@@ -171,34 +171,50 @@ export function isStandardSchema(value: unknown): value is StandardSchemaV1 {
 
 export const validateSync: {
   <Input, Output>(
+    value: unknown,
+    schema: StandardSchemaV1<Input, Output>,
+  ): Result<Output, readonly Issue[]>
+  <Input, Output>(
     schema: StandardSchemaV1<Input, Output>,
   ): (value: unknown) => Result<Output, readonly Issue[]>
-} =
-  <Input, Output>(schema: StandardSchemaV1<Input, Output>) =>
-  (value: unknown): Result<Output, readonly Issue[]> => {
+} = function validateSync<Input, Output>(
+  schema: StandardSchemaV1<Input, Output>,
+  __df?: any,
+): Result<Output, readonly Issue[]> | ((value: unknown) => Result<Output, readonly Issue[]>) {
+  if (arguments.length >= 2) return (validateSync as any)(__df as StandardSchemaV1<Input, Output>)(schema)
+  return (value: unknown): Result<Output, readonly Issue[]> => {
     const decoded = decode(schema, value)
     if (isPromiseLike(decoded)) {
       throw new TypeError('validateSync: schema validation returned a Promise')
     }
     return decoded
   }
+} as any
 
 export const validate: {
   <Input, Output>(
+    value: unknown,
+    schema: StandardSchemaV1<Input, Output>,
+  ): Promise<Result<Output, readonly Issue[]>>
+  <Input, Output>(
     schema: StandardSchemaV1<Input, Output>,
   ): (value: unknown) => Promise<Result<Output, readonly Issue[]>>
-} =
-  <Input, Output>(schema: StandardSchemaV1<Input, Output>) =>
-  async (value: unknown): Promise<Result<Output, readonly Issue[]>> =>
+} = function validate<Input, Output>(
+  schema: StandardSchemaV1<Input, Output>,
+  __df?: any,
+):
+  | Promise<Result<Output, readonly Issue[]>>
+  | ((value: unknown) => Promise<Result<Output, readonly Issue[]>>) {
+  if (arguments.length >= 2) return (validate as any)(__df as StandardSchemaV1<Input, Output>)(schema)
+  return async (value: unknown): Promise<Result<Output, readonly Issue[]>> =>
     Promise.resolve(decode(schema, value))
+} as any
 
-export function map<Input, A, B>(
+const mapImpl = <Input, A, B>(
   schema: StandardSchemaV1<Input, A>,
   transform: (value: A) => B,
-): StandardSchemaV1<Input, B> {
-  const transformResult = (
-    decoded: Result<A, readonly Issue[]>,
-  ): Result<B, readonly Issue[]> =>
+): StandardSchemaV1<Input, B> => {
+  const transformResult = (decoded: Result<A, readonly Issue[]>): Result<B, readonly Issue[]> =>
     isErr(decoded) ? decoded : ok(transform(decoded.value))
   return make((value) => {
     const result = decode(schema, value)
@@ -206,6 +222,30 @@ export function map<Input, A, B>(
       ? Promise.resolve(result).then(transformResult)
       : transformResult(result)
   }, schema['~standard'].vendor)
+}
+
+export function map<Input, A, B>(
+  schema: StandardSchemaV1<Input, A>,
+  transform: (value: A) => B,
+): StandardSchemaV1<Input, B>
+export function map<A, B>(
+  transform: (value: A) => B,
+): <Input>(schema: StandardSchemaV1<Input, A>) => StandardSchemaV1<Input, B>
+export function map<Input, A, B>(
+  schemaOrTransform: StandardSchemaV1<Input, A> | ((value: A) => B),
+  maybeTransform?: (value: A) => B,
+):
+  | StandardSchemaV1<Input, B>
+  | ((schema: StandardSchemaV1<Input, A>) => StandardSchemaV1<Input, B>) {
+  if (arguments.length >= 2) {
+    return mapImpl(
+      schemaOrTransform as StandardSchemaV1<Input, A>,
+      maybeTransform as (value: A) => B,
+    )
+  }
+  const transform = schemaOrTransform as (value: A) => B
+  return (schema: StandardSchemaV1<Input, A>): StandardSchemaV1<Input, B> =>
+    mapImpl(schema, transform)
 }
 
 export function optional<Input, Output>(

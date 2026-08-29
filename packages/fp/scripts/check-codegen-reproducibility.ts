@@ -37,6 +37,9 @@ const GENERATED_PATHS = [
   'packages/fp/src/array.ts',
   'packages/fp/src/boolean.ts',
   'packages/fp/src/math.ts',
+  'packages/fp/src/string.ts',
+  'packages/fp/src/object.ts',
+  'packages/fp/src/number.ts',
   'packages/fp/package.json',
 ] as const
 
