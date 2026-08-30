@@ -3,6 +3,8 @@
 Reverse-mode automatic differentiation for scalar, vector, and matrix values.
 Autodiff operations record to an ambient tape, so they compose naturally with
 `pipe()` while avoiding the fused operation path that would hide the tape.
+Operations with two data inputs support both direct data-first and curried
+data-last calls under the same name.
 
 ```bash
 bun add @stopcock/autodiff
@@ -77,13 +79,20 @@ Most users should prefer `differentiable()`, but the tape primitives are public
 for manual control:
 
 ```ts
-import { withTape, variable, backward, gradOf, square } from '@stopcock/autodiff'
+import { withTape, variable, backward, gradOf } from '@stopcock/autodiff'
+import { record } from '@stopcock/autodiff/tape'
 
 withTape((tape) => {
   const x = variable(3)
-  const y = square(x)
+  const parents = [x]
+  const doubleBackward = (grad: number) => [grad * 2]
+
+  const y = record(x.value * 2, parents, doubleBackward)
+  // Equivalent data-last form:
+  // record(parents, doubleBackward)(x.value * 2)
+
   backward(y, tape)
-  gradOf(x, tape) // 6
+  gradOf(x, tape) // 2
 })
 ```
 

@@ -15,37 +15,61 @@ const ones = (n: number): Vec => {
   return out
 }
 
-export const vecAdd: (b: VecInput) => (a: VecInput) => Var<Vec> = (b) => (a) => {
-  const av = asVar(a)
-  const bv = asVar(b)
-  assertSameLength('vecAdd', av.value, bv.value)
-  return record(LaVec.add(av.value, bv.value), [av, bv], (grad) => [grad, grad])
+export const vecAdd: {
+  (a: VecInput, b: VecInput): Var<Vec>
+  (b: VecInput): (a: VecInput) => Var<Vec>
+} = function vecAdd(b: VecInput, __df?: VecInput): any {
+  if (arguments.length >= 2) return vecAdd(__df as VecInput)(b)
+  return (a: VecInput) => {
+    const av = asVar(a)
+    const bv = asVar(b)
+    assertSameLength('vecAdd', av.value, bv.value)
+    return record(LaVec.add(av.value, bv.value), [av, bv], (grad) => [grad, grad])
+  }
 }
 
-export const vecSub: (b: VecInput) => (a: VecInput) => Var<Vec> = (b) => (a) => {
-  const av = asVar(a)
-  const bv = asVar(b)
-  assertSameLength('vecSub', av.value, bv.value)
-  return record(LaVec.sub(av.value, bv.value), [av, bv], (grad) => [grad, LaVec.scale(grad, -1)])
+export const vecSub: {
+  (a: VecInput, b: VecInput): Var<Vec>
+  (b: VecInput): (a: VecInput) => Var<Vec>
+} = function vecSub(b: VecInput, __df?: VecInput): any {
+  if (arguments.length >= 2) return vecSub(__df as VecInput)(b)
+  return (a: VecInput) => {
+    const av = asVar(a)
+    const bv = asVar(b)
+    assertSameLength('vecSub', av.value, bv.value)
+    return record(LaVec.sub(av.value, bv.value), [av, bv], (grad) => [grad, LaVec.scale(grad, -1)])
+  }
 }
 
-export const vecScale: (s: ScalarInput) => (v: VecInput) => Var<Vec> = (s) => (v) => {
-  const vv = asVar(v)
-  const sv = asVar(s)
-  return record(LaVec.scale(vv.value, sv.value), [vv, sv], (grad) => [
-    LaVec.scale(grad, sv.value),
-    LaVec.dot(grad, vv.value),
-  ])
+export const vecScale: {
+  (v: VecInput, s: ScalarInput): Var<Vec>
+  (s: ScalarInput): (v: VecInput) => Var<Vec>
+} = function vecScale(s: any, __df?: any): any {
+  if (arguments.length >= 2) return vecScale(__df)(s)
+  return (v: VecInput) => {
+    const vv = asVar(v)
+    const sv = asVar(s)
+    return record(LaVec.scale(vv.value, sv.value), [vv, sv], (grad) => [
+      LaVec.scale(grad, sv.value),
+      LaVec.dot(grad, vv.value),
+    ])
+  }
 }
 
-export const vecDot: (b: VecInput) => (a: VecInput) => Var<number> = (b) => (a) => {
-  const av = asVar(a)
-  const bv = asVar(b)
-  assertSameLength('vecDot', av.value, bv.value)
-  return record(LaVec.dot(av.value, bv.value), [av, bv], (grad) => [
-    LaVec.scale(bv.value, grad),
-    LaVec.scale(av.value, grad),
-  ])
+export const vecDot: {
+  (a: VecInput, b: VecInput): Var<number>
+  (b: VecInput): (a: VecInput) => Var<number>
+} = function vecDot(b: VecInput, __df?: VecInput): any {
+  if (arguments.length >= 2) return vecDot(__df as VecInput)(b)
+  return (a: VecInput) => {
+    const av = asVar(a)
+    const bv = asVar(b)
+    assertSameLength('vecDot', av.value, bv.value)
+    return record(LaVec.dot(av.value, bv.value), [av, bv], (grad) => [
+      LaVec.scale(bv.value, grad),
+      LaVec.scale(av.value, grad),
+    ])
+  }
 }
 
 export const vecNorm = (v: VecInput): Var<number> => {

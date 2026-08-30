@@ -40,6 +40,53 @@ const directional = (f: (x: Mat) => number, x: Mat, d: Mat, h = 1e-5) =>
   (f(perturb(x, d, h)) - f(perturb(x, d, -h))) / (2 * h)
 
 describe('matrix ops', () => {
+  it('keeps binary data-first and data-last forms in parity', () => {
+    const sameA = mat(2, 2, [1, 2, 3, 4])
+    const sameB = mat(2, 2, [4, 3, 2, 1])
+    const mulA = mat(2, 3, [1, 2, 3, 4, 5, 6])
+    const mulB = mat(3, 2, [1, 2, 3, 4, 5, 6])
+    const cases = [
+      {
+        direct: differentiable((a: Var<Mat>, b: Var<Mat>) => matSum(matAdd(a, b))),
+        curried: differentiable((a: Var<Mat>, b: Var<Mat>) => matSum(matAdd(b)(a))),
+        a: sameA,
+        b: sameB,
+      },
+      {
+        direct: differentiable((a: Var<Mat>, b: Var<Mat>) => matSum(matSub(a, b))),
+        curried: differentiable((a: Var<Mat>, b: Var<Mat>) => matSum(matSub(b)(a))),
+        a: sameA,
+        b: sameB,
+      },
+      {
+        direct: differentiable((a: Var<Mat>, b: Var<Mat>) => matSum(matMul(a, b))),
+        curried: differentiable((a: Var<Mat>, b: Var<Mat>) => matSum(matMul(b)(a))),
+        a: mulA,
+        b: mulB,
+      },
+    ]
+
+    for (const { direct, curried, a, b } of cases) {
+      expect(direct.forward(a, b)).toBe(curried.forward(a, b))
+      const directGrad = direct.gradient(a, b)
+      const curriedGrad = curried.gradient(a, b)
+      approxMat(directGrad[0], Array.from(curriedGrad[0].data))
+      approxMat(directGrad[1], Array.from(curriedGrad[1].data))
+    }
+  })
+
+  it('keeps matScale data-first and data-last forms in parity', () => {
+    const direct = differentiable((m: Var<Mat>, s: Var<number>) => matSum(matScale(m, s)))
+    const curried = differentiable((m: Var<Mat>, s: Var<number>) => matSum(matScale(s)(m)))
+    const m = mat(2, 2, [1, 2, 3, 4])
+
+    expect(direct.forward(m, 2)).toBe(curried.forward(m, 2))
+    const directGrad = direct.gradient(m, 2)
+    const curriedGrad = curried.gradient(m, 2)
+    approxMat(directGrad[0], Array.from(curriedGrad[0].data))
+    expect(directGrad[1]).toBe(curriedGrad[1])
+  })
+
   it('computes transpose, scale, sum, and mean gradients', () => {
     const sumLoss = differentiable((m: Var<Mat>) => matSum(matScale(2)(matTranspose(m))))
     const meanLoss = differentiable((m: Var<Mat>) => matMean(m))

@@ -346,12 +346,33 @@ const findPath = (from: ColorSpace, to: ColorSpace): BatchEdge[] => {
   throw new Error(`No conversion path from ${from} to ${to}`)
 }
 
-export const convertBuffer = (
+export function convertBuffer(
   src: ChannelBuffer,
   srcSpace: ColorSpace,
   dstSpace: ColorSpace,
   out?: ChannelBuffer,
-): ChannelBuffer => {
+): ChannelBuffer
+export function convertBuffer(
+  srcSpace: ColorSpace,
+  dstSpace: ColorSpace,
+  out?: ChannelBuffer,
+): (src: ChannelBuffer) => ChannelBuffer
+export function convertBuffer(
+  srcOrSrcSpace: ChannelBuffer | ColorSpace,
+  srcSpaceOrDstSpace: ColorSpace,
+  dstSpaceOrOut?: ColorSpace | ChannelBuffer,
+  maybeOut?: ChannelBuffer,
+): ChannelBuffer | ((src: ChannelBuffer) => ChannelBuffer) {
+  if (typeof srcOrSrcSpace === 'string') {
+    const srcSpace = srcOrSrcSpace
+    const dstSpace = srcSpaceOrDstSpace
+    const out = dstSpaceOrOut as ChannelBuffer | undefined
+    return (src: ChannelBuffer): ChannelBuffer => convertBuffer(src, srcSpace, dstSpace, out)
+  }
+  const src = srcOrSrcSpace
+  const srcSpace = srcSpaceOrDstSpace
+  const dstSpace = dstSpaceOrOut as ColorSpace
+  const out = maybeOut
   validateBuffer('src', src)
   validateOut(src, out)
   if (src.length === 0) return out ?? src
@@ -506,13 +527,38 @@ const oklabToSrgbDirect = (src: ChannelBuffer, out: ChannelBuffer): ChannelBuffe
   return out
 }
 
-export const simulateBuffer = (
+export function simulateBuffer(
   src: ChannelBuffer,
   srcSpace: ColorSpace,
   type: CVDType,
-  severity: number = 1,
+  severity?: number,
   out?: ChannelBuffer,
-): ChannelBuffer => {
+): ChannelBuffer
+export function simulateBuffer(
+  srcSpace: ColorSpace,
+  type: CVDType,
+  severity?: number,
+  out?: ChannelBuffer,
+): (src: ChannelBuffer) => ChannelBuffer
+export function simulateBuffer(
+  srcOrSrcSpace: ChannelBuffer | ColorSpace,
+  srcSpaceOrType: ColorSpace | CVDType,
+  typeOrSeverity?: CVDType | number,
+  severityOrOut?: number | ChannelBuffer,
+  maybeOut?: ChannelBuffer,
+): ChannelBuffer | ((src: ChannelBuffer) => ChannelBuffer) {
+  if (typeof srcOrSrcSpace === 'string') {
+    const srcSpace = srcOrSrcSpace
+    const type = srcSpaceOrType as CVDType
+    const severity = typeOrSeverity === undefined ? 1 : (typeOrSeverity as number)
+    const out = severityOrOut as ChannelBuffer | undefined
+    return (src: ChannelBuffer): ChannelBuffer => simulateBuffer(src, srcSpace, type, severity, out)
+  }
+  const src = srcOrSrcSpace
+  const srcSpace = srcSpaceOrType as ColorSpace
+  const type = typeOrSeverity as CVDType
+  const severity = severityOrOut === undefined ? 1 : (severityOrOut as number)
+  const out = maybeOut
   validateBuffer('src', src)
   validateOut(src, out)
   if (src.length === 0) return out ?? src
@@ -534,12 +580,33 @@ export const simulateBuffer = (
   return convertBuffer(simulated, 'linear-srgb', srcSpace, out)
 }
 
-export const toGamutBuffer = (
+export function toGamutBuffer(
   src: ChannelBuffer,
   srcSpace: ColorSpace,
   targetSpace: ColorSpace,
-  out: ChannelBuffer = new Float64Array(src.length),
-): ChannelBuffer => {
+  out?: ChannelBuffer,
+): ChannelBuffer
+export function toGamutBuffer(
+  srcSpace: ColorSpace,
+  targetSpace: ColorSpace,
+  out?: ChannelBuffer,
+): (src: ChannelBuffer) => ChannelBuffer
+export function toGamutBuffer(
+  srcOrSrcSpace: ChannelBuffer | ColorSpace,
+  srcSpaceOrTargetSpace: ColorSpace,
+  targetSpaceOrOut?: ColorSpace | ChannelBuffer,
+  maybeOut?: ChannelBuffer,
+): ChannelBuffer | ((src: ChannelBuffer) => ChannelBuffer) {
+  if (typeof srcOrSrcSpace === 'string') {
+    const srcSpace = srcOrSrcSpace
+    const targetSpace = srcSpaceOrTargetSpace
+    const out = targetSpaceOrOut as ChannelBuffer | undefined
+    return (src: ChannelBuffer): ChannelBuffer => toGamutBuffer(src, srcSpace, targetSpace, out)
+  }
+  const src = srcOrSrcSpace
+  const srcSpace = srcSpaceOrTargetSpace
+  const targetSpace = targetSpaceOrOut as ColorSpace
+  const out = maybeOut === undefined ? new Float64Array(src.length) : maybeOut
   validateBuffer('src', src)
   validateOut(src, out)
   for (let i = 0; i < src.length; i += 3) {

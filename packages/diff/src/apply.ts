@@ -112,9 +112,22 @@ function applyOp(target: unknown, op: Operation): Result<unknown, PatchError> {
   }
 }
 
-export const apply =
-  (p: Patch) =>
-  <T>(target: T): Result<T, PatchError> => {
+export const apply: {
+  <T>(target: T, p: Patch): Result<T, PatchError>
+  (p: Patch): <T>(target: T) => Result<T, PatchError>
+} = function apply(p: Patch, __df?: Patch): any {
+  if (arguments.length >= 2) {
+    const target: unknown = p
+    const selectedPatch = __df as Patch
+    let current: unknown = target
+    for (const op of selectedPatch.ops) {
+      const result = applyOp(current, op)
+      if (result._tag === 0) return result
+      current = result.value
+    }
+    return ok(current)
+  }
+  return <T>(target: T): Result<T, PatchError> => {
     let current: unknown = target
     for (const op of p.ops) {
       const result = applyOp(current, op)
@@ -123,11 +136,20 @@ export const apply =
     }
     return ok(current as T)
   }
+} as any
 
-export const applyUnsafe =
-  (p: Patch) =>
-  <T>(target: T): T => {
+export const applyUnsafe: {
+  <T>(target: T, p: Patch): T
+  (p: Patch): <T>(target: T) => T
+} = function applyUnsafe(p: Patch, __df?: Patch): any {
+  if (arguments.length >= 2) {
+    const result = apply(p as unknown, __df as Patch)
+    if (result._tag === 0) throw new Error(result.error.message)
+    return result.value
+  }
+  return <T>(target: T): T => {
     const result = apply(p)(target)
     if (result._tag === 0) throw new Error(result.error.message)
     return result.value
   }
+} as any

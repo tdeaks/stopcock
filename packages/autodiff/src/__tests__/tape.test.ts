@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { NoActiveTapeError, type Var } from '../types'
-import { accumulate, backward, currentTape, gradOf, variable, withTape } from '../tape'
+import { accumulate, backward, currentTape, gradOf, record, variable, withTape } from '../tape'
 import { differentiable } from '../differentiable'
 import { add, mul } from '../scalar'
 import { vecAdd } from '../vec'
@@ -36,13 +36,52 @@ describe('tape', () => {
   it('clones vector and matrix gradients on accumulation', () => {
     const vector = new Float64Array([1, 2])
     const vectorGrad = accumulate(undefined, vector) as Float64Array
+    const curriedVectorGrad = accumulate(vector)(undefined) as Float64Array
     vector[0] = 99
     expect(Array.from(vectorGrad)).toEqual([1, 2])
+    expect(Array.from(curriedVectorGrad)).toEqual([1, 2])
 
     const matrix = { data: new Float64Array([3, 4]), rows: 1, cols: 2 }
     const matrixGrad = accumulate(undefined, matrix) as typeof matrix
     matrix.data[0] = 99
     expect(Array.from(matrixGrad.data)).toEqual([3, 4])
+  })
+
+  it('keeps tape primitives in data-first and data-last parity', () => {
+    const direct = withTape((tape) => {
+      const x = variable(3)
+      const y = mul(x, x)
+      backward(y, tape)
+      return gradOf(x, tape)
+    })
+    const curried = withTape((tape) => {
+      const x = variable(3)
+      const y = mul(x)(x)
+      backward(tape)(y)
+      return gradOf(tape)(x)
+    })
+
+    expect(direct).toBe(6)
+    expect(curried).toBe(direct)
+    expect(accumulate(2, 3)).toBe(accumulate(3)(2))
+  })
+
+  it('keeps record data-first and data-last forms in parity', () => {
+    const direct = withTape((tape) => {
+      const x = variable(3)
+      const y = record(6, [x], (grad: number) => [grad * 2])
+      backward(y, tape)
+      return { value: y.value, gradient: gradOf(x, tape), parents: tape.entries[y.id].parents }
+    })
+    const curried = withTape((tape) => {
+      const x = variable(3)
+      const y = record([x], (grad: number) => [grad * 2])(6)
+      backward(tape)(y)
+      return { value: y.value, gradient: gradOf(tape)(x), parents: tape.entries[y.id].parents }
+    })
+
+    expect(curried).toEqual(direct)
+    expect(direct).toEqual({ value: 6, gradient: 2, parents: [0] })
   })
 
   it('keeps nested differentiable tapes independent', () => {

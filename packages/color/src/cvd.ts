@@ -78,7 +78,7 @@ const apply3x3 = (m: Float64Array, r: number, g: number, b: number): [number, nu
  * @param severity 0 (normal) to 1 (full dichromacy). Default 1. Ignored for achromatopsia.
  * @returns        the simulated color in the source space
  */
-export const simulate = (c: Color, type: CVDType, severity: number = 1): Color => {
+const simulateImpl = (c: Color, type: CVDType, severity: number = 1): Color => {
   if (type === 'achromatopsia') {
     // Replace with grayscale of the same WCAG luminance.
     // We pick the gray in linear-srgb so it has the right luminance.
@@ -101,3 +101,19 @@ export const simulate = (c: Color, type: CVDType, severity: number = 1): Color =
   }
   return convert(c.space)(simulated)
 }
+
+export const simulate: {
+  (c: Color, type: CVDType, severity?: number): Color
+  (type: CVDType, severity?: number): (c: Color) => Color
+} = function simulate(
+  colorOrType: Color | CVDType,
+  typeOrSeverity?: CVDType | number,
+  maybeSeverity?: number,
+): Color | ((c: Color) => Color) {
+  if (typeof colorOrType !== 'string') {
+    return simulateImpl(colorOrType, typeOrSeverity as CVDType, maybeSeverity)
+  }
+  const type = colorOrType
+  const severity = typeof typeOrSeverity === 'number' ? typeOrSeverity : 1
+  return (c: Color): Color => simulateImpl(c, type, severity)
+} as any

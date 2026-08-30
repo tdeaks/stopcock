@@ -27,14 +27,44 @@ export function toLens(op: Operation): Lens<any, any> | null {
   )
 }
 
-export function fromLens<S, A>(s: S, optic: Lens<S, A>, target: S): Patch | null {
+export const fromLens: {
+  <S, A>(s: S, optic: Lens<S, A>, target: S): Patch | null
+  <S, A>(optic: Lens<S, A>, target: S): (s: S) => Patch | null
+} = function fromLens<S, A>(
+  sOrOptic: S | Lens<S, A>,
+  opticOrTarget: Lens<S, A> | S,
+  maybeTarget?: S,
+): any {
+  if (arguments.length < 3) {
+    const optic = sOrOptic as Lens<S, A>
+    const target = opticOrTarget as S
+    return (s: S): Patch | null => fromLens(s, optic, target)
+  }
+  const s = sOrOptic as S
+  const optic = opticOrTarget as Lens<S, A>
+  const target = maybeTarget as S
   const a = view(optic)(s)
   const b = view(optic)(target)
   if (deep.equals(a, b)) return null
   return patch([{ op: 'replace', path: [], oldValue: a, newValue: b }])
-}
+} as any
 
-export function fromTraversal<S, A>(s: S, optic: Traversal<S, A>, f: (a: A) => A): Patch {
+export const fromTraversal: {
+  <S, A>(s: S, optic: Traversal<S, A>, f: (a: A) => A): Patch
+  <S, A>(optic: Traversal<S, A>, f: (a: A) => A): (s: S) => Patch
+} = function fromTraversal<S, A>(
+  sOrOptic: S | Traversal<S, A>,
+  opticOrTransform: Traversal<S, A> | ((a: A) => A),
+  maybeTransform?: (a: A) => A,
+): any {
+  if (arguments.length < 3) {
+    const optic = sOrOptic as Traversal<S, A>
+    const transform = opticOrTransform as (a: A) => A
+    return (s: S): Patch => fromTraversal(s, optic, transform)
+  }
+  const s = sOrOptic as S
+  const optic = opticOrTransform as Traversal<S, A>
+  const f = maybeTransform as (a: A) => A
   const items = collect(optic)(s)
   const ops: Operation[] = []
   for (let i = 0; i < items.length; i++) {
@@ -45,4 +75,4 @@ export function fromTraversal<S, A>(s: S, optic: Traversal<S, A>, f: (a: A) => A
     }
   }
   return patch(ops)
-}
+} as any

@@ -6,7 +6,21 @@ import { rotate } from '../operators'
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
 
-export const lerpTransform = (a: Mat, b: Mat, t: number): Mat => {
+export function lerpTransform(a: Mat, b: Mat, t: number): Mat
+export function lerpTransform(b: Mat, t: number): (a: Mat) => Mat
+export function lerpTransform(
+  aOrB: Mat,
+  bOrT: Mat | number,
+  maybeT?: number,
+): Mat | ((a: Mat) => Mat) {
+  if (arguments.length < 3) {
+    const b = aOrB
+    const t = bOrT as number
+    return (a: Mat): Mat => lerpTransform(a, b, t)
+  }
+  const a = aOrB
+  const b = bOrT as Mat
+  const t = maybeT as number
   LaMat.svd(LaMat.fromArray(2, 2, [a[0], a[2], a[1], a[3]]))
   const angleA = Math.atan2(a[1], a[0])
   const angleB = Math.atan2(b[1], b[0])
@@ -22,9 +36,16 @@ export const lerpTransform = (a: Mat, b: Mat, t: number): Mat => {
   return [cos * sx, sin * sx, -sin * sy, cos * sy, lerp(a[4], b[4], t), lerp(a[5], b[5], t)]
 }
 
-export const toQuad =
-  (corners: readonly [Pt, Pt, Pt, Pt]) =>
-  (node: Node): Node => {
+export function toQuad(node: Node, corners: readonly [Pt, Pt, Pt, Pt]): Node
+export function toQuad(corners: readonly [Pt, Pt, Pt, Pt]): (node: Node) => Node
+export function toQuad(
+  nodeOrCorners: Node | readonly [Pt, Pt, Pt, Pt],
+  maybeCorners?: readonly [Pt, Pt, Pt, Pt],
+): Node | ((node: Node) => Node) {
+  if (arguments.length >= 2)
+    return toQuad(maybeCorners as readonly [Pt, Pt, Pt, Pt])(nodeOrCorners as Node)
+  const corners = nodeOrCorners as readonly [Pt, Pt, Pt, Pt]
+  return (node: Node): Node => {
     const [topLeft, topRight, , bottomLeft] = corners
     const basis = LaMat.fromArray(3, 3, [0, 0, 1, 1, 0, 1, 0, 1, 1])
     const x = LaMat.solve(basis, new Float64Array([topLeft[0], topRight[0], bottomLeft[0]]))
@@ -32,6 +53,7 @@ export const toQuad =
     const transform: Mat = [x[0], y[0], x[1], y[1], x[2], y[2]]
     return { ...node, transform: mul(transform, node.transform ?? identity) } as Node
   }
+}
 
 const localPoint = (node: Node, point: Pt): Pt | null => {
   const inv = inverseAffine(node.transform ?? identity)
@@ -63,7 +85,18 @@ const containsLocal = (node: Node, point: Pt): boolean => {
   }
 }
 
-export const hitTest = (root: Node, screenPt: Pt): Node | undefined => {
+export function hitTest(root: Node, screenPt: Pt): Node | undefined
+export function hitTest(screenPt: Pt): (root: Node) => Node | undefined
+export function hitTest(
+  rootOrScreenPt: Node | Pt,
+  maybeScreenPt?: Pt,
+): Node | undefined | ((root: Node) => Node | undefined) {
+  if (arguments.length < 2) {
+    const screenPt = rootOrScreenPt as Pt
+    return (root: Node): Node | undefined => hitTest(root, screenPt)
+  }
+  const root = rootOrScreenPt as Node
+  const screenPt = maybeScreenPt as Pt
   const visit = (node: Node, point: Pt): Node | undefined => {
     const local = localPoint(node, point)
     if (!local) return undefined
@@ -80,7 +113,21 @@ export const hitTest = (root: Node, screenPt: Pt): Node | undefined => {
   return visit(root, screenPt)
 }
 
-export const fitBezier = (points: ReadonlyArray<Pt>, _opts: { tolerance?: number } = {}): Path => {
+type FitBezierOptions = { readonly tolerance?: number }
+
+export function fitBezier(points: ReadonlyArray<Pt>, opts?: FitBezierOptions): Path
+export function fitBezier(opts?: FitBezierOptions): (points: ReadonlyArray<Pt>) => Path
+export function fitBezier(
+  pointsOrOpts: ReadonlyArray<Pt> | FitBezierOptions = {},
+  maybeOpts: FitBezierOptions = {},
+): Path | ((points: ReadonlyArray<Pt>) => Path) {
+  if (!Array.isArray(pointsOrOpts)) {
+    const opts = pointsOrOpts as FitBezierOptions
+    return (points: ReadonlyArray<Pt>): Path => fitBezier(points, opts)
+  }
+  const points = pointsOrOpts as ReadonlyArray<Pt>
+  const _opts = maybeOpts
+  void _opts
   if (points.length === 0) return []
   if (points.length === 1) return [{ c: 'M', x: points[0][0], y: points[0][1] }]
   LaMat.qr(LaMat.fromArray(2, 2, [1, 0, 0, 1]))
@@ -94,7 +141,18 @@ export const fitBezier = (points: ReadonlyArray<Pt>, _opts: { tolerance?: number
   ]
 }
 
-export const alignToPrincipalAxis = (node: Node, points: ReadonlyArray<Pt>) => {
+export function alignToPrincipalAxis(node: Node, points: ReadonlyArray<Pt>): Node
+export function alignToPrincipalAxis(points: ReadonlyArray<Pt>): (node: Node) => Node
+export function alignToPrincipalAxis(
+  nodeOrPoints: Node | ReadonlyArray<Pt>,
+  maybePoints?: ReadonlyArray<Pt>,
+): Node | ((node: Node) => Node) {
+  if (arguments.length < 2) {
+    const points = nodeOrPoints as ReadonlyArray<Pt>
+    return (node: Node): Node => alignToPrincipalAxis(node, points)
+  }
+  const node = nodeOrPoints as Node
+  const points = maybePoints as ReadonlyArray<Pt>
   if (points.length === 0) return node
   const cx = points.reduce((sum, point) => sum + point[0], 0) / points.length
   const cy = points.reduce((sum, point) => sum + point[1], 0) / points.length
@@ -154,7 +212,21 @@ export const bakeTransform = (node: Node): Node => {
   return node
 }
 
-export const symmetry = (node: Node, n: number, step: Mat): Node => {
+export function symmetry(node: Node, n: number, step: Mat): Node
+export function symmetry(n: number, step: Mat): (node: Node) => Node
+export function symmetry(
+  nodeOrN: Node | number,
+  nOrStep: number | Mat,
+  maybeStep?: Mat,
+): Node | ((node: Node) => Node) {
+  if (arguments.length < 3) {
+    const n = nodeOrN as number
+    const step = nOrStep as Mat
+    return (node: Node): Node => symmetry(node, n, step)
+  }
+  const node = nodeOrN as Node
+  const n = nOrStep as number
+  const step = maybeStep as Mat
   const children: Node[] = []
   let current = identity
   for (let i = 0; i < n; i++) {

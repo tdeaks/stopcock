@@ -70,12 +70,17 @@ export const relu = (x: ScalarInput): Var<number> => {
   return record(Math.max(0, xv.value), [xv], (grad) => [xv.value > 0 ? grad : 0])
 }
 
-export const leakyRelu: (alpha: number) => (x: ScalarInput) => Var<number> =
-  (alpha) => (x) => {
+export const leakyRelu: {
+  (x: ScalarInput, alpha: number): Var<number>
+  (alpha: number): (x: ScalarInput) => Var<number>
+} = function leakyRelu(alpha: any, __df?: any): any {
+  if (arguments.length >= 2) return leakyRelu(__df)(alpha)
+  return (x: ScalarInput) => {
     const xv = asVar(x)
     const value = xv.value > 0 ? xv.value : alpha * xv.value
     return record(value, [xv], (grad) => [xv.value > 0 ? grad : grad * alpha])
   }
+}
 
 export const softplus = (x: ScalarInput): Var<number> => {
   const xv = asVar(x)

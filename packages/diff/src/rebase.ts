@@ -2,9 +2,25 @@ import { err, ok, type Result } from '@stopcock/fp/result'
 import type { Operation, Patch, ConflictError, Path } from './types'
 import { patch, empty } from './patch'
 
-export const rebase =
-  (onto: Patch) =>
-  (p: Patch): Result<Patch, ConflictError> => {
+export const rebase: {
+  (p: Patch, onto: Patch): Result<Patch, ConflictError>
+  (onto: Patch): (p: Patch) => Result<Patch, ConflictError>
+} = function rebase(onto: Patch, __df?: Patch): any {
+  if (arguments.length >= 2) {
+    const p = onto
+    const selectedOnto = __df as Patch
+    if (selectedOnto.ops.length === 0) return ok(p)
+    if (p.ops.length === 0) return ok(empty())
+
+    const result: Operation[] = []
+    for (const op of p.ops) {
+      const transformed = transformOp(op, selectedOnto.ops)
+      if (transformed._tag === 0) return transformed
+      if (transformed.value !== null) result.push(transformed.value)
+    }
+    return ok(result.length === 0 ? empty() : patch(result))
+  }
+  return (p: Patch): Result<Patch, ConflictError> => {
     if (onto.ops.length === 0) return ok(p)
     if (p.ops.length === 0) return ok(empty())
 
@@ -16,6 +32,7 @@ export const rebase =
     }
     return ok(result.length === 0 ? empty() : patch(result))
   }
+} as any
 
 function conflictError(message: string, local: Operation, remote: Operation): ConflictError {
   return { _tag: 'ConflictError', message, local, remote }

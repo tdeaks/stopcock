@@ -2,9 +2,21 @@ import { deep } from '@stopcock/fp/eq'
 import type { Operation, Patch, Path } from './types'
 import { patch, empty } from './patch'
 
-export const compose =
-  (p2: Patch) =>
-  (p1: Patch): Patch => {
+export const compose: {
+  (p1: Patch, p2: Patch): Patch
+  (p2: Patch): (p1: Patch) => Patch
+} = function compose(p2: Patch, __df?: Patch): any {
+  if (arguments.length >= 2) {
+    const p1 = p2
+    const selectedP2 = __df as Patch
+    if (p1.ops.length === 0) return selectedP2
+    if (selectedP2.ops.length === 0) return p1
+
+    const combined = [...p1.ops, ...selectedP2.ops]
+    const simplified = simplify(combined)
+    return simplified.length === 0 ? empty() : patch(simplified)
+  }
+  return (p1: Patch): Patch => {
     if (p1.ops.length === 0) return p2
     if (p2.ops.length === 0) return p1
 
@@ -12,6 +24,7 @@ export const compose =
     const simplified = simplify(combined)
     return simplified.length === 0 ? empty() : patch(simplified)
   }
+} as any
 
 function pathEq(a: Path, b: Path): boolean {
   if (a.length !== b.length) return false

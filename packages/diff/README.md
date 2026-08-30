@@ -7,16 +7,17 @@ bun add @stopcock/diff
 ```
 
 ```ts
-import { diff, apply, invert } from '@stopcock/diff'
+import { pipe } from '@stopcock/fp'
+import { diff, applyUnsafe, invert } from '@stopcock/diff'
 
 const before = { name: 'Tom', scores: [10, 20] }
 const after = { name: 'Tom', scores: [10, 20, 30] }
 
-const p = diff(after)(before)
-apply(p)(before) // { name: 'Tom', scores: [10, 20, 30] }
+const p = diff(before, after)
+applyUnsafe(before, p) // { name: 'Tom', scores: [10, 20, 30] }
 
 const undo = invert(p)
-apply(undo)(after) // back to before
+pipe(after, applyUnsafe(undo)) // back to before
 ```
 
 ## What's in the box
@@ -29,7 +30,9 @@ apply(undo)(after) // back to before
 - **toJsonPatch / fromJsonPatch**: RFC 6902 JSON Patch interop
 - **toLens / fromLens / fromTraversal**: bridge between patches and `@stopcock/fp` optics
 
-Every function is curried, data-last: `apply(patch)(target)`, not `apply(target, patch)`.
+Every data-taking operation with two or more arguments is dual-form. Call it
+data-first (`apply(target, patch)`) or use the same name data-last
+(`pipe(target, apply(patch))`).
 
 ## Optics bridge
 

@@ -348,9 +348,13 @@ const convertImpl = (color: Color, target: ColorSpace): Color => {
   return cur
 }
 
-export const convert: (target: ColorSpace) => (color: Color) => Color =
-  (target) => (color) =>
-    convertImpl(color, target)
+export const convert: {
+  (color: Color, target: ColorSpace): Color
+  (target: ColorSpace): (color: Color) => Color
+} = function convert(target: any, __df?: any): any {
+  if (arguments.length >= 2) return convert(__df)(target)
+  return (color: Color) => convertImpl(color, target)
+}
 
 // Convenience aliases (arity 1, directly pipeable)
 export const toSRGB = (c: Color): Color => convertImpl(c, 'srgb')

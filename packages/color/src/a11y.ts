@@ -37,11 +37,7 @@ export const paletteContrastMatrix = (palette: Color[]): ContrastCell[][] => {
  * Uses Euclidean distance in linear-sRGB for cheapness — when you need a
  * proper perceptual delta, run deltaE on each simulated pair yourself.
  */
-export const minDistinguishableDistance = (
-  palette: Color[],
-  type: CVDType,
-  severity = 1,
-): number => {
+const minDistinguishableDistanceImpl = (palette: Color[], type: CVDType, severity = 1): number => {
   if (palette.length < 2) return Infinity
   const simulated = palette.map((c) => simulate(c, type, severity))
   let min = Infinity
@@ -61,3 +57,19 @@ export const minDistinguishableDistance = (
   }
   return min
 }
+
+export const minDistinguishableDistance: {
+  (palette: Color[], type: CVDType, severity?: number): number
+  (type: CVDType, severity?: number): (palette: Color[]) => number
+} = function minDistinguishableDistance(
+  paletteOrType: Color[] | CVDType,
+  typeOrSeverity?: CVDType | number,
+  maybeSeverity?: number,
+): number | ((palette: Color[]) => number) {
+  if (Array.isArray(paletteOrType)) {
+    return minDistinguishableDistanceImpl(paletteOrType, typeOrSeverity as CVDType, maybeSeverity)
+  }
+  const type = paletteOrType
+  const severity = typeof typeOrSeverity === 'number' ? typeOrSeverity : 1
+  return (palette: Color[]): number => minDistinguishableDistanceImpl(palette, type, severity)
+} as any

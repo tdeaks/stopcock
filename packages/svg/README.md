@@ -8,18 +8,23 @@ bun add @stopcock/svg
 ```
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { rgb } from '@stopcock/color'
 import { circle, fill, render, translate, viewBox } from '@stopcock/svg'
 
-const badge = viewBox(0, 0, 100, 100)(
-  fill(rgb(1, 0, 0))(translate(50, 50)(circle(32))),
-)
+const base = circle(32)
+const moved = translate(base, 50, 50)
+const painted = fill(moved, rgb(1, 0, 0))
+const directBadge = viewBox(painted, 0, 0, 100, 100)
 
-const markup = render(badge)
+const pipedBadge = pipe(base, translate(50, 50), fill(rgb(1, 0, 0)), viewBox(0, 0, 100, 100))
+
+const markup = render(directBadge)
+const sameMarkup = pipe(pipedBadge, render())
 ```
 
-Operators return immutable node transformations and compose naturally with
-`pipe`. XML escaping, generated identifiers, and shared `<defs>` are owned by
-the renderer.
+Data-taking operators support direct data-first and curried data-last calls
+under the same name. XML escaping, generated identifiers, and shared `<defs>`
+are owned by the renderer.
 
 [Documentation](https://stopcock.dev/libraries/svg)

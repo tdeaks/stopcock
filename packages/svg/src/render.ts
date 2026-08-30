@@ -2,6 +2,7 @@ import { toCSS } from '@stopcock/color'
 import type { Color } from '@stopcock/color'
 import type { ClipPath, Filter, Gradient, Mask, Node, Paint, Path, Pattern, Stroke } from './types'
 import { isIdentity } from './matrix'
+import { isNode } from './node-guard'
 
 type Defs = {
   gradients: Map<Gradient, string>
@@ -284,12 +285,25 @@ const renderRoot = (node: Extract<Node, { kind: 'root' }>, defs: Defs): string =
     ['viewBox', node.viewBox.map((value) => num(value)).join(' ')],
   ])}>${renderDefs(defs)}${renderNode(node.child, defs)}</svg>`
 
-export const render = (node: Node, _opts: { pretty?: boolean } = {}): string => {
+type RenderOptions = { readonly pretty?: boolean }
+
+const renderWithOptions = (node: Node, _opts: RenderOptions): string => {
   const root =
     node.kind === 'root' ? node : ({ kind: 'root', child: node, viewBox: [0, 0, 100, 100] } as Node)
   const defs = makeDefs()
   collectNode(root, defs)
   return renderNode(root, defs)
+}
+
+export function render(node: Node, opts?: RenderOptions): string
+export function render(opts?: RenderOptions): (node: Node) => string
+export function render(
+  nodeOrOpts: Node | RenderOptions = {},
+  maybeOpts: RenderOptions = {},
+): string | ((node: Node) => string) {
+  if (isNode(nodeOrOpts)) return renderWithOptions(nodeOrOpts, maybeOpts)
+  const opts = nodeOrOpts
+  return (node: Node): string => renderWithOptions(node, opts)
 }
 
 export const renderPath = renderPathData

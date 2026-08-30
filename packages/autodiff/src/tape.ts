@@ -83,75 +83,102 @@ const addMat = (a: Mat, b: Mat): Mat => {
   return { data, rows: a.rows, cols: a.cols }
 }
 
-export const accumulate = (existing: Grad | undefined, incoming: Grad): Grad => {
-  if (existing === undefined) return cloneGrad(incoming)
+export const accumulate: {
+  (existing: Grad | undefined, incoming: Grad): Grad
+  (incoming: Grad): (existing: Grad | undefined) => Grad
+} = function accumulate(incoming: Grad | undefined, __df?: Grad): any {
+  if (arguments.length >= 2) return accumulate(__df as Grad)(incoming)
+  return (existing: Grad | undefined): Grad => {
+    if (existing === undefined) return cloneGrad(incoming as Grad)
 
-  if (typeof existing === 'number') {
-    if (typeof incoming !== 'number') throw new ShapeError('accumulate: scalar vs non-scalar')
-    return existing + incoming
+    if (typeof existing === 'number') {
+      if (typeof incoming !== 'number') throw new ShapeError('accumulate: scalar vs non-scalar')
+      return existing + incoming
+    }
+
+    if (existing instanceof Float64Array) {
+      if (!(incoming instanceof Float64Array))
+        throw new ShapeError('accumulate: vector vs non-vector')
+      if (existing.length !== incoming.length)
+        throw new ShapeError(`accumulate: ${existing.length} vs ${incoming.length}`)
+      const out = new Float64Array(existing.length)
+      for (let i = 0; i < out.length; i++) out[i] = existing[i] + incoming[i]
+      return out
+    }
+
+    if (typeof incoming === 'number' || incoming instanceof Float64Array)
+      throw new ShapeError('accumulate: matrix vs non-matrix')
+    return addMat(existing, incoming as Mat)
   }
-
-  if (existing instanceof Float64Array) {
-    if (!(incoming instanceof Float64Array))
-      throw new ShapeError('accumulate: vector vs non-vector')
-    if (existing.length !== incoming.length)
-      throw new ShapeError(`accumulate: ${existing.length} vs ${incoming.length}`)
-    const out = new Float64Array(existing.length)
-    for (let i = 0; i < out.length; i++) out[i] = existing[i] + incoming[i]
-    return out
-  }
-
-  if (typeof incoming === 'number' || incoming instanceof Float64Array)
-    throw new ShapeError('accumulate: matrix vs non-matrix')
-  return addMat(existing, incoming)
 }
 
-export const record = <G extends Grad>(
-  value: G,
-  parents: readonly Var<Grad>[],
-  backward: (grad: G) => readonly Grad[],
-): Var<G> => {
-  const tape = currentTape()
-  const id = tape.entries.length
-  const entry: TapeEntry<G> = {
-    parents: parents.map((parent) => parent.id),
-    value,
-    backward,
-    grad: undefined,
+export const record: {
+  <G extends Grad>(
+    value: G,
+    parents: readonly Var<Grad>[],
+    backward: (grad: G) => readonly Grad[],
+  ): Var<G>
+  <G extends Grad>(
+    parents: readonly Var<Grad>[],
+    backward: (grad: G) => readonly Grad[],
+  ): (value: G) => Var<G>
+} = function record(parents: any, backward: any, __df?: any): any {
+  if (arguments.length >= 3) return record(backward, __df)(parents)
+  return <G extends Grad>(value: G): Var<G> => {
+    const tape = currentTape()
+    const id = tape.entries.length
+    const entry: TapeEntry<G> = {
+      parents: parents.map((parent: Var<Grad>) => parent.id),
+      value,
+      backward,
+      grad: undefined,
+    }
+    tape.entries.push(entry as unknown as AnyTapeEntry)
+    return { _tag: 'Var', id, value }
   }
-  tape.entries.push(entry as unknown as AnyTapeEntry)
-  return { _tag: 'Var', id, value }
 }
 
 export const variable = <G extends Grad>(value: G): Var<G> => record(value, [], () => [])
 
-export const backward = (output: Var<Grad>, tape: Tape): void => {
-  for (const entry of tape.entries) entry.grad = undefined
-  if (output.id < 0) return
+export const backward: {
+  (output: Var<Grad>, tape: Tape): void
+  (tape: Tape): (output: Var<Grad>) => void
+} = function backward(tape: any, __df?: any): any {
+  if (arguments.length >= 2) return backward(__df)(tape)
+  return (output: Var<Grad>): void => {
+    for (const entry of tape.entries) entry.grad = undefined
+    if (output.id < 0) return
 
-  const outputEntry = tape.entries[output.id]
-  if (!outputEntry) throw new Error(`Unknown autodiff variable id ${output.id}`)
+    const outputEntry = tape.entries[output.id]
+    if (!outputEntry) throw new Error(`Unknown autodiff variable id ${output.id}`)
 
-  outputEntry.grad = accumulate(outputEntry.grad, onesLike(outputEntry.value))
+    outputEntry.grad = accumulate(outputEntry.grad, onesLike(outputEntry.value))
 
-  for (let i = tape.entries.length - 1; i >= 0; i--) {
-    const entry = tape.entries[i]
-    if (entry.grad === undefined) continue
+    for (let i = tape.entries.length - 1; i >= 0; i--) {
+      const entry = tape.entries[i]
+      if (entry.grad === undefined) continue
 
-    const parentGrads = entry.backward(entry.grad)
-    for (let j = 0; j < entry.parents.length; j++) {
-      const parentId = entry.parents[j]
-      if (parentId < 0) continue
-      const parentEntry = tape.entries[parentId]
-      if (!parentEntry) throw new Error(`Unknown autodiff parent id ${parentId}`)
-      parentEntry.grad = accumulate(parentEntry.grad, parentGrads[j])
+      const parentGrads = entry.backward(entry.grad)
+      for (let j = 0; j < entry.parents.length; j++) {
+        const parentId = entry.parents[j]
+        if (parentId < 0) continue
+        const parentEntry = tape.entries[parentId]
+        if (!parentEntry) throw new Error(`Unknown autodiff parent id ${parentId}`)
+        parentEntry.grad = accumulate(parentEntry.grad, parentGrads[j])
+      }
     }
   }
 }
 
-export const gradOf = <G extends Grad>(v: Var<G>, tape: Tape): G => {
-  if (v.id < 0) return zeroLike(v.value)
-  const entry = tape.entries[v.id]
-  if (!entry || entry.grad === undefined) return zeroLike(v.value)
-  return cloneGrad(entry.grad as G)
+export const gradOf: {
+  <G extends Grad>(v: Var<G>, tape: Tape): G
+  (tape: Tape): <G extends Grad>(v: Var<G>) => G
+} = function gradOf(tape: any, __df?: any): any {
+  if (arguments.length >= 2) return gradOf(__df)(tape)
+  return <G extends Grad>(v: Var<G>): G => {
+    if (v.id < 0) return zeroLike(v.value)
+    const entry = tape.entries[v.id]
+    if (!entry || entry.grad === undefined) return zeroLike(v.value)
+    return cloneGrad(entry.grad as G)
+  }
 }

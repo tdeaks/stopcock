@@ -3,11 +3,16 @@ import type { Var } from './types'
 
 export type ScalarInput = Var<number> | number
 
-const binaryScalar =
-  (body: (a: ScalarInput, b: ScalarInput) => Var<number>) =>
-  (b: ScalarInput) =>
-  (a: ScalarInput): Var<number> =>
-    body(a, b)
+type BinaryScalar = {
+  (a: ScalarInput, b: ScalarInput): Var<number>
+  (b: ScalarInput): (a: ScalarInput) => Var<number>
+}
+
+const binaryScalar = (body: (a: ScalarInput, b: ScalarInput) => Var<number>): BinaryScalar =>
+  function binaryScalar(b: ScalarInput, __df?: ScalarInput): any {
+    if (arguments.length >= 2) return binaryScalar(__df as ScalarInput)(b)
+    return (a: ScalarInput): Var<number> => body(a, b)
+  }
 
 export const add = binaryScalar((a, b) => {
   const av = asVar(a)

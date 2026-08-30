@@ -15,21 +15,30 @@ const contrastImpl = (a: Color, b: Color): number => {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
-export const contrastRatio: (b: Color) => (a: Color) => number =
-  (b) => (a) =>
-    contrastImpl(a, b)
+export const contrastRatio: {
+  (a: Color, b: Color): number
+  (b: Color): (a: Color) => number
+} = function contrastRatio(b: any, __df?: any): any {
+  if (arguments.length >= 2) return contrastRatio(__df)(b)
+  return (a: Color) => contrastImpl(a, b)
+}
 
-const threshold =
-  (limit: number) =>
-  (b: Color) =>
-  (a: Color): boolean =>
-    contrastImpl(a, b) >= limit
+type ContrastPredicate = {
+  (a: Color, b: Color): boolean
+  (b: Color): (a: Color) => boolean
+}
 
-export const meetsAA: (b: Color) => (a: Color) => boolean = threshold(4.5)
+const threshold = (limit: number): ContrastPredicate =>
+  function thresholdFor(b: any, __df?: any): any {
+    if (arguments.length >= 2) return thresholdFor(__df)(b)
+    return (a: Color): boolean => contrastImpl(a, b) >= limit
+  }
 
-export const meetsAAA: (b: Color) => (a: Color) => boolean = threshold(7)
+export const meetsAA = threshold(4.5)
 
-export const meetsAALarge: (b: Color) => (a: Color) => boolean = threshold(3)
+export const meetsAAA = threshold(7)
+
+export const meetsAALarge = threshold(3)
 
 // ──────────────────────────────────────────────────────────────────────
 // CIEDE2000 deltaE — Sharma et al. 2005 reference implementation
@@ -97,13 +106,23 @@ const deltaEImpl = (c1: Color, c2: Color): number => {
   )
 }
 
-export const deltaE: (b: Color) => (a: Color) => number =
-  (b) => (a) =>
-    deltaEImpl(a, b)
+export const deltaE: {
+  (a: Color, b: Color): number
+  (b: Color): (a: Color) => number
+} = function deltaE(b: any, __df?: any): any {
+  if (arguments.length >= 2) return deltaE(__df)(b)
+  return (a: Color) => deltaEImpl(a, b)
+}
 
 // Euclidean distance in OKLab — used by gamut mapping
-export const deltaEOK = (a: Color, b: Color): number => {
-  const [L1, a1, b1] = toOKLab(a).channels
-  const [L2, a2, b2] = toOKLab(b).channels
-  return Math.hypot(L1 - L2, a1 - a2, b1 - b2)
+export const deltaEOK: {
+  (a: Color, b: Color): number
+  (b: Color): (a: Color) => number
+} = function deltaEOK(b: any, __df?: any): any {
+  if (arguments.length >= 2) return deltaEOK(__df)(b)
+  return (a: Color): number => {
+    const [L1, a1, b1] = toOKLab(a).channels
+    const [L2, a2, b2] = toOKLab(b).channels
+    return Math.hypot(L1 - L2, a1 - a2, b1 - b2)
+  }
 }

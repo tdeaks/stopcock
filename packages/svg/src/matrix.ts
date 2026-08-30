@@ -2,14 +2,24 @@ import type { Mat, Pt } from './types'
 
 export const identity: Mat = [1, 0, 0, 1, 0, 0]
 
-export const mul = (a: Mat, b: Mat): Mat => [
-  a[0] * b[0] + a[2] * b[1],
-  a[1] * b[0] + a[3] * b[1],
-  a[0] * b[2] + a[2] * b[3],
-  a[1] * b[2] + a[3] * b[3],
-  a[0] * b[4] + a[2] * b[5] + a[4],
-  a[1] * b[4] + a[3] * b[5] + a[5],
-]
+export function mul(a: Mat, b: Mat): Mat
+export function mul(b: Mat): (a: Mat) => Mat
+export function mul(aOrB: Mat, maybeB?: Mat): Mat | ((a: Mat) => Mat) {
+  if (arguments.length < 2) {
+    const b = aOrB
+    return (a: Mat): Mat => mul(a, b)
+  }
+  const a = aOrB
+  const b = maybeB as Mat
+  return [
+    a[0] * b[0] + a[2] * b[1],
+    a[1] * b[0] + a[3] * b[1],
+    a[0] * b[2] + a[2] * b[3],
+    a[1] * b[2] + a[3] * b[3],
+    a[0] * b[4] + a[2] * b[5] + a[4],
+    a[1] * b[4] + a[3] * b[5] + a[5],
+  ]
+}
 
 export const isIdentity = (m?: Mat): boolean =>
   !m || (m[0] === 1 && m[1] === 0 && m[2] === 0 && m[3] === 1 && m[4] === 0 && m[5] === 0)

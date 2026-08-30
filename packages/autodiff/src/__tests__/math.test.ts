@@ -46,11 +46,16 @@ describe('math ops', () => {
   })
 
   it('handles leakyRelu on both sides of zero', () => {
-    const f = differentiable((x: Var<number>) => leakyRelu(0.2)(x))
+    const direct = differentiable((x: Var<number>) => leakyRelu(x, 0.2))
+    const curried = differentiable((x: Var<number>) => leakyRelu(0.2)(x))
 
-    expect(f.gradient(2)).toBe(1)
-    expect(f.gradient(-2)).toBe(0.2)
-    expect(f.gradient(0)).toBe(0.2)
+    for (const x of [-2, 0, 2]) {
+      expect(direct.forward(x)).toBe(curried.forward(x))
+      expect(direct.gradient(x)).toBe(curried.gradient(x))
+    }
+    expect(direct.gradient(2)).toBe(1)
+    expect(direct.gradient(-2)).toBe(0.2)
+    expect(direct.gradient(0)).toBe(0.2)
   })
 
   it('matches central differences for a composite chain', () => {

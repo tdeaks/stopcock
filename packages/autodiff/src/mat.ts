@@ -27,37 +27,61 @@ const matInner = (a: Mat, b: Mat): number => {
   return sum
 }
 
-export const matMul: (b: MatInput) => (a: MatInput) => Var<Mat> = (b) => (a) => {
-  const av = asVar(a)
-  const bv = asVar(b)
-  assertMatMulShape(av.value, bv.value)
-  return record(LaMat.multiply(av.value, bv.value), [av, bv], (grad) => [
-    LaMat.multiply(grad, LaMat.transpose(bv.value)),
-    LaMat.multiply(LaMat.transpose(av.value), grad),
-  ])
+export const matMul: {
+  (a: MatInput, b: MatInput): Var<Mat>
+  (b: MatInput): (a: MatInput) => Var<Mat>
+} = function matMul(b: MatInput, __df?: MatInput): any {
+  if (arguments.length >= 2) return matMul(__df as MatInput)(b)
+  return (a: MatInput) => {
+    const av = asVar(a)
+    const bv = asVar(b)
+    assertMatMulShape(av.value, bv.value)
+    return record(LaMat.multiply(av.value, bv.value), [av, bv], (grad) => [
+      LaMat.multiply(grad, LaMat.transpose(bv.value)),
+      LaMat.multiply(LaMat.transpose(av.value), grad),
+    ])
+  }
 }
 
-export const matAdd: (b: MatInput) => (a: MatInput) => Var<Mat> = (b) => (a) => {
-  const av = asVar(a)
-  const bv = asVar(b)
-  assertSameShape('matAdd', av.value, bv.value)
-  return record(LaMat.add(av.value, bv.value), [av, bv], (grad) => [grad, grad])
+export const matAdd: {
+  (a: MatInput, b: MatInput): Var<Mat>
+  (b: MatInput): (a: MatInput) => Var<Mat>
+} = function matAdd(b: MatInput, __df?: MatInput): any {
+  if (arguments.length >= 2) return matAdd(__df as MatInput)(b)
+  return (a: MatInput) => {
+    const av = asVar(a)
+    const bv = asVar(b)
+    assertSameShape('matAdd', av.value, bv.value)
+    return record(LaMat.add(av.value, bv.value), [av, bv], (grad) => [grad, grad])
+  }
 }
 
-export const matSub: (b: MatInput) => (a: MatInput) => Var<Mat> = (b) => (a) => {
-  const av = asVar(a)
-  const bv = asVar(b)
-  assertSameShape('matSub', av.value, bv.value)
-  return record(LaMat.sub(av.value, bv.value), [av, bv], (grad) => [grad, LaMat.scale(grad, -1)])
+export const matSub: {
+  (a: MatInput, b: MatInput): Var<Mat>
+  (b: MatInput): (a: MatInput) => Var<Mat>
+} = function matSub(b: MatInput, __df?: MatInput): any {
+  if (arguments.length >= 2) return matSub(__df as MatInput)(b)
+  return (a: MatInput) => {
+    const av = asVar(a)
+    const bv = asVar(b)
+    assertSameShape('matSub', av.value, bv.value)
+    return record(LaMat.sub(av.value, bv.value), [av, bv], (grad) => [grad, LaMat.scale(grad, -1)])
+  }
 }
 
-export const matScale: (s: ScalarInput) => (m: MatInput) => Var<Mat> = (s) => (m) => {
-  const mv = asVar(m)
-  const sv = asVar(s)
-  return record(LaMat.scale(mv.value, sv.value), [mv, sv], (grad) => [
-    LaMat.scale(grad, sv.value),
-    matInner(grad, mv.value),
-  ])
+export const matScale: {
+  (m: MatInput, s: ScalarInput): Var<Mat>
+  (s: ScalarInput): (m: MatInput) => Var<Mat>
+} = function matScale(s: any, __df?: any): any {
+  if (arguments.length >= 2) return matScale(__df)(s)
+  return (m: MatInput) => {
+    const mv = asVar(m)
+    const sv = asVar(s)
+    return record(LaMat.scale(mv.value, sv.value), [mv, sv], (grad) => [
+      LaMat.scale(grad, sv.value),
+      matInner(grad, mv.value),
+    ])
+  }
 }
 
 export const matTranspose = (m: MatInput): Var<Mat> => {

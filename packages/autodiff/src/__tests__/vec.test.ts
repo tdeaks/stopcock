@@ -17,6 +17,45 @@ const directional = (f: (x: Vec) => number, x: Vec, d: Vec, h = 1e-5) => {
 }
 
 describe('vector ops', () => {
+  it('keeps binary data-first and data-last forms in parity', () => {
+    const cases = [
+      {
+        direct: differentiable((a: Var<Vec>, b: Var<Vec>) => vecSum(vecAdd(a, b))),
+        curried: differentiable((a: Var<Vec>, b: Var<Vec>) => vecSum(vecAdd(b)(a))),
+      },
+      {
+        direct: differentiable((a: Var<Vec>, b: Var<Vec>) => vecSum(vecSub(a, b))),
+        curried: differentiable((a: Var<Vec>, b: Var<Vec>) => vecSum(vecSub(b)(a))),
+      },
+      {
+        direct: differentiable((a: Var<Vec>, b: Var<Vec>) => vecDot(a, b)),
+        curried: differentiable((a: Var<Vec>, b: Var<Vec>) => vecDot(b)(a)),
+      },
+    ]
+    const a = new Float64Array([1, 2, 3])
+    const b = new Float64Array([4, 5, 6])
+
+    for (const { direct, curried } of cases) {
+      expect(direct.forward(a, b)).toBe(curried.forward(a, b))
+      const directGrad = direct.gradient(a, b)
+      const curriedGrad = curried.gradient(a, b)
+      approxVec(directGrad[0], Array.from(curriedGrad[0]))
+      approxVec(directGrad[1], Array.from(curriedGrad[1]))
+    }
+  })
+
+  it('keeps vecScale data-first and data-last forms in parity', () => {
+    const direct = differentiable((v: Var<Vec>, s: Var<number>) => vecSum(vecScale(v, s)))
+    const curried = differentiable((v: Var<Vec>, s: Var<number>) => vecSum(vecScale(s)(v)))
+    const v = new Float64Array([1, 2, 3])
+
+    expect(direct.forward(v, 2)).toBe(curried.forward(v, 2))
+    const directGrad = direct.gradient(v, 2)
+    const curriedGrad = curried.gradient(v, 2)
+    approxVec(directGrad[0], Array.from(curriedGrad[0]))
+    expect(directGrad[1]).toBe(curriedGrad[1])
+  })
+
   it('computes elementwise and scale gradients', () => {
     const f = differentiable((v: Var<Vec>) =>
       vecSum(vecSub(v)(vecScale(2)(vecAdd(new Float64Array([1, 1, 1]))(v)))),
@@ -59,8 +98,7 @@ describe('vector ops', () => {
     const ys = [2, -1, 1, 3]
     const loss = differentiable((w: Var<Vec>) => {
       let total = square(sub(ys[0])(vecDot(xs[0])(w)))
-      for (let i = 1; i < xs.length; i++)
-        total = add(square(sub(ys[i])(vecDot(xs[i])(w))))(total)
+      for (let i = 1; i < xs.length; i++) total = add(square(sub(ys[i])(vecDot(xs[i])(w))))(total)
       return total
     })
 

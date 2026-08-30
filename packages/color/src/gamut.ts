@@ -15,9 +15,13 @@ const inGamutImpl = (c: Color, target: ColorSpace): boolean => {
   return inRange01(conv.channels[0]) && inRange01(conv.channels[1]) && inRange01(conv.channels[2])
 }
 
-export const inGamut: (target: ColorSpace) => (c: Color) => boolean =
-  (target) => (c) =>
-    inGamutImpl(c, target)
+export const inGamut: {
+  (c: Color, target: ColorSpace): boolean
+  (target: ColorSpace): (c: Color) => boolean
+} = function inGamut(target: any, __df?: any): any {
+  if (arguments.length >= 2) return inGamut(__df)(target)
+  return (c: Color) => inGamutImpl(c, target)
+}
 
 // CSS Color 4 gamut mapping: binary search on OKLCh chroma, preserving L and h,
 // until the result is in-gamut AND its deltaEOK from the clipped variant is < JND.
@@ -85,6 +89,10 @@ const toGamutImpl = (c: Color, target: ColorSpace): Color => {
   return clipToGamut(candidate, target)
 }
 
-export const toGamut: (target: ColorSpace) => (c: Color) => Color =
-  (target) => (c) =>
-    toGamutImpl(c, target)
+export const toGamut: {
+  (c: Color, target: ColorSpace): Color
+  (target: ColorSpace): (c: Color) => Color
+} = function toGamut(target: any, __df?: any): any {
+  if (arguments.length >= 2) return toGamut(__df)(target)
+  return (c: Color) => toGamutImpl(c, target)
+}
