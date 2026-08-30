@@ -10,7 +10,7 @@ export default defineConfig({
   }),
   run: {
     tasks: {
-      build: libraryBuildTask(),
+      build: libraryBuildTask('@stopcock/fp'),
     },
   },
 })

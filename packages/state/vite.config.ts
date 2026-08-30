@@ -12,7 +12,7 @@ export default defineConfig({
   }),
   run: {
     tasks: {
-      build: libraryBuildTask(),
+      build: libraryBuildTask('@stopcock/async', '@stopcock/diff', '@stopcock/fp'),
     },
   },
 })

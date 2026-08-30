@@ -4,8 +4,9 @@ import type { PackUserConfig } from 'vite-plus/pack'
 const virtualPrefix = 'virtual:stopcock-pack-entry/'
 const resolvedVirtualPrefix = `\0${virtualPrefix}`
 
-export const libraryBuildTask = () => ({
+export const libraryBuildTask = (...dependencies: Array<`@stopcock/${string}`>) => ({
   command: 'node ../../tooling/build-package.mjs',
+  dependsOn: dependencies.map((dependency) => `${dependency}#build`),
   input: [{ auto: true as const }, '!dist/**'],
   output: ['dist/**'],
 })

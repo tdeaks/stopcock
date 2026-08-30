@@ -5,7 +5,7 @@ export default defineConfig({
   pack: libraryPack({ index: 'src/index.ts' }),
   run: {
     tasks: {
-      build: libraryBuildTask(),
+      build: libraryBuildTask('@stopcock/color', '@stopcock/la'),
     },
   },
 })

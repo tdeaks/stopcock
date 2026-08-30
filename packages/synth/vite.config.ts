@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite-plus'
 import { libraryBuildTask, libraryPack } from '../../tooling/pack.config'
 
+const synthBuild = libraryBuildTask('@stopcock/fp', '@stopcock/signal')
+
 export default defineConfig({
   pack: libraryPack({
     index: 'src/index.ts',
@@ -9,8 +11,8 @@ export default defineConfig({
   run: {
     tasks: {
       build: {
-        ...libraryBuildTask(),
-        dependsOn: ['build:wasm'],
+        ...synthBuild,
+        dependsOn: [...synthBuild.dependsOn, 'build:wasm'],
       },
     },
   },
