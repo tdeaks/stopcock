@@ -10,4 +10,4 @@
 "@stopcock/svg": patch
 ---
 
-Replace leaked workspace dependency protocols with registry-resolvable Stopcock 2 ranges.
+Replace leaked workspace dependency protocols with registry-resolvable ranges.
