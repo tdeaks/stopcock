@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll } from 'vite-plus/test'
-import { pipe } from '@stopcock/fp'
 import { compose, decompose } from '../core'
 import { now, fromDate } from '../create'
 import { format as utcFormat } from '../format'
@@ -36,7 +35,7 @@ describe('normal time', () => {
 
   it('format data-last in pipe', () => {
     const ts = utc(2024, 6, 15, 18, 0, 0)
-    const result = pipe(ts, Tz.format('HH:mm', 'America/New_York'))
+    const result = Tz.format('HH:mm', 'America/New_York')(ts)
     expect(result).toBe('14:00')
   })
 
@@ -150,7 +149,7 @@ describe('startOf with timezone', () => {
 
   it('data-last in pipe', () => {
     const ts = utc(2024, 6, 15, 18, 0, 0)
-    const result = pipe(ts, Tz.startOf('day', 'America/New_York'))
+    const result = Tz.startOf('day', 'America/New_York')(ts)
     expect(Tz.format(result, 'HH:mm', 'America/New_York')).toBe('00:00')
   })
 })
@@ -203,7 +202,7 @@ describe('add with timezone', () => {
 
   it('data-last in pipe', () => {
     const ts = utc(2024, 6, 15, 18, 0, 0)
-    const result = pipe(ts, Tz.add(1, 'day', 'America/New_York'))
+    const result = Tz.add(1, 'day', 'America/New_York')(ts)
     expect(Tz.getDay(result, 'America/New_York')).toBe(16)
   })
 })
@@ -355,7 +354,7 @@ describe('subtract with timezone', () => {
 
   it('data-last', () => {
     const ts = utc(2024, 6, 15, 18, 0, 0)
-    const result = pipe(ts, Tz.subtract(1, 'day', 'America/New_York'))
+    const result = Tz.subtract(1, 'day', 'America/New_York')(ts)
     expect(Tz.getDay(result, 'America/New_York')).toBe(14)
   })
 })

@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vite-plus/test'
-import { pipe } from '@stopcock/fp'
 import { compose, decompose } from '../core'
 import {
   add,
@@ -69,7 +68,7 @@ describe('add', () => {
   })
 
   it('data-last in pipe', () => {
-    const result = pipe(ts, add(1, 'day'))
+    const result = add(1, 'day')(ts)
     expect(decompose(result).day).toBe(16)
   })
 })
@@ -123,7 +122,7 @@ describe('startOf', () => {
   })
 
   it('data-last', () => {
-    const result = pipe(ts, startOf('day'))
+    const result = startOf('day')(ts)
     expect(decompose(result).hour).toBe(0)
   })
 })
@@ -190,7 +189,7 @@ describe('setHours / setMinutes / setSeconds', () => {
   })
 
   it('setHours data-last', () => {
-    const result = pipe(ts, setHours(8))
+    const result = setHours(8)(ts)
     expect(decompose(result).hour).toBe(8)
   })
 
@@ -201,7 +200,7 @@ describe('setHours / setMinutes / setSeconds', () => {
   })
 
   it('setMinutes data-last', () => {
-    const result = pipe(ts, setMinutes(0))
+    const result = setMinutes(0)(ts)
     expect(decompose(result).minute).toBe(0)
   })
 
@@ -212,7 +211,7 @@ describe('setHours / setMinutes / setSeconds', () => {
   })
 
   it('setSeconds data-last', () => {
-    const result = pipe(ts, setSeconds(0))
+    const result = setSeconds(0)(ts)
     expect(decompose(result).second).toBe(0)
   })
 })

@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vite-plus/test'
-import { pipe } from '@stopcock/fp'
 import { compose } from '../core'
 import {
   isBefore,
@@ -27,31 +26,31 @@ const sun = compose(2024, 3, 17, 0, 0, 0, 0)
 describe('isBefore', () => {
   it('direct true', () => expect(isBefore(a, c)).toBe(true))
   it('direct false', () => expect(isBefore(c, a)).toBe(false))
-  it('data-last', () => expect(pipe(a, isBefore(c))).toBe(true))
+  it('data-last', () => expect(isBefore(c)(a)).toBe(true))
 })
 
 describe('isAfter', () => {
   it('direct true', () => expect(isAfter(c, a)).toBe(true))
   it('direct false', () => expect(isAfter(a, c)).toBe(false))
-  it('data-last', () => expect(pipe(c, isAfter(a))).toBe(true))
+  it('data-last', () => expect(isAfter(a)(c)).toBe(true))
 })
 
 describe('isEqual', () => {
   it('same', () => expect(isEqual(a, a)).toBe(true))
   it('different', () => expect(isEqual(a, b)).toBe(false))
-  it('data-last', () => expect(pipe(a, isEqual(a))).toBe(true))
+  it('data-last', () => expect(isEqual(a)(a)).toBe(true))
 })
 
 describe('isSameDay', () => {
   it('same day different time', () => expect(isSameDay(a, b)).toBe(true))
   it('different day', () => expect(isSameDay(a, c)).toBe(false))
-  it('data-last', () => expect(pipe(a, isSameDay(b))).toBe(true))
+  it('data-last', () => expect(isSameDay(b)(a)).toBe(true))
 })
 
 describe('isSameMonth', () => {
   it('same month', () => expect(isSameMonth(a, b)).toBe(true))
   it('different month', () => expect(isSameMonth(a, c)).toBe(false))
-  it('data-last', () => expect(pipe(a, isSameMonth(b))).toBe(true))
+  it('data-last', () => expect(isSameMonth(b)(a)).toBe(true))
 })
 
 describe('isSameYear', () => {
@@ -60,7 +59,7 @@ describe('isSameYear', () => {
     const other = compose(2025, 1, 1, 0, 0, 0, 0)
     expect(isSameYear(a, other)).toBe(false)
   })
-  it('data-last', () => expect(pipe(a, isSameYear(c))).toBe(true))
+  it('data-last', () => expect(isSameYear(c)(a)).toBe(true))
 })
 
 describe('isBetween', () => {
@@ -71,7 +70,7 @@ describe('isBetween', () => {
     const before = compose(2023, 1, 1, 0, 0, 0, 0)
     expect(isBetween(before, a, c)).toBe(false)
   })
-  it('data-last', () => expect(pipe(b, isBetween(a, c))).toBe(true))
+  it('data-last', () => expect(isBetween(a, c)(b)).toBe(true))
 })
 
 describe('isWeekend / isWeekday', () => {

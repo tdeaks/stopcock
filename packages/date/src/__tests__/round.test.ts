@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vite-plus/test'
-import { pipe } from '@stopcock/fp'
 import { compose, decompose } from '../core'
 import { roundTo, ceilTo, floorTo, snapTo } from '../round'
 
@@ -22,7 +21,7 @@ describe('floorTo', () => {
   })
 
   it('data-last', () => {
-    const result = pipe(ts, floorTo('hour'))
+    const result = floorTo('hour')(ts)
     expect(decompose(result).minute).toBe(0)
   })
 })
@@ -44,7 +43,7 @@ describe('ceilTo', () => {
   })
 
   it('data-last', () => {
-    const result = pipe(ts, ceilTo('hour'))
+    const result = ceilTo('hour')(ts)
     expect(decompose(result).hour).toBe(15)
   })
 })
@@ -62,7 +61,7 @@ describe('roundTo', () => {
   })
 
   it('data-last', () => {
-    const result = pipe(ts, roundTo('hour'))
+    const result = roundTo('hour')(ts)
     expect(decompose(result).hour).toBe(15)
   })
 })
@@ -74,7 +73,7 @@ describe('snapTo', () => {
   })
 
   it('data-last', () => {
-    const result = pipe(ts, snapTo(15, 'minute'))
+    const result = snapTo(15, 'minute')(ts)
     expect(decompose(result).minute % 15).toBe(0)
   })
 })

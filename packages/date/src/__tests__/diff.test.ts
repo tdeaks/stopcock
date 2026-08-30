@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vite-plus/test'
-import { pipe } from '@stopcock/fp'
 import { compose } from '../core'
 import {
   diff,
@@ -38,12 +37,12 @@ describe('diff', () => {
 
 describe('diffInDays', () => {
   it('direct', () => expect(diffInDays(b, a)).toBe(74))
-  it('data-last', () => expect(pipe(b, diffInDays(a))).toBe(74))
+  it('data-last', () => expect(diffInDays(a)(b)).toBe(74))
 })
 
 describe('diffInHours', () => {
   it('direct', () => expect(diffInHours(b, a)).toBe(74 * 24 + 12))
-  it('data-last', () => expect(pipe(b, diffInHours(a))).toBe(74 * 24 + 12))
+  it('data-last', () => expect(diffInHours(a)(b)).toBe(74 * 24 + 12))
 })
 
 describe('diffInMinutes', () => {
@@ -56,7 +55,7 @@ describe('diffInSeconds', () => {
 
 describe('diffInMonths', () => {
   it('direct', () => expect(diffInMonths(b, a)).toBe(2))
-  it('data-last', () => expect(pipe(b, diffInMonths(a))).toBe(2))
+  it('data-last', () => expect(diffInMonths(a)(b)).toBe(2))
 })
 
 describe('diffInYears', () => {
@@ -66,6 +65,6 @@ describe('diffInYears', () => {
   })
   it('data-last', () => {
     const c = compose(2026, 1, 1, 0, 0, 0, 0)
-    expect(pipe(c, diffInYears(a))).toBe(2)
+    expect(diffInYears(a)(c)).toBe(2)
   })
 })
