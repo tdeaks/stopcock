@@ -1,5 +1,11 @@
 # @stopcock/date
 
+## 2.0.1
+
+### Patch Changes
+
+- [`a901c29`](https://github.com/tdeaks/stopcock/commit/a901c29db355ff99468a7b1fc54520a6bf9338e1) Thanks [@tdeaks](https://github.com/tdeaks)! - Replace leaked workspace dependency protocols with registry-resolvable ranges.
+
 ## 2.0.0
 
 ### Patch Changes

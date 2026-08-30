@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/http",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Typed HTTP client with retries, timeouts, caching, deduplication, and Task integration.",
   "license": "MIT",
   "repository": {
@@ -23,8 +23,8 @@
     }
   },
   "dependencies": {
-    "@stopcock/async": "^2.0.0",
-    "@stopcock/fp": "^2.0.0"
+    "@stopcock/async": "^2.0.1",
+    "@stopcock/fp": "^3.0.0"
   },
   "engines": {
     "node": ">=22"

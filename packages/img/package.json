@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/img",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Pixel-level image processing, filtering, convolution, resizing, and feature extraction.",
   "license": "MIT",
   "repository": {
@@ -23,7 +23,7 @@
     }
   },
   "dependencies": {
-    "@stopcock/color": "^2.0.0",
+    "@stopcock/color": "^2.1.0",
     "@stopcock/la": "^2.0.0"
   },
   "engines": {

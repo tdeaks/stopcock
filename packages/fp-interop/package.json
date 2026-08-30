@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/fp-interop",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Explicit, dependency-light boundaries between Stopcock FP values and foreign data shapes",
   "license": "MIT",
   "repository": {
@@ -55,7 +55,7 @@
     "check:types": "tsc -p tsconfig.type-tests.json"
   },
   "peerDependencies": {
-    "@stopcock/fp": "^2.0.0"
+    "@stopcock/fp": "^3.0.0"
   },
   "devDependencies": {
     "@stopcock/fp": "workspace:*",

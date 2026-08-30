@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/date",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Immutable, pipe-friendly date and time utilities for TypeScript.",
   "license": "MIT",
   "repository": {
