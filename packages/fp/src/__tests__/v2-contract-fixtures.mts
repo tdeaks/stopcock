@@ -13,12 +13,6 @@ export const V2_ROOT_MIGRATION = [
     disposition: 'retain-sequential',
   },
   {
-    name: 'dual',
-    kind: 'value',
-    destination: '@stopcock/fp/dual',
-    disposition: 'move',
-  },
-  {
     name: 'compile',
     kind: 'value',
     destination: '@stopcock/fp/fusion',

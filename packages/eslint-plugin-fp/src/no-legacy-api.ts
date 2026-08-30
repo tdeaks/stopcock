@@ -1,17 +1,17 @@
 import { child, children, importSource, importedName, localName, nameOf } from './ast'
 import type { RuleModule } from './types'
 
-const LEGACY_SUBPATHS: Readonly<Record<string, string>> = {
-  '@stopcock/fp/dual-lite': '@stopcock/fp/dual',
-}
-
 const MANUAL_SUBPATHS: Readonly<Record<string, string>> = {
   '@stopcock/fp/stream': '@stopcock/fp/iter',
   '@stopcock/fp/dict': '@stopcock/fp/record',
   '@stopcock/fp/lens': '@stopcock/fp/optic',
 }
 
-const REMOVED_SUBPATHS = new Set(['@stopcock/fp/logic'])
+const REMOVED_SUBPATHS = new Set([
+  '@stopcock/fp/dual',
+  '@stopcock/fp/dual-lite',
+  '@stopcock/fp/logic',
+])
 
 const ROOT_RENAMES: Readonly<Record<string, string>> = {
   explainPipeline: 'explain',
@@ -71,17 +71,6 @@ export const noLegacyApi: RuleModule = {
       ImportDeclaration(node) {
         const source = importSource(node)
         if (source === undefined) return
-        const replacement = LEGACY_SUBPATHS[source]
-        if (replacement !== undefined) {
-          const sourceNode = child(node, 'source')
-          if (sourceNode === undefined) return
-          context.report({
-            node: sourceNode,
-            messageId: 'legacySubpath',
-            data: { legacy: source, replacement },
-            fix: (fixer) => fixer.replaceText(sourceNode, JSON.stringify(replacement)),
-          })
-        }
         const manualReplacement = MANUAL_SUBPATHS[source]
         if (manualReplacement !== undefined) {
           const sourceNode = child(node, 'source')

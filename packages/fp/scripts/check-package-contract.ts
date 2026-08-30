@@ -338,56 +338,6 @@ try {
     join(consumer, 'consumer.ts'),
     `${imports.join('\n')}\nvoid [${PUBLIC_MODULES.map((_, index) => `module${index}`).join(', ')}]\n`,
   )
-  const dualSpecifier = `${packageJson.name}/dual`
-  await writeFile(
-    join(consumer, 'dual-contract.ts'),
-    `import { dual } from ${JSON.stringify(dualSpecifier)}
-
-type IsAny<T> = 0 extends 1 & T ? true : false
-type ExpectFalse<Value extends false> = Value
-
-const binary = dual(2, (value: number, suffix: string) => \`\${value}\${suffix}\`)
-type BinaryIsTyped = ExpectFalse<IsAny<typeof binary>>
-type BinaryReturnIsTyped = ExpectFalse<IsAny<ReturnType<typeof binary>>>
-
-const immediate: string = binary(1, 'px')
-const dataLast: (value: number) => string = binary('px')
-
-const tagged = dual(
-  4,
-  (value: string, search: RegExp, replacement: string, limit: number) =>
-    \`\${value.replace(search, replacement)}\${limit}\`,
-  { op: 'replace' },
-)
-const taggedDataLast = tagged(/x/u, 'y', 1)
-const opcode: number = taggedDataLast._op
-const capturedFunction: RegExp = taggedDataLast._fn
-const capturedArgument: string = taggedDataLast._a1
-const secondCapturedArgument: number = taggedDataLast._a2
-
-// @ts-expect-error partial application requires every non-data argument.
-binary()
-// @ts-expect-error declared arity must match the body tuple.
-dual(2, (value: number, a: string, b: boolean) => \`\${value}\${a}\${b}\`)
-// @ts-expect-error contextual types cannot replace the implementation contract.
-const forged: {
-  (value: string, date: Date): boolean
-  (date: Date): (value: string) => boolean
-} = dual(2, (value: number, addend: number) => value + addend)
-
-void [
-  null as unknown as BinaryIsTyped,
-  null as unknown as BinaryReturnIsTyped,
-  immediate,
-  dataLast,
-  opcode,
-  capturedFunction,
-  capturedArgument,
-  secondCapturedArgument,
-  forged,
-]
-`,
-  )
   await writeFile(
     join(consumer, 'tsconfig.json'),
     `${JSON.stringify(
@@ -400,7 +350,7 @@ void [
           noEmit: true,
           skipLibCheck: true,
         },
-        include: ['consumer.ts', 'dual-contract.ts'],
+        include: ['consumer.ts'],
       },
       null,
       2,
@@ -424,7 +374,7 @@ void [
           noEmit: true,
           skipLibCheck: false,
         },
-        include: ['consumer.ts', 'dual-contract.ts'],
+        include: ['consumer.ts'],
       },
       null,
       2,

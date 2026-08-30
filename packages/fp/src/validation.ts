@@ -13,7 +13,7 @@ const maximumArrayLikeLength = 9_007_199_254_740_991
 const arrayIteratorLength = (value: unknown): number => {
   // Real Array lengths are uint32 values. Keep that overwhelmingly common
   // path scalar while retaining full ToLength coercion for proxies.
-  if (typeof value === 'number' && value === (value >>> 0)) return value
+  if (typeof value === 'number' && value === value >>> 0) return value
   const numeric = +(value as number)
   if (numeric !== numeric || numeric <= 0) return 0
   if (numeric >= maximumArrayLikeLength) return maximumArrayLikeLength
@@ -32,6 +32,12 @@ export const fromResult = <A, E>(result: Result<A, E>): Validation<A, E> =>
 
 export const fromPredicate: {
   <A, B extends A, E>(
+    value: A,
+    predicate: Refinement<A, B>,
+    onFalse: (value: A) => E,
+  ): Validation<B, E>
+  <A, E>(value: A, predicate: Predicate<A>, onFalse: (value: A) => E): Validation<A, E>
+  <A, B extends A, E>(
     predicate: Refinement<A, B>,
     onFalse: (value: A) => E,
   ): <C extends A>(value: C) => Validation<B & C, E>
@@ -39,10 +45,11 @@ export const fromPredicate: {
     predicate: Predicate<A>,
     onFalse: (value: A) => E,
   ): <B extends A>(value: B) => Validation<B, E>
-} =
-  <A, E>(predicate: Predicate<A>, onFalse: (value: A) => E) =>
-  (value: A): Validation<A, E> =>
+} = function fromPredicate<A, E>(predicate: Predicate<A>, onFalse: (value: A) => E, __df?: any): any {
+  if (arguments.length >= 3) return (fromPredicate as any)(onFalse, __df)(predicate)
+  return (value: A): Validation<A, E> =>
     predicate(value) ? valid(value) : invalid(onFalse(value))
+} as any
 
 type ValidationValue<T> = T extends { readonly _tag: 1; readonly value: infer A } ? A : never
 type ValidationError<T> = T extends {
@@ -70,15 +77,8 @@ export function all(
   // iterator and IteratorResult objects. A user-defined ArrayIterator `return`
   // makes IteratorClose observable, so retain native iteration in that case.
   const iteratorMethod = validations[Symbol.iterator]
-  if (
-    iteratorMethod === nativeArrayIterator &&
-    !('return' in nativeArrayIteratorPrototype)
-  ) {
-    for (
-      let index = 0;
-      index < arrayIteratorLength(validations.length);
-      index += 1
-    ) {
+  if (iteratorMethod === nativeArrayIterator && !('return' in nativeArrayIteratorPrototype)) {
+    for (let index = 0; index < arrayIteratorLength(validations.length); index += 1) {
       const validation = validations[index] as Validation<unknown, unknown>
       if (validation._tag === 1) values.push(validation.value)
       else (errors ??= []).push(...validation.error)
@@ -103,8 +103,10 @@ export function all(
 }
 
 export const traverse: {
+  <A, B, E>(values: readonly A[], validate: (value: A) => Validation<B, E>): Validation<B[], E>
   <A, B, E>(validate: (value: A) => Validation<B, E>): (values: readonly A[]) => Validation<B[], E>
-} =
-  <A, B, E>(validate: (value: A) => Validation<B, E>) =>
-  (values: readonly A[]): Validation<B[], E> =>
+} = function traverse<A, B, E>(validate: (value: A) => Validation<B, E>, __df?: any): any {
+  if (arguments.length >= 2) return (traverse as any)(__df)(validate)
+  return (values: readonly A[]): Validation<B[], E> =>
     all(values.map(validate))
+} as any

@@ -4,10 +4,9 @@ export { pipe } from './pipe'
 export { flow } from './flow'
 
 /**
- * `dual`, `compile`, `compilePure`, and `explain` are no longer root exports.
+ * `compile`, `compilePure`, and `explain` are no longer root exports.
  * They moved to the subpaths that name what they are:
  *
- *   dual                     -> @stopcock/fp/dual
  *   compile, compilePure     -> @stopcock/fp/compile
  *   explain                  -> @stopcock/fp/fusion/debug
  *

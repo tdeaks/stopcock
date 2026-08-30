@@ -6,7 +6,20 @@
 export const not_: (a: boolean) => boolean = (a: any) => !a
 
 // Arity 2
-export const and_: (b: boolean) => (a: boolean) => boolean = function and_(b: any) {
+export const and_: {
+  (a: boolean, b: boolean): boolean
+  (b: boolean): (a: boolean) => boolean
+} = function and_(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const a = a0,
+      b = a1
+    if (a) {
+    return b;
+  } else {
+    return false;
+  }
+  }
+  const b = a0
   return function (a: any) {
     if (a) {
     return b;
@@ -17,7 +30,20 @@ export const and_: (b: boolean) => (a: boolean) => boolean = function and_(b: an
 } as any
 
 
-export const or_: (b: boolean) => (a: boolean) => boolean = function or_(b: any) {
+export const or_: {
+  (a: boolean, b: boolean): boolean
+  (b: boolean): (a: boolean) => boolean
+} = function or_(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const a = a0,
+      b = a1
+    if (a) {
+    return true;
+  } else {
+    return b;
+  }
+  }
+  const b = a0
   return function (a: any) {
     if (a) {
     return true;
@@ -29,7 +55,11 @@ export const or_: (b: boolean) => (a: boolean) => boolean = function or_(b: any)
 
 
 // Arity 3
-export const ifElse: <A>(onTrue: () => A, onFalse: () => A) => (cond: boolean) => A = function ifElse(onTrue: any, onFalse: any) {
+export const ifElse: {
+  <A>(cond: boolean, onTrue: () => A, onFalse: () => A): A
+  <A>(onTrue: () => A, onFalse: () => A): (cond: boolean) => A
+} = function ifElse(onTrue: any, onFalse?: any, __df?: any): any {
+  if (arguments.length >= 3) return ifElse(onFalse, __df)(onTrue)
   return function (cond: any) {
     if (cond) {
     return onTrue();

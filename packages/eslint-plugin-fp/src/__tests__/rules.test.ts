@@ -29,7 +29,7 @@ const run = <Options extends readonly unknown[]>(
 }
 
 describe('no-legacy-api', () => {
-  it('reports and fixes removed subpaths', () => {
+  it('reports removed dual authoring subpaths without an invalid replacement', () => {
     const source = literal('@stopcock/fp/dual-lite')
     const reports = run(
       noLegacyApi,
@@ -37,11 +37,8 @@ describe('no-legacy-api', () => {
       { type: 'ImportDeclaration', source, specifiers: [] },
       [],
     )
-    expect(reports[0]?.messageId).toBe('legacySubpath')
-    const fix = reports[0]?.fix?.({
-      replaceText: (_node, text) => ({ text }),
-    })
-    expect(fix).toEqual({ text: '"@stopcock/fp/dual"' })
+    expect(reports[0]?.messageId).toBe('removedSubpath')
+    expect(reports[0]?.fix).toBeUndefined()
   })
 
   it('reports semantic module migrations without applying an unsafe fix', () => {

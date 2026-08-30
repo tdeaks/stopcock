@@ -51,6 +51,12 @@ residual or otherwise non-fully-lowered site still constructs the real
 operator factory too (see "Recognized facade entries" below for the exact
 construction-elision contract).
 
+Direct data-first calls such as `A.map(values, transform)` remain ordinary
+runtime calls. This compiler lowers operators only when they are statically
+recognized as steps inside `pipe`, `flow`, `compile`, or `compilePure`; use the
+curried step `A.map(transform)` in those pipelines. The runtime result and type
+contract are identical across the two call shapes.
+
 ## Options
 
 | Option                 | Purpose                                                                                                                           |

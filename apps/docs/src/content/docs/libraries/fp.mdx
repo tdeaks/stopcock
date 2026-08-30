@@ -20,9 +20,9 @@ The root is intentionally small:
 import { err, flow, none, ok, pipe, some } from '@stopcock/fp'
 ```
 
-`compile`, `compilePure`, `dual`, and `explain` are not root exports. Import
-them from the subpaths that name what they are: `@stopcock/fp/compile`,
-`@stopcock/fp/dual`, and `@stopcock/fp/fusion/debug`.
+`compile`, `compilePure`, and `explain` are not root exports. Import them from
+the subpaths that name what they are: `@stopcock/fp/compile` and
+`@stopcock/fp/fusion/debug`.
 
 Specialist APIs live in tree-shakeable subpaths:
 
@@ -49,10 +49,12 @@ const activeNames = pipe(
 )
 ```
 
-Every operator has one form: curried, data-last.
+Every data operation with two or more arguments supports direct data-first and
+curried data-last calls under the same name.
 
 ```ts
 const doubled = A.map((value: number) => value * 2)([1, 2, 3])
+const directlyDoubled = A.map([1, 2, 3], (value) => value * 2)
 const alsoDoubled = pipe([1, 2, 3], A.map((value) => value * 2))
 ```
 

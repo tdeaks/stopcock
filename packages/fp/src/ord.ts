@@ -18,19 +18,46 @@ export const make = <A>(compare: (self: A, that: A) => number): Ord<A> => {
   }
 }
 
-export const contramap =
-  <B, A>(project: (value: B) => A) =>
-  (instance: Ord<A>): Ord<B> =>
+export function contramap<B, A>(instance: Ord<A>, project: (value: B) => A): Ord<B>
+export function contramap<B, A>(project: (value: B) => A): (instance: Ord<A>) => Ord<B>
+export function contramap<B, A>(
+  instanceOrProject: Ord<A> | ((value: B) => A),
+  maybeProject?: (value: B) => A,
+): Ord<B> | ((instance: Ord<A>) => Ord<B>) {
+  if (arguments.length >= 2) {
+    const instance = instanceOrProject as Ord<A>
+    const project = maybeProject as (value: B) => A
+    return make((self, that) => instance.compare(project(self), project(that)))
+  }
+  const project = instanceOrProject as (value: B) => A
+  return (instance: Ord<A>): Ord<B> =>
     make((self, that) => instance.compare(project(self), project(that)))
+}
 
 export const reverse = <A>(instance: Ord<A>): Ord<A> =>
   make((self, that) => instance.compare(that, self))
 
-export const combine = <A>(self: Ord<A>, that: Ord<A>): Ord<A> =>
-  make((left, right) => {
-    const first = self.compare(left, right)
-    return first === 0 ? that.compare(left, right) : first
-  })
+export function combine<A>(self: Ord<A>, that: Ord<A>): Ord<A>
+export function combine<A>(that: Ord<A>): (self: Ord<A>) => Ord<A>
+export function combine<A>(
+  selfOrThat: Ord<A>,
+  maybeThat?: Ord<A>,
+): Ord<A> | ((self: Ord<A>) => Ord<A>) {
+  if (arguments.length >= 2) {
+    const self = selfOrThat
+    const that = maybeThat as Ord<A>
+    return make((left, right) => {
+      const first = self.compare(left, right)
+      return first === 0 ? that.compare(left, right) : first
+    })
+  }
+  const that = selfOrThat
+  return (self: Ord<A>): Ord<A> =>
+    make((left, right) => {
+      const first = self.compare(left, right)
+      return first === 0 ? that.compare(left, right) : first
+    })
+}
 
 export const combineAll = <A>(instances: Iterable<Ord<A>>): Ord<A> => {
   const cached = Array.from(instances)
@@ -75,32 +102,158 @@ export const number: Ord<number> = make((self, that) => {
 })
 export const date: Ord<Date> = contramap((value: Date) => value.getTime())(number)
 
-export const lessThan = <A>(instance: Ord<A>, self: A, that: A): boolean =>
-  instance.compare(self, that) === -1
+export function lessThan<A>(instance: Ord<A>, self: A, that: A): boolean
+export function lessThan<A>(self: A, that: A): (instance: Ord<A>) => boolean
+export function lessThan<A>(
+  instanceOrSelf: Ord<A> | A,
+  selfOrThat: A,
+  maybeThat?: A,
+): boolean | ((instance: Ord<A>) => boolean) {
+  if (arguments.length >= 3) {
+    return (instanceOrSelf as Ord<A>).compare(selfOrThat, maybeThat as A) === -1
+  }
+  const self = instanceOrSelf as A
+  const that = selfOrThat
+  return (instance: Ord<A>): boolean => instance.compare(self, that) === -1
+}
 
-export const lessThanOrEqual = <A>(instance: Ord<A>, self: A, that: A): boolean =>
-  instance.compare(self, that) !== 1
+export function lessThanOrEqual<A>(instance: Ord<A>, self: A, that: A): boolean
+export function lessThanOrEqual<A>(self: A, that: A): (instance: Ord<A>) => boolean
+export function lessThanOrEqual<A>(
+  instanceOrSelf: Ord<A> | A,
+  selfOrThat: A,
+  maybeThat?: A,
+): boolean | ((instance: Ord<A>) => boolean) {
+  if (arguments.length >= 3) {
+    return (instanceOrSelf as Ord<A>).compare(selfOrThat, maybeThat as A) !== 1
+  }
+  const self = instanceOrSelf as A
+  const that = selfOrThat
+  return (instance: Ord<A>): boolean => instance.compare(self, that) !== 1
+}
 
-export const greaterThan = <A>(instance: Ord<A>, self: A, that: A): boolean =>
-  instance.compare(self, that) === 1
+export function greaterThan<A>(instance: Ord<A>, self: A, that: A): boolean
+export function greaterThan<A>(self: A, that: A): (instance: Ord<A>) => boolean
+export function greaterThan<A>(
+  instanceOrSelf: Ord<A> | A,
+  selfOrThat: A,
+  maybeThat?: A,
+): boolean | ((instance: Ord<A>) => boolean) {
+  if (arguments.length >= 3) {
+    return (instanceOrSelf as Ord<A>).compare(selfOrThat, maybeThat as A) === 1
+  }
+  const self = instanceOrSelf as A
+  const that = selfOrThat
+  return (instance: Ord<A>): boolean => instance.compare(self, that) === 1
+}
 
-export const greaterThanOrEqual = <A>(instance: Ord<A>, self: A, that: A): boolean =>
-  instance.compare(self, that) !== -1
+export function greaterThanOrEqual<A>(instance: Ord<A>, self: A, that: A): boolean
+export function greaterThanOrEqual<A>(self: A, that: A): (instance: Ord<A>) => boolean
+export function greaterThanOrEqual<A>(
+  instanceOrSelf: Ord<A> | A,
+  selfOrThat: A,
+  maybeThat?: A,
+): boolean | ((instance: Ord<A>) => boolean) {
+  if (arguments.length >= 3) {
+    return (instanceOrSelf as Ord<A>).compare(selfOrThat, maybeThat as A) !== -1
+  }
+  const self = instanceOrSelf as A
+  const that = selfOrThat
+  return (instance: Ord<A>): boolean => instance.compare(self, that) !== -1
+}
 
-export const min = <A>(instance: Ord<A>, self: A, that: A): A =>
-  instance.compare(self, that) === 1 ? that : self
+export function min<A>(instance: Ord<A>, self: A, that: A): A
+export function min<A>(self: A, that: A): (instance: Ord<A>) => A
+export function min<A>(
+  instanceOrSelf: Ord<A> | A,
+  selfOrThat: A,
+  maybeThat?: A,
+): A | ((instance: Ord<A>) => A) {
+  if (arguments.length >= 3) {
+    return (instanceOrSelf as Ord<A>).compare(selfOrThat, maybeThat as A) === 1
+      ? (maybeThat as A)
+      : selfOrThat
+  }
+  const self = instanceOrSelf as A
+  const that = selfOrThat
+  return (instance: Ord<A>): A => (instance.compare(self, that) === 1 ? that : self)
+}
 
-export const max = <A>(instance: Ord<A>, self: A, that: A): A =>
-  instance.compare(self, that) === -1 ? that : self
+export function max<A>(instance: Ord<A>, self: A, that: A): A
+export function max<A>(self: A, that: A): (instance: Ord<A>) => A
+export function max<A>(
+  instanceOrSelf: Ord<A> | A,
+  selfOrThat: A,
+  maybeThat?: A,
+): A | ((instance: Ord<A>) => A) {
+  if (arguments.length >= 3) {
+    return (instanceOrSelf as Ord<A>).compare(selfOrThat, maybeThat as A) === -1
+      ? (maybeThat as A)
+      : selfOrThat
+  }
+  const self = instanceOrSelf as A
+  const that = selfOrThat
+  return (instance: Ord<A>): A => (instance.compare(self, that) === -1 ? that : self)
+}
 
-export const clamp = <A>(instance: Ord<A>, value: A, minimum: A, maximum: A): A =>
-  min(instance, max(instance, value, minimum), maximum)
+export function clamp<A>(instance: Ord<A>, value: A, minimum: A, maximum: A): A
+export function clamp<A>(value: A, minimum: A, maximum: A): (instance: Ord<A>) => A
+export function clamp<A>(
+  instanceOrValue: Ord<A> | A,
+  valueOrMinimum: A,
+  minimumOrMaximum: A,
+  maybeMaximum?: A,
+): A | ((instance: Ord<A>) => A) {
+  if (arguments.length >= 4) {
+    const instance = instanceOrValue as Ord<A>
+    return min(
+      instance,
+      max(instance, valueOrMinimum, minimumOrMaximum),
+      maybeMaximum as A,
+    )
+  }
+  const value = instanceOrValue as A
+  const minimum = valueOrMinimum
+  const maximum = minimumOrMaximum
+  return (instance: Ord<A>): A => min(instance, max(instance, value, minimum), maximum)
+}
 
-export const between = <A>(instance: Ord<A>, value: A, minimum: A, maximum: A): boolean =>
-  greaterThanOrEqual(instance, value, minimum) && lessThanOrEqual(instance, value, maximum)
+export function between<A>(instance: Ord<A>, value: A, minimum: A, maximum: A): boolean
+export function between<A>(value: A, minimum: A, maximum: A): (instance: Ord<A>) => boolean
+export function between<A>(
+  instanceOrValue: Ord<A> | A,
+  valueOrMinimum: A,
+  minimumOrMaximum: A,
+  maybeMaximum?: A,
+): boolean | ((instance: Ord<A>) => boolean) {
+  if (arguments.length >= 4) {
+    const instance = instanceOrValue as Ord<A>
+    const value = valueOrMinimum
+    return (
+      instance.compare(value, minimumOrMaximum) !== -1 &&
+      instance.compare(value, maybeMaximum as A) !== 1
+    )
+  }
+  const value = instanceOrValue as A
+  const minimum = valueOrMinimum
+  const maximum = minimumOrMaximum
+  return (instance: Ord<A>): boolean =>
+    instance.compare(value, minimum) !== -1 && instance.compare(value, maximum) !== 1
+}
 
 /** Returns a dense, stable, sorted copy. */
-export const sort = <A>(instance: Ord<A>, values: readonly A[]): A[] => {
+export function sort<A>(instance: Ord<A>, values: readonly A[]): A[]
+export function sort<A>(values: readonly A[]): (instance: Ord<A>) => A[]
+export function sort<A>(
+  instanceOrValues: Ord<A> | readonly A[],
+  maybeValues?: readonly A[],
+): A[] | ((instance: Ord<A>) => A[]) {
+  if (arguments.length === 1) {
+    const values = instanceOrValues as readonly A[]
+    return (instance: Ord<A>): A[] => sort(instance, values)
+  }
+  const instance = instanceOrValues as Ord<A>
+  const values = maybeValues as readonly A[]
   const result = Array.from(values)
   // Native sort does not invoke the comparator for `undefined`, so retain the
   // decorated path only for that semantic edge case (including dense holes).

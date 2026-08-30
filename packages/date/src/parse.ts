@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import type { Timestamp } from './types'
 import { compose, stamp } from './core'
 
@@ -288,17 +287,23 @@ export function parser(template: string): (s: string) => Timestamp {
   return getParser(template)
 }
 
-export const tryParse: {
-  (s: string, template: string): Timestamp | null
-  (template: string): (s: string) => Timestamp | null
-} = dual(2, (s: string, template: string): Timestamp | null => {
+function tryParseImpl(s: string, template: string): Timestamp | null {
   try {
     const result = getParser(template)(s)
     return Number.isNaN(result as number) ? null : result
   } catch {
     return null
   }
-})
+}
+
+export const tryParse: {
+  (s: string, template: string): Timestamp | null
+  (template: string): (s: string) => Timestamp | null
+} = function tryParse(stringOrTemplate: string, template?: string): any {
+  if (arguments.length >= 2) return tryParseImpl(stringOrTemplate, template as string)
+  const selectedTemplate = stringOrTemplate
+  return (s: string): Timestamp | null => tryParseImpl(s, selectedTemplate)
+}
 
 export function tryParser(template: string): (s: string) => Timestamp | null {
   const fn = getParser(template)

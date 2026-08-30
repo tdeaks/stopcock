@@ -17,35 +17,80 @@ export const product: (arr: number[]) => number = (arr: any) => {
 }
 
 // Arity 2
-export const add: (b: number) => (a: number) => number = function add(b: any) {
+export const add: {
+  (a: number, b: number): number
+  (b: number): (a: number) => number
+} = function add(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const a = a0,
+      b = a1
+    return a + b;
+  }
+  const b = a0
   return function (a: any) {
     return a + b;
   }
 } as any
 
 
-export const subtract: (b: number) => (a: number) => number = function subtract(b: any) {
+export const subtract: {
+  (a: number, b: number): number
+  (b: number): (a: number) => number
+} = function subtract(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const a = a0,
+      b = a1
+    return a - b;
+  }
+  const b = a0
   return function (a: any) {
     return a - b;
   }
 } as any
 
 
-export const multiply: (b: number) => (a: number) => number = function multiply(b: any) {
+export const multiply: {
+  (a: number, b: number): number
+  (b: number): (a: number) => number
+} = function multiply(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const a = a0,
+      b = a1
+    return a * b;
+  }
+  const b = a0
   return function (a: any) {
     return a * b;
   }
 } as any
 
 
-export const divide: (b: number) => (a: number) => number = function divide(b: any) {
+export const divide: {
+  (a: number, b: number): number
+  (b: number): (a: number) => number
+} = function divide(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const a = a0,
+      b = a1
+    return a / b;
+  }
+  const b = a0
   return function (a: any) {
     return a / b;
   }
 } as any
 
 
-export const modulo: (b: number) => (a: number) => number = function modulo(b: any) {
+export const modulo: {
+  (a: number, b: number): number
+  (b: number): (a: number) => number
+} = function modulo(a0: any, a1?: any): any {
+  if (arguments.length >= 2) {
+    const a = a0,
+      b = a1
+    return a % b;
+  }
+  const b = a0
   return function (a: any) {
     return a % b;
   }

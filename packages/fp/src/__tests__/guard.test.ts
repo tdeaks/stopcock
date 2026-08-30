@@ -23,6 +23,8 @@ import {
   isShallowEqual,
   isSymbol,
   isTruthy,
+  isArrayOf,
+  isRecordOf,
   isObjectType,
   isDeepEqual,
   isStrictEqual,
@@ -35,15 +37,25 @@ import {
 
 describe('guard', () => {
   describe('is', () => {
-    it('true for matching instance', () => expect(is(Date, new Date())).toBe(true))
-    it('false for non-instance', () => expect(is(Date, 'nope')).toBe(false))
-    it('works with Error', () => expect(is(Error, new Error('x'))).toBe(true))
+    it('true for matching instance', () => expect(is(new Date(), Date)).toBe(true))
+    it('false for non-instance', () => expect(is('nope', Date)).toBe(false))
+    it('works with Error', () => expect(is(new Error('x'), Error)).toBe(true))
+    it('supports data-first and curried calls', () => {
+      const value = new Date()
+      expect(is(value, Date)).toBe(true)
+      expect(is(Date)(value)).toBe(true)
+    })
   })
 
   describe('propIs', () => {
     it('true when prop is instance', () => expect(propIs(Date, 'd', { d: new Date() })).toBe(true))
     it('false when prop is wrong type', () => expect(propIs(Date, 'd', { d: 'nope' })).toBe(false))
     it('false when prop missing', () => expect(propIs(Date, 'd', { x: 1 })).toBe(false))
+    it('supports data-first and curried calls', () => {
+      const value = { d: new Date() }
+      expect(propIs(value, Date, 'd')).toBe(true)
+      expect(propIs(Date, 'd')(value)).toBe(true)
+    })
   })
 
   describe('isString', () => {
@@ -127,6 +139,21 @@ describe('guard', () => {
     it('different primitives', () => expect(isShallowEqual(1, 2)).toBe(false))
     it('null vs object', () => expect(isShallowEqual(null, { a: 1 })).toBe(false))
     it('object vs null', () => expect(isShallowEqual({ a: 1 }, null)).toBe(false))
+    it('supports curried calls', () => expect(isShallowEqual({ a: 1 })({ a: 1 })).toBe(true))
+  })
+
+  describe('dual collection guards', () => {
+    it('isArrayOf supports data-first and curried calls', () => {
+      expect(isArrayOf(['a', 'b'], isString)).toBe(true)
+      expect(isArrayOf(isString)(['a', 'b'])).toBe(true)
+      expect(isArrayOf(['a', 1], isString)).toBe(false)
+    })
+
+    it('isRecordOf supports data-first and curried calls', () => {
+      expect(isRecordOf({ first: 1, second: 2 }, isNumber)).toBe(true)
+      expect(isRecordOf(isNumber)({ first: 1, second: 2 })).toBe(true)
+      expect(isRecordOf({ first: 1, second: 'two' }, isNumber)).toBe(false)
+    })
   })
 
   describe('isSymbol', () => {
@@ -209,6 +236,9 @@ describe('guard', () => {
   })
 
   describe('isDeepEqual', () => {
+    it('supports curried calls', () =>
+      expect(isDeepEqual({ nested: [1] })({ nested: [1] })).toBe(true))
+
     it('treats distinct Maps as atomic values', () => {
       const a = new Map([
         ['x', 1],
@@ -324,17 +354,21 @@ describe('guard', () => {
 
     it('and composes refinements left-to-right', () => {
       const isUserAdmin = and(isUser, isAdmin)
+      const admin = { type: 'user', active: true, name: 'Ada', role: 'admin' } as const
 
-      expect(isUserAdmin({ type: 'user', active: true, name: 'Ada', role: 'admin' })).toBe(true)
+      expect(isUserAdmin(admin)).toBe(true)
+      expect(and(admin, isUser, isAdmin)).toBe(true)
       expect(isUserAdmin({ type: 'user', active: true, name: 'Grace' })).toBe(false)
       expect(isUserAdmin({ type: 'guest', name: 'Linus' })).toBe(false)
     })
 
     it('or accepts either refinement', () => {
       const isKnownAccount = or(isUser, isGuest)
+      const guest = { type: 'guest', name: 'Grace' } as const
 
       expect(isKnownAccount({ type: 'user', active: false, name: 'Ada' })).toBe(true)
-      expect(isKnownAccount({ type: 'guest', name: 'Grace' })).toBe(true)
+      expect(isKnownAccount(guest)).toBe(true)
+      expect(or(guest, isUser, isGuest)).toBe(true)
     })
 
     it('not negates refinements and predicates', () => {
@@ -343,8 +377,16 @@ describe('guard', () => {
 
       expect(isNotGuest({ type: 'user', active: true, name: 'Ada' })).toBe(true)
       expect(isNotGuest({ type: 'guest', name: 'Grace' })).toBe(false)
+      expect(not({ type: 'guest', name: 'Grace' } as Account, isGuest)).toBe(false)
       expect(isNotEmpty('fp')).toBe(true)
       expect(isNotEmpty('')).toBe(false)
+    })
+  })
+
+  describe('isStrictEqual', () => {
+    it('supports data-first and curried calls', () => {
+      expect(isStrictEqual(1, 1)).toBe(true)
+      expect(isStrictEqual(1)(1)).toBe(true)
     })
   })
 })

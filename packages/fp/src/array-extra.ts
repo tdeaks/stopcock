@@ -67,12 +67,13 @@ export const separate = <A, E>(values: readonly Result<A, E>[]): readonly [E[], 
 }
 
 export const partitionMap: {
+  <A, E, B>(values: readonly A[], f: (value: A, index: number) => Result<B, E>): readonly [E[], B[]]
   <A, E, B>(
     f: (value: A, index: number) => Result<B, E>,
   ): (values: readonly A[]) => readonly [E[], B[]]
-} =
-  <A, E, B>(f: (value: A, index: number) => Result<B, E>) =>
-  (values: readonly A[]): readonly [E[], B[]] => {
+} = function partitionMap<A, E, B>(f: (value: A, index: number) => Result<B, E>, __df?: any): any {
+  if (arguments.length >= 2) return (partitionMap as any)(__df)(f)
+  return (values: readonly A[]): readonly [E[], B[]] => {
     const errors: E[] = []
     const successes: B[] = []
     for (let index = 0; index < values.length; index++) {
@@ -82,12 +83,14 @@ export const partitionMap: {
     }
     return [errors, successes]
   }
+} as any
 
 export const traverse: {
+  <A, B, E>(values: readonly A[], f: (value: A, index: number) => Result<B, E>): Result<B[], E>
   <A, B, E>(f: (value: A, index: number) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
-} =
-  <A, B, E>(f: (value: A, index: number) => Result<B, E>) =>
-  (values: readonly A[]): Result<B[], E> => {
+} = function traverse<A, B, E>(f: (value: A, index: number) => Result<B, E>, __df?: any): any {
+  if (arguments.length >= 2) return (traverse as any)(__df)(f)
+  return (values: readonly A[]): Result<B[], E> => {
     const output: B[] = []
     for (let index = 0; index < values.length; index++) {
       const result = f(values[index], index)
@@ -96,6 +99,7 @@ export const traverse: {
     }
     return ok(output)
   }
+} as any
 
 type ResultValue<T> = T extends { readonly _tag: 1; readonly value: infer A } ? A : never
 type ResultError<T> = T extends { readonly _tag: 0; readonly error: infer E } ? E : never
@@ -108,10 +112,11 @@ export function sequence(values: readonly Result<unknown, unknown>[]): Result<un
 }
 
 export const groupMap: {
+  <A, K, B>(values: readonly A[], key: (value: A) => K, project: (value: A) => B): Map<K, B[]>
   <A, K, B>(key: (value: A) => K, project: (value: A) => B): (values: readonly A[]) => Map<K, B[]>
-} =
-  <A, K, B>(key: (value: A) => K, project: (value: A) => B) =>
-  (values: readonly A[]): Map<K, B[]> => {
+} = function groupMap<A, K, B>(key: (value: A) => K, project: (value: A) => B, __df?: any): any {
+  if (arguments.length >= 3) return (groupMap as any)(project, __df)(key)
+  return (values: readonly A[]): Map<K, B[]> => {
     const output = new Map<K, B[]>()
     for (const value of values) {
       const group = key(value)
@@ -121,16 +126,23 @@ export const groupMap: {
     }
     return output
   }
+} as any
 
 export const groupMapReduce: {
+  <A, K, B>(
+    values: readonly A[],
+    key: (value: A) => K,
+    project: (value: A) => B,
+    combine: (left: B, right: B) => B,
+  ): Map<K, B>
   <A, K, B>(
     key: (value: A) => K,
     project: (value: A) => B,
     combine: (left: B, right: B) => B,
   ): (values: readonly A[]) => Map<K, B>
-} =
-  <A, K, B>(key: (value: A) => K, project: (value: A) => B, combine: (left: B, right: B) => B) =>
-  (values: readonly A[]): Map<K, B> => {
+} = function groupMapReduce<A, K, B>(key: (value: A) => K, project: (value: A) => B, combine: (left: B, right: B) => B, __df?: any): any {
+  if (arguments.length >= 4) return (groupMapReduce as any)(project, combine, __df)(key)
+  return (values: readonly A[]): Map<K, B> => {
     const output = new Map<K, B>()
     for (const value of values) {
       const group = key(value)
@@ -139,12 +151,14 @@ export const groupMapReduce: {
     }
     return output
   }
+} as any
 
 export const countBy: {
+  <A, K>(values: readonly A[], key: (value: A) => K): Map<K, number>
   <A, K>(key: (value: A) => K): (values: readonly A[]) => Map<K, number>
-} =
-  <A, K>(key: (value: A) => K) =>
-  (values: readonly A[]): Map<K, number> => {
+} = function countBy<A, K>(key: (value: A) => K, __df?: any): any {
+  if (arguments.length >= 2) return (countBy as any)(__df)(key)
+  return (values: readonly A[]): Map<K, number> => {
     const output = new Map<K, number>()
     for (const value of values) {
       const group = key(value)
@@ -152,12 +166,14 @@ export const countBy: {
     }
     return output
   }
+} as any
 
 export const zipAll: {
+  <A, B>(left: readonly A[], right: readonly B[]): Array<readonly [Option<A>, Option<B>]>
   <B>(right: readonly B[]): <A>(left: readonly A[]) => Array<readonly [Option<A>, Option<B>]>
-} =
-  <B>(right: readonly B[]) =>
-  <A>(left: readonly A[]): Array<readonly [Option<A>, Option<B>]> => {
+} = function zipAll<B>(right: readonly B[], __df?: any): any {
+  if (arguments.length >= 2) return (zipAll as any)(__df)(right)
+  return <A>(left: readonly A[]): Array<readonly [Option<A>, Option<B>]> => {
     const output: Array<readonly [Option<A>, Option<B>]> = []
     const length = Math.max(left.length, right.length)
     for (let index = 0; index < length; index++) {
@@ -168,6 +184,7 @@ export const zipAll: {
     }
     return output
   }
+} as any
 
 export const unzip = <A, B>(values: readonly (readonly [A, B])[]): readonly [A[], B[]] => {
   const left = new Array<A>(values.length)
@@ -180,42 +197,49 @@ export const unzip = <A, B>(values: readonly (readonly [A, B])[]): readonly [A[]
 }
 
 export const span: {
+  <A>(values: readonly A[], predicate: (value: A, index: number) => boolean): readonly [A[], A[]]
   <A>(
     predicate: (value: A, index: number) => boolean,
   ): (values: readonly A[]) => readonly [A[], A[]]
-} =
-  <A>(predicate: (value: A, index: number) => boolean) =>
-  (values: readonly A[]): readonly [A[], A[]] => {
+} = function span<A>(predicate: (value: A, index: number) => boolean, __df?: any): any {
+  if (arguments.length >= 2) return (span as any)(__df)(predicate)
+  return (values: readonly A[]): readonly [A[], A[]] => {
     let index = 0
     while (index < values.length && predicate(values[index], index)) index++
     return [values.slice(0, index), values.slice(index)]
   }
+} as any
 
 export const dropUntil: {
+  <A>(values: readonly A[], predicate: (value: A, index: number) => boolean): A[]
   <A>(predicate: (value: A, index: number) => boolean): (values: readonly A[]) => A[]
-} =
-  <A>(predicate: (value: A, index: number) => boolean) =>
-  (values: readonly A[]): A[] => {
+} = function dropUntil<A>(predicate: (value: A, index: number) => boolean, __df?: any): any {
+  if (arguments.length >= 2) return (dropUntil as any)(__df)(predicate)
+  return (values: readonly A[]): A[] => {
     let index = 0
     while (index < values.length && !predicate(values[index], index)) index++
     return values.slice(index)
   }
+} as any
 
 export const cartesian: {
+  <A, B>(left: readonly A[], right: readonly B[]): Array<readonly [A, B]>
   <B>(right: readonly B[]): <A>(left: readonly A[]) => Array<readonly [A, B]>
-} =
-  <B>(right: readonly B[]) =>
-  <A>(left: readonly A[]): Array<readonly [A, B]> => {
+} = function cartesian<B>(right: readonly B[], __df?: any): any {
+  if (arguments.length >= 2) return (cartesian as any)(__df)(right)
+  return <A>(left: readonly A[]): Array<readonly [A, B]> => {
     const output: Array<readonly [A, B]> = []
     for (const a of left) for (const b of right) output.push([a, b])
     return output
   }
+} as any
 
 export const combinations: {
+  <A>(values: readonly A[], size: number): A[][]
   (size: number): <A>(values: readonly A[]) => A[][]
-} =
-  (size: number) =>
-  <A>(values: readonly A[]): A[][] => {
+} = function combinations(size: number, __df?: any): any {
+  if (arguments.length >= 2) return (combinations as any)(__df)(size)
+  return <A>(values: readonly A[]): A[][] => {
     const count = Math.trunc(size)
     if (count < 0) throw new RangeError('combinations: size must be non-negative')
     if (count === 0) return [[]]
@@ -237,6 +261,7 @@ export const combinations: {
     visit(0)
     return output
   }
+} as any
 
 export const permutations = <A>(values: readonly A[]): A[][] => {
   if (values.length === 0) return [[]]
@@ -258,13 +283,11 @@ export const permutations = <A>(values: readonly A[]): A[][] => {
 }
 
 export const binarySearch: {
-  <A>(
-    target: A,
-    compare: (left: A, right: A) => number,
-  ): (values: readonly A[]) => Option<number>
-} =
-  <A>(target: A, compare: (left: A, right: A) => number) =>
-  (values: readonly A[]): Option<number> => {
+  <A>(values: readonly A[], target: A, compare: (left: A, right: A) => number): Option<number>
+  <A>(target: A, compare: (left: A, right: A) => number): (values: readonly A[]) => Option<number>
+} = function binarySearch<A>(target: A, compare: (left: A, right: A) => number, __df?: any): any {
+  if (arguments.length >= 3) return (binarySearch as any)(compare, __df)(target)
+  return (values: readonly A[]): Option<number> => {
     let low = 0
     let high = values.length - 1
     while (low <= high) {
@@ -276,22 +299,36 @@ export const binarySearch: {
     }
     return none
   }
+} as any
 
-export const scan1 = <A>(
-  values: readonly [A, ...A[]],
-  f: (accumulator: A, value: A) => A,
-): [A, ...A[]] => {
-  const output = new Array<A>(values.length)
-  let accumulator = values[0]
-  output[0] = accumulator
-  for (let index = 1; index < values.length; index++) {
-    accumulator = f(accumulator, values[index])
-    output[index] = accumulator
+export const scan1: {
+  <A>(values: readonly [A, ...A[]], f: (accumulator: A, value: A) => A): [A, ...A[]]
+  <A>(f: (accumulator: A, value: A) => A): (values: readonly [A, ...A[]]) => [A, ...A[]]
+} = function scan1<A>(f: (accumulator: A, value: A) => A, __df?: any): any {
+  if (arguments.length >= 2) return (scan1 as any)(__df)(f)
+  return (values: readonly [A, ...A[]]): [A, ...A[]] => {
+    const output = new Array<A>(values.length)
+    let accumulator = values[0]
+    output[0] = accumulator
+    for (let index = 1; index < values.length; index++) {
+      accumulator = f(accumulator, values[index])
+      output[index] = accumulator
+    }
+    return output as [A, ...A[]]
   }
-  return output as [A, ...A[]]
-}
+} as any
 
 export const mapInto: {
+  <
+    Source extends readonly unknown[],
+    const Target extends unknown[],
+    Output extends ArrayTargetElementCapacity<NoInfer<Target>>,
+  >(
+    values: Source,
+    target: Target,
+    f: (value: ArrayElement<NoInfer<Source>>, index: number) => Output,
+    ..._capacity: [] & EveryArrayTargetHasDynamicLength<Target> & EveryArrayTargetIsConcrete<Target>
+  ): Target
   <
     const Target extends unknown[],
     const Transform extends (...args: never[]) => ArrayTargetElementCapacity<NoInfer<Target>>,
@@ -300,17 +337,34 @@ export const mapInto: {
     f: Transform,
     ..._capacity: [] & EveryArrayTargetHasDynamicLength<Target> & EveryArrayTargetIsConcrete<Target>
   ): (values: readonly TransformInput<Transform>[]) => Target
-} =
-  ((target: unknown[], f: (value: never, index: number) => unknown) =>
-    (values: readonly unknown[]): unknown[] => {
+} = function mapInto(target: unknown[], f: (value: never, index: number) => unknown, __df?: any): any {
+  if (arguments.length >= 3) return (mapInto as any)(f, __df)(target)
+  return (values: readonly unknown[]): unknown[] => {
       target.length = values.length
       for (let index = 0; index < values.length; index++) {
         target[index] = f(values[index] as never, index)
       }
       return target
-    }) as any
+    }
+} as any
 
 export const filterInto: {
+  <
+    Source extends readonly unknown[],
+    Narrowed extends ArrayElement<Source>,
+    const Target extends unknown[],
+  >(
+    values: Source,
+    target: Target,
+    predicate: (value: ArrayElement<NoInfer<Source>>, index: number) => value is Narrowed,
+    ..._capacity: [] & ArrayTargetCapacity<Narrowed, Target>
+  ): Target
+  <Source extends readonly unknown[], const Target extends unknown[]>(
+    values: Source,
+    target: Target,
+    predicate: (value: ArrayElement<NoInfer<Source>>, index: number) => boolean,
+    ..._capacity: [] & ArrayTargetCapacity<ArrayElement<Source>, Target>
+  ): Target
   <A, Narrowed extends A, const Target extends unknown[]>(
     target: Target,
     predicate: (value: A, index: number) => value is Narrowed,
@@ -321,22 +375,24 @@ export const filterInto: {
     predicate: (value: A, index: number) => boolean,
     ..._capacity: [] & ArrayTargetCapacity<A, Target>
   ): (values: readonly A[]) => Target
-} =
-  ((target: unknown[], predicate: (value: never, index: number) => boolean) =>
-    (values: readonly unknown[]): unknown[] => {
+} = function filterInto(target: unknown[], predicate: (value: never, index: number) => boolean, __df?: any): any {
+  if (arguments.length >= 3) return (filterInto as any)(predicate, __df)(target)
+  return (values: readonly unknown[]): unknown[] => {
       target.length = 0
       for (let index = 0; index < values.length; index++) {
         const value = values[index]
         if (predicate(value as never, index)) target.push(value)
       }
       return target
-    }) as any
+    }
+} as any
 
 export const shuffleWith: {
+  <A>(values: readonly A[], random: () => number): A[]
   (random: () => number): <A>(values: readonly A[]) => A[]
-} =
-  (random: () => number) =>
-  <A>(values: readonly A[]): A[] => {
+} = function shuffleWith(random: () => number, __df?: any): any {
+  if (arguments.length >= 2) return (shuffleWith as any)(__df)(random)
+  return <A>(values: readonly A[]): A[] => {
     const output = values.slice()
     for (let index = output.length - 1; index > 0; index--) {
       const other = Math.floor(random() * (index + 1))
@@ -344,3 +400,4 @@ export const shuffleWith: {
     }
     return output
   }
+} as any

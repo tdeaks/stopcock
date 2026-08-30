@@ -8,11 +8,11 @@
 // `@stopcock/fp/fusion`) is now plain left-to-right sequential application
 // (see pipe.ts, internal/sequential.ts).
 //
-// This suite now compares two lanes: the frozen reference emitter (still
+// This suite now compares three lanes: the frozen reference emitter (still
 // deliberately fused-style codegen, one pass per stream segment with real
-// early exit -- see emitter.ts's header) against `sequentialPipe` applied
-// to the same steps built from the real, current `@stopcock/fp/array`
-// operators (resolvePipeline's `realSteps`).
+// early exit -- see emitter.ts's header), `sequentialPipe` applied to the
+// curried steps built from the real `@stopcock/fp/array` operators, and the
+// same real operators invoked directly through their data-first branches.
 //
 // D1 (one-runtime-path plan): callback interleaving across tiers is
 // unspecified. A fused segment and a materializing sequential pass over the
@@ -39,6 +39,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
+import * as A from '../../../packages/fp/src/array'
 import { sequentialPipe } from '../../../packages/fp/src/internal/sequential'
 import { compileEmittedPipeline } from './emitter'
 import { generateSerializedPipeline, resolvePipeline, type SerializedPipeline } from './generate'
@@ -117,26 +118,136 @@ function runSequential(sp: SerializedPipeline): RunOutcome {
   }
 }
 
+/** Data-first lane: invokes each real array operation directly, never through its curried step. */
+function runDataFirst(sp: SerializedPipeline): RunOutcome {
+  const g = resolvePipeline(sp)
+  try {
+    let value: unknown = g.input
+    for (let index = 0; index < sp.steps.length; index++) {
+      const step = sp.steps[index]
+      const binding = g.bindings[index]
+      const input = value as readonly number[]
+      switch (step.kind) {
+        case 'map':
+          value = A.map(input, binding.fn as (item: number) => number)
+          break
+        case 'filter':
+          value = A.filter(input, binding.fn as (item: number) => boolean)
+          break
+        case 'reject':
+          value = A.reject(input, binding.fn as (item: number) => boolean)
+          break
+        case 'filterMap':
+          value = A.filterMap(input, binding.fn as (item: number) => number | undefined)
+          break
+        case 'flatMap':
+          value = A.flatMap(input, binding.fn as (item: number) => readonly number[])
+          break
+        case 'take':
+          value = A.take(input, binding.fn as number)
+          break
+        case 'drop':
+          value = A.drop(input, binding.fn as number)
+          break
+        case 'takeWhile':
+          value = A.takeWhile(input, binding.fn as (item: number) => boolean)
+          break
+        case 'dropWhile':
+          value = A.dropWhile(input, binding.fn as (item: number) => boolean)
+          break
+        case 'scan':
+          value = A.scan(
+            input,
+            binding.fn as (state: number, item: number) => number,
+            binding.a1 as number,
+          )
+          break
+        case 'sort':
+          value = A.sort(input)
+          break
+        case 'sortBy':
+          value = A.sortBy(input, binding.fn as (left: number, right: number) => number)
+          break
+        case 'sortAsc':
+          value = A.sortAsc(input)
+          break
+        case 'sortDesc':
+          value = A.sortDesc(input)
+          break
+        case 'reverse':
+          value = A.reverse(input)
+          break
+        case 'uniq':
+          value = A.uniq(input)
+          break
+        case 'sum':
+          value = A.sum(input)
+          break
+        case 'without':
+          value = A.without(input, binding.fn as readonly number[])
+          break
+        case 'count':
+          value = A.count(input, binding.fn as (item: number) => boolean)
+          break
+        case 'reduce':
+          value = A.reduce(
+            input,
+            binding.fn as (state: number, item: number) => number,
+            binding.a1 as number,
+          )
+          break
+        case 'forEach':
+          value = A.forEach(input, binding.fn as (item: number) => void)
+          break
+        case 'find':
+          value = A.find(input, binding.fn as (item: number) => boolean)
+          break
+        case 'every':
+          value = A.every(input, binding.fn as (item: number) => boolean)
+          break
+        case 'some':
+          value = A.some(input, binding.fn as (item: number) => boolean)
+          break
+        case 'toArray':
+          // The generated input and every stream/boundary result are already arrays.
+          value = input
+          break
+      }
+    }
+    return { value }
+  } catch (e) {
+    return { error: (e as Error).message }
+  }
+}
+
 interface CompareFailure {
   readonly reason: string
 }
 
-/** Compares compiled (emitter) against sequential (real ops) on result only -- see the D1 note above. */
-function compareOutcomes(compiled: RunOutcome, sequential: RunOutcome): CompareFailure | undefined {
-  if (!!compiled.error !== !!sequential.error) {
+/** Compares emitted, curried-sequential, and direct data-first lanes on result only. */
+function compareOutcomes(
+  compiled: RunOutcome,
+  sequential: RunOutcome,
+  dataFirst: RunOutcome,
+): CompareFailure | undefined {
+  const errorCount = [compiled, sequential, dataFirst].filter((outcome) => outcome.error).length
+  if (errorCount !== 0 && errorCount !== 3) {
     return {
-      reason: `compiled ${compiled.error ? `threw: ${compiled.error}` : 'did not throw'}, sequential ${sequential.error ? `threw: ${sequential.error}` : 'did not throw'}`,
+      reason: `throw mismatch: compiled=${compiled.error ?? 'none'}, sequential=${sequential.error ?? 'none'}, data-first=${dataFirst.error ?? 'none'}`,
     }
   }
   if (compiled.error) return undefined
   if (!semanticEqual(compiled.value, sequential.value)) {
     return { reason: `compiled=${JSON.stringify(compiled.value)} !== sequential=${JSON.stringify(sequential.value)}` }
   }
+  if (!semanticEqual(compiled.value, dataFirst.value)) {
+    return { reason: `compiled=${JSON.stringify(compiled.value)} !== data-first=${JSON.stringify(dataFirst.value)}` }
+  }
   return undefined
 }
 
 async function checkPipeline(sp: SerializedPipeline): Promise<CompareFailure | undefined> {
-  return compareOutcomes(runEmitted(sp), runSequential(sp))
+  return compareOutcomes(runEmitted(sp), runSequential(sp), runDataFirst(sp))
 }
 
 function truncated(sp: SerializedPipeline, stepCount: number, inputLength: number): SerializedPipeline {
@@ -194,7 +305,7 @@ describe('W0a pinned corpus (runs every time, before the fuzz loop)', () => {
 
 describe(`W0a seeded fuzz correctness (${FUZZ_COUNT} pipelines)`, () => {
   it(
-    `all ${FUZZ_COUNT} seeded pipelines agree across emitter/sequential`,
+    `all ${FUZZ_COUNT} seeded pipelines agree across emitter/sequential/data-first`,
     async () => {
       const failures: string[] = []
       for (let i = 0; i < FUZZ_COUNT; i++) {

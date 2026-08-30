@@ -175,9 +175,6 @@
     "packages/date": {
       "name": "@stopcock/date",
       "version": "2.0.0",
-      "dependencies": {
-        "@stopcock/fp": "workspace:*",
-      },
     },
     "packages/diff": {
       "name": "@stopcock/diff",

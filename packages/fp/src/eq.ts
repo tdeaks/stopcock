@@ -10,18 +10,51 @@ export interface Eq<A> {
 export type Equivalence<A> = Eq<A>['equals']
 
 /** JavaScript collection equality: `NaN` equals itself and both zero signs are equal. */
-export const sameValueZero = (self: unknown, that: unknown): boolean =>
-  self === that || (self !== self && that !== that)
+export function sameValueZero(self: unknown, that: unknown): boolean
+export function sameValueZero(that: unknown): (self: unknown) => boolean
+export function sameValueZero(
+  selfOrThat: unknown,
+  maybeThat?: unknown,
+): boolean | ((self: unknown) => boolean) {
+  if (arguments.length >= 2) {
+    return selfOrThat === maybeThat || (selfOrThat !== selfOrThat && maybeThat !== maybeThat)
+  }
+  const that = selfOrThat
+  return (self: unknown): boolean => self === that || (self !== self && that !== that)
+}
 
 export const make = <A>(equals: Equivalence<A>): Eq<A> => ({ equals })
 
-export const equals = <A>(instance: Eq<A>, self: A, that: A): boolean =>
-  instance.equals(self, that)
+export function equals<A>(instance: Eq<A>, self: A, that: A): boolean
+export function equals<A>(self: A, that: A): (instance: Eq<A>) => boolean
+export function equals<A>(
+  instanceOrSelf: Eq<A> | A,
+  selfOrThat: A,
+  maybeThat?: A,
+): boolean | ((instance: Eq<A>) => boolean) {
+  if (arguments.length === 2) {
+    const self = instanceOrSelf as A
+    const that = selfOrThat
+    return (instance: Eq<A>): boolean => instance.equals(self, that)
+  }
+  return (instanceOrSelf as Eq<A>).equals(selfOrThat, maybeThat as A)
+}
 
-export const contramap =
-  <B, A>(project: (value: B) => A) =>
-  (instance: Eq<A>): Eq<B> =>
+export function contramap<B, A>(instance: Eq<A>, project: (value: B) => A): Eq<B>
+export function contramap<B, A>(project: (value: B) => A): (instance: Eq<A>) => Eq<B>
+export function contramap<B, A>(
+  instanceOrProject: Eq<A> | ((value: B) => A),
+  maybeProject?: (value: B) => A,
+): Eq<B> | ((instance: Eq<A>) => Eq<B>) {
+  if (arguments.length >= 2) {
+    const instance = instanceOrProject as Eq<A>
+    const project = maybeProject as (value: B) => A
+    return make((self, that) => instance.equals(project(self), project(that)))
+  }
+  const project = instanceOrProject as (value: B) => A
+  return (instance: Eq<A>): Eq<B> =>
     make((self, that) => instance.equals(project(self), project(that)))
+}
 
 export const lazy = <A>(instance: () => Eq<A>): Eq<A> => {
   let cached: Eq<A> | undefined

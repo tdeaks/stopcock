@@ -1,12 +1,8 @@
-import { dual } from '@stopcock/fp/dual'
 import type { Timestamp, DateUnit } from './types'
 import { civilToEpochDays, daysInMonth, MS_DAY, stamp } from './core'
 import { add } from './arithmetic'
 
-export const range: {
-  (start: Timestamp, end: Timestamp, step: number, unit: DateUnit): Timestamp[]
-  (end: Timestamp, step: number, unit: DateUnit): (start: Timestamp) => Timestamp[]
-} = dual(4, (start: Timestamp, end: Timestamp, step: number, unit: DateUnit): Timestamp[] => {
+function rangeImpl(start: Timestamp, end: Timestamp, step: number, unit: DateUnit): Timestamp[] {
   const result: Timestamp[] = []
   let current = start
   while ((current as number) <= (end as number)) {
@@ -14,23 +10,53 @@ export const range: {
     current = add(current, step, unit)
   }
   return result
-})
+}
+
+export const range: {
+  (start: Timestamp, end: Timestamp, step: number, unit: DateUnit): Timestamp[]
+  (end: Timestamp, step: number, unit: DateUnit): (start: Timestamp) => Timestamp[]
+} = function range(
+  startOrEnd: Timestamp,
+  endOrStep: Timestamp | number,
+  stepOrUnit: number | DateUnit,
+  unit?: DateUnit,
+): any {
+  if (arguments.length >= 4) {
+    return rangeImpl(startOrEnd, endOrStep as Timestamp, stepOrUnit as number, unit as DateUnit)
+  }
+  const end = startOrEnd
+  const step = endOrStep as number
+  const selectedUnit = stepOrUnit as DateUnit
+  return (start: Timestamp): Timestamp[] => rangeImpl(start, end, step, selectedUnit)
+}
+
+function rangeByImpl(
+  start: Timestamp,
+  end: Timestamp,
+  stepFn: (ts: Timestamp) => Timestamp,
+): Timestamp[] {
+  const result: Timestamp[] = []
+  let current = start
+  while ((current as number) <= (end as number)) {
+    result.push(current)
+    current = stepFn(current)
+  }
+  return result
+}
 
 export const rangeBy: {
   (start: Timestamp, end: Timestamp, stepFn: (ts: Timestamp) => Timestamp): Timestamp[]
   (end: Timestamp, stepFn: (ts: Timestamp) => Timestamp): (start: Timestamp) => Timestamp[]
-} = dual(
-  3,
-  (start: Timestamp, end: Timestamp, stepFn: (ts: Timestamp) => Timestamp): Timestamp[] => {
-    const result: Timestamp[] = []
-    let current = start
-    while ((current as number) <= (end as number)) {
-      result.push(current)
-      current = stepFn(current)
-    }
-    return result
-  },
-)
+} = function rangeBy(
+  startOrEnd: Timestamp,
+  endOrStepFn: Timestamp | ((ts: Timestamp) => Timestamp),
+  stepFn?: (ts: Timestamp) => Timestamp,
+): any {
+  if (arguments.length >= 3) return rangeByImpl(startOrEnd, endOrStepFn as Timestamp, stepFn!)
+  const end = startOrEnd
+  const selectedStepFn = endOrStepFn as (ts: Timestamp) => Timestamp
+  return (start: Timestamp): Timestamp[] => rangeByImpl(start, end, selectedStepFn)
+}
 
 export function daysIn(year: number, month: number): Timestamp[] {
   const count = daysInMonth(year, month)
@@ -56,10 +82,7 @@ export function weekdaysIn(year: number, month: number): Timestamp[] {
   return result
 }
 
-export const sequence: {
-  (start: Timestamp, count: number, step: number, unit: DateUnit): Timestamp[]
-  (count: number, step: number, unit: DateUnit): (start: Timestamp) => Timestamp[]
-} = dual(4, (start: Timestamp, count: number, step: number, unit: DateUnit): Timestamp[] => {
+function sequenceImpl(start: Timestamp, count: number, step: number, unit: DateUnit): Timestamp[] {
   const result = new Array<Timestamp>(count)
   let current = start
   for (let i = 0; i < count; i++) {
@@ -67,4 +90,22 @@ export const sequence: {
     current = add(current, step, unit)
   }
   return result
-})
+}
+
+export const sequence: {
+  (start: Timestamp, count: number, step: number, unit: DateUnit): Timestamp[]
+  (count: number, step: number, unit: DateUnit): (start: Timestamp) => Timestamp[]
+} = function sequence(
+  startOrCount: Timestamp | number,
+  countOrStep: number,
+  stepOrUnit: number | DateUnit,
+  unit?: DateUnit,
+): any {
+  if (arguments.length >= 4) {
+    return sequenceImpl(startOrCount as Timestamp, countOrStep, stepOrUnit as number, unit as DateUnit)
+  }
+  const count = startOrCount as number
+  const step = countOrStep
+  const selectedUnit = stepOrUnit as DateUnit
+  return (start: Timestamp): Timestamp[] => sequenceImpl(start, count, step, selectedUnit)
+}

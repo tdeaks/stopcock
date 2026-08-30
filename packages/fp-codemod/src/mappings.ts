@@ -1,14 +1,17 @@
 export const LEGACY_SUBPATHS: Readonly<Record<string, string>> = {
   '@stopcock/fp/stream': '@stopcock/fp/iter',
   '@stopcock/fp/dict': '@stopcock/fp/record',
-  '@stopcock/fp/dual-lite': '@stopcock/fp/dual',
 }
 
 export const MANUAL_SUBPATHS: Readonly<Record<string, string>> = {
   '@stopcock/fp/lens': '@stopcock/fp/optic',
 }
 
-export const REMOVED_SUBPATHS = new Set(['@stopcock/fp/logic'])
+export const REMOVED_SUBPATHS = new Set([
+  '@stopcock/fp/logic',
+  '@stopcock/fp/dual',
+  '@stopcock/fp/dual-lite',
+])
 
 export const ROOT_NAMESPACES: Readonly<Record<string, string>> = {
   A: 'array',
@@ -38,10 +41,9 @@ const aliases = (
   )
 
 export const ROOT_NAMED_MIGRATIONS: Readonly<Record<string, NamedMigration>> = {
-  // S8 narrowed the root. These four names still exist, just not there.
+  // S8 narrowed the root. These three names still exist, just not there.
   compile: { module: 'compile', exported: 'compile' },
   compilePure: { module: 'compile', exported: 'compilePure' },
-  dual: { module: 'dual', exported: 'dual' },
   explain: { module: 'fusion/debug', exported: 'explain' },
   ...aliases('option', {
     fromPredicate: 'fromPredicate',
@@ -147,7 +149,6 @@ export const SLIM_ROOT_EXPORTS = new Set([
   'LazyValue',
   'pipe',
   'flow',
-  'dual',
   'compile',
   'compilePure',
   'explain',
@@ -224,5 +225,6 @@ export const MANUAL_ROOT_EXPORTS = new Set([
   ...ASYNC_ROOT_EXPORTS,
   ...MANUAL_OPTIC_ROOT_EXPORTS,
   'getWithDefault',
+  'dual',
   'Logic',
 ])

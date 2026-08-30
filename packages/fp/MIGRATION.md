@@ -19,10 +19,11 @@ The root is intentionally slim. Replace namespace bundles with subpaths:
 ```
 
 The root exports `pipe`, `flow`, Option constructors/guards, and Result
-constructors/guards. Import the moved APIs from the subpaths that own them:
+constructors/guards. Import the moved APIs from the subpaths that own them.
+The generic `dual` helper was removed; data-oriented arity-2+ operations expose
+their supported data-first and data-last call shapes directly.
 
 ```ts
-import { dual } from '@stopcock/fp/dual'
 import { compile, compilePure } from '@stopcock/fp/compile'
 import { explain, explainPure } from '@stopcock/fp/fusion/debug'
 ```

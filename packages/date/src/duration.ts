@@ -1,4 +1,3 @@
-import { dual } from '@stopcock/fp/dual'
 import type { Timestamp, Duration, DateUnit } from './types'
 import { MS_DAY, MS_HOUR, MS_MINUTE, MS_SECOND, stamp } from './core'
 
@@ -30,12 +29,20 @@ export function duration(amount: number, unit: DateUnit): Duration {
 export const addDuration: {
   (ts: Timestamp, d: Duration): Timestamp
   (d: Duration): (ts: Timestamp) => Timestamp
-} = dual(2, (ts: Timestamp, d: Duration): Timestamp => stamp((ts as number) + (d as number)))
+} = function addDuration(tsOrDuration: Timestamp | Duration, duration?: Duration): any {
+  if (arguments.length >= 2) return stamp((tsOrDuration as number) + (duration as number))
+  const d = tsOrDuration as Duration
+  return (ts: Timestamp): Timestamp => stamp((ts as number) + (d as number))
+}
 
 export const subtractDuration: {
   (ts: Timestamp, d: Duration): Timestamp
   (d: Duration): (ts: Timestamp) => Timestamp
-} = dual(2, (ts: Timestamp, d: Duration): Timestamp => stamp((ts as number) - (d as number)))
+} = function subtractDuration(tsOrDuration: Timestamp | Duration, duration?: Duration): any {
+  if (arguments.length >= 2) return stamp((tsOrDuration as number) - (duration as number))
+  const d = tsOrDuration as Duration
+  return (ts: Timestamp): Timestamp => stamp((ts as number) - (d as number))
+}
 
 export function toDuration(a: Timestamp, b: Timestamp): Duration {
   return dur(Math.abs((a as number) - (b as number)))
@@ -44,7 +51,13 @@ export function toDuration(a: Timestamp, b: Timestamp): Duration {
 export const durationToUnit: {
   (d: Duration, unit: DateUnit): number
   (unit: DateUnit): (d: Duration) => number
-} = dual(2, (d: Duration, unit: DateUnit): number => {
+} = function durationToUnit(durationOrUnit: Duration | DateUnit, unit?: DateUnit): any {
+  if (arguments.length >= 2) return durationToUnitImpl(durationOrUnit as Duration, unit as DateUnit)
+  const selectedUnit = durationOrUnit as DateUnit
+  return (d: Duration): number => durationToUnitImpl(d, selectedUnit)
+}
+
+function durationToUnitImpl(d: Duration, unit: DateUnit): number {
   const ms = d as number
   switch (unit) {
     case 'millisecond':
@@ -64,7 +77,7 @@ export const durationToUnit: {
     case 'year':
       return ms / (MS_DAY * 365)
   }
-})
+}
 
 export function scaleDuration(d: Duration, factor: number): Duration {
   return dur((d as number) * factor)

@@ -95,8 +95,7 @@ const walkFiles = (root: string, skip: (path: string) => boolean): string[] => {
 }
 
 /**
- * Digests a file set as `<repo-relative path>\0<bytes>\0` in sorted order, the
- * same construction the portable subject pin uses.
+ * Digests a file set as `<repo-relative path>\0<bytes>\0` in sorted order.
  */
 const digestFiles = (paths: readonly string[]): string => {
   const hash = createHash('sha256')

@@ -186,10 +186,6 @@ export default defineConfig({
           replacement: path.resolve(__dirname, '../../packages/la/src/primitives.ts'),
         },
         {
-          find: '@stopcock/fp/dual',
-          replacement: path.resolve(__dirname, '../../packages/fp/src/dual.ts'),
-        },
-        {
           find: '@stopcock/fp/option',
           replacement: path.resolve(__dirname, '../../packages/fp/src/option.ts'),
         },

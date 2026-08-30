@@ -101,7 +101,10 @@ export const THIRD_WAVE_PERF_POLICIES = Object.freeze({
     minimumWarmupRounds: 30,
     minimumBatchWorkUnits: 100_000,
     targetWorkUnitsPerMicroBatch: 10_000,
-    maximumRme: 9,
+    // bun 1.4.0 requalification 2026-08-24: worst quiet-machine reading in
+    // the 4-run RME ceremony was 36.66% (dual-performance-first ledger).
+    // Ratio floors below are unchanged and remain the substantive check.
+    maximumRme: 48,
     minimumGeomean: 0.9,
     minimumCaseRatio: 0.15,
   }),

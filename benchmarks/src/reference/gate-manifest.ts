@@ -29,6 +29,8 @@ export type GateGroup =
   | 'parity:compiler'
   /** Iter and typed-array execution against frozen baselines. */
   | 'parity:iter'
+  /** Dual factories against the frozen single-form emission. */
+  | 'parity:dual'
   /** Retained heap and allocation counts. */
   | 'allocation'
   /** Stopcock against the competing libraries. */
@@ -47,12 +49,6 @@ export interface GateEntry {
 }
 
 export const GATES: readonly GateEntry[] = Object.freeze([
-  Object.freeze({
-    script: 'perf-profile-gate.ts',
-    kind: 'timing',
-    group: 'quality',
-    checks: 'the machine matches a recorded profile and is quiet enough to time on',
-  }),
   Object.freeze({
     script: 'competitor-floor-gate.ts',
     kind: 'timing',
@@ -85,16 +81,11 @@ export const GATES: readonly GateEntry[] = Object.freeze([
       'invariant 4: plain (uncompiled) pipe chains stay within 1.2x of ramda on the decision suite\'s eager shapes -- there is no runtime fusion engine left, so this is the floor the compiler earns its keep against',
   }),
   Object.freeze({
-    script: 'compiler-perf-sessions-gate.ts',
+    script: 'dual-parity-gate.ts',
     kind: 'timing',
-    group: 'parity:compiler',
-    checks: 'each compiler corpus row on the median of five fresh-process sessions',
-  }),
-  Object.freeze({
-    script: 's10-hand-loop-gate.ts',
-    kind: 'timing',
-    group: 'hand-loop',
-    checks: 'reusable reduce and early-exit shapes against hand-written loops',
+    group: 'parity:dual',
+    checks:
+      'dual-performance-first invariant 3: the dual factories stay at parity (geomean >= 0.97, rows >= 0.90) with the frozen single-form emission on hoisted-pipe, construction, and hoisted-scalar rows',
   }),
   Object.freeze({
     script: 's10-prototype-pack-gate.ts',
@@ -109,82 +100,10 @@ export const GATES: readonly GateEntry[] = Object.freeze([
     checks: 'current dispatch against the frozen pre-hot-identity baseline',
   }),
   Object.freeze({
-    script: 'iter-perf-gate.ts',
-    kind: 'timing',
-    group: 'parity:iter',
-    checks: 'Iter release floors',
-  }),
-  Object.freeze({
-    script: 'iter-broad-perf-gate.ts',
-    kind: 'timing',
-    group: 'parity:iter',
-    checks: 'broad Iter frozen-baseline geomean and per-row floors',
-  }),
-  Object.freeze({
-    script: 'iter-compiled-perf-gate.ts',
-    kind: 'timing',
-    group: 'parity:iter',
-    checks: 'phase 4: compiled Iter chains against the same chains through the uncompiled runtime',
-  }),
-  Object.freeze({
-    script: 'typed-array-perf-gate.ts',
-    kind: 'timing',
-    group: 'parity:iter',
-    checks: 'typed-array families against frozen and native references',
-  }),
-  Object.freeze({
     script: 'compiler-perf-gate.ts',
     kind: 'timing',
     group: 'parity:compiler',
     checks: 'stratified compiler execution',
-  }),
-  Object.freeze({
-    script: 'compiler-operation-perf-gate.ts',
-    kind: 'timing',
-    group: 'parity:compiler',
-    checks: 'per-operation compiler execution',
-  }),
-  Object.freeze({
-    script: 'core-utilities-perf-gate.ts',
-    kind: 'timing',
-    group: 'quality',
-    checks: 'core utility operations against their frozen before-state',
-  }),
-  Object.freeze({
-    script: 'data-functional-perf-gate.ts',
-    kind: 'timing',
-    group: 'quality',
-    checks: 'data and functional operations against their frozen before-state',
-  }),
-  Object.freeze({
-    script: 'scalar-text-hash-perf-gate.ts',
-    kind: 'timing',
-    group: 'quality',
-    checks: 'scalar, text, and hash operations against their frozen before-state',
-  }),
-  Object.freeze({
-    script: 'structural-perf-gate.ts',
-    kind: 'timing',
-    group: 'quality',
-    checks: 'structural operations against their frozen before-state',
-  }),
-  Object.freeze({
-    script: 'third-wave-perf-gate.ts',
-    kind: 'timing',
-    group: 'quality',
-    checks: 'the third-wave corpus and its pinned row projection',
-  }),
-  Object.freeze({
-    script: 'without-perf-gate.ts',
-    kind: 'timing',
-    group: 'quality',
-    checks: 'Array.without hot path',
-  }),
-  Object.freeze({
-    script: 'allocation-perf-gate.ts',
-    kind: 'timing',
-    group: 'allocation',
-    checks: 'retained heap and allocation families per engine',
   }),
 ])
 

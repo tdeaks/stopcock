@@ -1155,35 +1155,53 @@ export const unfold = <S, A>(
 const mapImpl = <A, B>(source: Iterable<A>, f: (value: A, index: number) => B): Iter<B> =>
   appendStep(source, 'map', f as IterUnary)
 
-export const map: <A, B>(f: (value: A, index: number) => B) => (source: Iterable<A>) => Iter<B> =
-  (f) => (source) => mapImpl(source, f)
+export const map: {
+  <A, B>(source: Iterable<A>, f: (value: A, index: number) => B): Iter<B>
+  <A, B>(f: (value: A, index: number) => B): (source: Iterable<A>) => Iter<B>
+} = function (f: any, __df?: any): any {
+  if (arguments.length >= 2) return (map as any)(__df)(f)
+  return ((source) => mapImpl(source, f)) as (...args: any[]) => any
+} as any
 
 const filterImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A> =>
   appendStep(source, 'filter', predicate as IterPredicate)
 
 export const filter: {
+  <A, B extends A>(source: Iterable<A>, predicate: Refinement<A, B>): Iter<B>
+  <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A>
   <A, B extends A>(predicate: Refinement<A, B>): (source: Iterable<A>) => Iter<B>
   <A>(predicate: Predicate<A>): (source: Iterable<A>) => Iter<A>
-} = ((predicate: Predicate<unknown>) => (source: Iterable<unknown>) =>
-  filterImpl(source, predicate)) as any
+} = function (predicate: Predicate<unknown>, __df?: any): any {
+  if (arguments.length >= 2) return (filter as any)(__df)(predicate)
+  return ((source: Iterable<unknown>) =>
+  filterImpl(source, predicate)) as (...args: any[]) => any
+} as any
 
 const filterMapImpl = <A, B>(
   source: Iterable<A>,
   f: (value: A, index: number) => Option<B>,
 ): Iter<B> => appendStep(source, 'filterMap', f as IterUnary)
 
-export const filterMap: <A, B>(
-  f: (value: A, index: number) => Option<B>,
-) => (source: Iterable<A>) => Iter<B> = (f) => (source) => filterMapImpl(source, f)
+export const filterMap: {
+  <A, B>(source: Iterable<A>, f: (value: A, index: number) => Option<B>): Iter<B>
+  <A, B>(f: (value: A, index: number) => Option<B>): (source: Iterable<A>) => Iter<B>
+} = function (f: any, __df?: any): any {
+  if (arguments.length >= 2) return (filterMap as any)(__df)(f)
+  return ((source) => filterMapImpl(source, f)) as (...args: any[]) => any
+} as any
 
 const flatMapImpl = <A, B>(
   source: Iterable<A>,
   f: (value: A, index: number) => Iterable<B>,
 ): Iter<B> => appendStep(source, 'flatMap', f as IterUnary)
 
-export const flatMap: <A, B>(
-  f: (value: A, index: number) => Iterable<B>,
-) => (source: Iterable<A>) => Iter<B> = (f) => (source) => flatMapImpl(source, f)
+export const flatMap: {
+  <A, B>(source: Iterable<A>, f: (value: A, index: number) => Iterable<B>): Iter<B>
+  <A, B>(f: (value: A, index: number) => Iterable<B>): (source: Iterable<A>) => Iter<B>
+} = function (f: any, __df?: any): any {
+  if (arguments.length >= 2) return (flatMap as any)(__df)(f)
+  return ((source) => flatMapImpl(source, f)) as (...args: any[]) => any
+} as any
 
 export const flatten = <A>(source: Iterable<Iterable<A>>): Iter<A> =>
   flatMapImpl(source, (value) => value)
@@ -1194,37 +1212,63 @@ const tapImpl = <A>(source: Iterable<A>, effect: (value: A, index: number) => vo
     return value
   })
 
-export const tap: <A>(
-  effect: (value: A, index: number) => void,
-) => (source: Iterable<A>) => Iter<A> = (effect) => (source) => tapImpl(source, effect)
+export const tap: {
+  <A>(source: Iterable<A>, effect: (value: A, index: number) => void): Iter<A>
+  <A>(effect: (value: A, index: number) => void): (source: Iterable<A>) => Iter<A>
+} = function (effect: any, __df?: any): any {
+  if (arguments.length >= 2) return (tap as any)(__df)(effect)
+  return ((source) => tapImpl(source, effect)) as (...args: any[]) => any
+} as any
 
 const takeImpl = <A>(source: Iterable<A>, count: number): Iter<A> => {
   const limit = natural(count)
   return appendStep(source, 'take', undefined, limit)
 }
 
-export const take: (count: number) => <A>(source: Iterable<A>) => Iter<A> = (count) => (source) =>
-  takeImpl(source, count)
+export const take: {
+  <A>(source: Iterable<A>, count: number): Iter<A>
+  (count: number): <A>(source: Iterable<A>) => Iter<A>
+} = function (count: any, __df?: any): any {
+  if (arguments.length >= 2) return (take as any)(__df)(count)
+  return ((source) =>
+  takeImpl(source, count)) as (...args: any[]) => any
+} as any
 
 const dropImpl = <A>(source: Iterable<A>, count: number): Iter<A> => {
   const limit = natural(count)
   return appendStep(source, 'drop', undefined, limit)
 }
 
-export const drop: (count: number) => <A>(source: Iterable<A>) => Iter<A> = (count) => (source) =>
-  dropImpl(source, count)
+export const drop: {
+  <A>(source: Iterable<A>, count: number): Iter<A>
+  (count: number): <A>(source: Iterable<A>) => Iter<A>
+} = function (count: any, __df?: any): any {
+  if (arguments.length >= 2) return (drop as any)(__df)(count)
+  return ((source) =>
+  dropImpl(source, count)) as (...args: any[]) => any
+} as any
 
 const takeWhileImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A> =>
   appendStep(source, 'takeWhile', predicate as IterPredicate)
 
-export const takeWhile: <A>(predicate: Predicate<A>) => (source: Iterable<A>) => Iter<A> =
-  (predicate) => (source) => takeWhileImpl(source, predicate)
+export const takeWhile: {
+  <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A>
+  <A>(predicate: Predicate<A>): (source: Iterable<A>) => Iter<A>
+} = function (predicate: any, __df?: any): any {
+  if (arguments.length >= 2) return (takeWhile as any)(__df)(predicate)
+  return ((source) => takeWhileImpl(source, predicate)) as (...args: any[]) => any
+} as any
 
 const dropWhileImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A> =>
   appendStep(source, 'dropWhile', predicate as IterPredicate)
 
-export const dropWhile: <A>(predicate: Predicate<A>) => (source: Iterable<A>) => Iter<A> =
-  (predicate) => (source) => dropWhileImpl(source, predicate)
+export const dropWhile: {
+  <A>(source: Iterable<A>, predicate: Predicate<A>): Iter<A>
+  <A>(predicate: Predicate<A>): (source: Iterable<A>) => Iter<A>
+} = function (predicate: any, __df?: any): any {
+  if (arguments.length >= 2) return (dropWhile as any)(__df)(predicate)
+  return ((source) => dropWhileImpl(source, predicate)) as (...args: any[]) => any
+} as any
 
 const scanImpl = <A, B>(
   source: Iterable<A>,
@@ -1232,11 +1276,21 @@ const scanImpl = <A, B>(
   initial: B,
 ): Iter<B> => appendStep(source, 'scan', reducer as IterReducer, 0, initial)
 
-export const scan: <A, B>(
-  reducer: (state: B, value: A, index: number) => B,
-  initial: B,
-) => (source: Iterable<A>) => Iter<B> = (reducer, initial) => (source) =>
-  scanImpl(source, reducer, initial)
+export const scan: {
+  <A, B>(
+    source: Iterable<A>,
+    reducer: (state: B, value: A, index: number) => B,
+    initial: B,
+  ): Iter<B>
+  <A, B>(
+    reducer: (state: B, value: A, index: number) => B,
+    initial: B,
+  ): (source: Iterable<A>) => Iter<B>
+} = function (reducer: any, initial: any, __df?: any): any {
+  if (arguments.length >= 3) return (scan as any)(initial, __df)(reducer)
+  return ((source) =>
+  scanImpl(source, reducer, initial)) as (...args: any[]) => any
+} as any
 
 const chunkImpl = <A>(source: Iterable<A>, size: number): Iter<readonly A[]> => {
   if (!Number.isSafeInteger(size) || size < 1) {
@@ -1256,8 +1310,13 @@ const chunkImpl = <A>(source: Iterable<A>, size: number): Iter<readonly A[]> => 
   })
 }
 
-export const chunk: (size: number) => <A>(source: Iterable<A>) => Iter<readonly A[]> =
-  (size) => (source) => chunkImpl(source, size)
+export const chunk: {
+  <A>(source: Iterable<A>, size: number): Iter<readonly A[]>
+  (size: number): <A>(source: Iterable<A>) => Iter<readonly A[]>
+} = function (size: any, __df?: any): any {
+  if (arguments.length >= 2) return (chunk as any)(__df)(size)
+  return ((source) => chunkImpl(source, size)) as (...args: any[]) => any
+} as any
 
 const intersperseImpl = <A>(source: Iterable<A>, separator: A): Iter<A> =>
   make(function* () {
@@ -1269,8 +1328,13 @@ const intersperseImpl = <A>(source: Iterable<A>, separator: A): Iter<A> =>
     }
   })
 
-export const intersperse: <A>(separator: A) => (source: Iterable<A>) => Iter<A> =
-  (separator) => (source) => intersperseImpl(source, separator)
+export const intersperse: {
+  <A>(source: Iterable<A>, separator: A): Iter<A>
+  <A>(separator: A): (source: Iterable<A>) => Iter<A>
+} = function (separator: any, __df?: any): any {
+  if (arguments.length >= 2) return (intersperse as any)(__df)(separator)
+  return ((source) => intersperseImpl(source, separator)) as (...args: any[]) => any
+} as any
 
 const distinctByImpl = <A, K>(source: Iterable<A>, keyOf: (value: A) => K): Iter<A> =>
   make(function* () {
@@ -1284,8 +1348,13 @@ const distinctByImpl = <A, K>(source: Iterable<A>, keyOf: (value: A) => K): Iter
     }
   })
 
-export const distinctBy: <A, K>(keyOf: (value: A) => K) => (source: Iterable<A>) => Iter<A> =
-  (keyOf) => (source) => distinctByImpl(source, keyOf)
+export const distinctBy: {
+  <A, K>(source: Iterable<A>, keyOf: (value: A) => K): Iter<A>
+  <A, K>(keyOf: (value: A) => K): (source: Iterable<A>) => Iter<A>
+} = function (keyOf: any, __df?: any): any {
+  if (arguments.length >= 2) return (distinctBy as any)(__df)(keyOf)
+  return ((source) => distinctByImpl(source, keyOf)) as (...args: any[]) => any
+} as any
 
 export const distinct = <A>(source: Iterable<A>): Iter<A> =>
   distinctByImpl(source, (value) => value)
@@ -1296,8 +1365,13 @@ const concatImpl = <A, B>(source: Iterable<A>, other: Iterable<B>): Iter<A | B> 
     yield* other
   })
 
-export const concat: <B>(other: Iterable<B>) => <A>(source: Iterable<A>) => Iter<A | B> =
-  (other) => (source) => concatImpl(source, other)
+export const concat: {
+  <A, B>(source: Iterable<A>, other: Iterable<B>): Iter<A | B>
+  <B>(other: Iterable<B>): <A>(source: Iterable<A>) => Iter<A | B>
+} = function (other: any, __df?: any): any {
+  if (arguments.length >= 2) return (concat as any)(__df)(other)
+  return ((source) => concatImpl(source, other)) as (...args: any[]) => any
+} as any
 
 const zipWithImpl = <A, B, C>(
   source: Iterable<A>,
@@ -1332,14 +1406,29 @@ const zipWithImpl = <A, B, C>(
     }
   })
 
-export const zipWith: <A, B, C>(
-  other: Iterable<B>,
-  f: (left: A, right: B, index: number) => C,
-) => (source: Iterable<A>) => Iter<C> = (other, f) => (source) => zipWithImpl(source, other, f)
+export const zipWith: {
+  <A, B, C>(
+    source: Iterable<A>,
+    other: Iterable<B>,
+    f: (left: A, right: B, index: number) => C,
+  ): Iter<C>
+  <A, B, C>(
+    other: Iterable<B>,
+    f: (left: A, right: B, index: number) => C,
+  ): (source: Iterable<A>) => Iter<C>
+} = function (other: any, f: any, __df?: any): any {
+  if (arguments.length >= 3) return (zipWith as any)(f, __df)(other)
+  return ((source) => zipWithImpl(source, other, f)) as (...args: any[]) => any
+} as any
 
-export const zip: <A, B>(other: Iterable<B>) => (source: Iterable<A>) => Iter<readonly [A, B]> =
-  (other) => (source) =>
-    zipWithImpl(source, other, (left, right) => [left, right] as const)
+export const zip: {
+  <A, B>(source: Iterable<A>, other: Iterable<B>): Iter<readonly [A, B]>
+  <B>(other: Iterable<B>): <A>(source: Iterable<A>) => Iter<readonly [A, B]>
+} = function (other: any, __df?: any): any {
+  if (arguments.length >= 2) return (zip as any)(__df)(other)
+  return ((source) =>
+    zipWithImpl(source, other, (left, right) => [left, right] as const)) as (...args: any[]) => any
+} as any
 
 export const enumerate = <A>(source: Iterable<A>): Iter<readonly [number, A]> =>
   mapImpl(source, (value, index) => [index, value] as const)
@@ -1403,15 +1492,22 @@ const toArrayIntoImpl = <A, Target extends unknown[]>(
 }
 
 interface ToArrayIntoOperation {
+  <A, const Target extends unknown[]>(
+    source: Iterable<A> & Iterable<Target[number]>,
+    target: Target,
+    ..._capacity: [] & ArrayTargetCapacity<Target>
+  ): Target
   <const Target extends unknown[]>(
     target: Target,
     ..._capacity: [] & ArrayTargetCapacity<Target>
   ): (source: Iterable<Target[number]>) => Target
 }
 
-export const toArrayInto = ((target: unknown[]) =>
-  (source: Iterable<unknown>): unknown[] =>
-    toArrayIntoImpl(source, target)) as unknown as ToArrayIntoOperation
+export const toArrayInto = function (target: unknown[], __df?: unknown[]): unknown {
+  if (arguments.length >= 2) return (toArrayInto as any)(__df as unknown[])(target)
+  return ((source: Iterable<unknown>): unknown[] =>
+    toArrayIntoImpl(source, target)) as (...args: any[]) => any
+} as ToArrayIntoOperation
 
 const reduceImpl = <A, B>(
   source: Iterable<A>,
@@ -1438,11 +1534,14 @@ const reduceImpl = <A, B>(
   return state
 }
 
-export const reduce: <A, B>(
-  reducer: (state: B, value: A, index: number) => B,
-  initial: B,
-) => (source: Iterable<A>) => B = (reducer, initial) => (source) =>
-  reduceImpl(source, reducer, initial)
+export const reduce: {
+  <A, B>(source: Iterable<A>, reducer: (state: B, value: A, index: number) => B, initial: B): B
+  <A, B>(reducer: (state: B, value: A, index: number) => B, initial: B): (source: Iterable<A>) => B
+} = function (reducer: any, initial: any, __df?: any): any {
+  if (arguments.length >= 3) return (reduce as any)(initial, __df)(reducer)
+  return ((source) =>
+  reduceImpl(source, reducer, initial)) as (...args: any[]) => any
+} as any
 
 export const firstOrUndefined = <A>(source: Iterable<A>): A | undefined => {
   const plan = planOf(source)
@@ -1554,10 +1653,15 @@ const findOrUndefinedImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): A
 }
 
 export const findOrUndefined: {
+  <A, B extends A>(source: Iterable<A>, predicate: Refinement<A, B>): B | undefined
+  <A>(source: Iterable<A>, predicate: Predicate<A>): A | undefined
   <A, B extends A>(predicate: Refinement<A, B>): (source: Iterable<A>) => B | undefined
   <A>(predicate: Predicate<A>): (source: Iterable<A>) => A | undefined
-} = ((predicate: Predicate<unknown>) => (source: Iterable<unknown>) =>
-  findOrUndefinedImpl(source, predicate)) as any
+} = function (predicate: Predicate<unknown>, __df?: any): any {
+  if (arguments.length >= 2) return (findOrUndefined as any)(__df)(predicate)
+  return ((source: Iterable<unknown>) =>
+  findOrUndefinedImpl(source, predicate)) as (...args: any[]) => any
+} as any
 
 const findImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Option<A> => {
   let index = 0
@@ -1584,10 +1688,15 @@ const findImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): Option<A> =>
 }
 
 export const find: {
+  <A, B extends A>(source: Iterable<A>, predicate: Refinement<A, B>): Option<B>
+  <A>(source: Iterable<A>, predicate: Predicate<A>): Option<A>
   <A, B extends A>(predicate: Refinement<A, B>): (source: Iterable<A>) => Option<B>
   <A>(predicate: Predicate<A>): (source: Iterable<A>) => Option<A>
-} = ((predicate: Predicate<unknown>) => (source: Iterable<unknown>) =>
-  findImpl(source, predicate)) as any
+} = function (predicate: Predicate<unknown>, __df?: any): any {
+  if (arguments.length >= 2) return (find as any)(__df)(predicate)
+  return ((source: Iterable<unknown>) =>
+  findImpl(source, predicate)) as (...args: any[]) => any
+} as any
 
 const nthOrUndefinedImpl = <A>(source: Iterable<A>, index: number): A | undefined => {
   if (!Number.isSafeInteger(index) || index < 0) return undefined
@@ -1614,8 +1723,13 @@ const nthOrUndefinedImpl = <A>(source: Iterable<A>, index: number): A | undefine
   return undefined
 }
 
-export const nthOrUndefined: (index: number) => <A>(source: Iterable<A>) => A | undefined =
-  (index) => (source) => nthOrUndefinedImpl(source, index)
+export const nthOrUndefined: {
+  <A>(source: Iterable<A>, index: number): A | undefined
+  (index: number): <A>(source: Iterable<A>) => A | undefined
+} = function (index: any, __df?: any): any {
+  if (arguments.length >= 2) return (nthOrUndefined as any)(__df)(index)
+  return ((source) => nthOrUndefinedImpl(source, index)) as (...args: any[]) => any
+} as any
 
 const nthImpl = <A>(source: Iterable<A>, index: number): Option<A> => {
   if (!Number.isSafeInteger(index) || index < 0) return none
@@ -1642,8 +1756,14 @@ const nthImpl = <A>(source: Iterable<A>, index: number): Option<A> => {
   return none
 }
 
-export const nth: (index: number) => <A>(source: Iterable<A>) => Option<A> = (index) => (source) =>
-  nthImpl(source, index)
+export const nth: {
+  <A>(source: Iterable<A>, index: number): Option<A>
+  (index: number): <A>(source: Iterable<A>) => Option<A>
+} = function (index: any, __df?: any): any {
+  if (arguments.length >= 2) return (nth as any)(__df)(index)
+  return ((source) =>
+  nthImpl(source, index)) as (...args: any[]) => any
+} as any
 
 const someImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => {
   let index = 0
@@ -1669,8 +1789,13 @@ const someImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => {
   return false
 }
 
-export const some: <A>(predicate: Predicate<A>) => (source: Iterable<A>) => boolean =
-  (predicate) => (source) => someImpl(source, predicate)
+export const some: {
+  <A>(source: Iterable<A>, predicate: Predicate<A>): boolean
+  <A>(predicate: Predicate<A>): (source: Iterable<A>) => boolean
+} = function (predicate: any, __df?: any): any {
+  if (arguments.length >= 2) return (some as any)(__df)(predicate)
+  return ((source) => someImpl(source, predicate)) as (...args: any[]) => any
+} as any
 
 const everyImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => {
   let index = 0
@@ -1696,8 +1821,13 @@ const everyImpl = <A>(source: Iterable<A>, predicate: Predicate<A>): boolean => 
   return true
 }
 
-export const every: <A>(predicate: Predicate<A>) => (source: Iterable<A>) => boolean =
-  (predicate) => (source) => everyImpl(source, predicate)
+export const every: {
+  <A>(source: Iterable<A>, predicate: Predicate<A>): boolean
+  <A>(predicate: Predicate<A>): (source: Iterable<A>) => boolean
+} = function (predicate: any, __df?: any): any {
+  if (arguments.length >= 2) return (every as any)(__df)(predicate)
+  return ((source) => everyImpl(source, predicate)) as (...args: any[]) => any
+} as any
 
 export const count = (source: Iterable<unknown>): number => {
   let total = 0
@@ -1738,6 +1868,10 @@ const forEachImpl = <A>(source: Iterable<A>, effect: (value: A, index: number) =
   for (const value of source) effect(value, index++)
 }
 
-export const forEach: <A>(
-  effect: (value: A, index: number) => void,
-) => (source: Iterable<A>) => void = (effect) => (source) => forEachImpl(source, effect)
+export const forEach: {
+  <A>(source: Iterable<A>, effect: (value: A, index: number) => void): void
+  <A>(effect: (value: A, index: number) => void): (source: Iterable<A>) => void
+} = function (effect: any, __df?: any): any {
+  if (arguments.length >= 2) return (forEach as any)(__df)(effect)
+  return ((source) => forEachImpl(source, effect)) as (...args: any[]) => any
+} as any

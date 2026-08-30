@@ -10,7 +10,6 @@ const ALLOWED_ROOT_EXPORTS = new Set([
   'LazyValue',
   'pipe',
   'flow',
-  'dual',
   'compile',
   'compilePure',
   'explain',

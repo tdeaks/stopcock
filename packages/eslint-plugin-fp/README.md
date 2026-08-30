@@ -22,9 +22,9 @@ export default [stopcockFp.configs.performance]
 
 Rules:
 
-- `@stopcock/fp/no-legacy-api` — rejects removed Stream, Dict, Lens, dual-lite,
-  and runtime-JIT entry points; only semantics-preserving subpath replacements
-  are autofixable, while Lens migrations stay manual.
+- `@stopcock/fp/no-legacy-api` — rejects removed Stream, Dict, Lens, dual,
+  dual-lite, and runtime-JIT entry points; only semantics-preserving subpath
+  replacements are autofixable, while Lens and dual migrations stay manual.
 - `@stopcock/fp/no-root-module-imports` — enforces the slim FP 2 root and points
   module imports at focused subpaths.
 - `@stopcock/fp/prefer-option-partials` — points array, number, and object

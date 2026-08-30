@@ -23,30 +23,6 @@ export const EXPECTED_FROZEN_EMITTER = Object.freeze({
   sha256: '2e4166aab334b2b208ec86d18ab2952b91cdc8ca856543cfa3d9acdeae496a59',
 })
 
-/**
- * Candidate runtime provenance. The digest is computed by hashing each
- * repository-relative path, a NUL separator, its bytes, and another NUL
- * separator in this exact order.
- *
- * One-runtime-path plan: the compact fusion engine (plan builder, cache,
- * pure-rewrite analysis, provenance, opcodes, registry) is gone. `compile()`
- * is now a plain alias over `internal/sequential.ts`, which is the exact
- * executor the corpus measures today.
- */
-export const EXPECTED_PORTABLE_SUBJECT = Object.freeze({
-  id: 'stopcock-portable-runtime-source-v1',
-  files: Object.freeze([
-    'packages/fp/src/array.ts',
-    'packages/fp/src/compile.ts',
-    'packages/fp/src/dual.ts',
-    'packages/fp/src/internal/sequential.ts',
-    'packages/fp/src/number.ts',
-    'packages/fp/src/option.ts',
-    'packages/fp/src/sort-kernel.ts',
-  ] as const),
-  sha256: '54458e66db1dd4eeed78a39d047d558f7f87d7b801c4e134a88e4e8740a1d093',
-})
-
 export interface PortableBatchPolicy {
   readonly minimumBatchInputItems: number
 }

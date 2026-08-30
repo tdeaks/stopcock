@@ -8,6 +8,7 @@ const KNOWN_GROUPS: readonly GateGroup[] = Object.freeze([
   'size:consumer',
   'parity:compiler',
   'parity:iter',
+  'parity:dual',
   'allocation',
   'competitors',
   'hand-loop',
