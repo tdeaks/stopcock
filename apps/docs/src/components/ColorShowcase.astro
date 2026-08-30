@@ -24,7 +24,7 @@ const id = 'color-showcase'
   <section class="cs-card">
     <p class="cs-label" style="margin-top:0;margin-bottom:10px">
       View every swatch below as it appears under the selected condition.
-      The lens is for simulation only — your actual base color does not change.
+      The lens is for simulation only: your actual base color does not change.
     </p>
     <div class="cs-radio-group" role="radiogroup" aria-label="Color vision deficiency lens" id={`${id}-lens`}></div>
     <p class="cs-note">
@@ -38,7 +38,7 @@ const id = 'color-showcase'
     <div class="cs-spaces" id={`${id}-spaces`} aria-live="polite"></div>
   </section>
 
-  <h3>2 · Lightness scale — OKLCh vs HSL</h3>
+  <h3>2 · Lightness scale: OKLCh vs HSL</h3>
   <section class="cs-card">
     <div class="cs-palette">
       <div class="cs-label">OKLCh L stepped</div>
@@ -148,7 +148,7 @@ const id = 'color-showcase'
       className: 'cs-pill',
       type: 'button',
       style: { background: bg(c) },
-      title: `${hex} — click to copy`,
+      title: `${hex}: click to copy`,
       'aria-label': ariaLabel ?? `Color ${hex}, click to copy`,
       onclick: () => copyHex(hex),
     }, h('span', { className: 'cs-pill-hex', 'aria-hidden': 'true' }, hex))
@@ -375,7 +375,7 @@ const id = 'color-showcase'
             role: 'cell',
             style: { background: bg(bgC), color: bg(fg) },
             'aria-label': `${toHex(fg)} on ${toHex(bgC)}: ${cell.ratio.toFixed(1)} ratio, ${cell.aa ? 'passes AA' : cell.aaLarge ? 'passes AA Large only' : 'fails AA'}`,
-            title: `${cell.ratio.toFixed(1)}:1 — AA ${cell.aa ? '✓' : '✗'}  AAA ${cell.aaa ? '✓' : '✗'}`,
+            title: `${cell.ratio.toFixed(1)}:1: AA ${cell.aa ? '✓' : '✗'}  AAA ${cell.aaa ? '✓' : '✗'}`,
           }, cell.ratio.toFixed(1)),
         )
       }

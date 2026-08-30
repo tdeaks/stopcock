@@ -22,14 +22,14 @@ export default [stopcockFp.configs.performance]
 
 Rules:
 
-- `@stopcock/fp/no-legacy-api` — rejects removed Stream, Dict, Lens, dual,
+- `@stopcock/fp/no-legacy-api`: rejects removed Stream, Dict, Lens, dual,
   dual-lite, and runtime-JIT entry points; only semantics-preserving subpath
   replacements are autofixable, while Lens and dual migrations stay manual.
-- `@stopcock/fp/no-root-module-imports` — enforces the slim FP 2 root and points
+- `@stopcock/fp/no-root-module-imports`: enforces the slim FP 2 root and points
   module imports at focused subpaths.
-- `@stopcock/fp/prefer-option-partials` — points array, number, and object
+- `@stopcock/fp/prefer-option-partials`: points array, number, and object
   `*OrUndefined` escape hatches at their Option-first counterparts.
-- `@stopcock/fp/no-eager-array-chains` — opt-in warning for eager callback
+- `@stopcock/fp/no-eager-array-chains`: opt-in warning for eager callback
   chains that may benefit from `pipe`, `Iter`, transducers, or AOT compilation.
 
 The package does not import ESLint at runtime. ESLint is a peer dependency and

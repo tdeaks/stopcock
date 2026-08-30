@@ -3,9 +3,11 @@ title: A (Array)
 description: Filter, map, sort, group, and 30+ array functions for pipe
 ---
 
-Every data operation with two or more arguments works both ways:
-`A.fn(arr, ...)` runs direct data-first, while `A.fn(...)(arr)` is the curried
-data-last form used by `pipe(arr, A.fn(...))`. Streaming operators such as `map`, `filter`,
+The array module has 128 dual operations. `A.fn(arr, ...)` runs direct
+data-first, while `A.fn(...)(arr)` is the curried data-last form used by
+`pipe(arr, A.fn(...))`. The [complete dual-call
+catalogue](/api/modules#complete-dual-call-catalogue) lists every pair.
+Streaming operators such as `map`, `filter`,
 `flatMap`, `take`, `drop`, `takeWhile`, and `dropWhile` can be fused into a
 single loop by the separate build-time [`@stopcock/fp-compiler`](/concepts/fusion)
 plugin. Plain `pipe` at runtime never fuses on its own; it just calls each

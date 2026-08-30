@@ -1,25 +1,29 @@
 ---
 title: Module catalogue
-description: Every public @stopcock/fp 2.0 entrypoint
+description: Every public @stopcock/fp entrypoint
 ---
 
 `@stopcock/fp` keeps its root small. Import specialist APIs from these stable,
 tree-shakeable subpaths.
 
+The package exposes 491 dual operations under one name per operation. The
+complete catalogue below shows every direct data-first and curried data-last
+shape.
+
 ## Collections and sequences
 
-| Subpath              | Purpose                                                              |
-| -------------------- | -------------------------------------------------------------------- |
+| Subpath              | Purpose                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
 | `/array`             | Eager array operators, streaming steps the build-time compiler can fuse, explicit `*Into` writes |
-| `/readonly-array`    | Read-only alias of the array vocabulary                              |
-| `/non-empty-array`   | Constructors and total operations for non-empty arrays               |
-| `/tuple`             | Typed tuple construction, mapping, zipping, and projection           |
-| `/record`            | Homogeneous property-keyed dictionaries with one value type          |
-| `/map`               | Immutable `Map` operations                                           |
-| `/set`               | Immutable `Set` operations                                           |
-| `/typed-array`       | Numeric typed-array transforms and explicit destination buffers      |
-| `/indexed`           | Shared indexed-collection operations                                 |
-| [`/iter`](/api/iter) | Lazy synchronous sequences                                           |
+| `/readonly-array`    | Read-only alias of the array vocabulary                                                          |
+| `/non-empty-array`   | Constructors and total operations for non-empty arrays                                           |
+| `/tuple`             | Typed tuple construction, mapping, zipping, and projection                                       |
+| `/record`            | Homogeneous property-keyed dictionaries with one value type                                      |
+| `/map`               | Immutable `Map` operations                                                                       |
+| `/set`               | Immutable `Set` operations                                                                       |
+| `/typed-array`       | Numeric typed-array transforms and explicit destination buffers                                  |
+| `/indexed`           | Shared indexed-collection operations                                                             |
+| [`/iter`](/api/iter) | Lazy synchronous sequences                                                                       |
 
 Writable `*Into` operations preserve the concrete destination type. They
 reject fixed tuples, heterogeneous or refined record destinations, and
@@ -53,20 +57,20 @@ Asynchronous failures and asynchronous iteration are provided by
 
 ## Functions and data transformation
 
-| Subpath                | Purpose                                                                |
-| ---------------------- | ---------------------------------------------------------------------- |
-| `/function`            | Composition, currying, memoization, predicates, and function utilities |
-| `/guard`               | Structural guards and refinements                                      |
-| `/object`              | Immutable object/path operations                                       |
-| `/string`              | String transforms and predicates                                       |
-| `/number`              | Numeric predicates, statistics, and safe partials                      |
-| `/math`                | Arithmetic pipeline operators                                          |
-| `/boolean`             | Boolean combinators                                                    |
+| Subpath                | Purpose                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------- |
+| `/function`            | Composition, currying, memoization, predicates, and function utilities                            |
+| `/guard`               | Structural guards and refinements                                                                 |
+| `/object`              | Immutable object/path operations                                                                  |
+| `/string`              | String transforms and predicates                                                                  |
+| `/number`              | Numeric predicates, statistics, and safe partials                                                 |
+| `/math`                | Arithmetic pipeline operators                                                                     |
+| `/boolean`             | Boolean combinators                                                                               |
 | `/compile`             | `compile`/`compilePure` markers the build-time compiler recognizes; uncompiled, they alias `pipe` |
-| `/fusion`              | Same `pipe`/`flow`/`compile`, imported by a name that says "I mean fusion" |
-| `/fusion/debug`        | `explain`/`explainPure`; always report `'sequential'` at runtime       |
-| [`/optic`](/api/optic) | Lenses, optionals, prisms, traversals, and more                        |
-| `/match`               | Exhaustive tagged-value matching                                       |
+| `/fusion`              | Same `pipe`/`flow`/`compile`, imported by a name that says "I mean fusion"                        |
+| `/fusion/debug`        | `explain`/`explainPure`; always report `'sequential'` at runtime                                  |
+| [`/optic`](/api/optic) | Lenses, optionals, prisms, traversals, and more                                                   |
+| `/match`               | Exhaustive tagged-value matching                                                                  |
 
 ## Functional models
 
@@ -80,3 +84,650 @@ Asynchronous failures and asynchronous iteration are provided by
 The package export map is generated from one checked-in manifest. CI builds and
 imports every runtime and declaration entry from a real packed tarball, so this
 catalogue cannot silently advertise a missing module.
+
+## Complete dual-call catalogue
+
+This catalogue covers all 491 distinct public dual operations. The
+`@stopcock/fp/readonly-array` subpath re-exports the 128 `array` operations,
+so it uses the same call pairs rather than duplicating them below.
+
+Parameter names and grouping come from the public overloads. Arguments whose
+types are optional may be omitted. Staged functions keep each parenthesized
+application visible, and type-only capacity proofs used by `*Into` operations
+are not runtime arguments.
+
+### `@stopcock/fp/array` (128)
+
+| Operation                  | Data first                                      | Data last                                       |
+| -------------------------- | ----------------------------------------------- | ----------------------------------------------- |
+| `adjust`                   | `adjust(arr, index, f)`                         | `adjust(index, f)(arr)`                         |
+| `aperture`                 | `aperture(arr, n)`                              | `aperture(n)(arr)`                              |
+| `append`                   | `append(arr, value)`                            | `append(value)(arr)`                            |
+| `arrayEndsWith`            | `arrayEndsWith(arr, suffix)`                    | `arrayEndsWith(suffix)(arr)`                    |
+| `arrayStartsWith`          | `arrayStartsWith(arr, prefix)`                  | `arrayStartsWith(prefix)(arr)`                  |
+| `binarySearch`             | `binarySearch(values, target, compare)`         | `binarySearch(target, compare)(values)`         |
+| `cartesian`                | `cartesian(left, right)`                        | `cartesian(right)(left)`                        |
+| `chunk`                    | `chunk(arr, n)`                                 | `chunk(n)(arr)`                                 |
+| `collectBy`                | `collectBy(arr, f)`                             | `collectBy(f)(arr)`                             |
+| `combinations`             | `combinations(values, size)`                    | `combinations(size)(values)`                    |
+| `concat`                   | `concat(a, b)`                                  | `concat(b)(a)`                                  |
+| `count`                    | `count(arr, pred)`                              | `count(pred)(arr)`                              |
+| `countBy`                  | `countBy(values, key)`                          | `countBy(key)(values)`                          |
+| `difference`               | `difference(a, b)`                              | `difference(b)(a)`                              |
+| `differenceBy`             | `differenceBy(a, b, f)`                         | `differenceBy(b, f)(a)`                         |
+| `differenceWith`           | `differenceWith(a, b, eq)`                      | `differenceWith(b, eq)(a)`                      |
+| `drop`                     | `drop(arr, n)`                                  | `drop(n)(arr)`                                  |
+| `dropLast`                 | `dropLast(arr, n)`                              | `dropLast(n)(arr)`                              |
+| `dropLastWhile`            | `dropLastWhile(arr, pred)`                      | `dropLastWhile(pred)(arr)`                      |
+| `dropRepeatsBy`            | `dropRepeatsBy(arr, f)`                         | `dropRepeatsBy(f)(arr)`                         |
+| `dropRepeatsWith`          | `dropRepeatsWith(arr, eq)`                      | `dropRepeatsWith(eq)(arr)`                      |
+| `dropUntil`                | `dropUntil(values, predicate)`                  | `dropUntil(predicate)(values)`                  |
+| `dropWhile`                | `dropWhile(arr, pred)`                          | `dropWhile(pred)(arr)`                          |
+| `every`                    | `every(arr, pred)`                              | `every(pred)(arr)`                              |
+| `filter`                   | `filter(arr, pred)`                             | `filter(pred)(arr)`                             |
+| `filterInto`               | `filterInto(values, target, predicate)`         | `filterInto(target, predicate)(values)`         |
+| `filterMap`                | `filterMap(arr, f)`                             | `filterMap(f)(arr)`                             |
+| `filterWithIndex`          | `filterWithIndex(arr, pred)`                    | `filterWithIndex(pred)(arr)`                    |
+| `find`                     | `find(arr, pred)`                               | `find(pred)(arr)`                               |
+| `findIndex`                | `findIndex(arr, pred)`                          | `findIndex(pred)(arr)`                          |
+| `findIndexOrUndefined`     | `findIndexOrUndefined(arr, pred)`               | `findIndexOrUndefined(pred)(arr)`               |
+| `findLast`                 | `findLast(arr, pred)`                           | `findLast(pred)(arr)`                           |
+| `findLastIndex`            | `findLastIndex(arr, pred)`                      | `findLastIndex(pred)(arr)`                      |
+| `findLastIndexOrUndefined` | `findLastIndexOrUndefined(arr, pred)`           | `findLastIndexOrUndefined(pred)(arr)`           |
+| `findLastOrUndefined`      | `findLastOrUndefined(arr, pred)`                | `findLastOrUndefined(pred)(arr)`                |
+| `findMap`                  | `findMap(arr, f)`                               | `findMap(f)(arr)`                               |
+| `findMapOrUndefined`       | `findMapOrUndefined(arr, f)`                    | `findMapOrUndefined(f)(arr)`                    |
+| `findOrUndefined`          | `findOrUndefined(arr, pred)`                    | `findOrUndefined(pred)(arr)`                    |
+| `flatMap`                  | `flatMap(arr, f)`                               | `flatMap(f)(arr)`                               |
+| `forEach`                  | `forEach(arr, f)`                               | `forEach(f)(arr)`                               |
+| `forEachWithIndex`         | `forEachWithIndex(arr, f)`                      | `forEachWithIndex(f)(arr)`                      |
+| `groupBy`                  | `groupBy(arr, f)`                               | `groupBy(f)(arr)`                               |
+| `groupByProp`              | `groupByProp(arr, prop)`                        | `groupByProp(prop)(arr)`                        |
+| `groupMap`                 | `groupMap(values, key, project)`                | `groupMap(key, project)(values)`                |
+| `groupMapReduce`           | `groupMapReduce(values, key, project, combine)` | `groupMapReduce(key, project, combine)(values)` |
+| `groupWith`                | `groupWith(arr, eq)`                            | `groupWith(eq)(arr)`                            |
+| `hasAtLeast`               | `hasAtLeast(arr, n)`                            | `hasAtLeast(n)(arr)`                            |
+| `includes`                 | `includes(arr, value)`                          | `includes(value)(arr)`                          |
+| `indexBy`                  | `indexBy(arr, f)`                               | `indexBy(f)(arr)`                               |
+| `indexOf`                  | `indexOf(arr, value)`                           | `indexOf(value)(arr)`                           |
+| `indexOfOrUndefined`       | `indexOfOrUndefined(arr, value)`                | `indexOfOrUndefined(value)(arr)`                |
+| `insert`                   | `insert(arr, index, value)`                     | `insert(index, value)(arr)`                     |
+| `insertAll`                | `insertAll(arr, index, values)`                 | `insertAll(index, values)(arr)`                 |
+| `intersection`             | `intersection(a, b)`                            | `intersection(b)(a)`                            |
+| `intersectionBy`           | `intersectionBy(a, b, f)`                       | `intersectionBy(b, f)(a)`                       |
+| `intersperse`              | `intersperse(arr, sep)`                         | `intersperse(sep)(arr)`                         |
+| `join`                     | `join(arr, sep)`                                | `join(sep)(arr)`                                |
+| `lastIndexOf`              | `lastIndexOf(arr, value)`                       | `lastIndexOf(value)(arr)`                       |
+| `lastIndexOfOrUndefined`   | `lastIndexOfOrUndefined(arr, value)`            | `lastIndexOfOrUndefined(value)(arr)`            |
+| `map`                      | `map(arr, f)`                                   | `map(f)(arr)`                                   |
+| `mapAccum`                 | `mapAccum(arr, f, init)`                        | `mapAccum(f, init)(arr)`                        |
+| `mapAccumRight`            | `mapAccumRight(arr, f, init)`                   | `mapAccumRight(f, init)(arr)`                   |
+| `mapInto`                  | `mapInto(values, target, f)`                    | `mapInto(target, f)(values)`                    |
+| `mapToObj`                 | `mapToObj(arr, f)`                              | `mapToObj(f)(arr)`                              |
+| `mapWhile`                 | `mapWhile(arr, f)`                              | `mapWhile(f)(arr)`                              |
+| `mapWithIndex`             | `mapWithIndex(arr, f)`                          | `mapWithIndex(f)(arr)`                          |
+| `meanBy`                   | `meanBy(arr, f)`                                | `meanBy(f)(arr)`                                |
+| `meanByNonEmpty`           | `meanByNonEmpty(arr, f)`                        | `meanByNonEmpty(f)(arr)`                        |
+| `meanByOrUndefined`        | `meanByOrUndefined(arr, f)`                     | `meanByOrUndefined(f)(arr)`                     |
+| `none`                     | `none(arr, pred)`                               | `none(pred)(arr)`                               |
+| `nth`                      | `nth(arr, index)`                               | `nth(index)(arr)`                               |
+| `nthOrUndefined`           | `nthOrUndefined(arr, index)`                    | `nthOrUndefined(index)(arr)`                    |
+| `partition`                | `partition(arr, pred)`                          | `partition(pred)(arr)`                          |
+| `partitionMap`             | `partitionMap(values, f)`                       | `partitionMap(f)(values)`                       |
+| `pluck`                    | `pluck(arr, key)`                               | `pluck(key)(arr)`                               |
+| `prepend`                  | `prepend(arr, value)`                           | `prepend(value)(arr)`                           |
+| `reduce`                   | `reduce(arr, f, init)`                          | `reduce(f, init)(arr)`                          |
+| `reduceBy`                 | `reduceBy(arr, keyFn, reducer, init)`           | `reduceBy(keyFn, reducer, init)(arr)`           |
+| `reduceRight`              | `reduceRight(arr, f, init)`                     | `reduceRight(f, init)(arr)`                     |
+| `reduceWhile`              | `reduceWhile(arr, pred, f, init)`               | `reduceWhile(pred, f, init)(arr)`               |
+| `reject`                   | `reject(arr, pred)`                             | `reject(pred)(arr)`                             |
+| `remove`                   | `remove(arr, index, count)`                     | `remove(index, count)(arr)`                     |
+| `repeat`                   | `repeat(value, n)`                              | `repeat(n)(value)`                              |
+| `sample`                   | `sample(arr, n)`                                | `sample(n)(arr)`                                |
+| `scan`                     | `scan(arr, f, init)`                            | `scan(f, init)(arr)`                            |
+| `scan1`                    | `scan1(values, f)`                              | `scan1(f)(values)`                              |
+| `shuffleWith`              | `shuffleWith(values, random)`                   | `shuffleWith(random)(values)`                   |
+| `slice`                    | `slice(arr, start, end)`                        | `slice(start, end)(arr)`                        |
+| `slidingWindow`            | `slidingWindow(arr, n)`                         | `slidingWindow(n)(arr)`                         |
+| `some`                     | `some(arr, pred)`                               | `some(pred)(arr)`                               |
+| `sortBy`                   | `sortBy(arr, cmp)`                              | `sortBy(cmp)(arr)`                              |
+| `sortedIndex`              | `sortedIndex(arr, value)`                       | `sortedIndex(value)(arr)`                       |
+| `sortedIndexBy`            | `sortedIndexBy(arr, value, f)`                  | `sortedIndexBy(value, f)(arr)`                  |
+| `sortedIndexWith`          | `sortedIndexWith(arr, pred)`                    | `sortedIndexWith(pred)(arr)`                    |
+| `sortedLastIndex`          | `sortedLastIndex(arr, value)`                   | `sortedLastIndex(value)(arr)`                   |
+| `sortedLastIndexBy`        | `sortedLastIndexBy(arr, value, f)`              | `sortedLastIndexBy(value, f)(arr)`              |
+| `span`                     | `span(values, predicate)`                       | `span(predicate)(values)`                       |
+| `splice`                   | `splice(arr, start, deleteCount, items)`        | `splice(start, deleteCount, items)(arr)`        |
+| `splitAt`                  | `splitAt(arr, index)`                           | `splitAt(index)(arr)`                           |
+| `splitWhen`                | `splitWhen(arr, pred)`                          | `splitWhen(pred)(arr)`                          |
+| `splitWhenever`            | `splitWhenever(arr, pred)`                      | `splitWhenever(pred)(arr)`                      |
+| `sumBy`                    | `sumBy(arr, f)`                                 | `sumBy(f)(arr)`                                 |
+| `swap`                     | `swap(arr, i, j)`                               | `swap(i, j)(arr)`                               |
+| `symmetricDifference`      | `symmetricDifference(a, b)`                     | `symmetricDifference(b)(a)`                     |
+| `symmetricDifferenceBy`    | `symmetricDifferenceBy(a, b, f)`                | `symmetricDifferenceBy(b, f)(a)`                |
+| `symmetricDifferenceWith`  | `symmetricDifferenceWith(a, b, eq)`             | `symmetricDifferenceWith(b, eq)(a)`             |
+| `take`                     | `take(arr, n)`                                  | `take(n)(arr)`                                  |
+| `takeLast`                 | `takeLast(arr, n)`                              | `takeLast(n)(arr)`                              |
+| `takeLastWhile`            | `takeLastWhile(arr, pred)`                      | `takeLastWhile(pred)(arr)`                      |
+| `takeSortedBy`             | `takeSortedBy(arr, k, cmp)`                     | `takeSortedBy(k, cmp)(arr)`                     |
+| `takeUntil`                | `takeUntil(arr, pred)`                          | `takeUntil(pred)(arr)`                          |
+| `takeWhile`                | `takeWhile(arr, pred)`                          | `takeWhile(pred)(arr)`                          |
+| `times`                    | `times(f, n)`                                   | `times(n)(f)`                                   |
+| `traverse`                 | `traverse(values, f)`                           | `traverse(f)(values)`                           |
+| `unfold`                   | `unfold(f, seed)`                               | `unfold(seed)(f)`                               |
+| `union`                    | `union(a, b)`                                   | `union(b)(a)`                                   |
+| `unionBy`                  | `unionBy(a, b, f)`                              | `unionBy(b, f)(a)`                              |
+| `unionWith`                | `unionWith(a, b, eq)`                           | `unionWith(b, eq)(a)`                           |
+| `uniqBy`                   | `uniqBy(arr, f)`                                | `uniqBy(f)(arr)`                                |
+| `uniqWith`                 | `uniqWith(arr, eq)`                             | `uniqWith(eq)(arr)`                             |
+| `update`                   | `update(arr, index, value)`                     | `update(index, value)(arr)`                     |
+| `without`                  | `without(arr, values)`                          | `without(values)(arr)`                          |
+| `withoutBy`                | `withoutBy(arr, values, f)`                     | `withoutBy(values, f)(arr)`                     |
+| `xprod`                    | `xprod(a, b)`                                   | `xprod(b)(a)`                                   |
+| `zip`                      | `zip(a, b)`                                     | `zip(b)(a)`                                     |
+| `zipAll`                   | `zipAll(left, right)`                           | `zipAll(right)(left)`                           |
+| `zipObj`                   | `zipObj(keys, values)`                          | `zipObj(values)(keys)`                          |
+| `zipWith`                  | `zipWith(a, b, f)`                              | `zipWith(b, f)(a)`                              |
+
+### `@stopcock/fp/non-empty-array` (19)
+
+| Operation             | Data first                             | Data last                              |
+| --------------------- | -------------------------------------- | -------------------------------------- |
+| `append`              | `append(values, value)`                | `append(value)(values)`                |
+| `chunksOf`            | `chunksOf(values, size)`               | `chunksOf(size)(values)`               |
+| `concat`              | `concat(self, that)`                   | `concat(that)(self)`                   |
+| `concatReadonlyArray` | `concatReadonlyArray(self, that)`      | `concatReadonlyArray(that)(self)`      |
+| `filter`              | `filter(values, refinement)`           | `filter(refinement)(values)`           |
+| `filterMap`           | `filterMap(values, transform)`         | `filterMap(transform)(values)`         |
+| `flatMap`             | `flatMap(values, transform)`           | `flatMap(transform)(values)`           |
+| `groupAdjacent`       | `groupAdjacent(values, instance)`      | `groupAdjacent(instance)(values)`      |
+| `intersperse`         | `intersperse(values, separator)`       | `intersperse(separator)(values)`       |
+| `map`                 | `map(values, transform)`               | `map(transform)(values)`               |
+| `max`                 | `max(values, instance)`                | `max(instance)(values)`                |
+| `min`                 | `min(values, instance)`                | `min(instance)(values)`                |
+| `prepend`             | `prepend(values, value)`               | `prepend(value)(values)`               |
+| `reduce`              | `reduce(values, combine)`              | `reduce(combine)(values)`              |
+| `reduceWith`          | `reduceWith(values, initial, combine)` | `reduceWith(initial, combine)(values)` |
+| `sort`                | `sort(values, instance)`               | `sort(instance)(values)`               |
+| `uniq`                | `uniq(values, instance)`               | `uniq(instance)(values)`               |
+| `zip`                 | `zip(self, that)`                      | `zip(that)(self)`                      |
+| `zipWith`             | `zipWith(self, that, combine)`         | `zipWith(that, combine)(self)`         |
+
+### `@stopcock/fp/tuple` (10)
+
+| Operation   | Data first                        | Data last                         |
+| ----------- | --------------------------------- | --------------------------------- |
+| `append`    | `append(tuple, value)`            | `append(value)(tuple)`            |
+| `at`        | `at(tuple, index)`                | `at(index)(tuple)`                |
+| `bimap`     | `bimap(tuple, mapLeft, mapRight)` | `bimap(mapLeft, mapRight)(tuple)` |
+| `concat`    | `concat(source, other)`           | `concat(other)(source)`           |
+| `map`       | `map(tuple, f)`                   | `map(f)(tuple)`                   |
+| `mapFirst`  | `mapFirst(tuple, f)`              | `mapFirst(f)(tuple)`              |
+| `mapInto`   | `mapInto(tuple, target, f)`       | `mapInto(target, f)(tuple)`       |
+| `mapSecond` | `mapSecond(tuple, f)`             | `mapSecond(f)(tuple)`             |
+| `prepend`   | `prepend(tuple, value)`           | `prepend(value)(tuple)`           |
+| `zip`       | `zip(source, other)`              | `zip(other)(source)`              |
+
+### `@stopcock/fp/record` (20)
+
+| Operation         | Data first                              | Data last                               |
+| ----------------- | --------------------------------------- | --------------------------------------- |
+| `equals`          | `equals(source, other, equal)`          | `equals(other, equal)(source)`          |
+| `filter`          | `filter(source, predicate)`             | `filter(predicate)(source)`             |
+| `filterInto`      | `filterInto(source, target, predicate)` | `filterInto(target, predicate)(source)` |
+| `filterMap`       | `filterMap(source, f)`                  | `filterMap(f)(source)`                  |
+| `fromEntriesInto` | `fromEntriesInto(entries, target)`      | `fromEntriesInto(target)(entries)`      |
+| `get`             | `get(source, key)`                      | `get(key)(source)`                      |
+| `getOrUndefined`  | `getOrUndefined(source, key)`           | `getOrUndefined(key)(source)`           |
+| `has`             | `has(source, key)`                      | `has(key)(source)`                      |
+| `map`             | `map(source, f)`                        | `map(f)(source)`                        |
+| `mapInto`         | `mapInto(source, target, f)`            | `mapInto(target, f)(source)`            |
+| `mapKeys`         | `mapKeys(source, f)`                    | `mapKeys(f)(source)`                    |
+| `merge`           | `merge(source, other)`                  | `merge(other)(source)`                  |
+| `modify`          | `modify(source, key, f)`                | `modify(key, f)(source)`                |
+| `omit`            | `omit(source, omitted)`                 | `omit(omitted)(source)`                 |
+| `partition`       | `partition(source, predicate)`          | `partition(predicate)(source)`          |
+| `pick`            | `pick(source, selected)`                | `pick(selected)(source)`                |
+| `reduce`          | `reduce(source, reducer, initial)`      | `reduce(reducer, initial)(source)`      |
+| `remove`          | `remove(source, key)`                   | `remove(key)(source)`                   |
+| `set`             | `set(source, key, value)`               | `set(key, value)(source)`               |
+| `update`          | `update(source, key, f)`                | `update(key, f)(source)`                |
+
+### `@stopcock/fp/map` (22)
+
+| Operation          | Data first                              | Data last                               |
+| ------------------ | --------------------------------------- | --------------------------------------- |
+| `difference`       | `difference(source, other)`             | `difference(other)(source)`             |
+| `equals`           | `equals(source, other, equal)`          | `equals(other, equal)(source)`          |
+| `filter`           | `filter(source, predicate)`             | `filter(predicate)(source)`             |
+| `filterInto`       | `filterInto(source, target, predicate)` | `filterInto(target, predicate)(source)` |
+| `filterMap`        | `filterMap(source, f)`                  | `filterMap(f)(source)`                  |
+| `fromIterableInto` | `fromIterableInto(entries, target)`     | `fromIterableInto(target)(entries)`     |
+| `get`              | `get(source, key)`                      | `get(key)(source)`                      |
+| `getOrElse`        | `getOrElse(source, key, fallback)`      | `getOrElse(key, fallback)(source)`      |
+| `getOrUndefined`   | `getOrUndefined(source, key)`           | `getOrUndefined(key)(source)`           |
+| `has`              | `has(source, key)`                      | `has(key)(source)`                      |
+| `intersection`     | `intersection(source, other)`           | `intersection(other)(source)`           |
+| `map`              | `map(source, f)`                        | `map(f)(source)`                        |
+| `mapInto`          | `mapInto(source, target, f)`            | `mapInto(target, f)(source)`            |
+| `mapKeys`          | `mapKeys(source, f)`                    | `mapKeys(f)(source)`                    |
+| `merge`            | `merge(source, other)`                  | `merge(other)(source)`                  |
+| `modify`           | `modify(source, key, f)`                | `modify(key, f)(source)`                |
+| `partition`        | `partition(source, predicate)`          | `partition(predicate)(source)`          |
+| `reduce`           | `reduce(source, reducer, initial)`      | `reduce(reducer, initial)(source)`      |
+| `remove`           | `remove(source, key)`                   | `remove(key)(source)`                   |
+| `set`              | `set(source, key, value)`               | `set(key, value)(source)`               |
+| `union`            | `union(source, other)`                  | `union(other)(source)`                  |
+| `update`           | `update(source, key, f)`                | `update(key, f)(source)`                |
+
+### `@stopcock/fp/set` (22)
+
+| Operation             | Data first                              | Data last                               |
+| --------------------- | --------------------------------------- | --------------------------------------- |
+| `add`                 | `add(source, value)`                    | `add(value)(source)`                    |
+| `difference`          | `difference(source, other)`             | `difference(other)(source)`             |
+| `equals`              | `equals(source, other)`                 | `equals(other)(source)`                 |
+| `filter`              | `filter(source, predicate)`             | `filter(predicate)(source)`             |
+| `filterInto`          | `filterInto(source, target, predicate)` | `filterInto(target, predicate)(source)` |
+| `filterMap`           | `filterMap(source, f)`                  | `filterMap(f)(source)`                  |
+| `flatMap`             | `flatMap(source, f)`                    | `flatMap(f)(source)`                    |
+| `fromIterableInto`    | `fromIterableInto(source, target)`      | `fromIterableInto(target)(source)`      |
+| `has`                 | `has(source, value)`                    | `has(value)(source)`                    |
+| `intersection`        | `intersection(source, other)`           | `intersection(other)(source)`           |
+| `isDisjoint`          | `isDisjoint(source, other)`             | `isDisjoint(other)(source)`             |
+| `isSubset`            | `isSubset(source, other)`               | `isSubset(other)(source)`               |
+| `isSuperset`          | `isSuperset(source, other)`             | `isSuperset(other)(source)`             |
+| `map`                 | `map(source, f)`                        | `map(f)(source)`                        |
+| `mapInto`             | `mapInto(source, target, f)`            | `mapInto(target, f)(source)`            |
+| `partition`           | `partition(source, predicate)`          | `partition(predicate)(source)`          |
+| `reduce`              | `reduce(source, reducer, initial)`      | `reduce(reducer, initial)(source)`      |
+| `remove`              | `remove(source, value)`                 | `remove(value)(source)`                 |
+| `symmetricDifference` | `symmetricDifference(source, other)`    | `symmetricDifference(other)(source)`    |
+| `toggle`              | `toggle(source, value)`                 | `toggle(value)(source)`                 |
+| `union`               | `union(source, other)`                  | `union(other)(source)`                  |
+| `unionInto`           | `unionInto(source, target)`             | `unionInto(target)(source)`             |
+
+### `@stopcock/fp/typed-array` (14)
+
+| Operation            | Data first                                            | Data last                                             |
+| -------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
+| `at`                 | `at(source, index)`                                   | `at(index)(source)`                                   |
+| `atOrUndefined`      | `atOrUndefined(source, index)`                        | `atOrUndefined(index)(source)`                        |
+| `copyInto`           | `copyInto(source, target, targetOffset)`              | `copyInto(target, targetOffset)(source)`              |
+| `equals`             | `equals(source, other)`                               | `equals(other)(source)`                               |
+| `filter`             | `filter(source, predicate)`                           | `filter(predicate)(source)`                           |
+| `filterInto`         | `filterInto(source, target, predicate, targetOffset)` | `filterInto(target, predicate, targetOffset)(source)` |
+| `includes`           | `includes(source, search)`                            | `includes(search)(source)`                            |
+| `indexOf`            | `indexOf(source, search)`                             | `indexOf(search)(source)`                             |
+| `indexOfOrUndefined` | `indexOfOrUndefined(source, search)`                  | `indexOfOrUndefined(search)(source)`                  |
+| `map`                | `map(source, f)`                                      | `map(f)(source)`                                      |
+| `mapInto`            | `mapInto(source, target, f, targetOffset)`            | `mapInto(target, f, targetOffset)(source)`            |
+| `reduce`             | `reduce(source, reducer, initial)`                    | `reduce(reducer, initial)(source)`                    |
+| `slice`              | `slice(source, start, end)`                           | `slice(start, end)(source)`                           |
+| `sort`               | `sort(source, compare)`                               | `sort(compare)(source)`                               |
+
+### `@stopcock/fp/indexed` (22)
+
+| Operation              | Data first                                           | Data last                                            |
+| ---------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| `at`                   | `at(source, index)`                                  | `at(index)(source)`                                  |
+| `atOrUndefined`        | `atOrUndefined(source, index)`                       | `atOrUndefined(index)(source)`                       |
+| `copyInto`             | `copyInto(source, target, targetOffset, start, end)` | `copyInto(target, targetOffset, start, end)(source)` |
+| `equals`               | `equals(source, other, equal)`                       | `equals(other, equal)(source)`                       |
+| `every`                | `every(source, predicate)`                           | `every(predicate)(source)`                           |
+| `filter`               | `filter(source, predicate)`                          | `filter(predicate)(source)`                          |
+| `filterInto`           | `filterInto(source, target, predicate)`              | `filterInto(target, predicate)(source)`              |
+| `filterMap`            | `filterMap(source, f)`                               | `filterMap(f)(source)`                               |
+| `find`                 | `find(source, predicate)`                            | `find(predicate)(source)`                            |
+| `findIndex`            | `findIndex(source, predicate)`                       | `findIndex(predicate)(source)`                       |
+| `findIndexOrUndefined` | `findIndexOrUndefined(source, predicate)`            | `findIndexOrUndefined(predicate)(source)`            |
+| `findOrUndefined`      | `findOrUndefined(source, predicate)`                 | `findOrUndefined(predicate)(source)`                 |
+| `forEach`              | `forEach(source, effect)`                            | `forEach(effect)(source)`                            |
+| `includes`             | `includes(source, search)`                           | `includes(search)(source)`                           |
+| `indexOf`              | `indexOf(source, search)`                            | `indexOf(search)(source)`                            |
+| `indexOfOrUndefined`   | `indexOfOrUndefined(source, search)`                 | `indexOfOrUndefined(search)(source)`                 |
+| `map`                  | `map(source, f)`                                     | `map(f)(source)`                                     |
+| `mapInto`              | `mapInto(source, target, f, targetOffset)`           | `mapInto(target, f, targetOffset)(source)`           |
+| `reduce`               | `reduce(source, reducer, initial)`                   | `reduce(reducer, initial)(source)`                   |
+| `reduceRight`          | `reduceRight(source, reducer, initial)`              | `reduceRight(reducer, initial)(source)`              |
+| `slice`                | `slice(source, start, end)`                          | `slice(start, end)(source)`                          |
+| `some`                 | `some(source, predicate)`                            | `some(predicate)(source)`                            |
+
+### `@stopcock/fp/iter` (25)
+
+| Operation         | Data first                           | Data last                            |
+| ----------------- | ------------------------------------ | ------------------------------------ |
+| `chunk`           | `chunk(source, size)`                | `chunk(size)(source)`                |
+| `concat`          | `concat(source, other)`              | `concat(other)(source)`              |
+| `distinctBy`      | `distinctBy(source, keyOf)`          | `distinctBy(keyOf)(source)`          |
+| `drop`            | `drop(source, count)`                | `drop(count)(source)`                |
+| `dropWhile`       | `dropWhile(source, predicate)`       | `dropWhile(predicate)(source)`       |
+| `every`           | `every(source, predicate)`           | `every(predicate)(source)`           |
+| `filter`          | `filter(source, predicate)`          | `filter(predicate)(source)`          |
+| `filterMap`       | `filterMap(source, f)`               | `filterMap(f)(source)`               |
+| `find`            | `find(source, predicate)`            | `find(predicate)(source)`            |
+| `findOrUndefined` | `findOrUndefined(source, predicate)` | `findOrUndefined(predicate)(source)` |
+| `flatMap`         | `flatMap(source, f)`                 | `flatMap(f)(source)`                 |
+| `forEach`         | `forEach(source, effect)`            | `forEach(effect)(source)`            |
+| `intersperse`     | `intersperse(source, separator)`     | `intersperse(separator)(source)`     |
+| `map`             | `map(source, f)`                     | `map(f)(source)`                     |
+| `nth`             | `nth(source, index)`                 | `nth(index)(source)`                 |
+| `nthOrUndefined`  | `nthOrUndefined(source, index)`      | `nthOrUndefined(index)(source)`      |
+| `reduce`          | `reduce(source, reducer, initial)`   | `reduce(reducer, initial)(source)`   |
+| `scan`            | `scan(source, reducer, initial)`     | `scan(reducer, initial)(source)`     |
+| `some`            | `some(source, predicate)`            | `some(predicate)(source)`            |
+| `take`            | `take(source, count)`                | `take(count)(source)`                |
+| `takeWhile`       | `takeWhile(source, predicate)`       | `takeWhile(predicate)(source)`       |
+| `tap`             | `tap(source, effect)`                | `tap(effect)(source)`                |
+| `toArrayInto`     | `toArrayInto(source, target)`        | `toArrayInto(target)(source)`        |
+| `zip`             | `zip(source, other)`                 | `zip(other)(source)`                 |
+| `zipWith`         | `zipWith(source, other, f)`          | `zipWith(other, f)(source)`          |
+
+### `@stopcock/fp/option` (29)
+
+| Operation        | Data first                             | Data last                              |
+| ---------------- | -------------------------------------- | -------------------------------------- |
+| `and`            | `and(option, next)`                    | `and(next)(option)`                    |
+| `andThen`        | `andThen(option, f)`                   | `andThen(f)(option)`                   |
+| `ap`             | `ap(option, fn)`                       | `ap(fn)(option)`                       |
+| `as`             | `as(option, value)`                    | `as(value)(option)`                    |
+| `bind`           | `bind(option, name, f)`                | `bind(name, f)(option)`                |
+| `bindTo`         | `bindTo(option, name)`                 | `bindTo(name)(option)`                 |
+| `contains`       | `contains(option, value)`              | `contains(value)(option)`              |
+| `containsWith`   | `containsWith(option, value, equals)`  | `containsWith(equals)(value)(option)`  |
+| `ensure`         | `ensure(option, predicate)`            | `ensure(predicate)(option)`            |
+| `exists`         | `exists(option, predicate)`            | `exists(predicate)(option)`            |
+| `filter`         | `filter(option, predicate)`            | `filter(predicate)(option)`            |
+| `flatMap`        | `flatMap(option, f)`                   | `flatMap(f)(option)`                   |
+| `fromPredicate`  | `fromPredicate(value, predicate)`      | `fromPredicate(predicate)(value)`      |
+| `getOrElse`      | `getOrElse(option, onNone)`            | `getOrElse(onNone)(option)`            |
+| `getOrThrow`     | `getOrThrow(option, onNone)`           | `getOrThrow(onNone)(option)`           |
+| `getWithDefault` | `getWithDefault(option, defaultValue)` | `getWithDefault(defaultValue)(option)` |
+| `lift2`          | `lift2(left, right, f)`                | `lift2(f)(left, right)`                |
+| `map`            | `map(option, f)`                       | `map(f)(option)`                       |
+| `map2`           | `map2(left, right, f)`                 | `map2(right, f)(left)`                 |
+| `mapNullable`    | `mapNullable(option, f)`               | `mapNullable(f)(option)`               |
+| `match`          | `match(option, matchers)`              | `match(matchers)(option)`              |
+| `orElse`         | `orElse(option, fallback)`             | `orElse(fallback)(option)`             |
+| `orElseWith`     | `orElseWith(option, fallback)`         | `orElseWith(fallback)(option)`         |
+| `partitionMap`   | `partitionMap(option, f)`              | `partitionMap(f)(option)`              |
+| `tap`            | `tap(option, f)`                       | `tap(f)(option)`                       |
+| `toResult`       | `toResult(option, onNone)`             | `toResult(onNone)(option)`             |
+| `traverse`       | `traverse(values, f)`                  | `traverse(f)(values)`                  |
+| `zip`            | `zip(option, that)`                    | `zip(that)(option)`                    |
+| `zipWith`        | `zipWith(option, that, f)`             | `zipWith(that, f)(option)`             |
+
+### `@stopcock/fp/result` (32)
+
+| Operation            | Data first                                 | Data last                                  |
+| -------------------- | ------------------------------------------ | ------------------------------------------ |
+| `allValidation`      | `allValidation(results, combine)`          | `allValidation(combine)(results)`          |
+| `and`                | `and(result, next)`                        | `and(next)(result)`                        |
+| `andThen`            | `andThen(result, f)`                       | `andThen(f)(result)`                       |
+| `ap`                 | `ap(result, fn)`                           | `ap(fn)(result)`                           |
+| `as`                 | `as(result, value)`                        | `as(value)(result)`                        |
+| `bind`               | `bind(result, name, f)`                    | `bind(name, f)(result)`                    |
+| `bindTo`             | `bindTo(result, name)`                     | `bindTo(name)(result)`                     |
+| `contains`           | `contains(result, value)`                  | `contains(value)(result)`                  |
+| `containsWith`       | `containsWith(result, value, equals)`      | `containsWith(equals)(value)(result)`      |
+| `ensure`             | `ensure(result, predicate, onFalse)`       | `ensure(predicate, onFalse)(result)`       |
+| `exists`             | `exists(result, predicate)`                | `exists(predicate)(result)`                |
+| `filterOrElse`       | `filterOrElse(result, predicate, onFalse)` | `filterOrElse(predicate, onFalse)(result)` |
+| `flatMap`            | `flatMap(result, f)`                       | `flatMap(f)(result)`                       |
+| `fromNullable`       | `fromNullable(value, onNullish)`           | `fromNullable(onNullish)(value)`           |
+| `fromPredicate`      | `fromPredicate(value, predicate, onFalse)` | `fromPredicate(predicate, onFalse)(value)` |
+| `getOrElse`          | `getOrElse(result, onErr)`                 | `getOrElse(onErr)(result)`                 |
+| `getOrThrow`         | `getOrThrow(result, onErr)`                | `getOrThrow(onErr)(result)`                |
+| `lift2`              | `lift2(left, right, f)`                    | `lift2(f)(left, right)`                    |
+| `map`                | `map(result, f)`                           | `map(f)(result)`                           |
+| `map2`               | `map2(result, that, f)`                    | `map2(that, f)(result)`                    |
+| `mapBoth`            | `mapBoth(result, handlers)`                | `mapBoth(handlers)(result)`                |
+| `mapErr`             | `mapErr(result, f)`                        | `mapErr(f)(result)`                        |
+| `match`              | `match(result, matchers)`                  | `match(matchers)(result)`                  |
+| `nullable`           | `nullable(value, decode)`                  | `nullable(decode)(value)`                  |
+| `optional`           | `optional(value, decode)`                  | `optional(decode)(value)`                  |
+| `orElse`             | `orElse(result, onErr)`                    | `orElse(onErr)(result)`                    |
+| `tap`                | `tap(result, f)`                           | `tap(f)(result)`                           |
+| `tapErr`             | `tapErr(result, f)`                        | `tapErr(f)(result)`                        |
+| `traverse`           | `traverse(values, f)`                      | `traverse(f)(values)`                      |
+| `traverseValidation` | `traverseValidation(values, f)`            | `traverseValidation(f)(values)`            |
+| `zip`                | `zip(result, that)`                        | `zip(that)(result)`                        |
+| `zipWith`            | `zipWith(result, that, f)`                 | `zipWith(that, f)(result)`                 |
+
+### `@stopcock/fp/validation` (2)
+
+| Operation       | Data first                                 | Data last                                  |
+| --------------- | ------------------------------------------ | ------------------------------------------ |
+| `fromPredicate` | `fromPredicate(value, predicate, onFalse)` | `fromPredicate(predicate, onFalse)(value)` |
+| `traverse`      | `traverse(values, validate)`               | `traverse(validate)(values)`               |
+
+### `@stopcock/fp/schema` (3)
+
+| Operation      | Data first                    | Data last                     |
+| -------------- | ----------------------------- | ----------------------------- |
+| `map`          | `map(schema, transform)`      | `map(transform)(schema)`      |
+| `validate`     | `validate(value, schema)`     | `validate(schema)(value)`     |
+| `validateSync` | `validateSync(value, schema)` | `validateSync(schema)(value)` |
+
+### `@stopcock/fp/these` (6)
+
+| Operation | Data first                                   | Data last                                    |
+| --------- | -------------------------------------------- | -------------------------------------------- |
+| `bimap`   | `bimap(value, mapError, mapValue)`           | `bimap(mapError, mapValue)(value)`           |
+| `flatMap` | `flatMap(value, errors, transform)`          | `flatMap(errors)(transform)(value)`          |
+| `map`     | `map(value, transform)`                      | `map(transform)(value)`                      |
+| `mapLeft` | `mapLeft(value, transform)`                  | `mapLeft(transform)(value)`                  |
+| `match`   | `match(value, onLeft, onRight, onBoth)`      | `match(onLeft, onRight, onBoth)(value)`      |
+| `zipWith` | `zipWith(self, errors, that, combineValues)` | `zipWith(errors)(that, combineValues)(self)` |
+
+### `@stopcock/fp/nullable` (11)
+
+| Operation               | Data first                                 | Data last                                  |
+| ----------------------- | ------------------------------------------ | ------------------------------------------ |
+| `filter`                | `filter(value, refinement)`                | `filter(refinement)(value)`                |
+| `flatMap`               | `flatMap(value, transform)`                | `flatMap(transform)(value)`                |
+| `getOrElse`             | `getOrElse(value, onNullable)`             | `getOrElse(onNullable)(value)`             |
+| `getWithDefault`        | `getWithDefault(value, defaultValue)`      | `getWithDefault(defaultValue)(value)`      |
+| `map`                   | `map(value, transform)`                    | `map(transform)(value)`                    |
+| `match`                 | `match(value, onNullable, onValue)`        | `match(onNullable, onValue)(value)`        |
+| `tap`                   | `tap(value, effect)`                       | `tap(effect)(value)`                       |
+| `toResult`              | `toResult(value, onNullable)`              | `toResult(onNullable)(value)`              |
+| `traverseReadonlyArray` | `traverseReadonlyArray(values, transform)` | `traverseReadonlyArray(transform)(values)` |
+| `zip`                   | `zip(self, that)`                          | `zip(that)(self)`                          |
+| `zipWith`               | `zipWith(self, that, combine)`             | `zipWith(that, combine)(self)`             |
+
+### `@stopcock/fp/eq` (3)
+
+| Operation       | Data first                     | Data last                      |
+| --------------- | ------------------------------ | ------------------------------ |
+| `contramap`     | `contramap(instance, project)` | `contramap(project)(instance)` |
+| `equals`        | `equals(instance, self, that)` | `equals(self, that)(instance)` |
+| `sameValueZero` | `sameValueZero(self, that)`    | `sameValueZero(that)(self)`    |
+
+### `@stopcock/fp/hash` (2)
+
+| Operation   | Data first                     | Data last                      |
+| ----------- | ------------------------------ | ------------------------------ |
+| `combine`   | `combine(self, that)`          | `combine(that)(self)`          |
+| `contramap` | `contramap(instance, project)` | `contramap(project)(instance)` |
+
+### `@stopcock/fp/ord` (11)
+
+| Operation            | Data first                                   | Data last                                    |
+| -------------------- | -------------------------------------------- | -------------------------------------------- |
+| `between`            | `between(instance, value, minimum, maximum)` | `between(value, minimum, maximum)(instance)` |
+| `clamp`              | `clamp(instance, value, minimum, maximum)`   | `clamp(value, minimum, maximum)(instance)`   |
+| `combine`            | `combine(self, that)`                        | `combine(that)(self)`                        |
+| `contramap`          | `contramap(instance, project)`               | `contramap(project)(instance)`               |
+| `greaterThan`        | `greaterThan(instance, self, that)`          | `greaterThan(self, that)(instance)`          |
+| `greaterThanOrEqual` | `greaterThanOrEqual(instance, self, that)`   | `greaterThanOrEqual(self, that)(instance)`   |
+| `lessThan`           | `lessThan(instance, self, that)`             | `lessThan(self, that)(instance)`             |
+| `lessThanOrEqual`    | `lessThanOrEqual(instance, self, that)`      | `lessThanOrEqual(self, that)(instance)`      |
+| `max`                | `max(instance, self, that)`                  | `max(self, that)(instance)`                  |
+| `min`                | `min(instance, self, that)`                  | `min(self, that)(instance)`                  |
+| `sort`               | `sort(instance, values)`                     | `sort(values)(instance)`                     |
+
+### `@stopcock/fp/guard` (10)
+
+| Operation        | Data first                   | Data last                    |
+| ---------------- | ---------------------------- | ---------------------------- |
+| `and`            | `and(value, left, right)`    | `and(left, right)(a)`        |
+| `is`             | `is(val, ctor)`              | `is(ctor)(val)`              |
+| `isArrayOf`      | `isArrayOf(val, guard)`      | `isArrayOf(guard)(a)`        |
+| `isDeepEqual`    | `isDeepEqual(self, that)`    | `isDeepEqual(that)(self)`    |
+| `isRecordOf`     | `isRecordOf(val, guard)`     | `isRecordOf(guard)(a)`       |
+| `isShallowEqual` | `isShallowEqual(self, that)` | `isShallowEqual(that)(self)` |
+| `isStrictEqual`  | `isStrictEqual(self, that)`  | `isStrictEqual(that)(self)`  |
+| `not`            | `not(value, refinement)`     | `not(refinement)(a)`         |
+| `or`             | `or(value, left, right)`     | `or(left, right)(a)`         |
+| `propIs`         | `propIs(obj, ctor, prop)`    | `propIs(ctor, prop)(obj)`    |
+
+### `@stopcock/fp/object` (17)
+
+| Operation            | Data first                          | Data last                           |
+| -------------------- | ----------------------------------- | ----------------------------------- |
+| `assoc`              | `assoc(value, key, replacement)`    | `assoc(key, replacement)(value)`    |
+| `dissoc`             | `dissoc(value, key)`                | `dissoc(key)(value)`                |
+| `evolve`             | `evolve(value, transformations)`    | `evolve(transformations)(value)`    |
+| `getPath`            | `getPath(value, path)`              | `getPath(path)(value)`              |
+| `getPathOrUndefined` | `getPathOrUndefined(value, path)`   | `getPathOrUndefined(path)(value)`   |
+| `hasPath`            | `hasPath(value, path)`              | `hasPath(path)(value)`              |
+| `mapKeys`            | `mapKeys(value, f)`                 | `mapKeys(f)(value)`                 |
+| `mapValues`          | `mapValues(value, f)`               | `mapValues(f)(value)`               |
+| `mergeDeep`          | `mergeDeep(left, right, options)`   | `mergeDeep(right, options)(left)`   |
+| `mergeWith`          | `mergeWith(left, right, resolve)`   | `mergeWith(right, resolve)(left)`   |
+| `modifyPath`         | `modifyPath(value, path, f)`        | `modifyPath(path, f)(value)`        |
+| `omit`               | `omit(value, omitted)`              | `omit(omitted)(value)`              |
+| `omitBy`             | `omitBy(value, predicate)`          | `omitBy(predicate)(value)`          |
+| `pick`               | `pick(value, selected)`             | `pick(selected)(value)`             |
+| `pickBy`             | `pickBy(value, predicate)`          | `pickBy(predicate)(value)`          |
+| `removePath`         | `removePath(value, path)`           | `removePath(path)(value)`           |
+| `setPath`            | `setPath(value, path, replacement)` | `setPath(path, replacement)(value)` |
+
+### `@stopcock/fp/string` (19)
+
+| Operation        | Data first                               | Data last                                |
+| ---------------- | ---------------------------------------- | ---------------------------------------- |
+| `endsWith`       | `endsWith(value, suffix)`                | `endsWith(suffix)(value)`                |
+| `graphemeLength` | `graphemeLength(value, locale)`          | `graphemeLength(locale)(value)`          |
+| `graphemes`      | `graphemes(value, locale)`               | `graphemes(locale)(value)`               |
+| `includes`       | `includes(value, search)`                | `includes(search)(value)`                |
+| `match`          | `match(value, expression)`               | `match(expression)(value)`               |
+| `normalize`      | `normalize(value, form)`                 | `normalize(form)(value)`                 |
+| `padEnd`         | `padEnd(value, targetLength, fill)`      | `padEnd(targetLength, fill)(value)`      |
+| `padStart`       | `padStart(value, targetLength, fill)`    | `padStart(targetLength, fill)(value)`    |
+| `parseJson`      | `parseJson(value, validate)`             | `parseJson(validate)(value)`             |
+| `repeat`         | `repeat(value, count)`                   | `repeat(count)(value)`                   |
+| `replace`        | `replace(value, search, replacement)`    | `replace(search, replacement)(value)`    |
+| `replaceAll`     | `replaceAll(value, search, replacement)` | `replaceAll(search, replacement)(value)` |
+| `slice`          | `slice(value, start, end)`               | `slice(start, end)(value)`               |
+| `split`          | `split(value, separator)`                | `split(separator)(value)`                |
+| `startsWith`     | `startsWith(value, prefix)`              | `startsWith(prefix)(value)`              |
+| `stripPrefix`    | `stripPrefix(value, prefix)`             | `stripPrefix(prefix)(value)`             |
+| `stripSuffix`    | `stripSuffix(value, suffix)`             | `stripSuffix(suffix)(value)`             |
+| `test`           | `test(value, expression)`                | `test(expression)(value)`                |
+| `truncate`       | `truncate(value, maximum, omission)`     | `truncate(maximum, omission)(value)`     |
+
+### `@stopcock/fp/number` (16)
+
+| Operation                 | Data first                                 | Data last                                  |
+| ------------------------- | ------------------------------------------ | ------------------------------------------ |
+| `between`                 | `between(value, minimum, maximum)`         | `between(minimum, maximum)(value)`         |
+| `clamp`                   | `clamp(value, minimum, maximum)`           | `clamp(minimum, maximum)(value)`           |
+| `dotProduct`              | `dotProduct(left, right)`                  | `dotProduct(right)(left)`                  |
+| `dotProductTruncate`      | `dotProductTruncate(left, right)`          | `dotProductTruncate(right)(left)`          |
+| `gcd`                     | `gcd(left, right)`                         | `gcd(right)(left)`                         |
+| `lcm`                     | `lcm(left, right)`                         | `lcm(right)(left)`                         |
+| `parseInteger`            | `parseInteger(input, radix)`               | `parseInteger(radix)(input)`               |
+| `percentile`              | `percentile(values, p)`                    | `percentile(p)(values)`                    |
+| `percentileNonEmpty`      | `percentileNonEmpty(values, p)`            | `percentileNonEmpty(p)(values)`            |
+| `percentileOrUndefined`   | `percentileOrUndefined(values, p)`         | `percentileOrUndefined(p)(values)`         |
+| `quantile`                | `quantile(values, q)`                      | `quantile(q)(values)`                      |
+| `quantileNonEmpty`        | `quantileNonEmpty(values, q)`              | `quantileNonEmpty(q)(values)`              |
+| `quantileOrUndefined`     | `quantileOrUndefined(values, q)`           | `quantileOrUndefined(q)(values)`           |
+| `roundTo`                 | `roundTo(value, digits, mode)`             | `roundTo(digits, mode)(value)`             |
+| `weightedMean`            | `weightedMean(values, weights)`            | `weightedMean(weights)(values)`            |
+| `weightedMeanOrUndefined` | `weightedMeanOrUndefined(values, weights)` | `weightedMeanOrUndefined(weights)(values)` |
+
+### `@stopcock/fp/math` (5)
+
+| Operation  | Data first       | Data last        |
+| ---------- | ---------------- | ---------------- |
+| `add`      | `add(a, b)`      | `add(b)(a)`      |
+| `divide`   | `divide(a, b)`   | `divide(b)(a)`   |
+| `modulo`   | `modulo(a, b)`   | `modulo(b)(a)`   |
+| `multiply` | `multiply(a, b)` | `multiply(b)(a)` |
+| `subtract` | `subtract(a, b)` | `subtract(b)(a)` |
+
+### `@stopcock/fp/boolean` (3)
+
+| Operation | Data first                      | Data last                       |
+| --------- | ------------------------------- | ------------------------------- |
+| `and_`    | `and_(a, b)`                    | `and_(b)(a)`                    |
+| `ifElse`  | `ifElse(cond, onTrue, onFalse)` | `ifElse(onTrue, onFalse)(cond)` |
+| `or_`     | `or_(a, b)`                     | `or_(b)(a)`                     |
+
+### `@stopcock/fp/optic` (5)
+
+| Operation | Data first                  | Data last                   |
+| --------- | --------------------------- | --------------------------- |
+| `collect` | `collect(optic, source)`    | `collect(optic)(source)`    |
+| `modify`  | `modify(optic, source, f)`  | `modify(optic, f)(source)`  |
+| `preview` | `preview(optic, source)`    | `preview(optic)(source)`    |
+| `set`     | `set(optic, source, focus)` | `set(optic, focus)(source)` |
+| `view`    | `view(optic, source)`       | `view(optic)(source)`       |
+
+### `@stopcock/fp/match` (3)
+
+| Operation      | Data first                           | Data last                            |
+| -------------- | ------------------------------------ | ------------------------------------ |
+| `discriminant` | `discriminant(key, value, handlers)` | `discriminant(key, handlers)(value)` |
+| `tag`          | `tag(value, handlers)`               | `tag(handlers)(value)`               |
+| `value`        | `value(input, cases, otherwise)`     | `value(cases, otherwise)(input)`     |
+
+### `@stopcock/fp/reader` (10)
+
+| Operation               | Data first                                 | Data last                                  |
+| ----------------------- | ------------------------------------------ | ------------------------------------------ |
+| `ap`                    | `ap(self, value)`                          | `ap(value)(self)`                          |
+| `compose`               | `compose(self, toEnvironment)`             | `compose(toEnvironment)(self)`             |
+| `flatMap`               | `flatMap(self, transform)`                 | `flatMap(transform)(self)`                 |
+| `local`                 | `local(self, transform)`                   | `local(transform)(self)`                   |
+| `map`                   | `map(self, transform)`                     | `map(transform)(self)`                     |
+| `provide`               | `provide(self, environment)`               | `provide(environment)(self)`               |
+| `tap`                   | `tap(self, effect)`                        | `tap(effect)(self)`                        |
+| `traverseReadonlyArray` | `traverseReadonlyArray(values, transform)` | `traverseReadonlyArray(transform)(values)` |
+| `zip`                   | `zip(self, that)`                          | `zip(that)(self)`                          |
+| `zipWith`               | `zipWith(self, that, combine)`             | `zipWith(that, combine)(self)`             |
+
+### `@stopcock/fp/state-fn` (10)
+
+| Operation               | Data first                                 | Data last                                  |
+| ----------------------- | ------------------------------------------ | ------------------------------------------ |
+| `ap`                    | `ap(self, value)`                          | `ap(value)(self)`                          |
+| `evaluate`              | `evaluate(self, initial)`                  | `evaluate(initial)(self)`                  |
+| `execute`               | `execute(self, initial)`                   | `execute(initial)(self)`                   |
+| `flatMap`               | `flatMap(self, transform)`                 | `flatMap(transform)(self)`                 |
+| `map`                   | `map(self, transform)`                     | `map(transform)(self)`                     |
+| `run`                   | `run(self, initial)`                       | `run(initial)(self)`                       |
+| `tap`                   | `tap(self, effect)`                        | `tap(effect)(self)`                        |
+| `traverseReadonlyArray` | `traverseReadonlyArray(values, transform)` | `traverseReadonlyArray(transform)(values)` |
+| `zip`                   | `zip(self, that)`                          | `zip(that)(self)`                          |
+| `zipWith`               | `zipWith(self, that, combine)`             | `zipWith(that, combine)(self)`             |
+
+### `@stopcock/fp/writer` (12)
+
+| Operation               | Data first                                         | Data last                                          |
+| ----------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| `bimap`                 | `bimap(self, mapOutput, mapValue)`                 | `bimap(mapOutput, mapValue)(self)`                 |
+| `censor`                | `censor(self, transform)`                          | `censor(transform)(self)`                          |
+| `flatMap`               | `flatMap(self, output, transform)`                 | `flatMap(output)(transform)(self)`                 |
+| `flatten`               | `flatten(self, output)`                            | `flatten(output)(self)`                            |
+| `listens`               | `listens(self, project)`                           | `listens(project)(self)`                           |
+| `map`                   | `map(self, transform)`                             | `map(transform)(self)`                             |
+| `mapWritten`            | `mapWritten(self, transform)`                      | `mapWritten(transform)(self)`                      |
+| `of`                    | `of(item, output)`                                 | `of(output)(item)`                                 |
+| `sequenceReadonlyArray` | `sequenceReadonlyArray(values, output)`            | `sequenceReadonlyArray(output)(values)`            |
+| `traverseReadonlyArray` | `traverseReadonlyArray(values, output, transform)` | `traverseReadonlyArray(output)(transform)(values)` |
+| `zip`                   | `zip(self, output, that)`                          | `zip(output)(that)(self)`                          |
+| `zipWith`               | `zipWith(self, output, that, combine)`             | `zipWith(output)(that, combine)(self)`             |

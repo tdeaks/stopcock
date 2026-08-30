@@ -49,12 +49,14 @@ const activeNames = pipe(
 )
 ```
 
-Every data operation with two or more arguments supports direct data-first and
-curried data-last calls under the same name.
+The core package exposes 491 dual operations. Each keeps its direct data-first
+and curried data-last calls under the same name. The [complete dual-call
+catalogue](/api/modules#complete-dual-call-catalogue) lists both public shapes
+for every operation, including staged currying and optional arguments.
 
 ```ts
-const doubled = A.map((value: number) => value * 2)([1, 2, 3])
 const directlyDoubled = A.map([1, 2, 3], (value) => value * 2)
+const curriedDoubled = A.map((value: number) => value * 2)([1, 2, 3])
 const alsoDoubled = pipe(
   [1, 2, 3],
   A.map((value) => value * 2),

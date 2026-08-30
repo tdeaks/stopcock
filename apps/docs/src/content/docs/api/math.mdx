@@ -3,6 +3,9 @@ title: M (Math)
 description: add, multiply, sum, mean, median. Arithmetic and stats for pipe
 ---
 
+The five dual arithmetic operations appear with both shapes in the [complete
+dual-call catalogue](/api/modules#complete-dual-call-catalogue).
+
 ## Single-argument
 
 ```ts
@@ -49,6 +52,6 @@ pipe(count, M.dec) // count - 1
 pipe(value, M.negate) // -value
 
 // both call shapes
-M.modulo(17, 5) // 2 — direct, data-first
-pipe(17, M.modulo(5)) // 2 — curried, data-last
+M.modulo(17, 5) // 2, direct data-first
+pipe(17, M.modulo(5)) // 2, curried data-last
 ```

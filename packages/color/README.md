@@ -42,4 +42,36 @@ under the same name, so the same API also composes with `pipe`. Hue interpolatio
 and typed-array batch operations follow the same convention; batch calls also
 accept an optional caller-provided output buffer.
 
+## Dual operation reference
+
+```ts
+convert(color, targetSpace)                         / convert(targetSpace)(color)
+lighten(color, amount)                             / lighten(amount)(color)
+darken(color, amount)                              / darken(amount)(color)
+saturate(color, amount)                            / saturate(amount)(color)
+desaturate(color, amount)                          / desaturate(amount)(color)
+adjustHue(color, degrees)                          / adjustHue(degrees)(color)
+adjustAlpha(color, alpha)                          / adjustAlpha(alpha)(color)
+
+mix(a, b, t?)                                      / mix(b, t?)(a)
+mixIn(a, b, space, t?)                             / mixIn(b, space, t?)(a)
+hueInterpolate(h1, h2, t)                          / hueInterpolate(h2, t)(h1)
+
+contrastRatio(a, b)                                / contrastRatio(b)(a)
+meetsAA(a, b)                                      / meetsAA(b)(a)
+meetsAAA(a, b)                                     / meetsAAA(b)(a)
+meetsAALarge(a, b)                                 / meetsAALarge(b)(a)
+deltaE(a, b)                                       / deltaE(b)(a)
+deltaEOK(a, b)                                     / deltaEOK(b)(a)
+inGamut(color, targetSpace)                        / inGamut(targetSpace)(color)
+toGamut(color, targetSpace)                        / toGamut(targetSpace)(color)
+analogous(color, count?, angle?)                   / analogous(count?, angle?)(color)
+simulate(color, type, severity?)                   / simulate(type, severity?)(color)
+minDistinguishableDistance(palette, type, severity?) / minDistinguishableDistance(type, severity?)(palette)
+
+convertBuffer(source, sourceSpace, targetSpace, out?) / convertBuffer(sourceSpace, targetSpace, out?)(source)
+simulateBuffer(source, sourceSpace, type, severity?, out?) / simulateBuffer(sourceSpace, type, severity?, out?)(source)
+toGamutBuffer(source, sourceSpace, targetSpace, out?) / toGamutBuffer(sourceSpace, targetSpace, out?)(source)
+```
+
 [Documentation](https://stopcock.dev/libraries/color)

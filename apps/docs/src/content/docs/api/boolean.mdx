@@ -3,6 +3,9 @@ title: B (Boolean)
 description: not, and, or, ifElse. Boolean combinators for pipe
 ---
 
+All three dual Boolean operations appear with both shapes in the [complete
+dual-call catalogue](/api/modules#complete-dual-call-catalogue).
+
 ```ts
 not_(a: boolean): boolean
 and_(a: boolean, b: boolean): boolean
@@ -22,8 +25,8 @@ import { pipe } from '@stopcock/fp'
 import * as B from '@stopcock/fp/boolean'
 
 pipe(true, B.not_) // false
-B.and_(true, false) // false — direct, data-first
-pipe(true, B.and_(false)) // false — curried, data-last
+B.and_(true, false) // false, direct data-first
+pipe(true, B.and_(false)) // false, curried data-last
 pipe(
   false,
   B.ifElse(

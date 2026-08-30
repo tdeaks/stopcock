@@ -11,6 +11,12 @@ Vite/Rollup/esbuild plugin. It recognizes a `pipe`/`flow`/`compile` call
 built from supported [array operators](/api/array) and replaces it with one
 inlined loop before your code ships.
 
+Those array operators keep the same name in both call styles. A direct call
+such as `A.map(data, transform)` runs immediately. Its data-last pair,
+`A.map(transform)(data)`, is the shape used by `pipe` and recognized by the
+compiler. The [complete dual-call catalogue](/api/modules#complete-dual-call-catalogue)
+lists all 491 core pairs.
+
 ## What the plugin does
 
 Without the plugin, or for anything it doesn't recognize, this call runs

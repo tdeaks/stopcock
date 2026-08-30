@@ -64,6 +64,11 @@ rotate(node, degrees, cx?, cy?) / rotate(degrees, cx?, cy?)(node)
 scale(node, sx, sy?) / scale(sx, sy?)(node)
 skewX(node, degrees) / skewX(degrees)(node)
 skewY(node, degrees) / skewY(degrees)(node)
+toClip(node) / toClip()(node)
+toMask(node) / toMask()(node)
+clip(node, clipPath) / clip(clipPath)(node)
+mask(node, maskValue) / mask(maskValue)(node)
+filter(node, filterValue) / filter(filterValue)(node)
 ```
 
 ## Paint and defs
@@ -87,6 +92,18 @@ render(icon)
 
 ## Paths
 
+Every path operation that consumes a path exposes both lanes:
+
+```ts
+path.lineTo(pathValue, x, y) / path.lineTo(x, y)(pathValue)
+path.curveTo(pathValue, x1, y1, x2, y2, x, y) / path.curveTo(x1, y1, x2, y2, x, y)(pathValue)
+path.quadTo(pathValue, x1, y1, x, y) / path.quadTo(x1, y1, x, y)(pathValue)
+path.arcTo(pathValue, rx, ry, large, sweep, x, y) /
+  path.arcTo(rx, ry, large, sweep, x, y)(pathValue)
+path.close(pathValue) / path.close()(pathValue)
+path.toNode(pathValue) / path.toNode()(pathValue)
+```
+
 ```ts
 import { pipe } from '@stopcock/fp'
 import { path, render } from '@stopcock/svg'
@@ -105,6 +122,13 @@ const dataLastTriangle = pipe(
 
 render(dataFirstTriangle)
 pipe(dataLastTriangle, render())
+```
+
+Affine multiplication and rendering follow the same rule:
+
+```ts
+mul(a, b) / mul(b)(a)
+render(node, options?) / render(options?)(node)
 ```
 
 ## Filters
@@ -129,6 +153,15 @@ pipe(dataLastFiltered, render())
 ## Linear algebra helpers
 
 Import from `@stopcock/svg/la` when you want helpers backed by `@stopcock/la`.
+
+```ts
+lerpTransform(a, b, t) / lerpTransform(b, t)(a)
+toQuad(node, corners) / toQuad(corners)(node)
+hitTest(root, point) / hitTest(point)(root)
+fitBezier(points, options?) / fitBezier(options?)(points)
+alignToPrincipalAxis(node, points) / alignToPrincipalAxis(points)(node)
+symmetry(node, count, step) / symmetry(count, step)(node)
+```
 
 ```ts
 import { pipe } from '@stopcock/fp'

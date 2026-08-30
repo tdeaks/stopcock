@@ -11,6 +11,10 @@ type Option<A> = None | Some<A>
 
 Numeric `_tag` for fast branching. `none` is a singleton.
 
+Option has 29 dual operations. The [complete dual-call
+catalogue](/api/modules#complete-dual-call-catalogue) lists both shapes,
+including staged currying such as `containsWith(equals)(value)(option)`.
+
 ## Constructors
 
 ```ts

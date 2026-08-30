@@ -42,12 +42,12 @@ const ordered = await Task.run(AsyncIter.collect(mapped))
 
 ## What's in the box
 
-- **Task** — lazy async computation that doesn't run until you call `run` / `runSafe`
-- **AsyncIter** — lazy sync/async iterable pipelines with end-to-end cancellation
-- **Combinators** — `map`, `flatMap`, `tap`, `mapError`, `catchError`, `match`
-- **Concurrency** — `all`, `allSettled`, `race`, `any`, `parallel`, `sequential`
-- **Resilience** — `retry`, `timeout`, `fallback`
-- **Flow control** — `throttle`, `debounce`, `rateLimit`
-- **Collection** — `mapAsync`, `filterAsync`, `forEachAsync`, `reduceAsync`, `collectAsync`
+- **Task**: lazy async computation that doesn't run until you call `run` / `runSafe`
+- **AsyncIter**: lazy sync/async iterable pipelines with end-to-end cancellation
+- **Combinators**: `map`, `flatMap`, `tap`, `mapError`, `catchError`, `match`
+- **Concurrency**: `all`, `allSettled`, `race`, `any`, `parallel`, `sequential`
+- **Resilience**: `retry`, `timeout`, `fallback`
+- **Flow control**: `throttle`, `debounce`, `rateLimit`
+- **Collection**: `mapAsync`, `filterAsync`, `forEachAsync`, `reduceAsync`, `collectAsync`
 
 [Docs](https://stopcock.dev/libraries/async)

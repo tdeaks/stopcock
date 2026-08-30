@@ -10,7 +10,7 @@ bun add @stopcock/fp
 bun add -d @stopcock/fp-compiler
 ```
 
-`@stopcock/fp` 2.x is a peer dependency. The compiler package is ESM-only and
+`@stopcock/fp` 3.x is a peer dependency. The compiler package is ESM-only and
 supports Node.js 22 or newer.
 
 ## Build-tool plugin
@@ -40,7 +40,7 @@ dedicated adapter only on real demand.
 
 For release builds, `diagnostics: 'summary'` prints fused and skipped pipeline
 counts plus the static coverage percentage. Use `diagnostics: 'error'` to make
-any recognized fallback—including a deferred `flow` or `compile` site—a build
+any recognized fallback, including a deferred `flow` or `compile` site, a build
 failure.
 
 The transform understands namespace, named, aliased, and custom wrapper-package
@@ -59,15 +59,15 @@ contract are identical across the two call shapes.
 
 ## Options
 
-| Option                 | Purpose                                                                                                                           |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `include`              | Files the plugin may transform. Defaults to `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.mts`, and `.cts`.                     |
-| `exclude`              | Files the plugin must ignore. Defaults to `node_modules`.                                                                         |
-| `importSources`        | Package roots that export `pipe`, `flow`, and `compile`. Defaults to `@stopcock/fp`.                                              |
-| `arrayImportSources`   | Exact package entries that export array operators. Derived as `${importSource}/array` by default.                                 |
-| `compileImportSources` | Specialist entries that export `compile` and `compilePure`. Derived as `${importSource}/compile` in addition to the package root. |
+| Option                 | Purpose                                                                                                                                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `include`              | Files the plugin may transform. Defaults to `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.mts`, and `.cts`.                                                                            |
+| `exclude`              | Files the plugin must ignore. Defaults to `node_modules`.                                                                                                                                |
+| `importSources`        | Package roots that export `pipe`, `flow`, and `compile`. Defaults to `@stopcock/fp`.                                                                                                     |
+| `arrayImportSources`   | Exact package entries that export array operators. Derived as `${importSource}/array` by default.                                                                                        |
+| `compileImportSources` | Specialist entries that export `compile` and `compilePure`. Derived as `${importSource}/compile` in addition to the package root.                                                        |
 | `assumePure`           | Enables proven pure execution rewrites. Argument expressions still evaluate exactly once; operator construction stays observable only at a residual or otherwise non-fully-lowered site. |
-| `diagnostics`          | `false`, `summary`, `verbose`, or `error`. Defaults to `false`.                                                                   |
+| `diagnostics`          | `false`, `summary`, `verbose`, or `error`. Defaults to `false`.                                                                                                                          |
 
 `diagnostics: 'error'` fails the transform when a recognized pipeline cannot
 be lowered. Other modes leave unsupported sites unchanged; `verbose` reports
@@ -101,7 +101,11 @@ pipe([1, 2, 3], map(log), filter(big))
 // uncompiled (any entry, at runtime): log 1, log 2, log 3, then the filters
 // compiled   (this plugin, fused):    log 1, filter, log 2, filter, log 3, filter
 
-pipe([1, 2, 3, 4], map(log), find((x) => x === 2))
+pipe(
+  [1, 2, 3, 4],
+  map(log),
+  find((x) => x === 2),
+)
 // uncompiled (any entry, at runtime): log runs 4 times
 // compiled   (this plugin, fused):    log runs 2 times, then stops
 ```
@@ -207,10 +211,10 @@ stopcock check --strict
 stopcock check --strict src
 ```
 
-| flag        | meaning                                    |
-| ----------- | ------------------------------------------- |
-| `--strict`  | exit 1 when any site bailed                 |
-| directory   | project root to scan; defaults to cwd       |
+| flag       | meaning                               |
+| ---------- | ------------------------------------- |
+| `--strict` | exit 1 when any site bailed           |
+| directory  | project root to scan; defaults to cwd |
 
 Output is a table of `file:line:column  compiled|bailed  op  reason` rows
 followed by a summary line (`N sites compiled, M bailed`). Exit `0` unless

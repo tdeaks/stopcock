@@ -1,7 +1,7 @@
 # @stopcock/pattern
 
 Exhaustive, structural pattern matching for TypeScript. Patterns are plain
-values plus tiny predicate objects—there is no service container, effect
+values plus tiny predicate objects. There is no service container, effect
 runtime, code generation step, or global registry.
 
 ```bash

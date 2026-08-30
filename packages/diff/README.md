@@ -34,6 +34,19 @@ Every data-taking operation with two or more arguments is dual-form. Call it
 data-first (`apply(target, patch)`) or use the same name data-last
 (`pipe(target, apply(patch))`).
 
+## Dual operation reference
+
+```ts
+diff(before, after) / diff(after)(before)
+diffWith(before, after, options) / diffWith(after, options)(before)
+apply(target, patch) / apply(patch)(target)
+applyUnsafe(target, patch) / applyUnsafe(patch)(target)
+compose(first, second) / compose(second)(first)
+rebase(localPatch, remotePatch) / rebase(remotePatch)(localPatch)
+fromLens(source, lens, target) / fromLens(lens, target)(source)
+fromTraversal(source, traversal, fn) / fromTraversal(traversal, fn)(source)
+```
+
 ## Optics bridge
 
 The bridge uses the functional optics API from `@stopcock/fp/optic`:

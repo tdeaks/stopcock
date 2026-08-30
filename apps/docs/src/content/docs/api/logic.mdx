@@ -5,6 +5,10 @@ description: Logic was split into focused function and guard modules
 
 The broad 1.x `Logic` namespace was removed from the 2.0 public surface.
 
+Guard and Match now expose 13 dual operations. The [complete dual-call
+catalogue](/api/modules#complete-dual-call-catalogue) lists both call shapes;
+the Function utilities remain explicit function factories.
+
 Use `@stopcock/fp/function` for function-level composition:
 
 ```ts

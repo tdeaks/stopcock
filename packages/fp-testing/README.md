@@ -30,9 +30,9 @@ console.log(probe.returns) // 1
 
 Subpaths:
 
-- `@stopcock/fp-testing/laws` — Eq, Hash, Ord, Semigroup, Monoid, Group,
+- `@stopcock/fp-testing/laws`: Eq, Hash, Ord, Semigroup, Monoid, Group,
   Lens, and Iso laws with bounded deterministic reports.
-- `@stopcock/fp-testing/data` — deterministic Option, Result, tuple, array,
+- `@stopcock/fp-testing/data`: deterministic Option, Result, tuple, array,
   number, and string cases.
-- `@stopcock/fp-testing/iterable` — tracked and throwing iterable fixtures plus
+- `@stopcock/fp-testing/iterable`: tracked and throwing iterable fixtures plus
   small reference implementations.

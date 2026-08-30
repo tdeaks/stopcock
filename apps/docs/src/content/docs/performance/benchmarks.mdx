@@ -32,53 +32,53 @@ than 1x means stopcock was faster. `-` means the library doesn't implement
 that operation (ts-belt has no `scan`; ts-belt has no `takeWhile`/`flatMap`
 composition used here).
 
-| Pipeline | n | stopcock pipe | stopcock compiled | ramda | rambda | remeda | ts-belt | lodash | pipe vs best lib | compiled vs best lib |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| map | 10 | 9.2M | 39.6M | 12.4M | 6.6M | 2.3M | 7.3M | 3.6M | 0.74x | 3.19x |
-| map | 1,000 | 144.6k | 1.4M | 195.1k | 175.6k | 34.1k | 156.4k | 184.0k | 0.74x | 7.11x |
-| map | 100,000 | 1.1k | 6.4k | 1.7k | 1.4k | 283 | 1.4k | 1.6k | 0.66x | 3.80x |
-| map->filter | 10 | 4.8M | 22.2M | 5.2M | 3.1M | 1.5M | 4.5M | 2.0M | 0.93x | 4.31x |
-| map->filter | 1,000 | 65.4k | 249.4k | 78.9k | 56.7k | 20.7k | 74.1k | 71.6k | 0.83x | 3.16x |
-| map->filter | 100,000 | 467 | 1.3k | 550 | 420 | 151 | 557 | 584 | 0.80x | 2.15x |
-| map->filter->reduce | 10 | 3.9M | 27.2M | 2.8M | 2.1M | 1.3M | 2.6M | 1.7M | 1.37x | 9.67x |
-| map->filter->reduce | 1,000 | 48.0k | 464.3k | 42.4k | 35.9k | 18.4k | 43.2k | 52.4k | 0.92x | 8.85x |
-| map->filter->reduce | 100,000 | 401 | 4.6k | 329 | 271 | 108 | 325 | 423 | 0.95x | 10.9x |
-| map->filter->map->filter | 10 | 2.4M | 14.9M | 2.2M | 1.5M | 837.1k | 2.0M | 1.2M | 1.10x | 6.81x |
-| map->filter->map->filter | 1,000 | 30.2k | 133.1k | 30.1k | 22.9k | 10.9k | 27.7k | 32.1k | 0.94x | 4.15x |
-| map->filter->map->filter | 100,000 | 230 | 911 | 230 | 185 | 89 | 228 | 265 | 0.87x | 3.44x |
-| 8-op chain | 10 | 1.4M | 11.0M | 988.3k | 700.7k | 424.3k | 964.7k | 597.4k | 1.41x | 11.2x |
-| 8-op chain | 1,000 | 14.4k | 113.7k | 13.6k | 10.8k | 6.1k | 13.5k | 16.6k | 0.87x | 6.86x |
-| 8-op chain | 100,000 | 121 | 876 | 113 | 85 | 28 | 109 | 136 | 0.89x | 6.42x |
-| map->filter->find (early exit near start) | 10 | 5.0M | 45.8M | 4.9M | 3.1M | 2.9M | 4.2M | 1.7M | 1.02x | 9.39x |
-| map->filter->find (early exit near start) | 1,000 | 66.7k | 44.6M | 79.8k | 57.0k | 1.1M | 76.0k | 72.7k | 0.06x | 41.4x |
-| map->filter->find (early exit near start) | 100,000 | 528 | 3.0M | 650 | 448 | 17.2k | 597 | 604 | 0.03x | 174x |
-| map->filter->find (early exit late) | 10 | 5.0M | 44.8M | 5.1M | 3.1M | 1.2M | 4.4M | 1.7M | 0.98x | 8.81x |
-| map->filter->find (early exit late) | 1,000 | 65.8k | 2.9M | 79.3k | 55.5k | 16.8k | 73.9k | 69.6k | 0.83x | 37.2x |
-| map->filter->find (early exit late) | 100,000 | 515 | 30.9k | 608 | 429 | 111 | 543 | 575 | 0.85x | 50.8x |
-| map->filter->take(10) | 10 | 5.1M | 32.4M | 4.4M | 2.8M | 1.2M | 3.3M | 1.6M | 1.16x | 7.40x |
-| map->filter->take(10) | 1,000 | 67.7k | 27.2M | 79.9k | 57.0k | 960.9k | 56.9k | 2.0M | 0.03x | 13.6x |
-| map->filter->take(10) | 100,000 | 525 | 27.4M | 599 | 416 | 926.2k | 415 | 2.0M | 0.00x | 13.7x |
-| takeWhile->map | 10 | 8.6M | 37.2M | 5.9M | 4.7M | 3.0M | - | 2.1M | 1.47x | 6.33x |
-| takeWhile->map | 1,000 | 152.6k | 1.1M | 191.1k | 161.6k | 57.6k | - | 157.4k | 0.80x | 5.56x |
-| takeWhile->map | 100,000 | 1.1k | 3.6k | 1.4k | 1.0k | 428 | - | 1.2k | 0.77x | 2.61x |
-| flatMap->filter | 10 | 1.8M | 27.0M | 1.9M | 1.9M | 838.0k | - | 1.1M | 0.95x | 14.1x |
-| flatMap->filter | 1,000 | 20.8k | 295.7k | 21.2k | 23.3k | 8.8k | - | 14.2k | 0.89x | 12.7x |
-| flatMap->filter | 100,000 | 144 | 297 | 136 | 147 | 78 | - | 109 | 0.98x | 2.02x |
-| map->sortBy->take(10) | 10 | 2.7M | 4.7M | 2.6M | 2.0M | 973.5k | 3.9M | 1.4M | 0.69x | 1.20x |
-| map->sortBy->take(10) | 1,000 | 9.8k | 471.8k | 10.3k | 9.9k | 8.4k | 31.2k | 9.9k | 0.32x | 15.1x |
-| map->sortBy->take(10) | 100,000 | 44 | 3.7k | 44 | 44 | 38 | 89 | 44 | 0.49x | 41.4x |
-| map->uniq->filter | 10 | 4.0M | 5.9M | 3.0M | 1.9M | 1.1M | 3.9M | 1.8M | 1.04x | 1.53x |
-| map->uniq->filter | 1,000 | 53.1k | 62.8k | 46.4k | 22.1k | 12.3k | 13.3k | 49.1k | 1.08x | 1.28x |
-| map->uniq->filter | 100,000 | 181 | 177 | 159 | 128 | 86 | 2 | 176 | 1.03x | 1.00x |
-| scan->map | 10 | 7.7M | 10.0M | 4.5M | - | - | - | - | 1.72x | 2.23x |
-| scan->map | 1,000 | 116.9k | 142.1k | 81.9k | - | - | - | - | 1.43x | 1.73x |
-| scan->map | 100,000 | 849 | 1.1k | 624 | - | - | - | - | 1.36x | 1.79x |
-| heavy map->filter->reduce | 10 | 954.4k | 1.2M | 935.2k | 852.9k | 617.3k | 918.3k | 736.3k | 1.02x | 1.27x |
-| heavy map->filter->reduce | 1,000 | 7.4k | 8.8k | 7.6k | 7.4k | 5.6k | 7.4k | 7.3k | 0.98x | 1.16x |
-| heavy map->filter->reduce | 100,000 | 68 | 86 | 69 | 68 | 51 | 68 | 69 | 1.00x | 1.25x |
-| filter->head | 10 | 10.1M | 43.4M | 9.2M | 6.8M | 4.1M | 8.9M | 2.5M | 1.10x | 4.73x |
-| filter->head | 1,000 | 224.0k | 43.5M | 248.0k | 243.4k | 4.0M | 252.9k | 188.6k | 0.06x | 10.8x |
-| filter->head | 100,000 | 2.3k | 43.4M | 2.5k | 2.5k | 3.9M | 2.9k | 2.1k | 0.00x | 11.2x |
+| Pipeline                                  |       n | stopcock pipe | stopcock compiled |  ramda | rambda | remeda | ts-belt | lodash | pipe vs best lib | compiled vs best lib |
+| ----------------------------------------- | ------: | ------------: | ----------------: | -----: | -----: | -----: | ------: | -----: | ---------------: | -------------------: |
+| map                                       |      10 |          9.2M |             39.6M |  12.4M |   6.6M |   2.3M |    7.3M |   3.6M |            0.74x |                3.19x |
+| map                                       |   1,000 |        144.6k |              1.4M | 195.1k | 175.6k |  34.1k |  156.4k | 184.0k |            0.74x |                7.11x |
+| map                                       | 100,000 |          1.1k |              6.4k |   1.7k |   1.4k |    283 |    1.4k |   1.6k |            0.66x |                3.80x |
+| map->filter                               |      10 |          4.8M |             22.2M |   5.2M |   3.1M |   1.5M |    4.5M |   2.0M |            0.93x |                4.31x |
+| map->filter                               |   1,000 |         65.4k |            249.4k |  78.9k |  56.7k |  20.7k |   74.1k |  71.6k |            0.83x |                3.16x |
+| map->filter                               | 100,000 |           467 |              1.3k |    550 |    420 |    151 |     557 |    584 |            0.80x |                2.15x |
+| map->filter->reduce                       |      10 |          3.9M |             27.2M |   2.8M |   2.1M |   1.3M |    2.6M |   1.7M |            1.37x |                9.67x |
+| map->filter->reduce                       |   1,000 |         48.0k |            464.3k |  42.4k |  35.9k |  18.4k |   43.2k |  52.4k |            0.92x |                8.85x |
+| map->filter->reduce                       | 100,000 |           401 |              4.6k |    329 |    271 |    108 |     325 |    423 |            0.95x |                10.9x |
+| map->filter->map->filter                  |      10 |          2.4M |             14.9M |   2.2M |   1.5M | 837.1k |    2.0M |   1.2M |            1.10x |                6.81x |
+| map->filter->map->filter                  |   1,000 |         30.2k |            133.1k |  30.1k |  22.9k |  10.9k |   27.7k |  32.1k |            0.94x |                4.15x |
+| map->filter->map->filter                  | 100,000 |           230 |               911 |    230 |    185 |     89 |     228 |    265 |            0.87x |                3.44x |
+| 8-op chain                                |      10 |          1.4M |             11.0M | 988.3k | 700.7k | 424.3k |  964.7k | 597.4k |            1.41x |                11.2x |
+| 8-op chain                                |   1,000 |         14.4k |            113.7k |  13.6k |  10.8k |   6.1k |   13.5k |  16.6k |            0.87x |                6.86x |
+| 8-op chain                                | 100,000 |           121 |               876 |    113 |     85 |     28 |     109 |    136 |            0.89x |                6.42x |
+| map->filter->find (early exit near start) |      10 |          5.0M |             45.8M |   4.9M |   3.1M |   2.9M |    4.2M |   1.7M |            1.02x |                9.39x |
+| map->filter->find (early exit near start) |   1,000 |         66.7k |             44.6M |  79.8k |  57.0k |   1.1M |   76.0k |  72.7k |            0.06x |                41.4x |
+| map->filter->find (early exit near start) | 100,000 |           528 |              3.0M |    650 |    448 |  17.2k |     597 |    604 |            0.03x |                 174x |
+| map->filter->find (early exit late)       |      10 |          5.0M |             44.8M |   5.1M |   3.1M |   1.2M |    4.4M |   1.7M |            0.98x |                8.81x |
+| map->filter->find (early exit late)       |   1,000 |         65.8k |              2.9M |  79.3k |  55.5k |  16.8k |   73.9k |  69.6k |            0.83x |                37.2x |
+| map->filter->find (early exit late)       | 100,000 |           515 |             30.9k |    608 |    429 |    111 |     543 |    575 |            0.85x |                50.8x |
+| map->filter->take(10)                     |      10 |          5.1M |             32.4M |   4.4M |   2.8M |   1.2M |    3.3M |   1.6M |            1.16x |                7.40x |
+| map->filter->take(10)                     |   1,000 |         67.7k |             27.2M |  79.9k |  57.0k | 960.9k |   56.9k |   2.0M |            0.03x |                13.6x |
+| map->filter->take(10)                     | 100,000 |           525 |             27.4M |    599 |    416 | 926.2k |     415 |   2.0M |            0.00x |                13.7x |
+| takeWhile->map                            |      10 |          8.6M |             37.2M |   5.9M |   4.7M |   3.0M |       - |   2.1M |            1.47x |                6.33x |
+| takeWhile->map                            |   1,000 |        152.6k |              1.1M | 191.1k | 161.6k |  57.6k |       - | 157.4k |            0.80x |                5.56x |
+| takeWhile->map                            | 100,000 |          1.1k |              3.6k |   1.4k |   1.0k |    428 |       - |   1.2k |            0.77x |                2.61x |
+| flatMap->filter                           |      10 |          1.8M |             27.0M |   1.9M |   1.9M | 838.0k |       - |   1.1M |            0.95x |                14.1x |
+| flatMap->filter                           |   1,000 |         20.8k |            295.7k |  21.2k |  23.3k |   8.8k |       - |  14.2k |            0.89x |                12.7x |
+| flatMap->filter                           | 100,000 |           144 |               297 |    136 |    147 |     78 |       - |    109 |            0.98x |                2.02x |
+| map->sortBy->take(10)                     |      10 |          2.7M |              4.7M |   2.6M |   2.0M | 973.5k |    3.9M |   1.4M |            0.69x |                1.20x |
+| map->sortBy->take(10)                     |   1,000 |          9.8k |            471.8k |  10.3k |   9.9k |   8.4k |   31.2k |   9.9k |            0.32x |                15.1x |
+| map->sortBy->take(10)                     | 100,000 |            44 |              3.7k |     44 |     44 |     38 |      89 |     44 |            0.49x |                41.4x |
+| map->uniq->filter                         |      10 |          4.0M |              5.9M |   3.0M |   1.9M |   1.1M |    3.9M |   1.8M |            1.04x |                1.53x |
+| map->uniq->filter                         |   1,000 |         53.1k |             62.8k |  46.4k |  22.1k |  12.3k |   13.3k |  49.1k |            1.08x |                1.28x |
+| map->uniq->filter                         | 100,000 |           181 |               177 |    159 |    128 |     86 |       2 |    176 |            1.03x |                1.00x |
+| scan->map                                 |      10 |          7.7M |             10.0M |   4.5M |      - |      - |       - |      - |            1.72x |                2.23x |
+| scan->map                                 |   1,000 |        116.9k |            142.1k |  81.9k |      - |      - |       - |      - |            1.43x |                1.73x |
+| scan->map                                 | 100,000 |           849 |              1.1k |    624 |      - |      - |       - |      - |            1.36x |                1.79x |
+| heavy map->filter->reduce                 |      10 |        954.4k |              1.2M | 935.2k | 852.9k | 617.3k |  918.3k | 736.3k |            1.02x |                1.27x |
+| heavy map->filter->reduce                 |   1,000 |          7.4k |              8.8k |   7.6k |   7.4k |   5.6k |    7.4k |   7.3k |            0.98x |                1.16x |
+| heavy map->filter->reduce                 | 100,000 |            68 |                86 |     69 |     68 |     51 |      68 |     69 |            1.00x |                1.25x |
+| filter->head                              |      10 |         10.1M |             43.4M |   9.2M |   6.8M |   4.1M |    8.9M |   2.5M |            1.10x |                4.73x |
+| filter->head                              |   1,000 |        224.0k |             43.5M | 248.0k | 243.4k |   4.0M |  252.9k | 188.6k |            0.06x |                10.8x |
+| filter->head                              | 100,000 |          2.3k |             43.4M |   2.5k |   2.5k |   3.9M |    2.9k |   2.1k |            0.00x |                11.2x |
 
 Compiled wins every row. Typical chains land 2-15x over the fastest
 competitor. Chains that stop early (`find`, `take`, `head`) at n >= 1,000
@@ -92,7 +92,7 @@ input, never dropping below 1.19x. It loses to lazy libraries only on
 chains that stop early at n >= 1,000 (see the `find`/`take`/`head` rows
 above): that's what `Iter` is for, not the compiler.
 
-## FP 2.0 release gates
+## FP release gates
 
 Per-module comparisons. Each row is its own contract against its own
 frozen reference implementation, not the libraries above -- geomeans from
@@ -100,22 +100,22 @@ different rows aren't comparable to each other. A ratio is reference time
 divided by Stopcock time: greater than 1 means Stopcock was faster for
 that row.
 
-| Contract                            | Paired reference and cases                                  | Bun/JSC geo / min |
-| ------------------------------------ | ------------------------------------------------------------ | -----------------: |
-| Build compiler, stratified          | Frozen loop emitter, 44                                     |   1.785x / 0.839x |
-| Build compiler, operation-complete  | Frozen operation emitter, 138 timed + 2 optimizer canaries  |   1.049x / 0.158x |
-| Uncompiled `pipe` floor (invariant) | ramda, 10                                                   |   1.848x / 1.193x |
-| Direct `Iter` terminal              | Hand-written early-exit loop, 3                             |   0.834x / 0.787x |
-| Broad `Iter` surface                | Frozen executor, 14                                         |   1.509x / 0.182x |
-| `Array.without`                     | Frozen implementations, 27                                  |   1.974x / 0.938x |
-| Typed arrays                        | Frozen implementations, 48                                  |   8.653x / 0.373x |
-| Typed arrays                        | Native typed-array equivalents, 48                          |   1.072x / 0.690x |
-| `pipe` dispatch                     | Frozen dispatcher, 4                                        |   1.081x / 1.018x |
-| Core utilities                      | Frozen implementations, 18                                  |   5.135x / 0.748x |
-| Data and functional modules         | Frozen implementations, 11                                  |   2.311x / 0.786x |
-| Structural modules                  | Frozen implementations, 15                                  |   2.317x / 0.999x |
-| Scalar, text, and hash              | Frozen implementations, 11                                  |   2.008x / 0.988x |
-| Recursion, match, schema, writer    | Frozen implementations, 11                                  |   1.816x / 0.464x |
+| Contract                            | Paired reference and cases                                 | Bun/JSC geo / min |
+| ----------------------------------- | ---------------------------------------------------------- | ----------------: |
+| Build compiler, stratified          | Frozen loop emitter, 44                                    |   1.785x / 0.839x |
+| Build compiler, operation-complete  | Frozen operation emitter, 138 timed + 2 optimizer canaries |   1.049x / 0.158x |
+| Uncompiled `pipe` floor (invariant) | ramda, 10                                                  |   1.848x / 1.193x |
+| Direct `Iter` terminal              | Hand-written early-exit loop, 3                            |   0.834x / 0.787x |
+| Broad `Iter` surface                | Frozen executor, 14                                        |   1.509x / 0.182x |
+| `Array.without`                     | Frozen implementations, 27                                 |   1.974x / 0.938x |
+| Typed arrays                        | Frozen implementations, 48                                 |   8.653x / 0.373x |
+| Typed arrays                        | Native typed-array equivalents, 48                         |   1.072x / 0.690x |
+| `pipe` dispatch                     | Frozen dispatcher, 4                                       |   1.081x / 1.018x |
+| Core utilities                      | Frozen implementations, 18                                 |   5.135x / 0.748x |
+| Data and functional modules         | Frozen implementations, 11                                 |   2.311x / 0.786x |
+| Structural modules                  | Frozen implementations, 15                                 |   2.317x / 0.999x |
+| Scalar, text, and hash              | Frozen implementations, 11                                 |   2.008x / 0.988x |
+| Recursion, match, schema, writer    | Frozen implementations, 11                                 |   1.816x / 0.464x |
 
 A handful of rows carry a documented, evidenced floor below the shared
 default for specific cases -- an early-exit or expansion shape the runtime

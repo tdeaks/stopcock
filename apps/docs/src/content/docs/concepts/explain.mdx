@@ -27,6 +27,12 @@ call at build time, the fused loop replaces the call outright, and this
 function never runs for it. A truly compiled site never calls `explain()`
 at all -- there's nothing left there to ask.
 
+The steps passed to `explain()` use the data-last lane, for example
+`A.map(transform)`. The same operation can run directly as
+`A.map(data, transform)`. See the [complete dual-call
+catalogue](/api/modules#complete-dual-call-catalogue) for both shapes of every
+core dual operation.
+
 ## Why this function still exists
 
 Steps built from `@stopcock/fp` operators and ordinary opaque functions now

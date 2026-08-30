@@ -9,6 +9,10 @@ type Ok<A> = { readonly _tag: 1; readonly value: A }
 type Result<A, E> = Ok<A> | Err<E>
 ```
 
+Result has 32 dual operations. The [complete dual-call
+catalogue](/api/modules#complete-dual-call-catalogue) lists both shapes,
+including staged and validation-accumulation calls.
+
 ## Constructors
 
 ```ts

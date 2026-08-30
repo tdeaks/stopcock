@@ -10,6 +10,35 @@ data-last calls under the same name.
 bun add @stopcock/autodiff
 ```
 
+## Dual operation reference
+
+The left call is direct and data-first. The right call is the equivalent
+data-last form.
+
+```ts
+add(a, b) / add(b)(a)
+sub(a, b) / sub(b)(a)
+mul(a, b) / mul(b)(a)
+div(a, b) / div(b)(a)
+pow(a, exponent) / pow(exponent)(a)
+leakyRelu(value, alpha) / leakyRelu(alpha)(value)
+
+vecAdd(a, b) / vecAdd(b)(a)
+vecSub(a, b) / vecSub(b)(a)
+vecScale(vector, scalar) / vecScale(scalar)(vector)
+vecDot(a, b) / vecDot(b)(a)
+
+matAdd(a, b) / matAdd(b)(a)
+matSub(a, b) / matSub(b)(a)
+matMul(a, b) / matMul(b)(a)
+matScale(matrix, scalar) / matScale(scalar)(matrix)
+
+accumulate(existing, incoming) / accumulate(incoming)(existing)
+record(value, parents, backwardFn) / record(parents, backwardFn)(value)
+backward(output, tape) / backward(tape)(output)
+gradOf(variable, tape) / gradOf(tape)(variable)
+```
+
 ## Scalar gradients
 
 Annotate the callback parameters as `Var<...>` so TypeScript can infer the

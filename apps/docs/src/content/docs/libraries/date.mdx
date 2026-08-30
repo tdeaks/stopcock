@@ -365,14 +365,26 @@ parseISO(input): Timestamp
 ### Timezone (`Tz` namespace)
 
 ```ts
+Tz.getYear(ts, zone): number                    Tz.getYear(zone): (ts) => number
+Tz.getMonth(ts, zone): number                   Tz.getMonth(zone): (ts) => number
+Tz.getDay(ts, zone): number                     Tz.getDay(zone): (ts) => number
+Tz.getHours(ts, zone): number                   Tz.getHours(zone): (ts) => number
+Tz.getMinutes(ts, zone): number                 Tz.getMinutes(zone): (ts) => number
+Tz.getSeconds(ts, zone): number                 Tz.getSeconds(zone): (ts) => number
+Tz.isSameDay(a, b, zone): boolean               Tz.isSameDay(b, zone): (a) => boolean
+Tz.startOf(ts, unit, zone, disambiguation?): Timestamp
+Tz.startOf(unit, zone): (ts) => Timestamp
+Tz.endOf(ts, unit, zone, disambiguation?): Timestamp
+Tz.endOf(unit, zone): (ts) => Timestamp
+Tz.add(ts, amount, unit, zone, disambiguation?): Timestamp
+Tz.add(amount, unit, zone): (ts) => Timestamp
+Tz.subtract(ts, amount, unit, zone, disambiguation?): Timestamp
+Tz.subtract(amount, unit, zone): (ts) => Timestamp
+Tz.format(ts, pattern, zone): string            Tz.format(pattern, zone): (ts) => string
+Tz.diff(a, b, unit, zone): number               Tz.diff(b, unit, zone): (a) => number
+
 Tz.utcToLocal(ts, zone): Timestamp
 Tz.localToUTC(localMs, zone): Timestamp
-Tz.startOf(ts, unit, zone): Timestamp
-Tz.endOf(ts, unit, zone): Timestamp
-Tz.add(ts, amount, unit, zone): Timestamp
-Tz.format(ts, pattern, zone): string
-Tz.diff(a, b, unit, zone): number
-Tz.isSameDay(a, b, zone): boolean
 Tz.isWeekend(ts, zone): boolean
 Tz.isToday(ts, zone): boolean
 Tz.getOffsetMinutes(ts, zone): number
@@ -380,5 +392,8 @@ Tz.getOffsetString(ts, zone): string
 ```
 
 <Aside type="tip">
-  Most `Tz` functions that take a timestamp are dual-form: `Tz.format('YYYY-MM-DD', 'Europe/London')` returns `(ts) => string`. Predicates and offset lookups (`Tz.isWeekend`, `Tz.isToday`, `Tz.getOffsetMinutes`, `Tz.getOffsetString`, `Tz.utcToLocal`, `Tz.localToUTC`) take the timestamp first and aren't curried.
+  Curried `Tz.startOf`, `Tz.endOf`, `Tz.add`, and `Tz.subtract` use the default disambiguation
+  policy. Pass `disambiguation` only to the complete data-first call. Predicates and offset lookups
+  (`Tz.isWeekend`, `Tz.isToday`, `Tz.getOffsetMinutes`, `Tz.getOffsetString`, `Tz.utcToLocal`,
+  `Tz.localToUTC`) take the timestamp first and are not curried.
 </Aside>

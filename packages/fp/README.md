@@ -85,8 +85,11 @@ Composition and programs:
 - `compile`, `optic`, `match`
 - `reader`, `state-fn`, `writer`, `recursion`
 
-Every data operation with two or more arguments supports both call shapes
-under the same name: direct data-first and curried data-last.
+The package exposes 491 dual operations. Each supports direct data-first and
+curried data-last calls under the same name. The [complete dual-call
+catalogue](https://stopcock.dev/api/modules#complete-dual-call-catalogue) lists
+both public shapes for every operation, including staged currying and optional
+arguments.
 
 ```ts
 const firstFive = A.take(values, 5)
@@ -152,22 +155,22 @@ geomeans from different rows must not be combined. A ratio is reference time
 divided by Stopcock time, so greater than 1 means Stopcock was faster for
 that row.
 
-| Contract                           | Paired reference and cases                                 | Bun/JSC geo / min |
-| ----------------------------------- | ----------------------------------------------------------- | -----------------: |
-| Build compiler, stratified          | Frozen loop emitter, 44                                     |   1.785× / 0.839× |
-| Build compiler, operation-complete  | Frozen operation emitter, 138 timed + 2 optimizer canaries  |   1.049× / 0.158× |
-| Uncompiled `pipe` floor (invariant) | ramda, 10                                                   |   1.848× / 1.193× |
-| Direct `Iter` terminal              | Hand-written early-exit loop, 3                             |   0.834× / 0.787× |
-| Broad `Iter` surface                | Frozen executor, 14                                         |   1.509× / 0.182× |
-| `Array.without`                     | Frozen implementations, 27                                  |   1.974× / 0.938× |
-| Typed arrays                        | Frozen implementations, 48                                  |   8.653× / 0.373× |
-| Typed arrays                        | Native typed-array equivalents, 48                          |   1.072× / 0.690× |
-| `pipe` dispatch                     | Frozen dispatcher, 4                                        |   1.081× / 1.018× |
-| Core utilities                      | Frozen implementations, 18                                  |   5.135× / 0.748× |
-| Data and functional modules         | Frozen implementations, 11                                  |   2.311× / 0.786× |
-| Structural modules                  | Frozen implementations, 15                                  |   2.317× / 0.999× |
-| Scalar, text, and hash              | Frozen implementations, 11                                  |   2.008× / 0.988× |
-| Recursion, match, schema, writer    | Frozen implementations, 11                                  |   1.816× / 0.464× |
+| Contract                            | Paired reference and cases                                 | Bun/JSC geo / min |
+| ----------------------------------- | ---------------------------------------------------------- | ----------------: |
+| Build compiler, stratified          | Frozen loop emitter, 44                                    |   1.785× / 0.839× |
+| Build compiler, operation-complete  | Frozen operation emitter, 138 timed + 2 optimizer canaries |   1.049× / 0.158× |
+| Uncompiled `pipe` floor (invariant) | ramda, 10                                                  |   1.848× / 1.193× |
+| Direct `Iter` terminal              | Hand-written early-exit loop, 3                            |   0.834× / 0.787× |
+| Broad `Iter` surface                | Frozen executor, 14                                        |   1.509× / 0.182× |
+| `Array.without`                     | Frozen implementations, 27                                 |   1.974× / 0.938× |
+| Typed arrays                        | Frozen implementations, 48                                 |   8.653× / 0.373× |
+| Typed arrays                        | Native typed-array equivalents, 48                         |   1.072× / 0.690× |
+| `pipe` dispatch                     | Frozen dispatcher, 4                                       |   1.081× / 1.018× |
+| Core utilities                      | Frozen implementations, 18                                 |   5.135× / 0.748× |
+| Data and functional modules         | Frozen implementations, 11                                 |   2.311× / 0.786× |
+| Structural modules                  | Frozen implementations, 15                                 |   2.317× / 0.999× |
+| Scalar, text, and hash              | Frozen implementations, 11                                 |   2.008× / 0.988× |
+| Recursion, match, schema, writer    | Frozen implementations, 11                                 |   1.816× / 0.464× |
 
 Measured 28 July 2026 on Darwin arm64, Bun 1.3.14/JavaScriptCore, ambient
 load (no attempt made to get a quiet machine -- these gates are designed to

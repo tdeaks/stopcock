@@ -14,8 +14,15 @@ import * as O from '@stopcock/fp/option'
 import * as R from '@stopcock/fp/result'
 ```
 
-Operations with two or more arguments accept the value first for a direct call,
-or return a data-last operation when the value is omitted.
+Option has 29 dual operations and Result has 32. Each accepts its complete
+data-first argument list or returns the documented data-last operation. See the
+[complete dual-call catalogue](/api/modules#complete-dual-call-catalogue) for
+every pair, including staged calls such as `containsWith`.
+
+```ts
+const directContains = O.containsWith(O.some(2), 2, Object.is)
+const curriedContains = O.containsWith(Object.is)(2)(O.some(2))
+```
 
 ## Option
 

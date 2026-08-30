@@ -3,6 +3,9 @@ title: N (Number)
 description: clamp, sum, mean, percentile. Numeric transforms for pipe
 ---
 
+The 16 dual Number operations appear with both shapes in the [complete
+dual-call catalogue](/api/modules#complete-dual-call-catalogue).
+
 ## Aggregation
 
 ```ts
@@ -58,8 +61,8 @@ pipe(
 ) // ~151.9
 N.medianNonEmpty(times) // 120
 N.standardDeviationNonEmpty(times) // ~68.6
-N.percentileNonEmpty(times, 95) // 300 — direct, data-first
-pipe(times, N.percentileNonEmpty(95)) // 300 — curried, data-last
+N.percentileNonEmpty(times, 95) // 300, direct data-first
+pipe(times, N.percentileNonEmpty(95)) // 300, curried data-last
 
 // clamp user input
 pipe(userAge, N.clamp(0, 150))
@@ -72,6 +75,6 @@ pipe(
 )
 
 // feature vector similarity
-N.dotProduct([1, 0, 1], [0, 1, 1]) // 1 — direct, data-first
-pipe([1, 0, 1], N.dotProduct([0, 1, 1])) // 1 — curried, data-last
+N.dotProduct([1, 0, 1], [0, 1, 1]) // 1, direct data-first
+pipe([1, 0, 1], N.dotProduct([0, 1, 1])) // 1, curried data-last
 ```

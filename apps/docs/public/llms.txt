@@ -12,7 +12,7 @@ bun add @stopcock/fp
 
 ## Guides
 
-- [Cookbook](https://stopcock.dev/cookbook/): Practical @stopcock/fp 2.0 recipes
+- [Cookbook](https://stopcock.dev/cookbook/): Practical @stopcock/fp recipes
 - [Getting Started](https://stopcock.dev/getting-started/): Install stopcock and build your first pipe with Option and Result
 - [Playground](https://stopcock.dev/playground/): Interactive REPL to try stopcock pipes and modules in the browser
 
@@ -58,7 +58,7 @@ bun add @stopcock/fp
 - [Lens migration](https://stopcock.dev/api/lenses/): The 2.0 optic module replaces the old root lens helpers
 - [Logic migration](https://stopcock.dev/api/logic/): Logic was split into focused function and guard modules
 - [M (Math)](https://stopcock.dev/api/math/): add, multiply, sum, mean, median. Arithmetic and stats for pipe
-- [Module catalogue](https://stopcock.dev/api/modules/): Every public @stopcock/fp 2.0 entrypoint
+- [Module catalogue](https://stopcock.dev/api/modules/): Every public @stopcock/fp entrypoint
 - [N (Number)](https://stopcock.dev/api/number/): clamp, sum, mean, percentile. Numeric transforms for pipe
 - [Object](https://stopcock.dev/api/object/): Safe immutable object, merge, and typed path operations
 - [Optic](https://stopcock.dev/api/optic/): Composable immutable focus with lenses, prisms, traversals, and more

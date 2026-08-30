@@ -9,7 +9,9 @@ import { Aside } from '@astrojs/starlight/components'
 bun add @stopcock/img
 ```
 
-Pixel-level image manipulation on raw RGBA buffers. Filters, convolution, resize, crop, the usual. All parameterised functions are dual-form, so they work in `pipe` point-free.
+Pixel-level image manipulation on raw RGBA buffers. Filters, convolution, resize, crop, the usual. Image operations that combine an `Image` with configuration are dual-form, so they work in `pipe` point-free.
+
+Each dual pair lists the direct data-first signature before the curried data-last signature.
 
 ```ts
 import { pipe } from '@stopcock/fp'
@@ -100,15 +102,23 @@ All parameterised filters are dual-form: `brightness(img, 40)` or `brightness(40
 
 ```ts
 brightness(img: Image, amount: number): Image
+brightness(amount: number): (img: Image) => Image
 contrast(img: Image, amount: number): Image
+contrast(amount: number): (img: Image) => Image
 invert(img: Image): Image
 threshold(img: Image, value: number): Image
+threshold(value: number): (img: Image) => Image
 sepia(img: Image): Image
 saturate(img: Image, factor: number): Image
+saturate(factor: number): (img: Image) => Image
 colorize(img: Image, target: Color): Image
+colorize(target: Color): (img: Image) => Image
 duotone(img: Image, dark: Color, light: Color): Image
+duotone(dark: Color, light: Color): (img: Image) => Image
 simulateCVD(img: Image, type: CVDType, severity?: number): Image
+simulateCVD(type: CVDType, severity?: number): (img: Image) => Image
 tonemapToGamut(img: Image, srcSpace: ColorSpace, targetSpace: ColorSpace): Image
+tonemapToGamut(srcSpace: ColorSpace, targetSpace: ColorSpace): (img: Image) => Image
 ```
 
 <Aside type="tip">
@@ -129,9 +139,13 @@ Dual-form where there are parameters. `convolve`, `blur`, `gaussianBlur`, `sharp
 
 ```ts
 convolve(img: Image, kernel: number[][], divisor?: number): Image
+convolve(kernel: number[][], divisor?: number): (img: Image) => Image
 blur(img: Image, radius: number): Image
+blur(radius: number): (img: Image) => Image
 gaussianBlur(img: Image, radius: number, sigma?: number): Image
+gaussianBlur(radius: number, sigma?: number): (img: Image) => Image
 sharpen(img: Image, amount?: number): Image
+sharpen(amount: number): (img: Image) => Image
 edgeDetect(img: Image): Image
 ```
 
@@ -141,7 +155,9 @@ edgeDetect(img: Image): Image
 
 ```ts
 resize(img: Image, width: number, height: number): Image
+resize(width: number, height: number): (img: Image) => Image
 crop(img: Image, x: number, y: number, w: number, h: number): Image
+crop(x: number, y: number, w: number, h: number): (img: Image) => Image
 flipH(img: Image): Image
 flipV(img: Image): Image
 rotate90(img: Image): Image
@@ -160,6 +176,7 @@ For detecting structure in edge-detected / thresholded images.
 
 ```ts
 houghLines(img: Image, options?: HoughOptions): DetectedLine[]
+houghLines(options: HoughOptions): (img: Image) => DetectedLine[]
 lineToEndpoints(line: DetectedLine, width: number, height: number): [Point, Point]
 connectedComponents(img: Image): ComponentResult
 ```

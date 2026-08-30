@@ -6,6 +6,9 @@ description: Accumulate independent validation errors while staying compatible w
 Validation is for independent checks where callers need every error in one pass. It uses the same
 runtime representation as `Result`, but its error side is guaranteed to be non-empty.
 
+Validation has two dual operations. Their paired signatures are in the
+[complete dual-call catalogue](/api/modules#complete-dual-call-catalogue).
+
 ```ts
 type NonEmptyArray<E> = readonly [E, ...E[]]
 type Validation<A, E> = Result<A, NonEmptyArray<E>>

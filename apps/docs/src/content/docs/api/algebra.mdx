@@ -6,6 +6,10 @@ description: Eq, Hash, Ord, Semigroup, Monoid, Group, and Ordering
 The algebra modules are small plain objects and functions. They do not require
 classes, higher-kinded-type emulation, or a runtime typeclass registry.
 
+Eq, Hash, and Ord expose 16 dual operations. The [complete dual-call
+catalogue](/api/modules#complete-dual-call-catalogue) shows both call shapes for
+each one.
+
 ```ts
 import { pipe } from '@stopcock/fp'
 import * as Eq from '@stopcock/fp/eq'
