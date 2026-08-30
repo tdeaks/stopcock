@@ -6,28 +6,33 @@ description: clamp, sum, mean, percentile. Numeric transforms for pipe
 ## Aggregation
 
 ```ts
-sum(nums: number[]): number
-mean(nums: number[]): Option<number>
-median(nums: number[]): Option<number>
-variance(nums: number[]): Option<number>
-standardDeviation(nums: number[]): Option<number>
-min(nums: number[]): Option<number>
-max(nums: number[]): Option<number>
-minMax(nums: number[]): Option<readonly [number, number]>
+sum(nums: readonly number[]): number
+mean(nums: readonly number[]): Option<number>
+median(nums: readonly number[]): Option<number>
+variance(nums: readonly number[]): Option<number>
+standardDeviation(nums: readonly number[]): Option<number>
+min(nums: readonly number[]): Option<number>
+max(nums: readonly number[]): Option<number>
+minMax(nums: readonly number[]): Option<readonly [number, number]>
 ```
 
 Every partial aggregate also has an explicit `*OrUndefined` variant. Use the
 `*NonEmpty` variants when a readonly non-empty tuple proves a result exists,
 and the sample-statistic `*AtLeastTwo` variants when two inputs are required.
 
-## Curried
+## Dual-form
 
 ```ts
-percentile(p: number): (nums: number[]) => Option<number>
-percentileOrUndefined(p: number): (nums: number[]) => number | undefined
+percentile(nums: readonly number[], p: number): Option<number>
+percentile(p: number): (nums: readonly number[]) => Option<number>
+percentileOrUndefined(nums: readonly number[], p: number): number | undefined
+percentileOrUndefined(p: number): (nums: readonly number[]) => number | undefined
+percentileNonEmpty(nums: readonly [number, ...number[]], p: number): number
 percentileNonEmpty(p: number): (nums: readonly [number, ...number[]]) => number
+clamp(value: number, min: number, max: number): number
 clamp(min: number, max: number): (value: number) => number
-dotProduct(b: number[]): (a: number[]) => number
+dotProduct(a: readonly number[], b: readonly number[]): number
+dotProduct(b: readonly number[]): (a: readonly number[]) => number
 ```
 
 ## Predicates
@@ -47,10 +52,14 @@ import * as O from '@stopcock/fp/option'
 
 // stats on response times
 const times = [120, 95, 200, 88, 150, 300, 110] as const
-pipe(N.mean(times), O.getOrElse(() => 0)) // ~151.9
+pipe(
+  N.mean(times),
+  O.getOrElse(() => 0),
+) // ~151.9
 N.medianNonEmpty(times) // 120
 N.standardDeviationNonEmpty(times) // ~68.6
-N.percentileNonEmpty(95)(times) // 300
+N.percentileNonEmpty(times, 95) // 300 — direct, data-first
+pipe(times, N.percentileNonEmpty(95)) // 300 — curried, data-last
 
 // clamp user input
 pipe(userAge, N.clamp(0, 150))
@@ -63,5 +72,6 @@ pipe(
 )
 
 // feature vector similarity
-N.dotProduct([0, 1, 1])([1, 0, 1]) // 1
+N.dotProduct([1, 0, 1], [0, 1, 1]) // 1 — direct, data-first
+pipe([1, 0, 1], N.dotProduct([0, 1, 1])) // 1 — curried, data-last
 ```

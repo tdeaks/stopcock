@@ -29,25 +29,28 @@ setCity: (city) =>
 An optic packages the read and immutable-update path as a reusable value.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Optic from '@stopcock/fp/optic'
 
-const city = Optic.optic<State>()
-  .prop('user')
-  .prop('address')
-  .prop('city')
-  .value
+const city = Optic.optic<State>().prop('user').prop('address').prop('city').value
 ```
 
-The Zustand action becomes:
+The Zustand action can use the optic directly with data first:
 
 ```ts
-setCity: (value) =>
-  set((state) => Optic.set(city, value)(state))
+setCity: (value) => set((state) => Optic.set(city, state, value))
+```
+
+Or use the same operation data-last in `pipe`:
+
+```ts
+setCity: (value) => set((state) => pipe(state, Optic.set(city, value)))
 ```
 
 ## A complete store
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { create } from 'zustand'
 import * as Optic from '@stopcock/fp/optic'
 
@@ -68,11 +71,16 @@ const useStore = create<State & Actions>((set) => ({
   cart: { items: [], discount: null },
   ui: { sidebarOpen: false, theme: 'light' },
 
-  setCity: (value) => set((state) => Optic.set(city, value)(state)),
-  setTheme: (value) => set((state) => Optic.set(theme, value)(state)),
-  applyDiscount: (value) => set((state) => Optic.set(discount, value)(state)),
+  setCity: (value) => set((state) => pipe(state, Optic.set(city, value))),
+  setTheme: (value) => set((state) => pipe(state, Optic.set(theme, value))),
+  applyDiscount: (value) => set((state) => pipe(state, Optic.set(discount, value))),
   toggleSidebar: () =>
-    set((state) => Optic.modify(sidebar, (open) => !open)(state)),
+    set((state) =>
+      pipe(
+        state,
+        Optic.modify(sidebar, (open) => !open),
+      ),
+    ),
 }))
 ```
 
@@ -85,10 +93,10 @@ Traversals focus on zero or more values:
 ```ts
 const outOfStock = Optic.filtered<CartItem>((item) => item.stock === 0)
 
-const updatedItems = Optic.modify(
-  outOfStock,
-  (item) => ({ ...item, disabled: true }),
-)(items)
+const updatedItems = pipe(
+  items,
+  Optic.modify(outOfStock, (item) => ({ ...item, disabled: true })),
+)
 ```
 
 Compose the traversal with a lens to update items directly inside state:
@@ -99,10 +107,10 @@ const unavailableItems = Optic.compose(cartItems, outOfStock)
 
 const markOutOfStock = () =>
   set((state) =>
-    Optic.modify(
-      unavailableItems,
-      (item) => ({ ...item, disabled: true }),
-    )(state),
+    pipe(
+      state,
+      Optic.modify(unavailableItems, (item) => ({ ...item, disabled: true })),
+    ),
   )
 ```
 
@@ -113,11 +121,14 @@ leave the source unchanged when no focus exists.
 
 ```ts
 const selected = Optic.find<CartItem>((item) => item.id === selectedId)
-const current = Optic.preview(selected)(items)
-const renamed = Optic.modify(selected, (item) => ({
-  ...item,
-  name: item.name.trim(),
-}))(items)
+const current = pipe(items, Optic.preview(selected))
+const renamed = pipe(
+  items,
+  Optic.modify(selected, (item) => ({
+    ...item,
+    name: item.name.trim(),
+  })),
+)
 ```
 
 ## When to use optics

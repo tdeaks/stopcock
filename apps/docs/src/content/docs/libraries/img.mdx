@@ -12,9 +12,15 @@ bun add @stopcock/img
 Pixel-level image manipulation on raw RGBA buffers. Filters, convolution, resize, crop, the usual. All parameterised functions are dual-form, so they work in `pipe` point-free.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { create, grayscale, blur, resize, brightness } from '@stopcock/img'
 
-pipe(create(800, 600), grayscale, blur(3), brightness(40), resize(400, 300))
+const image = create(800, 600)
+
+const directlyBrightened = brightness(image, 40)
+const brightenedInPipe = pipe(image, brightness(40))
+
+const processed = pipe(image, grayscale, blur(3), brightness(40), resize(400, 300))
 ```
 
 ## Real-world patterns
@@ -43,12 +49,13 @@ import { fromRGBA, grayscale, sepia, brightness } from '@stopcock/img'
 
 const vintage = (img: Image) => pipe(img, grayscale, sepia, brightness(1.1))
 
-const processed = A.map(vintage)(images)
+const processed = A.map(images, vintage)
 ```
 
 ### Edge detection for feature extraction
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { grayscale, gaussianBlur, edgeDetect } from '@stopcock/img'
 
 const edges = pipe(

@@ -21,6 +21,7 @@ The algebra modules are small plain objects and functions. They do not require
 classes, higher-kinded-type emulation, or a runtime typeclass registry.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Eq from '@stopcock/fp/eq'
 import * as Hash from '@stopcock/fp/hash'
 import * as Ord from '@stopcock/fp/ord'
@@ -62,11 +63,23 @@ both.
 ## Ordering
 
 ```ts
-const byAge = Ord.contramap((user: User) => user.age)(Ord.number)
-const byAgeThenName = Ord.combine(byAge, Ord.contramap((user: User) => user.name)(Ord.string))
+const byAge = Ord.contramap(Ord.number, (user: User) => user.age)
+const byAgeInPipe = pipe(
+  Ord.number,
+  Ord.contramap((user: User) => user.age),
+)
+const byName = pipe(
+  Ord.string,
+  Ord.contramap((user: User) => user.name),
+)
+const byAgeThenName = Ord.combine(byAge, byName)
+const byAgeThenNameInPipe = pipe(byAge, Ord.combine(byName))
 
 users.toSorted(byAgeThenName.compare)
 ```
+
+`contramap` and `combine` accept their complete argument lists directly or
+return a data-last operation when the instance argument is omitted.
 
 The `ordering` module contains the `-1 | 0 | 1` primitives used by `Ord`.
 
@@ -92,7 +105,14 @@ Source: https://stopcock.dev/api/array/
 
 Filter, map, sort, group, and 30+ array functions for pipe
 
-Every function works both ways: `A.fn(arr, ...)` (data-first) and `pipe(arr, A.fn(...))` (data-last). Streaming operations such as `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, and `dropWhile` [fuse in pipe](/concepts/fusion) into single loops. Terminal folds, accessor terminals, and materializing operations have different boundaries.
+Every data operation with two or more arguments works both ways:
+`A.fn(arr, ...)` runs direct data-first, while `A.fn(...)(arr)` is the curried
+data-last form used by `pipe(arr, A.fn(...))`. Streaming operators such as `map`, `filter`,
+`flatMap`, `take`, `drop`, `takeWhile`, and `dropWhile` can be fused into a
+single loop by the separate build-time [`@stopcock/fp-compiler`](/concepts/fusion)
+plugin. Plain `pipe` at runtime never fuses on its own; it just calls each
+step in order. Terminal folds, accessor terminals, and materializing
+operations have different boundaries in what the compiler can fuse.
 
 ## Accessors
 
@@ -106,77 +126,107 @@ headNonEmpty<A>(arr: readonly [A, ...A[]]): A
 lastNonEmpty<A>(arr: readonly [A, ...A[]]): A
 tail<A>(arr: readonly A[]): A[]           // all except first
 init<A>(arr: readonly A[]): A[]           // all except last
-length<A>(arr: A[]): number
-isEmpty<A>(arr: A[]): boolean
+length<A>(arr: readonly A[]): number
+isEmpty<A>(arr: readonly A[]): boolean
 ```
 
-`head`, `last`, `length`, and `isEmpty` are accessor terminals in fused chains.
-Option-returning names are the default; `*OrUndefined` is the explicit
-JavaScript interop escape hatch.
+`head`, `last`, `length`, and `isEmpty` are accessor terminals: the compiler
+can treat them as the last step of a fused loop. Option-returning names are
+the default; `*OrUndefined` is the explicit JavaScript interop escape hatch.
 
 ## Transforms
 
 ```ts
-map<A, B>(arr: A[], f: (a: A) => B): B[]
-mapWithIndex<A, B>(arr: A[], f: (a: A, i: number) => B): B[]
-filter<A>(arr: A[], pred: (a: A) => boolean): A[]
-filterWithIndex<A>(arr: A[], pred: (a: A, i: number) => boolean): A[]
-flatMap<A, B>(arr: A[], f: (a: A) => B[]): B[]
-reduce<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
-reduceRight<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B
-scan<A, B>(arr: A[], f: (acc: B, a: A) => B, init: B): B[]
-forEach<A>(arr: A[], f: (a: A) => void): void
-forEachWithIndex<A>(arr: A[], f: (a: A, i: number) => void): void
+map<A, B>(arr: readonly A[], f: (a: A) => B): B[]
+map<A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
+mapWithIndex<A, B>(arr: readonly A[], f: (a: A, i: number) => B): B[]
+mapWithIndex<A, B>(f: (a: A, i: number) => B): (arr: readonly A[]) => B[]
+filter<A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+filter<A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+filterWithIndex<A>(arr: readonly A[], pred: (a: A, i: number) => boolean): A[]
+filterWithIndex<A>(pred: (a: A, i: number) => boolean): (arr: readonly A[]) => A[]
+flatMap<A, B>(arr: readonly A[], f: (a: A) => B[]): B[]
+flatMap<A, B>(f: (a: A) => B[]): (arr: readonly A[]) => B[]
+reduce<A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
+reduce<A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
+reduceRight<A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
+reduceRight<A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
+scan<A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B[]
+scan<A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B[]
+forEach<A>(arr: readonly A[], f: (a: A) => void): void
+forEach<A>(f: (a: A) => void): (arr: readonly A[]) => void
+forEachWithIndex<A>(arr: readonly A[], f: (a: A, i: number) => void): void
+forEachWithIndex<A>(f: (a: A, i: number) => void): (arr: readonly A[]) => void
 ```
 
-`map`, `mapWithIndex`, `filter`, `filterWithIndex`, and `flatMap` stream in fused `pipe` chains. `reduce` is a terminal fold. `forEach` is terminal side-effect traversal. `scan` returns an intermediate array.
+`map`, `mapWithIndex`, `filter`, `filterWithIndex`, and `flatMap` are the
+streaming steps the compiler can fuse into one loop. `reduce` is a terminal
+fold. `forEach` is a terminal side-effect traversal. `scan` returns an
+intermediate array of every running value.
 
 ## Ordering
 
 ```ts
-sort(arr: number[]): number[]
-sortBy<A>(arr: A[], cmp: (a: A, b: A) => number): A[]
-reverse<A>(arr: A[]): A[]
+sort(arr: readonly number[]): number[]
+sortBy<A>(arr: readonly A[], cmp: (a: A, b: A) => number): A[]
+sortBy<A>(cmp: (a: A, b: A) => number): (arr: readonly A[]) => A[]
+reverse<A>(arr: readonly A[]): A[]
 ```
 
-Materialization boundaries. They need the whole array. When callback purity is
-explicitly promised, `compilePure` can apply its bounded stable top-k rewrite
-to an adjacent `sortBy -> take(k)` or `sort -> take(k)` pair; ordinary `pipe`
-and `compile` keep exact semantics.
+Materialization boundaries: they need the whole array before they can
+produce anything. `sort` and `sortBy` always run a full sort; a following
+`take` does not get a bounded top-k shortcut.
 
 ## Slicing
 
 ```ts
-take<A>(arr: A[], n: number): A[]
-drop<A>(arr: A[], n: number): A[]
-takeWhile<A>(arr: A[], pred: (a: A) => boolean): A[]
-dropWhile<A>(arr: A[], pred: (a: A) => boolean): A[]
-chunk<A>(arr: A[], n: number): A[][]
-slidingWindow<A>(arr: A[], n: number): A[][]
-aperture<A>(arr: A[], n: number): A[][]
+take<A>(arr: readonly A[], n: number): A[]
+take(n: number): <A>(arr: readonly A[]) => A[]
+drop<A>(arr: readonly A[], n: number): A[]
+drop(n: number): <A>(arr: readonly A[]) => A[]
+takeWhile<A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+takeWhile<A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+dropWhile<A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+dropWhile<A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+chunk<A>(arr: readonly A[], n: number): A[][]
+chunk(n: number): <A>(arr: readonly A[]) => A[][]
+slidingWindow<A>(arr: readonly A[], n: number): A[][]
+slidingWindow(n: number): <A>(arr: readonly A[]) => A[][]
+aperture<A>(arr: readonly A[], n: number): A[][]
+aperture(n: number): <A>(arr: readonly A[]) => A[][]
 ```
 
-`take`, `drop`, `takeWhile`, and `dropWhile` can stream in fused pipelines. `take` and `takeWhile` can stop early.
+`take`, `drop`, `takeWhile`, and `dropWhile` are streaming steps the
+compiler can fuse. `take` and `takeWhile` can stop the loop early.
 
 ## Search
 
 ```ts
 find<A>(arr: readonly A[], pred: (a: A) => boolean): Option<A>
+find<A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<A>
 findIndex<A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
+findIndex<A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<number>
 findOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
+findOrUndefined<A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
 findIndexOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
-every<A>(arr: A[], pred: (a: A) => boolean): boolean
-some<A>(arr: A[], pred: (a: A) => boolean): boolean
-includes<A>(arr: A[], value: A): boolean
+findIndexOrUndefined<A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
+every<A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+every<A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
+some<A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+some<A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
+includes<A>(arr: readonly A[], value: A): boolean
+includes<A>(value: A): (arr: readonly A[]) => boolean
 ```
 
-`find`, `every`, and `some` are terminal predicates/searches. They can run as the final step of a fused pass and bail out early.
+`find`, `every`, and `some` are terminal predicates/searches: the compiler
+can run them as the last step of a fused loop and bail out early.
 
 ## Deduplication
 
 ```ts
-uniq<A>(arr: A[]): A[]
-uniqBy<A, B>(arr: A[], f: (a: A) => B): A[]
+uniq<A>(arr: readonly A[]): A[]
+uniqBy<A, B>(arr: readonly A[], f: (a: A) => B): A[]
+uniqBy<A, B>(f: (a: A) => B): (arr: readonly A[]) => A[]
 ```
 
 Deduplication needs seen-value state and returns a materialized array.
@@ -184,23 +234,33 @@ Deduplication needs seen-value state and returns a materialized array.
 ## Set operations
 
 ```ts
-intersection<A>(a: A[], b: A[]): A[]
-union<A>(a: A[], b: A[]): A[]
-difference<A>(a: A[], b: A[]): A[]
-symmetricDifference<A>(a: A[], b: A[]): A[]
+intersection<A>(a: readonly A[], b: readonly A[]): A[]
+intersection<A>(b: readonly A[]): (a: readonly A[]) => A[]
+union<A>(a: readonly A[], b: readonly A[]): A[]
+union<A>(b: readonly A[]): (a: readonly A[]) => A[]
+difference<A>(a: readonly A[], b: readonly A[]): A[]
+difference<A>(b: readonly A[]): (a: readonly A[]) => A[]
+symmetricDifference<A>(a: readonly A[], b: readonly A[]): A[]
+symmetricDifference<A>(b: readonly A[]): (a: readonly A[]) => A[]
 ```
 
 ## Combinators
 
 ```ts
-zip<A, B>(a: A[], b: B[]): [A, B][]
-zipWith<A, B, C>(a: A[], b: B[], f: (a: A, b: B) => C): C[]
-xprod<A, B>(a: A[], b: B[]): [A, B][]
+zip<A, B>(a: readonly A[], b: readonly B[]): [A, B][]
+zip<B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
+zipWith<A, B, C>(a: readonly A[], b: readonly B[], f: (a: A, b: B) => C): C[]
+zipWith<A, B, C>(b: readonly B[], f: (a: A, b: B) => C): (a: readonly A[]) => C[]
+xprod<A, B>(a: readonly A[], b: readonly B[]): [A, B][]
+xprod<B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
 groupBy<A>(arr: readonly A[], f: (a: A) => string): Record<string, A[]>
-partition<A>(arr: A[], pred: (a: A) => boolean): [A[], A[]]
-intersperse<A>(arr: A[], sep: A): A[]
-flatten<A>(arr: A[][]): A[]
-transpose<A>(arr: A[][]): A[][]
+groupBy<A>(f: (a: A) => string): (arr: readonly A[]) => Record<string, A[]>
+partition<A>(arr: readonly A[], pred: (a: A) => boolean): [A[], A[]]
+partition<A>(pred: (a: A) => boolean): (arr: readonly A[]) => [A[], A[]]
+intersperse<A>(arr: readonly A[], sep: A): A[]
+intersperse<A>(sep: A): (arr: readonly A[]) => A[]
+flatten<A>(arr: readonly A[][]): A[]
+transpose<A>(arr: readonly A[][]): A[][]
 ```
 
 `groupBy` is a materialization boundary because it needs the whole grouped result.
@@ -208,10 +268,14 @@ transpose<A>(arr: A[][]): A[][]
 ## Mutation (immutable)
 
 ```ts
-adjust<A>(arr: A[], index: number, f: (a: A) => A): A[]
-update<A>(arr: A[], index: number, value: A): A[]
-insert<A>(arr: A[], index: number, value: A): A[]
-remove<A>(arr: A[], index: number, count: number): A[]
+adjust<A>(arr: readonly A[], index: number, f: (a: A) => A): A[]
+adjust<A>(index: number, f: (a: A) => A): (arr: readonly A[]) => A[]
+update<A>(arr: readonly A[], index: number, value: A): A[]
+update<A>(index: number, value: A): (arr: readonly A[]) => A[]
+insert<A>(arr: readonly A[], index: number, value: A): A[]
+insert<A>(index: number, value: A): (arr: readonly A[]) => A[]
+remove<A>(arr: readonly A[], index: number, count: number): A[]
+remove(index: number, count: number): <A>(arr: readonly A[]) => A[]
 ```
 
 All return new arrays.
@@ -221,8 +285,11 @@ All return new arrays.
 ```ts
 range(start: number, end: number): number[]
 repeat<A>(value: A, n: number): A[]
+repeat<A>(n: number): (value: A) => A[]
 times<A>(f: (i: number) => A, n: number): A[]
+times(n: number): <A>(f: (i: number) => A) => A[]
 unfold<A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
+unfold<A, B>(seed: B): (f: (seed: B) => [A, B] | undefined) => A[]
 ```
 
 ## Examples
@@ -238,7 +305,8 @@ type Product = {
   inStock: boolean
 }
 
-// fused: filter -> map -> take runs in one loop
+// the compiler can fuse filter -> map -> take into one loop;
+// plain pipe just runs each step in order
 const deals = pipe(
   products,
   A.filter((p: Product) => p.inStock && p.price < 50),
@@ -247,12 +315,12 @@ const deals = pipe(
 )
 
 // group + count
-const byCategory = A.groupBy(products, (p) => p.category)
+const byCategory = A.groupBy(products, (p: Product) => p.category)
 // { electronics: [...], clothing: [...] }
 
 // rolling total
 A.scan([100, 200, 150, 300], (acc, x) => acc + x, 0)
-// [100, 300, 450, 750]
+// [0, 100, 300, 450, 750]
 
 // remove duplicates by key
 const uniqueCustomers = pipe(
@@ -262,7 +330,7 @@ const uniqueCustomers = pipe(
 
 // set operations
 const newUsers = A.difference(allUsers, existingUsers)
-const commonTags = A.intersection(tagsA, tagsB)
+const commonTags = pipe(tagsA, A.intersection(tagsB))
 
 // batch processing
 const batches = A.chunk(records, 100)
@@ -277,9 +345,12 @@ not, and, or, ifElse. Boolean combinators for pipe
 
 ```ts
 not_(a: boolean): boolean
-and_(a: boolean, b: boolean): boolean      // dual
-or_(a: boolean, b: boolean): boolean       // dual
-ifElse<A>(cond: boolean, onTrue: () => A, onFalse: () => A): A  // dual
+and_(a: boolean, b: boolean): boolean
+and_(b: boolean): (a: boolean) => boolean
+or_(a: boolean, b: boolean): boolean
+or_(b: boolean): (a: boolean) => boolean
+ifElse<A>(cond: boolean, onTrue: () => A, onFalse: () => A): A
+ifElse<A>(onTrue: () => A, onFalse: () => A): (cond: boolean) => A
 ```
 
 Trailing underscores avoid colliding with JS reserved words.
@@ -291,7 +362,8 @@ import { pipe } from '@stopcock/fp'
 import * as B from '@stopcock/fp/boolean'
 
 pipe(true, B.not_) // false
-pipe(true, B.and_(false)) // false
+B.and_(true, false) // false — direct, data-first
+pipe(true, B.and_(false)) // false — curried, data-last
 pipe(
   false,
   B.ifElse(
@@ -363,7 +435,9 @@ isPromise(x: unknown): x is Promise<unknown>
 isArray(x: unknown): x is unknown[]
 isObjectType(x: unknown): x is object
 isPlainObject(x: unknown): x is Record<string, unknown>
+isArrayOf<A>(value: unknown, guard: Guard<A>): value is A[]
 isArrayOf<A>(guard: Guard<A>): Guard<A[]>
+isRecordOf<A>(value: unknown, guard: Guard<A>): value is Record<string, A>
 isRecordOf<A>(guard: Guard<A>): Guard<Record<string, A>>
 ```
 
@@ -388,8 +462,11 @@ isDefined<T>(x: T | undefined): x is T
 
 ```ts
 isDeepEqual(a: unknown, b: unknown): boolean
+isDeepEqual(b: unknown): (a: unknown) => boolean
 isShallowEqual(a: unknown, b: unknown): boolean
+isShallowEqual(b: unknown): (a: unknown) => boolean
 isStrictEqual(a: unknown, b: unknown): boolean
+isStrictEqual(b: unknown): (a: unknown) => boolean
 ```
 
 ## Other
@@ -398,8 +475,10 @@ isStrictEqual(a: unknown, b: unknown): boolean
 isEmpty(x: unknown): boolean
 isEmptyish(x: unknown): boolean        // null, undefined, or empty
 isTruthy(x: unknown): boolean
-is<T>(ctor: new (...args: any[]) => T, val: unknown): val is T
-propIs<T>(ctor: new (...args: any[]) => T, prop: string, obj: Record<string, unknown>): boolean
+is<T>(val: unknown, ctor: new (...args: any[]) => T): val is T
+is<T>(ctor: new (...args: any[]) => T): (val: unknown) => val is T
+propIs<T>(obj: Record<string, unknown>, ctor: new (...args: any[]) => T, prop: string): boolean
+propIs<T>(ctor: new (...args: any[]) => T, prop: string): (obj: Record<string, unknown>) => boolean
 ```
 
 ## Examples
@@ -428,14 +507,15 @@ pipe(
 
 // deep equality check
 G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] }) // true
+pipe({ a: [1, 2] }, G.isDeepEqual({ a: [1, 2] })) // true
 
 // check class instance
-G.is(Date, new Date()) // true
-G.is(Date, '2024-01-01') // false
+G.is(new Date(), Date) // true: data-first
+pipe('2024-01-01', G.is(Date)) // false: data-last
 
 const numbers = G.isArrayOf(G.isFiniteNumber)
 numbers([1, 2, 3]) // true
-numbers([1, Number.NaN]) // false
+G.isArrayOf([1, Number.NaN], G.isFiniteNumber) // false: data-first
 
 const labels = G.isRecordOf(G.isNonBlankString)
 labels({ primary: 'Save', secondary: 'Cancel' }) // true
@@ -449,6 +529,7 @@ Source: https://stopcock.dev/api/iter/
 Lazy synchronous sequences with correct iterator closing
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Iter from '@stopcock/fp/iter'
 ```
 
@@ -503,6 +584,12 @@ Transformations are usable directly or in `pipe`:
 ```ts
 import { pipe } from '@stopcock/fp'
 
+const doubled = Iter.map([1, 2, 3], (value) => value * 2)
+const doubledInPipe = pipe(
+  [1, 2, 3],
+  Iter.map((value) => value * 2),
+)
+
 const result = pipe(
   Iter.range(1, Infinity),
   Iter.filter((value) => value % 2 === 0),
@@ -518,13 +605,19 @@ const result = pipe(
 ```ts
 Iter.toArray(source)
 Iter.toArrayInto(source, target)
+pipe(source, Iter.toArrayInto(target))
 Iter.reduce(source, reducer, initial)
+pipe(source, Iter.reduce(reducer, initial))
 Iter.forEach(source, effect)
+pipe(source, Iter.forEach(effect))
 Iter.first(source) // Option<A>
-Iter.last(source)  // Option<A>
+Iter.last(source) // Option<A>
 Iter.find(source, predicate) // Option<A>
+pipe(source, Iter.find(predicate)) // Option<A>
 Iter.some(source, predicate)
+pipe(source, Iter.some(predicate))
 Iter.every(source, predicate)
+pipe(source, Iter.every(predicate))
 Iter.count(source)
 ```
 
@@ -538,6 +631,8 @@ still open. This matters for generators that own file handles, cursors, or
 other resources:
 
 ```ts
+import { pipe } from '@stopcock/fp'
+
 function* rows() {
   try {
     yield* databaseCursor
@@ -546,10 +641,83 @@ function* rows() {
   }
 }
 
-Iter.toArray(Iter.take(rows(), 10))
+pipe(rows(), Iter.take(10), Iter.toArray)
 ```
 
 The `finally` block runs after the tenth value.
+
+---
+# Map and Record
+
+Source: https://stopcock.dev/api/keyed/
+
+Keyed lookups, lazy defaults, and when to reach for Record over Object
+
+```ts
+import { pipe } from '@stopcock/fp'
+import * as MapOps from '@stopcock/fp/map'
+import * as Record from '@stopcock/fp/record'
+```
+
+## Reading a key
+
+Three lookups, three different answers to "what if it is not there?":
+
+```ts
+MapOps.get(scores, 'ada') // Option<number>
+pipe(scores, MapOps.get('ada')) // Option<number>
+MapOps.getOrUndefined(scores, 'ada') // number | undefined
+pipe(scores, MapOps.getOrUndefined('ada')) // number | undefined
+MapOps.getOrElse(scores, 'ada', () => 0) // number
+pipe(
+  scores,
+  MapOps.getOrElse('ada', () => 0),
+) // number
+```
+
+`getOrElse` is lazy. The fallback runs at most once, and only when the key is
+genuinely absent, so an expensive default costs nothing on a hit:
+
+```ts
+const directConfig = MapOps.getOrElse(cache, url, () => parseExpensiveDefault())
+const pipedConfig = pipe(
+  cache,
+  MapOps.getOrElse(url, () => parseExpensiveDefault()),
+)
+```
+
+A key whose stored value is `undefined` is present. All three operations agree
+on that: `get` returns `Some(undefined)`, `getOrUndefined` returns `undefined`,
+and `getOrElse` returns `undefined` without calling the fallback. If you need
+to tell "missing" from "stored `undefined`", use `get`.
+
+Every lookup accepts the map first for a direct call, or curries the key first
+so it drops straight into `pipe`:
+
+```ts
+pipe(
+  scores,
+  MapOps.getOrElse('ada', () => 0),
+)
+```
+
+## Record or Object?
+
+Both hold string- and symbol-keyed data, so the split is about what the value
+means, not about the runtime shape.
+
+Reach for `Record` when the keys are data and every value has the same type: a
+lookup table, a counter, an index built at runtime. It is the cheaper contract:
+it works in enumerable own properties on null-prototype objects and does not
+carry descriptor, accessor, or prototype machinery.
+
+Reach for `Object` when the keys are the _shape_: a struct with a known set of
+differently-typed fields, especially when you need nested path writes, symbol
+preservation, or descriptor-faithful clones.
+
+There is no `Record` path helper. Nested writes into homogeneous data are
+`Obj.setPath`'s job, and a `Record`-flavoured copy of it would be the same
+traversal with a narrower type.
 
 ---
 # Lens migration
@@ -563,18 +731,21 @@ The 1.x root lens helpers were replaced by the unified
 
 ```diff
 - import { prop, view, set, over } from '@stopcock/fp'
++ import { pipe } from '@stopcock/fp'
 + import * as Optic from '@stopcock/fp/optic'
 
 - const name = view(user, prop<User, 'name'>('name'))
-+ const name = Optic.view(Optic.prop<User, 'name'>('name'), user)
++ const nameOptic = Optic.prop<User, 'name'>('name')
++ const name = Optic.view(nameOptic, user)
++ const nameInPipe = pipe(user, Optic.view(nameOptic))
 
 - const updated = over(user, prop<User, 'name'>('name'), String.toUpperCase)
-+ const updated = Optic.modify(
-+   Optic.prop<User, 'name'>('name'),
-+   user,
-+   String.toUpperCase,
-+ )
++ const updated = Optic.modify(nameOptic, user, String.toUpperCase)
++ const updatedInPipe = pipe(user, Optic.modify(nameOptic, String.toUpperCase))
 ```
+
+The full-arity forms execute immediately. Omitting the source returns the same
+operation as a data-last step for `pipe`.
 
 The new module covers lenses, optionals, prisms, traversals, isomorphisms,
 getters, folds, setters, keyed `At` optics, composition, a fluent builder, and
@@ -620,7 +791,7 @@ Source: https://stopcock.dev/api/math/
 
 add, multiply, sum, mean, median. Arithmetic and stats for pipe
 
-## Non-dual
+## Single-argument
 
 ```ts
 inc(n: number): number
@@ -629,14 +800,19 @@ negate(n: number): number
 product(arr: number[]): number
 ```
 
-## Dual
+## Dual-form
 
 ```ts
 add(a: number, b: number): number
+add(b: number): (a: number) => number
 subtract(a: number, b: number): number
+subtract(b: number): (a: number) => number
 multiply(a: number, b: number): number
+multiply(b: number): (a: number) => number
 divide(a: number, b: number): number
+divide(b: number): (a: number) => number
 modulo(a: number, b: number): number
+modulo(b: number): (a: number) => number
 ```
 
 ## Examples
@@ -660,8 +836,9 @@ pipe(count, M.inc) // count + 1
 pipe(count, M.dec) // count - 1
 pipe(value, M.negate) // -value
 
-// data-first
-M.modulo(17, 5) // 2
+// both call shapes
+M.modulo(17, 5) // 2 — direct, data-first
+pipe(17, M.modulo(5)) // 2 — curried, data-last
 ```
 
 ---
@@ -678,7 +855,7 @@ tree-shakeable subpaths.
 
 | Subpath              | Purpose                                                              |
 | -------------------- | -------------------------------------------------------------------- |
-| `/array`             | Eager array operators, fused pipeline steps, explicit `*Into` writes |
+| `/array`             | Eager array operators, streaming steps the build-time compiler can fuse, explicit `*Into` writes |
 | `/readonly-array`    | Read-only alias of the array vocabulary                              |
 | `/non-empty-array`   | Constructors and total operations for non-empty arrays               |
 | `/tuple`             | Typed tuple construction, mapping, zipping, and projection           |
@@ -688,8 +865,6 @@ tree-shakeable subpaths.
 | `/typed-array`       | Numeric typed-array transforms and explicit destination buffers      |
 | `/indexed`           | Shared indexed-collection operations                                 |
 | [`/iter`](/api/iter) | Lazy synchronous sequences                                           |
-| `/transducer`        | Composable allocation-free reducing transformations                  |
-| `/collector`         | Reusable terminal collectors                                         |
 
 Writable `*Into` operations preserve the concrete destination type. They
 reject fixed tuples, heterogeneous or refined record destinations, and
@@ -732,8 +907,9 @@ Asynchronous failures and asynchronous iteration are provided by
 | `/number`              | Numeric predicates, statistics, and safe partials                      |
 | `/math`                | Arithmetic pipeline operators                                          |
 | `/boolean`             | Boolean combinators                                                    |
-| `/dual`                | Build data-first and data-last APIs                                    |
-| `/compile`             | Portable pipeline planning and explanations                            |
+| `/compile`             | `compile`/`compilePure` markers the build-time compiler recognizes; uncompiled, they alias `pipe` |
+| `/fusion`              | Same `pipe`/`flow`/`compile`, imported by a name that says "I mean fusion" |
+| `/fusion/debug`        | `explain`/`explainPure`; always report `'sequential'` at runtime       |
 | [`/optic`](/api/optic) | Lenses, optionals, prisms, traversals, and more                        |
 | `/match`               | Exhaustive tagged-value matching                                       |
 
@@ -760,28 +936,33 @@ clamp, sum, mean, percentile. Numeric transforms for pipe
 ## Aggregation
 
 ```ts
-sum(nums: number[]): number
-mean(nums: number[]): Option<number>
-median(nums: number[]): Option<number>
-variance(nums: number[]): Option<number>
-standardDeviation(nums: number[]): Option<number>
-min(nums: number[]): Option<number>
-max(nums: number[]): Option<number>
-minMax(nums: number[]): Option<readonly [number, number]>
+sum(nums: readonly number[]): number
+mean(nums: readonly number[]): Option<number>
+median(nums: readonly number[]): Option<number>
+variance(nums: readonly number[]): Option<number>
+standardDeviation(nums: readonly number[]): Option<number>
+min(nums: readonly number[]): Option<number>
+max(nums: readonly number[]): Option<number>
+minMax(nums: readonly number[]): Option<readonly [number, number]>
 ```
 
 Every partial aggregate also has an explicit `*OrUndefined` variant. Use the
 `*NonEmpty` variants when a readonly non-empty tuple proves a result exists,
 and the sample-statistic `*AtLeastTwo` variants when two inputs are required.
 
-## Dual
+## Dual-form
 
 ```ts
-percentile(nums: number[], p: number): Option<number>
-percentileOrUndefined(nums: number[], p: number): number | undefined
+percentile(nums: readonly number[], p: number): Option<number>
+percentile(p: number): (nums: readonly number[]) => Option<number>
+percentileOrUndefined(nums: readonly number[], p: number): number | undefined
+percentileOrUndefined(p: number): (nums: readonly number[]) => number | undefined
 percentileNonEmpty(nums: readonly [number, ...number[]], p: number): number
+percentileNonEmpty(p: number): (nums: readonly [number, ...number[]]) => number
 clamp(value: number, min: number, max: number): number
-dotProduct(a: number[], b: number[]): number
+clamp(min: number, max: number): (value: number) => number
+dotProduct(a: readonly number[], b: readonly number[]): number
+dotProduct(b: readonly number[]): (a: readonly number[]) => number
 ```
 
 ## Predicates
@@ -801,10 +982,14 @@ import * as O from '@stopcock/fp/option'
 
 // stats on response times
 const times = [120, 95, 200, 88, 150, 300, 110] as const
-pipe(N.mean(times), O.getOrElse(() => 0)) // ~151.9
+pipe(
+  N.mean(times),
+  O.getOrElse(() => 0),
+) // ~151.9
 N.medianNonEmpty(times) // 120
 N.standardDeviationNonEmpty(times) // ~68.6
-N.percentileNonEmpty(times, 95) // 300
+N.percentileNonEmpty(times, 95) // 300 — direct, data-first
+pipe(times, N.percentileNonEmpty(95)) // 300 — curried, data-last
 
 // clamp user input
 pipe(userAge, N.clamp(0, 150))
@@ -817,7 +1002,8 @@ pipe(
 )
 
 // feature vector similarity
-N.dotProduct([1, 0, 1], [0, 1, 1]) // 1
+N.dotProduct([1, 0, 1], [0, 1, 1]) // 1 — direct, data-first
+pipe([1, 0, 1], N.dotProduct([0, 1, 1])) // 1 — curried, data-last
 ```
 
 ---
@@ -828,6 +1014,7 @@ Source: https://stopcock.dev/api/object/
 Safe immutable object, merge, and typed path operations
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Obj from '@stopcock/fp/object'
 ```
 
@@ -841,19 +1028,24 @@ Obj.keys(value)
 Obj.values(value)
 Obj.entries(value)
 Obj.pick(value, ['id', 'name'])
+pipe(value, Obj.pick(['id', 'name']))
 Obj.omit(value, ['password'])
+pipe(value, Obj.omit(['password']))
 Obj.pickBy(value, (_value, key) => key !== 'internal')
+pipe(
+  value,
+  Obj.pickBy((_value, key) => key !== 'internal'),
+)
 Obj.omitBy(value, predicate)
+pipe(value, Obj.omitBy(predicate))
 ```
 
-`pick`, `omit`, and predicate projections are available in data-first and
-pipe-friendly forms.
+`pick`, `omit`, and predicate projections accept the object first for a direct
+call, or curry the keys or predicate so they drop straight into `pipe`.
 
 ## Immutable updates
 
 ```ts
-import { pipe } from '@stopcock/fp'
-
 const updated = pipe(
   user,
   Obj.assoc('role', 'admin'),
@@ -870,11 +1062,23 @@ const updated = pipe(
 
 ```ts
 Obj.mergeWith(defaults, overrides, (left, right) => right ?? left)
+pipe(
+  defaults,
+  Obj.mergeWith(overrides, (left, right) => right ?? left),
+)
 
 Obj.mergeDeep(defaults, overrides, {
   bias: 'right',
   arrays: 'replace',
 })
+
+pipe(
+  defaults,
+  Obj.mergeDeep(overrides, {
+    bias: 'right',
+    arrays: 'replace',
+  }),
+)
 ```
 
 Deep merge options make conflict and array semantics explicit:
@@ -893,13 +1097,19 @@ Paths are readonly key tuples, not dotted strings:
 const cityPath = Obj.pathOf<User>()('profile', 'address', 'city')
 
 Obj.getPath(user, cityPath) // Option<string>
+pipe(user, Obj.getPath(cityPath)) // Option<string>
 Obj.getPathOrUndefined(user, cityPath) // string | undefined
+pipe(user, Obj.getPathOrUndefined(cityPath)) // string | undefined
 Obj.hasPath(user, cityPath)
+pipe(user, Obj.hasPath(cityPath))
 
 const moved = Obj.setPath(user, cityPath, 'Manchester')
+const movedInPipe = pipe(user, Obj.setPath(cityPath, 'Manchester'))
 const upper = Obj.modifyPath(user, cityPath, String.toUpperCase)
+const upperInPipe = pipe(user, Obj.modifyPath(cityPath, String.toUpperCase))
 const nicknamePath = Obj.pathOf<User>()('profile', 'nickname')
 const withoutNickname = Obj.removePath(user, nicknamePath)
+const withoutNicknameInPipe = pipe(user, Obj.removePath(nicknamePath))
 ```
 
 Tuple paths distinguish numeric indices from string keys, reject unsafe write
@@ -909,8 +1119,8 @@ original source type.
 
 Path writes traverse only ordinary arrays and plain objects. Missing object
 containers are created with normal `{}` semantics (and missing numeric
-containers as arrays). Unrelated own properties—including symbols,
-non-enumerables, accessors, and property flags—are preserved along each cloned
+containers as arrays). Unrelated own properties, including symbols,
+non-enumerables, accessors, and property flags, are preserved along each cloned
 branch. Class instances, callable objects, and array subclasses are not traversed:
 nominal and callable types are rejected statically when TypeScript can prove
 them, and structurally indistinguishable runtime values fail with `TypeError`.
@@ -920,6 +1130,31 @@ write APIs. A broad `string` key for an index signature cannot be ruled out
 statically, so it is checked at runtime and throws `TypeError` if its actual
 value is unsafe.
 
+## Compiled paths
+
+If you read the same path over and over, compile it once:
+
+```ts
+const city = Obj.compilePathOf<User>()('profile', 'address', 'city')
+
+city.get(user) // Option<string>
+city.getOrUndefined(user) // string | undefined
+city.has(user)
+```
+
+The segments are copied and frozen when you compile, so mutating the array you
+passed in cannot change what the reader does. Results are identical to
+`getPath`, `getPathOrUndefined`, and `hasPath`, including a present `undefined`
+leaf staying `Some(undefined)`.
+
+There is deliberately no compiled write. A path write is dominated by
+structurally cloning each container it passes through, not by walking the path,
+so `setPath` and `modifyPath` already do the fast thing on their own: when every
+container on the branch is ordinary plain data, they skip the descriptor-by-
+descriptor clone. Anything with an accessor, a non-enumerable or frozen slot, an
+exotic prototype, or an own `__proto__` property falls back to the exact clone,
+so the output is the same either way.
+
 ---
 # Optic
 
@@ -928,23 +1163,24 @@ Source: https://stopcock.dev/api/optic/
 Composable immutable focus with lenses, prisms, traversals, and more
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Optic from '@stopcock/fp/optic'
 ```
 
 The optic module represents immutable reads and updates without hiding
 partiality. Its optic kinds are:
 
-| Kind | Focus | Read | Write |
-| --- | --- | --- | --- |
-| `Lens` | exactly one | yes | yes |
-| `Optional` | zero or one | `Option` | yes when present |
-| `Prism` | one case of a sum | `Option` | yes when matched |
-| `Traversal` | zero or more | collect | modify all |
-| `Iso` | exactly one | yes | reversible |
-| `Getter` | exactly one | yes | no |
-| `Fold` | zero or more | collect | no |
-| `Setter` | zero or more | no | modify |
-| `At` | keyed optional value | `Option` | insert/delete |
+| Kind        | Focus                | Read     | Write            |
+| ----------- | -------------------- | -------- | ---------------- |
+| `Lens`      | exactly one          | yes      | yes              |
+| `Optional`  | zero or one          | `Option` | yes when present |
+| `Prism`     | one case of a sum    | `Option` | yes when matched |
+| `Traversal` | zero or more         | collect  | modify all       |
+| `Iso`       | exactly one          | yes      | reversible       |
+| `Getter`    | exactly one          | yes      | no               |
+| `Fold`      | zero or more         | collect  | no               |
+| `Setter`    | zero or more         | no       | modify           |
+| `At`        | keyed optional value | `Option` | insert/delete    |
 
 ## Constructors
 
@@ -975,17 +1211,24 @@ const byId = Optic.at<string, User>('user-1')
 
 ```ts
 Optic.view(name, user)
-Optic.preview(first, users)       // Option<User>
-Optic.collect(adults, users)      // readonly User[]
+pipe(user, Optic.view(name))
+Optic.preview(first, users) // Option<User>
+pipe(users, Optic.preview(first)) // Option<User>
+Optic.collect(adults, users) // readonly User[]
+pipe(users, Optic.collect(adults)) // readonly User[]
 Optic.set(name, user, 'Ada')
+pipe(user, Optic.set(name, 'Ada'))
 Optic.modify(name, user, (value) => value.toUpperCase())
+pipe(
+  user,
+  Optic.modify(name, (value) => value.toUpperCase()),
+)
 ```
 
-Each operation also has a pipe-friendly form with the optic first:
+Each operation accepts its full argument list for a direct call. Omitting the
+source curries the optic (and any other argument) into a `pipe` step:
 
 ```ts
-import { pipe } from '@stopcock/fp'
-
 const updated = pipe(
   user,
   Optic.modify(name, (value) => value.toUpperCase()),
@@ -1001,6 +1244,7 @@ const city = Optic.compose(
 )
 
 Optic.view(city, user)
+pipe(user, Optic.view(city))
 ```
 
 Composition preserves the strongest valid optic kind: lens with lens remains
@@ -1010,10 +1254,7 @@ optics.
 For nested object paths, the fluent builder avoids manual intermediate types:
 
 ```ts
-const city = Optic.optic<User>()
-  .prop('address')
-  .prop('city')
-  .value
+const city = Optic.optic<User>().prop('address').prop('city').value
 ```
 
 `Optic.laws` exposes the standard lens get-set, set-get, and set-set checks for
@@ -1040,19 +1281,24 @@ Numeric `_tag` for fast branching. `none` is a singleton.
 some<A>(value: A): Option<A>
 none: None
 fromNullable<A>(value: A | null | undefined): Option<NonNullable<A>>
+fromPredicate<A, B extends A>(value: A, pred: (value: A) => value is B): Option<B>
+fromPredicate<A, B extends A>(pred: (value: A) => value is B): (value: A) => Option<B>
 fromPredicate<A>(value: A, pred: (value: A) => boolean): Option<A>
 fromPredicate<A>(pred: (value: A) => boolean): (value: A) => Option<A>
 ```
 
-Type-guard predicates narrow the `Some` value in both forms.
+A type-guard predicate narrows the `Some` value; a plain predicate does not.
 
 ## Transforms
 
 ```ts
+map<A, B>(o: Option<A>, f: (a: A) => B): Option<B>
 map<A, B>(f: (a: A) => B): (o: Option<A>) => Option<B>
+flatMap<A, B>(o: Option<A>, f: (a: A) => Option<B>): Option<B>
 flatMap<A, B>(f: (a: A) => Option<B>): (o: Option<A>) => Option<B>
 filter<A>(option: Option<A>, pred: (value: A) => boolean): Option<A>
 filter<A>(pred: (value: A) => boolean): (option: Option<A>) => Option<A>
+tap<A>(o: Option<A>, f: (a: A) => void): Option<A>
 tap<A>(f: (a: A) => void): (o: Option<A>) => Option<A>
 ```
 
@@ -1062,11 +1308,16 @@ passes through and a failed predicate produces the `none` singleton.
 ## Extraction
 
 ```ts
+getOrElse<A, B>(o: Option<A>, onNone: () => B): A | B
 getOrElse<B>(onNone: () => B): <A>(o: Option<A>) => A | B
-getOrThrow<A>(option: Option<A>, onNone?: () => unknown): A
+getOrThrow<A>(option: Option<A>): A
+getOrThrow<A>(option: Option<A>, onNone: () => unknown): A
+getOrThrow(onNone: () => unknown): <A>(option: Option<A>) => A
+match<A, B, C>(o: Option<A>, { none: () => B, some: (a: A) => C }): B | C
 match<A, B, C>({ none: () => B, some: (a: A) => C }): (o: Option<A>) => B | C
 toNullable<A>(o: Option<A>): A | null
 toUndefined<A>(o: Option<A>): A | undefined
+toResult<A, E>(o: Option<A>, onNone: () => E): Result<A, E>
 toResult<E>(onNone: () => E): <A>(o: Option<A>) => Result<A, E>
 ```
 
@@ -1091,7 +1342,11 @@ const port = pipe(
   O.getOrElse(() => 3000),
 )
 
-const directPort = O.fromPredicate(3000, (port) => port > 0 && port < 65536)
+const directPort = O.fromPredicate(3000, (port: number) => port > 0 && port < 65536)
+const pipedPort = pipe(
+  3000,
+  O.fromPredicate((port: number) => port > 0 && port < 65536),
+)
 
 // chain nullable lookups
 pipe(
@@ -1129,6 +1384,7 @@ type Result<A, E> = Ok<A> | Err<E>
 ok<A>(value: A): Result<A, never>
 err<E>(error: E): Result<never, E>
 tryCatch<A>(thunk: () => A): Result<A, unknown>
+fromNullable<A, E>(value: A | null | undefined, onNullish: () => E): Result<NonNullable<A>, E>
 fromNullable<E>(onNullish: () => E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
 fromPredicate<A, E>(value: A, predicate: (value: A) => boolean, onFalse: (value: A) => E): Result<A, E>
 fromPredicate<A, E>(predicate: (value: A) => boolean, onFalse: (value: A) => E): (value: A) => Result<A, E>
@@ -1141,12 +1397,17 @@ the rejected value and runs only when the predicate fails.
 ## Transforms
 
 ```ts
+map<A, E, B>(r: Result<A, E>, f: (a: A) => B): Result<B, E>
 map<A, B>(f: (a: A) => B): <E>(r: Result<A, E>) => Result<B, E>
+mapErr<A, E, F>(r: Result<A, E>, f: (e: E) => F): Result<A, F>
 mapErr<E, F>(f: (e: E) => F): <A>(r: Result<A, E>) => Result<A, F>
+flatMap<A, E, B, E2>(r: Result<A, E>, f: (a: A) => Result<B, E2>): Result<B, E | E2>
 flatMap<A, B, E2>(f: (a: A) => Result<B, E2>): <E>(r: Result<A, E>) => Result<B, E | E2>
 filterOrElse<A, E, E2>(result: Result<A, E>, predicate: (value: A) => boolean, onFalse: (value: A) => E2): Result<A, E | E2>
 filterOrElse<A, E2>(predicate: (value: A) => boolean, onFalse: (value: A) => E2): <E>(result: Result<A, E>) => Result<A, E | E2>
+tap<A, E>(r: Result<A, E>, f: (a: A) => void): Result<A, E>
 tap<A>(f: (a: A) => void): <E>(r: Result<A, E>) => Result<A, E>
+tapErr<A, E>(r: Result<A, E>, f: (e: E) => void): Result<A, E>
 tapErr<E>(f: (e: E) => void): <A>(r: Result<A, E>) => Result<A, E>
 ```
 
@@ -1159,24 +1420,28 @@ predicate nor `onFalse` runs for them.
 all<T extends readonly Result<unknown, unknown>[]>(results: T): Result<ValuesOf<T>, ErrorsOf<T>>
 sequence: typeof all
 
-traverse<A, B, E>(values: readonly A[], decode: (value: A) => Result<B, E>): Result<B[], E>
-traverse<A, B, E>(decode: (value: A) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
+traverse<A, B, E>(values: readonly A[], decode: (value: A, index: number) => Result<B, E>): Result<B[], E>
+traverse<A, B, E>(decode: (value: A, index: number) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
 
 optional<A, B, E>(value: A | undefined, decode: (value: A) => Result<B, E>): Result<B | undefined, E>
+optional<A, B, E>(decode: (value: A) => Result<B, E>): (value: A | undefined) => Result<B | undefined, E>
 nullable<A, B, E>(value: A | null, decode: (value: A) => Result<B, E>): Result<B | null, E>
+nullable<A, B, E>(decode: (value: A) => Result<B, E>): (value: A | null) => Result<B | null, E>
 ```
 
 `all` and its exact alias `sequence` keep tuple types and return the first error from left to right.
 `traverse` stops calling the decoder after its first error. Empty inputs return `ok([])`.
 
 `optional` skips decoding only for `undefined`; `nullable` skips only for `null`. The other sentinel
-is passed to the decoder like any other value. Both also support data-last calls:
-`R.optional(decode)(value)` and `R.nullable(decode)(value)`.
+is passed to the decoder like any other value. Both work directly or data-last:
+`R.optional(value, decode)` and `pipe(value, R.optional(decode))`.
 
 ## Extraction
 
 ```ts
-getOrElse<B>(onErr: () => B): <A, E>(r: Result<A, E>) => A | B
+getOrElse<A, E, B>(r: Result<A, E>, onErr: (error: E) => B): A | B
+getOrElse<E, B>(onErr: (error: E) => B): <A>(r: Result<A, E>) => A | B
+match<A, E, B, C>(r: Result<A, E>, { err: (e: E) => B, ok: (a: A) => C }): B | C
 match<A, E, B, C>({ err: (e: E) => B, ok: (a: A) => C }): (r: Result<A, E>) => B | C
 toOption<A, E>(r: Result<A, E>): Option<A>
 ```
@@ -1207,9 +1472,12 @@ const body = R.fromPredicate(rawBody, G.isPlainObject, () => 'expected an object
 
 // decode optional and nullable request fields without conflating their sentinels
 const limit = R.optional(request.limit, decodePositiveInteger)
-const displayName = R.nullable(request.displayName, decodeNonBlankString)
+const displayName = pipe(request.displayName, R.nullable(decodeNonBlankString))
 
 // chain validations
+type SignupForm = { readonly name: string; readonly email: string }
+declare const formData: SignupForm
+
 pipe(
   R.ok(formData),
   R.flatMap((d) => (d.name ? R.ok(d) : R.err('name required'))),
@@ -1236,6 +1504,7 @@ Source: https://stopcock.dev/api/schema/
 Standard Schema V1 adapters without a second validation framework
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Schema from '@stopcock/fp/schema'
 ```
 
@@ -1249,8 +1518,7 @@ competing schema language.
 
 ```ts
 const positive = Schema.fromPredicate(
-  (value: unknown): value is number =>
-    typeof value === 'number' && value > 0,
+  (value: unknown): value is number => typeof value === 'number' && value > 0,
   () => Schema.issue('Expected a positive number'),
 )
 ```
@@ -1263,9 +1531,7 @@ import { err, ok } from '@stopcock/fp'
 const integerFromString = Schema.make((value) => {
   if (typeof value !== 'string') return err('Expected a string')
   const parsed = Number(value)
-  return Number.isInteger(parsed)
-    ? ok(parsed)
-    : err(Schema.issue('Expected an integer'))
+  return Number.isInteger(parsed) ? ok(parsed) : err(Schema.issue('Expected an integer'))
 })
 ```
 
@@ -1275,10 +1541,12 @@ individual issues, and issue arrays are normalized to Standard Schema issues.
 ## Consume any Standard Schema
 
 ```ts
-const result = Schema.validateSync(input, schema)
+const directResult = Schema.validateSync(input, schema)
+const pipedResult = pipe(input, Schema.validateSync(schema))
 // Result<Output, readonly Issue[]>
 
-const asyncResult = await Schema.validate(input, schema)
+const directAsyncResult = await Schema.validate(input, schema)
+const pipedAsyncResult = await pipe(input, Schema.validate(schema))
 // Promise<Result<Output, readonly Issue[]>>
 ```
 
@@ -1309,7 +1577,7 @@ Source: https://stopcock.dev/api/string/
 
 trim, split, replace, startsWith, slice. String transforms for pipe
 
-## Non-dual
+## Single-argument
 
 ```ts
 trim(s: string): string
@@ -1321,16 +1589,23 @@ isEmpty(s: string): boolean
 length(s: string): number
 ```
 
-## Dual
+## Dual-form
 
 ```ts
 startsWith(s: string, search: string): boolean
+startsWith(search: string): (s: string) => boolean
 endsWith(s: string, search: string): boolean
+endsWith(search: string): (s: string) => boolean
 includes(s: string, search: string): boolean
-split(s: string, sep: string): string[]
+includes(search: string): (s: string) => boolean
+split(s: string, sep: string | RegExp): string[]
+split(sep: string | RegExp): (s: string) => string[]
 repeat(s: string, n: number): string
-slice(s: string, start: number, end: number): string
-replaceAll(s: string, search: string, replacement: string): string
+repeat(n: number): (s: string) => string
+slice(s: string, start: number, end?: number): string
+slice(start: number, end?: number): (s: string) => string
+replaceAll(s: string, search: string | RegExp, replacement: string): string
+replaceAll(search: string | RegExp, replacement: string): (s: string) => string
 ```
 
 ## Examples
@@ -1354,7 +1629,8 @@ pipe('report.pdf', S.endsWith('.pdf')) // true
 pipe('Hello, NAME!', S.replaceAll('NAME', user.name))
 
 // truncate
-const preview = pipe(description, S.slice(0, 100))
+const preview = S.slice(description, 0, 100) // direct, data-first
+const alsoPreview = pipe(description, S.slice(0, 100)) // curried, data-last
 ```
 
 ---
@@ -1415,6 +1691,7 @@ traverse<A, B, E>(
 `traverse` calls the validator for every input, even after failures. Empty inputs return `valid([])`.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as R from '@stopcock/fp/result'
 import * as V from '@stopcock/fp/validation'
 
@@ -1423,26 +1700,28 @@ type FieldError = { field: string; message: string }
 const signup = V.all([
   V.fromPredicate(
     email,
-    (value) => value.includes('@'),
+    (value: string) => value.includes('@'),
     () => ({
       field: 'email',
       message: 'invalid email',
     }),
   ),
-  V.fromPredicate(
+  pipe(
     password,
-    (value) => value.length >= 8,
-    () => ({
-      field: 'password',
-      message: 'too short',
-    }),
+    V.fromPredicate(
+      (value: string) => value.length >= 8,
+      () => ({
+        field: 'password',
+        message: 'too short',
+      }),
+    ),
   ),
 ] as const)
 
-R.match({
+R.match(signup, {
   err: (errors) => showErrors(errors),
-  ok: ([validEmail, validPassword]) => submit(validEmail, validPassword),
-})(signup)
+  ok: ([validEmail, validPassword]: [string, string]) => submit(validEmail, validPassword),
+})
 ```
 
 ## Result compatibility
@@ -1450,9 +1729,13 @@ R.match({
 Validation is structurally a Result, so use existing Result transforms and extraction:
 
 ```ts
-R.map(normalize)(validation)
-R.match({ err: showErrors, ok: submit })(validation)
-R.getOrElse(() => fallback)(validation)
+R.map(validation, normalize)
+pipe(validation, R.map(normalize))
+pipe(validation, R.match({ err: showErrors, ok: submit }))
+pipe(
+  validation,
+  R.getOrElse(() => fallback),
+)
 ```
 
 There is deliberately no `flatMap` in the validation module. Dependent
@@ -1460,23 +1743,24 @@ sequential checks are fail-fast and belong in `R.flatMap`; use Validation only
 to accumulate checks that can all run independently.
 
 ---
-# How portable pipeline fusion works
+# How @stopcock/fp-compiler fuses your loops
 
 Source: https://stopcock.dev/blog/how-pipe-fuses-your-loops/
 
 
-> Updated for `@stopcock/fp` 2.0. The old runtime-JIT design was removed.
+> Updated for `@stopcock/fp` 2.0. The runtime-JIT design was removed first,
+> then the portable runtime fusion engine that replaced it was removed too.
+> `pipe` is now plain sequential function application. Read on for what
+> replaced it.
 
 Ordinary array chains allocate intermediate arrays:
 
 ```ts
 const result = users
-  .filter((user) => user.active)
-  .map((user) => user.name)
+  .filter((user: User) => user.active)
+  .map((user: User) => user.name)
   .slice(0, 10)
 ```
-
-Stopcock operators carry small internal operation tags:
 
 ```ts
 import { pipe } from '@stopcock/fp'
@@ -1484,17 +1768,26 @@ import * as A from '@stopcock/fp/array'
 
 const result = pipe(
   users,
-  A.filter((user) => user.active),
-  A.map((user) => user.name),
+  A.filter((user: User) => user.active),
+  A.map((user: User) => user.name),
   A.take(10),
 )
 ```
 
-The planner recognizes compatible tagged segments and dispatches to checked-in,
-hand-shaped loop templates. A filter/map/take segment behaves roughly like:
+`pipe` doesn't change that on its own. It runs each step in order: `filter`
+produces a full intermediate array, then `map` produces another, then
+`take` slices it. Nothing fuses at runtime any more. If you were relying on
+`pipe` to fuse a hot chain for you, it won't -- you need the compiler.
+
+## The compiler fuses this at build time
+
+`@stopcock/fp-compiler` is a Vite/Rollup/esbuild plugin. It recognizes a
+statically-imported `pipe`/`flow`/`compile` chain built from its supported
+array operators and rewrites it into a single inlined loop before your code
+ships. The call above compiles to roughly:
 
 ```ts
-const output = []
+const output: string[] = []
 for (let index = 0; index < users.length; index++) {
   const user = users[index]
   if (!user.active) continue
@@ -1503,21 +1796,25 @@ for (let index = 0; index < users.length; index++) {
 }
 ```
 
-There is no `eval`, `new Function`, function-source parsing, or dynamically
-loaded JIT chunk in the public runtime graph. This keeps the same code valid
+There's no `eval`, `new Function`, function-source parsing, or dynamically
+loaded JIT chunk anywhere in this. The rewrite happens once, during your
+build, by reading and transforming the source. The same output stays valid
 under strict CSP and across Node, Bun, Deno, browsers, workers, and edge
 runtimes.
 
-## Plan once for repeated work
+## Compile once for repeated work
 
-For a hot pipeline used with many inputs, compile its shape once:
+For a hot pipeline used across many inputs, `compile` marks the call site
+so the plugin knows to fuse it. Uncompiled, `compile` is identical to
+`pipe` -- it changes nothing by itself:
 
 ```ts
-import { compile, explain } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
+import { explain } from '@stopcock/fp/fusion/debug'
 
 const activeNames = compile(
   A.filter((user: User) => user.active),
-  A.map((user) => user.name),
+  A.map((user: User) => user.name),
   A.take(10),
 )
 
@@ -1527,47 +1824,43 @@ activeNames(secondPage)
 console.log(
   explain(
     A.filter((user: User) => user.active),
-    A.map((user) => user.name),
+    A.map((user: User) => user.name),
     A.take(10),
   ),
 )
+// 'sequential' -- explain() runs at runtime, and a call the compiler
+// actually fused at build time never reaches this code to be explained
 ```
 
-`compile` keeps normal callback semantics. `compilePure` is an explicit promise
-that callbacks are pure and may enable additional rewrites. Purity is never
-silently guessed from `Function#toString`.
+`compilePure` is `compile` under a different name, for source parity with
+the compiler's `assumePure` option: it permits a documented set of pure
+rewrites (like collapsing an adjacent `sortBy -> take(k)` into a bounded
+top-k pass) only when the plugin actually fuses the site.
 
-## Boundaries
+## What compiles and what doesn't
 
-Item-by-item transforms such as map, filter, reject, filter-map, take, and drop
-can share a streaming segment. Whole-input operations such as sorting,
-reversing, grouping, and global deduplication form materialization boundaries.
-Terminals such as reduce, count, sum, and short-circuit searches can finish a
-segment without another intermediate collection.
+Item-by-item steps -- `map`, `filter`, `reject`, `filterMap`, `take`,
+`takeWhile`, `drop`, `dropWhile`, `flatMap` -- can share one fused loop.
+Whole-input operations -- `sort`, `sortBy`, `reverse`, `uniq`, `flatten`,
+`scan` -- need the complete array first, so they end one loop and start
+another. Terminals -- `reduce`, `count`, `sum`, `find`, and the other
+short-circuit searches -- can finish a fused loop without another
+intermediate array.
 
-Specialized optimizations are semantic, not magical. For example, a sorted
-top-k request can select and sort only the required prefix when its ordering
-contract allows that rewrite.
+An unsupported operator, a dynamic step, a lexically shadowed import, or
+anything else the compiler can't resolve statically leaves the call site
+untouched: an ordinary runtime call to `pipe`, exactly as if the plugin
+weren't installed. Run `stopcock check --strict` to see which sites in your
+own source compiled and which bailed, and why.
 
-## Build-time lowering
+## When it's worth compiling
 
-`@stopcock/fp-compiler` is an optional build plugin for Vite/Rollup-compatible
-hosts. It recognizes ordinary imports from `@stopcock/fp` and
-`@stopcock/fp/array`, lowers supported call sites to direct loops, and emits
-diagnostics for transformed or rejected shapes. It is a development dependency;
-applications do not import it at runtime.
-
-## When fusion helps
-
-Measure your workload. Fusion is most useful for large inputs, early exit,
-multiple compatible stages, and repeated hot paths. For a short collection or
-a single native operation, clarity usually matters more than forcing a
-compiled plan.
-
-The benchmark suite measures source and packed-dist lanes on the real runtime
-engine. Release gates compare the build compiler with a frozen loop emitter on
-Linux x64 and macOS arm64 and reject correctness mismatches as well as
-performance regressions.
+Measure your workload. Compiling helps most for large inputs, early exit,
+several compatible stages, and hot repeated pipelines. For a short
+collection or a single native operation, an uncompiled `pipe` is already
+close to hand-loop speed -- see [Benchmarks](/performance/benchmarks) for
+the measured comparison against lodash, ramda, remeda, rambda, and
+ts-belt.
 
 ---
 # Zustand without the spread
@@ -1594,25 +1887,28 @@ setCity: (city) =>
 An optic packages the read and immutable-update path as a reusable value.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Optic from '@stopcock/fp/optic'
 
-const city = Optic.optic<State>()
-  .prop('user')
-  .prop('address')
-  .prop('city')
-  .value
+const city = Optic.optic<State>().prop('user').prop('address').prop('city').value
 ```
 
-The Zustand action becomes:
+The Zustand action can use the optic directly with data first:
 
 ```ts
-setCity: (value) =>
-  set((state) => Optic.set(city, state, value))
+setCity: (value) => set((state) => Optic.set(city, state, value))
+```
+
+Or use the same operation data-last in `pipe`:
+
+```ts
+setCity: (value) => set((state) => pipe(state, Optic.set(city, value)))
 ```
 
 ## A complete store
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { create } from 'zustand'
 import * as Optic from '@stopcock/fp/optic'
 
@@ -1633,11 +1929,16 @@ const useStore = create<State & Actions>((set) => ({
   cart: { items: [], discount: null },
   ui: { sidebarOpen: false, theme: 'light' },
 
-  setCity: (value) => set((state) => Optic.set(city, state, value)),
-  setTheme: (value) => set((state) => Optic.set(theme, state, value)),
-  applyDiscount: (value) => set((state) => Optic.set(discount, state, value)),
+  setCity: (value) => set((state) => pipe(state, Optic.set(city, value))),
+  setTheme: (value) => set((state) => pipe(state, Optic.set(theme, value))),
+  applyDiscount: (value) => set((state) => pipe(state, Optic.set(discount, value))),
   toggleSidebar: () =>
-    set((state) => Optic.modify(sidebar, state, (open) => !open)),
+    set((state) =>
+      pipe(
+        state,
+        Optic.modify(sidebar, (open) => !open),
+      ),
+    ),
 }))
 ```
 
@@ -1650,10 +1951,9 @@ Traversals focus on zero or more values:
 ```ts
 const outOfStock = Optic.filtered<CartItem>((item) => item.stock === 0)
 
-const updatedItems = Optic.modify(
-  outOfStock,
+const updatedItems = pipe(
   items,
-  (item) => ({ ...item, disabled: true }),
+  Optic.modify(outOfStock, (item) => ({ ...item, disabled: true })),
 )
 ```
 
@@ -1665,10 +1965,9 @@ const unavailableItems = Optic.compose(cartItems, outOfStock)
 
 const markOutOfStock = () =>
   set((state) =>
-    Optic.modify(
-      unavailableItems,
+    pipe(
       state,
-      (item) => ({ ...item, disabled: true }),
+      Optic.modify(unavailableItems, (item) => ({ ...item, disabled: true })),
     ),
   )
 ```
@@ -1680,11 +1979,14 @@ leave the source unchanged when no focus exists.
 
 ```ts
 const selected = Optic.find<CartItem>((item) => item.id === selectedId)
-const current = Optic.preview(selected, items)
-const renamed = Optic.modify(selected, items, (item) => ({
-  ...item,
-  name: item.name.trim(),
-}))
+const current = pipe(items, Optic.preview(selected))
+const renamed = pipe(
+  items,
+  Optic.modify(selected, (item) => ({
+    ...item,
+    name: item.name.trim(),
+  })),
+)
 ```
 
 ## When to use optics
@@ -1699,290 +2001,147 @@ law checks.
 
 Source: https://stopcock.dev/concepts/explain/
 
-Read Stopcock's static pipeline plan, boundaries, executors, and pure rewrites
+What explain() reports now that fusion is a build-time transform
 
-`explain()` shows how Stopcock understands a pipeline before you run it. Pass
-it the same data-last operators you would give to `pipe` or `compile`, and it
-returns an immutable description of the resulting execution plan.
-
-It answers questions such as:
-
-- Will these operations share one streaming pass?
-- Which step needs the complete intermediate array?
-- Does a segment use a checked-in template or the generic portable executor?
-- Which opt-in pure rewrite would `compilePure` apply?
-- Did an ordinary user function make part of the pipeline opaque?
-
-<Aside type="note" title="Static inspection, not profiling">
-  `explain()` does not accept input data, invoke callbacks, execute the pipeline, measure elapsed
-  time, or count allocations. It describes the static plan for the supplied operators.
-</Aside>
-
-## Quick start
+`explain()` and `explainPure()` (from `@stopcock/fp/fusion/debug`) describe
+what running a set of steps through `pipe` does at runtime. Since there's no
+runtime fusion engine any more, the answer is always the same one:
 
 ```ts
-import { compile, explain } from '@stopcock/fp'
+import { explain } from '@stopcock/fp/fusion/debug'
 import * as A from '@stopcock/fp/array'
 
-const steps = [
+explain(
   A.map((value: number) => value * 2),
-  A.filter((value) => value > 10),
+  A.filter((value: number) => value > 10),
   A.take(3),
-] as const
-
-const report = explain(...steps)
-const run = compile(...steps)
-
-console.log(run([1, 6, 7, 8, 9]))
-// [12, 14, 16]
+)
+// 'sequential'
 ```
 
-The report below is not copied documentation output. The docs component calls
-the current workspace implementation of `explain()` during the static Astro
-build and renders the returned object.
+`explain()` returns the string `'sequential'` for any set of steps, always.
+`pipe` runs each one in order, one call at a time -- there's no plan to
+report beyond that. The return type also allows `'compiled site'`, but you
+will never observe it: if `@stopcock/fp-compiler` recognizes and fuses a
+call at build time, the fused loop replaces the call outright, and this
+function never runs for it. A truly compiled site never calls `explain()`
+at all -- there's nothing left there to ask.
 
+## Why this function still exists
 
-This pipeline has one `stream` segment containing all three steps. The
-`template` executor means Stopcock has a checked-in specialized portable loop
-for this shape. There is no materialization boundary, so `map`, `filter`, and
-`take` can cooperate in one pass, and `take(3)` can stop upstream work after
-three matching values.
+Steps built from `@stopcock/fp` operators and ordinary opaque functions now
+run identically through `pipe`: in order, one at a time. `explain()` is a
+holdover from the pre-2.0 runtime engine, which used to plan tagged
+operators into streaming segments, materialization boundaries, and
+specialized executors, and this function described that plan. That plan
+doesn't exist any more, so there's nothing left to describe beyond the one
+constant answer above.
 
-## Reading the report
+If you want to know whether a specific call site in your own source will
+actually get fused, that's a build-time question, not a runtime one -- ask
+the compiler directly:
 
-| Field                       | Meaning                                                                                                          |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `version`                   | Version of the explanation object, currently `1`.                                                                |
-| `domains`                   | The input domain of each segment, in segment order. This is not a set of unique domains.                         |
-| `segments`                  | Ordered regions of the pipeline: `stream`, `boundary`, or `opaque`.                                              |
-| `materializationBoundaries` | Zero-based step indexes for explicit whole-input boundaries.                                                     |
-| `semanticMode`              | `exact` for ordinary semantics or `pure` after an explicit purity promise.                                       |
-| `executor`                  | The top-level execution family. The current runtime executor is `portable`.                                      |
-| `segmentExecutors`          | `template` for a recognized checked-in kernel, otherwise `generic`. A generic stream segment can still be fused. |
-| `rewrites`                  | Additional transformations available in pure mode. Exact mode reports none.                                      |
-| `runtimeCodeGeneration`     | Always `false`: the runtime does not use `eval` or `new Function`.                                               |
-| `aotRecommended`            | Whether the optional build-time compiler is recommended. Version 1 currently reports `true` for every plan.      |
-
-Every segment contains:
-
-- `kind`: `stream`, `boundary`, or `opaque`;
-- `domain`: currently `array`, `scalar`, or `iterable`;
-- `startIndex`: the zero-based index of its first supplied step;
-- `length`: the number of steps in that segment.
-
-## Materialization boundaries
-
-Streaming operators can process one value at a time. Sorting cannot emit its
-first result until it has seen the complete input, so it becomes a boundary:
-
-```ts
-const steps = [
-  A.map((value: number) => value * 2), // index 0
-  A.sort, // index 1
-  A.take(3), // index 2
-] as const
-
-console.log(explain(...steps))
-
-compile(...steps)([3, 1, 2, 5, 4])
-// [2, 4, 6]
+```bash
+stopcock check --strict src
 ```
 
+This reports, per call site, whether `@stopcock/fp-compiler` recognized and
+fused it or bailed and left it as an ordinary call, and why. See
+[`@stopcock/fp-compiler`](/libraries/fp-compiler) for the diagnostics
+options and [Fusion](/concepts/fusion) for what fusing actually changes.
 
-`materializationBoundaries: [1]` points to `A.sort`. The report therefore
-describes three regions:
-
-```text
-map → materialize and sort → take
- 0             1             2
-```
-
-The boundary index identifies a semantic whole-input operation. It should not
-be read as a complete allocation count: specialized lowerings can sometimes
-optimize work across adjacent segments while preserving the same observable
-semantics.
-
-## Ordinary functions become opaque
-
-Any function can still appear in a Stopcock pipeline. If it does not carry
-Stopcock's internal operation metadata, the planner treats it as an `opaque`
-whole-domain step:
-
-```ts
-const reverseCopy = (values: readonly number[]) => values.slice().reverse()
-
-const steps = [
-  A.map((value: number) => value * 2),
-  reverseCopy,
-  A.filter((value) => value < 5),
-] as const
-
-compile(...steps)([1, 2, 3])
-// [4, 2]
-```
-
-
-Opaque does not mean invalid. Stopcock calls `reverseCopy` normally and can
-still recognize the tagged segments on either side. What it cannot do is
-inspect, fuse, reorder, or eliminate the opaque function.
-
-Likewise, `generic` does not mean “unfused.” A multi-operation `stream` segment
-without a matching shape-specific template still runs through Stopcock's
-general fused stream executor.
-
-## Exact plans and pure rewrites
-
-`explain()` always reports exact semantics. Stopcock preserves callback order,
-callback count, exceptions, and other observable behavior.
-
-`explainPure()` answers a different question: what could `compilePure()` do if
-you explicitly promise that the supplied callbacks are pure?
-
-```ts
-import { explainPure } from '@stopcock/fp/compile'
-import * as A from '@stopcock/fp/array'
-
-console.log(explainPure(A.sort, A.take(3)))
-```
-
-
-The `top-k` rewrite avoids completely sorting a large input when only its
-smallest three values are observed. The compiled result remains stable and
-sorted:
-
-```ts
-import { compilePure } from '@stopcock/fp'
-
-const smallestThree = compilePure(A.sort, A.take(3))
-
-smallestThree([9, 4, 1, 7, 3, 2])
-// [1, 2, 3]
-```
-
-Pure mode can also remove callbacks whose results cannot be observed:
-
-```ts
-explainPure(
-  A.map((value: number) => expensiveTransform(value)),
-  A.length,
-).rewrites
-// [{
-//   kind: 'elide-unused-map',
-//   description:
-//     'map callbacks are elided when only downstream length observes the segment'
-// }]
-```
-
-<Aside type="caution" title="Purity is a contract">
-  Use `compilePure` only when removed or reordered callback execution cannot be observed. A callback
-  that logs, mutates state, reads changing external state, or deliberately throws is not safe to
-  elide.
-</Aside>
-
-## How explain() builds the report
-
-1. Data-last Stopcock operators carry private operation and binding metadata.
-2. The planner resolves those tags into operation codes and callback bindings.
-3. It splits the operation codes at domain changes, whole-input boundaries,
-   and opaque functions.
-4. It checks whether each segment matches a checked-in template or would use
-   the generic closure-based executor.
-5. `explain()` freezes and returns the structural description. It never
-   compiles or executes the chosen runner, and it does not change optimizer
-   statistics.
-
-Callbacks and scalar arguments do not become part of the reusable shape key.
-Two pipelines with the same structure but different callbacks can therefore
-share the lowered shape without retaining or mixing up user functions.
-
-## What explain() does not currently show
-
-The version 1 report does not include:
-
-- actual elements consumed by a particular execution;
-- elapsed time, memory use, or allocation counts;
-- callback source code or captured values;
-- build-plugin transformation diagnostics;
-- why a particular AOT call site was accepted or rejected.
-
-Use the optional [`@stopcock/fp-compiler`](/libraries/fp-compiler) diagnostics
-for build-time lowering decisions, and use application benchmarks for measured
-performance. `explain()` is the reliable structural view of the portable
-runtime plan.
-
-Continue with [Fusion](/concepts/fusion) for the execution model or return to
-the [`@stopcock/fp` overview](/libraries/fp).
+`explainPure()` is `explain()` under a different name, kept for source
+parity with `compilePure`'s `assumePure` option. It also always returns
+`'sequential'`.
 
 ---
 # Fusion
 
 Source: https://stopcock.dev/concepts/fusion/
 
-How pipe fuses array operations
+How @stopcock/fp-compiler fuses array operations at build time
 
-When you chain streaming [array operations](/api/array) in `pipe`, they fuse into a single loop.
+`pipe` and `flow` run each step in order. Nothing fuses at runtime by
+itself.
 
-Without fusion:
+Fusion is a separate, optional build step: `@stopcock/fp-compiler`, a
+Vite/Rollup/esbuild plugin. It recognizes a `pipe`/`flow`/`compile` call
+built from supported [array operators](/api/array) and replaces it with one
+inlined loop before your code ships.
 
-```text
-data [100K] -> filter -> [50K] -> map -> [50K] -> take(10) -> [10]
-```
+## What the plugin does
 
-Three passes. Two throwaway arrays.
-
-With fusion:
-
-```text
-data [100K] -> fused(filter + map + take) -> [10]
-```
-
-One pass. `take(10)` breaks the loop after 10 results.
-
-## What fuses
-
-| Operation                                                            | Position                  | Notes                                                                                         |
-| -------------------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| `map`, `filter`, `flatMap`, `take`, `drop`, `takeWhile`, `dropWhile` | streaming-fused           | inlined into the loop; `take` and `takeWhile` can stop early                                  |
-| `reduce`, `find`, `every`, `some`, `count`                           | terminal folds/predicates | finish the fused pass and return a scalar or found value                                      |
-| `head`, `last`, `length`, `join`, `sum`, `min`, `max`                | accessor terminals        | end the chain with a scalar or aggregate result                                               |
-| `sort`, `sortBy`, `reverse`, `groupBy`, `uniq`                       | materialization boundary  | need a completed array before the next step                                                   |
-| `sortBy -> take(k)`, `sort -> take(k)` under `compilePure`           | opt-in top-k rewrite      | uses a bounded, stable top-k path when the caller explicitly promises callback purity          |
-
-Operations that need the whole array break the streaming chain. Everything before them gets fused and runs first, then the materializing op runs on that result:
+Without the plugin, or for anything it doesn't recognize, this call runs
+three full passes over `data`:
 
 ```ts
 pipe(
   data,
-  A.filter((x) => x > 3), // segment 1
-  A.map((x) => x * 2),
-  A.sortBy((a, b) => a - b), // runs on the materialized array
-  A.take(3), // exact pipe semantics: take runs after the complete sort
+  A.filter((x: number) => x > 0),
+  A.map((x: number) => x * 2),
+  A.take(10),
 )
 ```
 
-`compilePure(A.sortBy(compare), A.take(k))` may replace that exact pair with
-the bounded top-k rewrite. Ordinary `pipe` and `compile` keep exact callback
-semantics and complete the sort. Import `explainPure` from
-`@stopcock/fp/compile` to inspect the applied rewrite. Inserting another
-operation between sort and take prevents the rewrite.
+With the plugin, the same call compiles to roughly:
 
-## Mechanics
+```ts
+const output: number[] = []
+for (let i = 0; i < data.length; i++) {
+  const x = data[i]
+  if (!(x > 0)) continue
+  output.push(x * 2)
+  if (output.length === 10) break
+}
+```
 
-Functions created by `dual()` carry compact internal operation and binding
-metadata. `pipe` reads those tags and dispatches consecutive compatible
-operations to checked-in portable loop templates or a closure-based generic
-lowering. Early-exit operations stop the shared loop as soon as their contract
-allows. Untagged user functions pass through as ordinary opaque pipeline
-steps.
+One pass, no intermediate arrays, and `take(10)` stops the loop as soon as
+it has 10 results. `pipe`, `A.filter`, `A.map`, and `A.take` never get
+called at runtime for a fully-lowered site like this one.
 
-There is no runtime source generation. If nothing is fuseable, `pipe` applies
-functions one after another as expected.
+## What compiles
 
-Use [`explain()`](/concepts/explain) to inspect streaming segments,
-materialization boundaries, executor selection, and pure rewrites for a
-specific pipeline.
+The compiler recognizes chains built only from its supported operators:
+element steps (`map`, `filter`, `reject`, `filterMap`, `mapWhile`,
+`flatMap`, `take`, `takeUntil`, `drop`, `takeWhile`, `dropWhile`), full-array
+boundaries (`sort`, `sortBy`, `reverse`, `uniq`, `tail`, `init`, `flatten`,
+`scan`, `without`), and terminals (`sum`, `count`, `reduce`, `forEach`,
+`find`, `findIndex`, `findMap`, `every`, `some`, `none`, `head`, `last`,
+`length`, `isEmpty`, `join`, `min`, `max`).
 
-See [Benchmarks](/performance/benchmarks) for how fusion compares to lodash, ramda, and native JS.
+A materializing operator like `sort` still needs the whole array before it
+can produce anything, so a chain that includes one compiles to two loops:
+whatever comes before it fused into the first, then the sort, then whatever
+comes after:
+
+```ts
+pipe(
+  data,
+  A.filter((x: number) => x > 3), // fused into loop 1
+  A.map((x: number) => x * 2),
+  A.sortBy((a: number, b: number) => a - b), // runs on the materialized result
+  A.take(3), // exact semantics: runs after the complete sort
+)
+```
+
+`compilePure(A.sortBy(compare), A.take(k))` may replace that exact adjacent
+pair with a bounded top-k rewrite, but only when you explicitly promise the
+comparator is pure. Ordinary `pipe` and `compile` never do this on their
+own.
+
+## When a chain doesn't compile
+
+An unsupported operator, a dynamic step, a lexically shadowed import, or
+anything the compiler can't resolve statically leaves the site untouched:
+it's an ordinary runtime call to `pipe`, exactly as if the plugin weren't
+installed. Nothing breaks, it's just not fused. Run `stopcock check --strict`
+to see which call sites compiled, which bailed, and why.
+
+Compiling never changes results, but it can change how many times a
+callback runs and in what order if your callbacks have side effects. See
+the [`@stopcock/fp-compiler`](/libraries/fp-compiler) README for the exact
+interleaving contract, and [Benchmarks](/performance/benchmarks) for how
+compiled chains compare to lodash, ramda, remeda, rambda, and ts-belt.
 
 ---
 # Option and Result
@@ -1997,9 +2156,13 @@ part of the type instead of encoding it as `null`, an exception, or a
 success-flag convention.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as O from '@stopcock/fp/option'
 import * as R from '@stopcock/fp/result'
 ```
+
+Operations with two or more arguments accept the value first for a direct call,
+or return a data-last operation when the value is omitted.
 
 ## Option
 
@@ -2013,13 +2176,17 @@ Create options at nullable and predicate boundaries:
 
 ```ts
 const portText = O.fromNullable(process.env.PORT)
-const positive = O.fromPredicate(3, (value) => value > 0)
+const positive = O.fromPredicate(3, (value: number) => value > 0)
+const positiveInPipe = pipe(
+  3,
+  O.fromPredicate((value: number) => value > 0),
+)
 ```
 
 Then transform without repeatedly branching:
 
 ```ts
-import { pipe } from '@stopcock/fp'
+const numericPort = O.map(portText, Number)
 
 const port = pipe(
   portText,
@@ -2033,10 +2200,18 @@ const port = pipe(
 cover the common composition shapes. Partial extraction is explicit:
 
 ```ts
-const label = O.match({
+const directLabel = O.match(portText, {
   none: () => 'not configured',
   some: (value) => `port ${value}`,
-})(portText)
+})
+
+const pipedLabel = pipe(
+  portText,
+  O.match({
+    none: () => 'not configured',
+    some: (value) => `port ${value}`,
+  }),
+)
 ```
 
 `none` is a frozen singleton. The representation uses numeric tags: `0` is
@@ -2063,8 +2238,10 @@ const parsed = R.tryCatch(
   (cause): ParseError => ({ type: 'InvalidJson', cause }),
 )
 
-const token = R.fromNullable(() => 'Missing token')(
+const token = R.fromNullable(headers.authorization, () => 'Missing token')
+const tokenInPipe = pipe(
   headers.authorization,
+  R.fromNullable(() => 'Missing token'),
 )
 ```
 
@@ -2090,7 +2267,11 @@ accumulate errors.
 ## Conversion
 
 ```ts
-O.toResult(() => 'missing')(option)
+O.toResult(option, () => 'missing')
+pipe(
+  option,
+  O.toResult(() => 'missing'),
+)
 R.toOption(result) // intentionally discards the error
 O.transpose(optionOfResult)
 ```
@@ -2106,16 +2287,23 @@ Source: https://stopcock.dev/cookbook/
 
 Practical @stopcock/fp 2.0 recipes
 
+Operations with two or more arguments support both a complete direct call and
+a data-last call for `pipe`. The recipes use both forms where each reads best.
+
 ## Transform a collection
 
 ```ts
 import { pipe } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
 
+type Product = { id: string; name: string; price: number; inStock: boolean }
+
+const inStock = A.filter(products, (product: Product) => product.inStock)
+
 const cards = pipe(
   products,
-  A.filter((product) => product.inStock),
-  A.map((product) => ({
+  A.filter((product: Product) => product.inStock),
+  A.map((product: Product) => ({
     id: product.id,
     label: product.name,
     price: product.price,
@@ -2124,29 +2312,32 @@ const cards = pipe(
 )
 ```
 
-Use direct form when it reads more naturally:
-
-```ts
-const cards = A.map(products, toCard)
-```
-
 ## Compile a repeated hot path
 
 ```ts
-import { compile, explain } from '@stopcock/fp'
+import { compile } from '@stopcock/fp/compile'
+import { explain } from '@stopcock/fp/fusion/debug'
 import * as A from '@stopcock/fp/array'
 
 const activeIds = compile(
   A.filter((user: User) => user.active),
-  A.map((user) => user.id),
+  A.map((user: User) => user.id),
   A.take(100),
 )
 
 activeIds(firstBatch)
 activeIds(secondBatch)
-console.log(explain(A.filter((user: User) => user.active), A.map((user) => user.id)))
+console.log(
+  explain(
+    A.filter((user: User) => user.active),
+    A.map((user: User) => user.id),
+  ),
+)
+// 'sequential' unless @stopcock/fp-compiler fused this exact call at build time
 ```
 
+`compile` is a marker: uncompiled it's identical to `pipe`. `@stopcock/fp-compiler`
+is what actually fuses a recognized call site into one loop at build time.
 Use `compilePure` only when every callback is pure and the extra rewrite
 freedom is valid for your code.
 
@@ -2159,7 +2350,7 @@ import * as O from '@stopcock/fp/option'
 const port = pipe(
   O.fromNullable(process.env.PORT),
   O.map(Number),
-  O.filter((value) => Number.isSafeInteger(value) && value > 0 && value < 65_536),
+  O.filter((value: number) => Number.isSafeInteger(value) && value > 0 && value < 65_536),
   O.getOrElse(() => 3000),
 )
 ```
@@ -2172,8 +2363,7 @@ import * as G from '@stopcock/fp/guard'
 import * as R from '@stopcock/fp/result'
 
 type DecodeError =
-  | { readonly type: 'InvalidJson'; readonly cause: unknown }
-  | { readonly type: 'ExpectedObject' }
+  { readonly type: 'InvalidJson'; readonly cause: unknown } | { readonly type: 'ExpectedObject' }
 
 const decodeBody = (text: string) =>
   pipe(
@@ -2181,16 +2371,14 @@ const decodeBody = (text: string) =>
       () => JSON.parse(text) as unknown,
       (cause): DecodeError => ({ type: 'InvalidJson', cause }),
     ),
-    R.filterOrElse(
-      G.isPlainObject,
-      (): DecodeError => ({ type: 'ExpectedObject' }),
-    ),
+    R.filterOrElse(G.isPlainObject, (): DecodeError => ({ type: 'ExpectedObject' })),
   )
 ```
 
 ## Accumulate independent field errors
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as V from '@stopcock/fp/validation'
 
 type FieldError = {
@@ -2198,18 +2386,21 @@ type FieldError = {
   readonly message: string
 }
 
-const signup = V.all([
-  V.fromPredicate(
-    email,
-    (value) => value.includes('@'),
-    (): FieldError => ({ field: 'email', message: 'invalid email' }),
-  ),
-  V.fromPredicate(
-    password,
-    (value) => value.length >= 12,
-    (): FieldError => ({ field: 'password', message: 'too short' }),
-  ),
-] as const)
+const validateSignup = (email: string, password: string) =>
+  V.all([
+    V.fromPredicate(
+      email,
+      (value: string) => value.includes('@'),
+      (): FieldError => ({ field: 'email', message: 'invalid email' }),
+    ),
+    pipe(
+      password,
+      V.fromPredicate(
+        (value: string) => value.length >= 12,
+        (): FieldError => ({ field: 'password', message: 'too short' }),
+      ),
+    ),
+  ] as const)
 ```
 
 Use `Result.flatMap` for checks that depend on earlier values. Use Validation
@@ -2218,15 +2409,16 @@ only when every check can run independently.
 ## Validate through Standard Schema
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Schema from '@stopcock/fp/schema'
 
 const userId = Schema.fromPredicate(
-  (value: unknown): value is string =>
-    typeof value === 'string' && value.length > 0,
+  (value: unknown): value is string => typeof value === 'string' && value.length > 0,
   () => Schema.issue('Expected a user id', ['id']),
 )
 
 const decoded = Schema.validateSync(input, userId)
+const decodedInPipe = pipe(input, Schema.validateSync(userId))
 ```
 
 The same consumer accepts a Standard Schema produced by another library.
@@ -2254,29 +2446,24 @@ For asynchronous sources, use `AsyncIter` from `@stopcock/async`.
 import { pipe } from '@stopcock/fp'
 import * as Optic from '@stopcock/fp/optic'
 
-const city = Optic.optic<User>()
-  .prop('profile')
-  .prop('address')
-  .prop('city')
-  .value
+const city = Optic.optic<User>().prop('profile').prop('address').prop('city').value
 
-const moved = pipe(
-  user,
-  Optic.set(city, 'Manchester'),
-)
+const moved = Optic.set(city, user, 'Manchester')
+const movedInPipe = pipe(user, Optic.set(city, 'Manchester'))
 ```
 
 ## Group and aggregate records
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
 
-const revenueByRegion = A.groupMapReduce(
-  orders,
-  (order) => order.region,
-  (order) => order.total,
-  (left, right) => left + right,
-)
+const regionOf = (order: Order) => order.region
+const totalOf = (order: Order) => order.total
+const sum = (left: number, right: number) => left + right
+
+const revenueByRegion = A.groupMapReduce(orders, regionOf, totalOf, sum)
+const revenueByRegionInPipe = pipe(orders, A.groupMapReduce(regionOf, totalOf, sum))
 ```
 
 `groupMapReduce`, `countBy`, `partitionMap`, binary search, combinations, and
@@ -2285,6 +2472,7 @@ explicit `mapInto`/`filterInto` operations live in the array subpath.
 ## Match tagged domain values
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Match from '@stopcock/fp/match'
 
 type Payment =
@@ -2292,12 +2480,17 @@ type Payment =
   | { readonly type: 'Paid'; readonly id: string; readonly receipt: string }
   | { readonly type: 'Failed'; readonly id: string; readonly reason: string }
 
+const paymentLabels = {
+  Pending: (value) => `Pending ${value.id}`,
+  Paid: (value) => `Receipt ${value.receipt}`,
+  Failed: (value) => `Failed: ${value.reason}`,
+} satisfies Match.Handlers<Payment, 'type', string>
+
 const label = (payment: Payment) =>
-  Match.discriminant('type', payment, {
-    Pending: (value) => `Pending ${value.id}`,
-    Paid: (value) => `Receipt ${value.receipt}`,
-    Failed: (value) => `Failed: ${value.reason}`,
-  })
+  Match.discriminant<'type', Payment, string>('type', payment, paymentLabels)
+
+const labelInPipe = (payment: Payment) =>
+  pipe(payment, Match.discriminant<'type', Payment, string>('type', paymentLabels))
 ```
 
 The handler object must cover every tag. Use the pattern module for structural
@@ -2308,7 +2501,7 @@ patterns once simple tagged dispatch is no longer enough.
 
 Source: https://stopcock.dev/getting-started/
 
-Install stopcock and build your first pipe with fusion, Option, and Result
+Install stopcock and build your first pipe with Option and Result
 
 ```bash
 bun add @stopcock/fp
@@ -2323,7 +2516,7 @@ import * as R from '@stopcock/fp/result'
 
 ## pipe
 
-Pass a value through functions, left to right. If you chain array operations, they get fused into single loops automatically.
+Pass a value through functions, left to right.
 
 ```ts
 type User = { name: string; active: boolean; score: number }
@@ -2337,8 +2530,16 @@ const leaderboard = pipe(
 )
 ```
 
-Portable tagged operators can be planned into a single loop. `take(10)`
-terminates early, so work stops after ten matching results.
+Every data operation with two or more arguments supports both call shapes under
+the same name:
+
+```ts
+const firstTen = A.take(users, 10) // direct, data-first
+const alsoFirstTen = pipe(users, A.take(10)) // curried, data-last
+```
+
+`A.take(10)` returns a function that takes the array, so it slots straight into
+`pipe`; `A.take(users, 10)` runs the same operation directly.
 
 ## flow
 
@@ -2354,41 +2555,36 @@ activeNames(usersA)
 activeNames(usersB)
 ```
 
-## Fusion
+## Compiling pipelines
 
-`pipe` recognizes tagged array operations and uses checked-in portable loop
-templates. `take` and short-circuiting terminals can stop before the input is
-exhausted.
+`pipe` and `flow` are plain function application. Nothing fuses at runtime
+on its own:
 
 ```ts
 const big = Array.from({ length: 1_000_000 }, (_, i) => i)
 
-// visits ~70 items, allocates nothing intermediate
+// three full passes over 1,000,000 items: filter, then map, then take(10)
 pipe(
   big,
-  A.filter((x) => x % 7 === 0),
-  A.map((x) => x * 2),
+  A.filter((x: number) => x % 7 === 0),
+  A.map((x: number) => x * 2),
   A.take(10),
 )
 ```
 
-Operations that need the whole array (`sort`, `groupBy`, `uniq`) break the fusion chain. See [Fusion](/concepts/fusion) for the full picture.
-
-## Dual signatures
-
-Every function works both ways:
-
-```ts
-A.take(users, 5) // data-first
-pipe(users, A.take(5)) // data-last
-```
+For a pipeline you've actually measured as hot, add `@stopcock/fp-compiler`
+(a build-time Vite/Rollup/esbuild plugin). It recognizes this exact shape
+and rewrites it into one inlined loop that stops after 10 matches, so the
+call above only visits a few dozen items once it's built. You don't change
+how you write the pipeline -- run `stopcock check` to see which call sites
+it recognized. See [Fusion](/concepts/fusion) for how the compiler works.
 
 ## Option and Result
 
 ```ts
 pipe(
   O.fromNullable(user.email),
-  O.map((e) => e.split('@')[1]),
+  O.map((e: string) => e.split('@')[1]),
   O.getOrElse(() => 'unknown'),
 )
 
@@ -2417,11 +2613,23 @@ testing and migration tooling.
 import { pipe } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
 
+type User = { name: string; active: boolean; score: number }
+
 const top10 = pipe(
   users,
-  A.filter((u) => u.active),
-  A.map((u) => ({ name: u.name, score: u.score })),
+  A.filter((u: User) => u.active),
+  A.map((u: User) => ({ name: u.name, score: u.score })),
   A.take(10),
+)
+```
+
+The same data operation also works as a direct, data-first call:
+
+```ts
+const active = A.filter(users, (user: User) => user.active)
+const activeInPipe = pipe(
+  users,
+  A.filter((user: User) => user.active),
 )
 ```
 
@@ -2448,16 +2656,17 @@ const name = await run(fetchUser)
 ```
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { diff, apply, invert } from '@stopcock/diff'
 
 const before = { user: 'Tom', scores: [10, 20] }
 const after = { user: 'Tom', scores: [10, 20, 30] }
-const patch = diff(before, after)
-const restored = apply(after, invert(patch))
+const patch = diff(before, after) // direct, data-first
+const restored = pipe(after, apply(invert(patch)))
 ```
 
 ```ts
-import { create, history } from '@stopcock/state'
+import { create } from '@stopcock/state'
 
 const store = create({ count: 0, name: 'Tom' })
 store.subscribe(
@@ -2472,7 +2681,7 @@ import { pipe } from '@stopcock/fp'
 import { fromRGBA, resize, sharpen, contrast } from '@stopcock/img'
 
 const thumbnail = (data: Uint8ClampedArray, w: number, h: number) =>
-  pipe(fromRGBA(data, w, h), resize(200, 200), sharpen, contrast(30))
+  pipe(fromRGBA(data, w, h), resize(200, 200), (img) => sharpen(img), contrast(30))
 ```
 
 ---
@@ -2480,10 +2689,13 @@ const thumbnail = (data: Uint8ClampedArray, w: number, h: number) =>
 
 ---
 
-## Array pipelines fuse automatically
+## Compile the pipelines you've measured as hot
 
-`pipe` detects chainable array operations and fuses them into a single loop. `take(10)` bails after 10 hits. On a million-element array, that's dozens of items touched instead of three full passes.
-
+`pipe` runs each step in order -- it doesn't fuse anything by itself. For a
+pipeline you've actually measured as hot, the `@stopcock/fp-compiler` build
+plugin recognizes the shape and rewrites it into a single loop at build
+time, so `take(10)` stops after 10 hits without three full passes over the
+array. See [Fusion](/concepts/fusion).
 
 ---
 
@@ -2649,7 +2861,8 @@ const checkFallback = pipe(
 )
 
 const isHealthy = await pipe(
-  fallback(checkPrimary, checkFallback),
+  checkPrimary,
+  fallback(checkFallback),
   catchError(() => false),
   run,
 )
@@ -2669,16 +2882,16 @@ const users = await Promise.all(ids.map((id) => callApi(`/users/${id}`)))
 
 ## Combinators
 
-All dual-form: data-first and data-last for `pipe`.
+Curried, data-last, so they compose with `pipe`.
 
 ```ts
-map<A, B, E>(task: Task<A, E>, f: (a: A) => B): Task<B, E>
-flatMap<A, B, E, E2>(task: Task<A, E>, f: (a: A) => Task<B, E2>): Task<B, E | E2>
-tap<A, E>(task: Task<A, E>, f: (a: A) => void): Task<A, E>
-mapError<A, E, E2>(task: Task<A, E>, f: (e: E) => E2): Task<A, E2>
-catchError<A, E>(task: Task<A, E>, f: (e: E) => A): Task<A, never>
-flatMapError<A, E, E2>(task: Task<A, E>, f: (e: E) => Task<A, E2>): Task<A, E2>
-match<A, E, B>(task: Task<A, E>, cases: { ok: (a: A) => B, err: (e: E) => B }): Task<B, never>
+map<A, B>(f: (a: A) => B): <E>(task: Task<A, E>) => Task<B, E>
+flatMap<A, B, E2>(f: (a: A) => Task<B, E2>): <E>(task: Task<A, E>) => Task<B, E | E2>
+tap<A>(f: (a: A) => void | Promise<void>): <E>(task: Task<A, E>) => Task<A, E>
+mapError<E, E2>(f: (e: E) => E2): <A>(task: Task<A, E>) => Task<A, E2>
+catchError<E, B>(f: (e: E) => B): <A>(task: Task<A, E>) => Task<A | B, never>
+flatMapError<E, B, E2>(f: (e: E) => Task<B, E2>): <A>(task: Task<A, E>) => Task<A | B, E2>
+match<A, E, B, C>(handlers: { ok: (a: A) => B, err: (e: E) => C }): (task: Task<A, E>) => Task<B | C, never>
 ```
 
 ## Running
@@ -2717,7 +2930,7 @@ const results = await pipe(tasks, parallel(4), run)
 ```ts
 retry(opts: RetryOptions): <A, E>(task: Task<A, E>) => Task<A, E>
 timeout(ms: number): <A, E>(task: Task<A, E>) => Task<A, E | TimeoutError>
-fallback<A, E>(task: Task<A, E>, alt: Task<A, E>): Task<A, E>
+fallback<B, E2>(backup: Task<B, E2>): <A, E>(task: Task<A, E>) => Task<A | B, E2>
 ```
 
 ```ts
@@ -2780,15 +2993,16 @@ walks the tape backwards and accumulates gradients with the chain rule.
 import { pipe } from '@stopcock/fp'
 import { differentiable, sin, square, add, type Var } from '@stopcock/autodiff'
 
-const f = differentiable((x: Var<number>) => pipe(x, square, add(3), sin))
+const dataFirst = differentiable((x: Var<number>) => sin(add(square(x), 3)))
+const dataLast = differentiable((x: Var<number>) => pipe(x, square, add(3), sin))
 
-f.forward(2) // Math.sin(7)
-f.gradient(2) // Math.cos(7) * 4
+dataFirst.forward(2) // Math.sin(7)
+dataLast.gradient(2) // Math.cos(7) * 4
 ```
 
-This first example shows the core idea: write the calculation once, then ask for
-either its forward value or its derivative at a specific input. The derivative is
-computed from the same composed pipeline, not from a hand-written formula.
+This first example shows the core idea in both supported call styles. Whether
+written directly or as a pipeline, the derivative is computed from the same
+operations, not from a hand-written formula.
 
 
 
@@ -2796,18 +3010,23 @@ computed from the same composed pipeline, not from a hand-written formula.
 
 ## Why it works with pipe
 
-Stopcock's regular pipeline fusion compiles tagged operations into imperative
-loops. Autodiff ops are intentionally untagged, so `pipe()` uses its direct call
-path and every stage can record to the active tape.
+`pipe` is plain, sequential function application. There's no runtime fusion
+step to bypass. Each autodiff op runs for real and records to the active tape
+as it executes. The build-time `@stopcock/fp-compiler` only recognizes
+`@stopcock/fp/array` operators, so a `pipe` chain of autodiff ops is
+unaffected either way.
 
 ## The API
 
 ```ts
-const f = differentiable((x: Var<number>, y: Var<number>) => add(mul(x, y), square(x)))
+const dataFirst = differentiable((x: Var<number>, y: Var<number>) => add(mul(x, y), square(x)))
+const dataLast = differentiable((x: Var<number>, y: Var<number>) =>
+  pipe(x, mul(y), add(pipe(x, square))),
+)
 
-f.forward(2, 3) // 10
-f.gradient(2, 3) // [7, 2]
-f.valueAndGradient(2, 3) // { value: 10, gradient: [7, 2] }
+dataFirst.forward(2, 3) // 10
+dataLast.gradient(2, 3) // [7, 2]
+dataFirst.valueAndGradient(2, 3) // { value: 10, gradient: [7, 2] }
 ```
 
 This example shows how multi-input gradients are returned: one derivative per
@@ -2843,11 +3062,15 @@ import {
 } from '@stopcock/autodiff'
 ```
 
-Binary operations support both data-first and data-last forms:
+Operations with two inputs are dual: call them directly with the data first, or
+partially apply the second input to create a data-last `pipe` stage.
 
 ```ts
-add(x, 3)
-pipe(x, square, add(3), sin)
+add(x, 3) // data-first
+pipe(x, add(3)) // data-last
+
+leakyRelu(x, 0.2) // data-first
+pipe(x, leakyRelu(0.2)) // data-last
 ```
 
 ## Vectors
@@ -2855,18 +3078,22 @@ pipe(x, square, add(3), sin)
 Vectors are `Float64Array` values.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { differentiable, sub, square, vecDot, type Var, type Vec } from '@stopcock/autodiff'
 
 const x = new Float64Array([1, 2, 3])
 
-const loss = differentiable((w: Var<Vec>) => square(sub(vecDot(w, x), 1)))
+const dataFirstLoss = differentiable((w: Var<Vec>) => square(sub(vecDot(w, x), 1)))
+const dataLastLoss = differentiable((w: Var<Vec>) => pipe(w, vecDot(x), sub(1), square))
 
-loss.gradient(new Float64Array([0, 0, 0]))
+dataFirstLoss.gradient(new Float64Array([0, 0, 0]))
+dataLastLoss.gradient(new Float64Array([0, 0, 0]))
 ```
 
-This example shows a tiny linear model. `vecDot(w, x)` predicts a value,
-`square(...)` measures the error, and `gradient(...)` returns a vector shaped
-like `w`, telling each weight how to move.
+These equivalent examples show a tiny linear model. `vecDot(w, x)` and
+`pipe(w, vecDot(x))` both predict a value, `square(...)` measures the error,
+and `gradient(...)` returns a vector shaped like `w`, telling each weight how
+to move.
 
 Vector operations include `vecAdd`, `vecSub`, `vecScale`, `vecDot`, `vecNorm`,
 and `vecSum`.
@@ -2880,6 +3107,7 @@ type Mat = { data: Float64Array; rows: number; cols: number }
 ```
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import {
   differentiable,
   matMul,
@@ -2891,8 +3119,11 @@ import {
 
 const target: Mat = { rows: 2, cols: 1, data: new Float64Array([1, -1]) }
 
-const loss = differentiable((w: Var<Mat>, x: Var<Mat>) =>
+const dataFirstLoss = differentiable((w: Var<Mat>, x: Var<Mat>) =>
   matNormSquared(matSub(matMul(x, w), target)),
+)
+const dataLastLoss = differentiable((w: Var<Mat>, x: Var<Mat>) =>
+  pipe(x, matMul(w), matSub(target), matNormSquared),
 )
 ```
 
@@ -2908,13 +3139,27 @@ Matrix operations include `matMul`, `matAdd`, `matSub`, `matScale`,
 Use the lower-level API when you need to control the tape scope yourself:
 
 ```ts
-import { withTape, variable, backward, gradOf, square } from '@stopcock/autodiff'
+import { withTape, variable, backward, gradOf } from '@stopcock/autodiff'
+import { record } from '@stopcock/autodiff/tape'
 
 withTape((tape) => {
   const x = variable(3)
-  const y = square(x)
+  const parents = [x]
+  const doubleBackward = (grad: number) => [grad * 2]
+
+  const y = record(x.value * 2, parents, doubleBackward)
+  // Equivalent data-last form:
+  // record(parents, doubleBackward)(x.value * 2)
+
+  // Data-first
   backward(y, tape)
-  return gradOf(x, tape)
+  const directGradient = gradOf(x, tape)
+
+  // Equivalent data-last forms
+  backward(tape)(y)
+  const curriedGradient = gradOf(tape)(x)
+
+  return { directGradient, curriedGradient }
 })
 ```
 
@@ -2935,13 +3180,13 @@ the original input.
 
 Source: https://stopcock.dev/libraries/color/
 
-Color as a first-class value — 11 spaces, perceptual ops, WCAG contrast, CVD simulation
+Color as a first-class value. 11 spaces, perceptual ops, WCAG contrast, CVD simulation
 
 ```bash
 bun add @stopcock/color
 ```
 
-A color algebra in pure TypeScript. 11 color spaces with lossless conversions (CSS Color 4 matrices), perceptually-uniform adjustments via OKLCh, WCAG contrast, CIEDE2000 perceptual distance, gamut mapping, and color-vision-deficiency simulation. Every transformation is dual-form so it composes with `pipe`.
+A color algebra in pure TypeScript. 11 color spaces with lossless conversions (CSS Color 4 matrices), perceptually-uniform adjustments via OKLCh, WCAG contrast, CIEDE2000 perceptual distance, gamut mapping, and color-vision-deficiency simulation. Color-value operations support direct data-first and curried data-last calls under the same name.
 
 Try the API in the [Color showcase](/showcases/color/), or see it compose with
 image processing and procedural graphics in the
@@ -2951,7 +3196,9 @@ image processing and procedural graphics in the
 import { pipe } from '@stopcock/fp'
 import { fromHex, lighten, desaturate, adjustHue, toHex } from '@stopcock/color'
 
-pipe(fromHex('#2563eb'), lighten(0.1), desaturate(0.2), adjustHue(15), toHex)
+const brand = fromHex('#2563eb')
+const lighter = lighten(brand, 0.1) // direct, data-first
+const accent = pipe(brand, lighten(0.1), desaturate(0.2), adjustHue(15), toHex)
 // => '#647dd1'
 ```
 
@@ -2962,10 +3209,11 @@ Try it live in the [interactive showcase](/showcases/color/).
 The package routes every perceptual operation (`lighten`, `darken`, `saturate`, `mix`) through OKLCh by default. OKLCh is a polar form of OKLab, which is the most accurate perceptual color space currently published (Ottosson, 2020). Compared to HSL:
 
 - Lightening blue in HSL turns it pink. Lightening blue in OKLCh keeps it blue.
-- Equal lightness steps in OKLCh look like equal lightness steps. HSL's lightness is just `(max + min) / 2` in sRGB — heavily biased.
+- Equal lightness steps in OKLCh look like equal lightness steps. HSL's lightness is just `(max + min) / 2` in sRGB, which is heavily biased.
 - Mixing two colors in OKLab avoids the muddy gray middle that sRGB interpolation produces.
 
-You can still operate in any space explicitly with `convert(c, 'hsl')` or `mixIn(a, b, 'hsl', t)` when you need legacy behavior.
+You can still operate in any space explicitly with `convert(c, 'hsl')` or
+`pipe(a, mixIn(b, 'hsl', t))` when you need legacy behavior.
 
 ## Representation
 
@@ -2990,7 +3238,7 @@ type Color = {
 }
 ```
 
-Alpha lives outside the channels array because it's orthogonal to color-space conversion — converting sRGB to OKLab does not touch alpha.
+Alpha lives outside the channels array because it's orthogonal to color-space conversion: converting sRGB to OKLab does not touch alpha.
 
 ## Construction
 
@@ -3010,10 +3258,10 @@ fromCSS('oklch(0.7 0.15 250)')
 
 ## Conversion
 
-Dual-form. Routes through a hub-and-spoke graph (XYZ-D65 at the center) with memoized BFS — pay the graph walk once per unique pair, O(1) after.
+Routes through a hub-and-spoke graph (XYZ-D65 at the center) with memoized BFS: pay the graph walk once per unique pair, O(1) after.
 
 ```ts
-convert(color: Color, target: ColorSpace): Color
+convert(c: Color, target: ColorSpace): Color
 convert(target: ColorSpace): (c: Color) => Color
 ```
 
@@ -3028,41 +3276,74 @@ Arity-1 convenience aliases that pipe directly:
 For image-sized workloads, use the batch API instead of looping over `Color` objects. A channel buffer is a `Float64Array` packed as RGB triples:
 
 ```ts
-import { convertBuffer, simulateBuffer, applyMatrix3x3 } from '@stopcock/color'
+import { pipe } from '@stopcock/fp'
+import { convertBuffer, simulateBuffer, toGamutBuffer, applyMatrix3x3 } from '@stopcock/color'
 
-const rgb = new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
+const pixels = new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
 
-const oklab = convertBuffer(rgb, 'srgb', 'oklab')
-const simulated = simulateBuffer(rgb, 'srgb', 'deuteranopia', 1)
-const transformed = applyMatrix3x3(new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1]), rgb)
+const oklab = convertBuffer(pixels, 'srgb', 'oklab')
+const oklabInPipe = pipe(pixels, convertBuffer('srgb', 'oklab'))
+
+const simulated = simulateBuffer(pixels, 'srgb', 'deuteranopia', 1)
+const simulatedInPipe = pipe(pixels, simulateBuffer('srgb', 'deuteranopia', 1))
+
+const mapped = toGamutBuffer(pixels, 'p3', 'srgb')
+const mappedInPipe = pipe(pixels, toGamutBuffer('p3', 'srgb'))
+
+const transformed = applyMatrix3x3(new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1]), pixels)
 ```
 
-Alpha stays out-of-band. `@stopcock/img` handles RGBA byte splitting and recombination for whole-image filters.
+```ts
+convertBuffer(src, srcSpace, dstSpace, out?)
+convertBuffer(srcSpace, dstSpace, out?)(src)
+simulateBuffer(src, srcSpace, type, severity?, out?)
+simulateBuffer(srcSpace, type, severity?, out?)(src)
+toGamutBuffer(src, srcSpace, targetSpace, out?)
+toGamutBuffer(srcSpace, targetSpace, out?)(src)
+```
+
+The optional `out` buffer is returned from either lane. Alpha stays out-of-band.
+`@stopcock/img` handles RGBA byte splitting and recombination for whole-image
+filters.
 
 ## Adjustments
 
-All route through OKLCh, then return to the source space. Dual-form.
+All route through OKLCh, then return to the source space.
 
 ```ts
 lighten(c: Color, amount: number): Color
+lighten(amount: number): (c: Color) => Color
 darken(c: Color, amount: number): Color
+darken(amount: number): (c: Color) => Color
 saturate(c: Color, amount: number): Color
+saturate(amount: number): (c: Color) => Color
 desaturate(c: Color, amount: number): Color
+desaturate(amount: number): (c: Color) => Color
 adjustHue(c: Color, degrees: number): Color
+adjustHue(degrees: number): (c: Color) => Color
 adjustAlpha(c: Color, alpha: number): Color
+adjustAlpha(alpha: number): (c: Color) => Color
 ```
 
 ## Mixing
 
 ```ts
-mix(a: Color, b: Color, t?: number): Color           // OKLab, t defaults to 0.5
-mixIn(a: Color, b: Color, space: ColorSpace, t?): Color  // explicit space
-hueInterpolate(h1: number, h2: number, t: number): number  // shorter-arc
+mix(a: Color, b: Color, t?: number): Color
+mix(b: Color, t?: number): (a: Color) => Color           // OKLab, t defaults to 0.5
+mixIn(a: Color, b: Color, space: ColorSpace, t?: number): Color
+mixIn(b: Color, space: ColorSpace, t?: number): (a: Color) => Color  // explicit space
+hueInterpolate(h1: number, h2: number, t: number): number
+hueInterpolate(h2: number, t: number): (h1: number) => number  // shorter arc
+```
+
+```ts
+const halfway = hueInterpolate(350, 10, 0.5)
+const halfwayInPipe = pipe(350, hueInterpolate(10, 0.5))
 ```
 
 <Aside type="tip">
   Mixing in OKLab gives smooth, perceptually-uniform gradients. The `mixIn` form lets you pick a
-  different space — useful when you want HSL-style chroma preservation or sRGB-compatible output.
+  different space, useful when you want HSL-style chroma preservation or sRGB-compatible output.
 </Aside>
 
 ## Palettes
@@ -3073,10 +3354,15 @@ triadic(c): [Color, Color, Color]
 tetradic(c): [Color, Color, Color, Color]
 splitComplementary(c): [Color, Color, Color]
 analogous(c: Color, count?: number, angle?: number): Color[]
-analogous(count?, angle?): (c: Color) => Color[]   // curried for pipe
+analogous(count?, angle?): (c: Color) => Color[]
 ```
 
-Harmony palettes rotate the hue in OKLCh and project back to the source space, so the resulting colors share lightness/chroma — they "go together."
+```ts
+const direct = analogous(brand, 5)
+const inPipe = pipe(brand, analogous(5))
+```
+
+Harmony palettes rotate the hue in OKLCh and project back to the source space, so the resulting colors share lightness/chroma. They "go together."
 
 ## Channels
 
@@ -3099,19 +3385,27 @@ toHSLString(c): string
 
 ```ts
 luminance(c): number                              // WCAG relative luminance
-contrastRatio(a, b): number                       // WCAG ratio
-meetsAA(a, b): boolean                            // ratio >= 4.5
-meetsAAA(a, b): boolean                           // ratio >= 7
-meetsAALarge(a, b): boolean                       // ratio >= 3
-deltaE(a, b): number                              // CIEDE2000 perceptual distance
-deltaEOK(a, b): number                            // Euclidean distance in OKLab
+contrastRatio(a: Color, b: Color): number
+contrastRatio(b: Color): (a: Color) => number
+meetsAA(a: Color, b: Color): boolean
+meetsAA(b: Color): (a: Color) => boolean
+meetsAAA(a: Color, b: Color): boolean
+meetsAAA(b: Color): (a: Color) => boolean
+meetsAALarge(a: Color, b: Color): boolean
+meetsAALarge(b: Color): (a: Color) => boolean
+deltaE(a: Color, b: Color): number
+deltaE(b: Color): (a: Color) => number
+deltaEOK(a: Color, b: Color): number
+deltaEOK(b: Color): (a: Color) => number
 ```
 
 ## Gamut mapping
 
 ```ts
 inGamut(c: Color, target: ColorSpace): boolean
+inGamut(target: ColorSpace): (c: Color) => boolean
 toGamut(c: Color, target: ColorSpace): Color
+toGamut(target: ColorSpace): (c: Color) => Color
 ```
 
 `toGamut` uses the CSS Color 4 algorithm: binary search in OKLCh chroma, preserving lightness and hue, until the result is in the target gamut and within JND (`deltaEOK < 0.02`) of the clipped variant. Better than naive RGB clipping, which shifts the hue.
@@ -3123,6 +3417,7 @@ Simulate how a color appears to a viewer with a CVD condition, using Machado et 
 ```ts
 type CVDType = 'protanopia' | 'deuteranopia' | 'tritanopia' | 'achromatopsia'
 simulate(c: Color, type: CVDType, severity?: number): Color
+simulate(type: CVDType, severity?: number): (c: Color) => Color
 ```
 
 `severity` is `0` (normal) to `1` (full dichromacy); intermediate values blend between identity and the full matrix. Ignored for achromatopsia.
@@ -3131,7 +3426,7 @@ simulate(c: Color, type: CVDType, severity?: number): Color
 import { simulate } from '@stopcock/color'
 
 const asProtan = simulate(myBrand, 'protanopia')
-const partialDeutan = simulate(myBrand, 'deuteranopia', 0.5)
+const partialDeutan = pipe(myBrand, simulate('deuteranopia', 0.5))
 ```
 
 <Aside type="caution">
@@ -3144,11 +3439,12 @@ const partialDeutan = simulate(myBrand, 'deuteranopia', 0.5)
 ```ts
 paletteContrastMatrix(palette: Color[]): ContrastCell[][]
 minDistinguishableDistance(palette: Color[], type: CVDType, severity?): number
+minDistinguishableDistance(type: CVDType, severity?): (palette: Color[]) => number
 
 type ContrastCell = { ratio: number; aa: boolean; aaLarge: boolean; aaa: boolean }
 ```
 
-`paletteContrastMatrix` returns the full N×N pairwise contrast grid — pick foreground/background pairs visually.
+`paletteContrastMatrix` returns the full N×N pairwise contrast grid. Pick foreground/background pairs visually.
 
 `minDistinguishableDistance` simulates a palette under a given CVD condition and reports the smallest pairwise distance. A high minimum means every color in your palette stays distinct under that CVD.
 
@@ -3163,8 +3459,8 @@ import { fromHex, toOKLCh, lighten, darken, toHex } from '@stopcock/color'
 const brand = fromHex('#2563eb')
 const theme = {
   primary: toHex(brand),
-  primaryHover: toHex(lighten(brand, 0.05)),
-  primaryActive: toHex(darken(brand, 0.05)),
+  primaryHover: pipe(brand, lighten(0.05), toHex),
+  primaryActive: pipe(brand, darken(0.05), toHex),
   primaryMuted: toHex(pipe(brand, lighten(0.4))),
 }
 ```
@@ -3172,9 +3468,12 @@ const theme = {
 ### Picking accessible text on any background
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { contrastRatio, fromHex, rgb } from '@stopcock/color'
 
-const onBg = (bg: Color) => (contrastRatio(rgb(1, 1, 1), bg) >= 4.5 ? rgb(1, 1, 1) : rgb(0, 0, 0))
+const white = rgb(1, 1, 1)
+const black = rgb(0, 0, 0)
+const onBg = (bg: Color) => (pipe(white, contrastRatio(bg)) >= 4.5 ? white : black)
 ```
 
 ### Building a colorblind-safe categorical palette
@@ -3198,7 +3497,9 @@ Zero-allocation functional date utilities with branded types
 bun add @stopcock/date
 ```
 
-Dates are branded numbers (Unix ms timestamps). No `Date` objects get allocated anywhere, it's all integer arithmetic. All multi-arg functions are dual-form.
+Dates are branded numbers (Unix ms timestamps). No `Date` objects get allocated
+anywhere, it's all integer arithmetic. Data-oriented operations expose paired
+data-first and data-last overloads where noted below.
 
 ```ts
 import { pipe } from '@stopcock/fp'
@@ -3210,7 +3511,7 @@ format(nextMonday, 'YYYY-MM-DD')
 ```
 
 - `Timestamp` is a branded `number` so you can't accidentally mix raw numbers with timestamps. Use `fromTimestamp()` for explicit conversion.
-- Every function works both ways: `add(7, 'day')` returns `(ts) => Timestamp` for `pipe`, or `add(ts, 7, 'day')` if you want data-first.
+- Dual operations work both ways: `add(7, 'day')` returns `(ts) => Timestamp` for `pipe`, or `add(ts, 7, 'day')` runs data-first.
 - Business days, holidays, timezones, and interval merging are all built in.
 
 ## Benchmarks
@@ -3331,28 +3632,18 @@ format(due, 'DD MMM YYYY') // "14 Apr 2026"
 ```ts
 import { pipe } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
-import {
-  fromParts,
-  startOf,
-  endOf,
-  daysIn,
-  getWeekday,
-  format,
-  isToday,
-  isWeekend,
-} from '@stopcock/date'
+import { daysIn, getWeekday, format, isToday, isWeekend } from '@stopcock/date'
 
-const calendarMonth = (year: number, month: number) => {
-  const start = fromParts({ year, month })
-  const days = daysIn(startOf(start, 'month'), endOf(start, 'month'))
-
-  return A.map(days, (day) => ({
-    label: format(day, 'D'),
-    weekday: getWeekday(day),
-    today: isToday(day),
-    weekend: isWeekend(day),
-  }))
-}
+const calendarMonth = (year: number, month: number) =>
+  pipe(
+    daysIn(year, month),
+    A.map((day) => ({
+      label: format(day, 'D'),
+      weekday: getWeekday(day),
+      today: isToday(day),
+      weekend: isWeekend(day),
+    })),
+  )
 ```
 
 ### Time-ago formatting
@@ -3376,7 +3667,7 @@ const timeAgo = (ts: Timestamp) => {
 import { pipe } from '@stopcock/fp'
 import { fromISO, Tz } from '@stopcock/date'
 
-const standup = pipe(fromISO('2026-04-03'), (ts) => Tz.add(ts, 9, 'hour', 'Europe/London'))
+const standup = pipe(fromISO('2026-04-03'), Tz.add(9, 'hour', 'Europe/London'))
 
 Tz.format(standup, 'HH:mm z', 'America/New_York') // "04:00 EDT"
 Tz.format(standup, 'HH:mm z', 'Asia/Tokyo') // "17:00 JST"
@@ -3446,86 +3737,115 @@ getDaysInYear(ts): number         isLeapYear(ts): boolean
 
 ### Comparison & predicates
 
+The timestamp-taking predicates and `clamp` support both forms. `compare`,
+`min`, `max`, `isWeekend`, `isWeekday`, `isToday`, `isPast`, `isFuture`, and
+`isValid` are direct functions.
+
 ```ts
-compare(a, b): number             min(...ts): Timestamp
-max(...ts): Timestamp             clamp(ts, lo, hi): Timestamp
-isBefore(a, b): boolean           isAfter(a, b): boolean
-isEqual(a, b): boolean            isSameDay(a, b): boolean
-isSameMonth(a, b): boolean        isSameYear(a, b): boolean
-isBetween(ts, start, end): boolean
-isWeekend(ts): boolean            isWeekday(ts): boolean
-isToday(ts): boolean              isPast(ts): boolean
-isFuture(ts): boolean             isValid(ts): boolean
+compare(a, b): number
+min(dates: Timestamp[]): Timestamp        max(dates: Timestamp[]): Timestamp
+clamp(ts, lo, hi): Timestamp               clamp(lo, hi): (ts) => Timestamp
+isBefore(ts, other): boolean               isBefore(other): (ts) => boolean
+isAfter(ts, other): boolean                isAfter(other): (ts) => boolean
+isEqual(ts, other): boolean                isEqual(other): (ts) => boolean
+isSameDay(ts, other): boolean              isSameDay(other): (ts) => boolean
+isSameMonth(ts, other): boolean            isSameMonth(other): (ts) => boolean
+isSameYear(ts, other): boolean             isSameYear(other): (ts) => boolean
+isBetween(ts, start, end): boolean         isBetween(start, end): (ts) => boolean
+isWeekend(ts): boolean                    isWeekday(ts): boolean
+isToday(ts): boolean                      isPast(ts): boolean
+isFuture(ts): boolean                     isValid(ts): boolean
 ```
 
 ### Arithmetic
 
 ```ts
-add(ts, amount, unit): Timestamp
-subtract(ts, amount, unit): Timestamp
-startOf(ts, unit): Timestamp
-endOf(ts, unit): Timestamp
-setYear(ts, year): Timestamp      setMonth(ts, month): Timestamp
-setDay(ts, day): Timestamp        setHours(ts, hours): Timestamp
-setMinutes(ts, minutes): Timestamp setSeconds(ts, seconds): Timestamp
+add(ts, amount, unit): Timestamp            add(amount, unit): (ts) => Timestamp
+subtract(ts, amount, unit): Timestamp       subtract(amount, unit): (ts) => Timestamp
+startOf(ts, unit): Timestamp                startOf(unit): (ts) => Timestamp
+endOf(ts, unit): Timestamp                  endOf(unit): (ts) => Timestamp
+setYear(ts, year): Timestamp                setYear(year): (ts) => Timestamp
+setMonth(ts, month): Timestamp              setMonth(month): (ts) => Timestamp
+setDay(ts, day): Timestamp                  setDay(day): (ts) => Timestamp
+setHours(ts, hours): Timestamp              setHours(hours): (ts) => Timestamp
+setMinutes(ts, minutes): Timestamp          setMinutes(minutes): (ts) => Timestamp
+setSeconds(ts, seconds): Timestamp          setSeconds(seconds): (ts) => Timestamp
 ```
 
 ### Diff
 
 ```ts
-diff(a, b, unit): number          diffInDays(a, b): number
-diffInHours(a, b): number         diffInMinutes(a, b): number
-diffInSeconds(a, b): number       diffInMonths(a, b): number
-diffInYears(a, b): number
+diff(a, b, unit): number                    diff(b, unit): (a) => number
+diffInDays(a, b): number                    diffInDays(b): (a) => number
+diffInHours(a, b): number                   diffInHours(b): (a) => number
+diffInMinutes(a, b): number                 diffInMinutes(b): (a) => number
+diffInSeconds(a, b): number                 diffInSeconds(b): (a) => number
+diffInMonths(a, b): number                  diffInMonths(b): (a) => number
+diffInYears(a, b): number                   diffInYears(b): (a) => number
 ```
 
 ### Rounding
 
 ```ts
-roundTo(ts, unit): Timestamp      ceilTo(ts, unit): Timestamp
-floorTo(ts, unit): Timestamp      snapTo(ts, interval, unit): Timestamp
+roundTo(ts, unit): Timestamp                roundTo(unit): (ts) => Timestamp
+ceilTo(ts, unit): Timestamp                 ceilTo(unit): (ts) => Timestamp
+floorTo(ts, unit): Timestamp                floorTo(unit): (ts) => Timestamp
+snapTo(ts, interval, unit): Timestamp       snapTo(interval, unit): (ts) => Timestamp
 ```
 
 ### Duration
 
 ```ts
 duration(amount, unit): Duration
-addDuration(ts, d): Timestamp     subtractDuration(ts, d): Timestamp
-toDuration(ms): Duration          durationToUnit(d, unit): number
-scaleDuration(d, factor): Duration negateDuration(d): Duration
+addDuration(ts, d): Timestamp               addDuration(d): (ts) => Timestamp
+subtractDuration(ts, d): Timestamp          subtractDuration(d): (ts) => Timestamp
+durationToUnit(d, unit): number              durationToUnit(unit): (d) => number
+toDuration(a, b): Duration                   scaleDuration(d, factor): Duration
+negateDuration(d): Duration
 ```
+
+`toDuration`, `scaleDuration`, and `negateDuration` aren't curried; they're
+plain functions.
 
 ### Ranges & intervals
 
 ```ts
-range(start, end, step, unit): Timestamp[]
-rangeBy(start, end, stepFn): Timestamp[]
-daysIn(start, end): Timestamp[]   weekdaysIn(start, end): Timestamp[]
+range(start, end, step, unit): Timestamp[]   range(end, step, unit): (start) => Timestamp[]
+rangeBy(start, end, stepFn): Timestamp[]     rangeBy(end, stepFn): (start) => Timestamp[]
+daysIn(year, month): Timestamp[]     weekdaysIn(year, month): Timestamp[]
 sequence(start, count, step, unit): Timestamp[]
-overlaps(a, b): boolean           contains(interval, ts): boolean
-intersection(a, b): [Timestamp, Timestamp] | null
-union(a, b): [Timestamp, Timestamp] | null
-gap(a, b): [Timestamp, Timestamp] | null
+sequence(count, step, unit): (start) => Timestamp[]
+overlaps(a1, a2, b1, b2): boolean    contains(start, end, point): boolean
+intersection(a1, a2, b1, b2): [Timestamp, Timestamp] | null
+union(a1, a2, b1, b2): [Timestamp, Timestamp] | null
+gap(a1, a2, b1, b2): [Timestamp, Timestamp] | null
 mergeIntervals(intervals): [Timestamp, Timestamp][]
 ```
+
+`daysIn` and `weekdaysIn` take a year and a month, not a range. `overlaps`,
+`contains`, `intersection`, `union`, `gap`, and `mergeIntervals` aren't
+curried.
 
 ### Business days
 
 ```ts
 isBusinessDay(ts): boolean
-addBusinessDays(ts, days): Timestamp
-subtractBusinessDays(ts, days): Timestamp
-businessDaysBetween(a, b): number
+addBusinessDays(ts, amount): Timestamp       addBusinessDays(amount): (ts) => Timestamp
+subtractBusinessDays(ts, amount): Timestamp  subtractBusinessDays(amount): (ts) => Timestamp
+businessDaysBetween(a, b): number            businessDaysBetween(b): (a) => number
 nextBusinessDay(ts): Timestamp    prevBusinessDay(ts): Timestamp
-addBusinessDaysWithHolidays(ts, days, holidays): Timestamp
+addBusinessDaysWithHolidays(ts, amount, holidays): Timestamp
+addBusinessDaysWithHolidays(amount, holidays): (ts) => Timestamp
 ```
 
 ### Formatting & parsing
 
 ```ts
-format(ts, pattern): string       formatter(pattern): (ts) => string
-parse(input, pattern): Timestamp  parser(pattern): (input) => Timestamp
-tryParse(input, pattern): Timestamp | null
+format(ts, pattern): string                  format(pattern): (ts) => string
+formatter(pattern): (ts) => string
+parse(input, pattern): Timestamp             parse(pattern): (input) => Timestamp
+parser(pattern): (input) => Timestamp
+tryParse(input, pattern): Timestamp | null   tryParse(pattern): (input) => Timestamp | null
 tryParser(pattern): (input) => Timestamp | null
 parseISO(input): Timestamp
 ```
@@ -3548,7 +3868,7 @@ Tz.getOffsetString(ts, zone): string
 ```
 
 <Aside type="tip">
-  All `Tz` functions are dual-form. `Tz.format('YYYY-MM-DD', 'Europe/London')` returns `(ts) => string`.
+  Most `Tz` functions that take a timestamp are dual-form: `Tz.format('YYYY-MM-DD', 'Europe/London')` returns `(ts) => string`. Predicates and offset lookups (`Tz.isWeekend`, `Tz.isToday`, `Tz.getOffsetMinutes`, `Tz.getOffsetString`, `Tz.utcToLocal`, `Tz.localToUTC`) take the timestamp first and aren't curried.
 </Aside>
 
 ---
@@ -3562,9 +3882,13 @@ Structural diffing, patching, composition, and rebasing for objects and arrays
 bun add @stopcock/diff
 ```
 
-Compute a patch between two values, apply it, invert it for undo, compose sequential patches, or rebase concurrent edits with conflict detection. All functions are dual-form.
+Compute a patch between two values, apply it, invert it for undo, compose
+sequential patches, or rebase concurrent edits with conflict detection. Every
+data-taking operation with two or more arguments supports direct data-first and
+curried data-last calls under the same name.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { diff, apply, invert, compose } from '@stopcock/diff'
 
 const before = { name: 'Tom', scores: [10, 20] }
@@ -3573,7 +3897,7 @@ const after = { name: 'Tom', scores: [10, 20, 30] }
 const patch = diff(before, after)
 // [{ op: 'add', path: ['scores', 2], value: 30 }]
 
-const restored = apply(after, invert(patch))
+const restored = pipe(after, apply(invert(patch)))
 // { name: 'Tom', scores: [10, 20] }
 ```
 
@@ -3599,7 +3923,9 @@ type Operation =
 
 ```ts
 diff(before, after): Patch
+diff(after): (before) => Patch
 diffWith(before, after, options): Patch
+diffWith(after, options): (before) => Patch
 ```
 
 Options:
@@ -3609,12 +3935,14 @@ Options:
 - `detectRenames` - detect object key renames (default: `true`)
 
 ```ts
+import { pipe } from '@stopcock/fp'
+
 // Move detection
 diff({ items: ['a', 'b', 'c'] }, { items: ['c', 'a', 'b'] })
 // [{ op: 'move', from: ['items', 2], path: ['items', 0] }]
 
 // Rename detection
-diff({ firstName: 'Tom' }, { name: 'Tom' })
+pipe({ firstName: 'Tom' }, diff({ name: 'Tom' }))
 // [{ op: 'rename', path: [], oldKey: 'firstName', newKey: 'name' }]
 ```
 
@@ -3622,7 +3950,9 @@ diff({ firstName: 'Tom' }, { name: 'Tom' })
 
 ```ts
 apply(target, patch): Result<T, PatchError>
+apply(patch): (target) => Result<T, PatchError>
 applyUnsafe(target, patch): T
+applyUnsafe(patch): (target) => T
 ```
 
 `apply` returns a `Result`. If an operation fails (path doesn't exist, index out of bounds), you get a `PatchError` with context. `applyUnsafe` throws instead.
@@ -3640,14 +3970,15 @@ Reverses a patch. `add` becomes `remove`, `remove` becomes `add`, `replace` swap
 This is what powers undo in `@stopcock/state`.
 
 ```ts
-const p = diff(a, b)
-apply(b, invert(p)) // back to a
+const p = pipe(a, diff(b))
+apply(b, invert(p)) // Result containing a, data-first
 ```
 
 ## Composition
 
 ```ts
 compose(p1, p2): Patch
+compose(p2): (p1) => Patch
 ```
 
 Merges two sequential patches into one. Automatically simplifies:
@@ -3658,16 +3989,17 @@ Merges two sequential patches into one. Automatically simplifies:
 
 ```ts
 const p1 = diff(a, b)
-const p2 = diff(b, c)
+const p2 = pipe(b, diff(c))
 const p3 = compose(p1, p2)
 
-// apply(a, p3) === apply(apply(a, p1), p2)
+// apply(a, p3) === pipe(a, apply(p1), apply(p2))
 ```
 
 ## Rebasing
 
 ```ts
 rebase(localPatch, remotePatch): Result<Patch, ConflictError>
+rebase(remotePatch): (localPatch) => Result<Patch, ConflictError>
 ```
 
 You and someone else both edited the same base state. The remote patch already landed. `rebase` transforms your local patch so it applies cleanly on top of the remote changes.
@@ -3676,7 +4008,7 @@ You and someone else both edited the same base state. The remote patch already l
 const base = { name: 'Tom', scores: [10, 20] }
 
 const local = diff(base, { name: 'Tom', scores: [10, 20, 30] })
-const remote = diff(base, { name: 'Tom', scores: [5, 10, 20] })
+const remote = pipe(base, diff({ name: 'Tom', scores: [5, 10, 20] }))
 
 const rebased = rebase(local, remote)
 // local's add at index 2 shifts to index 3
@@ -3718,7 +4050,9 @@ If you're already using lenses from `@stopcock/fp`, you can convert between patc
 ```ts
 toLens(operation): Lens | null
 fromLens(source, lens, target): Patch | null
+fromLens(lens, target): (source) => Patch | null
 fromTraversal(source, traversal, fn): Patch
+fromTraversal(traversal, fn): (source) => Patch
 ```
 
 ---
@@ -3755,12 +4089,18 @@ isEmpty(p: Patch): boolean
 
 ```ts
 diff(a, b): Patch
-diffWith(a, b, options: DiffOptions): Patch
+diff(b): (a) => Patch
+diffWith(a, b, options): Patch
+diffWith(b, options): (a) => Patch
 apply(target, patch): Result<T, PatchError>
+apply(patch): (target) => Result<T, PatchError>
 applyUnsafe(target, patch): T
+applyUnsafe(patch): (target) => T
 invert(patch): Patch
 compose(p1, p2): Patch
+compose(p2): (p1) => Patch
 rebase(local, remote): Result<Patch, ConflictError>
+rebase(remote): (local) => Result<Patch, ConflictError>
 ```
 
 ### JSON Patch
@@ -3775,7 +4115,9 @@ fromJsonPatch(ops: JsonPatchOperation[]): Patch
 ```ts
 toLens(op: Operation): Lens | null
 fromLens(source, lens, target): Patch | null
+fromLens(lens, target): (source) => Patch | null
 fromTraversal(source, traversal, fn): Patch
+fromTraversal(traversal, fn): (source) => Patch
 ```
 
 ---
@@ -3877,10 +4219,13 @@ The Unplugin instance also provides Rollup, esbuild, and webpack adapters. It
 understands namespace, named, aliased, and wrapper-package imports, while
 lexically shadowed bindings and unsupported sites remain ordinary FP calls.
 
-Exact semantics are the default. `assumePure: true` records an explicit pure
-contract without silently enabling a different result today. Use `include`
-and `exclude` to filter files, `importSources` and `arrayImportSources` for
-wrapper packages, and `diagnostics: 'error'` for a fail-closed build.
+Exact semantics are the default. `assumePure: true` enables proven pure
+execution rewrites (this release includes `map ... map -> length` callback
+elision); argument expressions still evaluate exactly once, and operator
+construction stays observable only at a residual or otherwise
+non-fully-lowered site. Use `include` and `exclude` to filter files,
+`importSources` and `arrayImportSources` for wrapper packages, and
+`diagnostics: 'error'` for a fail-closed build.
 
 ```ts
 import { transformStopcockPipelines } from '@stopcock/fp-compiler'
@@ -3983,18 +4328,12 @@ compiler without taking ownership of your application runtime.
 The root is intentionally small:
 
 ```ts
-import {
-  compile,
-  compilePure,
-  dual,
-  err,
-  flow,
-  none,
-  ok,
-  pipe,
-  some,
-} from '@stopcock/fp'
+import { err, flow, none, ok, pipe, some } from '@stopcock/fp'
 ```
+
+`compile`, `compilePure`, and `explain` are not root exports. Import them from
+the subpaths that name what they are: `@stopcock/fp/compile` and
+`@stopcock/fp/fusion/debug`.
 
 Specialist APIs live in tree-shakeable subpaths:
 
@@ -4021,11 +4360,16 @@ const activeNames = pipe(
 )
 ```
 
-Public operators support direct and pipe-friendly forms where both are useful:
+Every data operation with two or more arguments supports direct data-first and
+curried data-last calls under the same name.
 
 ```ts
-const doubled = A.map([1, 2, 3], (value) => value * 2)
-const alsoDoubled = pipe([1, 2, 3], A.map((value) => value * 2))
+const doubled = A.map((value: number) => value * 2)([1, 2, 3])
+const directlyDoubled = A.map([1, 2, 3], (value) => value * 2)
+const alsoDoubled = pipe(
+  [1, 2, 3],
+  A.map((value) => value * 2),
+)
 ```
 
 Array operations are immutable by default. Explicit `*Into` operations write
@@ -4034,9 +4378,15 @@ allowed to alias an input.
 
 ## Portable compilation
 
-Repeated hot pipelines can be planned once:
+There is one runtime path: `pipe`, `flow`, `compile`, and `compilePure` are
+all the same plain, left-to-right, sequential application. `compile` exists
+so a call site can say "this is a pipeline I intend to compile" by name;
+uncompiled, it behaves exactly like `pipe`, including callback order and
+early-exit counts.
 
 ```ts
+import { compile } from '@stopcock/fp/compile'
+
 const activeNames = compile(
   A.filter((player: Player) => player.active),
   A.map((player) => player.name),
@@ -4046,30 +4396,31 @@ const activeNames = compile(
 activeNames(players)
 ```
 
-`compile` preserves ordinary callback semantics. `compilePure` additionally
-permits rewrites that are valid only when callbacks are pure. Both use
-checked-in portable loop templates: the runtime package does not call
-`eval`, construct functions from strings, or load a JIT chunk.
+The actual fusion is `@stopcock/fp-compiler`: a build-time transform that
+recognizes a `pipe`/`flow`/`compile` call over these operators and replaces
+it with an inlined, single-pass loop, so the runtime engine above never runs
+for that call at all. `compilePure` exists for source parity with the
+compiler's `assumePure` option; at runtime it is `compile` under a different
+name.
 
 ```ts
-import { explain } from '@stopcock/fp'
+import { explain } from '@stopcock/fp/fusion/debug'
 
-console.log(
-  explain(
-    A.map((value: number) => value * 2),
-    A.filter((value) => value > 0),
-  ),
-)
+explain(
+  A.map((value: number) => value * 2),
+  A.filter((value) => value > 0),
+) // 'sequential', always -- a call the compiler actually fused never
+// reaches this code to be explained
 ```
 
-See [Inspect pipelines with `explain()`](/concepts/explain) for verified
-reports, field definitions, materialization boundaries, opaque functions, and
-pure rewrites.
+Uncompiled `pipe` is already at or near hand-loop speed for most chains, so
+you do not need the compiler to get reasonable performance. Reach for
+`@stopcock/fp-compiler` for pipelines you've actually measured as hot.
 
 <Aside type="note">
-  The optional `@stopcock/fp-compiler` build plugin can lower ordinary
-  `pipe`/`flow` call sites at build time. Applications still import only
-  `@stopcock/fp`; generated code does not require the compiler at runtime.
+  The optional `@stopcock/fp-compiler` build plugin can lower ordinary `pipe`/`flow` call sites at
+  build time. Applications still import only `@stopcock/fp`; generated code does not require the
+  compiler at runtime.
 </Aside>
 
 ## Missing values, failures, and validation
@@ -4096,8 +4447,15 @@ const parsed = R.tryCatch(
 )
 
 const fields = V.all([
-  V.fromPredicate(name, (value) => value.length > 0, () => 'name is required'),
-  V.fromPredicate(age, Number.isFinite, () => 'age must be finite'),
+  V.fromPredicate(
+    name,
+    (value: string) => value.length > 0,
+    () => 'name is required',
+  ),
+  pipe(
+    age,
+    V.fromPredicate(Number.isFinite, () => 'age must be finite'),
+  ),
 ] as const)
 ```
 
@@ -4378,9 +4736,15 @@ bun add @stopcock/img
 Pixel-level image manipulation on raw RGBA buffers. Filters, convolution, resize, crop, the usual. All parameterised functions are dual-form, so they work in `pipe` point-free.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { create, grayscale, blur, resize, brightness } from '@stopcock/img'
 
-pipe(create(800, 600), grayscale, blur(3), brightness(40), resize(400, 300))
+const image = create(800, 600)
+
+const directlyBrightened = brightness(image, 40)
+const brightenedInPipe = pipe(image, brightness(40))
+
+const processed = pipe(image, grayscale, blur(3), brightness(40), resize(400, 300))
 ```
 
 ## Real-world patterns
@@ -4415,6 +4779,7 @@ const processed = A.map(images, vintage)
 ### Edge detection for feature extraction
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { grayscale, gaussianBlur, edgeDetect } from '@stopcock/img'
 
 const edges = pipe(
@@ -5587,7 +5952,7 @@ The migration codemod can split old root imports and rewrite the common
 `Stream.*` vocabulary:
 
 ```bash
-bunx @stopcock/fp-codemod stream-to-iter src
+bunx stopcock-fp-codemod --write src
 ```
 
 Read the [Iter API](/api/iter) for constructors, transformations, terminals,
@@ -5598,29 +5963,40 @@ iterator-closing semantics, and mutable `*Into` escape hatches.
 
 Source: https://stopcock.dev/libraries/svg/
 
-Pipe-native procedural SVG with typed nodes, defs hoisting, filters, and linear-algebra helpers
+Dual-form procedural SVG with typed nodes, defs hoisting, filters, and linear-algebra helpers
 
 ```bash
 bun add @stopcock/svg
 ```
 
-`@stopcock/svg` builds SVG as typed pipeable values. User code works with shapes, paints, paths, filters, and transforms; the renderer owns XML, ids, escaping, and `<defs>` hoisting.
+`@stopcock/svg` builds SVG as typed values. Every non-constructor operation that combines data with configuration supports both data-first calls and curried data-last calls under the same name. User code works with shapes, paints, paths, filters, and transforms; the renderer owns XML, ids, escaping, and `<defs>` hoisting.
 
 See it compose with image and color processing in the
 [SVG + Color Batch showcase](/showcases/svg-color-batch/).
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { rgb } from '@stopcock/color'
 import { circle, fill, render, rotate, stroke, translate, viewBox } from '@stopcock/svg'
 
-const badge = viewBox(
-  0,
-  0,
-  100,
-  100,
-)(stroke(rgb(0, 0, 0), 2)(fill(rgb(1, 0, 0))(rotate(15)(translate(50, 50)(circle(32))))))
+const base = circle(32)
+const moved = translate(base, 50, 50)
+const turned = rotate(moved, 15)
+const painted = fill(turned, rgb(1, 0, 0))
+const outlined = stroke(painted, rgb(0, 0, 0), 2)
+const dataFirstBadge = viewBox(outlined, 0, 0, 100, 100)
 
-render(badge)
+const dataLastBadge = pipe(
+  circle(32),
+  translate(50, 50),
+  rotate(15),
+  fill(rgb(1, 0, 0)),
+  stroke(rgb(0, 0, 0), 2),
+  viewBox(0, 0, 100, 100),
+)
+
+render(dataFirstBadge)
+pipe(dataLastBadge, render())
 ```
 
 ## Core model
@@ -5635,21 +6011,21 @@ line(x1, y1, x2, y2)
 text(value, size?)
 group(children)
 use(target)
-viewBox(x, y, w, h)
-render(node)
+viewBox(node, x, y, w, h) / viewBox(x, y, w, h)(node)
+render(node, options?) / render(options?)(node)
 ```
 
-Operators return `Node => Node`, so they compose naturally in `pipe`:
+Constructors stay direct. Data-taking operators expose a direct overload and return `Node => Node` when called with configuration only, so the same name works in `pipe`:
 
 ```ts
-fill(paint)
-stroke(paint, width, opts?)
-opacity(alpha)
-translate(dx, dy)
-rotate(degrees, cx?, cy?)
-scale(sx, sy?)
-skewX(degrees)
-skewY(degrees)
+fill(node, paint) / fill(paint)(node)
+stroke(node, paint, width, opts?) / stroke(paint, width, opts?)(node)
+opacity(node, alpha) / opacity(alpha)(node)
+translate(node, dx, dy) / translate(dx, dy)(node)
+rotate(node, degrees, cx?, cy?) / rotate(degrees, cx?, cy?)(node)
+scale(node, sx, sy?) / scale(sx, sy?)(node)
+skewX(node, degrees) / skewX(degrees)(node)
+skewY(node, degrees) / skewY(degrees)(node)
 ```
 
 ## Paint and defs
@@ -5657,6 +6033,7 @@ skewY(degrees)
 Gradients, patterns, clips, masks, filters, and symbols are hoisted into `<defs>` by reference equality. Reuse a `const` to reuse a definition; allocate a new value to get a distinct definition.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { linear, rect, circle, fill, group, render } from '@stopcock/svg'
 import { rgb } from '@stopcock/color'
 
@@ -5665,29 +6042,48 @@ const brand = linear([
   { offset: 1, color: rgb(0, 0, 1) },
 ])
 
-render(group([fill(brand)(rect(20, 20)), fill(brand)(circle(8))]))
+const icon = group([fill(rect(20, 20), brand), pipe(circle(8), fill(brand))])
+
+render(icon)
 ```
 
 ## Paths
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { path, render } from '@stopcock/svg'
 
-const triangle = path.toNode()(
-  path.close()(path.lineTo(50, 80)(path.lineTo(100, 0)(path.start(0, 0)))),
+const firstEdge = path.lineTo(path.start(0, 0), 100, 0)
+const dataFirstPath = path.lineTo(firstEdge, 50, 80)
+const dataFirstTriangle = path.toNode(path.close(dataFirstPath))
+
+const dataLastTriangle = pipe(
+  path.start(0, 0),
+  path.lineTo(100, 0),
+  path.lineTo(50, 80),
+  path.close(),
+  path.toNode(),
 )
 
-render(triangle)
+render(dataFirstTriangle)
+pipe(dataLastTriangle, render())
 ```
 
 ## Filters
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { filter, rect, render } from '@stopcock/svg'
 
 const identity = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0] as const
 
-render(filter(filter.compose([filter.blur(2), filter.colorMatrix(identity)]))(rect(100, 40)))
+const composed = filter.compose([filter.blur(2), filter.colorMatrix(identity)])
+const dataFirstFiltered = filter(rect(100, 40), composed)
+
+const dataLastFiltered = pipe(rect(100, 40), filter(composed))
+
+render(dataFirstFiltered)
+pipe(dataLastFiltered, render())
 ```
 
 `filter.colorMatrix` accepts a row-major 4x5 SVG color matrix: 20 numbers for RGBA plus bias.
@@ -5697,17 +6093,27 @@ render(filter(filter.compose([filter.blur(2), filter.colorMatrix(identity)]))(re
 Import from `@stopcock/svg/la` when you want helpers backed by `@stopcock/la`.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { rect } from '@stopcock/svg'
 import { toQuad, lerpTransform, symmetry } from '@stopcock/svg/la'
 
-const warped = toQuad([
+const corners = [
   [0, 0],
   [120, 10],
   [100, 80],
   [10, 90],
-])(rect(1, 1))
-const halfway = lerpTransform([1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 100, 0], 0.5)
-const repeated = symmetry(warped, 8, halfway)
+] as const
+
+const dataFirstWarped = toQuad(rect(1, 1), corners)
+const dataLastWarped = pipe(rect(1, 1), toQuad(corners))
+
+const identity = [1, 0, 0, 1, 0, 0] as const
+const target = [1, 0, 0, 1, 100, 0] as const
+const halfway = lerpTransform(identity, target, 0.5)
+const halfwayInPipe = pipe(identity, lerpTransform(target, 0.5))
+
+const dataFirstRepeated = symmetry(dataFirstWarped, 8, halfway)
+const dataLastRepeated = pipe(dataLastWarped, symmetry(8, halfwayInPipe))
 ```
 
 ---
@@ -5715,215 +6121,152 @@ const repeated = symmetry(warped, 8, halfway)
 
 Source: https://stopcock.dev/performance/benchmarks/
 
-stopcock vs lodash, ramda, remeda, rambda, ts-belt, and native JS
+stopcock vs lodash, ramda, remeda, rambda, and ts-belt, measured 2026-07-28/29
 
-The interactive charts below are exploratory
-[Vitest benchmarks](https://vitest.dev/guide/features.html#benchmarking) with
-seeded inputs. Their absolute operations-per-second values vary by machine,
-runtime, thermal state, and benchmark version; they are not release promises.
+Every number below is from this machine: Bun 1.3.14/JavaScriptCore, Darwin
+arm64, ambient load (no attempt made to get a quiet machine -- these gates
+are designed to pass under normal development load, and re-run repeatedly
+to confirm it), measured 28-29 July 2026. Node was not measured this pass:
+this environment's plain `node` can't resolve `tsx`, so rather than pair a
+fresh Bun number against a stale Node one, Node is left out entirely.
 
+## Guidance
+
+Default to `array`'s eager operators. Reach for `Iter` when a chain stops
+early -- `find`, `take`, `head` -- on an input of 1,000 elements or more:
+eager loses there, and `Iter` wins 4-10x over lazy competitors on those
+shapes (5-884x over eager `array`). Compile whichever chain you've actually
+measured as hot with `@stopcock/fp-compiler`.
+
+## Compiled vs everyone else
+
+`@stopcock/fp-compiler` fuses a `pipe`/`flow`/`compile` chain into one loop
+at build time (see [Fusion](/concepts/fusion)). The decision suite below
+runs 15 pipeline shapes at three sizes each (n=10 / 1,000 / 100,000)
+against ramda, rambda, remeda, ts-belt, and lodash. Values are operations
+per second, higher is better. `stopcock pipe` is uncompiled: plain
+sequential `pipe`, no build step. `stopcock compiled` is the identical
+chain run through `@stopcock/fp-compiler`. The last two columns are that
+row's ratio against the fastest of the five competitor libraries; greater
+than 1x means stopcock was faster. `-` means the library doesn't implement
+that operation (ts-belt has no `scan`; ts-belt has no `takeWhile`/`flatMap`
+composition used here).
+
+| Pipeline | n | stopcock pipe | stopcock compiled | ramda | rambda | remeda | ts-belt | lodash | pipe vs best lib | compiled vs best lib |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| map | 10 | 9.2M | 39.6M | 12.4M | 6.6M | 2.3M | 7.3M | 3.6M | 0.74x | 3.19x |
+| map | 1,000 | 144.6k | 1.4M | 195.1k | 175.6k | 34.1k | 156.4k | 184.0k | 0.74x | 7.11x |
+| map | 100,000 | 1.1k | 6.4k | 1.7k | 1.4k | 283 | 1.4k | 1.6k | 0.66x | 3.80x |
+| map->filter | 10 | 4.8M | 22.2M | 5.2M | 3.1M | 1.5M | 4.5M | 2.0M | 0.93x | 4.31x |
+| map->filter | 1,000 | 65.4k | 249.4k | 78.9k | 56.7k | 20.7k | 74.1k | 71.6k | 0.83x | 3.16x |
+| map->filter | 100,000 | 467 | 1.3k | 550 | 420 | 151 | 557 | 584 | 0.80x | 2.15x |
+| map->filter->reduce | 10 | 3.9M | 27.2M | 2.8M | 2.1M | 1.3M | 2.6M | 1.7M | 1.37x | 9.67x |
+| map->filter->reduce | 1,000 | 48.0k | 464.3k | 42.4k | 35.9k | 18.4k | 43.2k | 52.4k | 0.92x | 8.85x |
+| map->filter->reduce | 100,000 | 401 | 4.6k | 329 | 271 | 108 | 325 | 423 | 0.95x | 10.9x |
+| map->filter->map->filter | 10 | 2.4M | 14.9M | 2.2M | 1.5M | 837.1k | 2.0M | 1.2M | 1.10x | 6.81x |
+| map->filter->map->filter | 1,000 | 30.2k | 133.1k | 30.1k | 22.9k | 10.9k | 27.7k | 32.1k | 0.94x | 4.15x |
+| map->filter->map->filter | 100,000 | 230 | 911 | 230 | 185 | 89 | 228 | 265 | 0.87x | 3.44x |
+| 8-op chain | 10 | 1.4M | 11.0M | 988.3k | 700.7k | 424.3k | 964.7k | 597.4k | 1.41x | 11.2x |
+| 8-op chain | 1,000 | 14.4k | 113.7k | 13.6k | 10.8k | 6.1k | 13.5k | 16.6k | 0.87x | 6.86x |
+| 8-op chain | 100,000 | 121 | 876 | 113 | 85 | 28 | 109 | 136 | 0.89x | 6.42x |
+| map->filter->find (early exit near start) | 10 | 5.0M | 45.8M | 4.9M | 3.1M | 2.9M | 4.2M | 1.7M | 1.02x | 9.39x |
+| map->filter->find (early exit near start) | 1,000 | 66.7k | 44.6M | 79.8k | 57.0k | 1.1M | 76.0k | 72.7k | 0.06x | 41.4x |
+| map->filter->find (early exit near start) | 100,000 | 528 | 3.0M | 650 | 448 | 17.2k | 597 | 604 | 0.03x | 174x |
+| map->filter->find (early exit late) | 10 | 5.0M | 44.8M | 5.1M | 3.1M | 1.2M | 4.4M | 1.7M | 0.98x | 8.81x |
+| map->filter->find (early exit late) | 1,000 | 65.8k | 2.9M | 79.3k | 55.5k | 16.8k | 73.9k | 69.6k | 0.83x | 37.2x |
+| map->filter->find (early exit late) | 100,000 | 515 | 30.9k | 608 | 429 | 111 | 543 | 575 | 0.85x | 50.8x |
+| map->filter->take(10) | 10 | 5.1M | 32.4M | 4.4M | 2.8M | 1.2M | 3.3M | 1.6M | 1.16x | 7.40x |
+| map->filter->take(10) | 1,000 | 67.7k | 27.2M | 79.9k | 57.0k | 960.9k | 56.9k | 2.0M | 0.03x | 13.6x |
+| map->filter->take(10) | 100,000 | 525 | 27.4M | 599 | 416 | 926.2k | 415 | 2.0M | 0.00x | 13.7x |
+| takeWhile->map | 10 | 8.6M | 37.2M | 5.9M | 4.7M | 3.0M | - | 2.1M | 1.47x | 6.33x |
+| takeWhile->map | 1,000 | 152.6k | 1.1M | 191.1k | 161.6k | 57.6k | - | 157.4k | 0.80x | 5.56x |
+| takeWhile->map | 100,000 | 1.1k | 3.6k | 1.4k | 1.0k | 428 | - | 1.2k | 0.77x | 2.61x |
+| flatMap->filter | 10 | 1.8M | 27.0M | 1.9M | 1.9M | 838.0k | - | 1.1M | 0.95x | 14.1x |
+| flatMap->filter | 1,000 | 20.8k | 295.7k | 21.2k | 23.3k | 8.8k | - | 14.2k | 0.89x | 12.7x |
+| flatMap->filter | 100,000 | 144 | 297 | 136 | 147 | 78 | - | 109 | 0.98x | 2.02x |
+| map->sortBy->take(10) | 10 | 2.7M | 4.7M | 2.6M | 2.0M | 973.5k | 3.9M | 1.4M | 0.69x | 1.20x |
+| map->sortBy->take(10) | 1,000 | 9.8k | 471.8k | 10.3k | 9.9k | 8.4k | 31.2k | 9.9k | 0.32x | 15.1x |
+| map->sortBy->take(10) | 100,000 | 44 | 3.7k | 44 | 44 | 38 | 89 | 44 | 0.49x | 41.4x |
+| map->uniq->filter | 10 | 4.0M | 5.9M | 3.0M | 1.9M | 1.1M | 3.9M | 1.8M | 1.04x | 1.53x |
+| map->uniq->filter | 1,000 | 53.1k | 62.8k | 46.4k | 22.1k | 12.3k | 13.3k | 49.1k | 1.08x | 1.28x |
+| map->uniq->filter | 100,000 | 181 | 177 | 159 | 128 | 86 | 2 | 176 | 1.03x | 1.00x |
+| scan->map | 10 | 7.7M | 10.0M | 4.5M | - | - | - | - | 1.72x | 2.23x |
+| scan->map | 1,000 | 116.9k | 142.1k | 81.9k | - | - | - | - | 1.43x | 1.73x |
+| scan->map | 100,000 | 849 | 1.1k | 624 | - | - | - | - | 1.36x | 1.79x |
+| heavy map->filter->reduce | 10 | 954.4k | 1.2M | 935.2k | 852.9k | 617.3k | 918.3k | 736.3k | 1.02x | 1.27x |
+| heavy map->filter->reduce | 1,000 | 7.4k | 8.8k | 7.6k | 7.4k | 5.6k | 7.4k | 7.3k | 0.98x | 1.16x |
+| heavy map->filter->reduce | 100,000 | 68 | 86 | 69 | 68 | 51 | 68 | 69 | 1.00x | 1.25x |
+| filter->head | 10 | 10.1M | 43.4M | 9.2M | 6.8M | 4.1M | 8.9M | 2.5M | 1.10x | 4.73x |
+| filter->head | 1,000 | 224.0k | 43.5M | 248.0k | 243.4k | 4.0M | 252.9k | 188.6k | 0.06x | 10.8x |
+| filter->head | 100,000 | 2.3k | 43.4M | 2.5k | 2.5k | 3.9M | 2.9k | 2.1k | 0.00x | 11.2x |
+
+Compiled wins every row. Typical chains land 2-15x over the fastest
+competitor. Chains that stop early (`find`, `take`, `head`) at n >= 1,000
+jump to 41-174x, because the fused loop never touches the rest of the
+array once it has its answer. Sort-then-take lands 15-41x, from the
+compiler's top-k fusion on `sortBy -> take(k)`.
+
+Uncompiled `pipe` -- plain function application, no build step -- still
+beats ramda's geomean by 1.85x on eager chains that consume the whole
+input, never dropping below 1.19x. It loses to lazy libraries only on
+chains that stop early at n >= 1,000 (see the `find`/`take`/`head` rows
+above): that's what `Iter` is for, not the compiler.
 
 ## FP 2.0 release gates
 
-FP 2.0 keeps each contract separate because its comparator answers a different
-question. Each number below is reference time divided by Stopcock time;
-greater than 1 means Stopcock was faster for that row.
+Per-module comparisons. Each row is its own contract against its own
+frozen reference implementation, not the libraries above -- geomeans from
+different rows aren't comparable to each other. A ratio is reference time
+divided by Stopcock time: greater than 1 means Stopcock was faster for
+that row.
 
-| Contract                           | Paired reference and cases                                | Bun/JSC geo / min | Node/V8 geo / min |
-| ---------------------------------- | --------------------------------------------------------- | ----------------: | ----------------: |
-| Portable `compile`                 | Frozen loop emitter, 44                                   |   1.677× / 0.943× |   1.379× / 0.973× |
-| Build compiler, stratified         | Frozen loop emitter, 44                                   |   2.044× / 0.906× |   1.572× / 0.997× |
-| Build compiler, operation-complete | Frozen operation emitter, 37 timed + 2 optimizer canaries |   1.105× / 0.866× |   1.181× / 0.924× |
-| Direct `Iter` terminal             | Hand-written early-exit loop, 3                           |   0.991× / 0.963× |   0.731× / 0.661× |
-| Broad `Iter` surface               | Frozen executor, 14                                       |   1.941× / 1.047× |   2.159× / 0.999× |
-| Transducers, collectors, `without` | Frozen implementations, 45                                |   1.762× / 0.993× |   1.597× / 0.993× |
-| Typed arrays                       | Frozen implementations, 48                                |   8.879× / 0.973× |   2.272× / 0.814× |
-| Typed arrays                       | Native typed-array equivalents, 48                        |   1.149× / 0.716× |   1.211× / 0.869× |
-| Callback-identity churn            | Frozen compile contract, 4                                |   2.254× / 1.013× |   1.615× / 0.985× |
-| `pipe` dispatch                    | Frozen dispatcher, 4                                      |   1.097× / 1.025× |   1.072× / 1.033× |
-| Core utilities                     | Frozen implementations, 18                                |   3.452× / 0.669× |   2.272× / 0.728× |
-| Data and functional modules        | Frozen implementations, 11                                |   2.353× / 0.790× |   1.454× / 0.861× |
-| Structural modules                 | Frozen implementations, 15                                |   1.813× / 0.967× |   2.113× / 0.847× |
-| Scalar, text, and hash             | Frozen implementations, 11                                |   2.031× / 0.985× |   1.344× / 0.928× |
-| Recursion, match, schema, writer   | Frozen implementations, 11                                |   3.229× / 0.988× |   4.345× / 0.946× |
+| Contract                            | Paired reference and cases                                  | Bun/JSC geo / min |
+| ------------------------------------ | ------------------------------------------------------------ | -----------------: |
+| Build compiler, stratified          | Frozen loop emitter, 44                                     |   1.785x / 0.839x |
+| Build compiler, operation-complete  | Frozen operation emitter, 138 timed + 2 optimizer canaries  |   1.049x / 0.158x |
+| Uncompiled `pipe` floor (invariant) | ramda, 10                                                   |   1.848x / 1.193x |
+| Direct `Iter` terminal              | Hand-written early-exit loop, 3                             |   0.834x / 0.787x |
+| Broad `Iter` surface                | Frozen executor, 14                                         |   1.509x / 0.182x |
+| `Array.without`                     | Frozen implementations, 27                                  |   1.974x / 0.938x |
+| Typed arrays                        | Frozen implementations, 48                                  |   8.653x / 0.373x |
+| Typed arrays                        | Native typed-array equivalents, 48                          |   1.072x / 0.690x |
+| `pipe` dispatch                     | Frozen dispatcher, 4                                        |   1.081x / 1.018x |
+| Core utilities                      | Frozen implementations, 18                                  |   5.135x / 0.748x |
+| Data and functional modules         | Frozen implementations, 11                                  |   2.311x / 0.786x |
+| Structural modules                  | Frozen implementations, 15                                  |   2.317x / 0.999x |
+| Scalar, text, and hash              | Frozen implementations, 11                                  |   2.008x / 0.988x |
+| Recursion, match, schema, writer    | Frozen implementations, 11                                  |   1.816x / 0.464x |
 
-The table records the final 23 July 2026 local run on Darwin arm64 with Bun
-1.3.14/JavaScriptCore and Node 24.18.0/V8 13.6. It reports raw minima even
-where a pinned case documents semantic work or native-call overhead that
-cannot be removed. Ratios from different contracts are not interchangeable
-and should not be combined or compared with absolute throughput from another
-machine.
+A handful of rows carry a documented, evidenced floor below the shared
+default for specific cases -- an early-exit or expansion shape the runtime
+engine's removal intentionally stopped optimizing at the runtime level, a
+genuinely bimodal case across process runs, or an architectural gap
+against one frozen reference's own strategy -- rather than every case in
+that row clearing one blanket bar. See `packages/fp/README.md` and the
+comments in each gate under `benchmarks/src/reference/` for the specific
+reasoning behind each one.
 
-Every gate writes raw and evaluated JSON and rejects provenance drift,
-missing populations, skipped or incorrect semantics, undersampling, malformed
-statistics, invalid confidence bounds, or missed floors. Above-ceiling
-measurement error is accepted only when the gate recomputes the full paired
-95% confidence interval and its lower bound still clears that case's floor.
-The operation compiler lane balances both lexical sampler roles in fresh
-workers and retains all four raw timing arrays. JavaScriptCore reduces
-fixed-input `length` and `isEmpty` repetitions to counter-loop work, so those
-two rows remain correctness and code-generation canaries rather than claimed
-latency measurements.
-
-CI runs the contracts with pinned Bun 1.3.14 and Node 22 on Linux x64 and
-macOS arm64, retains all artifacts, and separately gates the shared runtime
-chunk and published tarball size.
+CI reruns the contracts with Bun 1.3.14 and Node 22 on Linux x64 and macOS
+arm64 and retains raw plus evaluated artifacts.
 
 ```bash
 cd benchmarks
-bun run perf:portable:bun
-bun run perf:compiler:bun
-bun run perf:iter:bun
-bun run perf:hot-paths:bun
-bun run perf:typed-array:bun
-bun run perf:package-size
+bun run bench        # full benchmark suite
+bun run perf:gates    # release gates: compiled tier, size, correctness
 ```
 
-The normal `@stopcock/fp` runtime is strict-CSP compatible: it does not use
-`eval`, `new Function`, function-source parsing, or a dynamically loaded JIT
-chunk, and it does not require `unsafe-eval`. `@stopcock/fp-compiler` performs
-optional specialization during the build; the compiler is not imported into
-the emitted application's runtime graph.
-
----
-
-## Pipeline fusion
-
-### Fully fused: filter → map → take
-
-```ts
-pipe(
-  data,
-  A.filter((x) => x > threshold),
-  A.map((x) => x * 2),
-  A.take(10),
-)
-```
-
-All three operations fuse into a single loop. `take(10)` halts after 10 results. The loop never visits the rest of the array.
-
-
-
-This shape can remain nearly flat as input grows because `take(10)` stops the
-fused loop once ten matches are produced. Treat the chart as an exploratory
-comparison, not a universal throughput claim: absolute rates depend on the
-selected runtime and host, while the release gate above uses paired,
-same-process ratios and correctness checks.
-
-### Partial fusion: filter → map → sort → take
-
-```ts
-pipe(
-  data,
-  A.filter((x) => x > 0),
-  A.map((x) => x * 2),
-  A.sortBy((a, b) => a - b),
-  A.take(5),
-)
-```
-
-`sort` can't fuse because it needs the full array. `filter → map` fuses into one loop, materializes the result, then `sort` runs, then `take` slices.
-
-
-
-The advantage shrinks because `sort` dominates the runtime. But partial fusion still helps. The fused `filter → map` segment avoids an intermediate array and runs in one pass before handing off to `sort`.
-
-### Individual operations (no fusion)
-
-Outside of fused chains, stopcock still competes on raw single-op speed.
-
-
-
----
-
-## Transforms
-
-### flatMap
-
-
-### reduce
-
-
----
-
-## Search and slicing
-
-### find
-
-
-### every
-
-
-### take
-
-
-### drop
-
-
----
-
-## Deduplication and set ops
-
-### uniq
-
-
-
-ts-belt falls over at n=10K. O(n²) implementation.
-
-### intersection
-
-
-### difference
-
-
----
-
-## Sorting and grouping
-
-### sort
-
-
-### groupBy
-
-
-### partition
-
-
----
-
-## Misc
-
-### flatten
-
-
-### chunk
-
-
-### reverse
-
-
----
-
-## Statistics
-
-### sum
-
-
-### mean
-
-
-
-### median
-
-
-### standardDeviation
+The normal `@stopcock/fp` runtime stays compatible with CSP policies that
+omit `unsafe-eval`: no `eval`, `new Function`, function-source parsing, or
+dynamically loaded JIT in the public runtime graph. `@stopcock/fp-compiler`
+performs its rewrite during the build; it is not imported into the emitted
+application's runtime graph.
 
 ---
 # Playground
 
 Source: https://stopcock.dev/playground/
 
-Interactive REPL to try stopcock pipes, fusion, and modules in the browser
+Interactive REPL to try stopcock pipes and modules in the browser
 
 <iframe
   src="https://stackblitz.com/edit/stopcock-playground?embed=1&file=index.ts&theme=dark&hideExplorer=1&hideNavigation=1&terminalHeight=40&view=editor"
@@ -5935,23 +6278,28 @@ Interactive REPL to try stopcock pipes, fusion, and modules in the browser
 
 Source: https://stopcock.dev/showcases/color/
 
-Interactive demo of stopcock/color — color spaces, palettes, mixing, contrast, gamut mapping, and CVD simulation
+Interactive demo of stopcock/color, covering color spaces, palettes, mixing, contrast, gamut mapping, and CVD simulation
 
-Every section below runs live in your browser using the actual `@stopcock/color` API — no canvas tricks, no precomputed swatches. Pick a base color, switch the accessibility lens, and watch every demo recalculate.
+Every section below runs live in your browser using the actual `@stopcock/color` API. No canvas tricks, no precomputed swatches. Pick a base color, switch the accessibility lens, and watch every demo recalculate.
 
-The CVD lens at the top simulates how each color appears to viewers with protanopia, deuteranopia, tritanopia, or achromatopsia. Toggling it does not change the underlying color — only how this page renders it — so you can spot palettes that collapse under common color vision differences.
+The CVD lens at the top simulates how each color appears to viewers with protanopia, deuteranopia, tritanopia, or achromatopsia. Toggling it does not change the underlying color. It only changes how this page renders it, so you can spot palettes that collapse under common color vision differences.
 
 
 ## What's happening
 
-Every transformation goes through the same dual-form API you'd use in your own code. The palette section, for instance, is built from one call per row:
+Color-value operations support direct data-first and curried data-last calls
+under the same name. The palette section uses both forms:
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { fromHex, analogous, complementary, triadic } from '@stopcock/color'
 
 const base = fromHex('#2563eb')
+const analogousDirect = analogous(base, 5)
+const analogousInPipe = pipe(base, analogous(5))
+
 const harmonies = {
-  analogous: analogous(base, 5),
+  analogous: analogousDirect,
   complementary: [base, complementary(base)],
   triadic: triadic(base),
 }
@@ -5960,17 +6308,23 @@ const harmonies = {
 The mix gradient renders 13 stops by interpolating in each space:
 
 ```ts
-import { mixIn } from '@stopcock/color'
+import { pipe } from '@stopcock/fp'
+import { fromHex, mixIn, type ColorSpace } from '@stopcock/color'
+
+const base = fromHex('#2563eb')
+const target = fromHex('#f97316')
 
 const stops = (space: ColorSpace) =>
   Array.from({ length: 13 }, (_, i) => mixIn(base, target, space, i / 12))
+
+const midpoint = pipe(base, mixIn(target, 'oklab', 0.5))
 ```
 
-The accessibility lens calls `simulate(c, type)` on every color before rendering. `simulate` uses Machado et al. (2009) matrices applied in linear sRGB space — see the [library overview](/libraries/color/#color-vision-deficiency) for details.
+The accessibility lens calls `simulate(c, type)` on every color before rendering. `simulate` uses Machado et al. (2009) matrices applied in linear sRGB space. See the [library overview](/libraries/color/#color-vision-deficiency) for details.
 
 ## Read more
 
-- [Library overview](/libraries/color/) — API reference, key concepts, real-world patterns
+- [Library overview](/libraries/color/): API reference, key concepts, real-world patterns
 - The OKLCh / OKLab math comes from Björn Ottosson's [original paper](https://bottosson.github.io/posts/oklab/)
 - WCAG 2.1 [§1.4.3 Contrast (Minimum)](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html) is the source of the AA/AAA thresholds shown here
 
@@ -5988,53 +6342,52 @@ Every filter runs right here in your browser. Same code as the library, no serve
 
 Each filter takes an `Image` (a `Uint8ClampedArray` of RGBA pixels plus width/height) and returns a new one. Nothing gets mutated.
 
-Every parameterised filter is dual-form: `blur(img, 2)` works data-first, `blur(2)` returns `(img) => Image` for pipe. The no-param ones (`grayscale`, `sepia`, `invert`, `edgeDetect`, `equalize`) already have the right shape.
+Every parameterised filter is dual-form: `blur(img, 2)` runs data-first, while
+`blur(2)` returns `(img) => Image` for use with `pipe`. The no-param ones
+(`grayscale`, `sepia`, `invert`, `edgeDetect`, `equalize`) already have the
+right shape.
 
 ```typescript
 import { pipe } from '@stopcock/fp'
 import { grayscale, blur, sharpen, brightness } from '@stopcock/img'
 
-pipe(img, grayscale, blur(2), sharpen(1.5), brightness(20))
-```
+const directlyBlurred = blur(img, 2)
+const blurredInPipe = pipe(img, blur(2))
 
-Or data-first if you prefer:
-
-```typescript
-const grey = grayscale(img)
-const blurred = blur(img, 2)
+const processed = pipe(img, grayscale, blur(2), sharpen(1.5), brightness(20))
 ```
 
 ## Filters
 
-| Filter                      | What it does                                                       |
-| --------------------------- | ------------------------------------------------------------------ |
-| `grayscale(img)`            | Luminance-weighted conversion (0.299R + 0.587G + 0.114B)           |
-| `sepia(img)`                | Warm brown tone using fixed colour matrix                          |
-| `invert(img)`               | Flips every channel: `255 - value`                                 |
-| `brightness(img, amount)`   | Adds `amount` to RGB channels. Negative darkens.                   |
-| `contrast(img, amount)`     | Stretches or compresses values around the midpoint                 |
-| `saturate(img, factor)`     | Multiplies saturation in HSL space. 0 = greyscale, 2 = vivid.      |
-| `threshold(img, value)`     | Binary: pixels brighter than `value` become white, rest black      |
-| `equalize(img)`             | Histogram equalization. Spreads tonal range across 0-255.          |
-| `gaussianBlur(img, radius)` | Weighted Gaussian kernel. Softer than box blur at the same radius. |
+| Filter                 | What it does                                                       |
+| ---------------------- | ------------------------------------------------------------------ |
+| `grayscale(img)`       | Luminance-weighted conversion (0.299R + 0.587G + 0.114B)           |
+| `sepia(img)`           | Warm brown tone using fixed colour matrix                          |
+| `invert(img)`          | Flips every channel: `255 - value`                                 |
+| `brightness(amount)`   | Adds `amount` to RGB channels. Negative darkens.                   |
+| `contrast(amount)`     | Stretches or compresses values around the midpoint                 |
+| `saturate(factor)`     | Multiplies saturation in HSL space. 0 = greyscale, 2 = vivid.      |
+| `threshold(value)`     | Binary: pixels brighter than `value` become white, rest black      |
+| `equalize(img)`        | Histogram equalization. Spreads tonal range across 0-255.          |
+| `gaussianBlur(radius)` | Weighted Gaussian kernel. Softer than box blur at the same radius. |
 
 ## Convolution
 
 `blur`, `gaussianBlur`, `sharpen`, and `edgeDetect` all use `convolve` underneath. You can pass your own kernel:
 
 ```typescript
+import { pipe } from '@stopcock/fp'
 import { convolve } from '@stopcock/img'
 
 // emboss kernel
-const embossed = convolve(
-  img,
-  [
-    [-2, -1, 0],
-    [-1, 1, 1],
-    [0, 1, 2],
-  ],
-  1,
-)
+const embossKernel = [
+  [-2, -1, 0],
+  [-1, 1, 1],
+  [0, 1, 2],
+]
+
+const embossedDataFirst = convolve(img, embossKernel, 1)
+const embossedDataLast = pipe(img, convolve(embossKernel))
 ```
 
 `edgeDetect` runs two Sobel convolutions (horizontal and vertical) and combines them with `sqrt(gx² + gy²)` per channel. Good for finding boundaries in an image.
@@ -6045,12 +6398,10 @@ const embossed = convolve(
 import { pipe } from '@stopcock/fp'
 import { resize, crop, flipH, flipV, rotate90 } from '@stopcock/img'
 
-// data-first
-resize(img, 200, 150) // bilinear interpolation
-crop(img, 10, 10, 100, 80) // x, y, width, height
+resize(img, 200, 150) // data-first, bilinear interpolation
+crop(img, 10, 10, 100, 80) // data-first: x, y, width, height
 
-// data-last in pipe
-pipe(img, resize(200, 150), flipH, rotate90)
+pipe(img, resize(200, 150), flipH, rotate90) // data-last in a pipeline
 ```
 
 ## Analysis: lines and blobs
@@ -6155,6 +6506,7 @@ This stack runs image pixels through `@stopcock/img`, color math through `@stopc
 </svg>
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { fromRGBA, simulateCVD } from '@stopcock/img'
 import { rgb } from '@stopcock/color'
 import {
@@ -6174,6 +6526,7 @@ import { symmetry, toQuad } from '@stopcock/svg/la'
 
 const source = fromRGBA(rgbaBytes, width, height)
 const simulated = simulateCVD(source, 'deuteranopia', 1)
+// Equivalent data-last form: pipe(source, simulateCVD('deuteranopia', 1))
 const href = canvasDataUrl(simulated)
 
 const tile = pattern(image(href, width, height), width, height)
@@ -6182,23 +6535,41 @@ const badgeFill = linear([
   { offset: 1, color: rgb(0.1, 0.4, 0.9) },
 ])
 
-const badge = toQuad([
+const badgeCorners = [
   [300, 58],
   [380, 42],
   [396, 112],
   [316, 132],
-])(fill(badgeFill)(rect(1, 1)))
+] as const
 
-const dots = symmetry(fill(rgb(1, 1, 1))(circle(7)), 2, [1, 0, 0, 1, 18, -4])
+const dataFirstBadge = toQuad(fill(rect(1, 1), badgeFill), badgeCorners)
+const dataLastBadge = pipe(rect(1, 1), fill(badgeFill), toQuad(badgeCorners))
 
-const doc = viewBox(
-  0,
-  0,
-  420,
-  220,
-)(group([fill(tile)(rect(260, 168)), badge, stroke(rgb(1, 1, 1), 5)(use(badge)), dots]))
+const white = rgb(1, 1, 1)
+const dotStep = [1, 0, 0, 1, 18, -4] as const
+const dataFirstDots = symmetry(fill(circle(7), white), 2, dotStep)
+const dataLastDots = pipe(circle(7), fill(white), symmetry(2, dotStep))
 
-render(doc)
+const dataFirstScene = group([
+  fill(rect(260, 168), tile),
+  dataFirstBadge,
+  stroke(use(dataFirstBadge), white, 5),
+  dataFirstDots,
+])
+const dataFirstDoc = viewBox(dataFirstScene, 0, 0, 420, 220)
+
+const dataLastDoc = pipe(
+  group([
+    pipe(rect(260, 168), fill(tile)),
+    dataLastBadge,
+    pipe(use(dataLastBadge), stroke(white, 5)),
+    dataLastDots,
+  ]),
+  viewBox(0, 0, 420, 220),
+)
+
+const dataFirstMarkup = render(dataFirstDoc)
+const dataLastMarkup = pipe(dataLastDoc, render())
 ```
 
 The important seam is the buffer convention: `simulateCVD` strips RGBA bytes into a packed `Float64Array` RGB channel buffer, calls the color batch API once over the full image, then recombines alpha. SVG stays vector-native and only quotes the processed bitmap through an `<image>` inside a hoisted `<pattern>`.

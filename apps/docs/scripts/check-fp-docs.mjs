@@ -57,7 +57,7 @@ for (const file of await walk(contentRoot)) {
     .join('\n')
 
   for (const match of liveSource.matchAll(
-    /import\s*\{([\s\S]*?)\}\s*from\s*['"]@stopcock\/fp['"]/gu,
+    /import\s*\{([^}]*)\}\s*from\s*['"]@stopcock\/fp['"]/gu,
   )) {
     const names = match[1]
       .split(',')

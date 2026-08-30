@@ -582,8 +582,8 @@ const id = 'img-showcase'
     flipH:      { slider: false, code: 'flipH' },
     flipV:      { slider: false, code: 'flipV' },
     rotate90:   { slider: false, code: 'rotate90' },
-    resize:     { slider: true, label: 'Scale %', min: 10, max: 200, step: 10, initial: 50, code: v => `resize(${Math.round(W*v/100)}, ${Math.round(H*v/100)})` },
-    crop:       { slider: true, label: 'Center %', min: 20, max: 100, step: 5, initial: 50, code: v => { const cw = Math.round(W*v/100), ch = Math.round(H*v/100); return `crop(${Math.round((W-cw)/2)}, ${Math.round((H-ch)/2)}, ${cw}, ${ch})` } },
+    resize:     { slider: true, label: 'Scale %', min: 10, max: 200, step: 10, initial: 50, code: v => `resize(${Math.round(W*v/100)}, ${Math.round(H*v/100)})`, directCode: v => `resize(img, ${Math.round(W*v/100)}, ${Math.round(H*v/100)})` },
+    crop:       { slider: true, label: 'Center %', min: 20, max: 100, step: 5, initial: 50, code: v => { const cw = Math.round(W*v/100), ch = Math.round(H*v/100); return `crop(${Math.round((W-cw)/2)}, ${Math.round((H-ch)/2)}, ${cw}, ${ch})` }, directCode: v => { const cw = Math.round(W*v/100), ch = Math.round(H*v/100); return `crop(img, ${Math.round((W-cw)/2)}, ${Math.round((H-ch)/2)}, ${cw}, ${ch})` } },
   }
 
   const filterFns = { grayscale, sepia, invert, blur, gaussianBlur, sharpen, edgeDetect, brightness, contrast, saturate, threshold, equalize, flipH, flipV, rotate90, resize: resizeFilter, crop: cropFilter }
@@ -693,7 +693,11 @@ const id = 'img-showcase'
       pipelineCode.textContent = '// click some filters'
     } else if (codeSteps.length === 1 && !showHough && !showComponents) {
       const s = pipeline[0], cfg = filterConfig[s.name]
-      pipelineCode.textContent = typeof cfg.code === 'function' ? `${s.name}(img, ${s.value})` : `${cfg.code}(img)`
+      pipelineCode.textContent = typeof cfg.directCode === 'function'
+        ? cfg.directCode(s.value)
+        : typeof cfg.code === 'function'
+          ? `${s.name}(img, ${s.value})`
+          : `${cfg.code}(img)`
     } else {
       pipelineCode.textContent = `pipe(img, ${codeSteps.join(', ')})`
     }
@@ -1073,7 +1077,8 @@ const id = 'img-showcase'
   renderHistogram(sourceImg)
 </script>
 
-<style is:global>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .img-showcase {
     margin: 2rem 0;
   }

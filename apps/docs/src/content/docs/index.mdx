@@ -37,6 +37,16 @@ const top10 = pipe(
 )
 ```
 
+The same data operation also works as a direct, data-first call:
+
+```ts
+const active = A.filter(users, (user: User) => user.active)
+const activeInPipe = pipe(
+  users,
+  A.filter((user: User) => user.active),
+)
+```
+
 ```ts
 import { pipe } from '@stopcock/fp'
 import { now, add, format } from '@stopcock/date'
@@ -60,12 +70,13 @@ const name = await run(fetchUser)
 ```
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { diff, apply, invert } from '@stopcock/diff'
 
 const before = { user: 'Tom', scores: [10, 20] }
 const after = { user: 'Tom', scores: [10, 20, 30] }
-const patch = diff(after)(before)
-const restored = apply(invert(patch))(after)
+const patch = diff(before, after) // direct, data-first
+const restored = pipe(after, apply(invert(patch)))
 ```
 
 ```ts

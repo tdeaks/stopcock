@@ -9,18 +9,22 @@ import { Tabs, TabItem, Aside } from '@astrojs/starlight/components'
 bun add @stopcock/diff
 ```
 
-Compute a patch between two values, apply it, invert it for undo, compose sequential patches, or rebase concurrent edits with conflict detection. Every function is curried, data-last.
+Compute a patch between two values, apply it, invert it for undo, compose
+sequential patches, or rebase concurrent edits with conflict detection. Every
+data-taking operation with two or more arguments supports direct data-first and
+curried data-last calls under the same name.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { diff, apply, invert, compose } from '@stopcock/diff'
 
 const before = { name: 'Tom', scores: [10, 20] }
 const after = { name: 'Tom', scores: [10, 20, 30] }
 
-const patch = diff(after)(before)
+const patch = diff(before, after)
 // [{ op: 'add', path: ['scores', 2], value: 30 }]
 
-const restored = apply(invert(patch))(after)
+const restored = pipe(after, apply(invert(patch)))
 // { name: 'Tom', scores: [10, 20] }
 ```
 
@@ -45,7 +49,9 @@ type Operation =
 ## Diffing
 
 ```ts
+diff(before, after): Patch
 diff(after): (before) => Patch
+diffWith(before, after, options): Patch
 diffWith(after, options): (before) => Patch
 ```
 
@@ -56,19 +62,23 @@ Options:
 - `detectRenames` - detect object key renames (default: `true`)
 
 ```ts
+import { pipe } from '@stopcock/fp'
+
 // Move detection
-diff({ items: ['c', 'a', 'b'] })({ items: ['a', 'b', 'c'] })
+diff({ items: ['a', 'b', 'c'] }, { items: ['c', 'a', 'b'] })
 // [{ op: 'move', from: ['items', 2], path: ['items', 0] }]
 
 // Rename detection
-diff({ name: 'Tom' })({ firstName: 'Tom' })
+pipe({ firstName: 'Tom' }, diff({ name: 'Tom' }))
 // [{ op: 'rename', path: [], oldKey: 'firstName', newKey: 'name' }]
 ```
 
 ## Applying patches
 
 ```ts
+apply(target, patch): Result<T, PatchError>
 apply(patch): (target) => Result<T, PatchError>
+applyUnsafe(target, patch): T
 applyUnsafe(patch): (target) => T
 ```
 
@@ -87,13 +97,14 @@ Reverses a patch. `add` becomes `remove`, `remove` becomes `add`, `replace` swap
 This is what powers undo in `@stopcock/state`.
 
 ```ts
-const p = diff(b)(a)
-apply(invert(p))(b) // back to a
+const p = pipe(a, diff(b))
+apply(b, invert(p)) // Result containing a, data-first
 ```
 
 ## Composition
 
 ```ts
+compose(p1, p2): Patch
 compose(p2): (p1) => Patch
 ```
 
@@ -104,16 +115,17 @@ Merges two sequential patches into one. Automatically simplifies:
 - `add` then `replace` at the same path becomes a single `add`
 
 ```ts
-const p1 = diff(b)(a)
-const p2 = diff(c)(b)
-const p3 = compose(p2)(p1)
+const p1 = diff(a, b)
+const p2 = pipe(b, diff(c))
+const p3 = compose(p1, p2)
 
-// apply(p3)(a) === apply(p2)(apply(p1)(a))
+// apply(a, p3) === pipe(a, apply(p1), apply(p2))
 ```
 
 ## Rebasing
 
 ```ts
+rebase(localPatch, remotePatch): Result<Patch, ConflictError>
 rebase(remotePatch): (localPatch) => Result<Patch, ConflictError>
 ```
 
@@ -122,10 +134,10 @@ You and someone else both edited the same base state. The remote patch already l
 ```ts
 const base = { name: 'Tom', scores: [10, 20] }
 
-const local = diff({ name: 'Tom', scores: [10, 20, 30] })(base)
-const remote = diff({ name: 'Tom', scores: [5, 10, 20] })(base)
+const local = diff(base, { name: 'Tom', scores: [10, 20, 30] })
+const remote = pipe(base, diff({ name: 'Tom', scores: [5, 10, 20] }))
 
-const rebased = rebase(remote)(local)
+const rebased = rebase(local, remote)
 // local's add at index 2 shifts to index 3
 ```
 
@@ -146,7 +158,7 @@ fromJsonPatch(ops): Patch
 Convert to and from the standard JSON Patch format. Useful for sending patches over the wire or storing them in a database.
 
 ```ts
-const p = diff(after)(before)
+const p = diff(before, after)
 const json = toJsonPatch(p)
 // [{ op: 'add', path: '/scores/2', value: 30 }]
 
@@ -165,7 +177,9 @@ If you're already using lenses from `@stopcock/fp`, you can convert between patc
 ```ts
 toLens(operation): Lens | null
 fromLens(source, lens, target): Patch | null
+fromLens(lens, target): (source) => Patch | null
 fromTraversal(source, traversal, fn): Patch
+fromTraversal(traversal, fn): (source) => Patch
 ```
 
 ---
@@ -201,12 +215,18 @@ isEmpty(p: Patch): boolean
 ### Core
 
 ```ts
+diff(a, b): Patch
 diff(b): (a) => Patch
-diffWith(b, options: DiffOptions): (a) => Patch
+diffWith(a, b, options): Patch
+diffWith(b, options): (a) => Patch
+apply(target, patch): Result<T, PatchError>
 apply(patch): (target) => Result<T, PatchError>
+applyUnsafe(target, patch): T
 applyUnsafe(patch): (target) => T
 invert(patch): Patch
+compose(p1, p2): Patch
 compose(p2): (p1) => Patch
+rebase(local, remote): Result<Patch, ConflictError>
 rebase(remote): (local) => Result<Patch, ConflictError>
 ```
 
@@ -222,5 +242,7 @@ fromJsonPatch(ops: JsonPatchOperation[]): Patch
 ```ts
 toLens(op: Operation): Lens | null
 fromLens(source, lens, target): Patch | null
+fromLens(lens, target): (source) => Patch | null
 fromTraversal(source, traversal, fn): Patch
+fromTraversal(traversal, fn): (source) => Patch
 ```

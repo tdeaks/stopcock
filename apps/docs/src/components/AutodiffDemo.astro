@@ -93,6 +93,7 @@ const id = 'autodiff-demo'
 </div>
 
 <script>
+  import { pipe } from '@stopcock/fp'
   import {
     add,
     differentiable,
@@ -120,14 +121,14 @@ const id = 'autodiff-demo'
       formula: '(x - 1.8)^2 + 0.2',
       domain: [-4, 4],
       defaults: { start: -3, rate: 0.06, steps: 22 },
-      fn: differentiable((x: Var<number>) => add(square(sub(x, 1.8)), 0.2)),
+      fn: differentiable((x: Var<number>) => pipe(x, sub(1.8), square, add(0.2))),
     },
     wave: {
       label: 'Wave',
       formula: 'sin(x^2 + 3) + 0.12x',
       domain: [-3.2, 3.2],
       defaults: { start: -2.6, rate: 0.045, steps: 34 },
-      fn: differentiable((x: Var<number>) => add(sin(add(square(x), 3)), mul(0.12, x))),
+      fn: differentiable((x: Var<number>) => add(sin(add(square(x), 3)), mul(x, 0.12))),
     },
     double: {
       label: 'Double well',
@@ -135,7 +136,13 @@ const id = 'autodiff-demo'
       domain: [-3.4, 3.4],
       defaults: { start: 2.8, rate: 0.035, steps: 42 },
       fn: differentiable((x: Var<number>) =>
-        add(sub(mul(0.08, pow(x, 4)), mul(0.65, square(x))), mul(0.15, x))
+        pipe(
+          x,
+          pow(4),
+          mul(0.08),
+          sub(pipe(x, square, mul(0.65))),
+          add(pipe(x, mul(0.15))),
+        )
       ),
     },
   } as const
@@ -406,7 +413,8 @@ const id = 'autodiff-demo'
   setExample(active)
 </script>
 
-<style is:global>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .ad-demo {
     --ad-bg: color-mix(in srgb, var(--sl-color-gray-6) 82%, transparent);
     --ad-panel: color-mix(in srgb, var(--sl-color-gray-6) 95%, var(--sl-color-accent-low));

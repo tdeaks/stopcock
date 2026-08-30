@@ -12,13 +12,18 @@ negate(n: number): number
 product(arr: number[]): number
 ```
 
-## Curried
+## Dual-form
 
 ```ts
+add(a: number, b: number): number
 add(b: number): (a: number) => number
+subtract(a: number, b: number): number
 subtract(b: number): (a: number) => number
+multiply(a: number, b: number): number
 multiply(b: number): (a: number) => number
+divide(a: number, b: number): number
 divide(b: number): (a: number) => number
+modulo(a: number, b: number): number
 modulo(b: number): (a: number) => number
 ```
 
@@ -43,6 +48,7 @@ pipe(count, M.inc) // count + 1
 pipe(count, M.dec) // count - 1
 pipe(value, M.negate) // -value
 
-// bare curried call
-M.modulo(5)(17) // 2
+// both call shapes
+M.modulo(17, 5) // 2 — direct, data-first
+pipe(17, M.modulo(5)) // 2 — curried, data-last
 ```

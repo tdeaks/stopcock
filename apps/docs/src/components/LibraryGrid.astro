@@ -32,7 +32,8 @@ const libraries = [
   ))}
 </div>
 
-<style>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .lib-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

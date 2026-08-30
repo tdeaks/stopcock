@@ -13,14 +13,19 @@ The CVD lens at the top simulates how each color appears to viewers with protano
 
 ## What's happening
 
-Every transformation goes through the same curried, data-last API you'd use in your own code. The palette section, for instance, is built from one call per row:
+Color-value operations support direct data-first and curried data-last calls
+under the same name. The palette section uses both forms:
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { fromHex, analogous, complementary, triadic } from '@stopcock/color'
 
 const base = fromHex('#2563eb')
+const analogousDirect = analogous(base, 5)
+const analogousInPipe = pipe(base, analogous(5))
+
 const harmonies = {
-  analogous: analogous(5)(base),
+  analogous: analogousDirect,
   complementary: [base, complementary(base)],
   triadic: triadic(base),
 }
@@ -29,13 +34,16 @@ const harmonies = {
 The mix gradient renders 13 stops by interpolating in each space:
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { fromHex, mixIn, type ColorSpace } from '@stopcock/color'
 
 const base = fromHex('#2563eb')
 const target = fromHex('#f97316')
 
 const stops = (space: ColorSpace) =>
-  Array.from({ length: 13 }, (_, i) => mixIn(target, space, i / 12)(base))
+  Array.from({ length: 13 }, (_, i) => mixIn(base, target, space, i / 12))
+
+const midpoint = pipe(base, mixIn(target, 'oklab', 0.5))
 ```
 
 The accessibility lens calls `simulate(c, type)` on every color before rendering. `simulate` uses Machado et al. (2009) matrices applied in linear sRGB space. See the [library overview](/libraries/color/#color-vision-deficiency) for details.

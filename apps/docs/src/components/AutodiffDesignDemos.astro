@@ -186,6 +186,7 @@ const id = 'autodiff-design-demos'
 </div>
 
 <script>
+  import { pipe } from '@stopcock/fp'
   import {
     add,
     cos,
@@ -333,11 +334,22 @@ const id = 'autodiff-design-demos'
 
   const armLoss = (targetX: number, targetY: number) =>
     differentiable((shoulder: Var<number>, elbow: Var<number>) => {
-      const elbowX = mul(linkA, cos(shoulder))
-      const elbowY = mul(linkA, sin(shoulder))
-      const wristX = add(elbowX, mul(linkB, cos(add(shoulder, elbow))))
-      const wristY = add(elbowY, mul(linkB, sin(add(shoulder, elbow))))
-      return add(square(sub(wristX, targetX)), square(sub(wristY, targetY)))
+      const elbowX = pipe(shoulder, cos, mul(linkA))
+      const elbowY = pipe(shoulder, sin, mul(linkA))
+      const wristX = pipe(
+        elbowX,
+        add(pipe(shoulder, add(elbow), cos, mul(linkB))),
+      )
+      const wristY = pipe(
+        elbowY,
+        add(pipe(shoulder, add(elbow), sin, mul(linkB))),
+      )
+      return pipe(
+        wristX,
+        sub(targetX),
+        square,
+        add(pipe(wristY, sub(targetY), square)),
+      )
     })
 
   const armTrace = () => {
@@ -520,9 +532,15 @@ const id = 'autodiff-design-demos'
       for (let i = 0; i < points.length; i++) {
         const t = i / (points.length - 1)
         const predicted = bezierVar(t, c1x, c1y, c2x, c2y)
-        total = add(total, add(square(sub(predicted.x, points[i].x)), square(sub(predicted.y, points[i].y))))
+        total = add(
+          total,
+          add(
+            square(sub(predicted.x, points[i].x)),
+            square(sub(predicted.y, points[i].y)),
+          ),
+        )
       }
-      return mul(total, 1 / points.length)
+      return pipe(total, mul(1 / points.length))
     })
 
   const curveTrace = () => {
@@ -800,7 +818,8 @@ const id = 'autodiff-design-demos'
   renderArm()
 </script>
 
-<style is:global>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .ads-demo {
     --ads-bg: color-mix(in srgb, var(--sl-color-gray-6) 82%, transparent);
     --ads-panel: color-mix(in srgb, var(--sl-color-gray-6) 95%, var(--sl-color-accent-low));

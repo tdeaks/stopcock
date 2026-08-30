@@ -13,13 +13,19 @@ Every filter runs right here in your browser. Same code as the library, no serve
 
 Each filter takes an `Image` (a `Uint8ClampedArray` of RGBA pixels plus width/height) and returns a new one. Nothing gets mutated.
 
-Every parameterised filter is curried: `blur(2)` returns `(img) => Image` for use with `pipe`. The no-param ones (`grayscale`, `sepia`, `invert`, `edgeDetect`, `equalize`) already have the right shape.
+Every parameterised filter is dual-form: `blur(img, 2)` runs data-first, while
+`blur(2)` returns `(img) => Image` for use with `pipe`. The no-param ones
+(`grayscale`, `sepia`, `invert`, `edgeDetect`, `equalize`) already have the
+right shape.
 
 ```typescript
 import { pipe } from '@stopcock/fp'
 import { grayscale, blur, sharpen, brightness } from '@stopcock/img'
 
-pipe(img, grayscale, blur(2), sharpen(1.5), brightness(20))
+const directlyBlurred = blur(img, 2)
+const blurredInPipe = pipe(img, blur(2))
+
+const processed = pipe(img, grayscale, blur(2), sharpen(1.5), brightness(20))
 ```
 
 ## Filters
@@ -41,17 +47,18 @@ pipe(img, grayscale, blur(2), sharpen(1.5), brightness(20))
 `blur`, `gaussianBlur`, `sharpen`, and `edgeDetect` all use `convolve` underneath. You can pass your own kernel:
 
 ```typescript
+import { pipe } from '@stopcock/fp'
 import { convolve } from '@stopcock/img'
 
 // emboss kernel
-const embossed = convolve(
-  [
-    [-2, -1, 0],
-    [-1, 1, 1],
-    [0, 1, 2],
-  ],
-  1,
-)(img)
+const embossKernel = [
+  [-2, -1, 0],
+  [-1, 1, 1],
+  [0, 1, 2],
+]
+
+const embossedDataFirst = convolve(img, embossKernel, 1)
+const embossedDataLast = pipe(img, convolve(embossKernel))
 ```
 
 `edgeDetect` runs two Sobel convolutions (horizontal and vertical) and combines them with `sqrt(gx² + gy²)` per channel. Good for finding boundaries in an image.
@@ -62,10 +69,10 @@ const embossed = convolve(
 import { pipe } from '@stopcock/fp'
 import { resize, crop, flipH, flipV, rotate90 } from '@stopcock/img'
 
-resize(200, 150)(img) // bilinear interpolation
-crop(10, 10, 100, 80)(img) // x, y, width, height
+resize(img, 200, 150) // data-first, bilinear interpolation
+crop(img, 10, 10, 100, 80) // data-first: x, y, width, height
 
-pipe(img, resize(200, 150), flipH, rotate90)
+pipe(img, resize(200, 150), flipH, rotate90) // data-last in a pipeline
 ```
 
 ## Analysis: lines and blobs
@@ -88,7 +95,7 @@ import {
 const edges = pipe(img, gaussianBlur(1), grayscale, edgeDetect, threshold(180))
 
 // find straight lines (roof ridges, gutters, edges)
-const lines = houghLines({ threshold: 40, maxLines: 20 })(edges)
+const lines = houghLines(edges, { threshold: 40, maxLines: 20 })
 
 // find blobs (vents, skylights, chimneys)
 const { components } = connectedComponents(edges)

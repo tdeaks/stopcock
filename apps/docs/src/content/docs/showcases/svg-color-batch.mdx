@@ -38,6 +38,7 @@ This stack runs image pixels through `@stopcock/img`, color math through `@stopc
 </svg>
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { fromRGBA, simulateCVD } from '@stopcock/img'
 import { rgb } from '@stopcock/color'
 import {
@@ -56,7 +57,8 @@ import {
 import { symmetry, toQuad } from '@stopcock/svg/la'
 
 const source = fromRGBA(rgbaBytes, width, height)
-const simulated = simulateCVD('deuteranopia', 1)(source)
+const simulated = simulateCVD(source, 'deuteranopia', 1)
+// Equivalent data-last form: pipe(source, simulateCVD('deuteranopia', 1))
 const href = canvasDataUrl(simulated)
 
 const tile = pattern(image(href, width, height), width, height)
@@ -65,23 +67,41 @@ const badgeFill = linear([
   { offset: 1, color: rgb(0.1, 0.4, 0.9) },
 ])
 
-const badge = toQuad([
+const badgeCorners = [
   [300, 58],
   [380, 42],
   [396, 112],
   [316, 132],
-])(fill(badgeFill)(rect(1, 1)))
+] as const
 
-const dots = symmetry(fill(rgb(1, 1, 1))(circle(7)), 2, [1, 0, 0, 1, 18, -4])
+const dataFirstBadge = toQuad(fill(rect(1, 1), badgeFill), badgeCorners)
+const dataLastBadge = pipe(rect(1, 1), fill(badgeFill), toQuad(badgeCorners))
 
-const doc = viewBox(
-  0,
-  0,
-  420,
-  220,
-)(group([fill(tile)(rect(260, 168)), badge, stroke(rgb(1, 1, 1), 5)(use(badge)), dots]))
+const white = rgb(1, 1, 1)
+const dotStep = [1, 0, 0, 1, 18, -4] as const
+const dataFirstDots = symmetry(fill(circle(7), white), 2, dotStep)
+const dataLastDots = pipe(circle(7), fill(white), symmetry(2, dotStep))
 
-render(doc)
+const dataFirstScene = group([
+  fill(rect(260, 168), tile),
+  dataFirstBadge,
+  stroke(use(dataFirstBadge), white, 5),
+  dataFirstDots,
+])
+const dataFirstDoc = viewBox(dataFirstScene, 0, 0, 420, 220)
+
+const dataLastDoc = pipe(
+  group([
+    pipe(rect(260, 168), fill(tile)),
+    dataLastBadge,
+    pipe(use(dataLastBadge), stroke(white, 5)),
+    dataLastDots,
+  ]),
+  viewBox(0, 0, 420, 220),
+)
+
+const dataFirstMarkup = render(dataFirstDoc)
+const dataLastMarkup = pipe(dataLastDoc, render())
 ```
 
 The important seam is the buffer convention: `simulateCVD` strips RGBA bytes into a packed `Float64Array` RGB channel buffer, calls the color batch API once over the full image, then recombines alpha. SVG stays vector-native and only quotes the processed bitmap through an `<image>` inside a hoisted `<pattern>`.

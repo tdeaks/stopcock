@@ -9,9 +9,13 @@ part of the type instead of encoding it as `null`, an exception, or a
 success-flag convention.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as O from '@stopcock/fp/option'
 import * as R from '@stopcock/fp/result'
 ```
+
+Operations with two or more arguments accept the value first for a direct call,
+or return a data-last operation when the value is omitted.
 
 ## Option
 
@@ -25,13 +29,17 @@ Create options at nullable and predicate boundaries:
 
 ```ts
 const portText = O.fromNullable(process.env.PORT)
-const positive = O.fromPredicate((value: number) => value > 0)(3)
+const positive = O.fromPredicate(3, (value: number) => value > 0)
+const positiveInPipe = pipe(
+  3,
+  O.fromPredicate((value: number) => value > 0),
+)
 ```
 
 Then transform without repeatedly branching:
 
 ```ts
-import { pipe } from '@stopcock/fp'
+const numericPort = O.map(portText, Number)
 
 const port = pipe(
   portText,
@@ -45,10 +53,18 @@ const port = pipe(
 cover the common composition shapes. Partial extraction is explicit:
 
 ```ts
-const label = O.match({
+const directLabel = O.match(portText, {
   none: () => 'not configured',
   some: (value) => `port ${value}`,
-})(portText)
+})
+
+const pipedLabel = pipe(
+  portText,
+  O.match({
+    none: () => 'not configured',
+    some: (value) => `port ${value}`,
+  }),
+)
 ```
 
 `none` is a frozen singleton. The representation uses numeric tags: `0` is
@@ -75,8 +91,10 @@ const parsed = R.tryCatch(
   (cause): ParseError => ({ type: 'InvalidJson', cause }),
 )
 
-const token = R.fromNullable(() => 'Missing token')(
+const token = R.fromNullable(headers.authorization, () => 'Missing token')
+const tokenInPipe = pipe(
   headers.authorization,
+  R.fromNullable(() => 'Missing token'),
 )
 ```
 
@@ -102,7 +120,11 @@ accumulate errors.
 ## Conversion
 
 ```ts
-O.toResult(() => 'missing')(option)
+O.toResult(option, () => 'missing')
+pipe(
+  option,
+  O.toResult(() => 'missing'),
+)
 R.toOption(result) // intentionally discards the error
 O.transpose(optionOfResult)
 ```

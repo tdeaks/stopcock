@@ -3,6 +3,9 @@ title: Cookbook
 description: Practical @stopcock/fp 2.0 recipes
 ---
 
+Operations with two or more arguments support both a complete direct call and
+a data-last call for `pipe`. The recipes use both forms where each reads best.
+
 ## Transform a collection
 
 ```ts
@@ -10,6 +13,8 @@ import { pipe } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
 
 type Product = { id: string; name: string; price: number; inStock: boolean }
+
+const inStock = A.filter(products, (product: Product) => product.inStock)
 
 const cards = pipe(
   products,
@@ -38,7 +43,12 @@ const activeIds = compile(
 
 activeIds(firstBatch)
 activeIds(secondBatch)
-console.log(explain(A.filter((user: User) => user.active), A.map((user: User) => user.id)))
+console.log(
+  explain(
+    A.filter((user: User) => user.active),
+    A.map((user: User) => user.id),
+  ),
+)
 // 'sequential' unless @stopcock/fp-compiler fused this exact call at build time
 ```
 
@@ -69,8 +79,7 @@ import * as G from '@stopcock/fp/guard'
 import * as R from '@stopcock/fp/result'
 
 type DecodeError =
-  | { readonly type: 'InvalidJson'; readonly cause: unknown }
-  | { readonly type: 'ExpectedObject' }
+  { readonly type: 'InvalidJson'; readonly cause: unknown } | { readonly type: 'ExpectedObject' }
 
 const decodeBody = (text: string) =>
   pipe(
@@ -78,16 +87,14 @@ const decodeBody = (text: string) =>
       () => JSON.parse(text) as unknown,
       (cause): DecodeError => ({ type: 'InvalidJson', cause }),
     ),
-    R.filterOrElse(
-      G.isPlainObject,
-      (): DecodeError => ({ type: 'ExpectedObject' }),
-    ),
+    R.filterOrElse(G.isPlainObject, (): DecodeError => ({ type: 'ExpectedObject' })),
   )
 ```
 
 ## Accumulate independent field errors
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as V from '@stopcock/fp/validation'
 
 type FieldError = {
@@ -98,13 +105,17 @@ type FieldError = {
 const validateSignup = (email: string, password: string) =>
   V.all([
     V.fromPredicate(
+      email,
       (value: string) => value.includes('@'),
       (): FieldError => ({ field: 'email', message: 'invalid email' }),
-    )(email),
-    V.fromPredicate(
-      (value: string) => value.length >= 12,
-      (): FieldError => ({ field: 'password', message: 'too short' }),
-    )(password),
+    ),
+    pipe(
+      password,
+      V.fromPredicate(
+        (value: string) => value.length >= 12,
+        (): FieldError => ({ field: 'password', message: 'too short' }),
+      ),
+    ),
   ] as const)
 ```
 
@@ -114,15 +125,16 @@ only when every check can run independently.
 ## Validate through Standard Schema
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Schema from '@stopcock/fp/schema'
 
 const userId = Schema.fromPredicate(
-  (value: unknown): value is string =>
-    typeof value === 'string' && value.length > 0,
+  (value: unknown): value is string => typeof value === 'string' && value.length > 0,
   () => Schema.issue('Expected a user id', ['id']),
 )
 
-const decoded = Schema.validateSync(userId)(input)
+const decoded = Schema.validateSync(input, userId)
+const decodedInPipe = pipe(input, Schema.validateSync(userId))
 ```
 
 The same consumer accepts a Standard Schema produced by another library.
@@ -150,28 +162,24 @@ For asynchronous sources, use `AsyncIter` from `@stopcock/async`.
 import { pipe } from '@stopcock/fp'
 import * as Optic from '@stopcock/fp/optic'
 
-const city = Optic.optic<User>()
-  .prop('profile')
-  .prop('address')
-  .prop('city')
-  .value
+const city = Optic.optic<User>().prop('profile').prop('address').prop('city').value
 
-const moved = pipe(
-  user,
-  Optic.set(city, 'Manchester'),
-)
+const moved = Optic.set(city, user, 'Manchester')
+const movedInPipe = pipe(user, Optic.set(city, 'Manchester'))
 ```
 
 ## Group and aggregate records
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as A from '@stopcock/fp/array'
 
-const revenueByRegion = A.groupMapReduce(
-  (order: Order) => order.region,
-  (order: Order) => order.total,
-  (left: number, right: number) => left + right,
-)(orders)
+const regionOf = (order: Order) => order.region
+const totalOf = (order: Order) => order.total
+const sum = (left: number, right: number) => left + right
+
+const revenueByRegion = A.groupMapReduce(orders, regionOf, totalOf, sum)
+const revenueByRegionInPipe = pipe(orders, A.groupMapReduce(regionOf, totalOf, sum))
 ```
 
 `groupMapReduce`, `countBy`, `partitionMap`, binary search, combinations, and
@@ -180,6 +188,7 @@ explicit `mapInto`/`filterInto` operations live in the array subpath.
 ## Match tagged domain values
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Match from '@stopcock/fp/match'
 
 type Payment =
@@ -187,12 +196,17 @@ type Payment =
   | { readonly type: 'Paid'; readonly id: string; readonly receipt: string }
   | { readonly type: 'Failed'; readonly id: string; readonly reason: string }
 
+const paymentLabels = {
+  Pending: (value) => `Pending ${value.id}`,
+  Paid: (value) => `Receipt ${value.receipt}`,
+  Failed: (value) => `Failed: ${value.reason}`,
+} satisfies Match.Handlers<Payment, 'type', string>
+
 const label = (payment: Payment) =>
-  Match.discriminant<'type', Payment, string>('type', {
-    Pending: (value) => `Pending ${value.id}`,
-    Paid: (value) => `Receipt ${value.receipt}`,
-    Failed: (value) => `Failed: ${value.reason}`,
-  })(payment)
+  Match.discriminant<'type', Payment, string>('type', payment, paymentLabels)
+
+const labelInPipe = (payment: Payment) =>
+  pipe(payment, Match.discriminant<'type', Payment, string>('type', paymentLabels))
 ```
 
 The handler object must cover every tag. Use the pattern module for structural

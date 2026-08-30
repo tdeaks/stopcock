@@ -194,6 +194,7 @@ const id = 'autodiff-training-demos'
 </div>
 
 <script>
+  import { pipe } from '@stopcock/fp'
   import {
     add,
     cos,
@@ -273,9 +274,12 @@ const id = 'autodiff-training-demos'
       yDomain: [-3, 3],
       defaults: { x: -2.25, y: 1.8, rate: 0.055, steps: 54 },
       fn: differentiable((x: Var<number>, y: Var<number>) =>
-        add(
-          add(square(sub(x, 1.2)), mul(0.7, square(add(y, 0.6)))),
-          mul(0.25, mul(x, y))
+        pipe(
+          x,
+          sub(1.2),
+          square,
+          add(pipe(y, add(0.6), square, mul(0.7))),
+          add(pipe(x, mul(y), mul(0.25))),
         )
       ),
     },
@@ -286,7 +290,12 @@ const id = 'autodiff-training-demos'
       yDomain: [-1.1, 3.3],
       defaults: { x: -1.55, y: 2.55, rate: 0.018, steps: 86 },
       fn: differentiable((x: Var<number>, y: Var<number>) =>
-        add(square(sub(1, x)), mul(0.45, square(sub(y, square(x)))))
+        pipe(
+          1,
+          sub(x),
+          square,
+          add(pipe(y, sub(square(x)), square, mul(0.45))),
+        )
       ),
     },
     ripple: {
@@ -296,9 +305,13 @@ const id = 'autodiff-training-demos'
       yDomain: [-3, 3],
       defaults: { x: 2.35, y: -1.8, rate: 0.05, steps: 72 },
       fn: differentiable((x: Var<number>, y: Var<number>) =>
-        add(
-          add(mul(0.18, add(square(x), square(y))), sin(mul(1.6, x))),
-          mul(0.7, cos(mul(1.4, y)))
+        pipe(
+          x,
+          square,
+          add(square(y)),
+          mul(0.18),
+          add(pipe(x, mul(1.6), sin)),
+          add(pipe(y, mul(1.4), cos, mul(0.7))),
         )
       ),
     },
@@ -333,9 +346,12 @@ const id = 'autodiff-training-demos'
     differentiable((w: Var<Vec>) => {
       let total: Var<number> | number = 0
       for (const point of points) {
-        total = add(total, square(sub(vecDot(w, point.feature), point.y)))
+        total = add(
+          total,
+          square(sub(vecDot(w, point.feature), point.y)),
+        )
       }
-      return mul(total, 1 / points.length)
+      return pipe(total, mul(1 / points.length))
     })
 
   const fitEls = {
@@ -881,7 +897,8 @@ const id = 'autodiff-training-demos'
   setSurface(activeSurface)
 </script>
 
-<style is:global>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .adt-demo {
     --adt-bg: color-mix(in srgb, var(--sl-color-gray-6) 82%, transparent);
     --adt-panel: color-mix(in srgb, var(--sl-color-gray-6) 95%, var(--sl-color-accent-low));

@@ -9,7 +9,9 @@ import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components'
 bun add @stopcock/date
 ```
 
-Dates are branded numbers (Unix ms timestamps). No `Date` objects get allocated anywhere, it's all integer arithmetic. All multi-arg functions are dual-form.
+Dates are branded numbers (Unix ms timestamps). No `Date` objects get allocated
+anywhere, it's all integer arithmetic. Data-oriented operations expose paired
+data-first and data-last overloads where noted below.
 
 ```ts
 import { pipe } from '@stopcock/fp'
@@ -21,7 +23,7 @@ format(nextMonday, 'YYYY-MM-DD')
 ```
 
 - `Timestamp` is a branded `number` so you can't accidentally mix raw numbers with timestamps. Use `fromTimestamp()` for explicit conversion.
-- Every function works both ways: `add(7, 'day')` returns `(ts) => Timestamp` for `pipe`, or `add(ts, 7, 'day')` if you want data-first.
+- Dual operations work both ways: `add(7, 'day')` returns `(ts) => Timestamp` for `pipe`, or `add(ts, 7, 'day')` runs data-first.
 - Business days, holidays, timezones, and interval merging are all built in.
 
 ## Benchmarks
@@ -148,7 +150,7 @@ const calendarMonth = (year: number, month: number) =>
   pipe(
     daysIn(year, month),
     A.map((day) => ({
-      label: format('D')(day),
+      label: format(day, 'D'),
       weekday: getWeekday(day),
       today: isToday(day),
       weekend: isWeekend(day),
@@ -247,20 +249,21 @@ getDaysInYear(ts): number         isLeapYear(ts): boolean
 
 ### Comparison & predicates
 
-Every signature below is dual: the data-first form on the left works, and
-omitting the timestamp/leading argument returns a curried function instead
-(shown here since it's the preferred, consistent-with-the-rest-of-the-docs
-form). `min`, `max`, `isWeekend`, `isWeekday`, `isToday`, `isPast`, `isFuture`,
-and `isValid` take one argument and aren't curried functions of anything else.
+The timestamp-taking predicates and `clamp` support both forms. `compare`,
+`min`, `max`, `isWeekend`, `isWeekday`, `isToday`, `isPast`, `isFuture`, and
+`isValid` are direct functions.
 
 ```ts
 compare(a, b): number
 min(dates: Timestamp[]): Timestamp        max(dates: Timestamp[]): Timestamp
-clamp(lo, hi): (ts) => Timestamp
-isBefore(other): (ts) => boolean          isAfter(other): (ts) => boolean
-isEqual(other): (ts) => boolean           isSameDay(other): (ts) => boolean
-isSameMonth(other): (ts) => boolean       isSameYear(other): (ts) => boolean
-isBetween(start, end): (ts) => boolean
+clamp(ts, lo, hi): Timestamp               clamp(lo, hi): (ts) => Timestamp
+isBefore(ts, other): boolean               isBefore(other): (ts) => boolean
+isAfter(ts, other): boolean                isAfter(other): (ts) => boolean
+isEqual(ts, other): boolean                isEqual(other): (ts) => boolean
+isSameDay(ts, other): boolean              isSameDay(other): (ts) => boolean
+isSameMonth(ts, other): boolean            isSameMonth(other): (ts) => boolean
+isSameYear(ts, other): boolean             isSameYear(other): (ts) => boolean
+isBetween(ts, start, end): boolean         isBetween(start, end): (ts) => boolean
 isWeekend(ts): boolean                    isWeekday(ts): boolean
 isToday(ts): boolean                      isPast(ts): boolean
 isFuture(ts): boolean                     isValid(ts): boolean
@@ -269,38 +272,48 @@ isFuture(ts): boolean                     isValid(ts): boolean
 ### Arithmetic
 
 ```ts
-add(amount, unit): (ts) => Timestamp
-subtract(amount, unit): (ts) => Timestamp
-startOf(unit): (ts) => Timestamp
-endOf(unit): (ts) => Timestamp
-setYear(year): (ts) => Timestamp           setMonth(month): (ts) => Timestamp
-setDay(day): (ts) => Timestamp             setHours(hours): (ts) => Timestamp
-setMinutes(minutes): (ts) => Timestamp     setSeconds(seconds): (ts) => Timestamp
+add(ts, amount, unit): Timestamp            add(amount, unit): (ts) => Timestamp
+subtract(ts, amount, unit): Timestamp       subtract(amount, unit): (ts) => Timestamp
+startOf(ts, unit): Timestamp                startOf(unit): (ts) => Timestamp
+endOf(ts, unit): Timestamp                  endOf(unit): (ts) => Timestamp
+setYear(ts, year): Timestamp                setYear(year): (ts) => Timestamp
+setMonth(ts, month): Timestamp              setMonth(month): (ts) => Timestamp
+setDay(ts, day): Timestamp                  setDay(day): (ts) => Timestamp
+setHours(ts, hours): Timestamp              setHours(hours): (ts) => Timestamp
+setMinutes(ts, minutes): Timestamp          setMinutes(minutes): (ts) => Timestamp
+setSeconds(ts, seconds): Timestamp          setSeconds(seconds): (ts) => Timestamp
 ```
 
 ### Diff
 
 ```ts
-diff(b, unit): (a) => number      diffInDays(b): (a) => number
-diffInHours(b): (a) => number     diffInMinutes(b): (a) => number
-diffInSeconds(b): (a) => number   diffInMonths(b): (a) => number
-diffInYears(b): (a) => number
+diff(a, b, unit): number                    diff(b, unit): (a) => number
+diffInDays(a, b): number                    diffInDays(b): (a) => number
+diffInHours(a, b): number                   diffInHours(b): (a) => number
+diffInMinutes(a, b): number                 diffInMinutes(b): (a) => number
+diffInSeconds(a, b): number                 diffInSeconds(b): (a) => number
+diffInMonths(a, b): number                  diffInMonths(b): (a) => number
+diffInYears(a, b): number                   diffInYears(b): (a) => number
 ```
 
 ### Rounding
 
 ```ts
-roundTo(unit): (ts) => Timestamp      ceilTo(unit): (ts) => Timestamp
-floorTo(unit): (ts) => Timestamp      snapTo(interval, unit): (ts) => Timestamp
+roundTo(ts, unit): Timestamp                roundTo(unit): (ts) => Timestamp
+ceilTo(ts, unit): Timestamp                 ceilTo(unit): (ts) => Timestamp
+floorTo(ts, unit): Timestamp                floorTo(unit): (ts) => Timestamp
+snapTo(ts, interval, unit): Timestamp       snapTo(interval, unit): (ts) => Timestamp
 ```
 
 ### Duration
 
 ```ts
 duration(amount, unit): Duration
-addDuration(d): (ts) => Timestamp     subtractDuration(d): (ts) => Timestamp
-toDuration(a, b): Duration            durationToUnit(unit): (d) => number
-scaleDuration(d, factor): Duration    negateDuration(d): Duration
+addDuration(ts, d): Timestamp               addDuration(d): (ts) => Timestamp
+subtractDuration(ts, d): Timestamp          subtractDuration(d): (ts) => Timestamp
+durationToUnit(d, unit): number              durationToUnit(unit): (d) => number
+toDuration(a, b): Duration                   scaleDuration(d, factor): Duration
+negateDuration(d): Duration
 ```
 
 `toDuration`, `scaleDuration`, and `negateDuration` aren't curried; they're
@@ -309,9 +322,10 @@ plain functions.
 ### Ranges & intervals
 
 ```ts
-range(end, step, unit): (start) => Timestamp[]
-rangeBy(end, stepFn): (start) => Timestamp[]
+range(start, end, step, unit): Timestamp[]   range(end, step, unit): (start) => Timestamp[]
+rangeBy(start, end, stepFn): Timestamp[]     rangeBy(end, stepFn): (start) => Timestamp[]
 daysIn(year, month): Timestamp[]     weekdaysIn(year, month): Timestamp[]
+sequence(start, count, step, unit): Timestamp[]
 sequence(count, step, unit): (start) => Timestamp[]
 overlaps(a1, a2, b1, b2): boolean    contains(start, end, point): boolean
 intersection(a1, a2, b1, b2): [Timestamp, Timestamp] | null
@@ -328,19 +342,22 @@ curried.
 
 ```ts
 isBusinessDay(ts): boolean
-addBusinessDays(amount): (ts) => Timestamp
-subtractBusinessDays(amount): (ts) => Timestamp
-businessDaysBetween(b): (a) => number
+addBusinessDays(ts, amount): Timestamp       addBusinessDays(amount): (ts) => Timestamp
+subtractBusinessDays(ts, amount): Timestamp  subtractBusinessDays(amount): (ts) => Timestamp
+businessDaysBetween(a, b): number            businessDaysBetween(b): (a) => number
 nextBusinessDay(ts): Timestamp    prevBusinessDay(ts): Timestamp
+addBusinessDaysWithHolidays(ts, amount, holidays): Timestamp
 addBusinessDaysWithHolidays(amount, holidays): (ts) => Timestamp
 ```
 
 ### Formatting & parsing
 
 ```ts
-format(pattern): (ts) => string       formatter(pattern): (ts) => string
-parse(pattern): (input) => Timestamp  parser(pattern): (input) => Timestamp
-tryParse(pattern): (input) => Timestamp | null
+format(ts, pattern): string                  format(pattern): (ts) => string
+formatter(pattern): (ts) => string
+parse(input, pattern): Timestamp             parse(pattern): (input) => Timestamp
+parser(pattern): (input) => Timestamp
+tryParse(input, pattern): Timestamp | null   tryParse(pattern): (input) => Timestamp | null
 tryParser(pattern): (input) => Timestamp | null
 parseISO(input): Timestamp
 ```

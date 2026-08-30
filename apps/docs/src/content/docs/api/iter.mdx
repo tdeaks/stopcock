@@ -4,6 +4,7 @@ description: Lazy synchronous sequences with correct iterator closing
 ---
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Iter from '@stopcock/fp/iter'
 ```
 
@@ -58,6 +59,12 @@ Transformations are usable directly or in `pipe`:
 ```ts
 import { pipe } from '@stopcock/fp'
 
+const doubled = Iter.map([1, 2, 3], (value) => value * 2)
+const doubledInPipe = pipe(
+  [1, 2, 3],
+  Iter.map((value) => value * 2),
+)
+
 const result = pipe(
   Iter.range(1, Infinity),
   Iter.filter((value) => value % 2 === 0),
@@ -72,14 +79,20 @@ const result = pipe(
 
 ```ts
 Iter.toArray(source)
-Iter.toArrayInto(target)(source)
-Iter.reduce(reducer, initial)(source)
-Iter.forEach(effect)(source)
+Iter.toArrayInto(source, target)
+pipe(source, Iter.toArrayInto(target))
+Iter.reduce(source, reducer, initial)
+pipe(source, Iter.reduce(reducer, initial))
+Iter.forEach(source, effect)
+pipe(source, Iter.forEach(effect))
 Iter.first(source) // Option<A>
-Iter.last(source)  // Option<A>
-Iter.find(predicate)(source) // Option<A>
-Iter.some(predicate)(source)
-Iter.every(predicate)(source)
+Iter.last(source) // Option<A>
+Iter.find(source, predicate) // Option<A>
+pipe(source, Iter.find(predicate)) // Option<A>
+Iter.some(source, predicate)
+pipe(source, Iter.some(predicate))
+Iter.every(source, predicate)
+pipe(source, Iter.every(predicate))
 Iter.count(source)
 ```
 

@@ -15,16 +15,23 @@ isEmpty(s: string): boolean
 length(s: string): number
 ```
 
-## Curried
+## Dual-form
 
 ```ts
+startsWith(s: string, search: string): boolean
 startsWith(search: string): (s: string) => boolean
+endsWith(s: string, search: string): boolean
 endsWith(search: string): (s: string) => boolean
+includes(s: string, search: string): boolean
 includes(search: string): (s: string) => boolean
-split(sep: string): (s: string) => string[]
+split(s: string, sep: string | RegExp): string[]
+split(sep: string | RegExp): (s: string) => string[]
+repeat(s: string, n: number): string
 repeat(n: number): (s: string) => string
+slice(s: string, start: number, end?: number): string
 slice(start: number, end?: number): (s: string) => string
-replaceAll(search: string, replacement: string): (s: string) => string
+replaceAll(s: string, search: string | RegExp, replacement: string): string
+replaceAll(search: string | RegExp, replacement: string): (s: string) => string
 ```
 
 ## Examples
@@ -48,5 +55,6 @@ pipe('report.pdf', S.endsWith('.pdf')) // true
 pipe('Hello, NAME!', S.replaceAll('NAME', user.name))
 
 // truncate
-const preview = pipe(description, S.slice(0, 100))
+const preview = S.slice(description, 0, 100) // direct, data-first
+const alsoPreview = pipe(description, S.slice(0, 100)) // curried, data-last
 ```

@@ -55,7 +55,10 @@ curried data-last calls under the same name.
 ```ts
 const doubled = A.map((value: number) => value * 2)([1, 2, 3])
 const directlyDoubled = A.map([1, 2, 3], (value) => value * 2)
-const alsoDoubled = pipe([1, 2, 3], A.map((value) => value * 2))
+const alsoDoubled = pipe(
+  [1, 2, 3],
+  A.map((value) => value * 2),
+)
 ```
 
 Array operations are immutable by default. Explicit `*Into` operations write
@@ -96,7 +99,7 @@ explain(
   A.map((value: number) => value * 2),
   A.filter((value) => value > 0),
 ) // 'sequential', always -- a call the compiler actually fused never
-  // reaches this code to be explained
+// reaches this code to be explained
 ```
 
 Uncompiled `pipe` is already at or near hand-loop speed for most chains, so
@@ -104,9 +107,9 @@ you do not need the compiler to get reasonable performance. Reach for
 `@stopcock/fp-compiler` for pipelines you've actually measured as hot.
 
 <Aside type="note">
-  The optional `@stopcock/fp-compiler` build plugin can lower ordinary
-  `pipe`/`flow` call sites at build time. Applications still import only
-  `@stopcock/fp`; generated code does not require the compiler at runtime.
+  The optional `@stopcock/fp-compiler` build plugin can lower ordinary `pipe`/`flow` call sites at
+  build time. Applications still import only `@stopcock/fp`; generated code does not require the
+  compiler at runtime.
 </Aside>
 
 ## Missing values, failures, and validation
@@ -133,8 +136,15 @@ const parsed = R.tryCatch(
 )
 
 const fields = V.all([
-  V.fromPredicate((value: string) => value.length > 0, () => 'name is required')(name),
-  V.fromPredicate(Number.isFinite, () => 'age must be finite')(age),
+  V.fromPredicate(
+    name,
+    (value: string) => value.length > 0,
+    () => 'name is required',
+  ),
+  pipe(
+    age,
+    V.fromPredicate(Number.isFinite, () => 'age must be finite'),
+  ),
 ] as const)
 ```
 

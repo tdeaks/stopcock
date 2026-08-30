@@ -26,7 +26,9 @@ isPromise(x: unknown): x is Promise<unknown>
 isArray(x: unknown): x is unknown[]
 isObjectType(x: unknown): x is object
 isPlainObject(x: unknown): x is Record<string, unknown>
+isArrayOf<A>(value: unknown, guard: Guard<A>): value is A[]
 isArrayOf<A>(guard: Guard<A>): Guard<A[]>
+isRecordOf<A>(value: unknown, guard: Guard<A>): value is Record<string, A>
 isRecordOf<A>(guard: Guard<A>): Guard<Record<string, A>>
 ```
 
@@ -51,8 +53,11 @@ isDefined<T>(x: T | undefined): x is T
 
 ```ts
 isDeepEqual(a: unknown, b: unknown): boolean
+isDeepEqual(b: unknown): (a: unknown) => boolean
 isShallowEqual(a: unknown, b: unknown): boolean
+isShallowEqual(b: unknown): (a: unknown) => boolean
 isStrictEqual(a: unknown, b: unknown): boolean
+isStrictEqual(b: unknown): (a: unknown) => boolean
 ```
 
 ## Other
@@ -61,8 +66,10 @@ isStrictEqual(a: unknown, b: unknown): boolean
 isEmpty(x: unknown): boolean
 isEmptyish(x: unknown): boolean        // null, undefined, or empty
 isTruthy(x: unknown): boolean
-is<T>(ctor: new (...args: any[]) => T, val: unknown): val is T
-propIs<T>(ctor: new (...args: any[]) => T, prop: string, obj: Record<string, unknown>): boolean
+is<T>(val: unknown, ctor: new (...args: any[]) => T): val is T
+is<T>(ctor: new (...args: any[]) => T): (val: unknown) => val is T
+propIs<T>(obj: Record<string, unknown>, ctor: new (...args: any[]) => T, prop: string): boolean
+propIs<T>(ctor: new (...args: any[]) => T, prop: string): (obj: Record<string, unknown>) => boolean
 ```
 
 ## Examples
@@ -91,14 +98,15 @@ pipe(
 
 // deep equality check
 G.isDeepEqual({ a: [1, 2] }, { a: [1, 2] }) // true
+pipe({ a: [1, 2] }, G.isDeepEqual({ a: [1, 2] })) // true
 
 // check class instance
-G.is(Date, new Date()) // true
-G.is(Date, '2024-01-01') // false
+G.is(new Date(), Date) // true: data-first
+pipe('2024-01-01', G.is(Date)) // false: data-last
 
 const numbers = G.isArrayOf(G.isFiniteNumber)
 numbers([1, 2, 3]) // true
-numbers([1, Number.NaN]) // false
+G.isArrayOf([1, Number.NaN], G.isFiniteNumber) // false: data-first
 
 const labels = G.isRecordOf(G.isNonBlankString)
 labels({ primary: 'Save', secondary: 'Cancel' }) // true

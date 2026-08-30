@@ -98,6 +98,7 @@ const id = 'autodiff-neural-demo'
 </div>
 
 <script>
+  import { pipe } from '@stopcock/fp'
   import {
     add,
     differentiable,
@@ -275,14 +276,20 @@ const id = 'autodiff-neural-demo'
 
   const hiddenVar = (x: number, y: number, params: VarWeights, index: number) => {
     const offset = index * 3
-    return tanh(add(add(mul(params[offset], x), mul(params[offset + 1], y)), params[offset + 2]))
+    return pipe(
+      x,
+      mul(params[offset]),
+      add(pipe(y, mul(params[offset + 1]))),
+      add(params[offset + 2]),
+      tanh,
+    )
   }
 
   const predictVar = (x: number, y: number, params: VarWeights) => {
     const hidden = Array.from({ length: hiddenCount }, (_, index) => hiddenVar(x, y, params, index))
     let logit: Var<number> | number = params[16]
     for (let index = 0; index < hiddenCount; index++) {
-      logit = add(logit, mul(params[12 + index], hidden[index]))
+      logit = add(logit, mul(hidden[index], params[12 + index]))
     }
     return sigmoid(logit)
   }
@@ -301,7 +308,10 @@ const id = 'autodiff-neural-demo'
     differentiable((...params: VarWeights) => {
       let total: Var<number> | number = 0
       for (const sample of samples) {
-        total = add(total, square(sub(predictVar(sample.x, sample.y, params), sample.target)))
+        total = pipe(
+          total,
+          add(pipe(predictVar(sample.x, sample.y, params), sub(sample.target), square)),
+        )
       }
       return mul(total, 1 / samples.length)
     })
@@ -559,7 +569,8 @@ const id = 'autodiff-neural-demo'
   setSeed(activeSeed)
 </script>
 
-<style is:global>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .adn-demo {
     --adn-bg: color-mix(in srgb, var(--sl-color-gray-6) 82%, transparent);
     --adn-panel: color-mix(in srgb, var(--sl-color-gray-6) 95%, var(--sl-color-accent-low));

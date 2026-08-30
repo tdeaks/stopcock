@@ -1,29 +1,40 @@
 ---
 title: svg
-description: Pipe-native procedural SVG with typed nodes, defs hoisting, filters, and linear-algebra helpers
+description: Dual-form procedural SVG with typed nodes, defs hoisting, filters, and linear-algebra helpers
 ---
 
 ```bash
 bun add @stopcock/svg
 ```
 
-`@stopcock/svg` builds SVG as typed pipeable values. User code works with shapes, paints, paths, filters, and transforms; the renderer owns XML, ids, escaping, and `<defs>` hoisting.
+`@stopcock/svg` builds SVG as typed values. Every non-constructor operation that combines data with configuration supports both data-first calls and curried data-last calls under the same name. User code works with shapes, paints, paths, filters, and transforms; the renderer owns XML, ids, escaping, and `<defs>` hoisting.
 
 See it compose with image and color processing in the
 [SVG + Color Batch showcase](/showcases/svg-color-batch/).
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { rgb } from '@stopcock/color'
 import { circle, fill, render, rotate, stroke, translate, viewBox } from '@stopcock/svg'
 
-const badge = viewBox(
-  0,
-  0,
-  100,
-  100,
-)(stroke(rgb(0, 0, 0), 2)(fill(rgb(1, 0, 0))(rotate(15)(translate(50, 50)(circle(32))))))
+const base = circle(32)
+const moved = translate(base, 50, 50)
+const turned = rotate(moved, 15)
+const painted = fill(turned, rgb(1, 0, 0))
+const outlined = stroke(painted, rgb(0, 0, 0), 2)
+const dataFirstBadge = viewBox(outlined, 0, 0, 100, 100)
 
-render(badge)
+const dataLastBadge = pipe(
+  circle(32),
+  translate(50, 50),
+  rotate(15),
+  fill(rgb(1, 0, 0)),
+  stroke(rgb(0, 0, 0), 2),
+  viewBox(0, 0, 100, 100),
+)
+
+render(dataFirstBadge)
+pipe(dataLastBadge, render())
 ```
 
 ## Core model
@@ -38,21 +49,21 @@ line(x1, y1, x2, y2)
 text(value, size?)
 group(children)
 use(target)
-viewBox(x, y, w, h)
-render(node)
+viewBox(node, x, y, w, h) / viewBox(x, y, w, h)(node)
+render(node, options?) / render(options?)(node)
 ```
 
-Operators return `Node => Node`, so they compose naturally in `pipe`:
+Constructors stay direct. Data-taking operators expose a direct overload and return `Node => Node` when called with configuration only, so the same name works in `pipe`:
 
 ```ts
-fill(paint)
-stroke(paint, width, opts?)
-opacity(alpha)
-translate(dx, dy)
-rotate(degrees, cx?, cy?)
-scale(sx, sy?)
-skewX(degrees)
-skewY(degrees)
+fill(node, paint) / fill(paint)(node)
+stroke(node, paint, width, opts?) / stroke(paint, width, opts?)(node)
+opacity(node, alpha) / opacity(alpha)(node)
+translate(node, dx, dy) / translate(dx, dy)(node)
+rotate(node, degrees, cx?, cy?) / rotate(degrees, cx?, cy?)(node)
+scale(node, sx, sy?) / scale(sx, sy?)(node)
+skewX(node, degrees) / skewX(degrees)(node)
+skewY(node, degrees) / skewY(degrees)(node)
 ```
 
 ## Paint and defs
@@ -60,6 +71,7 @@ skewY(degrees)
 Gradients, patterns, clips, masks, filters, and symbols are hoisted into `<defs>` by reference equality. Reuse a `const` to reuse a definition; allocate a new value to get a distinct definition.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { linear, rect, circle, fill, group, render } from '@stopcock/svg'
 import { rgb } from '@stopcock/color'
 
@@ -68,29 +80,48 @@ const brand = linear([
   { offset: 1, color: rgb(0, 0, 1) },
 ])
 
-render(group([fill(brand)(rect(20, 20)), fill(brand)(circle(8))]))
+const icon = group([fill(rect(20, 20), brand), pipe(circle(8), fill(brand))])
+
+render(icon)
 ```
 
 ## Paths
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { path, render } from '@stopcock/svg'
 
-const triangle = path.toNode()(
-  path.close()(path.lineTo(50, 80)(path.lineTo(100, 0)(path.start(0, 0)))),
+const firstEdge = path.lineTo(path.start(0, 0), 100, 0)
+const dataFirstPath = path.lineTo(firstEdge, 50, 80)
+const dataFirstTriangle = path.toNode(path.close(dataFirstPath))
+
+const dataLastTriangle = pipe(
+  path.start(0, 0),
+  path.lineTo(100, 0),
+  path.lineTo(50, 80),
+  path.close(),
+  path.toNode(),
 )
 
-render(triangle)
+render(dataFirstTriangle)
+pipe(dataLastTriangle, render())
 ```
 
 ## Filters
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { filter, rect, render } from '@stopcock/svg'
 
 const identity = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0] as const
 
-render(filter(filter.compose([filter.blur(2), filter.colorMatrix(identity)]))(rect(100, 40)))
+const composed = filter.compose([filter.blur(2), filter.colorMatrix(identity)])
+const dataFirstFiltered = filter(rect(100, 40), composed)
+
+const dataLastFiltered = pipe(rect(100, 40), filter(composed))
+
+render(dataFirstFiltered)
+pipe(dataLastFiltered, render())
 ```
 
 `filter.colorMatrix` accepts a row-major 4x5 SVG color matrix: 20 numbers for RGBA plus bias.
@@ -100,15 +131,25 @@ render(filter(filter.compose([filter.blur(2), filter.colorMatrix(identity)]))(re
 Import from `@stopcock/svg/la` when you want helpers backed by `@stopcock/la`.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { rect } from '@stopcock/svg'
 import { toQuad, lerpTransform, symmetry } from '@stopcock/svg/la'
 
-const warped = toQuad([
+const corners = [
   [0, 0],
   [120, 10],
   [100, 80],
   [10, 90],
-])(rect(1, 1))
-const halfway = lerpTransform([1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 100, 0], 0.5)
-const repeated = symmetry(warped, 8, halfway)
+] as const
+
+const dataFirstWarped = toQuad(rect(1, 1), corners)
+const dataLastWarped = pipe(rect(1, 1), toQuad(corners))
+
+const identity = [1, 0, 0, 1, 0, 0] as const
+const target = [1, 0, 0, 1, 100, 0] as const
+const halfway = lerpTransform(identity, target, 0.5)
+const halfwayInPipe = pipe(identity, lerpTransform(target, 0.5))
+
+const dataFirstRepeated = symmetry(dataFirstWarped, 8, halfway)
+const dataLastRepeated = pipe(dataLastWarped, symmetry(8, halfwayInPipe))
 ```

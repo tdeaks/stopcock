@@ -30,9 +30,16 @@ const leaderboard = pipe(
 )
 ```
 
-Every operator is curried and data-last: `A.take(10)` returns a function
-that takes the array, so it slots straight into `pipe`. There's no
-data-first form (`A.take(users, 10)`) any more.
+Every data operation with two or more arguments supports both call shapes under
+the same name:
+
+```ts
+const firstTen = A.take(users, 10) // direct, data-first
+const alsoFirstTen = pipe(users, A.take(10)) // curried, data-last
+```
+
+`A.take(10)` returns a function that takes the array, so it slots straight into
+`pipe`; `A.take(users, 10)` runs the same operation directly.
 
 ## flow
 

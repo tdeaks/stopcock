@@ -8,17 +8,21 @@ The 1.x root lens helpers were replaced by the unified
 
 ```diff
 - import { prop, view, set, over } from '@stopcock/fp'
++ import { pipe } from '@stopcock/fp'
 + import * as Optic from '@stopcock/fp/optic'
 
 - const name = view(user, prop<User, 'name'>('name'))
-+ const name = Optic.view(Optic.prop<User, 'name'>('name'))(user)
++ const nameOptic = Optic.prop<User, 'name'>('name')
++ const name = Optic.view(nameOptic, user)
++ const nameInPipe = pipe(user, Optic.view(nameOptic))
 
 - const updated = over(user, prop<User, 'name'>('name'), String.toUpperCase)
-+ const updated = Optic.modify(
-+   Optic.prop<User, 'name'>('name'),
-+   String.toUpperCase,
-+ )(user)
++ const updated = Optic.modify(nameOptic, user, String.toUpperCase)
++ const updatedInPipe = pipe(user, Optic.modify(nameOptic, String.toUpperCase))
 ```
+
+The full-arity forms execute immediately. Omitting the source returns the same
+operation as a data-last step for `pipe`.
 
 The new module covers lenses, optionals, prisms, traversals, isomorphisms,
 getters, folds, setters, keyed `At` optics, composition, a fluent builder, and

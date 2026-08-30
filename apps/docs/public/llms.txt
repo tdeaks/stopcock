@@ -13,20 +13,20 @@ bun add @stopcock/fp
 ## Guides
 
 - [Cookbook](https://stopcock.dev/cookbook/): Practical @stopcock/fp 2.0 recipes
-- [Getting Started](https://stopcock.dev/getting-started/): Install stopcock and build your first pipe with fusion, Option, and Result
-- [Playground](https://stopcock.dev/playground/): Interactive REPL to try stopcock pipes, fusion, and modules in the browser
+- [Getting Started](https://stopcock.dev/getting-started/): Install stopcock and build your first pipe with Option and Result
+- [Playground](https://stopcock.dev/playground/): Interactive REPL to try stopcock pipes and modules in the browser
 
 ## Concepts
 
-- [Inspect pipelines with explain()](https://stopcock.dev/concepts/explain/): Read Stopcock's static pipeline plan, boundaries, executors, and pure rewrites
-- [Fusion](https://stopcock.dev/concepts/fusion/): How pipe fuses array operations
+- [Inspect pipelines with explain()](https://stopcock.dev/concepts/explain/): What explain() reports now that fusion is a build-time transform
+- [Fusion](https://stopcock.dev/concepts/fusion/): How @stopcock/fp-compiler fuses array operations at build time
 - [Option and Result](https://stopcock.dev/concepts/option-result/): Explicit absence and recoverable failure
 
 ## Libraries
 
 - [async](https://stopcock.dev/libraries/async/): Lazy Task type with concurrency, retry, and cancellation
 - [autodiff](https://stopcock.dev/libraries/autodiff/): Reverse-mode automatic differentiation for scalar, vector, and matrix values
-- [color](https://stopcock.dev/libraries/color/): Color as a first-class value — 11 spaces, perceptual ops, WCAG contrast, CVD simulation
+- [color](https://stopcock.dev/libraries/color/): Color as a first-class value. 11 spaces, perceptual ops, WCAG contrast, CVD simulation
 - [date](https://stopcock.dev/libraries/date/): Zero-allocation functional date utilities with branded types
 - [diff](https://stopcock.dev/libraries/diff/): Structural diffing, patching, composition, and rebasing for objects and arrays
 - [eslint-plugin-fp](https://stopcock.dev/libraries/eslint-plugin-fp/): ESLint flat-config rules for Stopcock FP 2
@@ -44,7 +44,7 @@ bun add @stopcock/fp
 - [signal](https://stopcock.dev/libraries/signal/): Deterministic DSP kernels over typed arrays
 - [state](https://stopcock.dev/libraries/state/): Reactive state management with structural diffs, fine-grained subscriptions, and undo/redo
 - [Stream migration](https://stopcock.dev/libraries/stream/): Stream was replaced by the Iter module in @stopcock/fp 2.0
-- [svg](https://stopcock.dev/libraries/svg/): Pipe-native procedural SVG with typed nodes, defs hoisting, filters, and linear-algebra helpers
+- [svg](https://stopcock.dev/libraries/svg/): Dual-form procedural SVG with typed nodes, defs hoisting, filters, and linear-algebra helpers
 
 ## API
 
@@ -54,6 +54,7 @@ bun add @stopcock/fp
 - [Dict migration](https://stopcock.dev/api/dict/): Dict was replaced by Record in @stopcock/fp 2.0
 - [G (Guards)](https://stopcock.dev/api/guards/): isString, isNumber, isNil, isDeepEqual and more. Runtime type guards with TypeScript predicates
 - [Iter](https://stopcock.dev/api/iter/): Lazy synchronous sequences with correct iterator closing
+- [Map and Record](https://stopcock.dev/api/keyed/): Keyed lookups, lazy defaults, and when to reach for Record over Object
 - [Lens migration](https://stopcock.dev/api/lenses/): The 2.0 optic module replaces the old root lens helpers
 - [Logic migration](https://stopcock.dev/api/logic/): Logic was split into focused function and guard modules
 - [M (Math)](https://stopcock.dev/api/math/): add, multiply, sum, mean, median. Arithmetic and stats for pipe
@@ -69,15 +70,15 @@ bun add @stopcock/fp
 
 ## Showcases
 
-- [Color](https://stopcock.dev/showcases/color/): Interactive demo of stopcock/color — color spaces, palettes, mixing, contrast, gamut mapping, and CVD simulation
+- [Color](https://stopcock.dev/showcases/color/): Interactive demo of stopcock/color, covering color spaces, palettes, mixing, contrast, gamut mapping, and CVD simulation
 - [Image Processing](https://stopcock.dev/showcases/img/): Interactive demo of stopcock/img filters and transforms
 - [SVG + Color Batch](https://stopcock.dev/showcases/svg-color-batch/): Whole-image CVD simulation feeding a procedural SVG pattern and badge overlay
 
 ## Performance
 
-- [Benchmarks](https://stopcock.dev/performance/benchmarks/): stopcock vs lodash, ramda, remeda, rambda, ts-belt, and native JS
+- [Benchmarks](https://stopcock.dev/performance/benchmarks/): stopcock vs lodash, ramda, remeda, rambda, and ts-belt, measured 2026-07-28/29
 
 ## Blog
 
-- [How portable pipeline fusion works](https://stopcock.dev/blog/how-pipe-fuses-your-loops/)
+- [How @stopcock/fp-compiler fuses your loops](https://stopcock.dev/blog/how-pipe-fuses-your-loops/)
 - [Zustand without the spread](https://stopcock.dev/blog/zustand-without-the-spread/)

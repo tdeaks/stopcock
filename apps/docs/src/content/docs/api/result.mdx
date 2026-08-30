@@ -15,7 +15,9 @@ type Result<A, E> = Ok<A> | Err<E>
 ok<A>(value: A): Result<A, never>
 err<E>(error: E): Result<never, E>
 tryCatch<A>(thunk: () => A): Result<A, unknown>
+fromNullable<A, E>(value: A | null | undefined, onNullish: () => E): Result<NonNullable<A>, E>
 fromNullable<E>(onNullish: () => E): <A>(value: A | null | undefined) => Result<NonNullable<A>, E>
+fromPredicate<A, E>(value: A, predicate: (value: A) => boolean, onFalse: (value: A) => E): Result<A, E>
 fromPredicate<A, E>(predicate: (value: A) => boolean, onFalse: (value: A) => E): (value: A) => Result<A, E>
 ```
 
@@ -26,11 +28,17 @@ the rejected value and runs only when the predicate fails.
 ## Transforms
 
 ```ts
+map<A, E, B>(r: Result<A, E>, f: (a: A) => B): Result<B, E>
 map<A, B>(f: (a: A) => B): <E>(r: Result<A, E>) => Result<B, E>
+mapErr<A, E, F>(r: Result<A, E>, f: (e: E) => F): Result<A, F>
 mapErr<E, F>(f: (e: E) => F): <A>(r: Result<A, E>) => Result<A, F>
+flatMap<A, E, B, E2>(r: Result<A, E>, f: (a: A) => Result<B, E2>): Result<B, E | E2>
 flatMap<A, B, E2>(f: (a: A) => Result<B, E2>): <E>(r: Result<A, E>) => Result<B, E | E2>
+filterOrElse<A, E, E2>(result: Result<A, E>, predicate: (value: A) => boolean, onFalse: (value: A) => E2): Result<A, E | E2>
 filterOrElse<A, E2>(predicate: (value: A) => boolean, onFalse: (value: A) => E2): <E>(result: Result<A, E>) => Result<A, E | E2>
+tap<A, E>(r: Result<A, E>, f: (a: A) => void): Result<A, E>
 tap<A>(f: (a: A) => void): <E>(r: Result<A, E>) => Result<A, E>
+tapErr<A, E>(r: Result<A, E>, f: (e: E) => void): Result<A, E>
 tapErr<E>(f: (e: E) => void): <A>(r: Result<A, E>) => Result<A, E>
 ```
 
@@ -43,9 +51,12 @@ predicate nor `onFalse` runs for them.
 all<T extends readonly Result<unknown, unknown>[]>(results: T): Result<ValuesOf<T>, ErrorsOf<T>>
 sequence: typeof all
 
-traverse<A, B, E>(decode: (value: A) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
+traverse<A, B, E>(values: readonly A[], decode: (value: A, index: number) => Result<B, E>): Result<B[], E>
+traverse<A, B, E>(decode: (value: A, index: number) => Result<B, E>): (values: readonly A[]) => Result<B[], E>
 
+optional<A, B, E>(value: A | undefined, decode: (value: A) => Result<B, E>): Result<B | undefined, E>
 optional<A, B, E>(decode: (value: A) => Result<B, E>): (value: A | undefined) => Result<B | undefined, E>
+nullable<A, B, E>(value: A | null, decode: (value: A) => Result<B, E>): Result<B | null, E>
 nullable<A, B, E>(decode: (value: A) => Result<B, E>): (value: A | null) => Result<B | null, E>
 ```
 
@@ -53,13 +64,15 @@ nullable<A, B, E>(decode: (value: A) => Result<B, E>): (value: A | null) => Resu
 `traverse` stops calling the decoder after its first error. Empty inputs return `ok([])`.
 
 `optional` skips decoding only for `undefined`; `nullable` skips only for `null`. The other sentinel
-is passed to the decoder like any other value. Both curry the decoder first:
-`R.optional(decode)(value)` and `R.nullable(decode)(value)`.
+is passed to the decoder like any other value. Both work directly or data-last:
+`R.optional(value, decode)` and `pipe(value, R.optional(decode))`.
 
 ## Extraction
 
 ```ts
-getOrElse<B>(onErr: () => B): <A, E>(r: Result<A, E>) => A | B
+getOrElse<A, E, B>(r: Result<A, E>, onErr: (error: E) => B): A | B
+getOrElse<E, B>(onErr: (error: E) => B): <A>(r: Result<A, E>) => A | B
+match<A, E, B, C>(r: Result<A, E>, { err: (e: E) => B, ok: (a: A) => C }): B | C
 match<A, E, B, C>({ err: (e: E) => B, ok: (a: A) => C }): (r: Result<A, E>) => B | C
 toOption<A, E>(r: Result<A, E>): Option<A>
 ```
@@ -86,11 +99,11 @@ const data = pipe(
 )
 
 // narrow an unknown request body
-const body = R.fromPredicate(G.isPlainObject, () => 'expected an object')(rawBody)
+const body = R.fromPredicate(rawBody, G.isPlainObject, () => 'expected an object')
 
 // decode optional and nullable request fields without conflating their sentinels
-const limit = R.optional(decodePositiveInteger)(request.limit)
-const displayName = R.nullable(decodeNonBlankString)(request.displayName)
+const limit = R.optional(request.limit, decodePositiveInteger)
+const displayName = pipe(request.displayName, R.nullable(decodeNonBlankString))
 
 // chain validations
 type SignupForm = { readonly name: string; readonly email: string }

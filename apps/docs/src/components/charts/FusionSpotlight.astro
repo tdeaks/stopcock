@@ -98,7 +98,8 @@ const colorMap = Object.fromEntries(COLORS.libraries)
   })
 </script>
 
-<style>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .fusion-spotlight {
     margin: 2rem 0;
     padding: 1.5rem 2rem;

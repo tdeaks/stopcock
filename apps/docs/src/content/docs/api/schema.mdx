@@ -4,6 +4,7 @@ description: Standard Schema V1 adapters without a second validation framework
 ---
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Schema from '@stopcock/fp/schema'
 ```
 
@@ -17,8 +18,7 @@ competing schema language.
 
 ```ts
 const positive = Schema.fromPredicate(
-  (value: unknown): value is number =>
-    typeof value === 'number' && value > 0,
+  (value: unknown): value is number => typeof value === 'number' && value > 0,
   () => Schema.issue('Expected a positive number'),
 )
 ```
@@ -31,9 +31,7 @@ import { err, ok } from '@stopcock/fp'
 const integerFromString = Schema.make((value) => {
   if (typeof value !== 'string') return err('Expected a string')
   const parsed = Number(value)
-  return Number.isInteger(parsed)
-    ? ok(parsed)
-    : err(Schema.issue('Expected an integer'))
+  return Number.isInteger(parsed) ? ok(parsed) : err(Schema.issue('Expected an integer'))
 })
 ```
 
@@ -43,10 +41,12 @@ individual issues, and issue arrays are normalized to Standard Schema issues.
 ## Consume any Standard Schema
 
 ```ts
-const result = Schema.validateSync(schema)(input)
+const directResult = Schema.validateSync(input, schema)
+const pipedResult = pipe(input, Schema.validateSync(schema))
 // Result<Output, readonly Issue[]>
 
-const asyncResult = await Schema.validate(schema)(input)
+const directAsyncResult = await Schema.validate(input, schema)
+const pipedAsyncResult = await pipe(input, Schema.validate(schema))
 // Promise<Result<Output, readonly Issue[]>>
 ```
 

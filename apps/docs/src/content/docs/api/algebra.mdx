@@ -7,6 +7,7 @@ The algebra modules are small plain objects and functions. They do not require
 classes, higher-kinded-type emulation, or a runtime typeclass registry.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Eq from '@stopcock/fp/eq'
 import * as Hash from '@stopcock/fp/hash'
 import * as Ord from '@stopcock/fp/ord'
@@ -48,11 +49,23 @@ both.
 ## Ordering
 
 ```ts
-const byAge = Ord.contramap((user: User) => user.age)(Ord.number)
-const byAgeThenName = Ord.combine(byAge, Ord.contramap((user: User) => user.name)(Ord.string))
+const byAge = Ord.contramap(Ord.number, (user: User) => user.age)
+const byAgeInPipe = pipe(
+  Ord.number,
+  Ord.contramap((user: User) => user.age),
+)
+const byName = pipe(
+  Ord.string,
+  Ord.contramap((user: User) => user.name),
+)
+const byAgeThenName = Ord.combine(byAge, byName)
+const byAgeThenNameInPipe = pipe(byAge, Ord.combine(byName))
 
 users.toSorted(byAgeThenName.compare)
 ```
+
+`contramap` and `combine` accept their complete argument lists directly or
+return a data-last operation when the instance argument is omitted.
 
 The `ordering` module contains the `-1 | 0 | 1` primitives used by `Ord`.
 

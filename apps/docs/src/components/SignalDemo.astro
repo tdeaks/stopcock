@@ -2274,7 +2274,8 @@ const id = 'signal-demo'
   drawRoundtripLab()
 </script>
 
-<style>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .signal-demo {
     --sg-bg: #07110f;
     --sg-panel: color-mix(in srgb, var(--sl-color-gray-6) 78%, #052e2b);

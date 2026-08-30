@@ -3,8 +3,9 @@ title: A (Array)
 description: Filter, map, sort, group, and 30+ array functions for pipe
 ---
 
-Every operator is curried: `A.fn(...)(arr)`, which is what makes it drop into
-`pipe(arr, A.fn(...))`. Streaming operators such as `map`, `filter`,
+Every data operation with two or more arguments works both ways:
+`A.fn(arr, ...)` runs direct data-first, while `A.fn(...)(arr)` is the curried
+data-last form used by `pipe(arr, A.fn(...))`. Streaming operators such as `map`, `filter`,
 `flatMap`, `take`, `drop`, `takeWhile`, and `dropWhile` can be fused into a
 single loop by the separate build-time [`@stopcock/fp-compiler`](/concepts/fusion)
 plugin. Plain `pipe` at runtime never fuses on its own; it just calls each
@@ -23,8 +24,8 @@ headNonEmpty<A>(arr: readonly [A, ...A[]]): A
 lastNonEmpty<A>(arr: readonly [A, ...A[]]): A
 tail<A>(arr: readonly A[]): A[]           // all except first
 init<A>(arr: readonly A[]): A[]           // all except last
-length<A>(arr: A[]): number
-isEmpty<A>(arr: A[]): boolean
+length<A>(arr: readonly A[]): number
+isEmpty<A>(arr: readonly A[]): boolean
 ```
 
 `head`, `last`, `length`, and `isEmpty` are accessor terminals: the compiler
@@ -34,16 +35,26 @@ the default; `*OrUndefined` is the explicit JavaScript interop escape hatch.
 ## Transforms
 
 ```ts
-map<A, B>(f: (a: A) => B): (arr: A[]) => B[]
-mapWithIndex<A, B>(f: (a: A, i: number) => B): (arr: A[]) => B[]
-filter<A>(pred: (a: A) => boolean): (arr: A[]) => A[]
-filterWithIndex<A>(pred: (a: A, i: number) => boolean): (arr: A[]) => A[]
-flatMap<A, B>(f: (a: A) => B[]): (arr: A[]) => B[]
-reduce<A, B>(f: (acc: B, a: A) => B, init: B): (arr: A[]) => B
-reduceRight<A, B>(f: (acc: B, a: A) => B, init: B): (arr: A[]) => B
-scan<A, B>(f: (acc: B, a: A) => B, init: B): (arr: A[]) => B[]
-forEach<A>(f: (a: A) => void): (arr: A[]) => void
-forEachWithIndex<A>(f: (a: A, i: number) => void): (arr: A[]) => void
+map<A, B>(arr: readonly A[], f: (a: A) => B): B[]
+map<A, B>(f: (a: A) => B): (arr: readonly A[]) => B[]
+mapWithIndex<A, B>(arr: readonly A[], f: (a: A, i: number) => B): B[]
+mapWithIndex<A, B>(f: (a: A, i: number) => B): (arr: readonly A[]) => B[]
+filter<A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+filter<A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+filterWithIndex<A>(arr: readonly A[], pred: (a: A, i: number) => boolean): A[]
+filterWithIndex<A>(pred: (a: A, i: number) => boolean): (arr: readonly A[]) => A[]
+flatMap<A, B>(arr: readonly A[], f: (a: A) => B[]): B[]
+flatMap<A, B>(f: (a: A) => B[]): (arr: readonly A[]) => B[]
+reduce<A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
+reduce<A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
+reduceRight<A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B
+reduceRight<A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B
+scan<A, B>(arr: readonly A[], f: (acc: B, a: A) => B, init: B): B[]
+scan<A, B>(f: (acc: B, a: A) => B, init: B): (arr: readonly A[]) => B[]
+forEach<A>(arr: readonly A[], f: (a: A) => void): void
+forEach<A>(f: (a: A) => void): (arr: readonly A[]) => void
+forEachWithIndex<A>(arr: readonly A[], f: (a: A, i: number) => void): void
+forEachWithIndex<A>(f: (a: A, i: number) => void): (arr: readonly A[]) => void
 ```
 
 `map`, `mapWithIndex`, `filter`, `filterWithIndex`, and `flatMap` are the
@@ -54,9 +65,10 @@ intermediate array of every running value.
 ## Ordering
 
 ```ts
-sort(arr: number[]): number[]
-sortBy<A>(cmp: (a: A, b: A) => number): (arr: A[]) => A[]
-reverse<A>(arr: A[]): A[]
+sort(arr: readonly number[]): number[]
+sortBy<A>(arr: readonly A[], cmp: (a: A, b: A) => number): A[]
+sortBy<A>(cmp: (a: A, b: A) => number): (arr: readonly A[]) => A[]
+reverse<A>(arr: readonly A[]): A[]
 ```
 
 Materialization boundaries: they need the whole array before they can
@@ -66,13 +78,20 @@ produce anything. `sort` and `sortBy` always run a full sort; a following
 ## Slicing
 
 ```ts
-take(n: number): <A>(arr: A[]) => A[]
-drop(n: number): <A>(arr: A[]) => A[]
-takeWhile<A>(pred: (a: A) => boolean): (arr: A[]) => A[]
-dropWhile<A>(pred: (a: A) => boolean): (arr: A[]) => A[]
-chunk(n: number): <A>(arr: A[]) => A[][]
-slidingWindow(n: number): <A>(arr: A[]) => A[][]
-aperture(n: number): <A>(arr: A[]) => A[][]
+take<A>(arr: readonly A[], n: number): A[]
+take(n: number): <A>(arr: readonly A[]) => A[]
+drop<A>(arr: readonly A[], n: number): A[]
+drop(n: number): <A>(arr: readonly A[]) => A[]
+takeWhile<A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+takeWhile<A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+dropWhile<A>(arr: readonly A[], pred: (a: A) => boolean): A[]
+dropWhile<A>(pred: (a: A) => boolean): (arr: readonly A[]) => A[]
+chunk<A>(arr: readonly A[], n: number): A[][]
+chunk(n: number): <A>(arr: readonly A[]) => A[][]
+slidingWindow<A>(arr: readonly A[], n: number): A[][]
+slidingWindow(n: number): <A>(arr: readonly A[]) => A[][]
+aperture<A>(arr: readonly A[], n: number): A[][]
+aperture(n: number): <A>(arr: readonly A[]) => A[][]
 ```
 
 `take`, `drop`, `takeWhile`, and `dropWhile` are streaming steps the
@@ -81,13 +100,20 @@ compiler can fuse. `take` and `takeWhile` can stop the loop early.
 ## Search
 
 ```ts
+find<A>(arr: readonly A[], pred: (a: A) => boolean): Option<A>
 find<A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<A>
+findIndex<A>(arr: readonly A[], pred: (a: A) => boolean): Option<number>
 findIndex<A>(pred: (a: A) => boolean): (arr: readonly A[]) => Option<number>
+findOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): A | undefined
 findOrUndefined<A>(pred: (a: A) => boolean): (arr: readonly A[]) => A | undefined
+findIndexOrUndefined<A>(arr: readonly A[], pred: (a: A) => boolean): number | undefined
 findIndexOrUndefined<A>(pred: (a: A) => boolean): (arr: readonly A[]) => number | undefined
-every<A>(pred: (a: A) => boolean): (arr: A[]) => boolean
-some<A>(pred: (a: A) => boolean): (arr: A[]) => boolean
-includes<A>(value: A): (arr: A[]) => boolean
+every<A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+every<A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
+some<A>(arr: readonly A[], pred: (a: A) => boolean): boolean
+some<A>(pred: (a: A) => boolean): (arr: readonly A[]) => boolean
+includes<A>(arr: readonly A[], value: A): boolean
+includes<A>(value: A): (arr: readonly A[]) => boolean
 ```
 
 `find`, `every`, and `some` are terminal predicates/searches: the compiler
@@ -96,8 +122,9 @@ can run them as the last step of a fused loop and bail out early.
 ## Deduplication
 
 ```ts
-uniq<A>(arr: A[]): A[]
-uniqBy<A, B>(f: (a: A) => B): (arr: A[]) => A[]
+uniq<A>(arr: readonly A[]): A[]
+uniqBy<A, B>(arr: readonly A[], f: (a: A) => B): A[]
+uniqBy<A, B>(f: (a: A) => B): (arr: readonly A[]) => A[]
 ```
 
 Deduplication needs seen-value state and returns a materialized array.
@@ -105,23 +132,33 @@ Deduplication needs seen-value state and returns a materialized array.
 ## Set operations
 
 ```ts
-intersection<A>(b: A[]): (a: A[]) => A[]
-union<A>(b: A[]): (a: A[]) => A[]
-difference<A>(b: A[]): (a: A[]) => A[]
-symmetricDifference<A>(b: A[]): (a: A[]) => A[]
+intersection<A>(a: readonly A[], b: readonly A[]): A[]
+intersection<A>(b: readonly A[]): (a: readonly A[]) => A[]
+union<A>(a: readonly A[], b: readonly A[]): A[]
+union<A>(b: readonly A[]): (a: readonly A[]) => A[]
+difference<A>(a: readonly A[], b: readonly A[]): A[]
+difference<A>(b: readonly A[]): (a: readonly A[]) => A[]
+symmetricDifference<A>(a: readonly A[], b: readonly A[]): A[]
+symmetricDifference<A>(b: readonly A[]): (a: readonly A[]) => A[]
 ```
 
 ## Combinators
 
 ```ts
-zip<A, B>(b: B[]): (a: A[]) => [A, B][]
-zipWith<A, B, C>(b: B[], f: (a: A, b: B) => C): (a: A[]) => C[]
-xprod<A, B>(b: B[]): (a: A[]) => [A, B][]
+zip<A, B>(a: readonly A[], b: readonly B[]): [A, B][]
+zip<B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
+zipWith<A, B, C>(a: readonly A[], b: readonly B[], f: (a: A, b: B) => C): C[]
+zipWith<A, B, C>(b: readonly B[], f: (a: A, b: B) => C): (a: readonly A[]) => C[]
+xprod<A, B>(a: readonly A[], b: readonly B[]): [A, B][]
+xprod<B>(b: readonly B[]): <A>(a: readonly A[]) => [A, B][]
+groupBy<A>(arr: readonly A[], f: (a: A) => string): Record<string, A[]>
 groupBy<A>(f: (a: A) => string): (arr: readonly A[]) => Record<string, A[]>
-partition<A>(pred: (a: A) => boolean): (arr: A[]) => [A[], A[]]
-intersperse<A>(sep: A): (arr: A[]) => A[]
-flatten<A>(arr: A[][]): A[]
-transpose<A>(arr: A[][]): A[][]
+partition<A>(arr: readonly A[], pred: (a: A) => boolean): [A[], A[]]
+partition<A>(pred: (a: A) => boolean): (arr: readonly A[]) => [A[], A[]]
+intersperse<A>(arr: readonly A[], sep: A): A[]
+intersperse<A>(sep: A): (arr: readonly A[]) => A[]
+flatten<A>(arr: readonly A[][]): A[]
+transpose<A>(arr: readonly A[][]): A[][]
 ```
 
 `groupBy` is a materialization boundary because it needs the whole grouped result.
@@ -129,10 +166,14 @@ transpose<A>(arr: A[][]): A[][]
 ## Mutation (immutable)
 
 ```ts
-adjust<A>(index: number, f: (a: A) => A): (arr: A[]) => A[]
-update<A>(index: number, value: A): (arr: A[]) => A[]
-insert<A>(index: number, value: A): (arr: A[]) => A[]
-remove(index: number, count: number): <A>(arr: A[]) => A[]
+adjust<A>(arr: readonly A[], index: number, f: (a: A) => A): A[]
+adjust<A>(index: number, f: (a: A) => A): (arr: readonly A[]) => A[]
+update<A>(arr: readonly A[], index: number, value: A): A[]
+update<A>(index: number, value: A): (arr: readonly A[]) => A[]
+insert<A>(arr: readonly A[], index: number, value: A): A[]
+insert<A>(index: number, value: A): (arr: readonly A[]) => A[]
+remove<A>(arr: readonly A[], index: number, count: number): A[]
+remove(index: number, count: number): <A>(arr: readonly A[]) => A[]
 ```
 
 All return new arrays.
@@ -141,8 +182,11 @@ All return new arrays.
 
 ```ts
 range(start: number, end: number): number[]
+repeat<A>(value: A, n: number): A[]
 repeat<A>(n: number): (value: A) => A[]
+times<A>(f: (i: number) => A, n: number): A[]
 times(n: number): <A>(f: (i: number) => A) => A[]
+unfold<A, B>(f: (seed: B) => [A, B] | undefined, seed: B): A[]
 unfold<A, B>(seed: B): (f: (seed: B) => [A, B] | undefined) => A[]
 ```
 
@@ -169,18 +213,12 @@ const deals = pipe(
 )
 
 // group + count
-const byCategory = pipe(
-  products,
-  A.groupBy((p: Product) => p.category),
-)
+const byCategory = A.groupBy(products, (p: Product) => p.category)
 // { electronics: [...], clothing: [...] }
 
 // rolling total
-pipe(
-  [100, 200, 150, 300],
-  A.scan((acc, x) => acc + x, 0),
-)
-// [100, 300, 450, 750]
+A.scan([100, 200, 150, 300], (acc, x) => acc + x, 0)
+// [0, 100, 300, 450, 750]
 
 // remove duplicates by key
 const uniqueCustomers = pipe(
@@ -189,9 +227,9 @@ const uniqueCustomers = pipe(
 )
 
 // set operations
-const newUsers = pipe(allUsers, A.difference(existingUsers))
+const newUsers = A.difference(allUsers, existingUsers)
 const commonTags = pipe(tagsA, A.intersection(tagsB))
 
 // batch processing
-const batches = pipe(records, A.chunk(100))
+const batches = A.chunk(records, 100)
 ```

@@ -4,6 +4,7 @@ description: Keyed lookups, lazy defaults, and when to reach for Record over Obj
 ---
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as MapOps from '@stopcock/fp/map'
 import * as Record from '@stopcock/fp/record'
 ```
@@ -13,16 +14,26 @@ import * as Record from '@stopcock/fp/record'
 Three lookups, three different answers to "what if it is not there?":
 
 ```ts
-MapOps.get('ada')(scores) // Option<number>
-MapOps.getOrUndefined('ada')(scores) // number | undefined
-MapOps.getOrElse('ada', () => 0)(scores) // number
+MapOps.get(scores, 'ada') // Option<number>
+pipe(scores, MapOps.get('ada')) // Option<number>
+MapOps.getOrUndefined(scores, 'ada') // number | undefined
+pipe(scores, MapOps.getOrUndefined('ada')) // number | undefined
+MapOps.getOrElse(scores, 'ada', () => 0) // number
+pipe(
+  scores,
+  MapOps.getOrElse('ada', () => 0),
+) // number
 ```
 
 `getOrElse` is lazy. The fallback runs at most once, and only when the key is
 genuinely absent, so an expensive default costs nothing on a hit:
 
 ```ts
-const config = MapOps.getOrElse(url, () => parseExpensiveDefault())(cache)
+const directConfig = MapOps.getOrElse(cache, url, () => parseExpensiveDefault())
+const pipedConfig = pipe(
+  cache,
+  MapOps.getOrElse(url, () => parseExpensiveDefault()),
+)
 ```
 
 A key whose stored value is `undefined` is present. All three operations agree
@@ -30,7 +41,8 @@ on that: `get` returns `Some(undefined)`, `getOrUndefined` returns `undefined`,
 and `getOrElse` returns `undefined` without calling the fallback. If you need
 to tell "missing" from "stored `undefined`", use `get`.
 
-Every lookup curries the key first, so it drops straight into `pipe`:
+Every lookup accepts the map first for a direct call, or curries the key first
+so it drops straight into `pipe`:
 
 ```ts
 pipe(

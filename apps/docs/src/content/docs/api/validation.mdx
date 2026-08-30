@@ -19,6 +19,12 @@ invalid<E>(error: E): Validation<never, E>
 fromResult<A, E>(result: Result<A, E>): Validation<A, E>
 
 fromPredicate<A, E>(
+  value: A,
+  predicate: (value: A) => boolean,
+  onFalse: (value: A) => E,
+): Validation<A, E>
+
+fromPredicate<A, E>(
   predicate: (value: A) => boolean,
   onFalse: (value: A) => E,
 ): (value: A) => Validation<A, E>
@@ -35,6 +41,11 @@ all<T extends readonly Validation<unknown, unknown>[]>(
 ): Validation<ValuesOf<T>, ErrorsOf<T>>
 
 traverse<A, B, E>(
+  values: readonly A[],
+  validate: (value: A) => Validation<B, E>,
+): Validation<B[], E>
+
+traverse<A, B, E>(
   validate: (value: A) => Validation<B, E>,
 ): (values: readonly A[]) => Validation<B[], E>
 ```
@@ -43,6 +54,7 @@ traverse<A, B, E>(
 `traverse` calls the validator for every input, even after failures. Empty inputs return `valid([])`.
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as R from '@stopcock/fp/result'
 import * as V from '@stopcock/fp/validation'
 
@@ -50,25 +62,29 @@ type FieldError = { field: string; message: string }
 
 const signup = V.all([
   V.fromPredicate(
+    email,
     (value: string) => value.includes('@'),
     () => ({
       field: 'email',
       message: 'invalid email',
     }),
-  )(email),
-  V.fromPredicate(
-    (value: string) => value.length >= 8,
-    () => ({
-      field: 'password',
-      message: 'too short',
-    }),
-  )(password),
+  ),
+  pipe(
+    password,
+    V.fromPredicate(
+      (value: string) => value.length >= 8,
+      () => ({
+        field: 'password',
+        message: 'too short',
+      }),
+    ),
+  ),
 ] as const)
 
-R.match({
+R.match(signup, {
   err: (errors) => showErrors(errors),
   ok: ([validEmail, validPassword]: [string, string]) => submit(validEmail, validPassword),
-})(signup)
+})
 ```
 
 ## Result compatibility
@@ -76,9 +92,13 @@ R.match({
 Validation is structurally a Result, so use existing Result transforms and extraction:
 
 ```ts
-R.map(normalize)(validation)
-R.match({ err: showErrors, ok: submit })(validation)
-R.getOrElse(() => fallback)(validation)
+R.map(validation, normalize)
+pipe(validation, R.map(normalize))
+pipe(validation, R.match({ err: showErrors, ok: submit }))
+pipe(
+  validation,
+  R.getOrElse(() => fallback),
+)
 ```
 
 There is deliberately no `flatMap` in the validation module. Dependent

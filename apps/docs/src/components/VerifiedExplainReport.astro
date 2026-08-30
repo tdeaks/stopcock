@@ -117,14 +117,15 @@ if (JSON.stringify(actualSummary) !== JSON.stringify(expected[example])) {
   </p>
 </figure>
 
-<style>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .verified-report {
     margin: 1rem 0 1.5rem;
     border: 1px solid var(--sl-color-gray-5, #1f211e);
     background: var(--sl-color-gray-6, #161816);
   }
 
-  figcaption {
+  .verified-report figcaption {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -137,11 +138,11 @@ if (JSON.stringify(actualSummary) !== JSON.stringify(expected[example])) {
     letter-spacing: 0.02em;
   }
 
-  figcaption span {
+  .verified-report figcaption span {
     color: var(--sl-color-accent, #34d26a);
   }
 
-  pre {
+  .verified-report pre {
     margin: 0;
     padding: 1rem;
     overflow-x: auto;
@@ -152,7 +153,7 @@ if (JSON.stringify(actualSummary) !== JSON.stringify(expected[example])) {
     line-height: 1.65;
   }
 
-  code {
+  .verified-report code {
     color: inherit;
   }
 

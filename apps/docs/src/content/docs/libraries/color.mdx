@@ -9,7 +9,7 @@ import { Aside } from '@astrojs/starlight/components'
 bun add @stopcock/color
 ```
 
-A color algebra in pure TypeScript. 11 color spaces with lossless conversions (CSS Color 4 matrices), perceptually-uniform adjustments via OKLCh, WCAG contrast, CIEDE2000 perceptual distance, gamut mapping, and color-vision-deficiency simulation. Every transformation is curried, data-last, so it composes with `pipe`.
+A color algebra in pure TypeScript. 11 color spaces with lossless conversions (CSS Color 4 matrices), perceptually-uniform adjustments via OKLCh, WCAG contrast, CIEDE2000 perceptual distance, gamut mapping, and color-vision-deficiency simulation. Color-value operations support direct data-first and curried data-last calls under the same name.
 
 Try the API in the [Color showcase](/showcases/color/), or see it compose with
 image processing and procedural graphics in the
@@ -19,7 +19,9 @@ image processing and procedural graphics in the
 import { pipe } from '@stopcock/fp'
 import { fromHex, lighten, desaturate, adjustHue, toHex } from '@stopcock/color'
 
-pipe(fromHex('#2563eb'), lighten(0.1), desaturate(0.2), adjustHue(15), toHex)
+const brand = fromHex('#2563eb')
+const lighter = lighten(brand, 0.1) // direct, data-first
+const accent = pipe(brand, lighten(0.1), desaturate(0.2), adjustHue(15), toHex)
 // => '#647dd1'
 ```
 
@@ -33,7 +35,8 @@ The package routes every perceptual operation (`lighten`, `darken`, `saturate`, 
 - Equal lightness steps in OKLCh look like equal lightness steps. HSL's lightness is just `(max + min) / 2` in sRGB, which is heavily biased.
 - Mixing two colors in OKLab avoids the muddy gray middle that sRGB interpolation produces.
 
-You can still operate in any space explicitly with `convert('hsl')(c)` or `mixIn(b, 'hsl', t)(a)` when you need legacy behavior.
+You can still operate in any space explicitly with `convert(c, 'hsl')` or
+`pipe(a, mixIn(b, 'hsl', t))` when you need legacy behavior.
 
 ## Representation
 
@@ -78,9 +81,10 @@ fromCSS('oklch(0.7 0.15 250)')
 
 ## Conversion
 
-Curried. Routes through a hub-and-spoke graph (XYZ-D65 at the center) with memoized BFS: pay the graph walk once per unique pair, O(1) after.
+Routes through a hub-and-spoke graph (XYZ-D65 at the center) with memoized BFS: pay the graph walk once per unique pair, O(1) after.
 
 ```ts
+convert(c: Color, target: ColorSpace): Color
 convert(target: ColorSpace): (c: Color) => Color
 ```
 
@@ -95,36 +99,69 @@ Arity-1 convenience aliases that pipe directly:
 For image-sized workloads, use the batch API instead of looping over `Color` objects. A channel buffer is a `Float64Array` packed as RGB triples:
 
 ```ts
-import { convertBuffer, simulateBuffer, applyMatrix3x3 } from '@stopcock/color'
+import { pipe } from '@stopcock/fp'
+import { convertBuffer, simulateBuffer, toGamutBuffer, applyMatrix3x3 } from '@stopcock/color'
 
-const rgb = new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
+const pixels = new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
 
-const oklab = convertBuffer(rgb, 'srgb', 'oklab')
-const simulated = simulateBuffer(rgb, 'srgb', 'deuteranopia', 1)
-const transformed = applyMatrix3x3(new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1]), rgb)
+const oklab = convertBuffer(pixels, 'srgb', 'oklab')
+const oklabInPipe = pipe(pixels, convertBuffer('srgb', 'oklab'))
+
+const simulated = simulateBuffer(pixels, 'srgb', 'deuteranopia', 1)
+const simulatedInPipe = pipe(pixels, simulateBuffer('srgb', 'deuteranopia', 1))
+
+const mapped = toGamutBuffer(pixels, 'p3', 'srgb')
+const mappedInPipe = pipe(pixels, toGamutBuffer('p3', 'srgb'))
+
+const transformed = applyMatrix3x3(new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1]), pixels)
 ```
 
-Alpha stays out-of-band. `@stopcock/img` handles RGBA byte splitting and recombination for whole-image filters.
+```ts
+convertBuffer(src, srcSpace, dstSpace, out?)
+convertBuffer(srcSpace, dstSpace, out?)(src)
+simulateBuffer(src, srcSpace, type, severity?, out?)
+simulateBuffer(srcSpace, type, severity?, out?)(src)
+toGamutBuffer(src, srcSpace, targetSpace, out?)
+toGamutBuffer(srcSpace, targetSpace, out?)(src)
+```
+
+The optional `out` buffer is returned from either lane. Alpha stays out-of-band.
+`@stopcock/img` handles RGBA byte splitting and recombination for whole-image
+filters.
 
 ## Adjustments
 
-All route through OKLCh, then return to the source space. Curried.
+All route through OKLCh, then return to the source space.
 
 ```ts
+lighten(c: Color, amount: number): Color
 lighten(amount: number): (c: Color) => Color
+darken(c: Color, amount: number): Color
 darken(amount: number): (c: Color) => Color
+saturate(c: Color, amount: number): Color
 saturate(amount: number): (c: Color) => Color
+desaturate(c: Color, amount: number): Color
 desaturate(amount: number): (c: Color) => Color
+adjustHue(c: Color, degrees: number): Color
 adjustHue(degrees: number): (c: Color) => Color
+adjustAlpha(c: Color, alpha: number): Color
 adjustAlpha(alpha: number): (c: Color) => Color
 ```
 
 ## Mixing
 
 ```ts
+mix(a: Color, b: Color, t?: number): Color
 mix(b: Color, t?: number): (a: Color) => Color           // OKLab, t defaults to 0.5
+mixIn(a: Color, b: Color, space: ColorSpace, t?: number): Color
 mixIn(b: Color, space: ColorSpace, t?: number): (a: Color) => Color  // explicit space
-hueInterpolate(h1: number, h2: number, t: number): number  // shorter-arc, not curried
+hueInterpolate(h1: number, h2: number, t: number): number
+hueInterpolate(h2: number, t: number): (h1: number) => number  // shorter arc
+```
+
+```ts
+const halfway = hueInterpolate(350, 10, 0.5)
+const halfwayInPipe = pipe(350, hueInterpolate(10, 0.5))
 ```
 
 <Aside type="tip">
@@ -140,7 +177,12 @@ triadic(c): [Color, Color, Color]
 tetradic(c): [Color, Color, Color, Color]
 splitComplementary(c): [Color, Color, Color]
 analogous(c: Color, count?: number, angle?: number): Color[]
-analogous(count?, angle?): (c: Color) => Color[]   // curried for pipe
+analogous(count?, angle?): (c: Color) => Color[]
+```
+
+```ts
+const direct = analogous(brand, 5)
+const inPipe = pipe(brand, analogous(5))
 ```
 
 Harmony palettes rotate the hue in OKLCh and project back to the source space, so the resulting colors share lightness/chroma. They "go together."
@@ -166,18 +208,26 @@ toHSLString(c): string
 
 ```ts
 luminance(c): number                              // WCAG relative luminance
-contrastRatio(b: Color): (a: Color) => number     // WCAG ratio, curried
-meetsAA(b: Color): (a: Color) => boolean          // ratio >= 4.5, curried
-meetsAAA(b: Color): (a: Color) => boolean         // ratio >= 7, curried
-meetsAALarge(b: Color): (a: Color) => boolean     // ratio >= 3, curried
-deltaE(b: Color): (a: Color) => number            // CIEDE2000 perceptual distance, curried
-deltaEOK(a, b): number                            // Euclidean distance in OKLab, not curried
+contrastRatio(a: Color, b: Color): number
+contrastRatio(b: Color): (a: Color) => number
+meetsAA(a: Color, b: Color): boolean
+meetsAA(b: Color): (a: Color) => boolean
+meetsAAA(a: Color, b: Color): boolean
+meetsAAA(b: Color): (a: Color) => boolean
+meetsAALarge(a: Color, b: Color): boolean
+meetsAALarge(b: Color): (a: Color) => boolean
+deltaE(a: Color, b: Color): number
+deltaE(b: Color): (a: Color) => number
+deltaEOK(a: Color, b: Color): number
+deltaEOK(b: Color): (a: Color) => number
 ```
 
 ## Gamut mapping
 
 ```ts
+inGamut(c: Color, target: ColorSpace): boolean
 inGamut(target: ColorSpace): (c: Color) => boolean
+toGamut(c: Color, target: ColorSpace): Color
 toGamut(target: ColorSpace): (c: Color) => Color
 ```
 
@@ -190,6 +240,7 @@ Simulate how a color appears to a viewer with a CVD condition, using Machado et 
 ```ts
 type CVDType = 'protanopia' | 'deuteranopia' | 'tritanopia' | 'achromatopsia'
 simulate(c: Color, type: CVDType, severity?: number): Color
+simulate(type: CVDType, severity?: number): (c: Color) => Color
 ```
 
 `severity` is `0` (normal) to `1` (full dichromacy); intermediate values blend between identity and the full matrix. Ignored for achromatopsia.
@@ -198,7 +249,7 @@ simulate(c: Color, type: CVDType, severity?: number): Color
 import { simulate } from '@stopcock/color'
 
 const asProtan = simulate(myBrand, 'protanopia')
-const partialDeutan = simulate(myBrand, 'deuteranopia', 0.5)
+const partialDeutan = pipe(myBrand, simulate('deuteranopia', 0.5))
 ```
 
 <Aside type="caution">
@@ -211,6 +262,7 @@ const partialDeutan = simulate(myBrand, 'deuteranopia', 0.5)
 ```ts
 paletteContrastMatrix(palette: Color[]): ContrastCell[][]
 minDistinguishableDistance(palette: Color[], type: CVDType, severity?): number
+minDistinguishableDistance(type: CVDType, severity?): (palette: Color[]) => number
 
 type ContrastCell = { ratio: number; aa: boolean; aaLarge: boolean; aaa: boolean }
 ```
@@ -230,8 +282,8 @@ import { fromHex, toOKLCh, lighten, darken, toHex } from '@stopcock/color'
 const brand = fromHex('#2563eb')
 const theme = {
   primary: toHex(brand),
-  primaryHover: toHex(lighten(0.05)(brand)),
-  primaryActive: toHex(darken(0.05)(brand)),
+  primaryHover: pipe(brand, lighten(0.05), toHex),
+  primaryActive: pipe(brand, darken(0.05), toHex),
   primaryMuted: toHex(pipe(brand, lighten(0.4))),
 }
 ```
@@ -239,9 +291,12 @@ const theme = {
 ### Picking accessible text on any background
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import { contrastRatio, fromHex, rgb } from '@stopcock/color'
 
-const onBg = (bg: Color) => (contrastRatio(bg)(rgb(1, 1, 1)) >= 4.5 ? rgb(1, 1, 1) : rgb(0, 0, 0))
+const white = rgb(1, 1, 1)
+const black = rgb(0, 0, 0)
+const onBg = (bg: Color) => (pipe(white, contrastRatio(bg)) >= 4.5 ? white : black)
 ```
 
 ### Building a colorblind-safe categorical palette

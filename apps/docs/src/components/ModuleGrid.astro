@@ -21,7 +21,8 @@ const modules = [
   ))}
 </div>
 
-<style>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .module-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));

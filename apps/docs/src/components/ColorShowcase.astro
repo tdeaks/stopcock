@@ -67,6 +67,7 @@ const id = 'color-showcase'
 </div>
 
 <script>
+  import { pipe } from '@stopcock/fp'
   import {
     rgb, fromHex, fromCSS,
     convert, toSRGB, toOKLCh, toOKLab, toHSL, toLab, toP3,
@@ -114,7 +115,8 @@ const id = 'color-showcase'
   let mixTarget: Color = fromHex('#facc15')
   let contrastPartner: Color = fromHex('#ffffff')
 
-  const viewed = (c: Color): Color => lens === 'none' ? c : simulate(c, lens, 1)
+  const viewed = (c: Color): Color =>
+    lens === 'none' ? c : pipe(c, (color) => simulate(color, lens, 1))
   const bg = (c: Color): string => toHex(viewed(c))
 
   const subscribers: Array<() => void> = []
@@ -211,7 +213,10 @@ const id = 'color-showcase'
     { name: 'oklab',       render: (c) => fmtFn('oklab', toOKLab(c), 4) },
     { name: 'lab',         render: (c) => fmtFn('lab',   toLab(c),   2) },
     { name: 'p3',          render: (c) => fmtFn('color(display-p3', toP3(c), 4, ')') },
-    { name: 'linear-srgb', render: (c) => fmtFn('color(srgb-linear', convert(c, 'linear-srgb'), 4, ')') },
+    {
+      name: 'linear-srgb',
+      render: (c) => fmtFn('color(srgb-linear', pipe(c, convert('linear-srgb')), 4, ')'),
+    },
   ]
   const spacesGrid = $(`#${id}-spaces`)
   onChange(() => {
@@ -251,7 +256,7 @@ const id = 'color-showcase'
 
   const palettesContainer = $(`#${id}-palettes`)
   const paletteRows: Array<{ label: string; fn: (c: Color) => Color[] }> = [
-    { label: 'Analogous (5)', fn: (c) => analogous(c, 5) },
+    { label: 'Analogous (5)', fn: (c) => pipe(c, analogous(5)) },
     { label: 'Complementary', fn: (c) => [c, complementary(c)] },
     { label: 'Triadic',       fn: (c) => [...triadic(c)] },
     { label: 'Tetradic',      fn: (c) => [...tetradic(c)] },
@@ -284,7 +289,7 @@ const id = 'color-showcase'
     const row = h('div', { className: 'cs-gradient', role: 'img', 'aria-label': label })
     for (let i = 0; i < STEPS; i++) {
       const t = i / (STEPS - 1)
-      const stop = mixIn(base, mixTarget, space, t)
+      const stop = pipe(base, mixIn(mixTarget, space, t))
       row.append(h('div', { 'aria-hidden': 'true', style: { background: bg(stop) } }))
     }
     return row
@@ -317,11 +322,11 @@ const id = 'color-showcase'
   contrastPicker.addEventListener('input', () => { contrastPartner = fromHex(contrastPicker.value); refreshContrast() })
 
   const refreshContrast = () => {
-    const ratio = contrastRatio(base, contrastPartner)
+    const ratio = pipe(base, contrastRatio(contrastPartner))
     const checks: Array<[string, boolean]> = [
-      ['AA', meetsAA(base, contrastPartner)],
-      ['AAA', meetsAAA(base, contrastPartner)],
-      ['AA Large', meetsAALarge(base, contrastPartner)],
+      ['AA', pipe(base, meetsAA(contrastPartner))],
+      ['AAA', pipe(base, meetsAAA(contrastPartner))],
+      ['AA Large', pipe(base, meetsAALarge(contrastPartner))],
     ]
     contrastContainer.replaceChildren(
       h('div', { className: 'cs-row', style: { marginBottom: '16px' } },
@@ -348,7 +353,10 @@ const id = 'color-showcase'
 
   const matrixContainer = $(`#${id}-matrix`)
   onChange(() => {
-    const palette = [base, ...analogous(base, 5).filter((c) => toHex(c) !== toHex(base))]
+    const palette = [
+      base,
+      ...pipe(base, analogous(5)).filter((c) => toHex(c) !== toHex(base)),
+    ]
     const matrix = paletteContrastMatrix(palette)
     const n = palette.length
     const grid = h('div', {
@@ -400,8 +408,8 @@ const id = 'color-showcase'
     chromaValue.textContent = C.toFixed(3)
     const wide: Color = { space: 'oklch', channels: new Float64Array([ok.channels[0], C, ok.channels[2]]), alpha: 1 }
     const naive = toSRGB(wide)
-    const mapped = toGamut(wide, 'srgb')
-    const within = inGamut(wide, 'srgb')
+    const mapped = pipe(wide, toGamut('srgb'))
+    const within = pipe(wide, inGamut('srgb'))
     cellNaive.style.background = bg(naive)
     cellNaive.replaceChildren(h('span', { className: 'cs-gamut-label' }, `naive ${within ? '· in gamut' : '· clipped'}`))
     cellMapped.style.background = bg(mapped)
@@ -418,7 +426,8 @@ const id = 'color-showcase'
   onChange(refreshGamut)
 </script>
 
-<style is:global>
+<!-- Keep route-local styles inline: Astro 6 + Rolldown can orphan MDX component CSS assets. -->
+<style is:inline>
   .color-showcase {
     --cs-bg: var(--sl-color-gray-6);
     --cs-bg-elev: var(--sl-color-gray-5);

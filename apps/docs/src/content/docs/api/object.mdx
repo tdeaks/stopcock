@@ -4,6 +4,7 @@ description: Safe immutable object, merge, and typed path operations
 ---
 
 ```ts
+import { pipe } from '@stopcock/fp'
 import * as Obj from '@stopcock/fp/object'
 ```
 
@@ -16,20 +17,25 @@ defend write paths against prototype-pollution keys.
 Obj.keys(value)
 Obj.values(value)
 Obj.entries(value)
-Obj.pick(['id', 'name'])(value)
-Obj.omit(['password'])(value)
-Obj.pickBy((_value, key) => key !== 'internal')(value)
-Obj.omitBy(predicate)(value)
+Obj.pick(value, ['id', 'name'])
+pipe(value, Obj.pick(['id', 'name']))
+Obj.omit(value, ['password'])
+pipe(value, Obj.omit(['password']))
+Obj.pickBy(value, (_value, key) => key !== 'internal')
+pipe(
+  value,
+  Obj.pickBy((_value, key) => key !== 'internal'),
+)
+Obj.omitBy(value, predicate)
+pipe(value, Obj.omitBy(predicate))
 ```
 
-`pick`, `omit`, and predicate projections curry the keys or predicate first,
-so they drop straight into `pipe`.
+`pick`, `omit`, and predicate projections accept the object first for a direct
+call, or curry the keys or predicate so they drop straight into `pipe`.
 
 ## Immutable updates
 
 ```ts
-import { pipe } from '@stopcock/fp'
-
 const updated = pipe(
   user,
   Obj.assoc('role', 'admin'),
@@ -45,12 +51,24 @@ const updated = pipe(
 ## Merge
 
 ```ts
-Obj.mergeWith(overrides, (left, right) => right ?? left)(defaults)
+Obj.mergeWith(defaults, overrides, (left, right) => right ?? left)
+pipe(
+  defaults,
+  Obj.mergeWith(overrides, (left, right) => right ?? left),
+)
 
-Obj.mergeDeep(overrides, {
+Obj.mergeDeep(defaults, overrides, {
   bias: 'right',
   arrays: 'replace',
-})(defaults)
+})
+
+pipe(
+  defaults,
+  Obj.mergeDeep(overrides, {
+    bias: 'right',
+    arrays: 'replace',
+  }),
+)
 ```
 
 Deep merge options make conflict and array semantics explicit:
@@ -68,14 +86,20 @@ Paths are readonly key tuples, not dotted strings:
 ```ts
 const cityPath = Obj.pathOf<User>()('profile', 'address', 'city')
 
-Obj.getPath(cityPath)(user) // Option<string>
-Obj.getPathOrUndefined(cityPath)(user) // string | undefined
-Obj.hasPath(cityPath)(user)
+Obj.getPath(user, cityPath) // Option<string>
+pipe(user, Obj.getPath(cityPath)) // Option<string>
+Obj.getPathOrUndefined(user, cityPath) // string | undefined
+pipe(user, Obj.getPathOrUndefined(cityPath)) // string | undefined
+Obj.hasPath(user, cityPath)
+pipe(user, Obj.hasPath(cityPath))
 
-const moved = Obj.setPath(cityPath, 'Manchester')(user)
-const upper = Obj.modifyPath(cityPath, String.toUpperCase)(user)
+const moved = Obj.setPath(user, cityPath, 'Manchester')
+const movedInPipe = pipe(user, Obj.setPath(cityPath, 'Manchester'))
+const upper = Obj.modifyPath(user, cityPath, String.toUpperCase)
+const upperInPipe = pipe(user, Obj.modifyPath(cityPath, String.toUpperCase))
 const nicknamePath = Obj.pathOf<User>()('profile', 'nickname')
-const withoutNickname = Obj.removePath(nicknamePath)(user)
+const withoutNickname = Obj.removePath(user, nicknamePath)
+const withoutNicknameInPipe = pipe(user, Obj.removePath(nicknamePath))
 ```
 
 Tuple paths distinguish numeric indices from string keys, reject unsafe write
