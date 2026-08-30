@@ -46,8 +46,8 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@stopcock/fp": "workspace:*",
-    "@stopcock/la": "workspace:*"
+    "@stopcock/fp": "^2.0.0",
+    "@stopcock/la": "^2.0.0"
   },
   "engines": {
     "node": ">=22"

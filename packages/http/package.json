@@ -23,8 +23,8 @@
     }
   },
   "dependencies": {
-    "@stopcock/async": "workspace:*",
-    "@stopcock/fp": "workspace:*"
+    "@stopcock/async": "^2.0.0",
+    "@stopcock/fp": "^2.0.0"
   },
   "engines": {
     "node": ">=22"

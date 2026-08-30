@@ -139,19 +139,19 @@ describe('FP companion package tarballs', () => {
       )
       expect(installedManifest.name).toBe(packed.manifest.name)
       expect(installedManifest.version).toBe(packed.manifest.version)
-      await expect(access(packed.tarballPath)).resolves.toBeUndefined()
-      await expect(access(join(packed.installedRoot, 'README.md'))).resolves.toBeUndefined()
-      await expect(access(join(packed.installedRoot, 'LICENSE'))).resolves.toBeUndefined()
+      await access(packed.tarballPath)
+      await access(join(packed.installedRoot, 'README.md'))
+      await access(join(packed.installedRoot, 'LICENSE'))
 
       for (const target of Object.values(installedManifest.exports)) {
         expect(target.import).toMatch(/^\.\//)
         expect(target.types).toMatch(/^\.\//)
-        await expect(access(join(packed.installedRoot, target.import))).resolves.toBeUndefined()
-        await expect(access(join(packed.installedRoot, target.types))).resolves.toBeUndefined()
+        await access(join(packed.installedRoot, target.import))
+        await access(join(packed.installedRoot, target.types))
       }
 
       for (const target of Object.values(installedManifest.bin ?? {})) {
-        await expect(access(join(packed.installedRoot, target))).resolves.toBeUndefined()
+        await access(join(packed.installedRoot, target))
       }
 
       const files = await readdir(packed.installedRoot, { recursive: true })

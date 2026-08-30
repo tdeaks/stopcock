@@ -43,14 +43,14 @@
     }
   },
   "dependencies": {
-    "@stopcock/diff": "workspace:*",
-    "@stopcock/fp": "workspace:*"
+    "@stopcock/diff": "^2.0.0",
+    "@stopcock/fp": "^2.0.0"
   },
   "devDependencies": {
     "vue": "^3.5.40"
   },
   "peerDependencies": {
-    "@stopcock/async": "2.0.0",
+    "@stopcock/async": "^2.0.0",
     "react": ">=18.0.0",
     "svelte": ">=3.0.0",
     "vue": ">=3.0.0"

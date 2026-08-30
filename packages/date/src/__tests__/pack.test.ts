@@ -68,11 +68,11 @@ describe('packed tarball', () => {
     }
     const rootExport = installedPackage.exports['.']!
 
-    await expect(access(join(installedRoot, rootExport.types))).resolves.toBeUndefined()
-    await expect(access(join(installedRoot, rootExport.import))).resolves.toBeUndefined()
-    await expect(access(join(installedRoot, 'README.md'))).resolves.toBeUndefined()
-    await expect(access(join(installedRoot, 'CHANGELOG.md'))).resolves.toBeUndefined()
-    await expect(access(join(installedRoot, 'LICENSE'))).resolves.toBeUndefined()
+    await access(join(installedRoot, rootExport.types))
+    await access(join(installedRoot, rootExport.import))
+    await access(join(installedRoot, 'README.md'))
+    await access(join(installedRoot, 'CHANGELOG.md'))
+    await access(join(installedRoot, 'LICENSE'))
     expect(installedPackage.dependencies).toBeUndefined()
 
     const files = await readdir(installedRoot, { recursive: true })

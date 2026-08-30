@@ -12,6 +12,7 @@
   "scripts": {
     "test": "vp test run",
     "test:packed": "node --test tooling/packed-smoke.test.mjs",
+    "test:publish-manifests": "node --test tooling/publish-manifests.test.mjs",
     "test:packages": "vp test run --exclude='packages/synth/**'",
     "test:ci": "vp test run --exclude='packages/synth/**' --exclude='benchmarks/**' --exclude='**/*pack*.test.ts'",
     "test:types": "node tooling/check-package-type-tests.mjs",
