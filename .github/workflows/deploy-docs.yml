@@ -28,6 +28,7 @@ jobs:
           run-install: |
             - cwd: .
               args: ['--frozen-lockfile']
+      - run: vp run build:packages
       - run: vp run docs:build
       - uses: actions/upload-pages-artifact@v3
         with:
