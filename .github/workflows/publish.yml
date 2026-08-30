@@ -60,7 +60,7 @@ jobs:
       - run: vp run build:packages
       - run: npm install -g npm@11
       - run: npm --version
-      - run: bun run test:publish-manifests
+      - run: vp run test:publish-manifests
       - uses: changesets/action@v1
         with:
           publish: vp exec changeset publish
