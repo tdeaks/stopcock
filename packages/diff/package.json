@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/diff",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Structural diffing, patching, composition, and rebasing for objects and arrays.",
   "license": "MIT",
   "repository": {
@@ -23,7 +23,7 @@
     }
   },
   "dependencies": {
-    "@stopcock/fp": "^2.0.0"
+    "@stopcock/fp": "^3.0.0"
   },
   "engines": {
     "node": ">=22"

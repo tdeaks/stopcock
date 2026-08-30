@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/color",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Colour conversion, perceptual adjustment, contrast, gamut mapping, and colour-vision simulation.",
   "license": "MIT",
   "repository": {
@@ -23,7 +23,7 @@
     }
   },
   "dependencies": {
-    "@stopcock/fp": "^2.0.0",
+    "@stopcock/fp": "^3.0.0",
     "@stopcock/la": "^2.0.0"
   },
   "engines": {

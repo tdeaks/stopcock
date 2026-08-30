@@ -1,6 +1,6 @@
 {
   "name": "@stopcock/fp-codemod",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Conservative TypeScript-aware migrations from Stopcock FP 1 to FP 2",
   "license": "MIT",
   "repository": {
